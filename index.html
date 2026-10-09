@@ -343,7 +343,7 @@ function genLevel(n,seed,test){
     if(!W(c-1,r-1)||!W(c,r-1))return false;
     if(raw(c-1,r)!==FLOOR||fe(c-1,r))return false;
     set(c,r-1,EMPTY);set(c-1,r-1,FLOOR);
-    L.items.push({c:c-1,r:r-1,x:(c-1)*TW+13,type,taken:false});
+    L.items.push({c:c-1,r:r-1,x:(c-1)*TW+13,type,taken:false,alc:true});
     return true;
   }
 
@@ -379,6 +379,10 @@ function genLevel(n,seed,test){
     }
     if(alcoves.length&&c>cols*alcoves[0].at&&ch(0.3)){if(alcove(alcoves[0].type))alcoves.shift();}
   }
+  // thin out flasks: the gold flask always stays; every other flask keeps FLASK_GAP columns from any kept one (alcoves before floor flasks)
+  {const FLASK_GAP=35,kept=[],rank=it=>it.type==='life'?0:it.alc?1:2;
+    for(const it of L.items.slice().sort((a,b)=>rank(a)-rank(b)||a.c-b.c))if(kept.every(k=>Math.abs(k.c-it.c)>=FLASK_GAP))kept.push(it);
+    L.items=L.items.filter(it=>kept.includes(it));}
   while(c<cols-3){set(c+1,r,FLOOR);c++;}
   bot.push({a:'walk',c:cols-4});
   L.door={c:cols-4,r,x:(cols-4)*TW+16,open:xDone?0:1,opening:!xDone};
@@ -570,7 +574,7 @@ function snapshotResume(){
   if(!L||!P||mode!=='play'||!STABLE.includes(P.state)||!supported())return;
   const idx=(arr,fn)=>arr.map((v,i)=>fn(v)?i:-1).filter(i=>i>=0);
   S.resume={n:L.n,x:Math.round(P.x*10)/10,y:P.y,face:P.face,hp:P.hp,
-    dead:idx(G,g=>!g.alive&&!g.gone),taken:idx(L.items,it=>it.taken),
+    dead:idx(G,g=>!g.alive&&!g.gone),takenAt:L.items.filter(it=>it.taken).map(it=>it.c+','+it.r),
     fallen:idx(L.dyn,o=>o.f.t==='loose'&&o.f.s===2),rubble:[...L.rubble],
     cps:L.cps.map(c=>c.on?1:0),door:(L.door.opening||L.door.open>=1)?1:0};
   S.floorTime=levelTime;
@@ -579,7 +583,7 @@ function applyResume(R){
   if(!R||!L||R.n!==L.n)return false;
   for(const i of R.fallen||[]){const o=L.dyn[i];if(o&&o.f.t==='loose'){o.f.s=2;L.base[o.r*L.cols+o.c]=EMPTY;}}
   for(const k of R.rubble||[])L.rubble.add(k);
-  for(const i of R.taken||[])if(L.items[i])L.items[i].taken=true;
+  const tk=new Set(R.takenAt||[]);for(const it of L.items)if(tk.has(it.c+','+it.r))it.taken=true;
   for(const i of R.dead||[]){const g=G[i];if(g&&!g.gone){g.alive=false;g.state='dying';lerpPose(g.pose,PS.dead,1,g.pose);}}
   (R.cps||[]).forEach((on,i)=>{if(on&&L.cps[i])L.cps[i].on=true;});
   if(R.door){L.door.opening=true;L.door.open=1;}
