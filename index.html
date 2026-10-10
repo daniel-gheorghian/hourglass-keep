@@ -27,6 +27,7 @@
 }
 [hidden]{display:none!important}
 html,body{height:100%;margin:0;background:var(--night);color:var(--bone)}
+*,*::before,*::after{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 body{font-family:var(--f-body);overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 #app{position:fixed;inset:0;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);touch-action:none;background:var(--night)}
 #stage{position:relative;width:100%;height:100%;overflow:hidden;pointer-events:none}
@@ -819,7 +820,7 @@ function clampMove(x0,x1,y,self,crawl){
   }
   // bodies
   const bodies=[];if(self!==P&&P&&P.state!=='dead')bodies.push(P);for(const g of G)if(g!==self&&g.alive)bodies.push(g);
-  for(const b of bodies){if(Math.abs(b.y-y)>12)continue;const d0=(b.x-x0)*dir;if(d0<=0)continue;const v=b.x-dir*18;if((v-lim)*dir<0)lim=v;}
+  for(const b of bodies){const dy=Math.abs(b.y-y);if(dy>12&&!(self===P&&dy<52&&b.state!=='fall'))continue;const d0=(b.x-x0)*dir;if(d0<=0)continue;const v=b.x-dir*18;if((v-lim)*dir<0)lim=v;}
   if((lim-x0)*dir<0)lim=x0;
   return lim;
 }
@@ -1939,6 +1940,10 @@ addEventListener('keyup',e=>{if(KM[e.code])setKey('kb',KM[e.code],false);});
 addEventListener('blur',()=>clearInput());
 document.addEventListener('touchmove',e=>{if(!e.target.closest||!e.target.closest('.screen'))e.preventDefault();},{passive:false});
 document.addEventListener('gesturestart',e=>e.preventDefault());
+// Cancel touchstart on the play surface so iOS never starts a long-press (magnifier, callout, selection).
+// Pointer events still fire. Buttons and menu screens keep their default behaviour so taps still click.
+document.addEventListener('touchstart',e=>{const t=e.target;if(t.closest&&(t.closest('.screen')||t.closest('button')))return;if(e.cancelable)e.preventDefault();},{passive:false});
+for(const ev of ['contextmenu','selectstart'])document.addEventListener(ev,e=>e.preventDefault());
 document.addEventListener('dblclick',e=>e.preventDefault());
 
 // ================= screens =================
