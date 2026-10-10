@@ -135,7 +135,8 @@ kbd{font:700 11.5px/1 var(--f-body);letter-spacing:.08em;padding:3px 6px;border-
           <dt>Catch</dt><dd>Hold <kbd>Grab</kbd> while falling to catch a ledge. Two-floor drops hurt unless you hang first.</dd>
           <dt>Crawl</dt><dd>Down gets you on hands and knees, left or right crawls, up stands. Low tunnels and swinging blades call for it.</dd>
           <dt>Fight</dt><dd><kbd>Grab</kbd> strikes. Up blocks when the guard raises his blade, then strike back fast. Down sheathes. Strike snakes before they coil. Skeletons only fall to a pit, so drive them over the edge.</dd>
-          <dt>Flasks</dt><dd><kbd>Grab</kbd> to drink. Red heals one, gold adds a life, dark blue is poison.</dd>
+          <dt>Gates</dt><dd>A plate raises a gate for a few seconds. A red plate right in front of a gate slams it shut, so jump over it. Some gates open from a plate out of sight, up a climb or down a hole, and then stay open.</dd>
+          <dt>Flasks</dt><dd>Stand on one and tap <kbd>Grab</kbd> to drink. Red heals one, gold adds a life, dark blue is poison.</dd>
           <dt>Exit</dt><dd>A floor plate somewhere opens the exit. Press up at the open door.</dd>
           <dt>Keys</dt><dd>Arrows move, <kbd>Space</kbd> jumps, <kbd>Shift</kbd> grabs, <kbd>P</kbd> pauses.</dd>
         </dl>
@@ -211,7 +212,7 @@ const ROMAN=['','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
 function themeName(n){const i=Math.floor((n-1)/4),t=THEMES[i%THEMES.length],k=Math.floor(i/THEMES.length);return k?t.name+' '+(ROMAN[k]||String(k+1)):t.name;}
 // ================= save =================
 const KEY='hourglass-keep-v1';
-const GEN=4;
+const GEN=5;
 function newSave(prev){return {v:1,gen:GEN,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},set:prev?prev.set:{sound:true,saver:false,lefty:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(s.gen!==GEN){s.gen=GEN;s.cp=-1;s.resume=null;s.floorTime=0;}return s;}}catch(e){}return null;}
@@ -227,7 +228,7 @@ function solidBelow(L,c,r){const b=B(L,c,r);if(b===FLOOR)return true;if(b===WALL
 function genLevel(n,seed,test){
   const rng=mulberry32(seed), ri=(a,b)=>a+Math.floor(rng()*(b-a+1)), ch=p=>rng()<p;
   const d=Math.min(1,(n-1)/24);
-  const roomsW=Math.min(14+Math.floor((n-1)*1.1),36), roomsH=n<=2?1:n<=6?2:3;
+  const roomsW=Math.min(28+Math.floor((n-1)*2.2),72), roomsH=n<=2?1:n<=6?2:3;
   const cols=roomsW*RW, rows=roomsH*RH+2;
   const L={n,seed,d,cols,rows,roomsW,roomsH,base:new Uint8Array(cols*rows).fill(WALL),feat:new Array(cols*rows).fill(null),
     items:[],guards:[],snakeSpecs:[],torches:[],windows:[],cps:[],path:[],debris:[],dyn:[],rubble:new Set(),
@@ -315,18 +316,48 @@ function genLevel(n,seed,test){
     c+=len;run=1;return true;
   }
   function gate(){
-    const m=ri(2,5), withGap=n>=6&&m>=3&&ch(0.45);
+    const m=ri(2,5), withGap=n>=6&&m>=3&&ch(0.45), closer=!withGap&&n>=4&&m>=3&&ch(0.45);
     const len=m+3;
     for(let i=1;i<=len;i++)if(!W(c+i,r))return false;
     if(withGap&&!pitOk(c+3,1))return false;
     for(let i=1;i<=len;i++)set(c+i,r,FLOOR);
     if(withGap){set(c+3,r,EMPTY);pit(c+3,1);}
-    const travel=(m+1)*TW/RUN+(withGap?0.7:0);
+    const travel=(m+1)*TW/RUN+(withGap||closer?0.7:0);
     const g={t:'gate',open:0,tm:0,dur:travel*(1.9-0.55*d)+1.1-0.45*d};
     feat(c+m+2,r,g);
     feat(c+1,r,{t:'plate',g,press:-9});
+    if(closer)feat(c+m+1,r,{t:'closer',g,press:-9}); // step on it and the gate slams: jump over it
     if(withGap){bot.push({a:'walk',c:c+2});bot.push({a:'sjump',from:c+2,to:c+4});bot.push({a:'walk',c:c+len});}
+    else if(closer){bot.push({a:'sjump',from:c+m,to:c+m+2});bot.push({a:'walk',c:c+len});}
     else bot.push({a:'walk',c:c+len});
+    c+=len;run=1;return true;
+  }
+  function detourGate(){
+    const up=r>=3&&(r>rows-3||ch(0.5));
+    const g={t:'gate',open:0,tm:0,dur:0,latch:true};
+    if(up){ // corridor with a shut gate; two climbs lead to a gallery two floors up holding the plate
+      const len=10;
+      for(let i=1;i<=len;i++)if(!W(c+i,r))return false;
+      if(!W(c+2,r-1)||!W(c+3,r-1)||!W(c+3,r-2))return false;
+      for(let i=4;i<=8;i++)if(!W(c+i,r-2))return false;
+      for(let i=1;i<=len;i++)set(c+i,r,FLOOR);
+      set(c+2,r-1,EMPTY);set(c+3,r-1,FLOOR);set(c+3,r-2,EMPTY);
+      for(let i=4;i<=7;i++)set(c+i,r-2,FLOOR);
+      const pc=c+ri(6,7);
+      feat(c+9,r,g);feat(pc,r-2,{t:'plate',g,press:-9,latch:true});
+      bot.push({a:'walk',c:c+2},{a:'climb',from:c+2},{a:'climb',from:c+3},{a:'walk',c:pc},{a:'walk',c:c+4},{a:'hangdrop',from:c+4},{a:'drop',from:c+3},{a:'walk',c:c+len});
+      c+=len;run=1;return true;
+    }
+    if(r>rows-3)return false;
+    // corridor with a hole; the plate waits at the back of the cellar below, and you climb out the far side
+    const len=8;
+    for(let i=1;i<=len;i++)if(!W(c+i,r))return false;
+    if(raw(c,r+1)!==WALL||!W(c+4,r+1))return false;
+    for(let i=1;i<=3;i++)if(!W(c+i,r+1)||!W(c+i,r+2))return false;
+    for(let i=1;i<=len;i++)set(c+i,r,FLOOR);
+    set(c+3,r,EMPTY);for(let i=1;i<=3;i++)set(c+i,r+1,FLOOR);
+    feat(c+7,r,g);feat(c+1,r+1,{t:'plate',g,press:-9,latch:true});
+    bot.push({a:'walk',c:c+2},{a:'drop',from:c+2},{a:'walk',c:c+1},{a:'walk',c:c+3},{a:'climb',from:c+3},{a:'walk',c:c+len});
     c+=len;run=1;return true;
   }
   function guard(){
@@ -429,6 +460,7 @@ function genLevel(n,seed,test){
     if(n>=3)add(1.0,()=>loose(n>=5&&ch(0.45)?2:1));
     if(n>=4)add(0.9,chomp);
     if(n>=3)add(0.75,gate);
+    if(n>=4)add(0.4,detourGate);
     if(n>=3)add(0.45,tunnel);
     if(style==='dungeon'&&n>=2)add(0.9,stones);
     if(style==='palace')add(0.9,bridge);
@@ -660,7 +692,7 @@ function snapshotResume(){
   S.resume={n:L.n,x:Math.round(P.x*10)/10,y:P.y,face:P.face,hp:P.hp,
     dead:idx(G,g=>!g.alive&&!g.gone),takenAt:L.items.filter(it=>it.taken).map(it=>it.c+','+it.r),
     fallen:idx(L.dyn,o=>o.f.t==='loose'&&o.f.s===2),rubble:[...L.rubble],
-    cps:L.cps.map(c=>c.on?1:0),door:(L.door.opening||L.door.open>=1)?1:0,snk:SN.map(sn=>sn.alive?1:0),stn:idx(L.dyn,o=>o.f.t==='stone'&&o.f.s>0)};
+    cps:L.cps.map(c=>c.on?1:0),door:(L.door.opening||L.door.open>=1)?1:0,snk:SN.map(sn=>sn.alive?1:0),stn:idx(L.dyn,o=>o.f.t==='stone'&&o.f.s>0),lg:idx(L.dyn,o=>o.f.t==='gate'&&o.f.latch&&o.f.tm===Infinity)};
   S.floorTime=levelTime;
 }
 function applyResume(R){
@@ -673,6 +705,7 @@ function applyResume(R){
   if(R.door){L.door.opening=true;L.door.open=1;}
   (R.snk||[]).forEach((a,i)=>{if(!a&&SN[i]){SN[i].alive=false;SN[i].gone=true;}});
   for(const i of R.stn||[]){const o=L.dyn[i];if(o&&o.f.t==='stone')o.f.s=3;}
+  for(const i of R.lg||[]){const o=L.dyn[i];if(o&&o.f.t==='gate'){o.f.tm=Infinity;o.f.open=1;}}
   const c=Math.floor(R.x/TW),r=rowOf(R.y);
   if(Number.isFinite(R.x)&&B(L,c,r)!==WALL&&solidBelow(L,c,r)&&Math.abs(R.y-SURF(r))<1){P.x=R.x;P.y=R.y;P.fallY=R.y;P.face=R.face===-1?-1:1;}
   P.hp=clamp(R.hp|0,1,S.maxHp);
@@ -725,7 +758,7 @@ function hazardEdge(maxD){
     if(B(L,nc,row)===WALL)return null;
     const f=F(L,nc,row);
     if(f&&f.t==='gate'&&f.open<0.5)return null;
-    if(!solidBelow(L,nc,row)||(f&&(f.t==='spikes'||f.t==='loose')))return edge;
+    if(!solidBelow(L,nc,row)||(f&&(f.t==='spikes'||f.t==='loose'||f.t==='closer')))return edge;
     c=nc;
   }
   return null;
@@ -794,7 +827,10 @@ function standOn(){
   const c=pCol(),r=pRow(),f=F(L,c,r);
   if(f){
     if(f.t==='loose')triggerLoose(f);
-    else if(f.t==='plate'){if(f.g.tm<=0&&f.g.open<0.05)Snd.play('gate');f.press=gameTime;f.g.tm=f.g.dur;}
+    else if(f.t==='plate'){if(f.g.tm<=0&&f.g.open<0.05)Snd.play('gate');f.press=gameTime;
+      if(f.latch){if(f.g.tm!==Infinity){f.g.tm=Infinity;msg('Somewhere on this floor, a gate grinds open and stays open.',3.4);Snd.play('door');}}
+      else{f.g.tm=f.g.dur;f.g.slam=false;}}
+    else if(f.t==='closer'){f.press=gameTime;if(f.g.tm>0||f.g.open>0.05){f.g.tm=0;f.g.slam=true;Snd.play('gate');hint('closer');}}
     else if(f.t==='xplate'){f.press=gameTime;if(!L.door.opening&&L.door.open<1){L.door.opening=true;msg('A heavy door grinds open somewhere on this floor.',3.4);Snd.play('door');}}
   }
   for(let i=0;i<L.cps.length;i++){const cp=L.cps[i];if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<14){cp.on=true;L.cpIndex=i;S.cp=i;S.floorTime=levelTime;writeSave();msg('The hourglass turns. If you fall, you rise here.',3.2);Snd.play('cp');sparks(cp.x,SURF(cp.r)-22,10,'#e8c47f');}}
@@ -860,7 +896,7 @@ function stStand(ix){
   if(took('u')){if(atDoor()){if(L.door.open>=0.95){setState('exit');P.sword=false;return;}msg('Sealed. A floor plate somewhere opens this door.',3);return;}return tryUp();}
   if(took('d'))return tryDown();
   if(I.d)return setState('crouch');
-  if(took('g')){if(snakeNear(44))return startLowStrike();if(tryDrink())return;}
+  if(took('g')){if(snakeNear(44))return startLowStrike();if(!ix&&tryDrink())return;}
   if(ix){
     if(ix!==P.face){P.face=ix;return setState('turn');}
     if(I.g)return startStep();
@@ -1096,7 +1132,7 @@ function updateFeatures(dt){
         if(near){if(f.ext===0&&tileVisible(o.c,o.r))Snd.play('spikes');f.ext=Math.min(1,f.ext+dt*9);f.hold=1;}
         else{f.hold-=dt;if(f.hold<=0)f.ext=Math.max(0,f.ext-dt*3);}
       }break;
-      case'gate':{const was=f.open;if(f.tm>0){f.tm-=dt;f.open=Math.min(1,f.open+dt*3);}else f.open=Math.max(0,f.open-dt*0.85);
+      case'gate':{const was=f.open;if(f.tm>0){f.tm-=dt;f.open=Math.min(1,f.open+dt*3);}else{f.open=Math.max(0,f.open-dt*(f.slam?4:0.85));if(f.open<=0)f.slam=false;}
         if(was>=0.5&&f.open<0.5&&tileVisible(o.c,o.r))Snd.play('gate');}break;
       case'chomp':{const k=chompK(f);
         if(k>0&&f.last===0&&tileVisible(o.c,o.r))Snd.play('chomp');f.last=k;
@@ -1142,6 +1178,8 @@ const HINTS={
   vent:'Fire vents. Watch them flare, then cross between bursts.',
   skel:'A skeleton. Your sword only drives it back. Push it over the edge into the pit.',
   reinf:'Another guard drops in from the gallery.',
+  closer:'A closing plate. Step on it and the gate slams shut. Jump over it.',
+  latch:'This gate opens from a plate somewhere out of sight. Look above, or below.',
 };
 function hint(id){if(S.hints[id])return;S.hints[id]=1;writeSave();if(!hintQ.includes(id))hintQ.push(id);}
 function checkHints(){
@@ -1154,13 +1192,14 @@ function checkHints(){
       if(B(L,nc,r)===WALL)break;
       if(!solidBelow(L,nc,r)){let w=0;for(let k=0;k<4;k++){if(!solidBelow(L,nc+P.face*k,r)&&B(L,nc+P.face*k,r)!==WALL)w++;else break;}
         if(w>=3)hint('wide');else if(edgeBelow()&&B(L,nc,r+1)!==WALL&&solidBelow(L,nc,r+1))hint('drop');else hint('gap');break;}
-      if(f){if(f.t==='spikes')hint('spikes');else if(f.t==='loose')hint(f.plank?'bridge':'loose');else if(f.t==='plate')hint('plate');else if(f.t==='chomp')hint('chomp');else if(f.t==='low')hint('crawl');else if(f.t==='vent')hint('vent');else if(f.t==='pend')hint('pend');break;}
+      if(f){if(f.t==='spikes')hint('spikes');else if(f.t==='loose')hint(f.plank?'bridge':'loose');else if(f.t==='plate')hint('plate');else if(f.t==='chomp')hint('chomp');else if(f.t==='low')hint('crawl');else if(f.t==='closer')hint('closer');else if(f.t==='vent')hint('vent');else if(f.t==='pend')hint('pend');break;}
     }
     if(canClimbUp())hint('climb');
     const e=edgeBelow();if(e&&solidBelow(L,e.c+e.s,e.r+2)&&!solidBelow(L,e.c+e.s,e.r+1))hint('drop');
     for(const it of L.items)if(!it.taken&&it.r===r&&Math.abs(it.x-P.x)<40)hint('potion');
     for(const cp of L.cps)if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<70)hint('cp');
     for(const sn of SN)if(sn.alive&&sn.r===r&&Math.abs(sn.x-P.x)<110)hint('snake');
+    for(const o of L.dyn)if(o.f.t==='gate'&&o.f.latch&&o.f.open<0.5&&o.r===r&&Math.abs(o.c*TW+16-P.x)<80)hint('latch');
     for(const o of L.dyn)if(o.f.t==='pend'&&o.r===r&&Math.abs(o.c*TW+16-P.x)<110)hint('pend');
     if(L.door.r===r&&Math.abs(L.door.x-P.x)<120){if(L.door.open<0.95)hint('door');else hint('enter');}
   }
@@ -1256,7 +1295,7 @@ function drawRoomStatic(g,rx,ry){
   for(let rr=0;rr<RH;rr++)for(let cc=0;cc<RW;cc++){
     const gc=rx*RW+cc,gr=ry*RH+rr,X=cc*TW,Y=rr*TH;
     if(B(L,gc,gr)===WALL||!solidBelow(L,gc,gr))continue;
-    const f=F(L,gc,gr);if(f&&((f.t==='loose'&&f.s<2)||f.t==='plate'||f.t==='xplate'))continue;
+    const f=F(L,gc,gr);if(f&&((f.t==='loose'&&f.s<2)||f.t==='plate'||f.t==='xplate'||f.t==='closer'))continue;
     const lo=B(L,gc-1,gr)!==WALL&&!solidBelow(L,gc-1,gr),ro=B(L,gc+1,gr)!==WALL&&!solidBelow(L,gc+1,gr);
     slab(g,X,Y+TH-4,th,lo,ro,gc,gr);
     if(f&&f.t==='spikes'){g.fillStyle='#07050b';for(let i=0;i<4;i++)g.fillRect(X+5+i*7,Y+TH-6,2,1.5);}
@@ -1637,6 +1676,9 @@ function drawDynamic(ctx,x0,x1,y0,y1){
       case'vent':drawVentBase(ctx,o,f);break;
       case'loose':if(f.s<2&&f.plank){drawPlank(ctx,X,ys,f.s===1?(Math.random()-0.5)*1.6:0);break;}if(f.s<2){const sh=f.s===1?(Math.random()-0.5)*1.6:0;ctx.save();ctx.translate(0,sh);slab(ctx,X,ys,th,false,false);
         ctx.strokeStyle='rgba(0,0,0,.55)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(X+6,ys-3);ctx.lineTo(X+10,ys+2);ctx.lineTo(X+15,ys-1);ctx.moveTo(X+20,ys-3);ctx.lineTo(X+23,ys+3);ctx.stroke();ctx.restore();}break;
+      case'closer':{slab(ctx,X,ys,th,false,false);const dn=gameTime-f.press<0.12;
+        ctx.fillStyle='#0b0812';ctx.fillRect(X+5,ys-(dn?3.6:5),22,dn?1.4:2.6);ctx.fillStyle='#8f2f2a';ctx.fillRect(X+6,ys-(dn?3.6:4.8),20,dn?1:1.8);
+        ctx.fillStyle='#0b0812';for(let i=0;i<3;i++)ctx.fillRect(X+9+i*6,ys-(dn?3.4:4.4),2.4,1);break;}
       case'plate':case'xplate':{slab(ctx,X,ys,th,false,false);const dn=gameTime-f.press<0.12;
         ctx.fillStyle='#0b0812';ctx.fillRect(X+5,ys-(dn?3.6:5),22,dn?1.4:2.6);ctx.fillStyle=f.t==='xplate'?'#d8b04a':th.top;ctx.fillRect(X+6,ys-(dn?3.6:4.8),20,dn?1:1.8);
         if(f.t==='xplate'){ctx.fillStyle='#0b0812';ctx.fillRect(X+15,ys-(dn?3.4:4.4),2,1);}break;}
@@ -1729,7 +1771,9 @@ function drawOverlayText(ctx){
     const cause={fall:'The fall was too far',spikes:'Impaled on the spikes',sword:'Cut down',blade:'Caught by the blade',crush:'Crushed by falling stone',poison:'Poisoned',snake:'Bitten by a snake',fire:'Burned',pend:'Struck by the pendulum'}[P.cause]||'You fell';
     ctx.fillStyle='#e4683b';ctx.font='24px Lalezar, Georgia, serif';ctx.fillText(cause,viewW/2,ROOM_H/2-10);
     ctx.fillStyle='#f2e9d8';ctx.font='600 8.5px Vazirmatn, system-ui, sans-serif';
-    ctx.fillText(deadT>0.9?(L.cpIndex>=0?'Tap Jump to rise at the hourglass':'Tap Jump to rise at the floor gate'):'',viewW/2,ROOM_H/2+14);ctx.globalAlpha=1;}
+    ctx.fillText(deadT>0.9?(L.cpIndex>=0?'Tap Jump to rise at the hourglass':'Tap Jump to rise at the floor gate'):'',viewW/2,ROOM_H/2+14);
+    if(P.cause==='spikes'){ctx.fillStyle='#e8c47f';ctx.fillText('Spikes spare a careful step: hold Grab and tap toward them.',viewW/2,ROOM_H/2+30);}
+    ctx.globalAlpha=1;}
 }
 
 // ================= layout & controls =================
