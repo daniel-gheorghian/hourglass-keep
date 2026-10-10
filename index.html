@@ -250,6 +250,8 @@ function genLevel(n,seed,test){
   const CP_GAP=45, alcoves=[{at:0.22,type:n%3===0?'life':'heal'},{at:0.6,type:'heal'}];
   let lastGuard=2, nextCp=CP_GAP, xDone=false, lastTorch=-9, extraG=0;
   const ghp=Math.min(5,2+Math.floor((n-1)/5));
+  // guard skill: 0 recruit, 1 soldier, 2 veteran. Drawn from its own stream so the floor layout is unchanged.
+  const trng=mulberry32(hash2(seed,9137)),tierOf=()=>{if(n<=2)return 0;const x=trng(),a=Math.max(0.12,0.62-0.8*d),v=Math.min(0.4,0.04+0.55*d);return x<a?0:x<1-v?1:2;},gHp=t=>ghp;
 
   function flat(k){for(let i=1;i<=k;i++)if(!W(c+i,r))return false;for(let i=1;i<=k;i++)set(c+i,r,FLOOR);c+=k;run+=k;bot.push({a:'walk',c});return true;}
   function pitOk(cc,depth){depth=Math.min(depth,rows-1-r);for(let k=0;k<=depth;k++){if(r+k<rows&&!W(cc,r+k))return false;}return true;}
@@ -383,7 +385,7 @@ function genLevel(n,seed,test){
     const g={t:'gate',open:0,tm:0,dur:0,latch:true};feat(gc,r,g);
     const plate={t:'plate',g,press:-9,latch:true,where:gal?'below':'above'};feat(x0,b,plate);
     if(chain){plate.chain=[];for(let k=0;k<5;k++)plate.chain.push(crack(chainAt+k,{sturdy:true}));}
-    if(amb)plate.amb={x:(zone+5)*TW+16,r:b,lo:(zone+1)*TW+10,hi:(zone+6)*TW+22,hp:ghp};
+    if(amb){const tier=Math.max(1,tierOf());plate.amb={x:(zone+5)*TW+16,r:b,lo:(zone+1)*TW+10,hi:(zone+6)*TW+22,hp:gHp(tier),tier};}
     for(const p of parts){const s=p.s;let o=[],k=[];
       switch(p.k){
         case'flat':o=[{a:'walk',c:s}];k=[{a:'walk',c:s+1}];break;
@@ -398,7 +400,7 @@ function genLevel(n,seed,test){
         case'tunnel':for(let i=1;i<=p.m;i++)feat(s+i,b,{t:'low'});
           if(n>=5&&ch(Math.min(0.75,0.4+0.4*d)))L.snakeSpecs.push({x:(s+1+p.m*0.4)*TW,r:b,lo:(s-1)*TW+12,hi:(s+p.m+1)*TW+20});
           o=[{a:'crawl',from:s+p.m+1,to:s,dir:-1}];k=[{a:'crawl',from:s,to:s+p.m+1}];break;
-        case'guard':L.guards.push({x:(s+1)*TW+16,r:b,lo:s*TW+10,hi:(s+6)*TW+22,hp:ghp,cap:false,reinf:0});extraG++;
+        case'guard':{const tier=tierOf();L.guards.push({x:(s+1)*TW+16,r:b,lo:s*TW+10,hi:(s+6)*TW+22,hp:gHp(tier),cap:false,tier,reinf:0});extraG++;}
           o=[{a:'walk',c:s}];k=[{a:'walk',c:s+6}];break;
         case'skel':hole(s+3);hole(s+4);L.guards.push({x:(s+5)*TW+18,r:b,lo:(s+5)*TW+10,hi:(s+10)*TW+22,hp:1,skel:true,pit:-1});extraG++;
           o=[{a:'walk',c:s+7},{a:'rjump',from:s+5,to:s+2,dir:-1}];k=[{a:'rjump',from:s+2,to:s+5}];break;
@@ -432,8 +434,8 @@ function genLevel(n,seed,test){
     if(off>3){if(!flat(RW-off))return false;}
     for(let i=1;i<=7;i++)if(!W(c+i,r))return false;
     for(let i=1;i<=7;i++)set(c+i,r,FLOOR);
-    const cap=n%5===0&&L.guards.length-extraG===guardsWanted-1;
-    L.guards.push({x:(c+6)*TW+16,r,lo:(c+1)*TW+10,hi:(c+7)*TW+22,hp:ghp+(cap?2:0),cap,reinf:(!cap&&n>=6&&ch(Math.min(0.55,0.12+0.5*d)))?1:0});
+    const cap=n%5===0&&L.guards.length-extraG===guardsWanted-1,tier=cap?2:tierOf();
+    L.guards.push({x:(c+6)*TW+16,r,lo:(c+1)*TW+10,hi:(c+7)*TW+22,hp:cap?ghp+2:gHp(tier),cap,tier,reinf:(!cap&&n>=6&&ch(Math.min(0.55,0.12+0.5*d)))?1:0});
     bot.push({a:'walk',c:c+7});
     c+=7;run+=7;lastGuard=c;return true;
   }
@@ -615,7 +617,8 @@ const PAL_SKEL={skin:'#e9e3cf',skinD:'#c3bb9f',pants:'#e9e3cf',pantsD:'#c3bb9f',
 const PAL_HERO={skin:'#c98f60',skinD:'#a8734a',tunic:'#3b4aa6',tunicD:'#2c387e',pants:'#e6d9bf',pantsD:'#bfb093',sash:'#e4683b',hair:'#2b1b12',boot:'#5c3b22',hero:true};
 function guardPal(g){const th=L.theme;
   if(g.cap)return {skin:'#9c6b45',skinD:'#7d5434',tunic:'#1e1b27',tunicD:'#15131c',pants:'#3a3446',pantsD:'#2a2533',sash:'#d8b04a',helm:'#d8b04a',boot:'#1a1410'};
-  return {skin:'#a8754e',skinD:'#86593a',tunic:th.guard,tunicD:th.guard2,pants:th.guard2,pantsD:'#1d1a26',sash:'#c7c1b4',helm:'#b9bdc9',boot:'#21180f'};}
+  if(g.tier===2)return {skin:'#9a6a46',skinD:'#7b5233',tunic:'#26222e',tunicD:'#1a171f',pants:th.guard2,pantsD:'#15121b',sash:'#d0402f',helm:'#8c93a4',plume:'#d23a2c',boot:'#17110b'};
+  return {skin:'#a8754e',skinD:'#86593a',tunic:th.guard,tunicD:th.guard2,pants:th.guard2,pantsD:'#1d1a26',sash:g.tier===1?'#d0402f':'#c7c1b4',helm:'#b9bdc9',boot:'#21180f'};}
 function drawFigure(ctx,x,y,face,p,pal,o){
   const s=skel(p);
   ctx.save();
@@ -662,7 +665,8 @@ function drawFigure(ctx,x,y,face,p,pal,o){
   const hd=s.hd;
   ctx.beginPath();ctx.arc(hd[0],hd[1],LEN.hd,0,Math.PI*2);ctx.fillStyle=pal.skin;ctx.fill();ctx.strokeStyle=OUT;ctx.lineWidth=1.4;ctx.stroke();
   if(pal.helm){ctx.beginPath();ctx.arc(hd[0],hd[1]-0.4,LEN.hd+0.9,Math.PI*0.98,Math.PI*2.02);ctx.closePath();ctx.fillStyle=pal.helm;ctx.fill();ctx.strokeStyle=OUT;ctx.lineWidth=1.2;ctx.stroke();
-    ctx.beginPath();ctx.moveTo(hd[0],hd[1]-LEN.hd-1);ctx.lineTo(hd[0]-0.4,hd[1]-LEN.hd-4);ctx.strokeStyle=pal.helm;ctx.lineWidth=1.6;ctx.stroke();}
+    ctx.beginPath();ctx.moveTo(hd[0],hd[1]-LEN.hd-1);ctx.lineTo(hd[0]-0.4,hd[1]-LEN.hd-4);ctx.strokeStyle=pal.helm;ctx.lineWidth=1.6;ctx.stroke();
+    if(pal.plume){ctx.beginPath();ctx.moveTo(hd[0]-0.4,hd[1]-LEN.hd-4);ctx.quadraticCurveTo(hd[0]-4,hd[1]-LEN.hd-7,hd[0]-8,hd[1]-LEN.hd-2);ctx.strokeStyle=OUT;ctx.lineWidth=3.6;ctx.stroke();ctx.strokeStyle=pal.plume;ctx.lineWidth=2.2;ctx.stroke();}}
   else if(pal.bones){ctx.fillStyle=OUT;ctx.beginPath();ctx.arc(hd[0]+1.7,hd[1]-0.6,1.4,0,Math.PI*2);ctx.fill();ctx.fillRect(hd[0]-0.4,hd[1]+2.2,4,0.9);ctx.fillRect(hd[0]+3.6,hd[1]+0.4,0.8,1.4);}
   else{ctx.beginPath();ctx.arc(hd[0],hd[1],LEN.hd+0.7,Math.PI*0.55,Math.PI*1.78);ctx.lineTo(hd[0],hd[1]);ctx.closePath();ctx.fillStyle=pal.hair;ctx.fill();}
   if(!pal.bones){ctx.fillStyle=OUT;ctx.fillRect(hd[0]+1.8,hd[1]-1,1.2,1.4);}
@@ -732,10 +736,18 @@ function clearInput(){for(const s of ['kb','touch'])I.src[s]={};for(const k of [
 
 function levelSeed(n){return hash2(S.seed,n*7919+13);}
 function makePlayer(x,r){return {x,y:SURF(r),face:1,state:'stand',t:0,vx:0,vy:0,hp:S.maxHp,fallY:SURF(r),autoGrab:false,jumpKind:null,pendingJump:false,
-  foe:null,sword:false,peace:0,inv:0,flash:0,pose:mk({}),ph:0,cs:null,ledge:null,yo:0,sx:0,tx:0,hitDone:false,drinkIt:null,landDur:0.1,cause:''};}
-function makeGuard(gd,i){const d=L.d,cap=gd.cap,sk=!!gd.skel;
+  foe:null,sword:false,lowSword:false,peace:0,inv:0,flash:0,pose:mk({}),ph:0,cs:null,ledge:null,yo:0,sx:0,tx:0,hitDone:false,drinkIt:null,landDur:0.1,cause:''};}
+// parry: chance to parry a blow aimed at a ready guard; up: parry chance while still reeling from a hit;
+// cu: extra parry per blow landed in the last 1.4s; ripo: chance to strike straight back after parrying
+const TIERS=[
+ {name:'RECRUIT',parry:0.12,up:0.3,cu:0.12,ripo:0.2,aggr:0.32,wind:0.4,tk:1.25,jit:0.05,reel:0.6,heart:'#8fa3d8',hi:'#b9c6ea'},
+ {name:'SOLDIER',parry:0.32,up:0.55,cu:0.18,ripo:0.45,aggr:0.45,wind:0.34,tk:1,jit:0.1,reel:0.5,heart:'#e08a3c',hi:'#f3b77a'},
+ {name:'VETERAN',parry:0.52,up:0.78,cu:0.22,ripo:0.8,aggr:0.6,wind:0.31,tk:0.8,jit:0.12,reel:0.45,heart:'#d9483b',hi:'#f08a7e'}],
+ CAPT={name:'CAPTAIN',parry:0.66,up:0.85,cu:0.2,ripo:0.85,aggr:0.68,wind:0.3,tk:0.75,jit:0.12,reel:0.42,heart:'#d8b04a',hi:'#f0d27a'};
+function makeGuard(gd,i){const d=L.d,cap=gd.cap,sk=!!gd.skel,tr=cap?CAPT:TIERS[gd.tier||0];
   return {x:gd.x,y:SURF(gd.r),r:gd.r,face:-1,lo:gd.lo,hi:gd.hi,hp:gd.hp,maxHp:gd.hp,alive:true,gone:false,state:'idle',t:0,think:0.4,
-    parry:sk?0.28:Math.min(0.78,0.12+0.5*d+(cap?0.15:0)),aggr:sk?0.55:Math.min(0.85,0.34+0.36*d+(cap?0.1:0)),windup:sk?0.36:Math.max(0.28,0.38-0.1*d-(cap?0.02:0)),
+    parry:sk?0.28:Math.min(0.85,tr.parry+0.12*d),up:sk?0:tr.up,cu:sk?0:tr.cu,ripo:sk?0:tr.ripo,aggr:sk?0.55:Math.min(0.85,tr.aggr+0.1*d),windup:sk?0.36:Math.max(0.24,tr.wind-0.03*d),tk:sk?1:tr.tk,jit:sk?0:tr.jit,reel:sk?0.55:tr.reel,tr,
+    wu:0.3,combo:0,lastHit:-9,ripoAt:null,tier:gd.tier||0,
     pendingParry:null,pose:mk({}),cap,skel:sk,pit:gd.pit||1,reinf:gd.reinf||0,vy:0,fx:0,sx:0,tx:0,hitDone:false,flash:0,id:i};}
 function makeSnake(sp){return {x:sp.x,r:sp.r,y:SURF(sp.r),lo:sp.lo,hi:sp.hi,dir:-1,state:'slither',t:0,ph:Math.random()*6,alive:true,gone:false,cool:0,lunge:0,hitDone:false};}
 
@@ -786,7 +798,7 @@ const pCol=(x=P.x)=>Math.floor(x/TW);
 const rowOf=y=>Math.floor((y-1)/TH);
 const pRow=()=>rowOf(P.y);
 const supported=(x=P.x)=>solidBelow(L,Math.floor(x/TW),pRow());
-function setState(s){P.state=s;P.t=0;}
+function setState(s){P.state=s;P.t=0;if(s!=='crouch'&&s!=='poke')P.lowSword=false;}
 function setE(e,s){e.state=s;e.t=0;}
 function msg(text,dur=3,kind='msg'){banner={text,t:0,dur,kind};}
 
@@ -815,7 +827,7 @@ function clampMove(x0,x1,y,self,crawl){
 // ================= player =================
 function startFall(vx){setState('air');P.vx=vx;P.vy=0;P.fallY=P.y;P.autoGrab=false;P.jumpKind=null;}
 function nearGuard(range){let best=null,bd=1e9;for(const g of G){if(!g.alive||g.state==='drop'||g.state==='fall')continue;if(Math.abs(g.y-P.y)>8)continue;const d=Math.abs(g.x-P.x);if(d<range&&d<bd){best=g;bd=d;}}return best;}
-function enterGarde(g){P.foe=g;P.face=g.x>P.x?1:-1;if(!P.sword)Snd.play('draw');P.sword=true;P.vx=0;setState('garde');hint(g.skel?'skel':'fight');}
+function enterGarde(g){P.foe=g;P.face=g.x>P.x?1:-1;if(!P.sword)Snd.play('draw');P.sword=true;P.lowSword=false;P.vx=0;setState('garde');hint(g.skel?'skel':'fight');if(!g.skel&&(g.tier>0||g.cap)&&S.hints.fight)hint('ranks');}
 function hazardEdge(maxD){
   const row=pRow();let c=pCol();
   for(let i=0;i<3;i++){
@@ -866,6 +878,7 @@ function lowAt(x,r){const f=F(L,Math.floor(x/TW),r);return !!(f&&f.t==='low');}
 function underLow(){const r=pRow();return lowAt(P.x-8,r)||lowAt(P.x,r)||lowAt(P.x+8,r);}
 function snakeNear(range){for(const sn of SN){if(!sn.alive||sn.r!==pRow())continue;const dx=(sn.x-P.x)*P.face;if(dx>-4&&dx<range)return sn;}return null;}
 function startLowStrike(){setState('lowStrike');P.hitDone=false;Snd.play('swish');}
+function startPoke(){setState('poke');P.hitDone=false;Snd.play('swish');}
 function killSnake(sn){sn.alive=false;sn.t=0;sn.state='dead';Snd.play('hit');sparks(sn.x,sn.y-4,6,'#a6c45a');}
 function pushBack(dir,dist){let tx=P.x+dir*dist;if(!solidBelow(L,pCol(tx),pRow()))tx=P.x;P.x=clampMove(P.x,tx,P.y,P,P.state==='crouch');}
 function trapHit(cause,dir){if(P.inv>0||P.state==='dead')return;P.inv=0.9;hurt(1,cause);if(P.state==='dead')return;
@@ -875,8 +888,13 @@ function stCrouch(dt,ix){
   standOn();
   const tight=underLow();P.crawling=false;
   if(!tight&&P.peace<=0){const g=nearGuard(64);if(g)return enterGarde(g);}
-  if(took('u')||took('j')){if(tight){Snd.play('bump');hint('crawl');return;}return setState('stand');}
-  if(took('g')){if(tight){msg('No room to swing a sword in here. Crawl out first.',2.4);return;}if(snakeNear(44))return startLowStrike();tryDrink();return;}
+  if(took('u')||took('j')){if(tight){Snd.play('bump');hint('crawl');return;}P.lowSword=false;return setState('stand');}
+  if(took('g')){ // blade drawn low: Grab thrusts, even in a tunnel. Otherwise: strike a snake, drink, or draw the blade low.
+    if(P.lowSword)return startPoke();
+    if(tight){msg('No room to draw a sword in here. Draw it before you crawl in: crouch, then Grab.',3.2);return;}
+    if(snakeNear(44))return startLowStrike();
+    if(tryDrink())return;
+    P.lowSword=true;Snd.play('draw');return;}
   if(ix){
     if(ix!==P.face){P.face=ix;return;}
     const want=P.x+ix*CRAWL*dt;
@@ -1002,7 +1020,9 @@ function stGarde(ix){
   if(!supported())return startFall(0);
   P.face=g.x>P.x?1:-1;
   if(took('g')){setState('strike');P.hitDone=false;Snd.play('swish');
-    if(['garde','advance','retreat','idle'].includes(g.state)&&Math.random()<g.parry)g.pendingParry=0.02+Math.random()*0.08;return;}
+    const rec=gameTime-g.lastHit<1.4?g.combo:0;let pp=-1;
+    if(['garde','advance','retreat','idle'].includes(g.state))pp=g.parry+g.cu*rec;else if(g.state==='hurt'&&!g.skel)pp=g.up+g.cu*Math.max(0,rec-1);
+    if(Math.random()<Math.min(0.95,pp))g.pendingParry=0.02+Math.random()*0.08;return;}
   if(took('u'))return setState('parry');
   if(took('d')){P.foe=null;P.sword=false;P.peace=1.0;setState('stand');return;}
   if(ix){const dir=ix===P.face?1:-1;let tx=P.x+P.face*dir*13;if(!solidBelow(L,pCol(tx),pRow()))return;P.sx=P.x;P.tx=tx;setState(dir>0?'advance':'retreat');}
@@ -1015,6 +1035,7 @@ function resolveStrike(att,def){
   if(dx<6||dx>40||Math.abs(def.y-att.y)>8)return;
   if(def.state==='parry'&&def.t<0.32){
     if(att===P)setState('blocked');else setE(att,'blocked');
+    if(!isP&&!def.skel){if(Math.random()<def.ripo)def.ripoAt=def.t+0.08;hint('parried');}
     Snd.play('clang');sparks((att.x+def.x)/2+att.face*4,att.y-31,10,'#ffe6a8');hitStop=0.05;return;
   }
   if(isP){if(P.inv>0)return;P.inv=0.3;hurt(1,'sword');if(P.state!=='dead'){setState('hurt');knock(P,att.face);}}
@@ -1023,7 +1044,7 @@ function resolveStrike(att,def){
     sparks(def.x,def.y-30,7,'#e9e3cf');Snd.play('bones');hitStop=0.05;
     if(!solidBelow(L,Math.floor(def.x/TW),rowOf(def.y))){setE(def,'fall');def.vy=0;def.fx=att.face;}
     return;}
-  else{def.hp--;def.flash=0.25;def.pendingParry=null;
+  else{def.hp--;def.flash=0.25;def.pendingParry=null;def.combo=gameTime-def.lastHit<1.4?def.combo+1:1;def.lastHit=gameTime;
     if(def.hp<=0){def.alive=false;setE(def,'dying');Snd.play('guardDie');if(def.reinf>0)pendingGuards.push({at:gameTime+1.3,src:def});}
     else{setE(def,'hurt');knock(def,att.face);}}
   Snd.play('hit');sparks(def.x,def.y-30,6,'#ffb38a');hitStop=0.06;
@@ -1041,6 +1062,7 @@ function updatePlayer(dt){
     case'step':{const k=Math.min(1,P.t/0.3);P.x=lerp(P.sx,P.tx,ease(k));if(k>=1){setState('stand');if(!supported())startFall(0);else standOn();}break;}
     case'edgeWalk':P.x=approach(P.x,P.tx,120*dt);if(!supported()){startFall(0);break;}if(Math.abs(P.x-P.tx)<0.3)startJump('stand');break;
     case'crouch':stCrouch(dt,ix);break;
+    case'poke':if(!supported()){startFall(0);break;}if(!P.hitDone&&P.t>=0.1){P.hitDone=true;for(const sn of SN){if(!sn.alive||sn.r!==pRow())continue;const dx=(sn.x-P.x)*P.face;if(dx>-4&&dx<40)killSnake(sn);}}if(P.t>=0.34)setState('crouch');break;
     case'lowStrike':if(!P.hitDone&&P.t>=0.12){P.hitDone=true;for(const sn of SN){if(!sn.alive||sn.r!==pRow())continue;const dx=(sn.x-P.x)*P.face;if(dx>-4&&dx<48)killSnake(sn);}}if(P.t>=0.36)setState('stand');break;
     case'jumpPrep':if(P.t>=0.1)launch();break;
     case'air':stAir(dt);break;
@@ -1070,7 +1092,7 @@ function updatePlayer(dt){
     case'advance':case'retreat':{const k=Math.min(1,P.t/0.2);P.x=clampMove(P.x,lerp(P.sx,P.tx,k),P.y,P);if(k>=1)setState('garde');break;}
     case'strike':if(!P.hitDone&&P.t>=0.17){P.hitDone=true;resolveStrike(P,P.foe);}if(P.state==='strike'&&P.t>=0.4)setState(P.foe&&P.foe.alive?'garde':'stand');break;
     case'parry':if(P.t>=0.36)setState('garde');break;
-    case'blocked':if(P.t>=0.3)setState('garde');break;
+    case'blocked':if(took('u')){setState('parry');break;}if(P.t>=0.3)setState('garde');break;
     case'hurt':if(P.t>=0.35)setState(P.foe&&P.foe.alive?'garde':'stand');break;
     case'exit':P.x=approach(P.x,L.door.x,40*dt);if(P.t>1.0)levelComplete();break;
     case'dead':break;
@@ -1084,7 +1106,8 @@ function updatePlayer(dt){
     case'stop':tgt=PS.skid;break;
     case'turn':tgt=PS.turn;rate=40;break;
     case'step':case'edgeWalk':tgt=lerpPose(PS.stand,PS.step,Math.sin(Math.PI*Math.min(1,P.t/0.3)),tmpP);break;
-    case'crouch':tgt=crawlPose(P.ph);rate=30;break;
+    case'crouch':tgt=crawlPose(P.ph);if(P.lowSword){tgt.aF=0.55+0.1*Math.sin(P.ph*6.2832);tgt.eF=-0.45;tgt.sw=0.03;}rate=30;break;
+    case'poke':{tgt=crawlPose(P.ph);const k=P.t<0.1?P.t/0.1:Math.max(0,1-(P.t-0.16)/0.18);tgt.aF=0.55+0.9*k;tgt.eF=-0.45+0.45*k;tgt.sw=0.03;rate=60;break;}
     case'lowStrike':tgt=P.t<0.12?PS.windup:PS.lowStrike;rate=P.t<0.12?30:55;break;
     case'jumpPrep':case'landHurt':tgt=PS.crouch;break;
     case'air':tgt=P.jumpKind==='run'?PS.jumpR:P.jumpKind==='stand'?PS.jumpS:PS.fall;if(P.jumpKind&&P.vy>60)tgt=lerpPose(tgt,PS.land,0.4,tmpP);break;
@@ -1126,24 +1149,24 @@ function updateGuard(g,dt){
       if(g.pendingParry!==null){g.pendingParry-=dt;if(g.pendingParry<=0){g.pendingParry=null;setE(g,'parry');break;}}
       g.think-=dt;
       if(g.think<=0){
-        g.think=(0.2+Math.random()*0.35)*(1.25-0.45*L.d);
+        g.think=(0.2+Math.random()*0.35)*(1.25-0.45*L.d)*g.tk;
         if(adx>32)guardMove(g,1);
         else if(adx<17)guardMove(g,-1);
-        else if(Math.random()<g.aggr){setE(g,'strike');g.hitDone=false;}
+        else if(Math.random()<g.aggr){setE(g,'strike');g.hitDone=false;g.wu=g.windup*(1+g.jit*(Math.random()*2-1));}
         else if(Math.random()<0.3)guardMove(g,Math.random()<0.6?-1:1);
       }
       break;
     case'advance':case'retreat':{const k=Math.min(1,g.t/0.24);g.x=clamp(clampMove(g.x,lerp(g.sx,g.tx,k),g.y,g),g.lo,g.hi);if(k>=1)setE(g,'garde');break;}
-    case'strike':if(!g.hitDone&&g.t>=g.windup){g.hitDone=true;Snd.play('swish');resolveStrike(g,P);}if(g.state==='strike'&&g.t>=g.windup+0.3)setE(g,'garde');break;
-    case'parry':if(g.t>=0.36)setE(g,'garde');break;
-    case'blocked':if(g.t>=0.55)setE(g,'garde');break;
-    case'hurt':if(g.t>=(g.skel?0.5:0.4))setE(g,'garde');break;
+    case'strike':if(!g.hitDone&&g.t>=g.wu){g.hitDone=true;Snd.play('swish');resolveStrike(g,P);}if(g.state==='strike'&&g.t>=g.wu+0.3)setE(g,'garde');break;
+    case'parry':if(g.ripoAt!==null&&g.t>=g.ripoAt){g.ripoAt=null;setE(g,'strike');g.hitDone=false;g.wu=Math.max(0.2,g.windup*0.8);break;}if(g.t>=0.36){g.ripoAt=null;setE(g,'garde');}break;
+    case'blocked':if(g.t>=g.reel)setE(g,'garde');break;
+    case'hurt':if(g.pendingParry!==null&&g.t>=0.12){g.pendingParry-=dt;if(g.pendingParry<=0){g.pendingParry=null;setE(g,'parry');break;}}if(g.t>=(g.skel?0.5:0.4))setE(g,'garde');break;
   }
   let tgt=PS.stand,rate=24;
   switch(g.state){
     case'idle':tgt=PS.stand;break;
     case'garde':case'advance':case'retreat':tgt=PS.garde;break;
-    case'strike':tgt=g.t<g.windup?PS.windup:PS.lunge;rate=g.t<g.windup?14:55;break;
+    case'strike':tgt=g.t<g.wu?PS.windup:PS.lunge;rate=g.t<g.wu?14*0.3/g.wu:55;break;
     case'parry':tgt=PS.parry;rate=45;break;
     case'blocked':tgt=lerpPose(PS.garde,PS.hurt,0.5,tmpP);break;
     case'hurt':tgt=PS.hurt;rate=40;break;
@@ -1169,7 +1192,7 @@ function updateSnake(sn,dt){
     case'coil':if(sn.t>=0.42){sn.state='strike';sn.t=0;sn.hitDone=false;if(tileVisible(Math.floor(sn.x/TW),sn.r))Snd.play('hiss');}break;
     case'strike':{const k=Math.min(1,sn.t/0.22);sn.lunge=Math.sin(Math.PI*k)*16;
       if(!sn.hitDone&&sn.t>=0.1){sn.hitDone=true;const hx=sn.x+sn.dir*18;
-        if(same&&Math.abs(P.x-hx)<14&&P.inv<=0){P.inv=0.6;hurt(1,'snake');if(P.state!=='dead'&&!['crouch','hang'].includes(P.state))setState('hurt');}}
+        if(same&&Math.abs(P.x-hx)<14&&P.inv<=0){P.inv=0.6;hurt(1,'snake');if(P.state!=='dead'&&!['crouch','poke','hang'].includes(P.state))setState('hurt');}}
       if(sn.t>=0.4){sn.state='slither';sn.t=0;sn.cool=1.3;sn.lunge=0;}break;}
   }
 }
@@ -1191,7 +1214,7 @@ function updateFeatures(dt){
         break;
       case'pend':{const b=pendTip(o,f),side=Math.sign(b.th);
         if(side!==f.last&&tileVisible(o.c,o.r))Snd.play('swoosh');f.last=side;
-        if(alive&&pr===o.r&&P.inv<=0&&!['crouch','hang','climb','climbDown','exit'].includes(P.state)&&Math.abs(b.x-P.x)<11&&b.y>P.y-50&&b.y<P.y+4)trapHit('pend',Math.sign(P.x-b.x)||-P.face);
+        if(alive&&pr===o.r&&P.inv<=0&&!['crouch','poke','hang','climb','climbDown','exit'].includes(P.state)&&Math.abs(b.x-P.x)<11&&b.y>P.y-50&&b.y<P.y+4)trapHit('pend',Math.sign(P.x-b.x)||-P.face);
         break;}
       case'vent':{const ph=cyc(f,gameTime),on=ph>=0.75;
         if(on&&!f.last&&tileVisible(o.c,o.r))Snd.play('fire');f.last=on;
@@ -1236,12 +1259,15 @@ const HINTS={
   plate:'Plates raise gates for a few seconds. Step on it and run.',
   chomp:'Blades snap shut on a rhythm. Watch one cycle, then go.',
   fight:'Grab strikes. Press up to block as his blade rises, then strike back at once.',
+  parried:'Parried. Guards block blows thrown in a rush, and the good ones strike straight back. Press up to block, then hit him while he reels.',
+  ranks:'Guards differ. A red sash marks a soldier, a red plume a veteran. Against the better ones a flurry of blows gets parried and punished.',
+  poke:'A snake in the tunnel. Crouch and press Grab before you crawl in to draw your blade low, then Grab thrusts. Or wait for it to come out.',
   potion:'A flask. Stand on it and press Grab to drink.',
   cp:'Touch the hourglass. If you fall after it, you start again from here.',
   door:'The exit. It opens from a floor plate somewhere on this floor.',
   enter:'The way up is open. Press up at the door.',
   crawl:'Low passage. Press down to get on hands and knees, then left or right to crawl. Up stands you back up.',
-  snake:'A snake. Strike it with Grab before it coils. You cannot swing a sword while crawling.',
+  snake:'A snake. Strike it with Grab before it coils.',
   stone:'Cracked ceiling. Keep moving while you are underneath it.',
   bridge:'Old planks. They give way a moment after you step on them, so run across.',
   pend:'A swinging blade. Crawl under it, or time your run.',
@@ -1268,7 +1294,7 @@ function checkHints(){
     const e=edgeBelow();if(e&&solidBelow(L,e.c+e.s,e.r+2)&&!solidBelow(L,e.c+e.s,e.r+1))hint('drop');
     for(const it of L.items)if(!it.taken&&it.r===r&&Math.abs(it.x-P.x)<40)hint('potion');
     for(const cp of L.cps)if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<70)hint('cp');
-    for(const sn of SN)if(sn.alive&&sn.r===r&&Math.abs(sn.x-P.x)<110)hint('snake');
+    for(const sn of SN)if(sn.alive&&sn.r===r&&Math.abs(sn.x-P.x)<110){hint('snake');if(lowAt(sn.x,sn.r)||lowAt(sn.x-20,sn.r)||lowAt(sn.x+20,sn.r))hint('poke');}
     for(const o of L.dyn)if(o.f.t==='gate'&&o.f.latch&&o.f.open<0.5&&o.r===r&&Math.abs(o.c*TW+16-P.x)<80)hint('latch');
     for(const o of L.dyn)if(o.f.t==='pend'&&o.r===r&&Math.abs(o.c*TW+16-P.x)<110)hint('pend');
     if(L.door.r===r&&Math.abs(L.door.x-P.x)<120){if(L.door.open<0.95)hint('door');else hint('enter');}
@@ -1312,9 +1338,9 @@ function update(dt){
   for(const g of G)updateGuard(g,dt);
   for(const sn of SN)updateSnake(sn,dt);
   for(let i=pendingGuards.length-1;i>=0;i--){const q=pendingGuards[i];if(gameTime<q.at||mode!=='play')continue;pendingGuards.splice(i,1);
-    if(q.spec){const sp=q.spec,ag=makeGuard({x:sp.x,r:sp.r,lo:sp.lo,hi:sp.hi,hp:sp.hp,cap:false,reinf:0},G.length);ag.y=SURF(sp.r)-74;ag.vy=0;ag.state='drop';ag.face=-1;G.push(ag);msg('Ambush! A guard drops in to cut off the way back.',3);continue;}
+    if(q.spec){const sp=q.spec,ag=makeGuard({x:sp.x,r:sp.r,lo:sp.lo,hi:sp.hi,hp:sp.hp,cap:false,tier:sp.tier,reinf:0},G.length);ag.y=SURF(sp.r)-74;ag.vy=0;ag.state='drop';ag.face=-1;G.push(ag);msg('Ambush! A guard drops in to cut off the way back.',3);continue;}
     const sg=q.src,side=Math.sign(sg.x-P.x)||1,x=clamp(P.x+side*110,sg.lo+8,sg.hi-8);
-    const ng=makeGuard({x,r:sg.r,lo:sg.lo,hi:sg.hi,hp:sg.maxHp,cap:false,reinf:0},G.length);
+    const ng=makeGuard({x,r:sg.r,lo:sg.lo,hi:sg.hi,hp:sg.maxHp,cap:false,tier:sg.tier,reinf:0},G.length);
     ng.y=SURF(sg.r)-74;ng.vy=0;ng.state='drop';ng.face=-side;G.push(ng);hint('reinf');}
   updateFX(dt);
   updateCamera(dt);
@@ -1783,7 +1809,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     drawFigure(ctx,g.x,g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:(g.alive&&g.state!=='idle'&&g.state!=='drop'),hasSword:!g.skel,flash:g.flash});}
   if(P){
     if(!(P.state==='dead'&&P.cause==='fall'&&P.y>L.rows*TH))
-    drawFigure(ctx,P.x,P.y,P.face,P.pose,PAL_HERO,{yo:P.yo,sword:(P.sword&&!!P.foe)||P.state==='lowStrike',hasSword:true,flash:P.flash,alpha:P.state==='exit'?Math.max(0,1-P.t*1.1):undefined,flutter:Math.min(1,Math.abs(P.vx)/90+(P.state==='air'?0.8:0)),time:gameTime});
+    drawFigure(ctx,P.x,P.y,P.face,P.pose,PAL_HERO,{yo:P.yo,sword:(P.sword&&!!P.foe)||P.state==='lowStrike'||P.state==='poke'||(P.lowSword&&P.state==='crouch'),hasSword:true,flash:P.flash,alpha:P.state==='exit'?Math.max(0,1-P.t*1.1):undefined,flutter:Math.min(1,Math.abs(P.vx)/90+(P.state==='air'?0.8:0)),time:gameTime});
   }
   for(const o of L.dyn)if(o.f.t==='vent'&&inRoom(o.c,o.r))drawVentFire(ctx,o,o.f);
   for(const p of FX){ctx.globalAlpha=Math.max(0,1-p.t/p.life);ctx.fillStyle=p.col;ctx.fillRect(p.x-p.sz/2,p.y-p.sz/2,p.sz,p.sz);}
@@ -1822,7 +1848,8 @@ function drawHUD(ctx){
   ctx.fillStyle='#cfc7e6';ctx.font='600 7.5px Vazirmatn, system-ui, sans-serif';ctx.fillText(fmt(levelTime),x,top+7);
   const foe=P&&P.foe&&P.foe.alive?P.foe:null;
   if(foe&&foe.skel){const sx=hud.r-6,sy=top+6;ctx.fillStyle='#e9e3cf';ctx.beginPath();ctx.arc(sx,sy,4.2,0,Math.PI*2);ctx.fill();ctx.fillRect(sx-2.6,sy+2,5.2,3);ctx.fillStyle='#0b0812';ctx.fillRect(sx-2.6,sy-1,1.8,1.8);ctx.fillRect(sx+0.8,sy-1,1.8,1.8);ctx.fillRect(sx-0.4,sy+3,0.8,2);}
-  else if(foe){for(let i=0;i<foe.maxHp;i++){const hx=hud.r-7-i*10;heart(ctx,hx,top+2,i<foe.hp,foe.cap?'#d8b04a':'#8fa3d8',foe.cap?'#f0d27a':'#b9c6ea');}}
+  else if(foe){const tr=foe.tr||TIERS[0];for(let i=0;i<foe.maxHp;i++){const hx=hud.r-7-i*10;heart(ctx,hx,top+2,i<foe.hp,tr.heart,tr.hi);}
+    ctx.textAlign='right';ctx.fillStyle=tr.heart;ctx.font='600 6.5px Vazirmatn, system-ui, sans-serif';ctx.fillText(tr.name,hud.r-7-foe.maxHp*10-1,top+7);ctx.textAlign='left';}
 }
 function wrapText(ctx,text,maxW){const words=text.split(' '),lines=[];let cur='';for(const w of words){const t=cur?cur+' '+w:w;if(ctx.measureText(t).width>maxW&&cur){lines.push(cur);cur=w;}else cur=t;}if(cur)lines.push(cur);return lines;}
 function drawOverlayText(ctx){
