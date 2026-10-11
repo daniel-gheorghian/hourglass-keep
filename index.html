@@ -1536,7 +1536,7 @@ function updateFeatures(dt){
         if(was>=0.5&&f.open<0.5&&tileVisible(o.c,o.r))Snd.play('gate');}break;
       case'chomp':{const k=chompK(f);
         if(k>0&&f.last===0&&tileVisible(o.c,o.r))Snd.play('chomp');f.last=k;
-        if(k>0.55&&alive&&pr===o.r&&Math.abs(P.x-(o.c*TW+16))<9&&!['hang','climb','climbDown','exit'].includes(P.state)){f.blood=1;die('blade');}}break;
+        if(k>0.55&&alive&&pr===o.r&&Math.abs(P.x-(o.c*TW+16))<14&&!['hang','climb','climbDown','exit'].includes(P.state)){f.blood=1;die('blade');}}break;
     }
   }
   for(let i=L.ext.darts.length-1;i>=0;i--){const d=L.ext.darts[i];d.x-=190*dt;
@@ -2172,11 +2172,11 @@ function drawDynamic(ctx,x0,x1,y0,y1){
           ctx.fillStyle='#6b707c';for(let yy=Y+10;yy<bot-2;yy+=10)ctx.fillRect(gx2-5.5,yy,11,1.4);
           ctx.fillStyle='#8f95a3';for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(gx2+i*4-1.4,bot-1);ctx.lineTo(gx2+i*4,bot+2);ctx.lineTo(gx2+i*4+1.4,bot-1);ctx.fill();}}
         break;}
-      case'chomp':{const k=chompK(f),yTop=Y,yBot=ys-1,mid=Y+34,L0=X+8,R0=X+24;
+      case'chomp':{const k=chompK(f),yTop=Y,yBot=ys-1,mid=Y+34,L0=X+2,R0=X+30;
         // just the jaws: they slide out of a slot in the ceiling and a slot in the floor; open, only the teeth show
-        const e1=lerp(yTop+7,mid+3.5,k),e2=lerp(yBot+1.5,mid-3.5,k),TH_=7,BD=6,n=4,tw=(R0-L0)/n;
-        ctx.fillStyle='#0b0812';ctx.fillRect(X+7,yTop,18,1.6);ctx.fillRect(X+7,yBot-1,18,2.5);
-        ctx.save();ctx.beginPath();ctx.rect(X+4,yTop+1.6,24,yBot-yTop-2.6);ctx.clip();
+        const e1=lerp(yTop+7,mid+3.5,k),e2=lerp(yBot+1.5,mid-3.5,k),TH_=7,BD=6,n=7,tw=(R0-L0)/n;
+        ctx.fillStyle='#0b0812';ctx.fillRect(X+1,yTop,30,1.6);ctx.fillRect(X+1,yBot-1,30,2.5);
+        ctx.save();ctx.beginPath();ctx.rect(X,yTop+1.6,32,yBot-yTop-2.6);ctx.clip();
         const jaw=(edge,dir)=>{ // dir +1: upper jaw (teeth point down), -1: lower jaw (teeth point up)
           const base=edge-dir*TH_,back=base-dir*BD;
           ctx.fillStyle='rgba(11,8,18,.75)';ctx.fillRect(X+15.4,dir>0?yTop:back,1.2,dir>0?back-yTop:yBot-back); // hairline rod
@@ -2191,8 +2191,8 @@ function drawDynamic(ctx,x0,x1,y0,y1){
           ctx.fillStyle='#e9ecf2';ctx.fillRect(L0,dir>0?base-1.4:base+0.4,R0-L0,1);                // honed line above the teeth
           ctx.fillStyle='#a3a9b6';for(let i=0;i<n;i++){const xm=L0+(i+(dir>0?0.5:0))*tw;ctx.beginPath();ctx.moveTo(xm,edge);ctx.lineTo(xm+tw*0.5,base);ctx.lineTo(xm,base);ctx.fill();} // shaded half of each tooth
           ctx.restore();
-          if(f.blood){ctx.fillStyle='rgba(140,16,20,.92)';for(const i of [1,2]){const xm=L0+(i+(dir>0?0.5:0))*tw;ctx.beginPath();ctx.moveTo(xm-1.6,edge-dir*3.4);ctx.lineTo(xm,edge);ctx.lineTo(xm+1.6,edge-dir*3.4);ctx.fill();}
-            if(dir>0){ctx.fillRect(L0+5,base-5,1,5);ctx.fillRect(L0+10,base-3.5,1,3.5);}}};
+          if(f.blood){ctx.fillStyle='rgba(140,16,20,.92)';for(const i of [2,3,5]){const xm=L0+(i+(dir>0?0.5:0))*tw;ctx.beginPath();ctx.moveTo(xm-1.6,edge-dir*3.4);ctx.lineTo(xm,edge);ctx.lineTo(xm+1.6,edge-dir*3.4);ctx.fill();}
+            if(dir>0){ctx.fillRect(L0+10,base-5,1,5);ctx.fillRect(L0+15,base-3.5,1,3.5);ctx.fillRect(L0+22,base-4,1,4);}}};
         jaw(e1,1);jaw(e2,-1);
         ctx.restore();
         break;}
