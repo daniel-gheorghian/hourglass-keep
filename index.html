@@ -197,6 +197,8 @@ kbd{font:700 11.5px/1 var(--f-body);letter-spacing:.08em;padding:3px 6px;border-
 (()=>{
 'use strict';
 // ================= constants =================
+// oblique depth (the old 2D trick): the back of every block is drawn DX right and DY up from its front; actors walk at mid-depth
+const DX=10, DY=8, HX=DX/2, HY=DY/2;
 const TW=32, TH=64, RW=10, RH=3, ROOM_W=TW*RW, ROOM_H=TH*RH, HUD=20, VW=ROOM_W, VH=ROOM_H+HUD;
 const EMPTY=0, FLOOR=1, WALL=2;
 const SURF=r=>(r+1)*TH-4;
@@ -1506,8 +1508,8 @@ function pendTip(o,f){const px=o.c*TW+16,py=ceilingY(o.c,o.r),Lp=SURF(o.r)-40-py
 function cyc(f,T){return (((T+f.off)%f.per)+f.per)%f.per/f.per;}
 function sawX(f,T){const p=cyc(f,T);return f.x0+(f.x1-f.x0)*(0.5-0.5*Math.cos(p*6.2832));}
 function danger(f,T){if(f.t==='chomp'){const s=gameTime;gameTime=T;const k=chompK(f);gameTime=s;return k>0.3;}if(f.t==='vent'){const p=cyc(f,T);return p>0.7||p<0.03;}return false;}
-// spike needles: [x in tile, base depth, height, lean]; guillotine teeth: [width, length, tip offset]
-const SPK=[[7,1.2,16,-1.9],[12.5,2.7,11,-0.8],[19,1.7,21,0.6],[25,2.9,10,3]];
+// spike needles, back to front: [x in tile, depth 0 front..1 back, height, lean]; guillotine teeth: [width, length, tip offset]
+const SPK=[[25,0.78,10,3],[7,0.66,16,-1.9],[19,0.48,21,0.6],[12.5,0.26,11,-0.8]];
 const CH_UP=[[4,8,0.4],[3.5,5,0],[4.5,11,-0.6],[3.5,4,0.3],[4,9,0.5],[4.5,6,-0.3],[4,10,0.2]];
 const CH_LO=[[2,5,-0.4],[4,9,0.3],[4,5,0],[4.5,10,-0.5],[3.5,4,0.2],[4,8,0.4],[4,6,-0.2],[2,4,0.3]];
 function chompK(f){const p=(((gameTime+f.off)%f.per)+f.per)%f.per/f.per;if(p<0.07)return p/0.07;if(p<0.15)return 1;if(p<0.3)return 1-(p-0.15)/0.15;return 0;}
@@ -1722,39 +1724,61 @@ function drawRoomStatic(g,rx,ry){
   const B=(LL,c,r)=>{const u=c>=0&&r>=0&&L.blockUnder?L.blockUnder.get(r*L.cols+c):undefined;return u!==undefined?u:B0(LL,c,r);};
   const solidBelow=(LL,c,r)=>{const b=B(LL,c,r);if(b===FLOOR)return true;if(b===WALL)return false;return r+1<L.rows&&B(LL,c,r+1)===WALL;};
   const lit=new Set(L.torches.map(t=>t.r*L.cols+t.c));
+  const isLow=(c,r)=>{const f=F(L,c,r);return !!(f&&f.t==='low');};
+  // 1. the back plane, cell by cell
   for(let rr=0;rr<RH;rr++)for(let cc=0;cc<RW;cc++){
     const gc=rx*RW+cc,gr=ry*RH+rr,X=cc*TW,Y=rr*TH,b=B(L,gc,gr);
     g.save();g.beginPath();g.rect(X,Y,TW,TH);g.clip();
-    if(b===WALL)wallCell(g,X,Y,gc,gr,th);else{backCell(g,X,Y,gc,gr,th);const lf=F(L,gc,gr);if(lf&&lf.t==='low')lowCeil(g,X,Y,gc,gr,th);else decor(g,X,Y,gc,gr,th,lit);}
+    backCell(g,X,Y,gc,gr,th);if(b!==WALL&&!isLow(gc,gr))decor(g,X,Y,gc,gr,th,lit);
     g.restore();
-  }
-  if(st!=='dungeon'&&st!=='forge'){
-    for(let rr=0;rr<RH;rr++)for(let cc=0;cc<RW;cc++){const gc=rx*RW+cc,gr=ry*RH+rr;
-      if(B(L,gc,gr)===WALL&&B(L,gc,gr+1)!==WALL&&gr+1<L.rows&&!((F(L,gc,gr+1)||{}).t==='low'))cornice(g,cc*TW,rr*TH,th);}
   }
   for(let rr=-1;rr<RH;rr++)for(let cc=0;cc<RW;cc++){const gc=rx*RW+cc,gr=ry*RH+rr;
     if(gr>=0&&B(L,gc,gr)===EMPTY&&B(L,gc,gr+1)===FLOOR&&!(B(L,gc-1,gr)===WALL&&B(L,gc+1,gr)===WALL)&&hash2(Math.floor(gc/RW)+17,Math.floor(gr/RH)+3)%4!==0)drawArch(g,cc*TW,rr*TH,th);}
   for(const w of L.windows){if(Math.floor(w.c/RW)!==rx||Math.floor(w.r/RH)!==ry)continue;drawWindow(g,(w.c%RW)*TW+16,(w.r%RH)*TH+38,th,w.c);}
-  for(let rr=0;rr<RH;rr++)for(let cc=0;cc<RW;cc++){
-    const gc=rx*RW+cc,gr=ry*RH+rr,X=cc*TW,Y=rr*TH;
-    if(B(L,gc,gr)===WALL||!solidBelow(L,gc,gr))continue;
-    const f=F(L,gc,gr);if(f&&((f.t==='loose'&&f.s<2)||f.t==='plate'||f.t==='xplate'||f.t==='closer'))continue;
+  // neighbours one cell outside the room are drawn too, so faces that overhang a room edge don't leave seams
+  const each=fn=>{for(let rr=-1;rr<=RH;rr++)for(let cc=-1;cc<=RW;cc++)fn(rx*RW+cc,ry*RH+rr,cc*TW,rr*TH);};
+  // 2. side faces (they sit behind the front plane, so every front face is drawn over them)
+  each((gc,gr,X,Y)=>{const b=B(L,gc,gr),rb=B(L,gc+1,gr);
+    if(b===WALL&&rb!==WALL)sideFace(g,X+TW-HX,Y,Y+TH,th);
+    else if(b!==WALL&&isLow(gc,gr)&&rb!==WALL&&!isLow(gc+1,gr))sideFace(g,X+TW-HX,Y,Y+TH-34,th);});
+  // 3. front faces of walls, low ceilings and cornices
+  each((gc,gr,X,Y)=>{const b=B(L,gc,gr);
+    if(b===WALL){g.save();g.beginPath();g.rect(X-HX,Y,TW,TH);g.clip();wallCell(g,X-HX,Y,gc,gr,th);g.restore();
+      if(st!=='dungeon'&&st!=='forge'&&B(L,gc,gr+1)!==WALL&&gr+1<L.rows&&!isLow(gc,gr+1))cornice(g,X-HX,Y,th);}
+    else if(isLow(gc,gr))lowCeil(g,X,Y,gc,gr,th);});
+  // 4. floors: walking surface, front lip and open ends
+  each((gc,gr,X,Y)=>{
+    if(B(L,gc,gr)===WALL||!solidBelow(L,gc,gr))return;
+    const f=F(L,gc,gr);if(f&&((f.t==='loose'&&f.s<2)||f.t==='plate'||f.t==='xplate'||f.t==='closer'))return;
     const lo=B(L,gc-1,gr)!==WALL&&!solidBelow(L,gc-1,gr),ro=B(L,gc+1,gr)!==WALL&&!solidBelow(L,gc+1,gr);
-    slab(g,X,Y+TH-4,th,lo,ro,gc,gr);
-    if(f&&f.t==='spikes'){g.fillStyle='#07050b';for(let i=0;i<4;i++)g.fillRect(X+5+i*7,Y+TH-6,2,1.5);}
-    if(L.rubble.has(gr*L.cols+gc)){const rnd=mulberry32(hash2(gc,gr+77));for(let i=0;i<6;i++){g.fillStyle=i%2?th.front:th.top;const rx2=X+4+rnd()*24,w=2+rnd()*4;g.fillRect(rx2,Y+TH-6-rnd()*2,w,2+rnd()*1.5);}}
-  }
+    const ys=Y+TH-4;slab(g,X,ys,th,lo,ro,gc,gr,B(L,gc+1,gr)===WALL);
+    if(f&&f.t==='spikes'){g.fillStyle='rgba(7,5,11,.8)';const m=gc%2?-1:1;for(const [bx,d] of SPK){const q=onFloor(X+16+m*(bx-16),d,ys);g.beginPath();g.ellipse(q.x,q.y,2.2,0.9,0,0,Math.PI*2);g.fill();}}
+    if(L.rubble.has(gr*L.cols+gc)){const rnd=mulberry32(hash2(gc,gr+77));for(let i=0;i<6;i++){g.fillStyle=i%2?th.front:th.lo;const q=onFloor(X+4+rnd()*24,0.2+rnd()*0.6,ys),w=2+rnd()*4;g.fillRect(q.x,q.y-1,w,1.6+rnd()*1.2);}}
+  });
+}
+// a point on a floor's walking surface: x as measured along the actors' line, d from 0 (front) to 1 (back)
+function onFloor(x,d,ys){return {x:x+(d-0.5)*DX,y:ys+(0.5-d)*DY};}
+let ditherC=null;
+function dither(g){if(!ditherC){ditherC=document.createElement('canvas');ditherC.width=ditherC.height=2;const d=ditherC.getContext('2d');d.fillStyle='rgba(0,0,0,.42)';d.fillRect(0,0,1,1);d.fillRect(1,1,1,1);}return g.createPattern(ditherC,'repeat');}
+// the right-hand side of a block, seen because its back is drawn up and to the right; shaded with a checker dither like the 16-colour originals
+function sideFace(g,x,yt,yb,th){
+  g.save();g.beginPath();g.moveTo(x,yt);g.lineTo(x+DX,yt-DY);g.lineTo(x+DX,yb-DY);g.lineTo(x,yb);g.closePath();
+  g.fillStyle=th.lo;g.fill();g.clip();g.fillStyle='rgba(0,0,0,.22)';g.fill();g.fillStyle=dither(g);g.fillRect(x,yt-DY,DX,yb-yt+DY);
+  const [n]=STONE[th.style]||[4,32],h=TH/n;g.strokeStyle='rgba(0,0,0,.45)';g.lineWidth=0.9;g.beginPath();
+  for(let y=yt;y<=yb+0.1;y+=h){g.moveTo(x,y);g.lineTo(x+DX,y-DY);}g.stroke();
+  g.fillStyle='rgba(0,0,0,.5)';g.fillRect(x,yt-DY,0.9,yb-yt+DY);
+  g.restore();
 }
 const STONE={dungeon:[4,32],palace:[3,32],tile:[3,32],forge:[6,16],crypt:[4,32]};
 function lowCeil(g,X,Y,gc,gr,th){
-  const yb=Y+TH-34;
-  g.save();g.beginPath();g.rect(X,Y,TW,yb-Y);g.clip();wallCell(g,X,Y,gc,gr,th);g.restore();
+  const yb=Y+TH-34,fx=X-HX;
+  g.save();g.beginPath();g.rect(X,yb,TW,TH-4-yb);g.clip();
   g.fillStyle='rgba(0,0,0,.28)';g.fillRect(X,yb,TW,TH-4-yb);
-  const sg=g.createLinearGradient(0,yb,0,yb+14);sg.addColorStop(0,'rgba(0,0,0,.55)');sg.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=sg;g.fillRect(X,yb,TW,14);
-  g.fillStyle=th.lo;g.fillRect(X,yb-3,TW,3);g.fillStyle=th.hi;g.fillRect(X,yb-3,TW,0.9);
-  const lf=F(L,gc-1,gr),rf=F(L,gc+1,gr);
-  if(!(lf&&lf.t==='low')){g.fillStyle='rgba(0,0,0,.35)';g.fillRect(X,Y,1.4,yb-Y);}
-  if(!(rf&&rf.t==='low')){g.fillStyle='rgba(0,0,0,.35)';g.fillRect(X+TW-1.4,Y,1.4,yb-Y);}
+  const sg=g.createLinearGradient(0,yb,0,yb+14);sg.addColorStop(0,'rgba(0,0,0,.55)');sg.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=sg;g.fillRect(X,yb,TW,14);g.restore();
+  g.save();g.beginPath();g.rect(fx,Y,TW,yb-Y);g.clip();wallCell(g,fx,Y,gc,gr,th);g.restore();
+  g.fillStyle=th.lo;g.fillRect(fx,yb-3,TW,3);g.fillStyle=th.hi;g.fillRect(fx,yb-3,TW,0.9);
+  const lf=F(L,gc-1,gr);
+  if(!(lf&&lf.t==='low')&&B(L,gc-1,gr)!==WALL){g.fillStyle='rgba(0,0,0,.35)';g.fillRect(fx,Y,1.4,yb-Y);}
 }
 function wallCell(g,X,Y,gc,gr,th){
   const [n,w]=STONE[th.style]||[4,32],h=TH/n;
@@ -1819,8 +1843,6 @@ function backCell(g,X,Y,gc,gr,th){
   }
   if(B(L,gc,gr-1)!==EMPTY){const gr2=g.createLinearGradient(0,Y,0,Y+16);gr2.addColorStop(0,'rgba(0,0,0,.45)');gr2.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr2;g.fillRect(X,Y,TW,16);}
   const gr3=g.createLinearGradient(0,Y+TH-22,0,Y+TH);gr3.addColorStop(0,'rgba(0,0,0,0)');gr3.addColorStop(1,'rgba(0,0,0,.28)');g.fillStyle=gr3;g.fillRect(X,Y+TH-22,TW,22);
-  if(B(L,gc-1,gr)===WALL){g.fillStyle='rgba(0,0,0,.3)';g.fillRect(X,Y,4,TH);}
-  if(B(L,gc+1,gr)===WALL){g.fillStyle='rgba(0,0,0,.3)';g.fillRect(X+TW-4,Y,4,TH);}
 }
 function star8(g,cx,cy,R,r,col){g.fillStyle=col;g.beginPath();for(let i=0;i<16;i++){const a=i*Math.PI/8-Math.PI/2,rr=i%2?r:R,px=cx+Math.cos(a)*rr,py=cy+Math.sin(a)*rr;if(i)g.lineTo(px,py);else g.moveTo(px,py);}g.closePath();g.fill();}
 function tilePanel(g,X,Y,th){
@@ -1928,18 +1950,28 @@ function drawWindow(g,x,y,th,seed){
   g.strokeStyle=st==='tile'?th.tileC:th.trim;g.globalAlpha=0.75;g.lineWidth=0.9;shape(1.6);g.stroke();g.globalAlpha=1;
   g.fillStyle=th.top;g.fillRect(x0-3,bot+1.6,w+6,1.8);
 }
-function slab(g,X,ys,th,lo,ro,gc,gr){
-  g.fillStyle='rgba(0,0,0,.28)';g.fillRect(X,ys+6,TW,3);
-  g.fillStyle=th.front;g.fillRect(X,ys,TW,6);
-  if(th.style==='palace'){g.fillStyle=th.inlay;for(let i=0;i<4;i++){const dx=X+4+i*8;g.beginPath();g.moveTo(dx,ys+1.2);g.lineTo(dx+1.9,ys+3.1);g.lineTo(dx,ys+5);g.lineTo(dx-1.9,ys+3.1);g.closePath();g.fill();}}
-  else if(th.style==='tile'){g.fillStyle=th.tileA;g.fillRect(X,ys+1.4,TW,3.4);g.fillStyle=th.tileC;for(let i=0;i<4;i++)g.fillRect(X+3.4+i*8,ys+2.5,1.2,1.2);}
-  else if(th.style==='forge'){g.fillStyle='rgba(0,0,0,.28)';for(let i=1;i<4;i++)g.fillRect(X+i*8,ys,0.8,6);}
-  g.fillStyle=th.top;g.fillRect(X,ys-3,TW,3);
-  g.fillStyle='rgba(255,255,255,.12)';g.fillRect(X,ys-3,TW,0.8);
-  g.fillStyle='rgba(0,0,0,.25)';g.fillRect(X,ys+0.2,TW,0.8);
-  if(gc!==undefined&&hash2(gc,gr)%3===0&&th.style!=='palace'&&th.style!=='tile'){g.fillStyle='rgba(0,0,0,.22)';g.fillRect(X+8+hash2(gr,gc)%14,ys+2,5,1);}
-  if(lo){g.fillStyle='rgba(0,0,0,.35)';g.fillRect(X,ys-3,1.2,9);}
-  if(ro){g.fillStyle='rgba(0,0,0,.35)';g.fillRect(X+TW-1.2,ys-3,1.2,9);}
+function slab(g,X,ys,th,lo,ro,gc,gr,wr){
+  const fx=X-HX,fr=fx+TW,ft=ys+HY,FH=5,br=wr?fr:fr+DX;
+  // the lip: front face of the floor slab, on the front plane
+  g.fillStyle='rgba(0,0,0,.28)';g.fillRect(fx,ft+FH,TW,3);
+  g.fillStyle=th.front;g.fillRect(fx,ft,TW,FH);
+  if(th.style==='palace'){g.fillStyle=th.inlay;for(let i=0;i<4;i++){const dx=fx+4+i*8,cy=ft+FH/2;g.beginPath();g.moveTo(dx,cy-1.7);g.lineTo(dx+1.7,cy);g.lineTo(dx,cy+1.7);g.lineTo(dx-1.7,cy);g.closePath();g.fill();}}
+  else if(th.style==='tile'){g.fillStyle=th.tileA;g.fillRect(fx,ft+1,TW,3);g.fillStyle=th.tileC;for(let i=0;i<4;i++)g.fillRect(fx+3.4+i*8,ft+1.9,1.2,1.2);}
+  else if(th.style==='forge'){g.fillStyle='rgba(0,0,0,.28)';for(let i=1;i<4;i++)g.fillRect(fx+i*8,ft,0.8,FH);}
+  g.fillStyle='rgba(0,0,0,.25)';g.fillRect(fx,ft,TW,0.8);
+  if(gc!==undefined&&hash2(gc,gr)%3===0&&th.style!=='palace'&&th.style!=='tile'){g.fillStyle='rgba(0,0,0,.22)';g.fillRect(fx+8+hash2(gr,gc)%14,ft+2,5,1);}
+  // the walking surface, receding up and to the right
+  g.beginPath();g.moveTo(fx,ft);g.lineTo(fr,ft);g.lineTo(br,ys-HY);g.lineTo(fx+DX,ys-HY);g.closePath();
+  g.fillStyle=th.top;g.fill();
+  g.save();g.clip();
+  const sg=g.createLinearGradient(0,ys-HY,0,ft);sg.addColorStop(0,'rgba(0,0,0,.2)');sg.addColorStop(1,'rgba(255,255,255,.08)');g.fillStyle=sg;g.fillRect(fx,ys-HY,TW+DX,DY);
+  g.strokeStyle='rgba(0,0,0,.16)';g.lineWidth=0.8;g.beginPath();g.moveTo(fx,ft);g.lineTo(fx+DX,ys-HY);g.stroke();
+  g.restore();
+  g.fillStyle='rgba(255,255,255,.22)';g.fillRect(fx,ft-0.7,TW,0.7);
+  // open ends: the left edge is the slanted end of the surface; the right end shows the slab's own side
+  if(lo){g.strokeStyle='rgba(0,0,0,.4)';g.lineWidth=0.9;g.beginPath();g.moveTo(fx+DX,ys-HY);g.lineTo(fx,ft);g.lineTo(fx,ft+FH);g.stroke();}
+  if(ro&&!wr){g.beginPath();g.moveTo(fr,ft);g.lineTo(fr+DX,ys-HY);g.lineTo(fr+DX,ys-HY+FH);g.lineTo(fr,ft+FH);g.closePath();g.fillStyle=th.lo;g.fill();g.fillStyle='rgba(0,0,0,.25)';g.fill();
+    g.strokeStyle='rgba(0,0,0,.45)';g.lineWidth=0.8;g.stroke();}
 }
 const FIRE=['#e4683b','#f6c35b','#fff3cf'],FORGE=['#d4401c','#f5923a','#ffe7ad'],GHOST=['#2f9478','#8fe0bf','#f0fff7'];
 function tongue(ctx,x,y,w,h,sway,col){ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(x-w,y);ctx.quadraticCurveTo(x-w*1.15,y-h*0.55,x+sway,y-h);ctx.quadraticCurveTo(x+w*1.15,y-h*0.55,x+w,y);ctx.quadraticCurveTo(x,y+w*0.9,x-w,y);ctx.fill();}
@@ -2117,13 +2149,87 @@ function drawStorm(ctx,ch,x0,x1,y0,y1){const a=1-(ch.fade||0),fx=ch.wx;if(fx<x0-
   for(let k=0;k<5;k++){const yy=top+(k+0.5)*(bot-top)/5+Math.sin(gameTime*2+k)*10,xx=fx-30-((gameTime*60+k*47)%120);ctx.strokeStyle='rgba(50,32,16,.5)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(xx,yy,14+4*Math.sin(gameTime*3+k),gameTime*4+k,gameTime*4+k+3.6);ctx.stroke();}
   ctx.restore();}
 function drawPlank(ctx,X,ys,sh){
-  ctx.save();ctx.translate(0,sh);
-  ctx.fillStyle='#0b0812';ctx.fillRect(X,ys-3.6,TW,6.2);
-  ctx.fillStyle='#8a5a32';ctx.fillRect(X+0.6,ys-3,TW-1.2,5);ctx.fillStyle='#a8743f';ctx.fillRect(X+0.6,ys-3,TW-1.2,1.2);
-  ctx.fillStyle='#4e311b';for(let i=1;i<4;i++)ctx.fillRect(X+i*8,ys-3,0.8,5);
-  ctx.strokeStyle='#6b5a3a';ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(X,ys-15);ctx.quadraticCurveTo(X+TW/2,ys-11,X+TW,ys-15);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(X+TW/2,ys-12.6);ctx.lineTo(X+TW/2,ys-3);ctx.stroke();
+  ctx.save();ctx.translate(0,sh);const fx=X-HX,ft=ys+HY;
+  // boards running front to back, a thin front edge, and a rope rail on the near side
+  ctx.beginPath();ctx.moveTo(fx,ft);ctx.lineTo(fx+TW,ft);ctx.lineTo(fx+TW+DX,ys-HY);ctx.lineTo(fx+DX,ys-HY);ctx.closePath();
+  ctx.fillStyle='#8a5a32';ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=1;ctx.stroke();
+  ctx.strokeStyle='#5c3a1f';ctx.lineWidth=0.8;ctx.beginPath();for(let i=1;i<4;i++){ctx.moveTo(fx+i*8,ft);ctx.lineTo(fx+i*8+DX,ys-HY);}ctx.stroke();
+  ctx.fillStyle='#a8743f';ctx.fillRect(fx,ft-0.9,TW,0.9);
+  ctx.fillStyle='#0b0812';ctx.fillRect(fx,ft,TW,2.4);ctx.fillStyle='#6b4528';ctx.fillRect(fx+0.5,ft+0.3,TW-1,1.6);
+  ctx.strokeStyle='#6b5a3a';ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(fx,ft-12);ctx.quadraticCurveTo(fx+TW/2,ft-8,fx+TW,ft-12);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(fx+TW/2,ft-9.6);ctx.lineTo(fx+TW/2,ft);ctx.stroke();
   ctx.restore();
+}
+// a flat piece set into a floor's walking surface (plates), raised by lift
+function floorQuad(ctx,x0,x1,d0,d1,ys,lift){const a=onFloor(x0,d0,ys),b=onFloor(x1,d0,ys),c=onFloor(x1,d1,ys),d=onFloor(x0,d1,ys);
+  ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(b.x,b.y+lift);ctx.lineTo(a.x,a.y+lift);ctx.closePath();ctx.fillStyle='#0b0812';ctx.fill();
+  ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(c.x,c.y);ctx.lineTo(d.x,d.y);ctx.closePath();}
+function dynSlab(ctx,c,r,X,ys,th){slab(ctx,X,ys,th,B(L,c-1,r)!==WALL&&!solidBelow(L,c-1,r),B(L,c+1,r)!==WALL&&!solidBelow(L,c+1,r),c,r,B(L,c+1,r)===WALL);}
+// Gates and guillotine jaws stand on a diagonal across the corridor: from the front-left corner of their tile
+// to the back-right one. It crosses the actors' line at the tile centre, so the left half is nearer than they are.
+function plane(X,Y,ys){const L0=X+2-HX,R0=X+30+HX,W=R0-L0;
+  return {L0,R0,W,t:x=>(x-L0)/W,fl:x=>ys+HY-DY*(x-L0)/W,ce:x=>Y+5-DY*(x-L0)/W};}
+function planeClip(ctx,pl,X,half){ctx.beginPath();ctx.moveTo(pl.L0-4,pl.ce(pl.L0-4));ctx.lineTo(pl.R0+4,pl.ce(pl.R0+4));ctx.lineTo(pl.R0+4,pl.fl(pl.R0+4));ctx.lineTo(pl.L0-4,pl.fl(pl.L0-4));ctx.closePath();ctx.clip();
+  ctx.beginPath();if(half)ctx.rect(X-20,-1e5,36,2e5);else ctx.rect(X+16,-1e5,40,2e5);ctx.clip();}
+function slots(ctx,pl){ctx.strokeStyle='#0b0812';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(pl.L0,pl.ce(pl.L0)-0.5);ctx.lineTo(pl.R0,pl.ce(pl.R0)-0.5);ctx.stroke();
+  ctx.lineWidth=2.4;ctx.beginPath();ctx.moveTo(pl.L0,pl.fl(pl.L0)+0.4);ctx.lineTo(pl.R0,pl.fl(pl.R0)+0.4);ctx.stroke();}
+function drawGate(ctx,f,X,Y,ys,half){
+  const pl=plane(X,Y,ys),gx2=X+16,NB=8,len=(ys+HY)-(Y+5)-1,drop=len*(1-f.open);
+  if(!half){slots(ctx,pl);
+    if(f.pair!==undefined){ctx.fillStyle=PAIRC[f.pair];ctx.fillRect(gx2-8,Y-5,16,3.5);}
+    if(!f.latch&&f.dur>0)drawGlass(ctx,gx2,Y-13,f.tm>0&&f.tm<Infinity?f.tm/f.dur:1);}
+  if(drop<2)return;
+  ctx.save();planeClip(ctx,pl,X,half);
+  const bx=i=>pl.L0+(i+0.5)*pl.W/NB;
+  // cross bars, parallel to the gate's diagonal
+  for(let off=8;off<drop-3;off+=11){ctx.strokeStyle='#0b0812';ctx.lineWidth=2.4;ctx.beginPath();ctx.moveTo(pl.L0+1,pl.ce(pl.L0+1)+off);ctx.lineTo(pl.R0-1,pl.ce(pl.R0-1)+off);ctx.stroke();
+    ctx.strokeStyle='#6b707c';ctx.lineWidth=1.2;ctx.stroke();}
+  for(let i=0;i<NB;i++){const x=bx(i),top=pl.ce(x)-3,bot=pl.ce(x)+drop;
+    ctx.fillStyle='#0b0812';ctx.fillRect(x-1.4,top,2.8,bot-top);ctx.fillStyle=i%3===0?'#a9afbc':'#8f95a3';ctx.fillRect(x-0.75,top,1.5,bot-top);
+    ctx.fillStyle='#0b0812';ctx.beginPath();ctx.moveTo(x-1.6,bot-0.5);ctx.lineTo(x,bot+3);ctx.lineTo(x+1.6,bot-0.5);ctx.fill();
+    ctx.fillStyle='#b8bdc8';ctx.beginPath();ctx.moveTo(x-0.9,bot-0.5);ctx.lineTo(x,bot+1.9);ctx.lineTo(x+0.9,bot-0.5);ctx.fill();}
+  ctx.restore();
+}
+function drawJaws(ctx,o,f,X,Y,ys,half){
+  const k=chompK(f),pl=plane(X,Y,ys),sh=o.c%7,sc=pl.W/28;
+  const upOff=lerp(3,26,k),loOff=lerp(3,21,k);
+  if(!half)slots(ctx,pl);
+  ctx.save();planeClip(ctx,pl,X,half);
+  const jaw=(dir)=>{ // dir +1: hangs from the ceiling, teeth down; -1: rises from the floor, teeth up
+    const T=dir>0?CH_UP:CH_LO,base=x=>dir>0?pl.ce(x)+upOff:pl.fl(x)-loOff,anchor=x=>dir>0?pl.ce(x)-6:pl.fl(x)+6;let x=pl.L0;
+    const pth=new Path2D();pth.moveTo(pl.L0,anchor(pl.L0));pth.lineTo(pl.L0,base(pl.L0));
+    for(let i=0;i<T.length;i++){const [w,h,ln]=T[(i+sh)%T.length],xa=x,xb=Math.min(pl.R0,x+w*sc),xm=(xa+xb)/2+ln;
+      pth.lineTo(xm,base(xm)+dir*h);pth.lineTo(xb,base(xb));x=xb;}
+    pth.lineTo(pl.R0,base(pl.R0));pth.lineTo(pl.R0,anchor(pl.R0));pth.closePath();
+    ctx.fillStyle='#b3b9c5';ctx.fill(pth);
+    ctx.save();ctx.clip(pth);
+    const b0=base(pl.L0);
+    ctx.strokeStyle='#eef1f6';ctx.lineWidth=2.2;ctx.beginPath();ctx.moveTo(pl.L0-2,b0-dir*16);ctx.lineTo(pl.L0+18,b0+dir*2-3);ctx.stroke();
+    ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pl.L0+3,b0-dir*16);ctx.lineTo(pl.L0+23,b0+dir*2-4);ctx.stroke();
+    ctx.fillStyle='#7f8695';ctx.fillRect(pl.R0-4,Y-20,4,TH+30);
+    ctx.restore();
+    ctx.strokeStyle='#0b0812';ctx.lineWidth=1;ctx.stroke(pth);
+    if(f.blood){ctx.fillStyle='rgba(150,14,18,.95)';x=pl.L0;
+      for(let i=0;i<T.length;i++){const [w,h,ln]=T[(i+sh)%T.length],xm=x+w*sc/2+ln;if(i%2===(dir>0?1:0)){const by=base(xm);ctx.beginPath();ctx.moveTo(xm-1.3,by+dir*h*0.35);ctx.lineTo(xm,by+dir*h);ctx.lineTo(xm+1.3,by+dir*h*0.35);ctx.fill();
+        ctx.fillRect(xm-0.5,by-dir*(dir>0?5:2),1,dir>0?5:7);}x+=w*sc;}}};
+  jaw(-1);jaw(1);
+  ctx.restore();
+}
+// The leading edge of a wall stands on the front plane, nearer than anyone walking the corridor: copy that
+// sliver of the pre-drawn room back over the actors (the old foreground-layer trick).
+function terrainAt(c,r){const u=L.blockUnder?L.blockUnder.get(r*L.cols+c):undefined;return u!==undefined?u:B(L,c,r);}
+function copyWorld(ctx,wx,wy,w,h){
+  for(let ry=Math.floor(wy/ROOM_H);ry<=Math.floor((wy+h-0.01)/ROOM_H);ry++)for(let rx=Math.floor(wx/ROOM_W);rx<=Math.floor((wx+w-0.01)/ROOM_W);rx++){
+    const ix=Math.max(wx,rx*ROOM_W),iy=Math.max(wy,ry*ROOM_H),ix1=Math.min(wx+w,(rx+1)*ROOM_W),iy1=Math.min(wy+h,(ry+1)*ROOM_H);if(ix1<=ix||iy1<=iy)continue;
+    const cv2=roomCanvas(rx,ry),kx=cv2.width/ROOM_W,ky=cv2.height/ROOM_H;
+    ctx.drawImage(cv2,(ix-rx*ROOM_W)*kx,(iy-ry*ROOM_H)*ky,(ix1-ix)*kx,(iy1-iy)*ky,ix,iy,ix1-ix,iy1-iy);}}
+function frontStrips(ctx,x0,x1,y0,y1){
+  const isLowAt=(c,r)=>{const f=F(L,c,r);return !!(f&&f.t==='low');},hangs=P&&['hang','climb','climbDown','jumpUp'].includes(P.state);
+  for(let r=Math.max(0,Math.floor(y0/TH));r<=Math.min(L.rows-1,Math.floor(y1/TH));r++)for(let c=Math.max(0,Math.floor(x0/TW));c<=Math.min(L.cols-1,Math.floor(x1/TW)+1);c++){
+    const w=terrainAt(c,r)===WALL,lw=isLowAt(c,r)&&!w;if(!w&&!lw)continue;
+    if(terrainAt(c-1,r)===WALL||(lw&&isLowAt(c-1,r)))continue;
+    if(hangs&&Math.abs(P.x-c*TW)<24)continue; // hands on the ledge stay in view
+    copyWorld(ctx,c*TW-HX,r*TH,HX,lw?TH-34:TH);}
 }
 function drawDynamic(ctx,x0,x1,y0,y1){
   const th=L.theme,c0=Math.floor(x0/TW)-1,c1=Math.floor(x1/TW)+1,r0=Math.floor(y0/TH)-1,r1=Math.floor(y1/TH)+1;
@@ -2156,58 +2262,30 @@ function drawDynamic(ctx,x0,x1,y0,y1){
         break;}
       case'pend':drawPend(ctx,o,f);break;
       case'vent':drawVentBase(ctx,o,f);break;
-      case'loose':if(f.s<2&&f.plank){drawPlank(ctx,X,ys,f.s===1?(Math.random()-0.5)*1.6:0);break;}if(f.s<2){const sh=f.s===1&&f.tm>-0.7?(Math.random()-0.5)*1.6:0;ctx.save();ctx.translate(0,sh);slab(ctx,X,ys,th,false,false);
-        ctx.strokeStyle='rgba(0,0,0,.55)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(X+6,ys-3);ctx.lineTo(X+10,ys+2);ctx.lineTo(X+15,ys-1);ctx.moveTo(X+20,ys-3);ctx.lineTo(X+23,ys+3);ctx.stroke();ctx.restore();}break;
-      case'closer':{slab(ctx,X,ys,th,false,false);const dn=gameTime-f.press<0.12;
-        ctx.fillStyle='#0b0812';ctx.fillRect(X+5,ys-(dn?3.6:5),22,dn?1.4:2.6);ctx.fillStyle='#8f2f2a';ctx.fillRect(X+6,ys-(dn?3.6:4.8),20,dn?1:1.8);
-        ctx.fillStyle='#0b0812';for(let i=0;i<3;i++)ctx.fillRect(X+9+i*6,ys-(dn?3.4:4.4),2.4,1);break;}
-      case'plate':case'xplate':{slab(ctx,X,ys,th,false,false);const dn=gameTime-f.press<0.12;
-        ctx.fillStyle='#0b0812';ctx.fillRect(X+5,ys-(dn?3.6:5),22,dn?1.4:2.6);ctx.fillStyle=f.t==='xplate'?'#d8b04a':f.pair!==undefined?PAIRC[f.pair]:th.top;ctx.fillRect(X+6,ys-(dn?3.6:4.8),20,dn?1:1.8);
-        if(f.t==='xplate'){ctx.fillStyle='#0b0812';ctx.fillRect(X+15,ys-(dn?3.4:4.4),2,1);}break;}
+      case'loose':if(f.s<2&&f.plank){drawPlank(ctx,X,ys,f.s===1?(Math.random()-0.5)*1.6:0);break;}if(f.s<2){const sh=f.s===1&&f.tm>-0.7?(Math.random()-0.5)*1.6:0;ctx.save();ctx.translate(0,sh);dynSlab(ctx,o.c,o.r,X,ys,th);
+        ctx.strokeStyle='rgba(0,0,0,.55)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(X+7,ys-3);ctx.lineTo(X+10,ys+1);ctx.lineTo(X+15,ys-1);ctx.lineTo(X+14,ys+3);ctx.moveTo(X+21,ys-3);ctx.lineTo(X+22,ys+3.5);ctx.stroke();ctx.restore();}break;
+      case'closer':{dynSlab(ctx,o.c,o.r,X,ys,th);const dn=gameTime-f.press<0.12,lift=dn?1:2.4;
+        ctx.save();ctx.translate(0,-lift);floorQuad(ctx,X+5,X+27,0.18,0.82,ys,lift);ctx.fillStyle='#8f2f2a';ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=0.7;ctx.stroke();
+        ctx.strokeStyle='#0b0812';ctx.lineWidth=1.1;ctx.beginPath();for(let i=0;i<3;i++){const a=onFloor(X+10+i*6,0.3,ys),b=onFloor(X+10+i*6,0.7,ys);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}ctx.stroke();ctx.restore();break;}
+      case'plate':case'xplate':{dynSlab(ctx,o.c,o.r,X,ys,th);const dn=gameTime-f.press<0.12,lift=dn?1:2.4;
+        ctx.save();ctx.translate(0,-lift);floorQuad(ctx,X+5,X+27,0.18,0.82,ys,lift);ctx.fillStyle=f.t==='xplate'?'#d8b04a':f.pair!==undefined?PAIRC[f.pair]:th.top;ctx.fill();
+        ctx.fillStyle='rgba(255,255,255,.18)';ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=0.7;ctx.stroke();
+        if(f.t==='xplate'){const q=onFloor(X+16,0.5,ys);ctx.fillStyle='#0b0812';ctx.beginPath();ctx.ellipse(q.x,q.y,1.6,0.9,0,0,Math.PI*2);ctx.fill();}ctx.restore();break;}
       case'spikes':{const e=f.ext;if(e<=0.02)break;const m=o.c%2?-1:1;
         // a few thin needles of uneven height and lean, rooted at slightly different depths of the floor
-        for(const [bx,by,hh,ln] of SPK){const x=X+16+m*(bx-16),b=ys-by,tx=x+m*ln*e,tip=b-hh*e;
+        for(const [bx,d,hh,ln] of SPK){const q=onFloor(X+16+m*(bx-16),d,ys),x=q.x,b=q.y,tx=x+m*ln*e,tip=b-hh*e;
           ctx.fillStyle='#0b0812';ctx.beginPath();ctx.moveTo(x-2.1,b+0.7);ctx.lineTo(tx,tip-1.1);ctx.lineTo(x+2.1,b+0.7);ctx.fill();
           ctx.fillStyle='#eef0f5';ctx.beginPath();ctx.moveTo(x-1.3,b);ctx.lineTo(tx,tip);ctx.lineTo(x+0.15,b);ctx.fill();
           ctx.fillStyle='#8d94a2';ctx.beginPath();ctx.moveTo(x+0.15,b);ctx.lineTo(tx,tip);ctx.lineTo(x+1.3,b);ctx.fill();}
         break;}
-      case'gate':{const gx2=X+16,bot=Y+4+(ys-3-Y-4)*(1-f.open);
-        ctx.fillStyle='#0b0812';ctx.fillRect(gx2-6,Y,12,4);
-        if(f.pair!==undefined){ctx.fillStyle=PAIRC[f.pair];ctx.fillRect(gx2-8,Y-5,16,3.5);}
-        if(!f.latch&&f.dur>0)drawGlass(ctx,gx2,Y-13,f.tm>0&&f.tm<Infinity?f.tm/f.dur:1);
-        if(bot>Y+4){ctx.fillStyle='#0b0812';for(let i=-1;i<=1;i++)ctx.fillRect(gx2+i*4-1.3,Y+2,2.6,bot-Y-2);
-          ctx.fillStyle='#8f95a3';for(let i=-1;i<=1;i++)ctx.fillRect(gx2+i*4-0.7,Y+2,1.4,bot-Y-2);
-          ctx.fillStyle='#6b707c';for(let yy=Y+10;yy<bot-2;yy+=10)ctx.fillRect(gx2-5.5,yy,11,1.4);
-          ctx.fillStyle='#8f95a3';for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(gx2+i*4-1.4,bot-1);ctx.lineTo(gx2+i*4,bot+2);ctx.lineTo(gx2+i*4+1.4,bot-1);ctx.fill();}}
-        break;}
-      case'chomp':{const k=chompK(f),yTop=Y,yBot=ys-1,mid=Y+33,L0=X+2,R0=X+30,W=R0-L0,SL=4,sh=o.c%7;
-        // two steel jaws on the ceiling and the floor; they cross the corridor at an angle (edges rise to the right)
-        const up=lerp(yTop+3,mid-6,k),lo=lerp(yBot-2,mid+6,k),slope=x=>SL*(x-L0)/W;
-        ctx.fillStyle='#0b0812';ctx.fillRect(X+1,yTop,30,1.6);ctx.fillRect(X+1,yBot-1,30,2.5);
-        ctx.save();ctx.beginPath();ctx.rect(X,yTop+1.6,32,yBot-yTop-2.6);ctx.clip();
-        const jaw=(base,dir)=>{ // dir +1: hangs from the ceiling, teeth down; -1: rises from the floor, teeth up
-          const T=dir>0?CH_UP:CH_LO,anchor=dir>0?yTop-2:yBot+3;let x=L0;
-          const pth=new Path2D();pth.moveTo(L0,anchor);pth.lineTo(L0,base-slope(L0));
-          for(let i=0;i<T.length;i++){const [w,h,ln]=T[(i+sh)%T.length],xa=x,xb=Math.min(R0,x+w),xm=(xa+xb)/2+ln;
-            pth.lineTo(xm,base-slope(xm)+dir*h);pth.lineTo(xb,base-slope(xb));x=xb;}
-          pth.lineTo(R0,base-slope(R0));pth.lineTo(R0,anchor);pth.closePath();
-          ctx.fillStyle='#b3b9c5';ctx.fill(pth);
-          ctx.save();ctx.clip(pth);
-          // sheen: two diagonal highlights across the plate, a darker far edge
-          ctx.strokeStyle='#eef1f6';ctx.lineWidth=2.2;ctx.beginPath();ctx.moveTo(L0-2,base-dir*16);ctx.lineTo(L0+16,base+dir*2);ctx.stroke();
-          ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(L0+3,base-dir*16);ctx.lineTo(L0+21,base+dir*2);ctx.stroke();
-          ctx.fillStyle='#7f8695';ctx.fillRect(R0-3.5,dir>0?anchor:base-20,3.5,40);
-          ctx.restore();
-          ctx.strokeStyle='#0b0812';ctx.lineWidth=1;ctx.stroke(pth);
-          if(f.blood){ctx.fillStyle='rgba(150,14,18,.95)';x=L0;
-            for(let i=0;i<T.length;i++){const [w,h,ln]=T[(i+sh)%T.length],xm=x+w/2+ln;if(i%2===(dir>0?1:0)){ctx.beginPath();ctx.moveTo(xm-1.3,base-slope(xm)+dir*h*0.35);ctx.lineTo(xm,base-slope(xm)+dir*h);ctx.lineTo(xm+1.3,base-slope(xm)+dir*h*0.35);ctx.fill();
-              ctx.fillRect(xm-0.5,base-slope(xm)-dir*(dir>0?5:2),1,dir>0?5:7);}x+=w;}}};
-        jaw(lo,-1);jaw(up,1);
-        ctx.restore();
-        break;}
+      case'gate':drawGate(ctx,f,X,Y,ys,0);break;
+      case'chomp':drawJaws(ctx,o,f,X,Y,ys,0);break;
     }
   }
-  for(const bl of L.ext.blocks){if(!inRoom(bl.c,bl.r))continue;const k=bl.mv?ease(Math.min(1,bl.mv.t/bl.mv.dur)):0,bx=(bl.mv?lerp(bl.mv.from,bl.mv.to,k):bl.c)*TW,by=bl.r*TH-4;
+  for(const bl of L.ext.blocks){if(!inRoom(bl.c,bl.r))continue;const k=bl.mv?ease(Math.min(1,bl.mv.t/bl.mv.dur)):0,by=bl.r*TH,bx=(bl.mv?lerp(bl.mv.from,bl.mv.to,k):bl.c)*TW-HX;
+    ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+DX,by-DY);ctx.lineTo(bx+TW+DX,by-DY);ctx.lineTo(bx+TW+DX,by+TH-DY);ctx.lineTo(bx+TW,by+TH);ctx.lineTo(bx+TW,by);ctx.closePath();ctx.fillStyle='#0b0812';ctx.fill();
+    ctx.beginPath();ctx.moveTo(bx+0.8,by);ctx.lineTo(bx+DX+0.6,by-DY+0.6);ctx.lineTo(bx+TW+DX-0.6,by-DY+0.6);ctx.lineTo(bx+TW,by);ctx.closePath();ctx.fillStyle=th.top;ctx.fill();ctx.fillStyle='rgba(0,0,0,.12)';ctx.fill();
+    ctx.beginPath();ctx.moveTo(bx+TW+0.4,by+0.6);ctx.lineTo(bx+TW+DX-0.6,by-DY+1.2);ctx.lineTo(bx+TW+DX-0.6,by+TH-DY-0.6);ctx.lineTo(bx+TW+0.4,by+TH-0.6);ctx.closePath();ctx.fillStyle=th.lo;ctx.fill();ctx.fillStyle=dither(ctx);ctx.fill();
     ctx.fillStyle='#0b0812';ctx.fillRect(bx,by,TW,TH);ctx.fillStyle=th.wallB;ctx.fillRect(bx+1.2,by+1.2,TW-2.4,TH-2.4);ctx.fillStyle=th.wallA;ctx.fillRect(bx+3,by+3,TW-6,TH-6);
     ctx.fillStyle=th.hi;ctx.fillRect(bx+1.2,by+1.2,TW-2.4,2.2);ctx.fillStyle=th.lo;ctx.fillRect(bx+1.2,by+TH-4,TW-2.4,2.8);
     ctx.strokeStyle='rgba(0,0,0,.45)';ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(bx+6,by+20);ctx.lineTo(bx+12,by+26);ctx.lineTo(bx+10,by+34);ctx.moveTo(bx+22,by+42);ctx.lineTo(bx+26,by+50);ctx.stroke();
@@ -2229,6 +2307,9 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     if(!(P.state==='dead'&&P.cause==='fall'&&P.y>L.rows*TH))
     drawFigure(ctx,P.x,P.y,P.face,P.pose,PAL_HERO,{yo:P.yo,sword:(P.sword&&!!P.foe)||P.state==='lowStrike'||P.state==='poke'||(P.lowSword&&P.state==='crouch'),hasSword:true,flash:P.flash,alpha:P.state==='exit'?Math.max(0,1-P.t*1.1):undefined,flutter:Math.min(1,Math.abs(P.vx)/90+(P.state==='air'?0.8:0)),time:gameTime});
   }
+  // the near half of gates and jaws crosses in front of anyone walking the corridor
+  for(const o of L.dyn){if(!inRoom(o.c,o.r))continue;const X=o.c*TW,Y=o.r*TH,ys=SURF(o.r);if(o.f.t==='gate')drawGate(ctx,o.f,X,Y,ys,1);else if(o.f.t==='chomp')drawJaws(ctx,o,o.f,X,Y,ys,1);}
+  frontStrips(ctx,x0,x1,y0,y1);
   for(const o of L.dyn)if(o.f.t==='vent'&&inRoom(o.c,o.r))drawVentFire(ctx,o,o.f);
   {const chs=L.ext.chase;if(chs&&chs.on&&(chs.fade||0)<1){drawStorm(ctx,chs,x0,x1,y0,y1);}}
   for(const p of FX){ctx.globalAlpha=Math.max(0,1-p.t/p.life);ctx.fillStyle=p.col;ctx.fillRect(p.x-p.sz/2,p.y-p.sz/2,p.sz,p.sz);}
