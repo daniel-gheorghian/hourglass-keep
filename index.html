@@ -341,8 +341,10 @@ function genLevel(n,seed,test,legacy){
     if(withGap&&!pitOk(c+3,1))return false;
     for(let i=1;i<=len;i++)set(c+i,r,FLOOR);
     if(withGap){set(c+3,r,EMPTY);pit(c+3,1);}
-    const travel=(m+1)*TW/RUN+(withGap||closer?0.7:0);
-    const g={t:'gate',open:0,tm:0,dur:Math.round((travel*lerp(2.1,1.35,rng()*(0.35+0.65*d))+1.0-0.4*d)*10)/10};
+    // the clock runs while he's off the plate: from its far edge to past the gate's bars, at a run, plus a jump
+    // over the pit or the closing plate; slack runs from comfortable (early floors) to tight
+    const need=(m*TW+16+BW)/RUN+0.15+(withGap||closer?0.75:0),slack=lerp(1.7,1.25,clamp(0.6*d+0.4*rng(),0,1));
+    const g={t:'gate',open:0,tm:0,dur:Math.round(need*slack*10)/10};
     feat(c+m+2,r,g);
     feat(c+1,r,{t:'plate',g,press:-9});
     if(closer)feat(c+m+1,r,{t:'closer',g,press:-9}); // step on it and the gate slams: jump over it
@@ -446,7 +448,7 @@ function genLevel(n,seed,test,legacy){
       t+=({runover:dd*0.32+0.4,sjump:1.0,rjump:1.7,rjumpg:2.8,tiptoe:dd*0.8+0.5,crawl:dd*0.8+1.3,timed:dd*0.32+2.6,climb:1.3,hangdrop:1.8,drop:0.9})[a.a]||0;
       if(a.to!==undefined)cur=a.to;}
     return t;}
-  const timerK=()=>1.15+0.55*rng()+0.3*(1-d); // timer slack: 1.15 (tight) .. 2.0 (generous); early floors lean generous
+  const timerK=()=>1.2+0.3*rng()+0.25*(1-d); // timer slack over the estimated route back: 1.2 (tight) .. 1.75 (generous)
   function rectOk(c0,c1,r0,r1){for(let xx=c0;xx<=c1;xx++)for(let rr=r0;rr<=r1;rr++)if(!W(xx,rr))return false;return true;}
   function detourGate(){
     const gal=r>=3&&(r>rows-4||ch(0.5));
@@ -464,7 +466,7 @@ function genLevel(n,seed,test,legacy){
     const br=carveBranch(pl,x0,g,gal?'below':'above',timed,false);
     let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&raw(xx,r)===FLOOR&&!fe(xx,r)&&ch(0.45)){L.torches.push({c:xx,r});lt=xx;}
     const exit=gal?[{a:'walk',c:e-2},{a:'hangdrop',from:e-2},{a:'drop',from:e-1},{a:'walk',c:c+len}]:[{a:'walk',c:e},{a:'climb',from:e},{a:'climb',from:e+1},{a:'walk',c:c+len}];
-    if(timed)g.dur=Math.round((estPath([...br.backs,...exit],x0)*timerK()+2.5)*10)/10;
+    if(timed)g.dur=Math.round((estPath([...br.backs,...exit],x0)*timerK()+1.2)*10)/10;
     if(gal)bot.push({a:'walk',c:e},{a:'climb',from:e,dir:-1},{a:'climb',from:e-1,dir:-1},...br.outs,...br.backs,...exit);
     else bot.push({a:'walk',c:e-1},{a:'hangdrop',from:e-1},...br.outs,...br.backs,...exit);
     L.detours=(L.detours||[]);L.detours.push({gal,c,len,x0,bend,e,b:br.b,r,kinds:pl.kinds.slice(),chain:pl.chain,amb:pl.amb,timed,dur:g.dur});
@@ -491,8 +493,8 @@ function genLevel(n,seed,test,legacy){
     const galSeq=[{a:'walk',c:eg},{a:'climb',from:eg,dir:-1},{a:'climb',from:eg-1,dir:-1},...brG.outs,...brG.backs,{a:'walk',c:eg-2},{a:'hangdrop',from:eg-2},{a:'drop',from:eg-1}];
     const celIn=[{a:'walk',c:ec-1},{a:'hangdrop',from:ec-1}],celInR=[{a:'walk',c:ec+2},{a:'hangdrop',from:ec+2,dir:-1},{a:'drop',from:ec+1,dir:-1}];
     const celOut=[...brC.outs,...brC.backs,{a:'walk',c:ec},{a:'climb',from:ec},{a:'climb',from:ec+1}];
-    if(tg){bot.push(...celIn,...celOut,...galSeq);G2.dur=Math.round((estPath([...brG.backs,{a:'walk',c:eg-2},{a:'hangdrop',from:eg-2},{a:'drop',from:eg-1},{a:'walk',c:g2c+1}],x0g)*timerK()+2.5)*10)/10;}
-    else{bot.push({a:'walk',c:ec-1},{a:'rjump',from:ec-1,to:ec+2},...galSeq,...celInR,...celOut);G2.dur=Math.round((estPath([...brC.backs,{a:'walk',c:ec},{a:'climb',from:ec},{a:'climb',from:ec+1},{a:'walk',c:g2c+1}],x0c)*timerK()+2.5)*10)/10;}
+    if(tg){bot.push(...celIn,...celOut,...galSeq);G2.dur=Math.round((estPath([...brG.backs,{a:'walk',c:eg-2},{a:'hangdrop',from:eg-2},{a:'drop',from:eg-1},{a:'walk',c:g2c+1}],x0g)*timerK()+1.2)*10)/10;}
+    else{bot.push({a:'walk',c:ec-1},{a:'rjump',from:ec-1,to:ec+2},...galSeq,...celInR,...celOut);G2.dur=Math.round((estPath([...brC.backs,{a:'walk',c:ec},{a:'climb',from:ec},{a:'climb',from:ec+1},{a:'walk',c:g2c+1}],x0c)*timerK()+1.2)*10)/10;}
     bot.push({a:'walk',c:c+len});
     let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&raw(xx,r)===FLOOR&&!fe(xx,r)&&ch(0.45)){L.torches.push({c:xx,r});lt=xx;}
     L.detours=(L.detours||[]);L.detours.push({double:true,tg,c,len,ec,eg,g1c,g2c,r,dur:G2.dur,kindsG:pg.kinds.slice(),kindsC:pc.kinds.slice()});
@@ -1017,7 +1019,7 @@ function applyResume(R){
   for(const i of R.fallen||[]){const o=L.dyn[i];if(o&&o.f.t==='loose'){o.f.s=2;L.base[o.r*L.cols+o.c]=EMPTY;}}
   for(const k of R.rubble||[])L.rubble.add(k);
   const tk=new Set(R.takenAt||[]);for(const it of L.items)if(tk.has(it.c+','+it.r))it.taken=true;
-  for(const i of R.dead||[]){const g=G[i];if(g&&!g.gone){g.alive=false;g.state='dying';lerpPose(g.pose,PS.dead,1,g.pose);}}
+  for(const i of R.dead||[]){const g=G[i];if(g&&!g.gone){g.alive=false;g.gone=true;g.state='dying';lerpPose(g.pose,PS.dead,1,g.pose);}}
   (R.cps||[]).forEach((on,i)=>{if(on&&L.cps[i])L.cps[i].on=true;});
   if(R.door){L.door.opening=true;L.door.open=1;}
   (R.snk||[]).forEach((a,i)=>{if(!a&&SN[i]){SN[i].alive=false;SN[i].gone=true;}});
@@ -1444,7 +1446,10 @@ function updateGuard(g,dt){
   if(g.state==='drop'){g.vy=Math.min(g.vy+GRAV*dt,480);g.y+=g.vy*dt;lerpPose(g.pose,PS.fall,1-Math.exp(-dt*12),g.pose);
     if(g.y>=SURF(g.r)){g.y=SURF(g.r);setE(g,'garde');g.think=0.5;Snd.play('land');dust(g.x,g.y,6);lerpPose(g.pose,PS.land,1,g.pose);}
     return;}
-  if(!g.alive){lerpPose(g.pose,PS.dead,1-Math.exp(-dt*9),g.pose);return;}
+  if(!g.alive){lerpPose(g.pose,PS.dead,1-Math.exp(-dt*9),g.pose);
+    // a defeated guard lies still for a moment, then crumbles away like sand
+    if(g.t>1.1&&g.t-dt<=1.1){for(let i=0;i<14;i++)FX.push({x:g.x+(Math.random()-0.5)*34,y:g.y-2-Math.random()*8,vx:(Math.random()-0.5)*26,vy:-8-Math.random()*22,g:40,life:0.6+Math.random()*0.5,t:0,col:'rgba(214,190,140,.8)',sz:1.3});}
+    if(g.t>1.9)g.gone=true;return;}
   const dx=P.x-g.x,adx=Math.abs(dx),same=Math.abs(P.y-g.y)<8&&P.state!=='dead'&&P.state!=='exit';
   switch(g.state){
     case'idle':if(same&&adx<100){setE(g,'garde');g.face=Math.sign(dx)||g.face;g.think=0.35;Snd.play('draw');}break;
@@ -1538,7 +1543,7 @@ function updateFeatures(dt){
         if(near){if(f.ext===0&&tileVisible(o.c,o.r))Snd.play('spikes');f.ext=Math.min(1,f.ext+dt*9);f.hold=1;}
         else{f.hold-=dt;if(f.hold<=0)f.ext=Math.max(0,f.ext-dt*3);}
       }break;
-      case'gate':{const was=f.open;if(f.tm>0){f.tm-=dt;f.open=Math.min(1,f.open+dt*3);}else{f.open=Math.max(0,f.open-dt*(f.slam?4:0.85));if(f.open<=0)f.slam=false;}
+      case'gate':{const was=f.open;if(f.tm>0){f.tm-=dt;f.open=Math.min(1,f.open+dt*3);}else{f.open=Math.max(0,f.open-dt*(f.slam?4:f.dur>0?2.6:0.85));if(f.open<=0)f.slam=false;}
         if(was>=0.5&&f.open<0.5&&tileVisible(o.c,o.r))Snd.play('gate');}break;
       case'chomp':{const k=chompK(f);
         if(k>0&&f.last===0&&tileVisible(o.c,o.r))Snd.play('chomp');f.last=k;
@@ -1686,7 +1691,7 @@ function update(dt){
     const sg=q.src,side=Math.sign(sg.x-P.x)||1,x=clamp(P.x+side*110,sg.lo+8,sg.hi-8);
     const ng=makeGuard({x,r:sg.r,lo:sg.lo,hi:sg.hi,hp:sg.maxHp,cap:false,tier:sg.tier,reinf:0},G.length);
     ng.y=SURF(sg.r)-74;ng.vy=0;ng.state='drop';ng.face=-side;G.push(ng);hint('reinf');}
-  updateFX(dt);
+  updateFX(dt);updateLook(dt);
   updateCamera(dt);
   if(banner){banner.t+=dt;if(banner.t>=banner.dur)banner=null;}
   hintTick-=dt;if(hintTick<=0){hintTick=0.25;checkHints();}
@@ -2196,8 +2201,12 @@ function plane(X,Y,ys,c,r){const L0=X+16-HX,R0=X+16+HX,W=R0-L0,co=ceilOff(c,r);
   return {L0,R0,W,co,top:Y+co,fl:x=>ys+HY-DY*(x-L0)/W,ce:x=>Y+co-DY*(x-L0)/W};}
 function planeClip(ctx,pl,X,half){ctx.beginPath();ctx.moveTo(pl.L0-4,pl.top);ctx.lineTo(pl.R0+4,pl.top);ctx.lineTo(pl.R0+4,pl.fl(pl.R0+4));ctx.lineTo(pl.L0-4,pl.fl(pl.L0-4));ctx.closePath();ctx.clip();
   ctx.beginPath();if(half)ctx.rect(X-40,-1e5,56,2e5);else ctx.rect(X+16,-1e5,60,2e5);ctx.clip();}
+// where a gate or jaw runs up into the ceiling, the ceiling's shadow falls across it
+function ceilShade(ctx,pl){const H=18,g=ctx.createLinearGradient(0,pl.top,0,pl.top+H);g.addColorStop(0,'rgba(6,4,10,.92)');g.addColorStop(0.12,'rgba(6,4,10,.7)');g.addColorStop(0.45,'rgba(6,4,10,.32)');g.addColorStop(1,'rgba(6,4,10,0)');
+  ctx.fillStyle=g;ctx.fillRect(pl.L0-4,pl.top,pl.W+8,H);}
 function slots(ctx,pl){ctx.strokeStyle='#0b0812';ctx.lineWidth=2.4;ctx.beginPath();ctx.moveTo(pl.L0,pl.fl(pl.L0)+0.4);ctx.lineTo(pl.R0,pl.fl(pl.R0)+0.4);ctx.stroke();
-  ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(pl.L0-2,pl.top,pl.W+4,1.6);}
+  ctx.fillStyle='rgba(6,4,10,.75)';ctx.fillRect(pl.L0-3,pl.top,pl.W+6,2.2);
+  const g=ctx.createLinearGradient(0,pl.top,0,pl.top+10);g.addColorStop(0,'rgba(6,4,10,.35)');g.addColorStop(1,'rgba(6,4,10,0)');ctx.fillStyle=g;ctx.fillRect(pl.L0-7,pl.top+2,pl.W+14,10);}
 function drawGate(ctx,f,X,Y,ys,half){
   const pl=plane(X,Y,ys,Math.floor(X/TW),Math.floor(Y/TH)),gx2=X+16,NB=5,len=(ys+HY)-(Y+pl.co)-1,drop=len*(1-f.open);
   if(!half)slots(ctx,pl);
@@ -2212,7 +2221,7 @@ function drawGate(ctx,f,X,Y,ys,half){
     ctx.fillStyle='#0b0812';ctx.fillRect(x-1.4,top,2.8,bot-top);ctx.fillStyle=i%3===0?'#a9afbc':'#8f95a3';ctx.fillRect(x-0.75,top,1.5,bot-top);
     ctx.fillStyle='#0b0812';ctx.beginPath();ctx.moveTo(x-1.6,bot-0.5);ctx.lineTo(x,bot+3);ctx.lineTo(x+1.6,bot-0.5);ctx.fill();
     ctx.fillStyle='#b8bdc8';ctx.beginPath();ctx.moveTo(x-0.9,bot-0.5);ctx.lineTo(x,bot+1.9);ctx.lineTo(x+0.9,bot-0.5);ctx.fill();}
-  ctx.restore();}
+  ceilShade(ctx,pl);ctx.restore();}
   // a timed gate carries its hourglass just under the ceiling, where the gate's top disappears
   if(!half&&!f.latch&&f.dur>0)drawGlass(ctx,gx2,pl.top+8,f.tm>0&&f.tm<Infinity?f.tm/f.dur:1);
 }
@@ -2239,31 +2248,67 @@ function drawJaws(ctx,o,f,X,Y,ys,half){
     if(f.blood){ctx.fillStyle='rgba(150,14,18,.95)';x=pl.L0;
       for(let i=0;i<T.length&&x<pl.R0-0.5;i++){const [w,h,ln]=T[(i+sh)%T.length],xm=x+w*sc/2+ln*0.6;if(i%2===(dir>0?1:0)){const by=base(xm);ctx.beginPath();ctx.moveTo(xm-1.3,by+dir*h*0.35);ctx.lineTo(xm,by+dir*h);ctx.lineTo(xm+1.3,by+dir*h*0.35);ctx.fill();
         ctx.fillRect(xm-0.5,by-dir*(dir>0?5:2),1,dir>0?5:7);}x+=w*sc;}}};
-  jaw(-1);jaw(1);
+  jaw(-1);jaw(1);ceilShade(ctx,pl);
   ctx.restore();
 }
 // The leading edge of a wall stands on the front plane, nearer than anyone walking the corridor: copy that
 // sliver of the pre-drawn room back over the actors (the old foreground-layer trick).
-// While hanging, the hands grip the ledge at mid-depth, a little onto the surface; ease in/out with the climb.
-function hangDX(){const lg=P.state==='hang'||P.state==='climb'?P.ledge:P.state==='climbDown'&&P.cs?P.cs.ledge:null;if(!lg)return 0;
-  const k=P.state==='hang'?1:P.state==='climb'?1-Math.min(1,P.t/0.45):Math.max(0,(P.t/0.5-0.5)/0.5);return -lg.s*6*k;}
 function terrainAt(c,r){const u=L.blockUnder?L.blockUnder.get(r*L.cols+c):undefined;return u!==undefined?u:B(L,c,r);}
 function copyWorld(ctx,wx,wy,w,h){
   for(let ry=Math.floor(wy/ROOM_H);ry<=Math.floor((wy+h-0.01)/ROOM_H);ry++)for(let rx=Math.floor(wx/ROOM_W);rx<=Math.floor((wx+w-0.01)/ROOM_W);rx++){
     const ix=Math.max(wx,rx*ROOM_W),iy=Math.max(wy,ry*ROOM_H),ix1=Math.min(wx+w,(rx+1)*ROOM_W),iy1=Math.min(wy+h,(ry+1)*ROOM_H);if(ix1<=ix||iy1<=iy)continue;
     const cv2=roomCanvas(rx,ry),kx=cv2.width/ROOM_W,ky=cv2.height/ROOM_H;
     ctx.drawImage(cv2,(ix-rx*ROOM_W)*kx,(iy-ry*ROOM_H)*ky,(ix1-ix)*kx,(iy1-iy)*ky,ix,iy,ix1-ix,iy1-iy);}}
-function frontStrips(ctx,x0,x1,y0,y1){
-  const isLowAt=(c,r)=>{const f=F(L,c,r);return !!(f&&f.t==='low');};
-  for(let r=Math.max(0,Math.floor(y0/TH));r<=Math.min(L.rows-1,Math.floor(y1/TH));r++)for(let c=Math.max(0,Math.floor(x0/TW));c<=Math.min(L.cols-1,Math.floor(x1/TW)+1);c++){
-    const w=terrainAt(c,r)===WALL,lw=isLowAt(c,r)&&!w;if(!w&&!lw)continue;
-    if(terrainAt(c-1,r)===WALL||(lw&&isLowAt(c-1,r)))continue;
-    copyWorld(ctx,c*TW-HX,r*TH,Math.min(HX,5),lw?TH-34:TH);}
-  // Hanging from (or climbing over) the near face of a wall: the wall stands between him and us, so below the
-  // ledge only the hands show. On a block's far side, or under a thin floor, nothing is in front of him.
-  if(P){const lg=P.state==='hang'||P.state==='climb'?P.ledge:P.state==='climbDown'&&P.cs?P.cs.ledge:null;
-    if(lg&&lg.s<0&&terrainAt(lg.c,lg.r+1)===WALL)copyWorld(ctx,lg.xe-26,lg.ys+1.5,26+TW-HX,HANG+16);}
+// A figure walks at mid-depth, but a wall's front face stands HX nearer and HX further left. Rather than let a
+// figure sink into that face (or slice it with a sliver of wall), draw it pressed against the face instead.
+function pushOut(x,y,h){
+  const xr=x+BW+1,cw=Math.floor((xr+HX)/TW),fx=cw*TW-HX;
+  if(xr<=fx||x-BW>=cw*TW)return 0;
+  const yt=y-h,yb=y-3;
+  for(let r=Math.floor(yt/TH);r<=Math.floor(yb/TH);r++){
+    let top=r*TH,bot=top+TH;
+    if(B(L,cw,r)!==WALL){const f=F(L,cw,r);if(f&&f.t==='low')bot=top+TH-34;else continue;}
+    if(yb>top&&yt<bot)return Math.max(-HX-1,fx-xr);
+  }
+  return 0;
 }
+function figH(st){return ['crouch','poke','lowStrike'].includes(st)?28:52;}
+function ledgeOf(){const st=P.state;
+  if(st==='hang'||st==='climb')return P.ledge;
+  if((st==='climbDown'||st==='jumpUp')&&P.cs&&P.cs.ledge)return P.cs.ledge;return null;}
+function wallBelow(lg){return terrainAt(lg.c,lg.r+1)===WALL||!!blockAtCell(lg.c,lg.r+1);}
+// Visual-only offsets for the prince, eased so nothing snaps: pressed against walls, hands on the ledge at
+// mid-depth while hanging, and the wall in front of him when he hangs on its near face.
+function updateLook(dt){
+  if(!P)return;const st=P.state,lg=ledgeOf();let tdx=0,tdy=0,mode=0;
+  if(lg){const k=st==='hang'?1:st==='climb'?1-Math.min(1,P.t/0.45):st==='climbDown'?Math.max(0,(P.t/0.5-0.5)/0.5):clamp((P.t-0.1)/0.22,0,1);
+    tdx=lerp(st==='jumpUp'?pushOut(P.x,P.y,52):0,-lg.s*6,k);tdy=-2*k;
+    // jumping up at a wall's near face he slips behind its front face; once hanging the wall hides all but his hands
+    if(lg.s<0&&wallBelow(lg))mode=st==='jumpUp'?1:2;}
+  else tdx=st==='dead'?0:pushOut(P.x,P.y,figH(st));
+  const a=1-Math.exp(-dt*28);
+  if((P.hideMode||0)>0&&!mode){P.rdx=tdx;P.rdy=tdy;} // stepping out from behind the wall: no slide in plain view
+  else{P.rdx=(P.rdx||0)+(tdx-(P.rdx||0))*a;P.rdy=(P.rdy||0)+(tdy-(P.rdy||0))*a;}
+  P.hideMode=mode;if(mode)P.hideLg=lg;
+}
+function frontStrips(ctx){
+  // On the near face of a wall or block, below the ledge, the face stands between him and us (mode 1); while he
+  // hangs or climbs, all of him below the ledge is hidden, as in the original (mode 2). On a block's far side, or
+  // under a thin floor, nothing is in front of him.
+  const lg=P&&P.hideLg,m=P&&P.hideMode;if(!lg||!m)return;
+  const x=m===2?lg.xe-26:lg.xe-HX,y=lg.ys+1.5,w=lg.xe+TW-HX-x,h=HANG+16;
+  ctx.save();copyWorld(ctx,x,y,w,h);
+  const bl=blockAtCell(lg.c,lg.r+1);if(bl){ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();drawBlock(ctx,bl,L.theme);}
+  ctx.restore();
+}
+function drawBlock(ctx,bl,th){const k=bl.mv?ease(Math.min(1,bl.mv.t/bl.mv.dur)):0,by=bl.r*TH,bx=(bl.mv?lerp(bl.mv.from,bl.mv.to,k):bl.c)*TW-HX;
+    ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+DX,by-DY);ctx.lineTo(bx+TW+DX,by-DY);ctx.lineTo(bx+TW+DX,by+TH-DY);ctx.lineTo(bx+TW,by+TH);ctx.lineTo(bx+TW,by);ctx.closePath();ctx.fillStyle='#0b0812';ctx.fill();
+    ctx.beginPath();ctx.moveTo(bx+0.8,by);ctx.lineTo(bx+DX+0.6,by-DY+0.6);ctx.lineTo(bx+TW+DX-0.6,by-DY+0.6);ctx.lineTo(bx+TW,by);ctx.closePath();ctx.fillStyle=th.top;ctx.fill();ctx.fillStyle='rgba(0,0,0,.12)';ctx.fill();
+    ctx.beginPath();ctx.moveTo(bx+TW+0.4,by+0.6);ctx.lineTo(bx+TW+DX-0.6,by-DY+1.2);ctx.lineTo(bx+TW+DX-0.6,by+TH-DY-0.6);ctx.lineTo(bx+TW+0.4,by+TH-0.6);ctx.closePath();ctx.fillStyle=th.lo;ctx.fill();ctx.fillStyle=dither(ctx);ctx.fill();
+    ctx.fillStyle='#0b0812';ctx.fillRect(bx,by,TW,TH);ctx.fillStyle=th.wallB;ctx.fillRect(bx+1.2,by+1.2,TW-2.4,TH-2.4);ctx.fillStyle=th.wallA;ctx.fillRect(bx+3,by+3,TW-6,TH-6);
+    ctx.fillStyle=th.hi;ctx.fillRect(bx+1.2,by+1.2,TW-2.4,2.2);ctx.fillStyle=th.lo;ctx.fillRect(bx+1.2,by+TH-4,TW-2.4,2.8);
+    ctx.strokeStyle='rgba(0,0,0,.45)';ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(bx+6,by+20);ctx.lineTo(bx+12,by+26);ctx.lineTo(bx+10,by+34);ctx.moveTo(bx+22,by+42);ctx.lineTo(bx+26,by+50);ctx.stroke();
+    ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(bx+TW/2-5,by+TH/2-2,10,4);}
 function drawDynamic(ctx,x0,x1,y0,y1){
   const th=L.theme,c0=Math.floor(x0/TW)-1,c1=Math.floor(x1/TW)+1,r0=Math.floor(y0/TH)-1,r1=Math.floor(y1/TH)+1;
   const inRoom=(c,r)=>c>=c0&&c<=c1&&r>=r0&&r<=r1;
@@ -2315,14 +2360,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
       case'chomp':drawJaws(ctx,o,f,X,Y,ys,0);break;
     }
   }
-  for(const bl of L.ext.blocks){if(!inRoom(bl.c,bl.r))continue;const k=bl.mv?ease(Math.min(1,bl.mv.t/bl.mv.dur)):0,by=bl.r*TH,bx=(bl.mv?lerp(bl.mv.from,bl.mv.to,k):bl.c)*TW-HX;
-    ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+DX,by-DY);ctx.lineTo(bx+TW+DX,by-DY);ctx.lineTo(bx+TW+DX,by+TH-DY);ctx.lineTo(bx+TW,by+TH);ctx.lineTo(bx+TW,by);ctx.closePath();ctx.fillStyle='#0b0812';ctx.fill();
-    ctx.beginPath();ctx.moveTo(bx+0.8,by);ctx.lineTo(bx+DX+0.6,by-DY+0.6);ctx.lineTo(bx+TW+DX-0.6,by-DY+0.6);ctx.lineTo(bx+TW,by);ctx.closePath();ctx.fillStyle=th.top;ctx.fill();ctx.fillStyle='rgba(0,0,0,.12)';ctx.fill();
-    ctx.beginPath();ctx.moveTo(bx+TW+0.4,by+0.6);ctx.lineTo(bx+TW+DX-0.6,by-DY+1.2);ctx.lineTo(bx+TW+DX-0.6,by+TH-DY-0.6);ctx.lineTo(bx+TW+0.4,by+TH-0.6);ctx.closePath();ctx.fillStyle=th.lo;ctx.fill();ctx.fillStyle=dither(ctx);ctx.fill();
-    ctx.fillStyle='#0b0812';ctx.fillRect(bx,by,TW,TH);ctx.fillStyle=th.wallB;ctx.fillRect(bx+1.2,by+1.2,TW-2.4,TH-2.4);ctx.fillStyle=th.wallA;ctx.fillRect(bx+3,by+3,TW-6,TH-6);
-    ctx.fillStyle=th.hi;ctx.fillRect(bx+1.2,by+1.2,TW-2.4,2.2);ctx.fillStyle=th.lo;ctx.fillRect(bx+1.2,by+TH-4,TW-2.4,2.8);
-    ctx.strokeStyle='rgba(0,0,0,.45)';ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(bx+6,by+20);ctx.lineTo(bx+12,by+26);ctx.lineTo(bx+10,by+34);ctx.moveTo(bx+22,by+42);ctx.lineTo(bx+26,by+50);ctx.stroke();
-    ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(bx+TW/2-5,by+TH/2-2,10,4);}
+  for(const bl of L.ext.blocks){if(inRoom(bl.c,bl.r))drawBlock(ctx,bl,th);}
   for(const d of L.ext.darts){if(d.x<x0-10||d.x>x1+10)continue;ctx.strokeStyle='#0b0812';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(d.x+10,d.y);ctx.stroke();
     ctx.strokeStyle='#d8d2c0';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(d.x+10,d.y);ctx.stroke();ctx.fillStyle='#b5403a';ctx.fillRect(d.x+8,d.y-1.6,3,3.2);}
   if(L.secret&&inRoom(L.secret.c,L.secret.r)&&L.items.some(it=>it.hidden&&!it.taken)){const sx=L.secret.c*TW+16,sy=SURF(L.secret.r)-(L.secret.gal?30:14);
@@ -2335,14 +2373,14 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     else slab(ctx,0,0,th,true,true);ctx.restore();}
   for(const sn of SN){if(sn.gone||sn.x<x0-30||sn.x>x1+30||sn.y<y0||sn.y>y1+20)continue;drawSnake(ctx,sn);}
   for(const g of G){if(g.gone)continue;if(g.x<x0-30||g.x>x1+30||g.y<y0-10||g.y>y1+70)continue;
-    drawFigure(ctx,g.x,g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:(g.alive&&g.state!=='idle'&&g.state!=='drop'),hasSword:!g.skel,flash:g.flash});}
+    drawFigure(ctx,g.x+(g.alive?pushOut(g.x,g.y,52):0),g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:(g.alive&&g.state!=='idle'&&g.state!=='drop'),hasSword:!g.skel,flash:g.flash,alpha:g.alive?undefined:clamp(1-(g.t-1.1)/0.8,0,1)});}
   if(P){
     if(!(P.state==='dead'&&P.cause==='fall'&&P.y>L.rows*TH))
-    drawFigure(ctx,P.x+hangDX(),P.y+hangDX()*-0.33*P.face,P.face,P.pose,PAL_HERO,{yo:P.yo,sword:(P.sword&&!!P.foe)||P.state==='lowStrike'||P.state==='poke'||(P.lowSword&&P.state==='crouch'),hasSword:true,flash:P.flash,alpha:P.state==='exit'?Math.max(0,1-P.t*1.1):undefined,flutter:Math.min(1,Math.abs(P.vx)/90+(P.state==='air'?0.8:0)),time:gameTime});
+    drawFigure(ctx,P.x+(P.rdx||0),P.y+(P.rdy||0),P.face,P.pose,PAL_HERO,{yo:P.yo,sword:(P.sword&&!!P.foe)||P.state==='lowStrike'||P.state==='poke'||(P.lowSword&&P.state==='crouch'),hasSword:true,flash:P.flash,alpha:P.state==='exit'?Math.max(0,1-P.t*1.1):undefined,flutter:Math.min(1,Math.abs(P.vx)/90+(P.state==='air'?0.8:0)),time:gameTime});
   }
   // the near half of gates and jaws crosses in front of anyone walking the corridor
   for(const o of L.dyn){if(!inRoom(o.c,o.r))continue;const X=o.c*TW,Y=o.r*TH,ys=SURF(o.r);if(o.f.t==='gate')drawGate(ctx,o.f,X,Y,ys,1);else if(o.f.t==='chomp')drawJaws(ctx,o,o.f,X,Y,ys,1);}
-  frontStrips(ctx,x0,x1,y0,y1);
+  frontStrips(ctx);
   for(const o of L.dyn)if(o.f.t==='vent'&&inRoom(o.c,o.r))drawVentFire(ctx,o,o.f);
   {const chs=L.ext.chase;if(chs&&chs.on&&(chs.fade||0)<1){drawStorm(ctx,chs,x0,x1,y0,y1);}}
   for(const p of FX){ctx.globalAlpha=Math.max(0,1-p.t/p.life);ctx.fillStyle=p.col;ctx.fillRect(p.x-p.sz/2,p.y-p.sz/2,p.sz,p.sz);}
