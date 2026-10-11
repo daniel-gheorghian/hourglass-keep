@@ -2063,7 +2063,9 @@ function drawHourglass(ctx,cp){
 function drawDoor(ctx,x,r,open,isExit){
   // a doorway cut into the back wall: it stands on the floor's back edge, and because depth recedes up and to the
   // right you see its left jamb and its threshold; the exit opens onto stairs climbing up and back into the light
-  const th=L.theme,yb=SURF(r)-HY,xc=x+HX,w=24,h=48,x0=xc-w/2,x1=x0+w,y0=yb-h,RD=0.45,rdx=DX*RD,rdy=DY*RD,lit=isExit&&open>0;
+  const c=Math.floor(x/TW),Yc=r*TH,ctop=Yc+Math.max(ceilOff(c,r),ceilOff(c+1,r));
+  const th=L.theme,yb=SURF(r)-HY,xc=x+HX,w=24,y0=ctop+6,h=yb-y0,x0=xc-w/2,x1=x0+w,RD=0.45,rdx=DX*RD,rdy=DY*RD,lit=isExit&&open>0;
+  ctx.save();ctx.beginPath();ctx.rect(x0-40,ctop,w+80,yb-ctop+20);ctx.clip(); // nothing of the doorway shows above the ceiling's front edge
   ctx.save();ctx.beginPath();ctx.rect(x0,y0,w,h);ctx.clip();
   if(lit){const gr=ctx.createLinearGradient(0,y0-6,0,yb);gr.addColorStop(0,'#fff0c8');gr.addColorStop(0.55,'#f6c46e');gr.addColorStop(1,'#b8552e');ctx.fillStyle=gr;ctx.fillRect(x0,y0,w,h);
     const N=8,RS=6.2,SX=DX*0.22,SY=DY*0.22;
@@ -2090,13 +2092,13 @@ function drawDoor(ctx,x,r,open,isExit){
   ctx.fillStyle=th.top;ctx.fill();ctx.fillStyle=lit?'rgba(255,220,160,.25)':'rgba(0,0,0,.3)';ctx.fill();
   ctx.restore();
   if(lit){ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=open*0.5;const g2=ctx.createRadialGradient(xc,yb-10,2,xc,yb-10,46);g2.addColorStop(0,'rgba(246,210,138,.6)');g2.addColorStop(1,'rgba(246,210,138,0)');ctx.fillStyle=g2;ctx.fillRect(xc-50,yb-60,100,64);ctx.restore();}
-  // frame on the wall face
+  // frame on the wall face: two posts and a lintel that tucks under the ceiling
   ctx.fillStyle=th.wallB;ctx.fillRect(x0-5,y0,5,h);ctx.fillRect(x1,y0,5,h);
   ctx.fillStyle=th.hi;ctx.fillRect(x0-5,y0,1,h);ctx.fillRect(x1,y0,1,h);
   ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(x0-1,y0,1,h);
-  ctx.fillStyle=th.wall;ctx.beginPath();ctx.moveTo(x0-6,y0);ctx.lineTo(x0-6,y0-6);ctx.quadraticCurveTo(xc,y0-18,x1+6,y0-6);ctx.lineTo(x1+6,y0);ctx.closePath();ctx.fill();
-  ctx.fillStyle=th.top;ctx.fillRect(x0-6,y0-1,w+12,2);
-  if(isExit){ctx.fillStyle='#d8b04a';ctx.beginPath();ctx.arc(xc,y0-7,2.2,0,Math.PI*2);ctx.fill();}
+  ctx.fillStyle=th.wall;ctx.fillRect(x0-6,ctop,w+12,y0-ctop);ctx.fillStyle=th.top;ctx.fillRect(x0-6,y0-1.4,w+12,1.4);ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(x0-6,ctop,w+12,1.2);
+  if(isExit){ctx.fillStyle='#d8b04a';ctx.beginPath();ctx.arc(xc,(ctop+y0)/2,1.8,0,Math.PI*2);ctx.fill();}
+  ctx.restore();
 }
 function drawSnake(ctx,sn){
   const dead=!sn.alive,a=dead?Math.max(0,1-sn.t/0.9):1,coil=sn.state==='coil'?Math.min(1,sn.t/0.2):0,lift=dead?0:coil*7+(sn.state==='strike'?5:0),lung=sn.lunge||0;
@@ -2187,32 +2189,37 @@ function floorQuad(ctx,x0,x1,d0,d1,ys,lift){const a=onFloor(x0,d0,ys),b=onFloor(
 function dynSlab(ctx,c,r,X,ys,th){slab(ctx,X,ys,th,B(L,c-1,r)!==WALL&&!solidBelow(L,c-1,r),B(L,c+1,r)!==WALL&&!solidBelow(L,c+1,r),c,r,B(L,c+1,r)===WALL);}
 // Gates and guillotine jaws span the corridor: they run along the depth slant from the floor's front edge to its
 // back edge, through the tile centre. The left half is nearer than anyone walking the corridor.
-function plane(X,Y,ys){const L0=X+16-HX,R0=X+16+HX,W=R0-L0;
-  return {L0,R0,W,t:x=>(x-L0)/W,fl:x=>ys+HY-DY*(x-L0)/W,ce:x=>Y+5-DY*(x-L0)/W};}
-function planeClip(ctx,pl,X,half){ctx.beginPath();ctx.moveTo(pl.L0-4,pl.ce(pl.L0-4));ctx.lineTo(pl.R0+4,pl.ce(pl.R0+4));ctx.lineTo(pl.R0+4,pl.fl(pl.R0+4));ctx.lineTo(pl.L0-4,pl.fl(pl.L0-4));ctx.closePath();ctx.clip();
+// What hangs over a tile: the front lip of a floor slab (it hides everything down to Y+5) or the bottom of a wall (Y).
+function ceilOff(c,r){return B(L,c,r-1)===FLOOR?5:0;}
+function plane(X,Y,ys,c,r){const L0=X+16-HX,R0=X+16+HX,W=R0-L0,co=ceilOff(c,r);
+  // ce: where the plane meets the underside of the ceiling (receding up with depth); top: the visible cut, the ceiling's front edge
+  return {L0,R0,W,co,top:Y+co,fl:x=>ys+HY-DY*(x-L0)/W,ce:x=>Y+co-DY*(x-L0)/W};}
+function planeClip(ctx,pl,X,half){ctx.beginPath();ctx.moveTo(pl.L0-4,pl.top);ctx.lineTo(pl.R0+4,pl.top);ctx.lineTo(pl.R0+4,pl.fl(pl.R0+4));ctx.lineTo(pl.L0-4,pl.fl(pl.L0-4));ctx.closePath();ctx.clip();
   ctx.beginPath();if(half)ctx.rect(X-40,-1e5,56,2e5);else ctx.rect(X+16,-1e5,60,2e5);ctx.clip();}
-function slots(ctx,pl){ctx.strokeStyle='#0b0812';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(pl.L0,pl.ce(pl.L0)-0.5);ctx.lineTo(pl.R0,pl.ce(pl.R0)-0.5);ctx.stroke();
-  ctx.lineWidth=2.4;ctx.beginPath();ctx.moveTo(pl.L0,pl.fl(pl.L0)+0.4);ctx.lineTo(pl.R0,pl.fl(pl.R0)+0.4);ctx.stroke();}
+function slots(ctx,pl){ctx.strokeStyle='#0b0812';ctx.lineWidth=2.4;ctx.beginPath();ctx.moveTo(pl.L0,pl.fl(pl.L0)+0.4);ctx.lineTo(pl.R0,pl.fl(pl.R0)+0.4);ctx.stroke();
+  ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(pl.L0-2,pl.top,pl.W+4,1.6);}
 function drawGate(ctx,f,X,Y,ys,half){
-  const pl=plane(X,Y,ys),gx2=X+16,NB=5,len=(ys+HY)-(Y+5)-1,drop=len*(1-f.open);
-  if(!half){slots(ctx,pl);
-    if(f.pair!==undefined){ctx.fillStyle=PAIRC[f.pair];ctx.fillRect(gx2-8,Y-5,16,3.5);}
-    if(!f.latch&&f.dur>0)drawGlass(ctx,gx2,Y-13,f.tm>0&&f.tm<Infinity?f.tm/f.dur:1);}
-  if(drop<2)return;
+  const pl=plane(X,Y,ys,Math.floor(X/TW),Math.floor(Y/TH)),gx2=X+16,NB=5,len=(ys+HY)-(Y+pl.co)-1,drop=len*(1-f.open);
+  if(!half)slots(ctx,pl);
+  if(drop>=2){
   ctx.save();planeClip(ctx,pl,X,half);
   const bx=i=>pl.L0+(i+0.5)*pl.W/NB;
-  // cross bars, parallel to the gate's diagonal
-  for(let off=8;off<drop-3;off+=11){ctx.strokeStyle='#0b0812';ctx.lineWidth=2.4;ctx.beginPath();ctx.moveTo(pl.L0+1,pl.ce(pl.L0+1)+off);ctx.lineTo(pl.R0-1,pl.ce(pl.R0-1)+off);ctx.stroke();
-    ctx.strokeStyle='#6b707c';ctx.lineWidth=1.2;ctx.stroke();}
+  // cross bars, parallel to the gate's slant; the first one below the ceiling carries the pair colour
+  for(let off=DY+4,k=0;off<drop-3;off+=11,k++){const col=k===0&&f.pair!==undefined?PAIRC[f.pair]:null;
+    ctx.strokeStyle='#0b0812';ctx.lineWidth=col?3.6:2.4;ctx.beginPath();ctx.moveTo(pl.L0+1,pl.ce(pl.L0+1)+off);ctx.lineTo(pl.R0-1,pl.ce(pl.R0-1)+off);ctx.stroke();
+    ctx.strokeStyle=col||'#6b707c';ctx.lineWidth=col?2.2:1.2;ctx.stroke();}
   for(let i=0;i<NB;i++){const x=bx(i),top=pl.ce(x)-3,bot=pl.ce(x)+drop;
     ctx.fillStyle='#0b0812';ctx.fillRect(x-1.4,top,2.8,bot-top);ctx.fillStyle=i%3===0?'#a9afbc':'#8f95a3';ctx.fillRect(x-0.75,top,1.5,bot-top);
     ctx.fillStyle='#0b0812';ctx.beginPath();ctx.moveTo(x-1.6,bot-0.5);ctx.lineTo(x,bot+3);ctx.lineTo(x+1.6,bot-0.5);ctx.fill();
     ctx.fillStyle='#b8bdc8';ctx.beginPath();ctx.moveTo(x-0.9,bot-0.5);ctx.lineTo(x,bot+1.9);ctx.lineTo(x+0.9,bot-0.5);ctx.fill();}
-  ctx.restore();
+  ctx.restore();}
+  // a timed gate carries its hourglass just under the ceiling, where the gate's top disappears
+  if(!half&&!f.latch&&f.dur>0)drawGlass(ctx,gx2,pl.top+8,f.tm>0&&f.tm<Infinity?f.tm/f.dur:1);
 }
 function drawJaws(ctx,o,f,X,Y,ys,half){
-  const k=chompK(f),pl=plane(X,Y,ys),sh=o.c%7,sc=0.8;
-  const upOff=lerp(3,26,k),loOff=lerp(3,21,k);
+  const k=chompK(f),pl=plane(X,Y,ys,o.c,o.r),sh=o.c%7,sc=0.8;
+  // measured from the ceiling's underside: open, the upper teeth just clear the ceiling's front edge
+  const upOff=lerp(pl.co?2:7,31-pl.co,k),loOff=lerp(3,21,k);
   if(!half)slots(ctx,pl);
   ctx.save();planeClip(ctx,pl,X,half);
   const jaw=(dir)=>{ // dir +1: hangs from the ceiling, teeth down; -1: rises from the floor, teeth up
@@ -2244,12 +2251,15 @@ function copyWorld(ctx,wx,wy,w,h){
     const cv2=roomCanvas(rx,ry),kx=cv2.width/ROOM_W,ky=cv2.height/ROOM_H;
     ctx.drawImage(cv2,(ix-rx*ROOM_W)*kx,(iy-ry*ROOM_H)*ky,(ix1-ix)*kx,(iy1-iy)*ky,ix,iy,ix1-ix,iy1-iy);}}
 function frontStrips(ctx,x0,x1,y0,y1){
-  const isLowAt=(c,r)=>{const f=F(L,c,r);return !!(f&&f.t==='low');},hangs=P&&['hang','climb','climbDown','jumpUp'].includes(P.state);
+  const isLowAt=(c,r)=>{const f=F(L,c,r);return !!(f&&f.t==='low');};
   for(let r=Math.max(0,Math.floor(y0/TH));r<=Math.min(L.rows-1,Math.floor(y1/TH));r++)for(let c=Math.max(0,Math.floor(x0/TW));c<=Math.min(L.cols-1,Math.floor(x1/TW)+1);c++){
     const w=terrainAt(c,r)===WALL,lw=isLowAt(c,r)&&!w;if(!w&&!lw)continue;
     if(terrainAt(c-1,r)===WALL||(lw&&isLowAt(c-1,r)))continue;
-    if(hangs&&Math.abs(P.x-c*TW)<24)continue; // hands on the ledge stay in view
     copyWorld(ctx,c*TW-HX,r*TH,Math.min(HX,5),lw?TH-34:TH);}
+  // Hanging from (or climbing over) the near face of a wall: the wall stands between him and us, so below the
+  // ledge only the hands show. On a block's far side, or under a thin floor, nothing is in front of him.
+  if(P){const lg=P.state==='hang'||P.state==='climb'?P.ledge:P.state==='climbDown'&&P.cs?P.cs.ledge:null;
+    if(lg&&lg.s<0&&terrainAt(lg.c,lg.r+1)===WALL)copyWorld(ctx,lg.xe-26,lg.ys+HY,26,HANG+14);}
 }
 function drawDynamic(ctx,x0,x1,y0,y1){
   const th=L.theme,c0=Math.floor(x0/TW)-1,c1=Math.floor(x1/TW)+1,r0=Math.floor(y0/TH)-1,r1=Math.floor(y1/TH)+1;
