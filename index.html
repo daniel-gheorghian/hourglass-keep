@@ -2244,6 +2244,9 @@ function drawJaws(ctx,o,f,X,Y,ys,half){
 }
 // The leading edge of a wall stands on the front plane, nearer than anyone walking the corridor: copy that
 // sliver of the pre-drawn room back over the actors (the old foreground-layer trick).
+// While hanging, the hands grip the ledge at mid-depth, a little onto the surface; ease in/out with the climb.
+function hangDX(){const lg=P.state==='hang'||P.state==='climb'?P.ledge:P.state==='climbDown'&&P.cs?P.cs.ledge:null;if(!lg)return 0;
+  const k=P.state==='hang'?1:P.state==='climb'?1-Math.min(1,P.t/0.45):Math.max(0,(P.t/0.5-0.5)/0.5);return -lg.s*6*k;}
 function terrainAt(c,r){const u=L.blockUnder?L.blockUnder.get(r*L.cols+c):undefined;return u!==undefined?u:B(L,c,r);}
 function copyWorld(ctx,wx,wy,w,h){
   for(let ry=Math.floor(wy/ROOM_H);ry<=Math.floor((wy+h-0.01)/ROOM_H);ry++)for(let rx=Math.floor(wx/ROOM_W);rx<=Math.floor((wx+w-0.01)/ROOM_W);rx++){
@@ -2259,7 +2262,7 @@ function frontStrips(ctx,x0,x1,y0,y1){
   // Hanging from (or climbing over) the near face of a wall: the wall stands between him and us, so below the
   // ledge only the hands show. On a block's far side, or under a thin floor, nothing is in front of him.
   if(P){const lg=P.state==='hang'||P.state==='climb'?P.ledge:P.state==='climbDown'&&P.cs?P.cs.ledge:null;
-    if(lg&&lg.s<0&&terrainAt(lg.c,lg.r+1)===WALL)copyWorld(ctx,lg.xe-26,lg.ys+HY,26,HANG+14);}
+    if(lg&&lg.s<0&&terrainAt(lg.c,lg.r+1)===WALL)copyWorld(ctx,lg.xe-26,lg.ys+1.5,26+TW-HX,HANG+16);}
 }
 function drawDynamic(ctx,x0,x1,y0,y1){
   const th=L.theme,c0=Math.floor(x0/TW)-1,c1=Math.floor(x1/TW)+1,r0=Math.floor(y0/TH)-1,r1=Math.floor(y1/TH)+1;
@@ -2335,7 +2338,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     drawFigure(ctx,g.x,g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:(g.alive&&g.state!=='idle'&&g.state!=='drop'),hasSword:!g.skel,flash:g.flash});}
   if(P){
     if(!(P.state==='dead'&&P.cause==='fall'&&P.y>L.rows*TH))
-    drawFigure(ctx,P.x,P.y,P.face,P.pose,PAL_HERO,{yo:P.yo,sword:(P.sword&&!!P.foe)||P.state==='lowStrike'||P.state==='poke'||(P.lowSword&&P.state==='crouch'),hasSword:true,flash:P.flash,alpha:P.state==='exit'?Math.max(0,1-P.t*1.1):undefined,flutter:Math.min(1,Math.abs(P.vx)/90+(P.state==='air'?0.8:0)),time:gameTime});
+    drawFigure(ctx,P.x+hangDX(),P.y+hangDX()*-0.33*P.face,P.face,P.pose,PAL_HERO,{yo:P.yo,sword:(P.sword&&!!P.foe)||P.state==='lowStrike'||P.state==='poke'||(P.lowSword&&P.state==='crouch'),hasSword:true,flash:P.flash,alpha:P.state==='exit'?Math.max(0,1-P.t*1.1):undefined,flutter:Math.min(1,Math.abs(P.vx)/90+(P.state==='air'?0.8:0)),time:gameTime});
   }
   // the near half of gates and jaws crosses in front of anyone walking the corridor
   for(const o of L.dyn){if(!inRoom(o.c,o.r))continue;const X=o.c*TW,Y=o.r*TH,ys=SURF(o.r);if(o.f.t==='gate')drawGate(ctx,o.f,X,Y,ys,1);else if(o.f.t==='chomp')drawJaws(ctx,o,o.f,X,Y,ys,1);}
