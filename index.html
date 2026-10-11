@@ -972,7 +972,7 @@ function startLevel(n,cpIdx){
   P=makePlayer(L.start.x,L.start.r);
   if((S.lifeTaken||[]).includes(n))for(const it of L.items)if(it.type==='life')it.taken=true;
   if(cpIdx>=0&&L.cps[cpIdx]){const cp=L.cps[cpIdx];for(let i=0;i<=cpIdx;i++)L.cps[i].on=true;L.cpIndex=cpIdx;P.x=cp.x;P.y=SURF(cp.r);P.fallY=P.y;for(const g of G)if(g.x<cp.x){g.alive=false;g.gone=true;}for(const sn of SN)if(sn.hi<cp.x){sn.alive=false;sn.gone=true;}}
-  FX.length=0;roomCache.clear();hitStop=0;banner=null;
+  FX.length=0;clearRooms();hitStop=0;banner=null;
   levelTime=S.floorTime||0;
   mode='play';intro=cpIdx>=0?0:2.6;
   S.started=true;S.level=n;writeSave();
@@ -994,7 +994,7 @@ function applySnap(sn){gameTime=sn.t;
   SN=sn.SN.map(o=>Object.assign({},o));pendingGuards=sn.pg.map(q=>({at:q.at,src:q.src>=0?G[q.src]:null,spec:q.spec}));
   L.dyn.forEach((o,i)=>Object.assign(o.f,sn.dyn[i]));L.base.set(sn.base);L.debris=sn.debris.map(d=>Object.assign({},d));L.rubble=new Set(sn.rubble);
   L.items.forEach((it,i)=>{if(it.type!=='life')it.taken=sn.items[i];}); // a gold flask once drunk stays drunk
-  L.door.open=sn.door[0];L.door.opening=sn.door[1];L.ext=JSON.parse(sn.ext);rebuildBlocks();roomCache.clear();}
+  L.door.open=sn.door[0];L.door.opening=sn.door[1];L.ext=JSON.parse(sn.ext);rebuildBlocks();clearRooms();}
 function canRewind(){return (S.sands|0)>0&&REW.length>0;}
 function startRewind(){let ti=0;
   for(let i=REW.length-1;i>=0;i--){const sn=REW[i];if(sn.t<=deathAt-4.5&&REW_STATES.includes(sn.P.state)&&!sn.P.dead){ti=i;break;}}
@@ -1029,7 +1029,7 @@ function applyResume(R){
   if(Number.isFinite(R.x)&&B(L,c,r)!==WALL&&solidBelow(L,c,r)&&Math.abs(R.y-SURF(r))<1){P.x=R.x;P.y=R.y;P.fallY=R.y;P.face=R.face===-1?-1:1;}
   P.hp=clamp(R.hp|0,1,S.maxHp);
   if(underLow())setState('crouch');
-  roomCache.clear();cam.snap=true;updateCamera(0);intro=0;
+  clearRooms();cam.snap=true;updateCamera(0);intro=0;
   return true;
 }
 
@@ -1166,10 +1166,10 @@ function tryMoveBlock(bl,dir,kind){const r=bl.r,nc=bl.c+dir;
   const f=F(L,nc,r);if(f&&f.t!=='plate')return false;
   if(G.some(g=>g.alive&&Math.abs(g.x-(nc*TW+16))<26&&Math.abs(g.y-SURF(r))<8))return false;
   if(kind==='pull'){const bc=pCol()-P.face;if(B(L,bc,r)===WALL||!solidBelow(L,bc,r))return false;const bf=F(L,bc,r);if(bf&&['spikes','loose','chomp','saw','low'].includes(bf.t))return false;}
-  bl.mv={from:bl.c,to:nc,t:0,dur:0.55};bl.under2=B(L,nc,r);L.base[r*L.cols+nc]=WALL;rebuildBlocks();roomCache.clear();
+  bl.mv={from:bl.c,to:nc,t:0,dur:0.55};bl.under2=B(L,nc,r);L.base[r*L.cols+nc]=WALL;rebuildBlocks();invalidateCell(bl.c,r);invalidateCell(nc,r);
   P.sx=P.x;P.tx=P.x+(kind==='push'?P.face:-P.face)*TW;setState(kind);Snd.play('push');hint('block');return true;}
 function updateBlocks(dt){for(const bl of L.ext.blocks){
-  if(bl.mv){bl.mv.t+=dt;if(bl.mv.t>=bl.mv.dur){L.base[bl.r*L.cols+bl.mv.from]=bl.under;bl.under=bl.under2;bl.c=bl.mv.to;bl.mv=null;rebuildBlocks();roomCache.clear();}}
+  if(bl.mv){bl.mv.t+=dt;if(bl.mv.t>=bl.mv.dur){const fc=bl.mv.from;L.base[bl.r*L.cols+fc]=bl.under;bl.under=bl.under2;bl.c=bl.mv.to;bl.mv=null;rebuildBlocks();invalidateCell(fc,bl.r);invalidateCell(bl.c,bl.r);}}
   if(!bl.mv){const f=F(L,bl.c,bl.r);if(f&&f.t==='plate'){pressPlate(f);f.g.heldAt=gameTime;}}}}
 function armPassage(f){if(f.armed)return;f.armed=1;
   if(f.chain){f.chain.forEach((t,k)=>{if(t.s===0){t.s=1;t.tm=-(1.8+0.36*k);}});Snd.play('creak');msg((f.g?gateMsg(f)+' ':'')+'The cracked floor behind you is starting to give way. Run!',3.8);}
@@ -1522,7 +1522,7 @@ function updateFeatures(dt){
   const pr=pRow(),alive=P.state!=='dead';
   for(const o of L.dyn){const f=o.f;
     switch(f.t){
-      case'loose':if(f.s===1){f.tm+=dt;if(f.tm>=(f.plank?0.42:0.5)){f.s=2;L.base[o.r*L.cols+o.c]=EMPTY;L.debris.push({x:o.c*TW+16,y:SURF(o.r),vy:0,c:o.c,hitP:false,kind:f.plank?'plank':'slab'});Snd.play(f.plank?'creak':'crumble');roomCache.clear();}}break;
+      case'loose':if(f.s===1){f.tm+=dt;if(f.tm>=(f.plank?0.42:0.5)){f.s=2;L.base[o.r*L.cols+o.c]=EMPTY;L.debris.push({x:o.c*TW+16,y:SURF(o.r),vy:0,c:o.c,hitP:false,kind:f.plank?'plank':'slab'});Snd.play(f.plank?'creak':'crumble');invalidateCell(o.c,o.r);}}break;
       case'stone':
         if(f.s===0){if(alive&&pr===o.r&&Math.abs(P.x-(o.c*TW+16))<22&&!['hang','climb','climbDown'].includes(P.state)){f.s=1;f.tm=0;Snd.play('creak');hint('stone');}}
         else if(f.s===1){f.tm+=dt;if(f.tm>=0.3){f.s=2;L.debris.push({x:o.c*TW+16,y:ceilingY(o.c,o.r)+14,vy:0,c:o.c,hitP:false,kind:'rock'});Snd.play('crumble');}}
@@ -1565,7 +1565,7 @@ function updateFeatures(dt){
     d.vy=Math.min(d.vy+GRAV*dt,480);const py=d.y;d.y+=d.vy*dt;
     if(!d.hitP&&alive&&Math.abs(P.x-d.x)<11&&d.y>P.y-48&&d.y-8<P.y&&!['air'].includes(P.state)&&py<P.y-20){d.hitP=true;hurt(1,'crush');if(P.state!=='dead'&&!['hang','climb'].includes(P.state)){setState('landHurt');}}
     let landed=false;
-    for(let r=Math.floor((py+4)/TH);r<=Math.floor((d.y+4)/TH)-1;r++){const ys=SURF(r);if(py<ys&&d.y>=ys&&solidBelow(L,d.c,r)){landed=true;if(B(L,d.c,r)===FLOOR)L.rubble.add(r*L.cols+d.c);roomCache.clear();dust(d.x,ys,6);if(tileVisible(d.c,r))Snd.play('crash');break;}}
+    for(let r=Math.floor((py+4)/TH);r<=Math.floor((d.y+4)/TH)-1;r++){const ys=SURF(r);if(py<ys&&d.y>=ys&&solidBelow(L,d.c,r)){landed=true;if(B(L,d.c,r)===FLOOR)L.rubble.add(r*L.cols+d.c);invalidateCell(d.c,r);dust(d.x,ys,6);if(tileVisible(d.c,r))Snd.play('crash');break;}}
     if(landed||d.y>L.rows*TH+120)L.debris.splice(i,1);
   }
 }
@@ -1716,20 +1716,40 @@ function levelComplete(){
 const cv=document.getElementById('game'),gx=cv.getContext('2d');
 let VS=1;
 const roomCache=new Map();
+let roomBuilds=0,prefetched=0,drawBuilds=0,roomJob=null;
+function newRoomCanvas(){const c=document.createElement('canvas');c.width=Math.max(1,Math.round(ROOM_W*VS));c.height=Math.max(1,Math.round(ROOM_H*VS));
+  const g=c.getContext('2d');g.setTransform(c.width/ROOM_W,0,0,c.height/ROOM_H,0,0);return {c,g};}
+function cacheRoom(key,c){roomCache.delete(key);roomCache.set(key,c);if(roomCache.size>18)roomCache.delete(roomCache.keys().next().value);}
+// Build a room over three light frames (back plane, wall faces, floors), rasterising each part as it's drawn, so no
+// single frame pays for a whole room. A stale room keeps showing until its replacement is complete.
+function startRoomJob(rx,ry){const {c,g}=newRoomCanvas();roomJob={key:rx+','+ry,rx,ry,c,g,stage:0,vs:VS,lv:L};}
+function stepRoomJob(){const j=roomJob;if(!j)return false;if(j.vs!==VS||j.lv!==L){roomJob=null;return false;}
+  drawRoomStatic(j.g,j.rx,j.ry,j.stage);rasterCtx.drawImage(j.c,0,0,1,1);j.stage++;
+  if(j.stage>2){roomJob=null;roomBuilds++;cacheRoom(j.key,j.c);dirtyRooms.delete(j.key);}return true;}
+// A cell changed (a tile fell, rubble landed, a block moved): only the rooms that draw it, or draw its neighbours'
+// overhanging faces and arches, need redrawing. They keep showing for a few frames and are redrawn on a frame with
+// time to spare (the falling tile itself is drawn live, so nothing looks wrong meanwhile).
+const dirtyRooms=new Set();
+function invalidateCell(c,r){for(let dr=-2;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){const cc=c+dc,rr=r+dr;if(cc<0||rr<0)continue;const k=Math.floor(cc/RW)+','+Math.floor(rr/RH);if(roomCache.has(k))dirtyRooms.add(k);}}
 function roomCanvas(rx,ry){
-  const key=rx+','+ry;let c=roomCache.get(key);if(c)return c;
+  const key=rx+','+ry;let c=roomCache.get(key);if(c){roomCache.delete(key);roomCache.set(key,c);return c;} // keep recently used rooms
+  if(roomJob&&roomJob.key===key&&roomJob.vs===VS&&roomJob.lv===L){while(roomJob&&roomJob.key===key)stepRoomJob();return roomCache.get(key);} // needed now: finish it
+  roomBuilds++;
   c=document.createElement('canvas');c.width=Math.max(1,Math.round(ROOM_W*VS));c.height=Math.max(1,Math.round(ROOM_H*VS));
   const g=c.getContext('2d');g.setTransform(c.width/ROOM_W,0,0,c.height/ROOM_H,0,0);
   drawRoomStatic(g,rx,ry);
   if(roomCache.size>18)roomCache.delete(roomCache.keys().next().value);
   roomCache.set(key,c);return c;
 }
-function drawRoomStatic(g,rx,ry){
-  const th=L.theme,st=th.style;
+// stage: 0 back plane, 1 wall faces, 2 floors; undefined draws everything (a room can be built over several frames)
+function drawRoomStatic(g,rx,ry,stage){
+  const th=L.theme,st=th.style,all=stage===undefined;
   const B=(LL,c,r)=>{const u=c>=0&&r>=0&&L.blockUnder?L.blockUnder.get(r*L.cols+c):undefined;return u!==undefined?u:B0(LL,c,r);};
   const solidBelow=(LL,c,r)=>{const b=B(LL,c,r);if(b===FLOOR)return true;if(b===WALL)return false;return r+1<L.rows&&B(LL,c,r+1)===WALL;};
   const lit=new Set(L.torches.map(t=>t.r*L.cols+t.c));
   const isLow=(c,r)=>{const f=F(L,c,r);return !!(f&&f.t==='low');};
+  const each=fn=>{for(let rr=-1;rr<=RH;rr++)for(let cc=-1;cc<=RW;cc++)fn(rx*RW+cc,ry*RH+rr,cc*TW,rr*TH);};
+  if(all||stage===0){
   // 1. the back plane, cell by cell
   for(let rr=0;rr<RH;rr++)for(let cc=0;cc<RW;cc++){
     const gc=rx*RW+cc,gr=ry*RH+rr,X=cc*TW,Y=rr*TH,b=B(L,gc,gr);
@@ -1740,8 +1760,9 @@ function drawRoomStatic(g,rx,ry){
   for(let rr=-1;rr<RH;rr++)for(let cc=0;cc<RW;cc++){const gc=rx*RW+cc,gr=ry*RH+rr;
     if(gr>=0&&B(L,gc,gr)===EMPTY&&B(L,gc,gr+1)===FLOOR&&!(B(L,gc-1,gr)===WALL&&B(L,gc+1,gr)===WALL)&&hash2(Math.floor(gc/RW)+17,Math.floor(gr/RH)+3)%4!==0)drawArch(g,cc*TW,rr*TH,th);}
   for(const w of L.windows){if(Math.floor(w.c/RW)!==rx||Math.floor(w.r/RH)!==ry)continue;drawWindow(g,(w.c%RW)*TW+16,(w.r%RH)*TH+38,th,w.c);}
+  }
   // neighbours one cell outside the room are drawn too, so faces that overhang a room edge don't leave seams
-  const each=fn=>{for(let rr=-1;rr<=RH;rr++)for(let cc=-1;cc<=RW;cc++)fn(rx*RW+cc,ry*RH+rr,cc*TW,rr*TH);};
+  if(all||stage===1){
   // 2. side faces (they sit behind the front plane, so every front face is drawn over them)
   each((gc,gr,X,Y)=>{const b=B(L,gc,gr),rb=B(L,gc+1,gr);
     if(b===WALL&&rb!==WALL)sideFace(g,X+TW-HX,Y,Y+TH,th);
@@ -1751,6 +1772,8 @@ function drawRoomStatic(g,rx,ry){
     if(b===WALL){g.save();g.beginPath();g.rect(X-HX,Y,TW,TH);g.clip();wallCell(g,X-HX,Y,gc,gr,th);g.restore();
       if(st!=='dungeon'&&st!=='forge'&&B(L,gc,gr+1)!==WALL&&gr+1<L.rows&&!isLow(gc,gr+1))cornice(g,X-HX,Y,th);}
     else if(isLow(gc,gr))lowCeil(g,X,Y,gc,gr,th);});
+  }
+  if(!(all||stage===2))return;
   // 4. floors: walking surface, front lip and open ends
   each((gc,gr,X,Y)=>{
     if(B(L,gc,gr)===WALL||!solidBelow(L,gc,gr))return;
@@ -2172,7 +2195,8 @@ function drawStorm(ctx,ch,x0,x1,y0,y1){const a=1-(ch.fade||0),fx=ch.wx;if(fx<x0-
   for(let y=top;y<=bot;y+=8){ctx.lineTo(fx+8*Math.sin(y*0.07+gameTime*5)+5*Math.sin(y*0.19-gameTime*7),y);}
   ctx.lineTo(Math.max(x0-10,fx-400),bot);ctx.closePath();ctx.fill();
   if(fx-400>x0){ctx.fillStyle='rgba(40,26,14,.96)';ctx.fillRect(x0-10,top,fx-400-x0+10,bot-top);}
-  for(let i=0;i<140;i++){const h=hash2(i,911),yy=top+((h%1000)/1000)*(bot-top),sp=50+(h>>>10)%80,xx=fx+10-((gameTime*sp+(h>>>4)%260)%260),sz=1+(h>>>20)%3;ctx.fillStyle=i%3?'rgba(236,196,128,.55)':'rgba(60,38,18,.6)';ctx.fillRect(xx,yy+Math.sin(gameTime*3+i)*5,sz*1.6,sz*0.7);}
+  for(let pass=0;pass<2;pass++){ctx.fillStyle=pass?'rgba(236,196,128,.55)':'rgba(60,38,18,.6)'; // grains, batched by colour
+    for(let i=0;i<140;i++){if((i%3===0)===!!pass)continue;const h=hash2(i,911),yy=top+((h%1000)/1000)*(bot-top),sp=50+(h>>>10)%80,xx=fx+10-((gameTime*sp+(h>>>4)%260)%260),sz=1+(h>>>20)%3;ctx.fillRect(xx,yy+Math.sin(gameTime*3+i)*5,sz*1.6,sz*0.7);}}
   for(let k=0;k<5;k++){const yy=top+(k+0.5)*(bot-top)/5+Math.sin(gameTime*2+k)*10,xx=fx-30-((gameTime*60+k*47)%120);ctx.strokeStyle='rgba(50,32,16,.5)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(xx,yy,14+4*Math.sin(gameTime*3+k),gameTime*4+k,gameTime*4+k+3.6);ctx.stroke();}
   ctx.restore();}
 function drawPlank(ctx,X,ys,sh){
@@ -2470,7 +2494,7 @@ function layout(){
   cv.style.left=cl+'px';cv.style.top=ct+'px';cv.style.width=cw+'px';cv.style.height=ch+'px';
   const dpr=S.set.saver?1:Math.min(2,window.devicePixelRatio||1);
   const bw=Math.round(cw*dpr),bh=Math.round(ch*dpr);
-  if(cv.width!==bw||cv.height!==bh){cv.width=bw;cv.height=bh;roomCache.clear();}
+  if(cv.width!==bw||cv.height!==bh){cv.width=bw;cv.height=bh;clearRooms();}
   VS=cv.height/ROOM_H;viewW=cv.width/VS;vignette=null;
   // controls (stage coordinates, inside the safe area)
   const jS=Math.round(padSz*0.5),gS=Math.round(padSz*0.44);
@@ -2569,23 +2593,55 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){if(mode===
 addEventListener('pagehide',()=>{if(L&&(mode==='play'||mode==='paused')){if(mode==='play')snapshotResume();S.floorTime=levelTime;writeSave();}});
 
 // ================= loop =================
-let last=0,acc=0,frame=0,idleFrames=0;
+// Rooms are pre-drawn into cached canvases. Building one is the most expensive thing a frame can do, so on frames
+// that didn't need to build anything, build (and rasterise) one room the camera is about to reach.
+const rasterSink=document.createElement('canvas');rasterSink.width=rasterSink.height=1;const rasterCtx=rasterSink.getContext('2d');
+function pickDirty(){
+  let best=null,bd=1e9;const mx=cam.x+viewW/2,my=cam.y+ROOM_H/2;
+  for(const k of dirtyRooms){if(!roomCache.has(k)){dirtyRooms.delete(k);continue;}const [rx,ry]=k.split(',').map(Number),d=Math.abs((rx+0.5)*ROOM_W-mx)+Math.abs((ry+0.5)*ROOM_H-my);if(d<bd){bd=d;best=[rx,ry];}}
+  return best;}
+function pickPrefetch(){
+  if(!L)return null;const nx=Math.ceil(L.cols/RW),ny=Math.ceil(L.rows/RH),mx=cam.x+viewW/2,my=cam.y+ROOM_H/2,vx=cam.x-(cam.px===undefined?cam.x:cam.px);
+  let best=null,bd=1e9;
+  const ax=ROOM_W*0.45,bx=ROOM_W*0.2,ay=ROOM_H*0.3; // reach further ahead in the direction the camera is moving
+  for(let ry=Math.floor((cam.y-ay)/ROOM_H);ry<=Math.floor((cam.y+ROOM_H+ay)/ROOM_H);ry++)
+    for(let rx=Math.floor((cam.x-(vx<0?ax:bx))/ROOM_W);rx<=Math.floor((cam.x+viewW+(vx<0?bx:ax))/ROOM_W);rx++){
+      if(rx<0||ry<0||rx>=nx||ry>=ny||roomCache.has(rx+','+ry))continue;
+      const dx=(rx+0.5)*ROOM_W-mx,dy=(ry+0.5)*ROOM_H-my,d=Math.abs(dx)*(dx*vx<0?1.6:1)+Math.abs(dy)*1.3;
+      if(d<bd){bd=d;best=[rx,ry];}}
+  return best;}
+// one slice of background room work per light frame: continue a build, else redraw a stale room, else prefetch
+function roomWork(){
+  if(roomJob)return stepRoomJob();
+  let t=pickDirty();if(!t){t=pickPrefetch();if(t)prefetched++;}
+  if(!t)return false;startRoomJob(t[0],t[1]);return stepRoomJob();}
+function clearRooms(){roomCache.clear();dirtyRooms.clear();roomJob=null;}
+// The simulation steps at a fixed 60 Hz; frames rarely line up exactly with it, so draw moving things where they
+// are between the last two steps instead of at the last one. Otherwise motion judders whenever a frame gets
+// two steps or none - most visible when the whole screen scrolls, as in a chase.
+function snapPrev(){cam.px=cam.x;cam.py=cam.y;if(P){P.px=P.x;P.py=P.y;}for(const g of G){g.px=g.x;g.py=g.y;}const ch=L&&L.ext.chase;if(ch)ch.pwx=ch.wx;}
+function renderAt(a){
+  const sv=[],lp=(o,k,pk,lim)=>{const p=o[pk];if(p===undefined||Math.abs(o[k]-p)>lim)return;sv.push([o,k,o[k]]);o[k]=p+(o[k]-p)*a;};
+  if(a<1){lp(cam,'x','px',80);lp(cam,'y','py',80);if(P){lp(P,'x','px',40);lp(P,'y','py',40);}for(const g of G){lp(g,'x','px',40);lp(g,'y','py',40);}const ch=L&&L.ext.chase;if(ch)lp(ch,'wx','pwx',60);}
+  drawnCamX=cam.x;try{render();}finally{for(let i=sv.length-1;i>=0;i--)sv[i][0][sv[i][1]]=sv[i][2];}
+}
+let last=0,acc=0,frame=0,idleFrames=0,drawnCamX=0;
 function loop(ts){
   requestAnimationFrame(loop);
   if(window.__HKfreeze){last=0;return;}
   const dt=last?Math.min(0.1,(ts-last)/1000):0;last=ts;
-  if(mode==='play'||mode==='dead'||mode==='rewind'){acc+=dt;let n=0;while(acc>=STEP&&n<6){acc-=STEP;n++;if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}if(n>=6)acc=0;
-    frame++;if(S.set.saver&&(frame&1))return;render();idleFrames=0;}
+  if(mode==='play'||mode==='dead'||mode==='rewind'){acc+=dt;let n=0;while(acc>=STEP&&n<6){acc-=STEP;n++;snapPrev();if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}if(n>=6)acc=0;
+    frame++;if(S.set.saver&&(frame&1))return;const b0=roomBuilds;renderAt(acc/STEP);idleFrames=0;drawBuilds+=roomBuilds-b0;if(roomBuilds===b0)roomWork();}
   else{acc=0;if(++idleFrames%20===0)render();}
 }
 
 // ================= boot =================
-function previewTitle(){L=genLevel(S.level,levelSeed(S.level),false,S.level===S.legacyFloor);G=L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);cam.snap=true;updateCamera(0);roomCache.clear();}
+function previewTitle(){L=genLevel(S.level,levelSeed(S.level),false,S.level===S.legacyFloor);G=L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);cam.snap=true;updateCamera(0);clearRooms();}
 function start(data){
   if(data&&data.save&&data.save.v===1)S=data.save;
   previewTitle();refreshTitle();syncToggles();show('title');
   layout();
-  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{roomCache.clear();render();});
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{clearRooms();render();});
   requestAnimationFrame(loop);
 }
 addEventListener('resize',layout);
@@ -2594,10 +2650,10 @@ if(window.claude&&window.claude.hot&&window.claude.hot.snapshot){try{window.clau
 
 // test hooks
 window.__HK={genLevel,setKey,took,
-  load(n,seed,test){clearInput();quiet=!!test;L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);mode='play';intro=0;FX.length=0;roomCache.clear();cam.snap=true;updateCamera(0);return L;},
+  load(n,seed,test){clearInput();quiet=!!test;L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);mode='play';intro=0;FX.length=0;clearRooms();cam.snap=true;updateCamera(0);return L;},
   loadMap(spec){return spec;},
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
-  get P(){return P;},get L(){return L;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
+  get P(){return P;},get L(){return L;},get drawnCamX(){return drawnCamX;},roomWork,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
   get S(){return S;},get REW(){return REW;},wallTouch,SW_W,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName};
 
