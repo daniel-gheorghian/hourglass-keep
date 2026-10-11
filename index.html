@@ -192,6 +192,7 @@ kbd{font:700 11.5px/1 var(--f-body);letter-spacing:.08em;padding:3px 6px;border-
           <button id="gHero" type="button" aria-pressed="true">Lit characters<small>Shadows and rim light on every figure</small></button>
           <button id="gFx" type="button" aria-pressed="true">Effects &amp; camera<small>Sword trails, impacts, shake, fight close-up</small></button>
           <button id="gHd" type="button" aria-pressed="true">New characters<small>Shaded bodies, flowing cloth, smoother moves</small></button>
+          <button id="gBg" type="button" aria-pressed="true">Background<small>Views through the arches, moving in layers</small></button>
         </div>
         <p class="fine">If the game stutters, switch off Lighting first, then Atmosphere.</p>
         <div class="menu"><button id="bGfxClose" class="primary" type="button">Done</button></div>
@@ -246,7 +247,7 @@ function themeName(n){const i=Math.floor((n-1)/4),t=THEMES[i%THEMES.length],k=Ma
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=7;
-const APP_VERSION='25'; // set by the build; shown on the title and pause screens
+const APP_VERSION='26'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(s.gen!==GEN){s.gen=GEN;s.cp=-1;s.resume=null;s.floorTime=0;}
@@ -860,17 +861,26 @@ function tubePath(pts,ws){const n=pts.length,L=[],R=[];
   {const c=pts[0],a0=Math.atan2(R[0][1]-c[1],R[0][0]-c[0]);p.arc(c[0],c[1],ws[0]/2,a0,a0+Math.PI,true);}
   p.closePath();return p;}
 // fill a part two-tone: shadow over all of it, then the base colour shifted toward the light (up and forward)
-function cel(ctx,path,base,shadow,o,lx=0.9,ly=-0.9){
+const tintCache=new Map();
+// a colour as it looks lit by a lamp of colour col (screen blend, by amount k)
+function litTint(hex,col,k){const kq=Math.round(k*10)/10;if(!col||kq<=0)return hex;const key=hex+col+kq;let v=tintCache.get(key);if(v)return v;
+  const n=parseInt(hex.slice(1),16),c=col.split(',').map(Number),kk=kq*0.45,ch=(a,b)=>Math.round(a+((255-(255-a)*(255-b)/255)-a)*kk);
+  v='#'+((1<<24)|(ch(n>>16,c[0])<<16)|(ch((n>>8)&255,c[1])<<8)|ch(n&255,c[2])).toString(16).slice(1);if(tintCache.size>600)tintCache.clear();tintCache.set(key,v);return v;}
+// odd shapes: shadow tone, then the base tone shrunk and nudged toward the light, then a smaller lamp-tinted tone
+function cel(ctx,path,base,shadow,o){
   if(o.mono){ctx.fillStyle=o.mono;ctx.fill(path);ctx.strokeStyle=o.mono;ctx.lineWidth=1.2;ctx.stroke(path);return;}
   ctx.strokeStyle=o.out;ctx.lineWidth=1.25;ctx.stroke(path);
   ctx.fillStyle=shadow;ctx.fill(path);
-  // lit part: the same shape shrunk about its centre and nudged toward the light (cheaper than clipping)
-  const cx=o._cx,cy=o._cy;ctx.save();ctx.translate(cx+lx*0.45,cy+ly*0.45);ctx.scale(0.8,0.8);ctx.translate(-cx,-cy);ctx.fillStyle=base;ctx.fill(path);ctx.restore();}
-function celAt(ctx,path,base,shadow,o,cx,cy,lx,ly){o._cx=cx;o._cy=cy;cel(ctx,path,base,shadow,o,lx,ly);}
+  const cx=o._cx,cy=o._cy,ux=o._lx,uy=o._ly;
+  ctx.save();ctx.translate(cx+ux*0.5,cy+uy*0.5);ctx.scale(0.82,0.82);ctx.translate(-cx,-cy);ctx.fillStyle=base;ctx.fill(path);ctx.restore();
+  if(o._lk>0.05){ctx.save();ctx.translate(cx+ux*1.1,cy+uy*1.1);ctx.scale(0.6,0.6);ctx.translate(-cx,-cy);ctx.fillStyle=litTint(base,o._lc,o._lk);ctx.fill(path);ctx.restore();}}
+function celAt(ctx,path,base,shadow,o,cx,cy){o._cx=cx;o._cy=cy;cel(ctx,path,base,shadow,o);}
 function tcel(ctx,pts,ws,base,shadow,o){const path=tubePath(pts,ws);
   if(o.mono){ctx.fillStyle=o.mono;ctx.fill(path);ctx.strokeStyle=o.mono;ctx.lineWidth=1.2;ctx.stroke(path);return;}
   ctx.strokeStyle=o.out;ctx.lineWidth=1.25;ctx.stroke(path);ctx.fillStyle=shadow;ctx.fill(path);
-  ctx.fillStyle=base;ctx.fill(tubePath(pts.map(q=>[q[0]+0.42,q[1]-0.42]),ws.map(w=>Math.max(0.5,w-1.25))));}
+  const ux=o._lx,uy=o._ly;
+  ctx.fillStyle=base;ctx.fill(tubePath(pts.map(q=>[q[0]+ux*0.38,q[1]+uy*0.38]),ws.map(w=>Math.max(0.5,w-1.0))));
+  if(o._lk>0.05){ctx.fillStyle=litTint(base,o._lc,o._lk);ctx.fill(tubePath(pts.map(q=>[q[0]+ux*1.0,q[1]+uy*1.0]),ws.map(w=>Math.max(0.4,w-2.3))));}}
 // cloth that trails behind its anchor: each link leans further from gravity toward the wind, with a ripple
 function trail(anchor,n,seg,wind,t,ripple,phase){const pts=[anchor.slice()];let x=anchor[0],y=anchor[1];
   const ga=Math.PI/2,wa=Math.atan2(wind[1],wind[0]),ws=Math.min(1,Math.hypot(wind[0],wind[1]));
@@ -886,7 +896,7 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
   if(o.sq){ctx.translate(0,s.hipH);ctx.scale(1/o.sq,o.sq);ctx.translate(0,-s.hipH);} // squash (<1) / stretch (>1) about the feet
   if(o.alpha!==undefined)ctx.globalAlpha=o.alpha;
   ctx.lineCap='round';ctx.lineJoin='round';
-  const O=Object.assign({},o,{out:o.mono||'#120c18'});
+  const lt=o.lt,ldx=lt?lt.dir*face:1,lln=Math.hypot(ldx,0.75),O=Object.assign({},o,{out:o.mono||'#120c18',_lx:ldx/lln,_ly:-0.75/lln,_lk:lt?lt.k:0,_lc:lt?lt.col:null});
   const t=o.time||0,vx=(o.vx||0)*face,vy=o.vy||0;
   // wind in figure space: cloth streams away from the direction of travel and lifts when falling
   const wind=[-vx/110,-vy/260+0.25];
@@ -933,10 +943,10 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
     hp.lineTo(hd[0]+hnx*r*0.95-hx*r*0.38,hd[1]+hny*r*0.95-hy*r*0.38);
     hp.quadraticCurveTo(hd[0]+hnx*r*0.85-hx*r*1.1,hd[1]+hny*r*0.85-hy*r*1.1,hd[0]+hnx*r*0.1-hx*r*1.15,hd[1]+hny*r*0.1-hy*r*1.15); // chin
     hp.quadraticCurveTo(hd[0]-hnx*r*0.7-hx*r*0.95,hd[1]-hny*r*0.7-hy*r*0.95,hd[0]-hnx*r*0.95+hx*r*0.2,hd[1]-hny*r*0.95+hy*r*0.2);hp.closePath();
-    celAt(ctx,hp,C('skin'),D('skin'),O,hd[0]+hnx*0.4,hd[1]+hny*0.4,0.8,-0.6);}
+    celAt(ctx,hp,C('skin'),D('skin'),O,hd[0]+hnx*0.4,hd[1]+hny*0.4);}
   if(pal.helm){const hm=new Path2D(),r=LEN.hd+1;hm.moveTo(hd[0]-hnx*r,hd[1]-hny*r);hm.bezierCurveTo(hd[0]-hnx*r+hx*r*1.5,hd[1]-hny*r+hy*r*1.5,hd[0]+hnx*r+hx*r*1.5,hd[1]+hny*r+hy*r*1.5,hd[0]+hnx*r*1.05,hd[1]+hny*r*1.05);
       hm.lineTo(hd[0]+hnx*r*1.25+hx*0.2,hd[1]+hny*r*1.25+hy*0.2);hm.lineTo(hd[0]-hnx*r*1.15+hx*0.2,hd[1]-hny*r*1.15+hy*0.2);hm.closePath();
-      celAt(ctx,hm,pal.helm,shadeHex(pal.helm,-0.35),O,hd[0]+hx*LEN.hd*0.6,hd[1]+hy*LEN.hd*0.6,0.8,-1);
+      celAt(ctx,hm,pal.helm,shadeHex(pal.helm,-0.35),O,hd[0]+hx*LEN.hd*0.6,hd[1]+hy*LEN.hd*0.6);
       if(!O.mono){ctx.strokeStyle=shadeHex(pal.helm,0.35);ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(hd[0]-hnx*r*0.4+hx*r*1.05,hd[1]-hny*r*0.4+hy*r*1.05);ctx.quadraticCurveTo(hd[0]+hx*r*1.12,hd[1]+hy*r*1.12,hd[0]+hnx*r*0.5+hx*r*0.95,hd[1]+hny*r*0.5+hy*r*0.95);ctx.stroke();}
       const sp=[hd[0]+hx*(r+0.5),hd[1]+hy*(r+0.5)];ctx.fillStyle=O.mono||shadeHex(pal.helm,-0.2);ctx.beginPath();ctx.moveTo(sp[0]-hnx*0.9,sp[1]-hny*0.9);ctx.lineTo(sp[0]+hx*3.4,sp[1]+hy*3.4);ctx.lineTo(sp[0]+hnx*0.9,sp[1]+hny*0.9);ctx.fill();
       if(pal.plume){const pl=trail([sp[0]+hx*3,sp[1]+hy*3],4,2.6,[-1+wind[0],-0.8],t,0.5,2.2);tcel(ctx,pl,[2.6,2.8,2.4,1.8,1],pal.plume,shadeHex(pal.plume,-0.35),O);}}
@@ -948,7 +958,7 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
     hp.quadraticCurveTo(hd[0]+hnx*r*0.1+hx*r*0.5,hd[1]+hny*r*0.1+hy*r*0.5,hd[0]+hnx*r*0.85+hx*r*0.55,hd[1]+hny*r*0.85+hy*r*0.55);hp.closePath();
     const tl=trail([hd[0]-hnx*r*1.0+hx*r*0.1,hd[1]-hny*r*1.0+hy*r*0.1],3,2.4,wind,t+0.6,0.7,3.1);
     tcel(ctx,tl,[3,2.5,1.8,0.9],C('hair'),shadeHex(C('hair'),-0.4),O);
-    celAt(ctx,hp,C('hair'),shadeHex(C('hair'),-0.45),O,hd[0]-hnx*r*0.2+hx*r*0.6,hd[1]-hny*r*0.2+hy*r*0.6,0.6,-0.9);
+    celAt(ctx,hp,C('hair'),shadeHex(C('hair'),-0.45),O,hd[0]-hnx*r*0.2+hx*r*0.6,hd[1]-hny*r*0.2+hy*r*0.6);
     if(!O.mono){ctx.strokeStyle=shadeHex(C('hair'),0.25);ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(hd[0]-hnx*r*0.4+hx*r*1.0,hd[1]-hny*r*0.4+hy*r*1.0);ctx.quadraticCurveTo(hd[0]+hx*r*1.12,hd[1]+hy*r*1.12,hd[0]+hnx*r*0.45+hx*r*0.85,hd[1]+hny*r*0.45+hy*r*0.85);ctx.stroke();}}
   if(!pal.bones&&!O.mono){ // eye and brow
     const r=LEN.hd,ex=hd[0]+hnx*r*0.48+hx*r*0.12,ey=hd[1]+hny*r*0.48+hy*r*0.12;ctx.fillStyle='#120c18';ctx.beginPath();ctx.ellipse(ex,ey,0.62,0.85,ha,0,Math.PI*2);ctx.fill();
@@ -1922,7 +1932,7 @@ function drawRoomStatic(g,rx,ry,stage){
   const th=L.theme,st=th.style,all=stage===undefined;
   const B=(LL,c,r)=>{const u=c>=0&&r>=0&&L.blockUnder?L.blockUnder.get(r*L.cols+c):undefined;return u!==undefined?u:B0(LL,c,r);};
   const solidBelow=(LL,c,r)=>{const b=B(LL,c,r);if(b===FLOOR)return true;if(b===WALL)return false;return r+1<L.rows&&B(LL,c,r+1)===WALL;};
-  const lit=new Set(L.torches.map(t=>t.r*L.cols+t.c));
+  const lit=new Set(L.torches.map(t=>t.r*L.cols+t.c)),bgOn=GFX().bg;
   const isLow=(c,r)=>{const f=F(L,c,r);return !!(f&&f.t==='low');};
   const each=fn=>{for(let rr=-1;rr<=RH;rr++)for(let cc=-1;cc<=RW;cc++)fn(rx*RW+cc,ry*RH+rr,cc*TW,rr*TH);};
   if(all||stage===0){
@@ -1930,12 +1940,12 @@ function drawRoomStatic(g,rx,ry,stage){
   for(let rr=0;rr<RH;rr++)for(let cc=0;cc<RW;cc++){
     const gc=rx*RW+cc,gr=ry*RH+rr,X=cc*TW,Y=rr*TH,b=B(L,gc,gr);
     g.save();g.beginPath();g.rect(X,Y,TW,TH);g.clip();
-    backCell(g,X,Y,gc,gr,th);if(b!==WALL&&!isLow(gc,gr))decor(g,X,Y,gc,gr,th,lit);
+    backCell(g,X,Y,gc,gr,th);if(b!==WALL&&!isLow(gc,gr)&&!(bgOn&&inOpening(gc,gr)))decor(g,X,Y,gc,gr,th,lit);
     g.restore();
   }
   for(let rr=-1;rr<RH;rr++)for(let cc=0;cc<RW;cc++){const gc=rx*RW+cc,gr=ry*RH+rr;
-    if(gr>=0&&D0(gc,gr)===EMPTY&&D0(gc,gr+1)===FLOOR&&!(D0(gc-1,gr)===WALL&&D0(gc+1,gr)===WALL)&&hash2(Math.floor(gc/RW)+17,Math.floor(gr/RH)+3)%4!==0)drawArch(g,cc*TW,rr*TH,th);}
-  for(const w of L.windows){if(Math.floor(w.c/RW)!==rx||Math.floor(w.r/RH)!==ry)continue;drawWindow(g,(w.c%RW)*TW+16,(w.r%RH)*TH+38,th,w.c);}
+    if(isArchTop(gc,gr))drawArch(g,cc*TW,rr*TH,th,bgOn);}
+  for(const w of L.windows){if(Math.floor(w.c/RW)!==rx||Math.floor(w.r/RH)!==ry)continue;if(bgOn&&inOpening(w.c,w.r))continue;drawWindow(g,(w.c%RW)*TW+16,(w.r%RH)*TH+38,th,w.c,false);}
   }
   // neighbours one cell outside the room are drawn too, so faces that overhang a room edge don't leave seams
   if(all||stage===1){
@@ -2096,11 +2106,17 @@ function cornice(g,X,Y,th){
   g.fillStyle=th.trim;g.globalAlpha=0.6;g.fillRect(X,yb-8.6,TW,0.8);g.globalAlpha=1;
   if(th.style==='tile'){g.fillStyle=th.tileA;g.fillRect(X,yb-1.2,TW,1.2);}
 }
-function drawArch(g,X,Y,th){
+// arches along a floor; with the background on they open onto it, above a low parapet
+const PARAPET=18;
+function isArchTop(gc,gr){return gr>=0&&D0(gc,gr)===EMPTY&&D0(gc,gr+1)===FLOOR&&!(D0(gc-1,gr)===WALL&&D0(gc+1,gr)===WALL)&&hash2(Math.floor(gc/RW)+17,Math.floor(gr/RH)+3)%4!==0;}
+function inOpening(gc,gr){return isArchTop(gc,gr)||isArchTop(gc,gr-1);}
+function drawArch(g,X,Y,th,open){
   const st=th.style,round=st==='dungeon',x0=X+3.4,x1=X+TW-3.4,cx=X+TW/2,spring=Y+30,apex=Y+12,floor=Y+TH*2-4;
   const curve=(a,b,ap)=>{if(round)g.arc(cx,spring,(b-a)/2,Math.PI,0);else{g.quadraticCurveTo(a,ap+7,cx,ap);g.quadraticCurveTo(b,ap+7,b,spring);}};
-  g.fillStyle=st==='tile'?'rgba(4,8,34,.42)':'rgba(0,0,0,.3)';
-  g.beginPath();g.moveTo(x0,floor);g.lineTo(x0,spring);curve(x0,x1,apex);g.lineTo(x1,floor);g.closePath();g.fill();
+  if(open){const pb=floor-PARAPET;g.save();g.globalCompositeOperation='destination-out';g.fillStyle='#000';g.globalAlpha=1;g.beginPath();g.moveTo(x0,pb);g.lineTo(x0,spring);curve(x0,x1,apex);g.lineTo(x1,pb);g.closePath();g.fill();g.restore();
+    g.fillStyle='rgba(0,0,0,.35)';g.fillRect(x0-0.6,pb+1,x1-x0+1.2,2);g.fillStyle=st==='tile'?th.tileC:th.top;g.fillRect(x0-0.6,pb-0.8,x1-x0+1.2,1.8);}
+  else{g.fillStyle=st==='tile'?'rgba(4,8,34,.42)':'rgba(0,0,0,.3)';
+  g.beginPath();g.moveTo(x0,floor);g.lineTo(x0,spring);curve(x0,x1,apex);g.lineTo(x1,floor);g.closePath();g.fill();}
   const outline=st==='tile'?th.tileC:st==='dungeon'?th.wallB:th.trim;
   g.beginPath();g.moveTo(x0-1.2,spring);curve(x0-1.2,x1+1.2,apex-1.4);
   g.strokeStyle=outline;g.lineWidth=round?3:1.3;g.globalAlpha=round?1:0.8;g.stroke();g.globalAlpha=1;
@@ -2117,7 +2133,7 @@ function drawArch(g,X,Y,th){
       g.fillStyle='rgba(0,0,0,.3)';g.fillRect(px-2.8,spring-0.7,5.6,0.7);}
   }
 }
-function drawWindow(g,x,y,th,seed){
+function drawWindow(g,x,y,th,seed,open){
   const st=th.style;
   if(st==='dungeon'){
     g.fillStyle='#08060d';g.fillRect(x-3.6,y-11,7.2,21);g.fillStyle=th.sky;g.fillRect(x-2.6,y-10,5.2,19);
@@ -2140,7 +2156,8 @@ function drawWindow(g,x,y,th,seed){
   const shape=pad=>{g.beginPath();g.moveTo(x0-pad,bot+pad);g.lineTo(x0-pad,spring);g.quadraticCurveTo(x0-pad,apex+3,x,apex-pad);g.quadraticCurveTo(x1+pad,apex+3,x1+pad,spring);g.lineTo(x1+pad,bot+pad);g.closePath();};
   shape(1.6);g.fillStyle='#0b0812';g.fill();
   g.save();shape(0);g.clip();
-  if(st==='palace'){
+  if(st==='palace'&&open){g.globalCompositeOperation='destination-out';g.fillStyle='#000';g.fillRect(x0-2,apex-4,w+4,hgt+8);g.globalCompositeOperation='source-over';}
+  else if(st==='palace'){
     const sky=g.createLinearGradient(0,apex,0,bot);sky.addColorStop(0,th.sky);sky.addColorStop(1,'#3b3a66');g.fillStyle=sky;g.fillRect(x0,apex-2,w,hgt+4);
     const rnd=mulberry32(seed*31+7);g.fillStyle='rgba(255,245,220,.85)';for(let i=0;i<4;i++)g.fillRect(x0+1+rnd()*(w-2),apex+4+rnd()*9,0.7,0.7);
     g.fillStyle='#f3e6c4';g.beginPath();g.arc(x+2.6,apex+6.5,1.9,0,Math.PI*2);g.fill();g.fillStyle=th.sky;g.beginPath();g.arc(x+3.5,apex+6,1.6,0,Math.PI*2);g.fill();
@@ -2607,7 +2624,7 @@ function drawEmissive(ctx,x0,x1,y0,y1){
   ctx.globalAlpha=1;
 }
 // ================= modern look (each part can be switched off under Graphics) =================
-function GFX(){const g=S.set.gfx||(S.set.gfx={});for(const k of ['light','atmo','grade','hero','fx','hd'])if(g[k]===undefined)g[k]=true;return g;}
+function GFX(){const g=S.set.gfx||(S.set.gfx={});for(const k of ['light','atmo','grade','hero','fx','hd','bg'])if(g[k]===undefined)g[k]=true;return g;}
 // per theme: ambient light, window light, colour grade (top and bottom tint), haze, floor mist
 const LOOK={
   dungeon:{amb:'104,110,146',win:'150,175,255',top:'206,214,255',bot:'255,236,214',haze:'70,85,135',mist:'140,150,195'},
@@ -2625,7 +2642,11 @@ function gatherLights(x0,x1,y0,y1){
   const th=L.theme,lk=LOOK[th.style]||LOOK.dungeon,out=[],t=gameTime,add=(x,y,r,col,a,kind,bloom)=>{if(x+r>x0&&x-r<x1&&y+r>y0&&y-r<y1)out.push({x,y,r,col,a,kind,bloom});};
   for(const tc of L.torches){const sd=(tc.c*7+tc.r*13)%10,fl=0.92+0.06*Math.sin(t*13+sd)+0.04*Math.sin(t*7.3+sd*1.7),lo=LAMP[th.style]||LAMP.dungeon,x=tc.c*TW+16+lo[0],y=SURF(tc.r)-38+lo[1];
     add(x,y,150*fl,th.glow,0.95,'torch',{r:26,a:0.42});add(x,y+22,70,th.glow,0.45*fl,'torch');}
-  for(const w of L.windows)add(w.c*TW+16,w.r*TH+40,84,lk.win,0.42,'win',{r:15,a:0.26});
+  {const st=th.style,hw=st==='dungeon'?2.6:6,hh=st==='dungeon'?10.5:st==='forge'||st==='crypt'?6.5:13;
+    const bgOn=GFX().bg;for(const w of L.windows){if(bgOn&&inOpening(w.c,w.r))continue; // that window isn't drawn: the arch is open there
+      const q={x:w.c*TW+16,y:w.r*TH+38,r:84,col:lk.win,a:0.42,kind:'win',bloom:{r:15,a:0.26},hw,hh};if(q.x+q.r>x0&&q.x-q.r<x1&&q.y+q.r>y0&&q.y-q.r<y1)out.push(q);}}
+  if(GFX().bg){const art=BGART[th.style]||BGART.dungeon,sc=art.glow||(art.glow=(()=>{const n=parseInt(art.sky[2].slice(1),16);return ((n>>16)+60>255?255:(n>>16)+60)+','+(((n>>8)&255)+60>255?255:((n>>8)&255)+60)+','+((n&255)+60>255?255:(n&255)+60);})());
+    for(const o of openingsIn(x0,x1,y0,y1))add(o[0]+o[2]/2,o[1]+o[3]*0.55,o[3]*0.62,sc,0.55,'sky');}
   if(P&&!(P.state==='dead'&&P.y>L.rows*TH))add(P.x,P.y-26,84,'205,195,225',0.42,'fill');
   for(const g of G)if(g.alive&&!g.gone)add(g.x,g.y-26,56,'205,195,225',0.22,'fill');
   for(const sn of SN)if(sn.alive&&!sn.gone)add(sn.x,sn.y-4,34,'200,230,170',0.25,'fill');
@@ -2660,9 +2681,9 @@ function lightPass(ctx,lights,sc,camD,camDY){
 function bloomPass(ctx,lights){
   ctx.save();ctx.globalCompositeOperation='lighter';
   for(const q of lights){if(!q.bloom)continue;ctx.globalAlpha=Math.min(1,q.bloom.a);const r=q.bloom.r;ctx.drawImage(lightSprite(q.col),q.x-r,q.y-r,2*r,2*r);
-    if(q.kind==='win'){ctx.globalAlpha=1;const ax=q.x-6,ay=q.y-12,bx=q.x+6,by=q.y+12,dx=-58,dy=110,gr=ctx.createLinearGradient(ax,ay,ax+dx*0.6,ay+dy);
-      gr.addColorStop(0,'rgba('+q.col+',0.2)');gr.addColorStop(1,'rgba('+q.col+',0)');ctx.fillStyle=gr;
-      ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,ay);ctx.lineTo(bx+dx*1.2,by+dy);ctx.lineTo(ax+dx*0.85,by+dy);ctx.closePath();ctx.fill();}}
+    if(q.kind==='win'){ctx.globalAlpha=1;const x0=q.x-q.hw,x1=q.x+q.hw,y0=q.y-q.hh,y1=q.y+q.hh,dx=-42,dy=112,gr=ctx.createLinearGradient(q.x,q.y,q.x+dx,q.y+dy);
+      gr.addColorStop(0,'rgba('+q.col+',0.22)');gr.addColorStop(1,'rgba('+q.col+',0)');ctx.fillStyle=gr;
+      ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y0);ctx.lineTo(x1,y1);ctx.lineTo(x1+dx,y1+dy);ctx.lineTo(x0+dx,y1+dy);ctx.lineTo(x0+dx,y0+dy);ctx.closePath();ctx.fill();}}
   ctx.restore();
 }
 // atmosphere in the world: mist pooling on the floors, dust drifting in the light, extra embers over the flames
@@ -2684,8 +2705,8 @@ function hazePass(ctx){const lk=LOOK[L.theme.style]||LOOK.dungeon;
 // characters: a contact shadow and a rim of light on the side facing the nearest lamp (a silhouette in the light's
 // colour, nudged toward it and drawn behind the figure, so only its edge shows)
 let frameLights=[];
-function keyLight(x,y){let best=null,bd=1e9;for(const q of frameLights){if(q.kind==='fill'||q.kind==='trap')continue;const d=Math.hypot(q.x-x,q.y-(y-26));if(d<bd&&d<q.r*1.6){bd=d;best=q;}}
-  if(!best)return {dir:-1,col:(LOOK[L.theme.style]||LOOK.dungeon).win,k:0.35};return {dir:Math.sign(best.x-x)||1,col:best.col,k:clamp(1-bd/(best.r*1.6),0.3,1)};}
+function keyLight(x,y){let best=null,bd=1e9;for(const q of frameLights){if(q.kind==='fill'||q.kind==='trap'||q.kind==='sky')continue;const d=Math.hypot(q.x-x,q.y-(y-26));if(d<bd&&d<q.r*1.6){bd=d;best=q;}}
+  if(!best)return {dir:-1,col:(LOOK[L.theme.style]||LOOK.dungeon).win,k:0.35,lamp:false};return {dir:Math.sign(best.x-x)||1,col:best.col,k:clamp(1-bd/(best.r*1.6),0.3,1),lamp:true};}
 const AIRY=['air','hang','climb','climbDown','jumpUp','swing','wallrun','slide','fall','drop','exit'];
 function drawActor(ctx,e,x,y,face,pose,pal,o){
   const lk=e.lk;
@@ -2693,7 +2714,9 @@ function drawActor(ctx,e,x,y,face,pose,pal,o){
   if(!GFX().hero||o.alpha===0){figDraw(ctx,x,y,face,pose,pal,o);return;}
   const solid=!(o.alpha<1);
   if(solid&&!AIRY.includes(e.state)){ctx.save();ctx.fillStyle='rgba(0,0,0,.42)';ctx.beginPath();ctx.ellipse(x,y+0.6,11,2.4,0,0,Math.PI*2);ctx.fill();ctx.restore();}
-  if(solid){const kl=keyLight(x,y);ctx.save();ctx.globalAlpha=0.5+0.5*kl.k;figDraw(ctx,x+kl.dir*1.3,y-0.5,face,pose,pal,Object.assign({},o,{mono:'rgb('+kl.col+')',flash:0,smear:0}));ctx.restore();}
+  const kl=keyLight(x,y);
+  if(GFX().hd&&!pal.bones){figDraw(ctx,x,y,face,pose,pal,Object.assign({},o,{lt:{dir:kl.dir,col:kl.col,k:kl.lamp?kl.k:kl.k*0.4}}));return;}
+  if(solid){ctx.save();ctx.globalAlpha=0.5+0.5*kl.k;figDraw(ctx,x+kl.dir*1.3,y-0.5,face,pose,pal,Object.assign({},o,{mono:'rgb('+kl.col+')',flash:0,smear:0}));ctx.restore();}
   figDraw(ctx,x,y,face,pose,pal,o);
 }
 // the pose as drawn: the simulated pose plus breathing at rest and a sway after sudden stops (looks only)
@@ -2746,6 +2769,97 @@ function updateLookFx(dt){
   if(GFX().hd){if(P)updActorLook(P,dt);for(const g of G)if(!g.gone)updActorLook(g,dt);}
   for(const g of G)trackTrail(g,fx&&g.alive&&g.state==='strike'&&g.t>=(g.wu||0)-0.06);
 }
+
+// ================= background: distant layers seen through the open arches and windows =================
+// Each part of the keep looks out on its own view, in layers that scroll at their own speeds (far ones barely move).
+const BG_W=640,BG_H=210,BG_BASE=176;
+const BGART={
+  palace:{sky:['#1a2452','#363c78','#9a5a62','#3c2838'],layers:[
+    {f:0.015,kind:'stars',moon:'#f3e6c4'},{f:0.03,kind:'clouds',col:'rgba(170,140,180,.13)',drift:2.5},
+    {f:0.07,kind:'dunes',col:'#463a62',lift:6},{f:0.16,kind:'city',col:'#2a2044',win:'#ffc070',lift:14},{f:0.3,kind:'palms',col:'#140f26',lift:26}]},
+  tile:{sky:['#0e1c4c','#24398e','#5470bc','#22306c'],layers:[
+    {f:0.015,kind:'stars',moon:'#e6ecff'},{f:0.07,kind:'hills',col:'#2a3c78',lift:4},{f:0.16,kind:'pavilions',col:'#18264e',win:'#ffd9a0',lift:12},{f:0.3,kind:'cypress',col:'#0a1230',lift:24}]},
+  dungeon:{sky:['#0b111c','#18263c','#22344e','#152438'],layers:[
+    {f:0.06,kind:'colonnade',col:'#2a3852',gap:26,w:6,lift:-30},{f:0.15,kind:'colonnade',col:'#131c2c',gap:58,w:12,lift:-30},{f:0.15,kind:'water',col:'rgba(130,160,200,.16)',lift:-30},{f:0.32,kind:'chains',col:'#06090f',lift:0}]},
+  forge:{sky:['#140404','#3e0f08','#8a3010','#b8461a'],layers:[
+    {f:0.06,kind:'chimneys',col:'#3a1c14',glow:'#ff7a30',lift:8},{f:0.16,kind:'furnaces',col:'#1e0b07',glow:'#ff8a3a',lift:16},{f:0.04,kind:'smoke',col:'rgba(30,18,16,.55)',drift:4},{f:0.32,kind:'chains',col:'#0a0403',lift:0}]},
+  crypt:{sky:['#06120f','#14342c','#2a5a4c','#183c33'],layers:[
+    {f:0.06,kind:'obelisks',col:'#1e4238',glow:'#7fffd0',lift:6},{f:0.16,kind:'tombs',col:'#0e221c',glow:'#8fffd8',lift:14},{f:0.05,kind:'clouds',col:'rgba(120,190,170,.12)',drift:3.5},{f:0.3,kind:'trees',col:'#050c0a',lift:24}]}};
+const bgCache=new Map();
+const BGQ=0.42; // the background is painted at this fraction of screen resolution: cheaper, and soft like distant scenery
+function bgLayers(style){const key=style+':'+VS.toFixed(2);let v=bgCache.get(key);if(v)return v;
+  const art=BGART[style]||BGART.dungeon,sc=Math.max(0.5,VS*BGQ);
+  v=art.layers.map((ly,i)=>{const c=document.createElement('canvas');c.width=Math.round(BG_W*sc);c.height=Math.round(BG_H*sc);const g=c.getContext('2d');g.setTransform(sc,0,0,sc,0,0);
+    const rnd=mulberry32(hash2(i*31+7,style.length*97+i));
+    // everything is drawn twice, a layer-width apart, so the strip tiles seamlessly
+    for(const ox of [0,-BG_W,BG_W]){g.save();g.translate(ox,0);bgPaint(g,ly,mulberry32(hash2(i*31+7,style.length*97+i)));g.restore();}
+    return {c,f:ly.f,drift:ly.drift||0};});
+  bgCache.set(key,v);return v;}
+function bgPaint(g,ly,rnd){const B=BG_BASE-(ly.lift||0),T=Math.PI*2,R=(a,b)=>a+rnd()*(b-a);g.fillStyle=ly.col;
+  const ground=()=>g.fillRect(-2,B,BG_W+4,BG_H-B+2);
+  switch(ly.kind){
+    case'stars':for(let i=0;i<90;i++){const x=R(0,BG_W),y=R(4,BG_BASE-40),r=R(0.3,0.9);g.fillStyle='rgba(255,248,230,'+R(0.35,0.95).toFixed(2)+')';g.fillRect(x,y,r,r);}
+      g.fillStyle=ly.moon;g.beginPath();g.arc(470,46,9,0,T);g.fill();g.fillStyle='rgba(0,0,0,.0)';
+      {const gr=g.createRadialGradient(470,46,8,470,46,34);gr.addColorStop(0,'rgba(255,240,210,.18)');gr.addColorStop(1,'rgba(255,240,210,0)');g.fillStyle=gr;g.fillRect(430,6,80,80);}
+      g.save();g.globalCompositeOperation='destination-out';g.beginPath();g.arc(475,42,8,0,T);g.fill();g.restore();break;
+    case'clouds':for(let i=0;i<9;i++){const x=R(0,BG_W),y=R(20,BG_BASE-50),w=R(50,120),h=R(5,11);for(let k=0;k<4;k++){g.beginPath();g.ellipse(x+k*w*0.22,y+R(-2,2),w*0.35,h,0,0,T);g.fill();}}break;
+    case'dunes':g.beginPath();g.moveTo(-2,BG_H);for(let x=-2;x<=BG_W+2;x+=8)g.lineTo(x,B-10-8*Math.sin(x*0.012)-5*Math.sin(x*0.031+1));g.lineTo(BG_W+2,BG_H);g.fill();
+      for(let i=0;i<7;i++){const x=R(0,BG_W),w=R(6,12),by=B-12;g.fillRect(x-w/2,by-w*0.8,w,w*0.8);g.beginPath();g.ellipse(x,by-w*0.8,w*0.55,w*0.5,0,Math.PI,0);g.fill();}break;
+    case'hills':g.beginPath();g.moveTo(-2,BG_H);for(let x=-2;x<=BG_W+2;x+=8)g.lineTo(x,B-26-18*Math.sin(x*0.009+0.5)-9*Math.sin(x*0.027));g.lineTo(BG_W+2,BG_H);g.fill();break;
+    case'city':{ground();let x=0;while(x<BG_W){const k=rnd(),w=R(14,30),h=R(16,40);
+        g.fillRect(x,B-h,w,h);
+        if(k<0.45){g.beginPath();g.ellipse(x+w/2,B-h,w*0.42,w*0.42,0,Math.PI,0);g.fill();g.fillRect(x+w/2-0.6,B-h-w*0.42-5,1.2,5);}
+        else if(k<0.7){const mx=x+w*0.7,mh=h+R(20,40);g.fillRect(mx-2.2,B-mh,4.4,mh);g.fillRect(mx-3.4,B-mh+8,6.8,2);g.beginPath();g.moveTo(mx-2.6,B-mh);g.lineTo(mx,B-mh-7);g.lineTo(mx+2.6,B-mh);g.fill();}
+        g.fillStyle=ly.win;for(let j=0;j<3;j++)if(rnd()<0.5){g.globalAlpha=R(0.5,0.9);g.fillRect(x+R(2,w-4),B-R(4,h-4),1.6,2.2);}g.globalAlpha=1;g.fillStyle=ly.col;
+        x+=w+R(-4,6);}break;}
+    case'palms':ground();for(let i=0;i<6;i++){const x=R(0,BG_W),h=R(40,70),lean=R(-8,8);g.strokeStyle=ly.col;g.lineWidth=2.4;g.beginPath();g.moveTo(x,B);g.quadraticCurveTo(x+lean*0.3,B-h*0.6,x+lean,B-h);g.stroke();
+        for(let k=0;k<7;k++){const a=-Math.PI/2+(k-3)*0.45;g.lineWidth=1.6;g.beginPath();g.moveTo(x+lean,B-h);g.quadraticCurveTo(x+lean+Math.cos(a)*9,B-h+Math.sin(a)*9-3,x+lean+Math.cos(a)*16,B-h+Math.sin(a)*12+6);g.stroke();}}
+      for(let i=0;i<3;i++){const x=R(0,BG_W),w=R(16,24),h=R(70,96);g.fillRect(x,B-h,w,h);for(let k=0;k<w;k+=5)g.fillRect(x+k,B-h-3,3,3);}break;
+    case'pavilions':ground();for(let i=0;i<7;i++){const x=i*BG_W/7+R(0,30),w=R(26,44),h=R(18,30);g.fillRect(x,B-h,w,h);g.beginPath();g.moveTo(x+w/2-w*0.3,B-h);g.bezierCurveTo(x+w/2-w*0.42,B-h-w*0.4,x+w/2-2,B-h-w*0.45,x+w/2,B-h-w*0.62);g.bezierCurveTo(x+w/2+2,B-h-w*0.45,x+w/2+w*0.42,B-h-w*0.4,x+w/2+w*0.3,B-h);g.fill();
+        g.fillStyle=ly.win;for(let k=0;k<3;k++){g.globalAlpha=R(0.4,0.85);const ax=x+w*(0.2+k*0.3)-2;g.beginPath();g.moveTo(ax,B-3);g.lineTo(ax,B-h*0.55);g.quadraticCurveTo(ax+2,B-h*0.7,ax+4,B-h*0.55);g.lineTo(ax+4,B-3);g.fill();}g.globalAlpha=1;g.fillStyle=ly.col;}break;
+    case'cypress':ground();for(let i=0;i<12;i++){const x=R(0,BG_W),h=R(34,64),w=R(5,8);g.beginPath();g.ellipse(x,B-h/2,w,h/2,0,0,T);g.fill();}g.fillRect(-2,B-10,BG_W+4,10);break;
+    case'colonnade':{const gap=ly.gap,w=ly.w,top=10;g.fillRect(-2,top-6,BG_W+4,8);for(let x=0;x<BG_W;x+=gap){g.fillRect(x,top,w,B-top);g.fillRect(x-2,top,w+4,3);g.fillRect(x-2,B-4,w+4,4);
+        g.beginPath();g.moveTo(x+w,top+gap*0.5);g.quadraticCurveTo(x+w+(gap-w)/2,top,x+gap,top+gap*0.5);g.lineTo(x+gap,top);g.lineTo(x+w,top);g.fill();}ground();break;}
+    case'water':g.fillStyle='rgba(8,14,24,.65)';g.fillRect(-2,B,BG_W+4,BG_H-B+2);g.strokeStyle=ly.col;g.lineWidth=0.8;for(let i=0;i<40;i++){const x=R(0,BG_W),y=R(B+2,BG_H-2),w=R(8,26);g.beginPath();g.moveTo(x,y);g.lineTo(x+w,y);g.stroke();}break;
+    case'chains':g.strokeStyle=ly.col;g.lineWidth=1.6;for(let i=0;i<5;i++){const x=R(0,BG_W),len=R(30,90);g.setLineDash([2.2,1.4]);g.beginPath();g.moveTo(x,-2);g.lineTo(x,len);g.stroke();g.setLineDash([]);g.beginPath();g.arc(x,len+4,4,0,T);g.stroke();}break;
+    case'chimneys':ground();for(let i=0;i<9;i++){const x=R(0,BG_W),w=R(7,14),h=R(50,110);g.fillStyle=ly.col;g.beginPath();g.moveTo(x-w/2,B);g.lineTo(x-w*0.38,B-h);g.lineTo(x+w*0.38,B-h);g.lineTo(x+w/2,B);g.fill();g.fillRect(x-w*0.5,B-h-3,w,3);
+        const gr=g.createRadialGradient(x,B-h-3,0,x,B-h-3,14);gr.addColorStop(0,'rgba(255,140,60,.55)');gr.addColorStop(1,'rgba(255,140,60,0)');g.fillStyle=gr;g.fillRect(x-14,B-h-17,28,28);}break;
+    case'furnaces':ground();g.fillStyle=ly.col;{let x=0;while(x<BG_W){const w=R(30,60),h=R(24,46);g.fillRect(x,B-h,w,h);g.beginPath();g.moveTo(x-2,B-h);g.lineTo(x+w/2,B-h-R(8,16));g.lineTo(x+w+2,B-h);g.fill();
+        g.fillStyle=ly.glow;for(let k=0;k<2;k++){g.globalAlpha=R(0.5,0.9);g.fillRect(x+R(4,w-12),B-R(8,h-6),R(4,9),1.6);}g.globalAlpha=0.7;g.beginPath();g.arc(x+w/2,B-2,4,Math.PI,0);g.fill();g.globalAlpha=1;g.fillStyle=ly.col;x+=w+R(6,20);}}break;
+    case'smoke':for(let i=0;i<10;i++){const x=R(0,BG_W),y=R(10,BG_BASE-60);for(let k=0;k<5;k++){g.beginPath();g.ellipse(x+k*9,y-k*6,12+k*3,7+k*2,0,0,T);g.fill();}}break;
+    case'obelisks':ground();for(let i=0;i<10;i++){const x=R(0,BG_W),w=R(5,9),h=R(30,64);g.fillStyle=ly.col;g.beginPath();g.moveTo(x-w/2,B);g.lineTo(x-w*0.35,B-h);g.lineTo(x,B-h-w*0.8);g.lineTo(x+w*0.35,B-h);g.lineTo(x+w/2,B);g.fill();
+        if(rnd()<0.5){g.fillStyle=ly.glow;g.globalAlpha=0.6;g.fillRect(x-0.7,B-h*0.6,1.4,1.8);g.globalAlpha=1;}}break;
+    case'tombs':ground();{let x=0;while(x<BG_W){const w=R(20,40),h=R(16,30);g.fillStyle=ly.col;g.fillRect(x,B-h,w,h);g.beginPath();g.ellipse(x+w/2,B-h,w*0.38,w*0.3,0,Math.PI,0);g.fill();g.fillRect(x-2,B-h,w+4,2.5);
+        if(rnd()<0.6){const gx=x+w/2,gy=B-h*0.45;const gr=g.createRadialGradient(gx,gy,0,gx,gy,10);gr.addColorStop(0,'rgba(140,255,215,.5)');gr.addColorStop(1,'rgba(140,255,215,0)');g.fillStyle=gr;g.fillRect(gx-10,gy-10,20,20);g.fillStyle=ly.glow;g.fillRect(gx-1,gy-1.5,2,3);}
+        x+=w+R(10,34);}}break;
+    case'trees':ground();g.strokeStyle=ly.col;for(let i=0;i<5;i++){const x=R(0,BG_W),h=R(40,70);const br=(x0,y0,a,l,d)=>{if(d>4||l<4)return;const x1=x0+Math.cos(a)*l,y1=y0+Math.sin(a)*l;g.lineWidth=Math.max(0.6,3-d*0.6);g.beginPath();g.moveTo(x0,y0);g.lineTo(x1,y1);g.stroke();br(x1,y1,a-R(0.3,0.6),l*0.72,d+1);br(x1,y1,a+R(0.3,0.6),l*0.68,d+1);};br(x,B,-Math.PI/2,h*0.42,0);}break;
+  }}
+// the openings on screen, as rectangles in world units (the room images cover everything outside the actual shapes)
+function openingsIn(x0,x1,y0,y1){const out=[],st=L.theme.style;
+  for(let r=Math.max(0,Math.floor(y0/TH)-2);r<=Math.min(L.rows-1,Math.floor(y1/TH)+1);r++)for(let c=Math.max(0,Math.floor(x0/TW)-1);c<=Math.min(L.cols-1,Math.floor(x1/TW)+1);c++)
+    if(isArchTop(c,r))out.push([c*TW+3,r*TH+10,TW-6,TH*2-4-PARAPET-10+1]);
+  return out;}
+let bgC=null,bgG=null;
+function drawBackdrop(ctx,cx,cy,vw,vh,VZ,camD,camDY){
+  const ops=openingsIn(cx,cx+vw,cy,cy+vh);if(!ops.length)return;
+  const art=BGART[L.theme.style]||BGART.dungeon,ly=bgLayers(L.theme.style),k=VZ/VS;
+  // only the part of the screen the openings cover is painted (in view units)
+  let bx0=1e9,by0=1e9,bx1=-1e9,by1=-1e9;
+  for(const r of ops){const x0=(r[0]*VZ-camD)/VS,y0=(r[1]*VZ-camDY)/VS,x1=x0+r[2]*k,y1=y0+r[3]*k;bx0=Math.min(bx0,x0);by0=Math.min(by0,y0);bx1=Math.max(bx1,x1);by1=Math.max(by1,y1);}
+  bx0=Math.max(0,Math.floor(bx0));by0=Math.max(0,Math.floor(by0));bx1=Math.min(viewW,Math.ceil(bx1));by1=Math.min(ROOM_H,Math.ceil(by1));if(bx1<=bx0||by1<=by0)return;
+  // compose sky and layers at low resolution, then one scaled copy onto the screen (no clip: the room images drawn
+  // next cover everything but the openings)
+  const q=VS*BGQ,cw=Math.ceil(viewW*q),ch=Math.ceil(ROOM_H*q);
+  if(!bgC||bgC.width!==cw||bgC.height!==ch){bgC=document.createElement('canvas');bgC.width=cw;bgC.height=ch;bgG=bgC.getContext('2d');}
+  const g=bgG;g.setTransform(q,0,0,q,0,0);
+  const sk=art.grad||(art.grad=(()=>{const gr=g.createLinearGradient(0,0,0,ROOM_H);gr.addColorStop(0,art.sky[0]);gr.addColorStop(0.45,art.sky[1]);gr.addColorStop(0.72,art.sky[2]);gr.addColorStop(1,art.sky[3]);return gr;})());
+  g.fillStyle=sk;g.fillRect(bx0,by0,bx1-bx0,by1-by0);
+  const midY=L.rows*TH/2,hz=ROOM_H*0.7-BG_BASE;
+  for(const L2 of ly){const W=BG_W,ox=-((((cam.x*L2.f+gameTime*L2.drift)%W)+W)%W),oy=hz-clamp((cam.y-midY)*L2.f*0.18,-22,22),sx=L2.c.width/BG_W,sy=L2.c.height/BG_H;
+    for(let x=ox;x<viewW;x+=W){const ix0=Math.max(bx0,x),ix1=Math.min(bx1,x+W),iy0=Math.max(by0,oy),iy1=Math.min(by1,oy+BG_H);if(ix1<=ix0||iy1<=iy0)continue;
+      g.drawImage(L2.c,(ix0-x)*sx,(iy0-oy)*sy,(ix1-ix0)*sx,(iy1-iy0)*sy,ix0,iy0,ix1-ix0,iy1-iy0);}}
+  ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.imageSmoothingEnabled=true;
+  ctx.drawImage(bgC,bx0*q,by0*q,(bx1-bx0)*q,(by1-by0)*q,bx0*VS,by0*VS,(bx1-bx0)*VS,(by1-by0)*VS);ctx.restore();}
 let vignette=null,vignette2=null;
 function render(){
   const ctx=gx;ctx.setTransform(1,0,0,1,0,0);
@@ -2757,6 +2871,8 @@ function render(){
   const fxc=cam.x+viewW/2+sx,fyc=cam.y+ROOM_H*0.6+sy;
   const camD=Math.round((fxc-vw/2)*VZ),camDY=Math.round((fyc-vh*0.6)*VZ),cx=camD/VZ,cy=camDY/VZ;
   const rx0=Math.floor(cx/ROOM_W),rx1=Math.floor((cx+vw)/ROOM_W),ry0=Math.floor(cy/ROOM_H),ry1=Math.floor((cy+vh-0.01)/ROOM_H);
+  if(gf.bg)drawBackdrop(ctx,cx,cy,vw,vh,VZ,camD,camDY);
+  ctx.setTransform(1,0,0,1,0,0);
   for(let ry=ry0;ry<=ry1;ry++){const ya=Math.round(ry*ROOM_H*VZ)-camDY,yb=Math.round((ry+1)*ROOM_H*VZ)-camDY;
     for(let rx=rx0;rx<=rx1;rx++){const xa=Math.round(rx*ROOM_W*VZ)-camD,xb=Math.round((rx+1)*ROOM_W*VZ)-camD;ctx.drawImage(roomCanvas(rx,ry),xa,ya,xb-xa,yb-ya);}}
   ctx.setTransform(VZ,0,0,VZ,-camD,-camDY);
@@ -2909,9 +3025,9 @@ function refreshTitle(){
   $('bNew').classList.toggle('primary',!has);
   $('bNew').textContent=has?'New run':'Enter the keep';
 }
-const GFXB={gLight:'light',gAtmo:'atmo',gGrade:'grade',gHero:'hero',gFx:'fx',gHd:'hd'};
+const GFXB={gLight:'light',gAtmo:'atmo',gGrade:'grade',gHero:'hero',gFx:'fx',gHd:'hd',gBg:'bg'};
 function syncGfx(){const g=GFX();for(const id in GFXB)$(id).setAttribute('aria-pressed',String(!!g[GFXB[id]]));}
-for(const id in GFXB)$(id).onclick=()=>{const g=GFX(),k=GFXB[id];g[k]=!g[k];if(k==='fx'){shakeA=0;zoom=1;}writeSave();syncGfx();render();};
+for(const id in GFXB)$(id).onclick=()=>{const g=GFX(),k=GFXB[id];g[k]=!g[k];if(k==='fx'){shakeA=0;zoom=1;}if(k==='bg')clearRooms();writeSave();syncGfx();render();};
 function syncToggles(){$('tSound').setAttribute('aria-pressed',String(S.set.sound));$('tSaver').setAttribute('aria-pressed',String(S.set.saver));$('tLefty').setAttribute('aria-pressed',String(S.set.lefty));$('tCalm').setAttribute('aria-pressed',String(!!S.set.calm));}
 function pause(){if(mode!=='play')return;snapshotResume();mode='paused';clearInput();S.floorTime=levelTime;writeSave();
   $('pTitle').textContent='Floor '+L.n+' · '+themeName(L.n);$('pFloorTime').textContent=fmt(levelTime);$('pRunTime').textContent=fmt(S.time+levelTime);$('pDeaths').textContent=String(S.deaths);
