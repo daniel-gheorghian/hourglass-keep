@@ -770,6 +770,7 @@ function genLevel(n,seed,test,legacy){
       if(keepWall.has((rr-1)*cols+cc))continue;
       hol.push(cc,rr-1);}
     for(let i=0;i<hol.length;i+=2){set(hol[i],hol[i+1],EMPTY);if(ch(0.16))L.windows.push({c:hol[i],r:hol[i+1]});}}
+  L.base0=L.base.slice(); // the terrain as built: wall decoration follows it, so it doesn't vanish when a tile falls
   for(const bl of L.ext.blocks){bl.under=raw(bl.c,bl.r);set(bl.c,bl.r,WALL);}
   for(let rr=0;rr<rows;rr++)for(let cc=0;cc<cols;cc++){const f=fe(cc,rr);if(f)L.dyn.push({c:cc,r:rr,f});}
   rebuildBlocks(L);
@@ -1125,9 +1126,14 @@ function killSnake(sn){sn.alive=false;sn.t=0;sn.state='dead';Snd.play('hit');spa
 function pushBack(dir,dist){let tx=P.x+dir*dist;if(!solidBelow(L,pCol(tx),pRow()))tx=P.x;P.x=clampMove(P.x,tx,P.y,P,P.state==='crouch');}
 function trapHit(cause,dir){if(P.inv>0||P.state==='dead')return;P.inv=0.9;hurt(1,cause);if(P.state==='dead')return;
   if(['stand','run','stop','step','turn','garde','advance','retreat','strike','parry','blocked','land','drink','edgeWalk','lowStrike'].includes(P.state)){pushBack(dir,12);P.vx=0;setState('landHurt');}}
+const CROUCH_ROOM=14; // a crouch leans the head well forward: keep this much room before a wall (the drawing presses back the rest)
+function crouchLimit(face){const hc=Math.floor((P.x+face*CROUCH_ROOM)/TW);if(B(L,hc,pRow())!==WALL)return null;return face>0?hc*TW-CROUCH_ROOM-0.01:(hc+1)*TW+CROUCH_ROOM+0.01;}
 function stCrouch(dt,ix){
   if(!supported())return startFall(0);
   standOn();
+  {const lim=crouchLimit(P.face); // facing a wall: shuffle back to make room instead of putting his head in it
+    if(lim!==null&&(lim-P.x)*P.face<0){let nx=P.x+Math.sign(lim-P.x)*Math.min(Math.abs(lim-P.x),CRAWL*1.6*dt);nx=clampMove(P.x,nx,P.y,P,true);
+      if(solidBelow(L,Math.floor(nx/TW),pRow()))P.x=nx;}}
   const tight=underLow();P.crawling=false;
   if(!tight&&P.peace<=0){const g=nearGuard(64);if(g)return enterGarde(g);}
   if(took('u')||took('j')){if(tight){Snd.play('bump');hint('crawl');return;}P.lowSword=false;return setState('stand');}
@@ -1141,7 +1147,8 @@ function stCrouch(dt,ix){
     if(ix!==P.face){P.face=ix;return;}
     const want=P.x+ix*CRAWL*dt;
     if(!solidBelow(L,Math.floor((want+ix*6)/TW),pRow()))return;
-    const nx=clampMove(P.x,want,P.y,P,true);
+    let nx=clampMove(P.x,want,P.y,P,true);
+    const lim=crouchLimit(ix);if(lim!==null&&(nx-lim)*ix>0)nx=(P.x-lim)*ix>0?P.x:lim;
     if(Math.abs(nx-P.x)>0.01){P.x=nx;const ph0=P.ph;P.ph+=CRAWL*dt/26;P.crawling=true;if(Math.floor(ph0*2)!==Math.floor(P.ph*2))Snd.play('step');}
   }
 }
@@ -1758,7 +1765,7 @@ function drawRoomStatic(g,rx,ry,stage){
     g.restore();
   }
   for(let rr=-1;rr<RH;rr++)for(let cc=0;cc<RW;cc++){const gc=rx*RW+cc,gr=ry*RH+rr;
-    if(gr>=0&&B(L,gc,gr)===EMPTY&&B(L,gc,gr+1)===FLOOR&&!(B(L,gc-1,gr)===WALL&&B(L,gc+1,gr)===WALL)&&hash2(Math.floor(gc/RW)+17,Math.floor(gr/RH)+3)%4!==0)drawArch(g,cc*TW,rr*TH,th);}
+    if(gr>=0&&D0(gc,gr)===EMPTY&&D0(gc,gr+1)===FLOOR&&!(D0(gc-1,gr)===WALL&&D0(gc+1,gr)===WALL)&&hash2(Math.floor(gc/RW)+17,Math.floor(gr/RH)+3)%4!==0)drawArch(g,cc*TW,rr*TH,th);}
   for(const w of L.windows){if(Math.floor(w.c/RW)!==rx||Math.floor(w.r/RH)!==ry)continue;drawWindow(g,(w.c%RW)*TW+16,(w.r%RH)*TH+38,th,w.c);}
   }
   // neighbours one cell outside the room are drawn too, so faces that overhang a room edge don't leave seams
@@ -1824,8 +1831,11 @@ function wallCell(g,X,Y,gc,gr,th){
     }
   }
 }
+// decoration (arches, wall panels, hangings) is laid out on the terrain as built, not as it is now
+function D0(c,r){if(c<0||c>=L.cols||r<0)return WALL;if(r>=L.rows)return EMPTY;return L.base0?L.base0[r*L.cols+c]:L.base[r*L.cols+c];}
+function solidBelowD(c,r){const b=D0(c,r);if(b===FLOOR)return true;if(b===WALL)return false;return r+1<L.rows&&D0(c,r+1)===WALL;}
 function backCell(g,X,Y,gc,gr,th){
-  const st=th.style,h=hash2(gc*3+11,gr*5+7),fl=solidBelow(L,gc,gr),low=B(L,gc,gr-1)!==EMPTY;
+  const st=th.style,h=hash2(gc*3+11,gr*5+7),fl=solidBelowD(gc,gr),low=D0(gc,gr-1)!==EMPTY;
   if(st==='palace'||st==='crypt'){
     g.fillStyle=th.brick;g.fillRect(X,Y,TW,TH);
     g.fillStyle=th.mortar;g.globalAlpha=0.55;
@@ -1859,17 +1869,17 @@ function backCell(g,X,Y,gc,gr,th){
   if(st==='dungeon'){
     if(h%7===2){const sx=X+4+h%20;const dg=g.createLinearGradient(0,Y,0,Y+46);dg.addColorStop(0,'rgba(80,110,80,.24)');dg.addColorStop(1,'rgba(80,110,80,0)');g.fillStyle=dg;g.fillRect(sx,Y,5,46);}
     if(h%9===0){g.fillStyle='#15171d';g.fillRect(X+14,Y+24,4,3);g.strokeStyle='#2a2d36';g.lineWidth=1.3;g.beginPath();g.arc(X+16,Y+31,3.4,0,Math.PI*2);g.stroke();g.strokeStyle='rgba(255,255,255,.14)';g.lineWidth=0.6;g.beginPath();g.arc(X+16,Y+31,3.4,Math.PI*1.1,Math.PI*1.6);g.stroke();}
-    if(h%13===1&&B(L,gc,gr-1)!==EMPTY){g.strokeStyle='#363a44';g.lineWidth=0.9;for(let i=0;i<6;i++){g.beginPath();g.ellipse(X+22,Y+2+i*3.4,i%2?0.7:1.6,2,0,0,Math.PI*2);g.stroke();}}
+    if(h%13===1&&D0(gc,gr-1)!==EMPTY){g.strokeStyle='#363a44';g.lineWidth=0.9;for(let i=0;i<6;i++){g.beginPath();g.ellipse(X+22,Y+2+i*3.4,i%2?0.7:1.6,2,0,0,Math.PI*2);g.stroke();}}
   }
   if(st==='forge'){
     const sg=g.createLinearGradient(0,Y,0,Y+30);sg.addColorStop(0,'rgba(0,0,0,.42)');sg.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=sg;g.fillRect(X,Y,TW,30);
-    if(h%9===0&&solidBelow(L,gc,gr)){const vx=X+16,vy=Y+TH-15;
+    if(h%9===0&&solidBelowD(gc,gr)){const vx=X+16,vy=Y+TH-15;
       g.fillStyle='#0b0812';g.beginPath();g.moveTo(vx-5,vy+9);g.lineTo(vx-5,vy);g.arc(vx,vy,5,Math.PI,0);g.lineTo(vx+5,vy+9);g.closePath();g.fill();
       const vg=g.createRadialGradient(vx,vy+6,0.5,vx,vy+6,7);vg.addColorStop(0,'#ffb35a');vg.addColorStop(1,'#5a1a0c');g.fillStyle=vg;
       g.beginPath();g.moveTo(vx-3.8,vy+9);g.lineTo(vx-3.8,vy);g.arc(vx,vy,3.8,Math.PI,0);g.lineTo(vx+3.8,vy+9);g.closePath();g.fill();
       g.fillStyle='#1a0d0a';for(let i=-1;i<=1;i++)g.fillRect(vx+i*2.2-0.4,vy-3,0.8,12);}
   }
-  if(B(L,gc,gr-1)!==EMPTY){const gr2=g.createLinearGradient(0,Y,0,Y+16);gr2.addColorStop(0,'rgba(0,0,0,.45)');gr2.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr2;g.fillRect(X,Y,TW,16);}
+  if(D0(gc,gr-1)!==EMPTY){const gr2=g.createLinearGradient(0,Y,0,Y+16);gr2.addColorStop(0,'rgba(0,0,0,.45)');gr2.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr2;g.fillRect(X,Y,TW,16);}
   const gr3=g.createLinearGradient(0,Y+TH-22,0,Y+TH);gr3.addColorStop(0,'rgba(0,0,0,0)');gr3.addColorStop(1,'rgba(0,0,0,.28)');g.fillStyle=gr3;g.fillRect(X,Y+TH-22,TW,22);
 }
 function star8(g,cx,cy,R,r,col){g.fillStyle=col;g.beginPath();for(let i=0;i<16;i++){const a=i*Math.PI/8-Math.PI/2,rr=i%2?r:R,px=cx+Math.cos(a)*rr,py=cy+Math.sin(a)*rr;if(i)g.lineTo(px,py);else g.moveTo(px,py);}g.closePath();g.fill();}
@@ -1888,7 +1898,7 @@ function tilePanel(g,X,Y,th){
 }
 function decor(g,X,Y,gc,gr,th,lit){
   const st=th.style,h=hash2(gc*7+3,gr*11+5);
-  const low=B(L,gc,gr-1)!==EMPTY,onFloor=solidBelow(L,gc,gr),isLit=lit.has(gr*L.cols+gc);
+  const low=D0(gc,gr-1)!==EMPTY,onFloor=solidBelowD(gc,gr),isLit=lit.has(gr*L.cols+gc);
   if(st==='palace'&&onFloor&&!isLit&&h%5===0)tapestry(g,X+16,Y+23,th);
   if(st==='crypt'&&onFloor&&(isLit||h%4===0))niche(g,X+16,Y+24,th);
 }
@@ -2246,8 +2256,9 @@ function drawGate(ctx,f,X,Y,ys,half){
     ctx.fillStyle='#0b0812';ctx.beginPath();ctx.moveTo(x-1.6,bot-0.5);ctx.lineTo(x,bot+3);ctx.lineTo(x+1.6,bot-0.5);ctx.fill();
     ctx.fillStyle='#b8bdc8';ctx.beginPath();ctx.moveTo(x-0.9,bot-0.5);ctx.lineTo(x,bot+1.9);ctx.lineTo(x+0.9,bot-0.5);ctx.fill();}
   ceilShade(ctx,pl);ctx.restore();}
-  // a timed gate carries its hourglass just under the ceiling, where the gate's top disappears
-  if(!half&&!f.latch&&f.dur>0)drawGlass(ctx,gx2,pl.top+8,f.tm>0&&f.tm<Infinity?f.tm/f.dur:1);
+  // a timed gate shows its hourglass on a dark medallion over the lintel, drawn last so nothing hides it
+  if(half&&!f.latch&&f.dur>0){const gy=pl.top-7;ctx.fillStyle='rgba(11,8,18,.88)';ctx.beginPath();ctx.ellipse(gx2,gy,7.6,9.6,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#d8b04a';ctx.lineWidth=0.9;ctx.stroke();drawGlass(ctx,gx2,gy,f.tm>0&&f.tm<Infinity?f.tm/f.dur:1);}
 }
 function drawJaws(ctx,o,f,X,Y,ys,half){
   const k=chompK(f),pl=plane(X,Y,ys,o.c,o.r),sh=o.c%7,sc=0.8;
@@ -2278,25 +2289,32 @@ function drawJaws(ctx,o,f,X,Y,ys,half){
 // The leading edge of a wall stands on the front plane, nearer than anyone walking the corridor: copy that
 // sliver of the pre-drawn room back over the actors (the old foreground-layer trick).
 function terrainAt(c,r){const u=L.blockUnder?L.blockUnder.get(r*L.cols+c):undefined;return u!==undefined?u:B(L,c,r);}
-function copyWorld(ctx,wx,wy,w,h){
-  for(let ry=Math.floor(wy/ROOM_H);ry<=Math.floor((wy+h-0.01)/ROOM_H);ry++)for(let rx=Math.floor(wx/ROOM_W);rx<=Math.floor((wx+w-0.01)/ROOM_W);rx++){
-    const ix=Math.max(wx,rx*ROOM_W),iy=Math.max(wy,ry*ROOM_H),ix1=Math.min(wx+w,(rx+1)*ROOM_W),iy1=Math.min(wy+h,(ry+1)*ROOM_H);if(ix1<=ix||iy1<=iy)continue;
-    const cv2=roomCanvas(rx,ry),kx=cv2.width/ROOM_W,ky=cv2.height/ROOM_H;
-    ctx.drawImage(cv2,(ix-rx*ROOM_W)*kx,(iy-ry*ROOM_H)*ky,(ix1-ix)*kx,(iy1-iy)*ky,ix,iy,ix1-ix,iy1-iy);}}
 // A figure walks at mid-depth, but a wall's front face stands HX nearer and HX further left. Rather than let a
 // figure sink into that face (or slice it with a sliver of wall), draw it pressed against the face instead.
-function pushOut(x,y,h){
-  const xr=x+BW+1,cw=Math.floor((xr+HX)/TW),fx=cw*TW-HX;
-  if(xr<=fx||x-BW>=cw*TW)return 0;
-  const yt=y-h,yb=y-3;
+// How far a figure's pose reaches to its right of x, and how high it stands (crouching leans the head well forward).
+function figReach(face,pose){const s=skel(pose);let mx=-1e9,top=1e9;
+  for(const j of [s.kF,s.fF,s.kB,s.fB,s.sh,s.hd,s.eF,s.hF,s.eB,s.hB]){const x=j[0]*face;if(x>mx)mx=x;if(j[1]<top)top=j[1];}
+  return {right:mx+3,top:top-s.hipH-5};}
+// Pressed against the front face of a wall (or block, or low ceiling) on its right: how far to draw the figure to the
+// left so it doesn't sink into the face, and the face itself, to cut off anything still poking in (a lowered sword).
+function wallPress(x,y,face,pose){
+  const R=figReach(face,pose),xr=x+Math.max(BW+1,R.right),cw=Math.floor(x/TW)+1,fx=cw*TW-HX;
+  if(xr<=fx)return null;
+  const yt=y+R.top,yb=y-3;
   for(let r=Math.floor(yt/TH);r<=Math.floor(yb/TH);r++){
     let top=r*TH,bot=top+TH;
     if(B(L,cw,r)!==WALL){const f=F(L,cw,r);if(f&&f.t==='low')bot=top+TH-34;else continue;}
-    if(yb>top&&yt<bot)return Math.max(-HX-1,fx-xr);
+    if(yb>top&&yt<bot){let wt=top,wb=bot;for(let r2=r+1;r2<=Math.floor(yb/TH);r2++){if(B(L,cw,r2)===WALL)wb=(r2+1)*TH;else break;}
+      return {dx:Math.max(-HX-12,fx-xr),fx,wt,wb};}
   }
-  return 0;
+  return null;
 }
-function figH(st){return ['crouch','poke','lowStrike'].includes(st)?28:52;}
+function pushOut(x,y,face,pose){const w=wallPress(x,y,face,pose);return w?w.dx:0;}
+function figClip(ctx,mode,lg,wc){
+  if(mode===2){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,1e5+lg.ys+1.5);ctx.clip();}           // only what's above the ledge
+  else if(mode===1){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);ctx.rect(lg.xe-HX,lg.ys+1.5,TW,HANG+16);ctx.clip('evenodd');} // behind the wall's face
+  if(wc){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);ctx.rect(wc.fx,wc.wt,1e4,wc.wb-wc.wt);ctx.clip('evenodd');}
+}
 function ledgeOf(){const st=P.state;
   if(st==='hang'||st==='climb')return P.ledge;
   if((st==='climbDown'||st==='jumpUp')&&P.cs&&P.cs.ledge)return P.cs.ledge;return null;}
@@ -2306,24 +2324,14 @@ function wallBelow(lg){return terrainAt(lg.c,lg.r+1)===WALL||!!blockAtCell(lg.c,
 function updateLook(dt){
   if(!P)return;const st=P.state,lg=ledgeOf();let tdx=0,tdy=0,mode=0;
   if(lg){const k=st==='hang'?1:st==='climb'?1-Math.min(1,P.t/0.45):st==='climbDown'?Math.max(0,(P.t/0.5-0.5)/0.5):clamp((P.t-0.1)/0.22,0,1);
-    tdx=lerp(st==='jumpUp'?pushOut(P.x,P.y,52):0,-lg.s*6,k);tdy=-2*k;
+    tdx=lerp(st==='jumpUp'?pushOut(P.x,P.y,P.face,P.pose):0,-lg.s*6,k);tdy=-2*k;
     // jumping up at a wall's near face he slips behind its front face; once hanging the wall hides all but his hands
     if(lg.s<0&&wallBelow(lg))mode=st==='jumpUp'?1:2;}
-  else tdx=st==='dead'?0:pushOut(P.x,P.y,figH(st));
+  else tdx=st==='dead'?0:pushOut(P.x,P.y,P.face,P.pose);
   const a=1-Math.exp(-dt*28);
   if((P.hideMode||0)>0&&!mode){P.rdx=tdx;P.rdy=tdy;} // stepping out from behind the wall: no slide in plain view
   else{P.rdx=(P.rdx||0)+(tdx-(P.rdx||0))*a;P.rdy=(P.rdy||0)+(tdy-(P.rdy||0))*a;}
   P.hideMode=mode;if(mode)P.hideLg=lg;
-}
-function frontStrips(ctx){
-  // On the near face of a wall or block, below the ledge, the face stands between him and us (mode 1); while he
-  // hangs or climbs, all of him below the ledge is hidden, as in the original (mode 2). On a block's far side, or
-  // under a thin floor, nothing is in front of him.
-  const lg=P&&P.hideLg,m=P&&P.hideMode;if(!lg||!m)return;
-  const x=m===2?lg.xe-26:lg.xe-HX,y=lg.ys+1.5,w=lg.xe+TW-HX-x,h=HANG+16;
-  ctx.save();copyWorld(ctx,x,y,w,h);
-  const bl=blockAtCell(lg.c,lg.r+1);if(bl){ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();drawBlock(ctx,bl,L.theme);}
-  ctx.restore();
 }
 function drawBlock(ctx,bl,th){const k=bl.mv?ease(Math.min(1,bl.mv.t/bl.mv.dur)):0,by=bl.r*TH,bx=(bl.mv?lerp(bl.mv.from,bl.mv.to,k):bl.c)*TW-HX;
     ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+DX,by-DY);ctx.lineTo(bx+TW+DX,by-DY);ctx.lineTo(bx+TW+DX,by+TH-DY);ctx.lineTo(bx+TW,by+TH);ctx.lineTo(bx+TW,by);ctx.closePath();ctx.fillStyle='#0b0812';ctx.fill();
@@ -2397,14 +2405,16 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     else slab(ctx,0,0,th,true,true);ctx.restore();}
   for(const sn of SN){if(sn.gone||sn.x<x0-30||sn.x>x1+30||sn.y<y0||sn.y>y1+20)continue;drawSnake(ctx,sn);}
   for(const g of G){if(g.gone)continue;if(g.x<x0-30||g.x>x1+30||g.y<y0-10||g.y>y1+70)continue;
-    drawFigure(ctx,g.x+(g.alive?pushOut(g.x,g.y,52):0),g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:(g.alive&&g.state!=='idle'&&g.state!=='drop'),hasSword:!g.skel,flash:g.flash,alpha:g.alive?undefined:clamp(1-(g.t-1.1)/0.8,0,1)});}
+    const wc=g.alive?wallPress(g.x,g.y,g.face,g.pose):null;ctx.save();figClip(ctx,0,null,wc);
+    drawFigure(ctx,g.x+(wc?wc.dx:0),g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:(g.alive&&g.state!=='idle'&&g.state!=='drop'),hasSword:!g.skel,flash:g.flash,alpha:g.alive?undefined:clamp(1-(g.t-1.1)/0.8,0,1)});ctx.restore();}
   if(P){
     if(!(P.state==='dead'&&P.cause==='fall'&&P.y>L.rows*TH))
+    ctx.save();figClip(ctx,P.hideMode,P.hideLg,P.state==='dead'?null:wallPress(P.x,P.y,P.face,P.pose));
     drawFigure(ctx,P.x+(P.rdx||0),P.y+(P.rdy||0),P.face,P.pose,PAL_HERO,{yo:P.yo,sword:(P.sword&&!!P.foe)||P.state==='lowStrike'||P.state==='poke'||(P.lowSword&&P.state==='crouch'),hasSword:true,flash:P.flash,alpha:P.state==='exit'?Math.max(0,1-P.t*1.1):undefined,flutter:Math.min(1,Math.abs(P.vx)/90+(P.state==='air'?0.8:0)),time:gameTime});
+    ctx.restore();
   }
   // the near half of gates and jaws crosses in front of anyone walking the corridor
   for(const o of L.dyn){if(!inRoom(o.c,o.r))continue;const X=o.c*TW,Y=o.r*TH,ys=SURF(o.r);if(o.f.t==='gate')drawGate(ctx,o.f,X,Y,ys,1);else if(o.f.t==='chomp')drawJaws(ctx,o,o.f,X,Y,ys,1);}
-  frontStrips(ctx);
   for(const o of L.dyn)if(o.f.t==='vent'&&inRoom(o.c,o.r))drawVentFire(ctx,o,o.f);
   {const chs=L.ext.chase;if(chs&&chs.on&&(chs.fade||0)<1){drawStorm(ctx,chs,x0,x1,y0,y1);}}
   for(const p of FX){ctx.globalAlpha=Math.max(0,1-p.t/p.life);ctx.fillStyle=p.col;ctx.fillRect(p.x-p.sz/2,p.y-p.sz/2,p.sz,p.sz);}
@@ -2653,7 +2663,7 @@ window.__HK={genLevel,setKey,took,
   load(n,seed,test){clearInput();quiet=!!test;L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);mode='play';intro=0;FX.length=0;clearRooms();cam.snap=true;updateCamera(0);return L;},
   loadMap(spec){return spec;},
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
-  get P(){return P;},get L(){return L;},get drawnCamX(){return drawnCamX;},roomWork,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
+  get P(){return P;},get L(){return L;},get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
   get S(){return S;},get REW(){return REW;},wallTouch,SW_W,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName};
 
