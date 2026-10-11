@@ -220,9 +220,10 @@ function themeName(n){const i=Math.floor((n-1)/4),t=THEMES[i%THEMES.length],k=Ma
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=7;
-function newSave(prev){return {v:1,gen:GEN,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
+function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
-function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(s.gen!==GEN){s.gen=GEN;s.cp=-1;s.resume=null;s.floorTime=0;}return s;}}catch(e){}return null;}
+function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(s.gen!==GEN){s.gen=GEN;s.cp=-1;s.resume=null;s.floorTime=0;}
+    if(!s.chaseLen){s.chaseLen=1;if(s.started&&(s.cp>=0||s.resume||s.floorTime>0))s.legacyFloor=s.level;}return s;}}catch(e){}return null;}
 let S=loadSave()||newSave();
 function writeSave(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 
@@ -233,12 +234,15 @@ function F(L,c,r){if(c<0||c>=L.cols||r<0||r>=L.rows)return null;return L.feat[r*
 function solidBelow(L,c,r){const b=B(L,c,r);if(b===FLOOR)return true;if(b===WALL)return false;return r+1<L.rows&&B(L,c,r+1)===WALL;}
 
 // ================= generator =================
-function genLevel(n,seed,test){
+function genLevel(n,seed,test,legacy){
   const rng=mulberry32(seed), ri=(a,b)=>a+Math.floor(rng()*(b-a+1)), ch=p=>rng()<p;
   const d=Math.min(1,(n-1)/24);
-  const roomsW=Math.min(28+Math.floor((n-1)*2.2),72), roomsH=n<=2?1:n<=6?2:3;
+  // A floor with a sandstorm chase is built four rooms longer, so the chase adds to the floor instead of eating into it.
+  // The chase roll is the 4th draw of the floor's stream (the first three never depend on the width), so peek at it first.
+  const peek=mulberry32(seed);peek();peek();peek();const chaseFloor=n>=6&&peek()<0.65;
+  const roomsW=Math.min(28+Math.floor((n-1)*2.2),72)+(chaseFloor&&!legacy?4:0), roomsH=n<=2?1:n<=6?2:3;
   const cols=roomsW*RW, rows=roomsH*RH+2;
-  const L={n,seed,d,cols,rows,roomsW,roomsH,base:new Uint8Array(cols*rows).fill(WALL),feat:new Array(cols*rows).fill(null),
+  const L={n,seed,d,cols,rows,roomsW,roomsH,chaseFloor,base:new Uint8Array(cols*rows).fill(WALL),feat:new Array(cols*rows).fill(null),
     items:[],guards:[],snakeSpecs:[],torches:[],windows:[],cps:[],path:[],debris:[],dyn:[],rubble:new Set(),
     theme:THEMES[Math.floor((n-1)/4)%THEMES.length],door:null,start:null,cpIndex:-1,test:!!test,ext:{darts:[],blocks:[]}};
   const W=(c,r)=>c>=1&&c<cols-1&&r>=0&&r<rows&&L.base[r*cols+c]===WALL;
@@ -959,7 +963,7 @@ function makeGuard(gd,i){const d=L.d,cap=gd.cap,sk=!!gd.skel,tr=cap?CAPT:TIERS[g
 function makeSnake(sp){return {x:sp.x,r:sp.r,y:SURF(sp.r),lo:sp.lo,hi:sp.hi,dir:-1,state:'slither',t:0,ph:Math.random()*6,alive:true,gone:false,cool:0,lunge:0,hitDone:false};}
 
 function startLevel(n,cpIdx){
-  quiet=false;L=genLevel(n,levelSeed(n),false);REW.length=0;rw=null;if(cpIdx<0)S.sands=SANDS;
+  quiet=false;L=genLevel(n,levelSeed(n),false,n===S.legacyFloor);REW.length=0;rw=null;if(cpIdx<0)S.sands=SANDS;
   G=L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];
   P=makePlayer(L.start.x,L.start.r);
   if((S.lifeTaken||[]).includes(n))for(const it of L.items)if(it.type==='life')it.taken=true;
@@ -1688,7 +1692,7 @@ function update(dt){
 function levelComplete(){
   mode='card';
   const n=L.n,ft=levelTime,fd=S.floorDeaths||0;
-  S.time+=ft;S.level=n+1;S.cp=-1;S.floorTime=0;S.floorDeaths=0;S.resume=null;writeSave();
+  S.time+=ft;S.level=n+1;S.cp=-1;S.floorTime=0;S.floorDeaths=0;S.resume=null;S.legacyFloor=0;writeSave();
   Snd.play('clear');
   $('cEyebrow').textContent='Floor '+n+' cleared';
   $('cTitle').textContent=themeName(n);
@@ -2405,7 +2409,7 @@ function loop(ts){
 }
 
 // ================= boot =================
-function previewTitle(){L=genLevel(S.level,levelSeed(S.level),false);G=L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);cam.snap=true;updateCamera(0);roomCache.clear();}
+function previewTitle(){L=genLevel(S.level,levelSeed(S.level),false,S.level===S.legacyFloor);G=L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);cam.snap=true;updateCamera(0);roomCache.clear();}
 function start(data){
   if(data&&data.save&&data.save.v===1)S=data.save;
   previewTitle();refreshTitle();syncToggles();show('title');
