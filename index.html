@@ -248,7 +248,7 @@ function themeName(n){const i=Math.floor((n-1)/4),t=THEMES[i%THEMES.length],k=Ma
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=8;
-const APP_VERSION='31'; // set by the build; shown on the title and pause screens
+const APP_VERSION='32'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(s.gen!==GEN){s.gen=GEN;s.cp=-1;s.resume=null;s.floorTime=0;}
@@ -1239,7 +1239,7 @@ function startLevel(n,cpIdx){
   P=makePlayer(L.start.x,L.start.r);
   if((S.lifeTaken||[]).includes(n))for(const it of L.items)if(it.type==='life')it.taken=true;
   if(cpIdx>=0&&L.cps[cpIdx]){const cp=L.cps[cpIdx];for(let i=0;i<=cpIdx;i++)L.cps[i].on=true;L.cpIndex=cpIdx;P.x=cp.x;P.y=SURF(cp.r);P.fallY=P.y;for(const g of G)if(g.x<cp.x){g.alive=false;g.gone=true;}for(const sn of SN)if(sn.hi<cp.x){sn.alive=false;sn.gone=true;}}
-  FX.length=0;clearRooms();hitStop=0;banner=null;
+  FX.length=0;STORMG.length=0;clearRooms();hitStop=0;banner=null;
   levelTime=S.floorTime||0;
   mode='play';intro=cpIdx>=0?0:2.6;
   S.started=true;S.level=n;writeSave();
@@ -1840,8 +1840,11 @@ function updateFeatures(dt){
     if(!chs.on&&alive&&mode==='play'&&P.x>(chs.c0+1)*TW&&P.x<chs.c1*TW&&pr>=chs.rTop&&pr<=chs.rBot){chs.on=true;chs.t=0;chs.wx=Math.min(P.x-4*TW,(chs.c0-1)*TW);msg('The sand stirs behind you. Run!',3);Snd.play('storm');hint('chase');}
     if(chs.on&&!chs.done){chs.t+=dt;if(alive){const near=clamp(1-(P.x-chs.wx)/150,0,1);if(near>0)shake(0.35+0.9*near);}const lead=P.x-chs.wx,keep=190-30*L.d;if(chs.t>0.7)chs.wx+=(chs.v+Math.max(0,lead-keep)*1.3)*dt; // it hangs on your heels: run ahead and it surges
       if(alive&&P.x<chs.wx+4&&pr>=chs.rTop&&pr<=chs.rBot){flashScreen('#c08a40',0.5,0.4);die('sand');}
-      if(chs.wx>=chs.c1*TW-20||(P.x>chs.c1*TW+8&&chs.wx>(chs.c1-6)*TW)){chs.done=true;if(P.state!=='dead'){msg('The storm breaks against the arch and falls to dust.',3);Snd.play('crumble');}}}
-    if(chs.done&&(chs.fade||0)<1)chs.fade=Math.min(1,(chs.fade||0)+dt*0.8);}}
+      // it ends the moment he is through the arch: the storm makes one last rush after him and breaks up round him
+      if(chs.wx>=chs.c1*TW-20||P.x>chs.c1*TW+8){chs.done=true;
+        if(P.state!=='dead'){msg('The storm breaks at the arch and falls to dust around you.',3);Snd.play('crumble');shake(1.4);
+          const tx=P.x+40;chs.diss={t:0,x0:chs.wx,tx,bx:chs.wx,ts:clamp((tx-chs.wx)/460,0.45,0.95)};STORMG.length=0;}}}
+    if(chs.done){if(chs.diss){if(!chs.diss.over)updateStormDiss(chs,dt);}else if((chs.fade||0)<1)chs.fade=Math.min(1,(chs.fade||0)+dt*0.8);}}}
   if(L.door.opening&&L.door.open<1)L.door.open=Math.min(1,L.door.open+dt*0.45);
   for(let i=L.debris.length-1;i>=0;i--){const d=L.debris[i];
     d.vy=Math.min(d.vy+GRAV*dt,480);const py=d.y;d.y+=d.vy*dt;
@@ -2577,13 +2580,21 @@ function drawGlass(ctx,x,y,frac,cap){ctx.save();ctx.translate(x,y);
 // tumbling out in front. The nearer it gets, the more the air itself turns to dust.
 const stormSprites={};
 function puffSprite(kind){let c=stormSprites[kind];if(c)return c;c=document.createElement('canvas');c.width=c.height=72;const g=c.getContext('2d');
-  const P={lit:['#f2cc8a','#c8934f','rgba(160,112,56,0)'],mid:['#d9a862','#a8763c','rgba(120,80,38,0)'],dark:['#9a6a36','#6e4823','rgba(70,44,20,0)']}[kind];
-  let gr=g.createRadialGradient(36,36,0,36,36,34);gr.addColorStop(0,P[1]);gr.addColorStop(0.62,P[1]);gr.addColorStop(1,P[2]);g.fillStyle=gr;g.fillRect(0,0,72,72);
-  gr=g.createRadialGradient(42,28,0,42,28,24);gr.addColorStop(0,P[0]);gr.addColorStop(0.6,P[0]+'99');gr.addColorStop(1,'rgba(255,230,180,0)');g.fillStyle=gr;g.globalAlpha=0.7;g.fillRect(0,0,72,72);
-  gr=g.createRadialGradient(30,48,0,30,48,26);gr.addColorStop(0,'rgba(60,36,16,.55)');gr.addColorStop(1,'rgba(60,36,16,0)');g.fillStyle=gr;g.globalAlpha=1;g.fillRect(0,0,72,72);
+  const P={lit:['#f2cc8a','#c8934f','rgba(160,112,56,0)'],mid:['#d9a862','#a8763c','rgba(120,80,38,0)'],dark:['#9a6a36','#6e4823','rgba(70,44,20,0)'],soft:['#e8c288','#c99a5c','rgba(190,140,80,0)']}[kind];
+  // a soft falloff from a small core, so neighbouring billows melt into each other instead of reading as balls
+  let gr=g.createRadialGradient(36,36,0,36,36,35);gr.addColorStop(0,P[1]);gr.addColorStop(0.36,P[1]);gr.addColorStop(0.7,P[1]+'88');gr.addColorStop(1,P[2]);g.fillStyle=gr;g.fillRect(0,0,72,72);
+  // (the soft kind, for the very front, has no highlight or shadow: a lit ball there reads as a bubble, not dust)
+  if(kind!=='soft'){gr=g.createRadialGradient(42,28,0,42,28,24);gr.addColorStop(0,P[0]);gr.addColorStop(0.5,P[0]+'77');gr.addColorStop(1,'rgba(255,230,180,0)');g.fillStyle=gr;g.globalAlpha=0.65;g.fillRect(0,0,72,72);
+  gr=g.createRadialGradient(30,48,0,30,48,26);gr.addColorStop(0,'rgba(60,36,16,.45)');gr.addColorStop(1,'rgba(60,36,16,0)');g.fillStyle=gr;g.globalAlpha=1;g.fillRect(0,0,72,72);}
+  else{gr=g.createRadialGradient(36,30,0,36,30,30);gr.addColorStop(0,'rgba(244,214,160,.35)');gr.addColorStop(1,'rgba(244,214,160,0)');g.fillStyle=gr;g.fillRect(0,0,72,72);}
   stormSprites[kind]=c;return c;}
-function drawStormHD(ctx,ch,x0,x1,y0,y1){const a=1-(ch.fade||0),fx=ch.wx,t=gameTime;if(fx<x0-60)return;
+// a long soft streak of blown sand: the ragged veil over the front
+function wispSprite(){let c=stormSprites.wisp;if(c)return c;c=document.createElement('canvas');c.width=128;c.height=48;const g=c.getContext('2d');
+  g.translate(64,24);g.scale(1,0.36);const gr=g.createRadialGradient(0,0,0,0,0,62);gr.addColorStop(0,'rgba(234,194,130,.8)');gr.addColorStop(0.45,'rgba(214,170,104,.4)');gr.addColorStop(1,'rgba(200,150,84,0)');
+  g.fillStyle=gr;g.fillRect(-64,-67,128,134);stormSprites.wisp=c;return c;}
+function drawStormHD(ctx,ch,x0,x1,y0,y1){const D=ch.diss,a=1-(ch.fade||0),fx=D?D.bx:ch.wx,t=gameTime;if(Math.max(fx,ch.wx)<x0-60)return;
   const top=Math.max(y0,ch.rTop*TH),bot=Math.min(y1,(ch.rBot+1)*TH),H=bot-top;if(H<=0)return;
+  if(D&&a<=0.01){drawStormBurst(ctx,ch,top,bot,H,t);return;}
   ctx.save();ctx.globalAlpha=a;
   // haze running ahead of the front
   let gr=ctx.createLinearGradient(fx-10,0,fx+80,0);gr.addColorStop(0,'rgba(200,150,84,.42)');gr.addColorStop(1,'rgba(200,150,84,0)');ctx.fillStyle=gr;ctx.fillRect(fx-10,top,90,H);
@@ -2599,14 +2610,25 @@ function drawStormHD(ctx,ch,x0,x1,y0,y1){const a=1-(ch.fade||0),fx=ch.wx,t=gameT
     ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(cx,cy,r*0.55,s0+1.5,s0+3.8);ctx.stroke();}
   // billows along the front: ranks from deep inside (big, dark) to the very front (smaller, lit gold); the front bulges
   // and recedes in slow waves, and every billow rolls up and forward before it melts back into the storm
-  const bulge=y=>20*Math.sin(y*0.017+t*1.25)+9*Math.sin(y*0.043-t*2.2)+4*Math.sin(y*0.11+t*4);
-  for(const [rank,kind,depth,rmin,rmax,step,alpha] of [[4,'dark',84,22,32,19,1],[2,'mid',44,14,24,13,0.98],[1,'mid',20,11,19,11,0.97],[0,'lit',2,8,15,9.5,0.95]]){
-    const spr=puffSprite(kind),rows=Math.ceil((H+40)/step)+1;ctx.globalAlpha=a*alpha;
+  // (when the storm breaks, the two front ranks burst forward past the prince instead: see drawStormBurst)
+  for(const [rank,kind,depth,rmin,rmax,step,alpha] of [[4,'dark',84,22,32,19,1],[2,'mid',44,14,24,13,0.98],[1,'mid',22,12,20,11,0.9],[0,'soft',2,13,22,10,0.62]]){
+    if(D&&rank<2)continue;
+    const spr=puffSprite(kind),rows=Math.ceil((H+40)/step)+1,grow=D?1+0.6*(ch.fade||0):1;ctx.globalAlpha=a*alpha;
     for(let i=0;i<rows;i++){const hh=hash2(i*13+rank,rank*7+3),sp=0.35+(hh%7)*0.05+rank*0.04,ph=((t*sp+(hh>>>5)%100/100)%1),
       yy=top-20+((i+0.5)*step+((hh>>>9)%7)-ph*step*1.6+(H+40)*4)%(H+40),
-      r=(rmin+((hh>>>14)%100)/100*(rmax-rmin))*(0.85+0.3*Math.sin(Math.PI*ph)),
-      xx=fx-depth+bulge(yy+rank*9)+((hh>>>20)%13-6)+ph*7*(rank===0?1.4:1)-r*0.3;
+      r=(rmin+((hh>>>14)%100)/100*(rmax-rmin))*(0.85+0.3*Math.sin(Math.PI*ph))*grow,
+      xx=fx-depth+stormBulge(yy+rank*9,t)+((hh>>>20)%13-6)+ph*7*(rank===0?1.4:1)-r*0.3;
       ctx.drawImage(spr,xx-r,yy-r,2*r,2*r);}}
+  if(D){ctx.restore();drawStormBurst(ctx,ch,top,bot,H,t);return;}
+  // a ragged veil of blown sand over and ahead of the front: streaks peel off the billows and thin out as they go,
+  // so the edge is never one clean line
+  {const wsp=wispSprite();
+    // a continuous soft fringe right along the front
+    for(let y=Math.floor((top-8)/11)*11;y<bot+8;y+=11){const h=hash2(y,717),w=58+(h>>>5)%30,hh=14+(h>>>11)%8,xx=fx-34+stormBulge(y,t)*0.9+6*Math.sin(t*2.3+y*0.05);
+      ctx.globalAlpha=a*0.42;ctx.drawImage(wsp,xx,y+(h%9)-4-hh/2,w,hh);}
+    for(let i=0;i<34;i++){const h=hash2(i,6151),inner=i<12,sp=(inner?0.7:0.45)+(h%9)*0.06,ph=(t*sp+((h>>>4)%100)/100)%1,yy=top-6+((h>>>11)%1000)/1000*(H+12),
+      w=(inner?34:44)+(inner?30:64)*ph+(h>>>21)%22,hh=w*(0.26+((h>>>8)%5)*0.045),xx=fx+(inner?-26:-14)+stormBulge(yy,t)*0.8+ph*(inner?34:78+(h>>>16)%40);
+      ctx.globalAlpha=a*(inner?0.6:0.5)*Math.min(1,ph*5)*(1-ph);ctx.drawImage(wsp,xx-w*0.3,yy-hh/2-ph*5,w,hh);}}
   ctx.globalAlpha=a;
   // dust rolling along the floors just ahead of the front
   for(let r2=Math.floor(top/TH);r2<=Math.floor((bot-1)/TH);r2++){const ys=SURF(r2);if(ys<top||ys>bot||!solidBelow(L,Math.floor((fx+16)/TW),r2))continue;
@@ -2626,7 +2648,63 @@ function drawStormHD(ctx,ch,x0,x1,y0,y1){const a=1-(ch.fade||0),fx=ch.wx,t=gameT
   // the nearer it is, the dustier the air
   if(P){const k=clamp(1-(P.x-fx)/170,0,1)*a;if(k>0){ctx.globalAlpha=1;ctx.fillStyle='rgba(196,146,82,'+(0.16*k)+')';ctx.fillRect(x0,y0,x1-x0,y1-y0);}}
   ctx.restore();}
-function drawStorm(ctx,ch,x0,x1,y0,y1){const a=1-(ch.fade||0),fx=ch.wx;if(fx<x0-40)return;
+const stormBulge=(y,t)=>20*Math.sin(y*0.017+t*1.25)+9*Math.sin(y*0.043-t*2.2)+4*Math.sin(y*0.11+t*4);
+// the storm breaking: its front billows tear loose and roll on past the prince, swelling and thinning as they go, and
+// part round him instead of swallowing him
+function drawStormBurst(ctx,ch,top,bot,H,t){const D=ch.diss,T=D.t,cx=P?P.x:D.tx,cy=P?P.y-30:0;ctx.save();
+  for(const [rank,kind,rmin,rmax,step] of [[1,'mid',12,20,11],[0,'soft',13,22,10]]){const spr=puffSprite(kind),rows=Math.ceil((H+40)/step)+1;
+    for(let i=0;i<rows;i++){const hh=hash2(i*13+rank,rank*7+3),
+      y0=top-20+((i+0.5)*step+((hh>>>9)%7)+(H+40)*4)%(H+40),
+      bx0=D.x0-(rank?20:2)+stormBulge(y0+rank*9,t)+((hh>>>20)%13-6),
+      delay=((hh>>>3)%10)*0.025,dur=D.ts*(0.85+((hh>>>7)%6)*0.08)+0.35,u=clamp((T-delay)/dur,0,1);if(u>=1)continue;
+      const e=1-Math.pow(1-u,2.2),xx=bx0+(D.tx+40+((hh>>>11)%90)-bx0)*e,
+        dxp=xx-cx,dyp=y0-cy,near=Math.exp(-(dxp*dxp)/(2*55*55)),sd=Math.sign(dyp||((hh&1)?1:-1)),yy=y0+sd*near*(sd<0?46:18)*e,
+        hole=clamp((Math.hypot(dxp,(yy-cy)*1.2)-18)/60,0.08,1),r=(rmin+((hh>>>14)%100)/100*(rmax-rmin))*(1+1.5*e);
+      ctx.globalAlpha=(rank?0.8:0.62)*Math.pow(1-u,1.3)*hole;ctx.drawImage(spr,xx-r,yy-r,2*r,2*r);}}
+  ctx.restore();}
+// grains of the broken storm: they pour past the prince, are thrown round him and whirl, then drop and settle on the floor
+const STORMG=[];
+function updateStormDiss(ch,dt){const D=ch.diss;D.t+=dt;const T=D.t,k=Math.min(1,T/D.ts);
+  ch.wx=T<D.ts?lerp(D.x0,D.tx,1-Math.pow(1-k,3)):D.tx+(T-D.ts)*30; // the rushing front: light, dust and the plain storm follow it
+  D.bx=D.x0+40*Math.min(1,T/0.6);                                    // the storm's body hardly moves on: it only thins away
+  ch.fade=clamp((T-0.15)/1.3,0,1);
+  if(P&&T<D.ts+0.8){D.acc=(D.acc||0)+(T<D.ts?170:60)*dt*(GFX().atmo?1:0.5);
+    while(D.acc>=1){D.acc--;const y=P.y-3-Math.random()*86;
+      STORMG.push({x:ch.wx-Math.random()*50,y,vx:(T<D.ts?300:170)+Math.random()*160,vy:(Math.random()-0.5)*50,t:0,life:1.3+Math.random()*1.5,sw:Math.random()<0.5?1:-1,c:Math.random()<0.35?1:0,set:false});}}
+  const cx=P?P.x:0,cy=P?P.y-30:0;
+  for(let i=STORMG.length-1;i>=0;i--){const g=STORMG[i];g.t+=dt;if(g.t>=g.life){STORMG.splice(i,1);continue;}if(g.set)continue;
+    if(P){const dx=g.x-cx,dy=(g.y-cy)*1.25,d=Math.hypot(dx,dy)||1,R=70;
+      if(d<R){const f=1-d/R;g.vx+=(dx/d*f*f*900-dy/d*f*240*g.sw)*dt;g.vy+=(dy/d*f*f*900+dx/d*f*240*g.sw)*dt;}}
+    g.vx*=Math.exp(-dt*(0.6+g.t*1.2));g.vy=g.vy*Math.exp(-dt*0.8)+(40+g.t*110)*dt;g.x+=g.vx*dt;g.y+=g.vy*dt;
+    const c=Math.floor(g.x/TW),r=Math.floor(g.y/TH);
+    if(B(L,c,r)===WALL){g.life=Math.min(g.life,g.t+0.12);continue;}
+    if(g.vy>0&&g.y>=SURF(r)&&solidBelow(L,c,r)){g.y=SURF(r)-0.4;g.set=true;g.life=Math.min(g.life,g.t+0.8+Math.random()*0.9);}}
+  if(T>3.4&&!STORMG.length)D.over=true;}
+function drawStormDiss(ctx,x0,x1,y0,y1){const D=L.ext.chase.diss,T=D.t;
+  if(P&&T<D.ts+1.8){const cx=P.x,cy=P.y-28,env=clamp(T/(D.ts*0.8),0,1)*clamp(1-(T-D.ts)/1.6,0,1);
+    if(env>0.01){
+      // the air still thick with dust, clearing
+      ctx.fillStyle='rgba(196,146,82,'+(0.13*env)+')';ctx.fillRect(x0,y0,x1-x0,y1-y0);
+      // a cloud wrapping round him, thinnest where he stands
+      const gr=ctx.createRadialGradient(cx,cy,8,cx,cy,120);gr.addColorStop(0,'rgba(222,176,110,'+(0.06*env)+')');gr.addColorStop(0.45,'rgba(206,156,92,'+(0.26*env)+')');gr.addColorStop(1,'rgba(196,146,82,0)');
+      ctx.fillStyle=gr;ctx.fillRect(cx-120,cy-120,240,240);
+      // and sand whirling about him
+      const wsp=wispSprite();
+      for(let k=0;k<7;k++){const rr=26+k*7+T*20,an=T*(2.6-k*0.18)*(k%2?-1:1)+k*0.9,px=cx+Math.cos(an)*rr,py=cy+6+Math.sin(an)*rr*0.55,w=46+k*5,hh=w*0.3;
+        ctx.save();ctx.translate(px,py);ctx.rotate(Math.atan2(Math.cos(an)*0.55,-Math.sin(an))*(k%2?-1:1));ctx.globalAlpha=env*(0.5-k*0.04);ctx.drawImage(wsp,-w/2,-hh/2,w,hh);ctx.restore();}
+      ctx.globalAlpha=1;}
+    // dust settling along the floor
+    const st=clamp((T-0.5)/0.6,0,1)*clamp(1-(T-1.9)/1.3,0,1);
+    if(st>0.01){const ys=SURF(pRow());ctx.save();ctx.translate(cx-30,ys);ctx.scale(1,0.13);
+      const g2=ctx.createRadialGradient(0,0,4,0,0,160);g2.addColorStop(0,'rgba(222,180,114,'+(0.45*st)+')');g2.addColorStop(1,'rgba(222,180,114,0)');ctx.fillStyle=g2;ctx.fillRect(-160,-160,320,320);ctx.restore();}}
+  // the grains, as short streaks while they fly and specks once they settle, batched by colour and fade
+  if(STORMG.length){ctx.lineCap='round';
+    for(const pass of [0,1])for(const ab of [1,2,3]){let any=false;ctx.beginPath();
+      for(const g of STORMG){if(g.c!==pass)continue;const al=Math.min(1,(g.life-g.t)/0.5,g.t*10);if(Math.max(1,Math.min(3,Math.ceil(al*3)))!==ab)continue;any=true;
+        if(g.set){ctx.moveTo(g.x-1,g.y);ctx.lineTo(g.x+1,g.y);}else{const l=Math.min(0.016,4.5/Math.max(1,Math.hypot(g.vx,g.vy)));ctx.moveTo(g.x-g.vx*l,g.y-g.vy*l);ctx.lineTo(g.x+0.1,g.y);}}
+      if(any){ctx.globalAlpha=0.6*ab/3;ctx.strokeStyle=pass?'#dcbb84':'#9a7243';ctx.lineWidth=pass?1:1.3;ctx.stroke();}}
+    ctx.globalAlpha=1;}}
+function drawStorm(ctx,ch,x0,x1,y0,y1){const a=1-(ch.fade||0),fx=ch.diss?ch.diss.bx:ch.wx;if(fx<x0-40)return;
   const top=Math.max(y0,ch.rTop*TH),bot=Math.min(y1,(ch.rBot+1)*TH);ctx.save();ctx.globalAlpha=a;
   const gr=ctx.createLinearGradient(fx-220,0,fx+14,0);gr.addColorStop(0,'rgba(36,22,12,.98)');gr.addColorStop(0.5,'rgba(96,62,28,.96)');gr.addColorStop(0.86,'rgba(168,118,58,.85)');gr.addColorStop(1,'rgba(205,156,86,0)');
   ctx.fillStyle=gr;ctx.beginPath();ctx.moveTo(Math.max(x0-10,fx-400),top);
@@ -2861,7 +2939,9 @@ function drawDynamic(ctx,x0,x1,y0,y1){
 // things that give off their own light: drawn after the lighting pass so it never dims them
 function drawEmissive(ctx,x0,x1,y0,y1){
   for(const o of L.dyn)if(o.f.t==='vent'&&o.c*TW>x0-60&&o.c*TW<x1+60)drawVentFire(ctx,o,o.f);
-  {const chs=L.ext.chase;if(chs&&chs.on&&(chs.fade||0)<1){if(GFX().atmo)drawStormHD(ctx,chs,x0,x1,y0,y1);else drawStorm(ctx,chs,x0,x1,y0,y1);}}
+  {const chs=L.ext.chase;if(chs&&chs.on){const D=chs.diss;
+    if((chs.fade||0)<1||(D&&!D.over)){if(GFX().atmo)drawStormHD(ctx,chs,x0,x1,y0,y1);else if((chs.fade||0)<1)drawStorm(ctx,chs,x0,x1,y0,y1);}
+    if(D&&!D.over)drawStormDiss(ctx,x0,x1,y0,y1);}}
   for(const p of FX){ctx.globalAlpha=Math.max(0,1-p.t/p.life);ctx.fillStyle=p.col;ctx.fillRect(p.x-p.sz/2,p.y-p.sz/2,p.sz,p.sz);}
   ctx.globalAlpha=1;
 }
@@ -3464,7 +3544,7 @@ if(window.claude&&window.claude.hot&&window.claude.hot.snapshot){try{window.clau
 
 // test hooks
 window.__HK={genLevel,setKey,took,
-  load(n,seed,test){clearInput();quiet=!!test;L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);mode='play';intro=0;FX.length=0;clearRooms();cam.snap=true;updateCamera(0);return L;},
+  load(n,seed,test){clearInput();quiet=!!test;L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);mode="play";intro=0;FX.length=0;STORMG.length=0;clearRooms();cam.snap=true;updateCamera(0);return L;},
   loadMap(spec){return spec;},
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
   get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
