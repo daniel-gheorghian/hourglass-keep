@@ -247,7 +247,7 @@ function themeName(n){const i=Math.floor((n-1)/4),t=THEMES[i%THEMES.length],k=Ma
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=7;
-const APP_VERSION='26'; // set by the build; shown on the title and pause screens
+const APP_VERSION='27'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(s.gen!==GEN){s.gen=GEN;s.cp=-1;s.resume=null;s.floorTime=0;}
@@ -2203,9 +2203,31 @@ function fire(ctx,x,y,s,seed,pal){const t=gameTime,sw=(Math.sin(t*7.3+seed)*1.5+
   tongue(ctx,x,y,3.1*s,10*hh,sw,pal[0]);tongue(ctx,x+0.3*s,y,2.1*s,7*hh,sw*0.7,pal[1]);tongue(ctx,x,y,1.05*s,4*hh,sw*0.4,pal[2]);}
 function embers(ctx,x,y,n,seed,col,rise){const t=gameTime;ctx.fillStyle=col;
   for(let i=0;i<n;i++){const ph=(t*0.65+i/n+seed*0.37)%1;ctx.globalAlpha=(1-ph)*0.9;ctx.fillRect(x+Math.sin(ph*8+i*2.3+seed)*2.6-0.5,y-ph*rise-0.5,1,1);}ctx.globalAlpha=1;}
+// a lamp whose wall has been opened onto the background has nothing to hang on: it stands on the floor or hangs
+// from the arch's keystone instead
+function lampFree(t){return GFX().bg&&inOpening(t.c,t.r);}
+// an iron floor stand: three splayed feet on the floor's back half and a pole up to the given height
+function floorStand(ctx,x,top,base,col,hi){
+  ctx.strokeStyle='#0b0812';ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(x,base-2);ctx.lineTo(x,top);ctx.stroke();
+  ctx.strokeStyle=col;ctx.lineWidth=1.3;ctx.stroke();
+  ctx.strokeStyle='#0b0812';ctx.lineWidth=2.2;ctx.beginPath();ctx.moveTo(x-5.5,base+0.6);ctx.lineTo(x,base-4);ctx.lineTo(x+5.5,base+0.6);ctx.moveTo(x+1.8,base-1.2);ctx.lineTo(x,base-4);ctx.stroke();
+  ctx.strokeStyle=col;ctx.lineWidth=1;ctx.stroke();
+  ctx.fillStyle=hi;ctx.fillRect(x-0.4,top,0.8,(base-2-top)*0.7);
+  ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(x,base+0.8,7,1.4,0,0,Math.PI*2);ctx.fill();}
 function drawLight(ctx,t,th){
+  const free=lampFree(t),base=SURF(t.r)-HY+1.5,key=(t.r-1)*TH+11;
   const x=t.c*TW+16,y=SURF(t.r)-38,st=th.style,tm=gameTime,seed=(t.c*7+t.r*13)%10,f=Math.sin(tm*13+seed)*0.6+Math.sin(tm*7.3+seed*1.7)*0.4;
   const glow=(gx,gy,r,a)=>{ctx.save();ctx.globalCompositeOperation='lighter';const gr=ctx.createRadialGradient(gx,gy,1,gx,gy,r);gr.addColorStop(0,'rgba('+th.glow+','+(a+f*0.04)+')');gr.addColorStop(1,'rgba('+th.glow+',0)');ctx.fillStyle=gr;ctx.fillRect(gx-r,gy-r,r*2,r*2);ctx.restore();};
+  if(st==='dungeon'&&free){ // pitch torch set in a tall iron stand
+    glow(x+2,y-8,42,0.32);
+    floorStand(ctx,x+3.2,y+8,base,'#2a2d36','#4a4f5c');
+    ctx.fillStyle='#0b0812';ctx.beginPath();ctx.moveTo(x+0.4,y+3);ctx.lineTo(x+6,y+3);ctx.lineTo(x+4.6,y+9);ctx.lineTo(x+1.8,y+9);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#3b404b';ctx.fillRect(x+0.8,y+3.4,4.8,1.2);
+    ctx.strokeStyle='#0b0812';ctx.lineWidth=3.4;ctx.beginPath();ctx.moveTo(x+3.2,y+4);ctx.lineTo(x+3.1,y-4);ctx.stroke();ctx.strokeStyle='#5a3920';ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle='#21150c';ctx.beginPath();ctx.ellipse(x+3.1,y-5,2.4,2.8,0.15,0,Math.PI*2);ctx.fill();
+    fire(ctx,x+3.2,y-6,1.05,seed,FIRE);embers(ctx,x+3.2,y-15,3,seed,'#ffb35a',24);
+    return;
+  }
   if(st==='dungeon'){ // pitch torch in an iron wall bracket
     glow(x+2,y-8,42,0.32);
     ctx.fillStyle='#16181e';ctx.fillRect(x-3,y+1,6,10);ctx.fillStyle='#3b404b';ctx.fillRect(x-3,y+1,6,1);ctx.fillRect(x-1,y+4,2,2);
@@ -2216,12 +2238,16 @@ function drawLight(ctx,t,th){
     fire(ctx,x+3.2,y-6,1.05,seed,FIRE);embers(ctx,x+3.2,y-15,3,seed,'#ffb35a',24);
     return;
   }
-  if(st==='palace'){ // brass lantern on a curled wall bracket, pierced metal throws sparkles
-    const lx=x+6,ly=y-1;glow(lx,ly,40,0.3);
+  if(st==='palace'){ // brass lantern on a curled wall bracket (or, in an open arch, on a chain from the keystone); pierced metal throws sparkles
+    const lx=free?x:x+6,ly=y-1;glow(lx,ly,40,0.3);
+    if(free){ctx.strokeStyle='#0b0812';ctx.lineWidth=2;ctx.setLineDash([1.8,1.1]);ctx.beginPath();ctx.moveTo(lx,key);ctx.lineTo(lx,ly-9);ctx.stroke();
+      ctx.strokeStyle='#b48a3c';ctx.lineWidth=1;ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#7c5c25';ctx.fillRect(lx-2.4,key-1.6,4.8,2.2);
+      ctx.strokeStyle='#b48a3c';ctx.lineWidth=0.9;ctx.beginPath();ctx.arc(lx,ly-10.6,1.5,0,Math.PI*2);ctx.stroke();}
+    else{
     ctx.fillStyle='#7c5c25';ctx.fillRect(x-4.4,y-2,3,11);ctx.fillStyle='#b48a3c';ctx.fillRect(x-4.4,y-2,3,1);
     ctx.strokeStyle='#8d6a2a';ctx.lineWidth=1.3;ctx.beginPath();ctx.moveTo(x-2.4,y+3);ctx.quadraticCurveTo(x-2,y-10,lx,y-10);ctx.stroke();
     ctx.beginPath();ctx.arc(x-0.6,y+0.8,1.8,0,Math.PI*1.5);ctx.stroke();
-    ctx.strokeStyle='#2a2016';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(lx,y-10);ctx.lineTo(lx,ly-8);ctx.stroke();
+    ctx.strokeStyle='#2a2016';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(lx,y-10);ctx.lineTo(lx,ly-8);ctx.stroke();}
     ctx.fillStyle='#0b0812';ctx.beginPath();ctx.moveTo(lx-5,ly-3);ctx.quadraticCurveTo(lx-4,ly-9,lx,ly-9.5);ctx.quadraticCurveTo(lx+4,ly-9,lx+5,ly-3);ctx.lineTo(lx+4.2,ly+5);ctx.lineTo(lx,ly+8);ctx.lineTo(lx-4.2,ly+5);ctx.closePath();ctx.fill();
     ctx.fillStyle='rgba(255,186,92,'+(0.82+f*0.1)+')';ctx.fillRect(lx-3.3,ly-2.4,6.6,6.6);
     fire(ctx,lx,ly+3.4,0.42,seed,FIRE);
@@ -2232,7 +2258,8 @@ function drawLight(ctx,t,th){
     return;
   }
   if(st==='tile'){ // star lantern of coloured glass on a long chain, swaying slowly
-    const top=B(L,t.c,t.r-1)===EMPTY?(t.r-1)*TH:t.r*TH,ly=y-2,ang=Math.sin(tm*1.3+seed)*0.05;
+    const top=free?key:B(L,t.c,t.r-1)===EMPTY?(t.r-1)*TH:t.r*TH,ly=y-2,ang=Math.sin(tm*1.3+seed)*0.05;
+    if(free){ctx.fillStyle='#b8902e';ctx.fillRect(x-2.4,key-1.6,4.8,2.2);}
     glow(x,ly,38,0.3);
     ctx.save();ctx.translate(x,top);ctx.rotate(ang);const d=ly-top;
     ctx.strokeStyle='#2a2016';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,d-8);ctx.stroke();
@@ -2246,8 +2273,9 @@ function drawLight(ctx,t,th){
   }
   if(st==='forge'){ // iron fire basket on a wall bracket, roaring
     const by=y+2;glow(x,by-10,52,0.36);
-    ctx.strokeStyle='#120b08';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(x,by+12);ctx.lineTo(x,by+3);ctx.moveTo(x-4,by+10);ctx.lineTo(x,by+6);ctx.stroke();
-    ctx.fillStyle='#120b08';ctx.fillRect(x-1.6,by+10,3.2,4);
+    if(free)floorStand(ctx,x,by+3,base,'#2a1a14','#5a3a2a');
+    else{ctx.strokeStyle='#120b08';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(x,by+12);ctx.lineTo(x,by+3);ctx.moveTo(x-4,by+10);ctx.lineTo(x,by+6);ctx.stroke();
+    ctx.fillStyle='#120b08';ctx.fillRect(x-1.6,by+10,3.2,4);}
     ctx.fillStyle='#ff7a2a';ctx.beginPath();ctx.ellipse(x,by-2.4,5.6,1.8,0,0,Math.PI*2);ctx.fill();
     fire(ctx,x-2.4,by-2.6,1,seed,FORGE);fire(ctx,x+2.6,by-2.6,0.9,seed+1.7,FORGE);fire(ctx,x,by-2.8,1.3,seed+3.1,FORGE);
     ctx.strokeStyle='#120b08';ctx.lineWidth=1.3;ctx.beginPath();ctx.moveTo(x-6.4,by-3);ctx.lineTo(x-3.6,by+4);ctx.lineTo(x+3.6,by+4);ctx.lineTo(x+6.4,by-3);ctx.stroke();
@@ -2257,6 +2285,11 @@ function drawLight(ctx,t,th){
   }
   // crypt: oil lamp in its niche, burning a cold green flame
   const ly=y+8;glow(x+3,ly-6,36,0.32);
+  if(free){const pt=ly+1.4; // stone pedestal: plinth, shaft, capital
+    ctx.fillStyle='#0b0812';ctx.fillRect(x-5,base-4.5,10,5);ctx.fillRect(x-3.1,pt+2,6.2,base-4-pt-2);ctx.fillRect(x-5,pt,10,3);
+    ctx.fillStyle=th.wallB;ctx.fillRect(x-4.4,base-4,8.8,4);ctx.fillRect(x-2.5,pt+2.6,5,base-4.5-pt-2.6);ctx.fillRect(x-4.4,pt+0.5,8.8,2);
+    ctx.fillStyle=th.hi;ctx.fillRect(x-2.5,pt+2.6,1,base-4.5-pt-2.6);ctx.fillRect(x-4.4,pt+0.5,8.8,0.7);ctx.fillRect(x-4.4,base-4,8.8,0.7);
+    ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(x,base+0.8,7,1.4,0,0,Math.PI*2);ctx.fill();}
   ctx.fillStyle='#5b5a3e';ctx.beginPath();ctx.ellipse(x,ly,3.6,1.6,0,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#7b7952';ctx.beginPath();ctx.ellipse(x-0.4,ly-0.5,2.6,0.8,0,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#5b5a3e';ctx.beginPath();ctx.moveTo(x+2.6,ly-0.8);ctx.lineTo(x+5,ly-1.8);ctx.lineTo(x+4.6,ly+0.2);ctx.closePath();ctx.fill();
@@ -2640,7 +2673,7 @@ function stripCanvas(key,stops){let c=spriteCache.get(key);if(c)return c;c=docum
 // every light that reaches the view this frame (world units); kind: torch, win, fill, item...
 function gatherLights(x0,x1,y0,y1){
   const th=L.theme,lk=LOOK[th.style]||LOOK.dungeon,out=[],t=gameTime,add=(x,y,r,col,a,kind,bloom)=>{if(x+r>x0&&x-r<x1&&y+r>y0&&y-r<y1)out.push({x,y,r,col,a,kind,bloom});};
-  for(const tc of L.torches){const sd=(tc.c*7+tc.r*13)%10,fl=0.92+0.06*Math.sin(t*13+sd)+0.04*Math.sin(t*7.3+sd*1.7),lo=LAMP[th.style]||LAMP.dungeon,x=tc.c*TW+16+lo[0],y=SURF(tc.r)-38+lo[1];
+  for(const tc of L.torches){const sd=(tc.c*7+tc.r*13)%10,fl=0.92+0.06*Math.sin(t*13+sd)+0.04*Math.sin(t*7.3+sd*1.7),lo=th.style==='palace'&&lampFree(tc)?[0,0]:LAMP[th.style]||LAMP.dungeon,x=tc.c*TW+16+lo[0],y=SURF(tc.r)-38+lo[1];
     add(x,y,150*fl,th.glow,0.95,'torch',{r:26,a:0.42});add(x,y+22,70,th.glow,0.45*fl,'torch');}
   {const st=th.style,hw=st==='dungeon'?2.6:6,hh=st==='dungeon'?10.5:st==='forge'||st==='crypt'?6.5:13;
     const bgOn=GFX().bg;for(const w of L.windows){if(bgOn&&inOpening(w.c,w.r))continue; // that window isn't drawn: the arch is open there
@@ -3123,7 +3156,7 @@ window.__HK={genLevel,setKey,took,
   load(n,seed,test){clearInput();quiet=!!test;L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);mode='play';intro=0;FX.length=0;clearRooms();cam.snap=true;updateCamera(0);return L;},
   loadMap(spec){return spec;},
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
-  get P(){return P;},get L(){return L;},guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
+  get P(){return P;},get L(){return L;},lampFree,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
   get S(){return S;},get REW(){return REW;},wallTouch,SW_W,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName};
 
