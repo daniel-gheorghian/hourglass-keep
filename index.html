@@ -247,8 +247,8 @@ const ROMAN=['','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
 function themeName(n){const i=Math.floor((n-1)/4),t=THEMES[i%THEMES.length],k=Math.floor(i/THEMES.length);return k?t.name+' '+(ROMAN[k]||String(k+1)):t.name;}
 // ================= save =================
 const KEY='hourglass-keep-v1';
-const GEN=7;
-const APP_VERSION='30'; // set by the build; shown on the title and pause screens
+const GEN=8;
+const APP_VERSION='31'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(s.gen!==GEN){s.gen=GEN;s.cp=-1;s.resume=null;s.floorTime=0;}
@@ -263,16 +263,20 @@ function F(L,c,r){if(c<0||c>=L.cols||r<0||r>=L.rows)return null;return L.feat[r*
 function solidBelow(L,c,r){const b=B(L,c,r);if(b===FLOOR)return true;if(b===WALL)return false;return r+1<L.rows&&B(L,c,r+1)===WALL;}
 
 // ================= generator =================
+const PADK=1.46, padK=n=>n<=5?1.52:PADK, MOVES=new Set(['flat','up','down','drop2']);
 function genLevel(n,seed,test,legacy){
   const rng=mulberry32(seed), ri=(a,b)=>a+Math.floor(rng()*(b-a+1)), ch=p=>rng()<p;
   const d=Math.min(1,(n-1)/24);
   // A floor with a sandstorm chase is built four rooms longer, so the chase adds to the floor instead of eating into it.
   // The chase roll is the 4th draw of the floor's stream (the first three never depend on the width), so peek at it first.
   const peek=mulberry32(seed);peek();peek();peek();const chaseFloor=n>=6&&peek()<0.65;
-  const roomsW=Math.min(28+Math.floor((n-1)*2.2),72)+(chaseFloor&&!legacy?4:0), roomsH=n<=2?1:n<=6?2:3;
+  // Every trap is followed by a few tiles of plain floor (and now and then a longer rest), so the floor is built wider
+  // by PADK to hold the same number of traps as before; guards, checkpoints and flasks keep their old counts.
+  const roomsN=Math.min(28+Math.floor((n-1)*2.2),72), chaseRooms=chaseFloor&&!legacy?4:0;
+  const PKW=padK(n), roomsW=Math.ceil(roomsN*PKW)+chaseRooms, roomsH=n<=2?1:n<=6?2:3;
   const cols=roomsW*RW, rows=roomsH*RH+2;
   const L={n,seed,d,cols,rows,roomsW,roomsH,chaseFloor,base:new Uint8Array(cols*rows).fill(WALL),feat:new Array(cols*rows).fill(null),
-    items:[],guards:[],snakeSpecs:[],torches:[],windows:[],cps:[],path:[],debris:[],dyn:[],rubble:new Set(),
+    items:[],guards:[],snakeSpecs:[],torches:[],windows:[],cps:[],path:[],debris:[],dyn:[],rubble:new Set(),segs:[],
     theme:THEMES[Math.floor((n-1)/4)%THEMES.length],door:null,start:null,cpIndex:-1,test:!!test,ext:{darts:[],blocks:[]}};
   const W=(c,r)=>c>=1&&c<cols-1&&r>=0&&r<rows&&L.base[r*cols+c]===WALL;
   const raw=(c,r)=>(c<0||c>=cols||r<0||r>=rows)?WALL:L.base[r*cols+c];
@@ -286,10 +290,14 @@ function genLevel(n,seed,test,legacy){
   {const k=n<=2?ri(4,5):ri(1,3);for(let i=1;i<=k;i++)set(c+i,r,FLOOR);c+=k;run+=k;bot.push({a:'walk',c});}
   const endC=cols-16; // the last segment ends well before the exit, which always stands on open floor
   let target=ri(1,rows-2);
-  const guardsWanted=1+Math.floor(roomsW*(0.14+0.16*d)), style=L.theme.style;
-  const guardGap=Math.max(6,Math.floor((cols-26)/Math.max(1,guardsWanted)));
+  const guardsWanted=1+Math.floor((roomsN+chaseRooms)*(0.14+0.16*d)), style=L.theme.style;
+  const guardGap=Math.max(6,Math.floor(1.1*(cols-26)/Math.max(1,guardsWanted)));
   const lifeFloor=n%3===0;
-  const CP_GAP=45, alcoves=[{at:0.22,type:'heal'},{at:0.6,type:'heal'}];
+  const CP_GAP=Math.round(45*PKW), alcoves=[{at:0.22,type:'heal'},{at:0.6,type:'heal'}];
+  // breathing room after a trap, from its own stream: two or three tiles of plain floor, and every few traps a longer rest
+  const prng=mulberry32(hash2(seed,4421));let sinceRest=0,restAt=3+Math.floor(prng()*3);
+  function breathe(){let k=2+(prng()<0.4?1:0);if(++sinceRest>=restAt){k+=3+Math.floor(prng()*3);sinceRest=0;restAt=3+Math.floor(prng()*3);}
+    const r0=run;while(k>0&&!flat(k))k--;run=r0;} // the trap mix stays as it was: padding doesn't count as run-up
   let chaseAt=n>=6&&ch(0.65)?Math.floor(cols*(0.28+0.35*rng())):-1, secretAt=lifeFloor?Math.floor(cols*(0.25+0.3*rng())):-1, secretDone=!lifeFloor;
   let lastGuard=2, nextCp=CP_GAP, xDone=false, lastTorch=-9, extraG=0;
   const keepWall=new Set(); // cells the open-hall pass must leave solid (the far wall of a kick shaft)
@@ -373,13 +381,16 @@ function genLevel(n,seed,test,legacy){
     // most in-line gates now stay open once their plate is pressed; some carry an hourglass and shut again.
     // A timed one gives the run from the plate to past its bars at full speed, plus a jump if there is one, and a
     // thin margin on top: you have to go at once.
-    const timed=hash2((seed|0)+c*7,r*31+n)%100<25+20*d,need=(m*TW+16+BW)/RUN+(withGap||closer?0.75:0),slack=lerp(1.38,1.12,clamp(0.6*d+0.4*rng(),0,1));
-    const g={t:'gate',open:0,tm:0,dur:timed?Math.round(need*slack*10)/10:0,latch:!timed};
+    // (measured: a running jump over the pit is quicker than the plain run, so a jump earns no extra time; jumping a
+    // closer costs a moment to line up.) Slack over the fastest run: 1.15 on the first floors down to 1.03.
+    const timed=hash2((seed|0)+c*7,r*31+n)%100<25+20*d,need=(m*TW+16+BW)/RUN+(closer?0.2:withGap?-0.1:0.05),slack=lerp(1.15,1.03,clamp(0.6*d+0.4*rng(),0,1));
+    const g={t:"gate",open:0,tm:0,dur:timed?Math.ceil(need*slack*10)/10:0,latch:!timed};
     feat(c+m+2,r,g);
     feat(c+1,r,{t:'plate',g,press:-9,latch:!timed,near:true});
     if(closer)feat(c+m+1,r,{t:'closer',g,press:-9}); // step on it and the gate slams: jump over it
-    if(withGap){bot.push({a:'walk',c:c+2});bot.push({a:'sjump',from:c+2,to:c+4});bot.push({a:'walk',c:c+len});}
-    else if(closer){bot.push({a:'sjump',from:c+m,to:c+m+2});bot.push({a:'walk',c:c+len});}
+    // the path for the test player runs on and jumps from the run, as a timed gate needs
+    if(withGap){bot.push({a:'dashjump',from:c+2,to:c+4});bot.push({a:'walk',c:c+len});}
+    else if(closer){bot.push({a:'dashjump',from:c+m,to:c+m+2});bot.push({a:'walk',c:c+len});}
     else bot.push({a:'walk',c:c+len});
     c+=len;run=1;return true;
   }
@@ -413,7 +424,7 @@ function genLevel(n,seed,test,legacy){
     // left to right: plate, crumbling chain, ambush ground, obstacles, landing
     let x=2;const chainOff=chain?x:-1;if(chain)x+=5;
     const zoneOff=amb?x:-1;x+=amb?7:(chain?2:0);
-    for(const p of parts){x+=1;p.off=x;x+=p.w;}
+    for(const p of parts){x+=2+(prng()<0.35?1:0);p.off=x;x+=p.w;} // a little floor between the obstacles of a passage too
     x+=2;
     return {gal,kinds,parts,chain,amb,chainOff,zoneOff,bw:x,tall:kinds.some(k=>k==='stones'||k==='pend')};
   }
@@ -429,7 +440,7 @@ function genLevel(n,seed,test,legacy){
     const chainAt=pl.chain?x0+pl.chainOff:-1,zone=pl.amb?x0+pl.zoneOff:-1;
     const arm=plate||{};
     if(pl.chain){arm.chain=[];for(let k=0;k<5;k++)arm.chain.push(crack(chainAt+k,{sturdy:true}));}
-    if(pl.amb){const tier=Math.max(1,tierOf());arm.amb={x:(zone+5)*TW+16,r:b,lo:(zone+1)*TW+10,hi:(zone+6)*TW+22,hp:gHp(tier),tier};}
+    if(pl.amb){const tier=Math.max(1,tierOf());arm.amb={x:(zone+5)*TW+16,r:b,lo:(zone+1)*TW+10,hi:(zone+6)*TW+22,end:(bend+1)*TW,hp:gHp(tier),tier};}
     if(reward&&(pl.chain||pl.amb)){arm.t='trigger';feat(x0,b,arm);} // the flask's tile arms the chain and the ambush instead of a plate
     for(const p of pl.parts){const s=x0+p.off;let o=[],k=[];
       switch(p.k){
@@ -447,7 +458,7 @@ function genLevel(n,seed,test,legacy){
           o=[{a:'crawl',from:s+p.m+1,to:s,dir:-1}];k=[{a:'crawl',from:s,to:s+p.m+1}];break;
         case'guard':{const tier=tierOf();L.guards.push({x:(s+1)*TW+16,r:b,lo:s*TW+10,hi:(s+6)*TW+22,hp:gHp(tier),cap:false,tier,reinf:0});extraG++;}
           o=[{a:'walk',c:s}];k=[{a:'walk',c:s+6}];break;
-        case'skel':hole(s+3);hole(s+4);L.guards.push({x:(s+5)*TW+18,r:b,lo:(s+5)*TW+10,hi:(s+10)*TW+22,hp:1,skel:true,pit:-1});extraG++;
+        case'skel':hole(s+3);hole(s+4);L.guards.push({x:(s+6)*TW+16,r:b,lo:(s+5)*TW+10,hi:(s+10)*TW+22,hp:1,skel:true,pit:-1}); // rises a tile back from its pitextraG++;
           o=[{a:'walk',c:s+7},{a:'rjump',from:s+5,to:s+2,dir:-1}];k=[{a:'rjump',from:s+2,to:s+5}];break;
         case'chomp':{const per=1.7-0.35*d,off=rng()*per;feat(s+2,b,{t:'chomp',per,off,last:0});if(p.m===2)feat(s+4,b,{t:'chomp',per,off:off+per*0.4,last:0});
           o=[{a:'timed',from:s+p.w-1,to:s,dir:-1}];k=[{a:'timed',from:s,to:s+p.w-1}];break;}
@@ -478,7 +489,7 @@ function genLevel(n,seed,test,legacy){
       t+=({runover:dd*0.32+0.4,sjump:1.0,rjump:1.7,rjumpg:2.8,tiptoe:dd*0.8+0.5,crawl:dd*0.8+1.3,timed:dd*0.32+2.6,climb:1.3,hangdrop:1.8,drop:0.9})[a.a]||0;
       if(a.to!==undefined)cur=a.to;}
     return t;}
-  const timerK=()=>1.08+0.2*rng()+0.12*(1-d); // timer slack over the estimated route back: 1.08 (tight) .. 1.4
+  const timerK=()=>0.84+0.14*rng()+0.1*(1-d); // timer over the estimated route back (a careful pace): 0.84 (tight) .. 1.08
   function rectOk(c0,c1,r0,r1){for(let xx=c0;xx<=c1;xx++)for(let rr=r0;rr<=r1;rr++)if(!W(xx,rr))return false;return true;}
   function detourGate(){
     const gal=r>=3&&(r>rows-4||ch(0.5));
@@ -496,7 +507,7 @@ function genLevel(n,seed,test,legacy){
     const br=carveBranch(pl,x0,g,gal?'below':'above',timed,false);
     let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&raw(xx,r)===FLOOR&&!fe(xx,r)&&ch(0.45)){L.torches.push({c:xx,r});lt=xx;}
     const exit=gal?[{a:'walk',c:e-2},{a:'hangdrop',from:e-2},{a:'drop',from:e-1},{a:'walk',c:c+len}]:[{a:'walk',c:e},{a:'climb',from:e},{a:'climb',from:e+1},{a:'walk',c:c+len}];
-    if(timed)g.dur=Math.round((estPath([...br.backs,...exit],x0)*timerK()+0.6)*10)/10;
+    if(timed)g.dur=Math.round((estPath([...br.backs,...exit],x0)*timerK()+0.3)*10)/10;
     if(gal)bot.push({a:'walk',c:e},{a:'climb',from:e,dir:-1},{a:'climb',from:e-1,dir:-1},...br.outs,...br.backs,...exit);
     else bot.push({a:'walk',c:e-1},{a:'hangdrop',from:e-1},...br.outs,...br.backs,...exit);
     L.detours=(L.detours||[]);L.detours.push({gal,c,len,x0,bend,e,b:br.b,r,kinds:pl.kinds.slice(),chain:pl.chain,amb:pl.amb,timed,dur:g.dur});
@@ -523,8 +534,8 @@ function genLevel(n,seed,test,legacy){
     const galSeq=[{a:'walk',c:eg},{a:'climb',from:eg,dir:-1},{a:'climb',from:eg-1,dir:-1},...brG.outs,...brG.backs,{a:'walk',c:eg-2},{a:'hangdrop',from:eg-2},{a:'drop',from:eg-1}];
     const celIn=[{a:'walk',c:ec-1},{a:'hangdrop',from:ec-1}],celInR=[{a:'walk',c:ec+2},{a:'hangdrop',from:ec+2,dir:-1},{a:'drop',from:ec+1,dir:-1}];
     const celOut=[...brC.outs,...brC.backs,{a:'walk',c:ec},{a:'climb',from:ec},{a:'climb',from:ec+1}];
-    if(tg){bot.push(...celIn,...celOut,...galSeq);G2.dur=Math.round((estPath([...brG.backs,{a:'walk',c:eg-2},{a:'hangdrop',from:eg-2},{a:'drop',from:eg-1},{a:'walk',c:g2c+1}],x0g)*timerK()+0.6)*10)/10;}
-    else{bot.push({a:'walk',c:ec-1},{a:'rjump',from:ec-1,to:ec+2},...galSeq,...celInR,...celOut);G2.dur=Math.round((estPath([...brC.backs,{a:'walk',c:ec},{a:'climb',from:ec},{a:'climb',from:ec+1},{a:'walk',c:g2c+1}],x0c)*timerK()+0.6)*10)/10;}
+    if(tg){bot.push(...celIn,...celOut,...galSeq);G2.dur=Math.round((estPath([...brG.backs,{a:'walk',c:eg-2},{a:'hangdrop',from:eg-2},{a:'drop',from:eg-1},{a:'walk',c:g2c+1}],x0g)*timerK()+0.3)*10)/10;}
+    else{bot.push({a:'walk',c:ec-1},{a:'rjump',from:ec-1,to:ec+2},...galSeq,...celInR,...celOut);G2.dur=Math.round((estPath([...brC.backs,{a:'walk',c:ec},{a:'climb',from:ec},{a:'climb',from:ec+1},{a:'walk',c:g2c+1}],x0c)*timerK()+0.3)*10)/10;}
     bot.push({a:'walk',c:c+len});
     let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&raw(xx,r)===FLOOR&&!fe(xx,r)&&ch(0.45)){L.torches.push({c:xx,r});lt=xx;}
     L.detours=(L.detours||[]);L.detours.push({double:true,tg,c,len,ec,eg,g1c,g2c,r,dur:G2.dur,kindsG:pg.kinds.slice(),kindsC:pc.kinds.slice()});
@@ -714,7 +725,7 @@ function genLevel(n,seed,test,legacy){
     for(let i=1;i<=zone;i++)set(c+i,r,FLOOR);
     for(let i=zone+1;i<=zone+2;i++){set(c+i,r,EMPTY);pit(c+i,2);}
     set(c+zone+3,r,FLOOR);
-    L.guards.push({x:(c+zone)*TW+14,r,lo:(c+1)*TW+10,hi:(c+zone)*TW+22,hp:1,skel:true});
+    L.guards.push({x:(c+zone-1)*TW+16,r,lo:(c+1)*TW+10,hi:(c+zone)*TW+22,hp:1,skel:true}); // rises a tile back from the pit: it has to be driven over some ground
     bot.push({a:'walk',c:c+zone-2});
     bot.push({a:'rjump',from:c+zone,to:c+zone+3});
     c+=zone+3;run=1;lastGuard=c;return true;
@@ -732,46 +743,47 @@ function genLevel(n,seed,test,legacy){
   while(c<endC&&iter++<5000){
     if(chaseAt>=0&&c>=chaseAt&&!L.ext.chase&&c<cols*0.8&&c<endC-60){
       if(raw(c,r)===FLOOR&&!fe(c,r)&&!L.cps.some(q=>c-q.c<12)){L.cps.push({c,r,x:c*TW+16,on:false});nextCp=c+CP_GAP;}
-      if(chaseSeg())continue;}
-    if(!secretDone&&c>=secretAt&&c<cols*0.8){if(secretPassage()){secretDone=true;continue;}}
+      {const c0=c,r0=r;if(chaseSeg()){L.segs.push({k:'chase',c0,c1:c,r0,r1:r});breathe();continue;}}}
+    if(!secretDone&&c>=secretAt&&c<cols*0.8){const c0=c,r0=r;if(secretPassage()){secretDone=true;L.segs.push({k:'secret',c0,c1:c,r0,r1:r});breathe();continue;}}
     if(!xDone&&c>cols*0.82&&W(c+1,r)&&W(c+2,r)){
       set(c+1,r,FLOOR);set(c+2,r,FLOOR);feat(c+1,r,{t:'xplate',press:-9});
       bot.push({a:'walk',c:c+2});c+=2;run+=2;xDone=true;continue;
     }
-    if(L.guards.length-extraG<guardsWanted&&c-lastGuard>=guardGap&&c+12<endC){if(style==='crypt'&&ch(0.5)?skeleton():guard()){flat(1);continue;}}
+    if(L.guards.length-extraG<guardsWanted&&c-lastGuard>=guardGap&&c+12<endC){const c0=c,r0=r,sk=style==='crypt'&&ch(0.5);if(sk?skeleton():guard()){L.segs.push({k:sk?'skel':'guard',c0,c1:c,r0,r1:r});flat(1);breathe();continue;}}
     if(c>=nextCp&&c<endC-12&&raw(c,r)===FLOOR&&!fe(c,r)&&!L.items.some(it=>it.c===c&&it.r===r)){L.cps.push({c,r,x:c*TW+16,on:false});nextCp=c+CP_GAP;}
     if(r===target||ch(0.08))target=ri(1,rows-2);
-    const opts=[];const add=(w,f)=>{if(w>0)opts.push([w,f]);};
-    add(run<2?4:1.4,()=>flat(ri(1,3)));
-    add(n<=2?2.2:1.5,()=>gap(1));
-    if(n>=2)add(1.3,()=>gap(2));
-    if(n>=4)add(0.9,()=>gap(3));
-    add(r>target?3:0.5,up);
-    add(r<target?3:0.5,down);
-    if(n>=3)add(r<target-1?2.2:0.3,drop2);
-    if(n>=2)add(1.1,()=>spikes(n>=6&&ch(0.4)?2:1));
-    if(n>=3)add(1.0,()=>loose(n>=5&&ch(0.45)?2:1));
-    if(n>=4)add(0.9,chomp);
-    if(n>=3)add(0.75,gate);
-    if(n>=4)add(0.22,detourGate);
-    if(n>=7)add(0.08,doubleGate);
-    if(n>=3&&r>=3)add(r>target+1?0.28:0.03,wallRunSeg);
-    if(n>=5)add(r>=target+2?0.28:0.02,shaftSeg);
-    if(n>=4)add(r<=target-3?0.5:0.04,bannerSeg);
-    if(n>=6)add(0.3,swingSeg);
-    if(n>=5)add(0.1,sawSeg);
-    if(n>=6&&r>=2)add(r>target?0.12:0.045,dartSeg);
-    if(n>=7)add(0.065,blockSeg);
-    if(n>=3)add(0.45,tunnel);
-    if(style==='dungeon'&&n>=2)add(0.9,stones);
-    if(style==='palace')add(0.9,bridge);
-    if(style==='tile')add(0.85,pendulum);
-    if(style==='forge')add(0.9,vents);
+    const opts=[];const add=(w,f,k)=>{if(w>0)opts.push([w,f,k]);};
+    add(run<2?4:1.4,()=>flat(ri(1,3)),'flat');
+    add(n<=2?2.2:1.5,()=>gap(1),'gap1');
+    if(n>=2)add(1.3,()=>gap(2),'gap2');
+    if(n>=4)add(0.9,()=>gap(3),'gap3');
+    add(r>target?3:0.5,up,'up');
+    add(r<target?3:0.5,down,'down');
+    if(n>=3)add(r<target-1?2.2:0.3,drop2,'drop2');
+    if(n>=2)add(1.1,()=>spikes(n>=6&&ch(0.4)?2:1),'spikes');
+    if(n>=3)add(1.0,()=>loose(n>=5&&ch(0.45)?2:1),'loose');
+    if(n>=4)add(0.9,chomp,'chomp');
+    if(n>=3)add(0.75,gate,'gate');
+    if(n>=4)add(0.22,detourGate,'detour');
+    if(n>=7)add(0.08,doubleGate,'double');
+    if(n>=3&&r>=3)add(r>target+1?0.28:0.03,wallRunSeg,'wallrun');
+    if(n>=5)add(r>=target+2?0.28:0.02,shaftSeg,'shaft');
+    if(n>=4)add(r<=target-3?0.5:0.04,bannerSeg,'banner');
+    if(n>=6)add(0.3,swingSeg,'swing');
+    if(n>=5)add(0.1,sawSeg,'saw');
+    if(n>=6&&r>=2)add(r>target?0.12:0.045,dartSeg,'darts');
+    if(n>=7)add(0.065,blockSeg,'block');
+    if(n>=3)add(0.45,tunnel,'tunnel');
+    if(style==='dungeon'&&n>=2)add(0.9,stones,'stones');
+    if(style==='palace')add(0.9,bridge,'bridge');
+    if(style==='tile')add(0.85,pendulum,'pend');
+    if(style==='forge')add(0.9,vents,'vents');
     let tot=0;for(const o of opts)tot+=o[0];
-    let x=rng()*tot,chosen=opts[0][1];
-    for(const o of opts){x-=o[0];if(x<=0){chosen=o[1];break;}}
-    const before=c;
-    if(!chosen()){if(!flat(1))break;}
+    let x=rng()*tot,chosen=opts[0][1],kind=opts[0][2];
+    for(const o of opts){x-=o[0];if(x<=0){chosen=o[1];kind=o[2];break;}}
+    const before=c,rBefore=r;
+    if(chosen()){L.segs.push({k:kind,c0:before,c1:c,r0:rBefore,r1:r});if(!MOVES.has(kind))breathe();}
+    else{if(!flat(1))break;}
     if(c!==before&&raw(c,r)===FLOOR&&!fe(c,r)){
       if(ch(0.07))L.items.push({c,r,x:c*TW+16,type:(n>=8&&ch(0.2))?'poison':'heal',taken:false});
       else if(c-lastTorch>=6&&ch(0.55)){L.torches.push({c,r});lastTorch=c;}
@@ -781,7 +793,7 @@ function genLevel(n,seed,test,legacy){
   if(!secretDone){ // no room for a hidden passage: fall back to a gold flask in an alcove near the end
     for(let k=0;k<L.items.length;k++){const it=L.items[k];if(it.alc){it.type='life';secretDone=true;break;}}}
   // thin out flasks: the gold flask always stays; every other flask keeps FLASK_GAP columns from any kept one (alcoves before floor flasks)
-  {const FLASK_GAP=35,kept=[],rank=it=>it.type==='life'?0:it.alc?1:2;
+  {const FLASK_GAP=Math.round(35*PKW),kept=[],rank=it=>it.type==='life'?0:it.alc?1:2;
     for(const it of L.items.slice().sort((a,b)=>rank(a)-rank(b)||a.c-b.c))if(kept.every(k=>Math.abs(k.c-it.c)>=FLASK_GAP))kept.push(it);
     L.items=L.items.filter(it=>kept.includes(it));}
   while(c<cols-3){set(c+1,r,FLOOR);c++;}
@@ -1207,6 +1219,7 @@ function makePlayer(x,r){return {x,y:SURF(r),face:1,state:'stand',t:0,vx:0,vy:0,
   foe:null,sword:false,lowSword:false,stumble:0,peace:0,inv:0,flash:0,pose:mk({}),ph:0,cs:null,ledge:null,yo:0,sx:0,tx:0,hitDone:false,drinkIt:null,landDur:0.1,cause:''};}
 // parry: chance to parry a blow aimed at a ready guard; up: parry chance while still reeling from a hit;
 // cu: extra parry per blow landed in the last 1.4s; ripo: chance to strike straight back after parrying
+const SKEL_KNOCK=12; // how far one landed blow drives a skeleton back (was 17)
 const TIERS=[
  {name:'RECRUIT',parry:0.12,up:0.3,cu:0.12,ripo:0.2,aggr:0.32,wind:0.4,tk:1.25,jit:0.05,reel:0.6,heart:'#8fa3d8',hi:'#b9c6ea'},
  {name:'SOLDIER',parry:0.32,up:0.55,cu:0.18,ripo:0.45,aggr:0.45,wind:0.34,tk:1,jit:0.1,reel:0.5,heart:'#e08a3c',hi:'#f3b77a'},
@@ -1214,7 +1227,8 @@ const TIERS=[
  CAPT={name:'CAPTAIN',parry:0.66,up:0.85,cu:0.2,ripo:0.85,aggr:0.68,wind:0.3,tk:0.75,jit:0.12,reel:0.42,heart:'#d8b04a',hi:'#f0d27a'};
 function makeGuard(gd,i){const d=L.d,cap=gd.cap,sk=!!gd.skel,tr=cap?CAPT:TIERS[gd.tier||0];
   return {x:gd.x,y:SURF(gd.r),r:gd.r,face:-1,lo:gd.lo,hi:gd.hi,hp:gd.hp,maxHp:gd.hp,alive:true,gone:false,state:'idle',t:0,think:0.4,
-    parry:sk?0.28:Math.min(0.85,tr.parry+0.12*d),up:sk?0:tr.up,cu:sk?0:tr.cu,ripo:sk?0:tr.ripo,aggr:sk?0.55:Math.min(0.85,tr.aggr+0.1*d),windup:sk?0.36:Math.max(0.24,tr.wind-0.03*d),tk:sk?1:tr.tk,jit:sk?0:tr.jit,reel:sk?0.55:tr.reel,tr,
+    // a skeleton can't be killed, only driven back: it blocks often, even while reeling, and hits back after a block
+    parry:sk?0.42+0.12*d:Math.min(0.85,tr.parry+0.12*d),up:sk?0.4:tr.up,cu:sk?0.14:tr.cu,ripo:sk?0.4:tr.ripo,aggr:sk?0.6:Math.min(0.85,tr.aggr+0.1*d),windup:sk?0.33:Math.max(0.24,tr.wind-0.03*d),tk:sk?0.95:tr.tk,jit:sk?0.08:tr.jit,reel:sk?0.5:tr.reel,tr,
     wu:0.3,combo:0,lastHit:-9,ripoAt:null,tier:gd.tier||0,
     pendingParry:null,pose:mk({}),cap,skel:sk,pit:gd.pit||1,reinf:gd.reinf||0,vy:0,fx:0,sx:0,tx:0,hitDone:false,flash:0,id:i};}
 function makeSnake(sp){return {x:sp.x,r:sp.r,y:SURF(sp.r),lo:sp.lo,hi:sp.hi,dir:-1,state:'slither',t:0,ph:Math.random()*6,alive:true,gone:false,cool:0,lunge:0,hitDone:false};}
@@ -1432,7 +1446,7 @@ function updateBlocks(dt){for(const bl of L.ext.blocks){
   if(!bl.mv){const f=F(L,bl.c,bl.r);if(f&&f.t==='plate'){pressPlate(f);f.g.heldAt=gameTime;}}}}
 function armPassage(f){if(f.armed)return;f.armed=1;
   if(f.chain){f.chain.forEach((t,k)=>{if(t.s===0){t.s=1;t.tm=-(1.8+0.36*k);}});Snd.play('creak');msg((f.g?gateMsg(f)+' ':'')+'The cracked floor behind you is starting to give way. Run!',3.8);}
-  if(f.amb&&!quiet)pendingGuards.push({at:gameTime+1.8,spec:f.amb});}
+  if(f.amb&&!quiet)pendingGuards.push({at:gameTime+0.6,spec:f.amb});}
 function triggerLoose(f){if(f.s!==0)return;if(f.sturdy){if(!f.creaked){f.creaked=1;Snd.play('creak');}return;}f.s=1;f.tm=0;Snd.play('creak');}
 function standOn(){
   const c=pCol(),r=pRow(),f=F(L,c,r);
@@ -1568,7 +1582,7 @@ function stGarde(ix){
   if(P.stumble>0&&took('g'))return;
   if(took('g')){setState('strike');P.hitDone=false;Snd.play('swish');
     const rec=gameTime-g.lastHit<1.4?g.combo:0;let pp=-1;
-    if(['garde','advance','retreat','idle'].includes(g.state))pp=g.parry+g.cu*rec;else if(g.state==='hurt'&&!g.skel)pp=g.up+g.cu*Math.max(0,rec-1);
+    if(['garde','advance','retreat','idle'].includes(g.state))pp=g.parry+g.cu*rec;else if(g.state==='hurt')pp=g.up+g.cu*Math.max(0,rec-1);
     if(Math.random()<Math.min(0.95,pp))g.pendingParry=0.02+Math.random()*0.08;return;}
   if(took('u'))return setState('parry');
   if(took('d')){P.foe=null;P.sword=false;P.peace=1.0;setState('stand');return;}
@@ -1582,17 +1596,17 @@ function resolveStrike(att,def){
   if(dx<6||dx>40||Math.abs(def.y-att.y)>8)return;
   if(def.state==='parry'&&def.t<0.32){
     if(att===P)setState('blocked');else setE(att,'blocked');
-    if(!isP&&!def.skel){if(Math.random()<def.ripo)def.ripoAt=def.t+0.08;hint('parried');}
+    if(!isP){if(Math.random()<def.ripo)def.ripoAt=def.t+0.08;if(!def.skel)hint('parried');}
     Snd.play('clang');sparks((att.x+def.x)/2+att.face*4,att.y-31,10,'#ffe6a8');ring((att.x+def.x)/2+att.face*4,att.y-31,'#ffe6a8',9);shake(0.8);hitStop=0.05;return;
   }
   if(isP){if(P.inv>0)return;P.inv=0.3;flashScreen('#d8231c',0.42,0.2);hurt(1,'sword');if(P.state!=='dead'){setState('hurt');knock(P,att.face);}}
-  else if(def.skel){def.flash=0.2;def.pendingParry=null;setE(def,'hurt');
-    {const nx=clampMove(def.x,def.x+att.face*17,def.y,def);def.x=def.pit<0?Math.min(def.hi,nx):Math.max(def.lo,nx);}
+  else if(def.skel){def.flash=0.2;def.pendingParry=null;setE(def,'hurt');def.combo=gameTime-def.lastHit<1.4?def.combo+1:1;def.lastHit=gameTime;
+    {const nx=clampMove(def.x,def.x+att.face*SKEL_KNOCK,def.y,def);def.x=def.pit<0?Math.min(def.hi,nx):Math.max(def.lo,nx);}
     sparks(def.x,def.y-30,7,'#e9e3cf');ring(def.x,def.y-30,'#e9e3cf',10);shake(1.2);Snd.play('bones');hitStop=0.05;
     if(!solidBelow(L,Math.floor(def.x/TW),rowOf(def.y))){setE(def,'fall');def.vy=0;def.fx=att.face;}
     return;}
   else{def.hp--;def.flash=0.25;def.pendingParry=null;def.combo=gameTime-def.lastHit<1.4?def.combo+1:1;def.lastHit=gameTime;
-    if(def.hp<=0){def.alive=false;setE(def,'dying');Snd.play('guardDie');if(def.reinf>0)pendingGuards.push({at:gameTime+1.3,src:def});}
+    if(def.hp<=0){def.alive=false;def.side=Math.sign(def.x-att.x)||1;setE(def,'dying');Snd.play('guardDie');if(def.reinf>0)pendingGuards.push({at:gameTime+0.9,src:def});}
     else{setE(def,'hurt');knock(def,att.face);}}
   Snd.play('hit');sparks(def.x,def.y-30,6,'#ffb38a');ring(def.x,def.y-30,isP?'#ff8a70':'#ffd6a8',12);shake(isP?2.2:1.5);hitStop=0.06;
 }
@@ -1696,6 +1710,15 @@ function updatePlayer(dt){
 }
 
 // ================= guards =================
+// floor a guard can stand and fight on: solid, and nothing on it that bites, gives way or shuts
+function guardOk(c,r){if(c<1||c>=L.cols-1||B(L,c,r)===WALL||!solidBelow(L,c,r)||blockAtCell(c,r))return false;const f=F(L,c,r);return !f||f.t==='plate'||f.t==='trigger'||f.t==='xplate';}
+// the clear stretch of floor around cell c on row r (a dozen tiles each way at most)
+function clearRun(c,r){let a=c,b=c;while(a-c>-12&&guardOk(a-1,r))a--;while(b-c<12&&guardOk(b+1,r))b++;return [a,b];}
+// where a guard dropping in lands: on the clear floor `side` of the prince, two to four tiles off, so the way on goes through it
+function dropSpot(side,only){const r=pRow(),pc=pCol();if(!guardOk(pc,r))return null;const [a,b]=clearRun(pc,r);
+  for(const s of only?[side]:[side,-side])for(const k of [3,4,2]){const tc=pc+s*k;if(tc<a||tc>b)continue;const x=tc*TW+16;if(Math.abs(x-P.x)<44)continue;return {x,lo:a*TW+10,hi:b*TW+22,face:-s};}
+  return null;}
+function spawnDrop(s,r,hp,tier){const ng=makeGuard({x:s.x,r,lo:s.lo,hi:s.hi,hp,cap:false,tier,reinf:0},G.length);ng.y=SURF(r)-74;ng.vy=0;ng.state='drop';ng.face=s.face;G.push(ng);return ng;}
 function guardMove(g,dir){let tx=clamp(g.x+g.face*dir*13,g.lo,g.hi);if(dir>0&&Math.abs(P.x-tx)<20)tx=P.x-g.face*20;g.sx=g.x;g.tx=tx;setE(g,dir>0?'advance':'retreat');}
 function updateGuard(g,dt){
   g.t+=dt;if(g.flash>0)g.flash-=dt;
@@ -1729,7 +1752,7 @@ function updateGuard(g,dt){
     case'strike':if(!g.hitDone&&g.t>=g.wu){g.hitDone=true;Snd.play('swish');resolveStrike(g,P);}if(g.state==='strike'&&g.t>=g.wu+0.3)setE(g,'garde');break;
     case'parry':if(g.ripoAt!==null&&g.t>=g.ripoAt){g.ripoAt=null;setE(g,'strike');g.hitDone=false;g.wu=Math.max(0.2,g.windup*0.8);break;}if(g.t>=0.36){g.ripoAt=null;setE(g,'garde');}break;
     case'blocked':if(g.t>=g.reel)setE(g,'garde');break;
-    case'hurt':if(g.pendingParry!==null&&g.t>=0.12){g.pendingParry-=dt;if(g.pendingParry<=0){g.pendingParry=null;setE(g,'parry');break;}}if(g.t>=(g.skel?0.5:0.4))setE(g,'garde');break;
+    case'hurt':if(g.pendingParry!==null&&g.t>=0.12){g.pendingParry-=dt;if(g.pendingParry<=0){g.pendingParry=null;setE(g,'parry');break;}}if(g.t>=0.4)setE(g,"garde");break;
   }
   let tgt=PS.stand,rate=24;
   switch(g.state){
@@ -1843,7 +1866,7 @@ const HINTS={
   drop:'Press down at an edge to hang, down again to let go. Hanging first takes the sting out of long drops.',
   spikes:'Spikes. Hold Grab and tap toward them to tiptoe across, or jump them.',
   loose:'Cracked tiles give way under you. Keep running.',
-  plate:'A plate raises a gate. If the gate carries an hourglass it shuts again soon: step on the plate and run.',
+  plate:'A plate raises a gate. If the gate carries an hourglass it shuts again almost at once: run over the plate without stopping, and take any jump from the run.',
   chomp:'Blades snap shut on a rhythm. Watch one cycle, then go.',
   fight:'Grab strikes. Press up to block as his blade rises, then strike back at once.',
   parried:'Parried. Guards block blows thrown in a rush, and the good ones strike straight back. Press up to block, then hit him while he reels.',
@@ -1945,11 +1968,21 @@ function update(dt){
   else if(P.state==='dead'){P.t+=dt;lerpPose(P.pose,PS.dead,1-Math.exp(-dt*9),P.pose);}
   for(const g of G)updateGuard(g,dt);
   for(const sn of SN)updateSnake(sn,dt);
-  for(let i=pendingGuards.length-1;i>=0;i--){const q=pendingGuards[i];if(gameTime<q.at||mode!=='play')continue;pendingGuards.splice(i,1);
-    if(q.spec){const sp=q.spec,ag=makeGuard({x:sp.x,r:sp.r,lo:sp.lo,hi:sp.hi,hp:sp.hp,cap:false,tier:sp.tier,reinf:0},G.length);ag.y=SURF(sp.r)-74;ag.vy=0;ag.state='drop';ag.face=-1;G.push(ag);msg('Ambush! A guard drops in to cut off the way back.',3);continue;}
-    const sg=q.src,side=Math.sign(sg.x-P.x)||1,x=clamp(P.x+side*110,sg.lo+8,sg.hi-8);
-    const ng=makeGuard({x,r:sg.r,lo:sg.lo,hi:sg.hi,hp:sg.maxHp,cap:false,tier:sg.tier,reinf:0},G.length);
-    ng.y=SURF(sg.r)-74;ng.vy=0;ng.state='drop';ng.face=-side;G.push(ng);hint('reinf');}
+  for(let i=pendingGuards.length-1;i>=0;i--){const q=pendingGuards[i];if(gameTime<q.at||mode!=='play')continue;
+    if(q.spec){const sp=q.spec;
+      // a passage ambush waits until he is back at its ground on the way out, then drops in ahead of him
+      const end=sp.end||sp.hi+8*TW;
+      if(Math.abs(P.y-SURF(sp.r))>60||P.x<sp.lo-10-TW||P.x>end){if(P.x>end+2*TW&&Math.abs(P.y-SURF(sp.r))<8)pendingGuards.splice(i,1);continue;}
+      let s=null;
+      if(sp.x-P.x>=3*TW-8){const [a,b]=clearRun(Math.floor(sp.x/TW),sp.r);s={x:sp.x,lo:a*TW+10,hi:b*TW+22,face:-1};}
+      else if(P.y===SURF(sp.r))s=dropSpot(1,true);
+      if(!s)continue;
+      pendingGuards.splice(i,1);spawnDrop(s,sp.r,sp.hp,sp.tier);msg('Ambush! A guard drops in to cut off the way back.',3);continue;}
+    // reinforcements drop in on the far side of the fallen guard, a few tiles ahead of the prince, wherever he has got to;
+    // with no clear floor ahead of him yet they wait for some (never behind him), and give up after a while
+    const sg=q.src,s=Math.abs(P.y-SURF(pRow()))<1?dropSpot(sg.side||1,true):null;
+    if(!s){if(gameTime>q.at+8)pendingGuards.splice(i,1);continue;}
+    pendingGuards.splice(i,1);spawnDrop(s,pRow(),sg.maxHp,sg.tier);hint('reinf');}
   updateFX(dt);updateLook(dt);updateLookFx(dt);updateAmbient(dt);
   updateCamera(dt);
   if(banner){banner.t+=dt;if(banner.t>=banner.dur)banner=null;}
@@ -3436,7 +3469,7 @@ window.__HK={genLevel,setKey,took,
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
   get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
-  get S(){return S;},get REW(){return REW;},wallTouch,SW_W,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName};
+  get S(){return S;},get REW(){return REW;},get PGQ(){return pendingGuards;},resolveStrike,wallTouch,SW_W,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName};
 
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 })();
