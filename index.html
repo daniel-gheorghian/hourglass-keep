@@ -248,7 +248,7 @@ function themeName(n){const i=Math.floor((n-1)/4),t=THEMES[i%THEMES.length],k=Ma
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=7;
-const APP_VERSION='29'; // set by the build; shown on the title and pause screens
+const APP_VERSION='30'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(s.gen!==GEN){s.gen=GEN;s.cp=-1;s.resume=null;s.floorTime=0;}
@@ -370,10 +370,13 @@ function genLevel(n,seed,test,legacy){
     if(withGap){set(c+3,r,EMPTY);pit(c+3,1);}
     // the clock runs while he's off the plate: from its far edge to past the gate's bars, at a run, plus a jump
     // over the pit or the closing plate; slack runs from comfortable (early floors) to tight
-    const need=(m*TW+16+BW)/RUN+0.15+(withGap||closer?0.75:0),slack=lerp(1.7,1.25,clamp(0.6*d+0.4*rng(),0,1));
-    const g={t:'gate',open:0,tm:0,dur:Math.round(need*slack*10)/10};
+    // most in-line gates now stay open once their plate is pressed; some carry an hourglass and shut again.
+    // A timed one gives the run from the plate to past its bars at full speed, plus a jump if there is one, and a
+    // thin margin on top: you have to go at once.
+    const timed=hash2((seed|0)+c*7,r*31+n)%100<25+20*d,need=(m*TW+16+BW)/RUN+(withGap||closer?0.75:0),slack=lerp(1.38,1.12,clamp(0.6*d+0.4*rng(),0,1));
+    const g={t:'gate',open:0,tm:0,dur:timed?Math.round(need*slack*10)/10:0,latch:!timed};
     feat(c+m+2,r,g);
-    feat(c+1,r,{t:'plate',g,press:-9});
+    feat(c+1,r,{t:'plate',g,press:-9,latch:!timed,near:true});
     if(closer)feat(c+m+1,r,{t:'closer',g,press:-9}); // step on it and the gate slams: jump over it
     if(withGap){bot.push({a:'walk',c:c+2});bot.push({a:'sjump',from:c+2,to:c+4});bot.push({a:'walk',c:c+len});}
     else if(closer){bot.push({a:'sjump',from:c+m,to:c+m+2});bot.push({a:'walk',c:c+len});}
@@ -475,7 +478,7 @@ function genLevel(n,seed,test,legacy){
       t+=({runover:dd*0.32+0.4,sjump:1.0,rjump:1.7,rjumpg:2.8,tiptoe:dd*0.8+0.5,crawl:dd*0.8+1.3,timed:dd*0.32+2.6,climb:1.3,hangdrop:1.8,drop:0.9})[a.a]||0;
       if(a.to!==undefined)cur=a.to;}
     return t;}
-  const timerK=()=>1.2+0.3*rng()+0.25*(1-d); // timer slack over the estimated route back: 1.2 (tight) .. 1.75 (generous)
+  const timerK=()=>1.08+0.2*rng()+0.12*(1-d); // timer slack over the estimated route back: 1.08 (tight) .. 1.4
   function rectOk(c0,c1,r0,r1){for(let xx=c0;xx<=c1;xx++)for(let rr=r0;rr<=r1;rr++)if(!W(xx,rr))return false;return true;}
   function detourGate(){
     const gal=r>=3&&(r>rows-4||ch(0.5));
@@ -493,7 +496,7 @@ function genLevel(n,seed,test,legacy){
     const br=carveBranch(pl,x0,g,gal?'below':'above',timed,false);
     let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&raw(xx,r)===FLOOR&&!fe(xx,r)&&ch(0.45)){L.torches.push({c:xx,r});lt=xx;}
     const exit=gal?[{a:'walk',c:e-2},{a:'hangdrop',from:e-2},{a:'drop',from:e-1},{a:'walk',c:c+len}]:[{a:'walk',c:e},{a:'climb',from:e},{a:'climb',from:e+1},{a:'walk',c:c+len}];
-    if(timed)g.dur=Math.round((estPath([...br.backs,...exit],x0)*timerK()+1.2)*10)/10;
+    if(timed)g.dur=Math.round((estPath([...br.backs,...exit],x0)*timerK()+0.6)*10)/10;
     if(gal)bot.push({a:'walk',c:e},{a:'climb',from:e,dir:-1},{a:'climb',from:e-1,dir:-1},...br.outs,...br.backs,...exit);
     else bot.push({a:'walk',c:e-1},{a:'hangdrop',from:e-1},...br.outs,...br.backs,...exit);
     L.detours=(L.detours||[]);L.detours.push({gal,c,len,x0,bend,e,b:br.b,r,kinds:pl.kinds.slice(),chain:pl.chain,amb:pl.amb,timed,dur:g.dur});
@@ -520,8 +523,8 @@ function genLevel(n,seed,test,legacy){
     const galSeq=[{a:'walk',c:eg},{a:'climb',from:eg,dir:-1},{a:'climb',from:eg-1,dir:-1},...brG.outs,...brG.backs,{a:'walk',c:eg-2},{a:'hangdrop',from:eg-2},{a:'drop',from:eg-1}];
     const celIn=[{a:'walk',c:ec-1},{a:'hangdrop',from:ec-1}],celInR=[{a:'walk',c:ec+2},{a:'hangdrop',from:ec+2,dir:-1},{a:'drop',from:ec+1,dir:-1}];
     const celOut=[...brC.outs,...brC.backs,{a:'walk',c:ec},{a:'climb',from:ec},{a:'climb',from:ec+1}];
-    if(tg){bot.push(...celIn,...celOut,...galSeq);G2.dur=Math.round((estPath([...brG.backs,{a:'walk',c:eg-2},{a:'hangdrop',from:eg-2},{a:'drop',from:eg-1},{a:'walk',c:g2c+1}],x0g)*timerK()+1.2)*10)/10;}
-    else{bot.push({a:'walk',c:ec-1},{a:'rjump',from:ec-1,to:ec+2},...galSeq,...celInR,...celOut);G2.dur=Math.round((estPath([...brC.backs,{a:'walk',c:ec},{a:'climb',from:ec},{a:'climb',from:ec+1},{a:'walk',c:g2c+1}],x0c)*timerK()+1.2)*10)/10;}
+    if(tg){bot.push(...celIn,...celOut,...galSeq);G2.dur=Math.round((estPath([...brG.backs,{a:'walk',c:eg-2},{a:'hangdrop',from:eg-2},{a:'drop',from:eg-1},{a:'walk',c:g2c+1}],x0g)*timerK()+0.6)*10)/10;}
+    else{bot.push({a:'walk',c:ec-1},{a:'rjump',from:ec-1,to:ec+2},...galSeq,...celInR,...celOut);G2.dur=Math.round((estPath([...brC.backs,{a:'walk',c:ec},{a:'climb',from:ec},{a:'climb',from:ec+1},{a:'walk',c:g2c+1}],x0c)*timerK()+0.6)*10)/10;}
     bot.push({a:'walk',c:c+len});
     let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&raw(xx,r)===FLOOR&&!fe(xx,r)&&ch(0.45)){L.torches.push({c:xx,r});lt=xx;}
     L.detours=(L.detours||[]);L.detours.push({double:true,tg,c,len,ec,eg,g1c,g2c,r,dur:G2.dur,kindsG:pg.kinds.slice(),kindsC:pc.kinds.slice()});
@@ -800,6 +803,11 @@ function genLevel(n,seed,test,legacy){
   L.base0=L.base.slice(); // the terrain as built: wall decoration follows it, so it doesn't vanish when a tile falls
   for(const bl of L.ext.blocks){bl.under=raw(bl.c,bl.r);set(bl.c,bl.r,WALL);}
   for(let rr=0;rr<rows;rr++)for(let cc=0;cc<cols;cc++){const f=fe(cc,rr);if(f)L.dyn.push({c:cc,r:rr,f});}
+  // fewer timed side-passage gates: about two in five of them are let stay open once their plate is found (decided by a
+  // hash, so the layout itself does not change)
+  for(const o of L.dyn){const g=o.f;if(g.t!=='gate'||!g.far||g.latch||g.pair!==undefined||!(g.dur>0))continue;
+    if(hash2((seed|0)+o.c*5,o.r*17+n)%100<62){g.latch=true;g.dur=0;for(const q of L.dyn)if(q.f.t==='plate'&&q.f.g===g)q.f.latch=true;
+      for(const dd of L.detours||[])if(dd.timed&&dd.r===o.r&&o.c>dd.c&&o.c<=dd.c+dd.len){dd.timed=false;dd.dur=0;}}}
   rebuildBlocks(L);
   return L;
 }
@@ -995,7 +1003,71 @@ function runPoseHD(ph,amp=1){const n=RUN8.length,f=((ph%1)+1)%1*n,i=Math.floor(f
   if(amp<1){const st=PS.stand;for(const k of PK)out[k]=st[k]+(out[k]-st[k])*amp;}
   return out;}
 
-function figDraw(ctx,x,y,face,p,pal,o){if(pal.bones||!GFX().hd)return drawFigure(ctx,x,y,face,p,pal,o);return drawFigureHD(ctx,x,y,face,p,pal,o);}
+function figDraw(ctx,x,y,face,p,pal,o){if(!GFX().hd)return drawFigure(ctx,x,y,face,p,pal,o);return pal.bones?drawSkeletonHD(ctx,x,y,face,p,pal,o):drawFigureHD(ctx,x,y,face,p,pal,o);}
+// the skeleton in the new style, on the same frame as everyone else: shaded bones with knobbed joints, a ribcage and
+// pelvis, a skull with a jaw and a cold glow in its sockets, a rag of a sash that trails behind it, and a pitted blade
+const BONE={base:'#e6dcc2',shade:'#a99d7c',dark:'#5c5440',rag:'#4a3c36',glow:'#9fffd2'};
+function drawSkeletonHD(ctx,x,y,face,p,pal,o){
+  const s=skel(p);
+  ctx.save();ctx.translate(x,y-s.hipH+(o.yo||0));if(face<0)ctx.scale(-1,1);if(p.rot)ctx.rotate(p.rot);
+  if(o.sq){ctx.translate(0,s.hipH);ctx.scale(1/o.sq,o.sq);ctx.translate(0,-s.hipH);}
+  if(o.alpha!==undefined)ctx.globalAlpha=o.alpha;
+  ctx.lineCap='round';ctx.lineJoin='round';
+  const lt=o.lt,ldx=lt?lt.dir*face:1,lln=Math.hypot(ldx,0.75),O=Object.assign({},o,{out:o.mono||'#120c18',_lx:ldx/lln,_ly:-0.75/lln,_lk:lt?lt.k:0,_lc:lt?lt.col:null});
+  const t=o.time||0,vx=(o.vx||0)*face,vy=o.vy||0,wind=[-vx/110,-vy/260+0.25];
+  const lean=p.lean,tx=Math.sin(lean),ty=-Math.cos(lean),nx=-ty,ny=tx,at=u=>[s.sh[0]*u,s.sh[1]*u];
+  const tint=c=>O._lk>0.05?litTint(c,O._lc,O._lk):c;
+  const knob=(q,r,c)=>{const kp=new Path2D();kp.arc(q[0],q[1],r,0,Math.PI*2);if(O.mono){ctx.fillStyle=O.mono;ctx.fill(kp);return;}ctx.strokeStyle=O.out;ctx.lineWidth=1.1;ctx.stroke(kp);ctx.fillStyle=c;ctx.fill(kp);};
+  const bone=(a,b,w,dim)=>{const base=dim?BONE.shade:BONE.base,sh=dim?BONE.dark:BONE.shade;
+    // a bone: a slim shaft that swells to knuckles at both ends
+    const m=[(a[0]+b[0])/2,(a[1]+b[1])/2];tcel(ctx,[a,m,b],[w*1.25,w*0.7,w*1.2],base,sh,O);knob(a,w*0.62,tint(base));knob(b,w*0.62,tint(base));};
+  // rag of a sash, trailing
+  {const w0=at(0.1),rg=trail([w0[0]-nx*3,w0[1]-ny*3],3,3.1,wind,t,0.6,0.7);tcel(ctx,rg,[2.6,2.4,1.9,1.1],BONE.rag,shadeHex(BONE.rag,-0.35),O);}
+  // back arm and leg, dimmer
+  bone(s.sh,s.eB,2.2,true);bone(s.eB,s.hB,1.9,true);
+  bone([0,0],s.kB,2.8,true);bone(s.kB,s.fB,2.4,true);
+  {const f=s.fB;tcel(ctx,[[f[0]-1,f[1]],[f[0]+4.5,f[1]+0.3]],[2.4,1.4],BONE.shade,BONE.dark,O);}
+  // pelvis
+  {const pv=new Path2D();pv.moveTo(-nx*4.2-tx*1,-ny*4.2-ty*1);pv.quadraticCurveTo(-tx*4,-ty*4,nx*4.4-tx*1,ny*4.4-ty*1);pv.lineTo(nx*2.4+tx*2.6,ny*2.4+ty*2.6);pv.quadraticCurveTo(tx*1,ty*1,-nx*2.2+tx*2.6,-ny*2.2+ty*2.6);pv.closePath();
+    celAt(ctx,pv,BONE.base,BONE.shade,O,0,0);
+    if(!O.mono){ctx.fillStyle=BONE.dark;ctx.beginPath();ctx.arc(nx*1.2-tx*0.6,ny*1.2-ty*0.6,1,0,Math.PI*2);ctx.fill();}}
+  // spine: a chain of vertebrae up to the neck
+  for(let i=1;i<=7;i++){const q=at(i/7*1.05);knob(q,1.15+(i%2)*0.2,tint(i%2?BONE.base:BONE.shade));}
+  // ribcage: ribs curving forward from the spine, a breastbone in front
+  if(!O.mono){for(let i=0;i<4;i++){const u=0.5+i*0.13,q=at(u),w=5.6-i*0.5,dn=1.6+i*0.3;
+      const rb=()=>{ctx.beginPath();ctx.moveTo(q[0],q[1]);ctx.quadraticCurveTo(q[0]+nx*w*0.9+tx*1.4,q[1]+ny*w*0.9+ty*1.4,q[0]+nx*w*0.55-tx*dn,q[1]+ny*w*0.55-ty*dn);};
+      rb();ctx.strokeStyle=O.out;ctx.lineWidth=2.4;ctx.stroke();rb();ctx.strokeStyle=tint(i%2?BONE.shade:BONE.base);ctx.lineWidth=1.2;ctx.stroke();}
+    const b0=at(0.55),b1=at(0.92);ctx.strokeStyle=O.out;ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(b0[0]+nx*3.4,b0[1]+ny*3.4);ctx.lineTo(b1[0]+nx*3.1,b1[1]+ny*3.1);ctx.stroke();
+    ctx.strokeStyle=tint(BONE.base);ctx.lineWidth=1.3;ctx.stroke();}
+  else{const q=at(0.7);ctx.fillStyle=O.mono;ctx.beginPath();ctx.ellipse(q[0]+nx*2.4,q[1]+ny*2.4,4.2,5.6,lean,0,Math.PI*2);ctx.fill();}
+  // skull and jaw
+  const hd=s.hd,ha=lean+p.head,hx=Math.sin(ha),hy=-Math.cos(ha),hnx=-hy,hny=hx,r=LEN.hd;
+  {const n0=at(1.02),n1=[hd[0]-hx*r*0.7,hd[1]-hy*r*0.7];tcel(ctx,[n0,n1],[1.8,1.6],BONE.shade,BONE.dark,O);}
+  {const sk=new Path2D();sk.moveTo(hd[0]-hnx*r*1.0+hx*r*0.1,hd[1]-hny*r*1.0+hy*r*0.1);
+    sk.bezierCurveTo(hd[0]-hnx*r*1.1+hx*r*1.45,hd[1]-hny*r*1.1+hy*r*1.45,hd[0]+hnx*r*1.0+hx*r*1.4,hd[1]+hny*r*1.0+hy*r*1.4,hd[0]+hnx*r*1.08+hx*r*0.1,hd[1]+hny*r*1.08+hy*r*0.1);
+    sk.lineTo(hd[0]+hnx*r*0.95-hx*r*0.5,hd[1]+hny*r*0.95-hy*r*0.5);sk.lineTo(hd[0]+hnx*r*0.1-hx*r*0.55,hd[1]+hny*r*0.1-hy*r*0.55);
+    sk.quadraticCurveTo(hd[0]-hnx*r*0.85-hx*r*0.5,hd[1]-hny*r*0.85-hy*r*0.5,hd[0]-hnx*r*1.0+hx*r*0.1,hd[1]-hny*r*1.0+hy*r*0.1);sk.closePath();
+    celAt(ctx,sk,BONE.base,BONE.shade,O,hd[0]+hnx*0.3,hd[1]+hny*0.3);
+    const jw=new Path2D(),j0=[hd[0]-hx*r*0.45,hd[1]-hy*r*0.45],jo=Math.sin(t*3.1+(x*0.05))*0.4+0.6;
+    jw.moveTo(j0[0]-hnx*r*0.5,j0[1]-hny*r*0.5);jw.lineTo(j0[0]+hnx*r*0.95-hx*jo,j0[1]+hny*r*0.95-hy*jo);jw.lineTo(j0[0]+hnx*r*0.85-hx*(jo+1.6),j0[1]+hny*r*0.85-hy*(jo+1.6));jw.lineTo(j0[0]-hnx*r*0.2-hx*1.8,j0[1]-hny*r*0.2-hy*1.8);jw.closePath();
+    celAt(ctx,jw,BONE.shade,BONE.dark,O,j0[0],j0[1]);
+    if(!O.mono){const ex=hd[0]+hnx*r*0.5+hx*r*0.15,ey=hd[1]+hny*r*0.5+hy*r*0.15;ctx.fillStyle='#120c18';ctx.beginPath();ctx.ellipse(ex,ey,1.25,1.4,ha,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=BONE.glow;ctx.globalAlpha*=0.6+0.4*Math.sin(t*4+x);ctx.beginPath();ctx.arc(ex+hnx*0.2,ey+hny*0.2,0.55,0,Math.PI*2);ctx.fill();ctx.globalAlpha=o.alpha===undefined?1:o.alpha;
+      ctx.fillStyle='#120c18';ctx.fillRect(hd[0]+hnx*r*1.0-hx*r*0.15-0.4,hd[1]+hny*r*1.0-hy*r*0.15-0.4,0.8,0.9); // nose hole
+      ctx.strokeStyle='#120c18';ctx.lineWidth=0.5;ctx.beginPath();for(let i=0;i<3;i++){const q=[hd[0]+hnx*r*(0.35+i*0.22)-hx*r*0.5,hd[1]+hny*r*(0.35+i*0.22)-hy*r*0.5];ctx.moveTo(q[0],q[1]);ctx.lineTo(q[0]-hx*1.1,q[1]-hy*1.1);}ctx.stroke();}}
+  // front leg, blade, front arm
+  bone([0,0],s.kF,2.8);bone(s.kF,s.fF,2.4);
+  {const f=s.fF;tcel(ctx,[[f[0]-1,f[1]],[f[0]+4.8,f[1]+0.3]],[2.4,1.4],BONE.base,BONE.shade,O);}
+  if(o.sword){const h=s.hF,a=p.sw,dx=Math.cos(a),dy=-Math.sin(a),nx2=-dy,ny2=dx,L2=17;
+    const bl=new Path2D();bl.moveTo(h[0]+nx2*0.8,h[1]+ny2*0.8);bl.lineTo(h[0]+dx*L2+nx2*1.6,h[1]+dy*L2+ny2*1.6);bl.lineTo(h[0]+dx*(L2+1.2),h[1]+dy*(L2+1.2));bl.lineTo(h[0]+dx*L2*0.55-nx2*0.9,h[1]+dy*L2*0.55-ny2*0.9);bl.lineTo(h[0]-nx2*0.8,h[1]-ny2*0.8);bl.closePath();
+    if(O.mono){ctx.fillStyle=O.mono;ctx.fill(bl);}else{ctx.strokeStyle=O.out;ctx.lineWidth=1.1;ctx.stroke(bl);ctx.fillStyle='#9a9384';ctx.fill(bl);
+      ctx.fillStyle='#6a5e48';for(let i=0;i<4;i++){const u=0.25+i*0.18;ctx.beginPath();ctx.arc(h[0]+dx*L2*u+nx2*0.6,h[1]+dy*L2*u+ny2*0.6,0.5,0,Math.PI*2);ctx.fill();}
+      ctx.strokeStyle='#5a4a30';ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(h[0]+nx2*2.6,h[1]+ny2*2.6);ctx.lineTo(h[0]-nx2*2.6,h[1]-ny2*2.6);ctx.stroke();}}
+  bone(s.sh,s.eF,2.2);bone(s.eF,s.hF,1.9);
+  {const h=s.hF;knob(h,1.4,tint(BONE.base));}
+  ctx.restore();
+  if(o.flash>0&&!o.white&&!o.mono)drawSkeletonHD(ctx,x,y,face,p,pal,Object.assign({},o,{white:true,mono:'#ffffff',flash:0,alpha:Math.min(0.75,o.flash*3)*(o.alpha===undefined?1:o.alpha)}));
+}
 
 const PAL_WHITE={skin:'#fff',skinD:'#fff',tunic:'#fff',tunicD:'#fff',pants:'#fff',pantsD:'#fff',sash:'#fff',hair:'#fff',boot:'#fff'},PAL_WHITE_B=Object.assign({},PAL_WHITE,{bones:true});
 const PAL_SKEL={skin:'#e9e3cf',skinD:'#c3bb9f',pants:'#e9e3cf',pantsD:'#c3bb9f',boot:'#d9d1b8',bones:true};
@@ -1342,7 +1414,7 @@ function gateMsg(f){const nm=f.pair!==undefined?'The '+PAIRN[f.pair]+' gate':'A 
   return nm+' grinds open '+f.where+', but its sand is running. Get back before it shuts.';}
 // a passage's crumbling chain and ambush wake the first time its plate (or prize) is reached
 function pressPlate(f){if(f.g.tm<=0&&f.g.open<0.05)Snd.play('gate');f.press=gameTime;
-  if(f.latch){if(f.g.tm!==Infinity){f.g.tm=Infinity;Snd.play('door');if(!f.chain)msg(gateMsg(f),3.4);}}
+  if(f.latch){if(f.g.tm!==Infinity){f.g.tm=Infinity;Snd.play('door');if(!f.chain&&!f.near)msg(gateMsg(f),3.4);}}
   else{if(f.where&&!f.told){f.told=1;if(!f.chain)msg(gateMsg(f),3.8);}f.g.tm=f.g.dur;f.g.slam=false;}
   armPassage(f);}
 // ---- movable blocks: solid cells that remember the floor beneath them ----
@@ -1771,7 +1843,7 @@ const HINTS={
   drop:'Press down at an edge to hang, down again to let go. Hanging first takes the sting out of long drops.',
   spikes:'Spikes. Hold Grab and tap toward them to tiptoe across, or jump them.',
   loose:'Cracked tiles give way under you. Keep running.',
-  plate:'Plates raise gates for a few seconds. Step on it and run.',
+  plate:'A plate raises a gate. If the gate carries an hourglass it shuts again soon: step on the plate and run.',
   chomp:'Blades snap shut on a rhythm. Watch one cycle, then go.',
   fight:'Grab strikes. Press up to block as his blade rises, then strike back at once.',
   parried:'Parried. Guards block blows thrown in a rush, and the good ones strike straight back. Press up to block, then hit him while he reels.',
@@ -1878,7 +1950,7 @@ function update(dt){
     const sg=q.src,side=Math.sign(sg.x-P.x)||1,x=clamp(P.x+side*110,sg.lo+8,sg.hi-8);
     const ng=makeGuard({x,r:sg.r,lo:sg.lo,hi:sg.hi,hp:sg.maxHp,cap:false,tier:sg.tier,reinf:0},G.length);
     ng.y=SURF(sg.r)-74;ng.vy=0;ng.state='drop';ng.face=-side;G.push(ng);hint('reinf');}
-  updateFX(dt);updateLook(dt);updateLookFx(dt);
+  updateFX(dt);updateLook(dt);updateLookFx(dt);updateAmbient(dt);
   updateCamera(dt);
   if(banner){banner.t+=dt;if(banner.t>=banner.dur)banner=null;}
   hintTick-=dt;if(hintTick<=0){hintTick=0.25;checkHints();}
@@ -1945,7 +2017,7 @@ function drawRoomStatic(g,rx,ry,stage){
     g.restore();
   }
   for(let rr=-1;rr<RH;rr++)for(let cc=0;cc<RW;cc++){const gc=rx*RW+cc,gr=ry*RH+rr;
-    if(isArchTop(gc,gr))drawArch(g,cc*TW,rr*TH,th,bgOn);}
+    if(isArchTop(gc,gr))drawArch(g,cc*TW,rr*TH,th,bgOn&&isOpenArch(gc,gr));}
   for(const w of L.windows){if(Math.floor(w.c/RW)!==rx||Math.floor(w.r/RH)!==ry)continue;if(bgOn&&inOpening(w.c,w.r))continue;drawWindow(g,(w.c%RW)*TW+16,(w.r%RH)*TH+38,th,w.c,false);}
   }
   // neighbours one cell outside the room are drawn too, so faces that overhang a room edge don't leave seams
@@ -2110,7 +2182,9 @@ function cornice(g,X,Y,th){
 // arches along a floor; with the background on they open onto it, above a low parapet
 const PARAPET=18;
 function isArchTop(gc,gr){return gr>=0&&D0(gc,gr)===EMPTY&&D0(gc,gr+1)===FLOOR&&!(D0(gc-1,gr)===WALL&&D0(gc+1,gr)===WALL)&&hash2(Math.floor(gc/RW)+17,Math.floor(gr/RH)+3)%4!==0;}
-function inOpening(gc,gr){return isArchTop(gc,gr)||isArchTop(gc,gr-1);}
+// only some stretches of arches open onto the view; the rest stay closed, so the keep keeps its walls
+function isOpenArch(gc,gr){if(!isArchTop(gc,gr))return false;const b=Math.floor(gc/4),op=k=>hash2(k*7+3,gr*13+5)%100<40;return op(b)&&!op(b-1);} // never two open stretches in a row
+function inOpening(gc,gr){return isOpenArch(gc,gr)||isOpenArch(gc,gr-1);}
 function drawArch(g,X,Y,th,open){
   const st=th.style,round=st==='dungeon',x0=X+3.4,x1=X+TW-3.4,cx=X+TW/2,spring=Y+30,apex=Y+12,floor=Y+TH*2-4;
   const curve=(a,b,ap)=>{if(round)g.arc(cx,spring,(b-a)/2,Math.PI,0);else{g.quadraticCurveTo(a,ap+7,cx,ap);g.quadraticCurveTo(b,ap+7,b,spring);}};
@@ -2827,7 +2901,7 @@ function atmoPass(ctx,lights,x0,x1,y0,y1){
   const mist=lightSprite(lk.mist);
   for(let r=Math.max(0,Math.floor(y0/TH));r<=Math.min(L.rows-1,Math.floor(y1/TH));r++){const ys=SURF(r);
     for(let c=Math.max(0,(Math.floor(x0/TW)-1)&~1);c<=Math.min(L.cols-1,Math.floor(x1/TW)+1);c+=2){if(B(L,c,r)===WALL||!solidBelow(L,c,r))continue;
-      const h=hash2(c,r*7+3),x=c*TW+32+Math.sin(t*0.25+h%17)*14,w=84+h%30;ctx.globalAlpha=0.12+0.05*Math.sin(t*0.4+h%11);ctx.drawImage(mist,x-w/2,ys-8,w,16);}}
+      const h=hash2(c,r*7+3),x=c*TW+32+Math.sin(t*0.25+h%17)*14,w=84+h%30,fk=FOGK[th.style]||1;ctx.globalAlpha=Math.min(0.5,(0.12+0.05*Math.sin(t*0.4+h%11))*fk);ctx.drawImage(mist,x-w/2,ys-8-6*(fk-1),w,16+12*(fk-1));}}
   for(const q of lights){if(q.kind!=='torch'&&q.kind!=='win')continue;if(q.kind==='torch'&&q.r<100)continue;const sd=Math.floor(q.x*7+q.y*3);
     for(let i=0;i<16;i++){const h=hash2(sd,i),u=((h%1000)/1000+t*(0.006+(h>>>12)%7*0.002))%1,v=(((h>>>10)%1000)/1000+t*(0.012+(h>>>16)%5*0.003))%1;
       const px=q.x+(u-0.5)*150+Math.sin(t*0.7+i)*4,py=q.y+50-v*130,d=Math.hypot(px-q.x,py-q.y)/(q.kind==='win'?90:120);if(d>1)continue;
@@ -2845,12 +2919,12 @@ function keyLight(x,y){let best=null,bd=1e9;for(const q of frameLights){if(q.kin
 const AIRY=['air','hang','climb','climbDown','jumpUp','swing','wallrun','slide','fall','drop','exit'];
 function drawActor(ctx,e,x,y,face,pose,pal,o){
   const lk=e.lk;
-  if(GFX().hd&&!pal.bones){o=Object.assign({},o,{vx:lk?lk.cw:0,vy:lk?lk.cwy:0,time:gameTime,sq:lk&&Math.abs(lk.sq-1)>0.004?lk.sq:undefined,smear:lk&&Math.abs(lk.smear)>0.05?lk.smear:0});pose=livePose(e,pose);}
+  if(GFX().hd){o=Object.assign({},o,{vx:lk?lk.cw:0,vy:lk?lk.cwy:0,time:gameTime,sq:lk&&Math.abs(lk.sq-1)>0.004?lk.sq:undefined,smear:lk&&Math.abs(lk.smear)>0.05?lk.smear:0});pose=livePose(e,pose);}
   if(!GFX().hero||o.alpha===0){figDraw(ctx,x,y,face,pose,pal,o);return;}
   const solid=!(o.alpha<1);
   if(solid&&!AIRY.includes(e.state)){ctx.save();ctx.fillStyle='rgba(0,0,0,.42)';ctx.beginPath();ctx.ellipse(x,y+0.6,11,2.4,0,0,Math.PI*2);ctx.fill();ctx.restore();}
   const kl=keyLight(x,y);
-  if(GFX().hd&&!pal.bones){figDraw(ctx,x,y,face,pose,pal,Object.assign({},o,{lt:{dir:kl.dir,col:kl.col,k:kl.lamp?kl.k:kl.k*0.4}}));return;}
+  if(GFX().hd){figDraw(ctx,x,y,face,pose,pal,Object.assign({},o,{lt:{dir:kl.dir,col:kl.col,k:kl.lamp?kl.k:kl.k*0.4}}));return;}
   if(solid){ctx.save();ctx.globalAlpha=0.5+0.5*kl.k;figDraw(ctx,x+kl.dir*1.3,y-0.5,face,pose,pal,Object.assign({},o,{mono:'rgb('+kl.col+')',flash:0,smear:0}));ctx.restore();}
   figDraw(ctx,x,y,face,pose,pal,o);
 }
@@ -2972,7 +3046,7 @@ function bgPaint(g,ly,rnd){const B=BG_BASE-(ly.lift||0),T=Math.PI*2,R=(a,b)=>a+r
 // the openings on screen, as rectangles in world units (the room images cover everything outside the actual shapes)
 function openingsIn(x0,x1,y0,y1){const out=[],st=L.theme.style;
   for(let r=Math.max(0,Math.floor(y0/TH)-2);r<=Math.min(L.rows-1,Math.floor(y1/TH)+1);r++)for(let c=Math.max(0,Math.floor(x0/TW)-1);c<=Math.min(L.cols-1,Math.floor(x1/TW)+1);c++)
-    if(isArchTop(c,r))out.push([c*TW+3,r*TH+10,TW-6,TH*2-4-PARAPET-10+1]);
+    if(isOpenArch(c,r))out.push([c*TW+3,r*TH+10,TW-6,TH*2-4-PARAPET-10+1]);
   return out;}
 let bgC=null,bgG=null;
 function drawBackdrop(ctx,cx,cy,vw,vh,VZ,camD,camDY){
@@ -2995,6 +3069,100 @@ function drawBackdrop(ctx,cx,cy,vw,vh,VZ,camD,camDY){
       g.drawImage(L2.c,(ix0-x)*sx,(iy0-oy)*sy,(ix1-ix0)*sx,(iy1-iy0)*sy,ix0,iy0,ix1-ix0,iy1-iy0);}}
   ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.imageSmoothingEnabled=true;
   ctx.drawImage(bgC,bx0*q,by0*q,(bx1-bx0)*q,(by1-by0)*q,bx0*VS,by0*VS,(bx1-bx0)*VS,(by1-by0)*VS);ctx.restore();}
+
+// ================= ambient life: per-theme atmosphere, and a few things found everywhere =================
+//  everywhere: dust drifting in the air, moths around the lamps, now and then a trickle of grit from the ceiling
+//  Cistern: water dripping from the ceiling into rings on the floor, bats      Sandstone Halls: gusts of sand
+//  Lapis Gallery: fireflies, drifting rose petals                               Ember Forge: falling ash, spark bursts, smoke under the ceiling
+//  Jade Crypt: will-o'-wisps, bats, a thick ground fog
+const FOGK={crypt:2.1,dungeon:1.35,forge:0.7};
+const AMB=[];let ambNext={};
+const rr=(a,b)=>a+Math.random()*(b-a);
+function viewBox(){return {x0:cam.x,x1:cam.x+viewW,y0:cam.y,y1:cam.y+ROOM_H};}
+function hasCeil(c,r){return r>0&&B(L,c,r-1)!==EMPTY&&B(L,c,r)!==WALL;}
+function ambCount(k){let n=0;for(const p of AMB)if(p.k===k)n++;return n;}
+function updateAmbient(dt){
+  if(!L||!GFX().atmo||mode==='title'){AMB.length=0;return;}
+  const st=L.theme.style,v=viewBox(),t=gameTime,due=(k,a,b)=>{if(ambNext[k]===undefined)ambNext[k]=t+rr(a*0.3,b*0.6);if(t>=ambNext[k]){ambNext[k]=t+rr(a,b);return true;}return false;};
+  const W=v.x1-v.x0,Hh=v.y1-v.y0;
+  // dust drifting in the air (everywhere)
+  if(ambCount('mote')<26)AMB.push({k:'mote',x:rr(v.x0,v.x1),y:rr(v.y0,v.y1),vx:rr(-3,3),vy:rr(-2,2),t:0,life:rr(5,10),sz:rr(0.6,1.4)});
+  // a trickle of grit from the ceiling (everywhere)
+  if(due('grit',5,11)){for(let k=0;k<12;k++){const c=Math.floor(rr(v.x0+20,v.x1-20)/TW),r=Math.floor(rr(v.y0,v.y1)/TH);if(hasCeil(c,r)&&solidBelow(L,c,r)){const x=c*TW+rr(6,26);AMB.push({k:'trickle',x,y:r*TH+ceilOff(c,r),floor:SURF(r),t:0,life:rr(1.4,2.4)});break;}}}
+  if(st==='palace'&&due('gust',6,11)){const dir=Math.random()<0.5?1:-1;for(let i=0;i<46;i++)AMB.push({k:'gust',x:dir>0?v.x0-rr(0,W*0.7):v.x1+rr(0,W*0.7),y:rr(v.y0,v.y1),vx:dir*rr(170,260),vy:rr(4,18),t:0,life:3.2,len:rr(5,13)});}
+  if(st==='tile'){if(ambCount('fly')<13)AMB.push({k:'fly',x:rr(v.x0,v.x1),y:rr(v.y0+10,v.y1-20),vx:rr(-8,8),vy:rr(-6,6),t:0,life:rr(7,14),ph:rr(0,6)});
+    if(ambCount('petal')<6&&Math.random()<dt*0.9)AMB.push({k:'petal',x:rr(v.x0,v.x1),y:v.y0-6,vx:rr(-6,6),vy:rr(10,18),t:0,life:14,ph:rr(0,6),rot:rr(0,6),col:Math.random()<0.6?'#e88aa0':'#f4d6dc'});}
+  if(st==='forge'){if(ambCount('ash')<36)AMB.push({k:'ash',x:rr(v.x0,v.x1),y:v.y0+rr(-10,Hh*0.4),vx:rr(-4,4),vy:rr(6,14),t:0,life:rr(8,14),ph:rr(0,6),sz:rr(1,2.2)});
+    if(due('sparks',1,2.6)){const ls=L.torches.filter(q=>q.c*TW>v.x0-20&&q.c*TW<v.x1+20&&q.r*TH>v.y0-TH&&q.r*TH<v.y1);if(ls.length){const q=ls[Math.floor(Math.random()*ls.length)],x=q.c*TW+16,y=SURF(q.r)-46;
+      for(let i=0;i<14;i++)AMB.push({k:'spark',x,y,vx:rr(-50,50),vy:rr(-170,-70),t:0,life:rr(0.6,1.2)});}}
+    if(ambCount('smoke')<7&&Math.random()<dt*0.9){const c=Math.floor(rr(v.x0,v.x1)/TW),r=Math.floor(rr(v.y0,v.y1)/TH);if(hasCeil(c,r))AMB.push({k:'smoke',x:c*TW,y:r*TH+ceilOff(c,r)+8,vx:rr(4,9),vy:rr(-0.5,0.5),t:0,life:rr(6,10),sz:rr(18,30)});}}
+  if(st==='crypt'&&ambCount('wisp')<4&&Math.random()<dt*0.8)AMB.push({k:'wisp',x:rr(v.x0,v.x1),y:rr(v.y0+20,v.y1-10),vx:rr(-10,10),vy:rr(-4,4),t:0,life:rr(9,16),ph:rr(0,6),trail:[]});
+  if((st==='crypt'||st==='dungeon')&&due('bats',7,15)){const dir=Math.random()<0.5?1:-1,n=1+Math.floor(Math.random()*3),y=rr(v.y0+14,v.y0+Hh*0.45);
+    for(let i=0;i<n;i++)AMB.push({k:'bat',x:dir>0?v.x0-20-i*rr(10,22):v.x1+20+i*rr(10,22),y:y+rr(-10,10),vx:dir*rr(95,130),vy:0,t:0,life:9,ph:rr(0,6)});}
+  for(let i=AMB.length-1;i>=0;i--){const p=AMB[i];p.t+=dt;
+    switch(p.k){
+      case'mote':p.vx+=rr(-4,4)*dt;p.vy+=rr(-4,4)*dt;p.vx*=0.99;p.vy*=0.99;break;
+      case'fly':p.vx+=rr(-30,30)*dt;p.vy+=rr(-24,24)*dt;p.vx=clamp(p.vx,-14,14);p.vy=clamp(p.vy,-9,9);break;
+      case'wisp':p.vx+=Math.sin(p.t*0.9+p.ph)*8*dt;p.vy=Math.sin(p.t*1.7+p.ph)*5;p.trail.push([p.x,p.y]);if(p.trail.length>14)p.trail.shift();break;
+      case'petal':p.vx=Math.sin(p.t*1.6+p.ph)*14;p.rot+=dt*2.2;break;
+      case'ash':p.vx=Math.sin(p.t*1.1+p.ph)*6;break;
+      case'spark':p.vy+=320*dt;break;
+      case'bat':p.vy=Math.sin(p.t*5+p.ph)*16;break;
+    }
+    if(p.k!=='trickle'){p.x+=p.vx*dt;p.y+=p.vy*dt;}
+    if(p.t>p.life||p.x<v.x0-260||p.x>v.x1+260||p.y<v.y0-140||p.y>v.y1+140)AMB.splice(i,1);}
+}
+const smokeSprite=(()=>{let c=null;return()=>{if(c)return c;c=document.createElement('canvas');c.width=c.height=48;const g=c.getContext('2d'),gr=g.createRadialGradient(24,24,0,24,24,24);gr.addColorStop(0,'rgba(24,14,12,.55)');gr.addColorStop(1,'rgba(24,14,12,0)');g.fillStyle=gr;g.fillRect(0,0,48,48);return c;};})();
+function fadeIO(p,a=0.8){return Math.min(1,p.t/a,(p.life-p.t)/a);}
+// things lit by the room: drawn before the lighting so the dark falls on them too
+function ambientLit(ctx,x0,x1,y0,y1){
+  const st=L.theme.style,t=gameTime;ctx.save();
+  for(const p of AMB){const a=fadeIO(p);if(a<=0)continue;
+    switch(p.k){
+      case'mote':ctx.globalAlpha=a*0.55;ctx.fillStyle='rgb(236,226,206)';ctx.fillRect(p.x,p.y,p.sz,p.sz);break;
+      case'trickle':{const k=Math.min(1,p.t/0.15)*Math.min(1,(p.life-p.t)/0.4);ctx.globalAlpha=0.7*k;ctx.fillStyle='rgb(196,170,128)';
+        for(let i=0;i<10;i++){const u=((t*1.6+i/10)%1),y=p.y+(p.floor-p.y)*u*u;ctx.fillRect(p.x+Math.sin(i*2.3)*0.8,y,0.8,1.6);}
+        ctx.globalAlpha=0.35*k;ctx.beginPath();ctx.ellipse(p.x,p.floor,3+p.t*2,0.9,0,0,Math.PI*2);ctx.fill();break;}
+      case'gust':ctx.globalAlpha=a*0.6;ctx.fillStyle='rgb(222,186,128)';ctx.fillRect(p.x,p.y,p.len*Math.sign(p.vx),0.7);break;
+      case'petal':ctx.globalAlpha=a*0.85;ctx.fillStyle=p.col;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.scale(1,0.45+0.4*Math.abs(Math.sin(p.rot*1.3)));ctx.beginPath();ctx.ellipse(0,0,1.9,1.1,0,0,Math.PI*2);ctx.fill();ctx.restore();break;
+      case'smoke':ctx.globalAlpha=a*0.8;ctx.drawImage(smokeSprite(),p.x-p.sz,p.y-p.sz*0.5,p.sz*2,p.sz);break;
+      case'bat':{ctx.globalAlpha=Math.min(1,p.t/0.3);ctx.fillStyle='#0d0a12';const fl=Math.sin(p.t*22+p.ph),sx=Math.sign(p.vx);ctx.save();ctx.translate(p.x,p.y);ctx.scale(sx,1);
+        ctx.beginPath();ctx.ellipse(0,0,2.2,1.4,0,0,Math.PI*2);ctx.fill();
+        for(const w of [-1,1]){ctx.beginPath();ctx.moveTo(w*1,0);ctx.quadraticCurveTo(w*4,-3*fl-1,w*7.5,-4*fl);ctx.lineTo(w*5.5,-1*fl+0.8);ctx.lineTo(w*3.4,-1.2*fl+1.2);ctx.closePath();ctx.fill();}
+        ctx.beginPath();ctx.moveTo(1.6,-0.9);ctx.lineTo(2.2,-2.2);ctx.lineTo(2.6,-0.8);ctx.fill();ctx.restore();break;}
+    }}
+  ctx.restore();
+}
+// water dripping from the ceiling into the floor (Cistern): fixed drip points, each on its own rhythm; drawn after
+// the lighting, since wet things catch what light there is
+function drawDrips(ctx,x0,x1,y0,y1){const t=gameTime;{for(let r=Math.max(1,Math.floor(y0/TH));r<=Math.min(L.rows-1,Math.floor(y1/TH));r++)for(let c=Math.max(0,Math.floor(x0/TW));c<=Math.min(L.cols-1,Math.floor(x1/TW));c++){
+      const h=hash2(c*3+1,r*7+2);if(h%4!==0||!hasCeil(c,r)||!solidBelow(L,c,r))continue;
+      const x=c*TW+6+(h>>>4)%20,cy=r*TH+ceilOff(c,r),fy=SURF(r),per=2.2+((h>>>9)%300)/100,ph=((t+(h>>>13)%100/10)%per),swell=0.7,fall=Math.sqrt(2*(fy-cy)/700);
+      ctx.fillStyle='rgba(200,225,255,.95)';
+      if(ph<swell){const k=ph/swell;ctx.beginPath();ctx.ellipse(x,cy+1+k*1.4,0.6+k*0.7,0.8+k*1.1,0,0,Math.PI*2);ctx.fill();}
+      else if(ph<swell+fall){const u=ph-swell,y=cy+2+0.5*700*u*u;ctx.fillRect(x-0.6,y-3.2,1.2,4);}
+      else if(ph<swell+fall+0.7){const k=(ph-swell-fall)/0.7;ctx.strokeStyle='rgba(200,225,255,'+(0.85*(1-k))+')';ctx.lineWidth=0.9;ctx.beginPath();ctx.ellipse(x,fy,2+k*9,0.6+k*2,0,0,Math.PI*2);ctx.stroke();
+        if(k<0.4){ctx.fillStyle='rgba(190,215,240,'+(0.8*(1-k/0.4))+')';for(const s of [-1,1])ctx.fillRect(x+s*(1+k*9),fy-3*Math.sin(k/0.4*Math.PI),0.8,0.8);}}}}
+}
+// things that give their own light, or catch it: drawn after the lighting
+function ambientGlow(ctx,x0,x1,y0,y1){
+  const st=L.theme.style,t=gameTime;ctx.save();
+  if(st==='dungeon')drawDrips(ctx,x0,x1,y0,y1);
+  for(const p of AMB)if(p.k==='ash'){const a=fadeIO(p);if(a<=0)continue;ctx.globalAlpha=a*0.55;ctx.fillStyle=p.sz>1.8?'rgb(255,170,90)':'rgb(186,176,170)';ctx.fillRect(p.x,p.y,p.sz,p.sz*0.7);}
+  ctx.globalAlpha=1;ctx.globalCompositeOperation='lighter';
+  // moths around every lamp in view (everywhere)
+  for(const q of L.torches){const lo=st==='palace'&&lampFree(q)?[0,0]:LAMP[st]||LAMP.dungeon,lx=q.c*TW+16+lo[0],ly=SURF(q.r)-38+lo[1];if(lx<x0-30||lx>x1+30||ly<y0-30||ly>y1+30)continue;
+    for(let i=0;i<2;i++){const sd=q.c*3+q.r*7+i*11,mx=lx+10*Math.sin(t*2.1+sd)+4*Math.sin(t*6.7+sd*2),my=ly-6+7*Math.sin(t*2.9+sd*1.3)+3*Math.cos(t*8.3+sd),w=Math.abs(Math.sin(t*28+sd));
+      ctx.globalAlpha=0.8;ctx.fillStyle='rgb(255,236,200)';ctx.fillRect(mx-0.6,my-0.5,1.2,1);ctx.globalAlpha=0.5;ctx.fillRect(mx-1.6*w,my-0.9,1.6*w,0.7);ctx.fillRect(mx,my-0.9,1.6*w,0.7);}}
+  for(const p of AMB){const a=fadeIO(p);if(a<=0)continue;
+    switch(p.k){
+      case'fly':{const b=0.5+0.5*Math.sin(t*3.1+p.ph);ctx.globalAlpha=a*(0.15+0.85*b*b);ctx.drawImage(lightSprite('210,255,120'),p.x-5,p.y-5,10,10);ctx.fillStyle='rgb(240,255,190)';ctx.fillRect(p.x-0.5,p.y-0.5,1,1);break;}
+      case'wisp':{for(let i=0;i<p.trail.length;i+=2){const q=p.trail[i],k=i/p.trail.length;ctx.globalAlpha=a*0.25*k;ctx.drawImage(lightSprite('140,255,200'),q[0]-3*k,q[1]-3*k,6*k,6*k);}
+        const pu=0.75+0.25*Math.sin(t*4+p.ph);ctx.globalAlpha=a*0.55*pu;ctx.drawImage(lightSprite('140,255,200'),p.x-14,p.y-14,28,28);ctx.globalAlpha=a*pu;ctx.drawImage(lightSprite('220,255,235'),p.x-3.5,p.y-3.5,7,7);break;}
+      case'spark':ctx.globalAlpha=a;ctx.fillStyle=p.t<0.4?'rgb(255,226,140)':'rgb(255,140,60)';ctx.fillRect(p.x-0.7,p.y-0.7,1.5,1.5);ctx.globalAlpha=a*0.35;ctx.drawImage(lightSprite('255,150,60'),p.x-4,p.y-4,8,8);break;
+    }}
+  ctx.restore();
+}
 let vignette=null,vignette2=null;
 function render(){
   const ctx=gx;ctx.setTransform(1,0,0,1,0,0);
@@ -3014,9 +3182,10 @@ function render(){
   frameLights=(gf.light||gf.hero||gf.atmo)?gatherLights(cx-40,cx+vw+40,cy-40,cy+vh+40):[];
   ctx.save();ctx.beginPath();ctx.rect(cx,cy,vw,vh);ctx.clip();
   drawDynamic(ctx,cx,cx+vw,cy,cy+vh);
+  if(gf.atmo)ambientLit(ctx,cx,cx+vw,cy,cy+vh);
   if(gf.light||gf.grade)lightPass(ctx,frameLights,VZ,camD,camDY);
   if(gf.light)bloomPass(ctx,frameLights);
-  if(gf.atmo)atmoPass(ctx,frameLights,cx,cx+vw,cy,cy+vh);
+  if(gf.atmo){atmoPass(ctx,frameLights,cx,cx+vw,cy,cy+vh);ambientGlow(ctx,cx,cx+vw,cy,cy+vh);}
   if(gf.light)drawEmissive(ctx,cx,cx+vw,cy,cy+vh);
   ctx.restore();
   ctx.setTransform(VS,0,0,VS,0,0);
@@ -3265,7 +3434,7 @@ window.__HK={genLevel,setKey,took,
   load(n,seed,test){clearInput();quiet=!!test;L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);mode='play';intro=0;FX.length=0;clearRooms();cam.snap=true;updateCamera(0);return L;},
   loadMap(spec){return spec;},
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
-  get P(){return P;},get L(){return L;},lampFree,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
+  get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
   get S(){return S;},get REW(){return REW;},wallTouch,SW_W,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName};
 
