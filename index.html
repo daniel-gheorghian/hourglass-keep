@@ -35,7 +35,8 @@ body{font-family:var(--f-body);overflow:hidden;overscroll-behavior:none;-webkit-
 #game{position:absolute;display:block;border-radius:4px;box-shadow:0 0 0 1px var(--line),0 18px 50px rgba(0,0,0,.55)}
 #app.overlay #game{border-radius:0;box-shadow:none}
 #bPause{appearance:none;display:grid;place-items:center;padding:0;border-radius:50%;border:1.5px solid var(--line-strong);background:rgba(10,8,20,.45);color:var(--bone);cursor:pointer;touch-action:manipulation;z-index:3}
-#bPause svg{width:50%;height:50%}
+#bPause svg{width:50%;height:50%;pointer-events:none}
+#bPause::before{content:'';position:absolute;inset:-12px} /* a bigger target than it looks */
 #bPause:focus-visible{outline:2px solid var(--sand);outline-offset:2px}
 .ctl{position:absolute;touch-action:none;z-index:2}
 #pad{border-radius:50%;background:radial-gradient(circle at 50% 50%,var(--sand-soft) 0 24%,rgba(255,255,255,.035) 25% 100%);border:1.5px solid var(--line)}
@@ -247,7 +248,7 @@ function themeName(n){const i=Math.floor((n-1)/4),t=THEMES[i%THEMES.length],k=Ma
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=7;
-const APP_VERSION='27'; // set by the build; shown on the title and pause screens
+const APP_VERSION='28'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(s.gen!==GEN){s.gen=GEN;s.cp=-1;s.resume=null;s.floorTime=0;}
@@ -3005,8 +3006,10 @@ function layout(){
   if(!L1){bJump.style.right=side+'px';bJump.style.left='auto';bGrab.style.right=gx1+'px';bGrab.style.left='auto';}
   else{bJump.style.left=side+'px';bJump.style.right='auto';bGrab.style.left=gx1+'px';bGrab.style.right='auto';}
   bJump.style.bottom=jb+'px';bGrab.style.bottom=gb+'px';
-  // pause button at the top-right corner of the game view, kept inside the safe area
-  const pb=40,pTop=Math.max(6,ct-iT+6),pRight=Math.max(6,(iL+W)-(cl+cw)+6);
+  // pause button at the top-right corner of the game view, kept inside the safe area. In landscape the view reaches
+  // the top of the screen, and iOS keeps touches along that edge for itself (the browser bars, Notification Centre),
+  // so the button sits clear of it there.
+  const pb=40,pTop=Math.max(portrait?6:30,ct-iT+6),pRight=Math.max(6,(iL+W)-(cl+cw)+6);
   bPause.style.top=pTop+'px';bPause.style.right=pRight+'px';bPause.style.width=bPause.style.height=pb+'px';
   // HUD edges in world units, measured from the canvas origin
   hud.l=Math.max(0,iL-cl)/s+6;hud.t=Math.max(0,iT-ct)/s+3;
@@ -3029,7 +3032,12 @@ function bindBtn(el,k){let id=null;
   for(const t of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(t,e=>{if(e.pointerId!==id)return;id=null;setKey('touch',k,false);el.classList.remove('on');});}
 bindBtn(bJump,'j');bindBtn(bGrab,'g');
 cv.addEventListener('pointerdown',()=>{Snd.unlock();if(mode==='dead'&&deadT>0.9&&!canRewind())respawn();});
-bPause.addEventListener('click',()=>{Snd.unlock();pause();});
+{let pp=null;
+  bPause.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();Snd.unlock();pp=e.pointerId;try{bPause.setPointerCapture(e.pointerId);}catch(_){}});
+  bPause.addEventListener('pointerup',e=>{if(e.pointerId!==pp)return;pp=null;const r=bPause.getBoundingClientRect(),m=16;
+    if(e.clientX>=r.left-m&&e.clientX<=r.right+m&&e.clientY>=r.top-m&&e.clientY<=r.bottom+m)pause();});
+  bPause.addEventListener('pointercancel',()=>{pp=null;});
+  bPause.addEventListener('click',()=>{Snd.unlock();pause();});} // keyboard and mouse
 const KM={ArrowLeft:'l',ArrowRight:'r',ArrowUp:'u',ArrowDown:'d',KeyA:'l',KeyD:'r',KeyW:'u',KeyS:'d',Space:'j',KeyX:'j',ShiftLeft:'g',ShiftRight:'g',KeyZ:'g',KeyC:'g'};
 addEventListener('keydown',e=>{if(e.repeat&&KM[e.code]){e.preventDefault();return;}Snd.unlock();
   if(KM[e.code]){e.preventDefault();setKey('kb',KM[e.code],true);}
