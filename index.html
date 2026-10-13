@@ -256,7 +256,7 @@ function themeName(n){const i=Math.floor((n-1)/4),t=THEMES[i%THEMES.length],k=Ma
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=9;
-const APP_VERSION='38'; // set by the build; shown on the title and pause screens
+const APP_VERSION='39'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(s.gen!==GEN){s.gen=GEN;s.cp=-1;s.resume=null;s.floorTime=0;}
@@ -279,7 +279,19 @@ function solidBelow(L,c,r){const b=B(L,c,r);if(b===FLOOR)return true;if(b===WALL
 // A run never lies directly on top of another: the band between is left for the side passages.
 // Many candidate plans are walked and the best one kept, scored on its proportions (neither a tower nor a strip),
 // on going down about three times in five, and on room for side passages.
-const ROUTE_SLACK=1.05; // the runs are planned a little long: each one's last few tiles go to plain floor before its turn
+const ROUTE_SLACK=1.05;
+// ---- loops ----
+// Unexplored lays a level around a loop: two arcs between the same two places, the short one barred by a lock whose key
+// lies on the long one ("the player takes path A to the goal, only to discover a locked door", then goes round by B
+// for the key). Prince of Persia wires a plate to a gate anywhere on the level (an event names any room and tile), so
+// the plate you step on may open a gate storeys away. Here a loop is built at a switchback, where the route runs one
+// way along a storey and back underneath it. In the upper run's floor a hole opens on a ladder of one-storey ledges
+// down the band between the runs (it climbs both ways, so it never strands anyone); at its foot on the lower run a gate
+// in its own colour bars the way on. The plate of that colour lies on the upper run near the turn, on the walked line:
+// whoever goes the long way presses it and comes back under the ladder to find the gate open; whoever drops through
+// the hole finds it shut and climbs back. The route, its length and its traps are counted along the long way, so a
+// loop only adds to a floor.
+const LOOP_MIN=6,LOOP_PAIR=2; // the runs are planned a little long: each one's last few tiles go to plain floor before its turn
 function routeWalk(n,R,budget){
   const lo=n<=2?8:n<=6?4:3,hi=n<=2?14:n<=6?10:9,occ=new Map(),K=(x,y)=>(x+2048)*4096+(y+2048);
   const isRun=(x,y)=>occ.get(K(x,y))===1,freeRun=(x,y)=>!occ.has(K(x,y))&&!isRun(x,y-1)&&!isRun(x,y+1);
@@ -323,7 +335,10 @@ function routePlan(n,seed,budget,needChase,att){
     let chaseRun=-1;if(needChase){let p=0;for(let i=0;i<w.runs.length;i++){const r=w.runs[i];if(r.dir>0&&r.cap>=70&&p>=budget*0.12&&p<=budget*0.7&&i<w.runs.length-1){chaseRun=i;break;}p+=r.cap;}}
     if(needChase&&chaseRun<0)continue;
     let side=0;for(const r of w.runs)for(const [a,b] of r.rooms)if(!w.occ.has((a+2048)*4096+(b-1+2048))||!w.occ.has((a+2048)*4096+(b+1+2048)))side++;
-    const score=-Math.abs(Math.log(aspect/3))*3-(n>2?Math.abs(dn-0.6)*4:0)+Math.min(side,40)*0.03;
+    // a switchback whose two runs overlap by four rooms or more can hold a loop (see LOOPS)
+    let loopOK=0;if(n>=LOOP_MIN)for(let t=0;t<w.turns.length;t++){if(!w.turns[t].rev||t===chaseRun||t+1===chaseRun)continue;
+      let ov=0;for(const [a] of w.runs[t].rooms)if(w.runs[t+1].rooms.some(([a2])=>a2===a))ov++;if(ov>=4)loopOK=1;}
+    const score=-Math.abs(Math.log(aspect/3))*3-(n>2?Math.abs(dn-0.6)*4:0)+Math.min(side,40)*0.03+loopOK*0.6;
     if(!best||score>best.score)best={score,w,x0,y0,W,H,chaseRun};
   }
   if(!best)return null;
@@ -887,7 +902,62 @@ function buildLevel(n,seed,test,legacy,att){
   function keepClear(list){for(const idx of list){const p=idx%cols,rr=(idx-p)/cols;
     for(let dy=-2;dy<=0;dy++)for(let dx=-1;dx<=1;dx++){const q=(rr+dy)*cols+p+dx;if(rr+dy>=0&&rr+dy<rows&&p+dx>=0&&p+dx<cols&&L.base[q]===WALL)resv[q]=1;}}}
   const sideTry=(f,g0)=>{for(let fw=0;fw<=2;fw++)if(f(g0,fw)||f(!g0,fw))return true;return false;};
+  // ---- loops (see LOOPS): which switchbacks carry one, and where its hole opens (world column H; the ladder takes
+  // columns H and O=H+dir, walled in by H-dir and H+2dir) ----
+  const loopAt=new Map();L.loops=[];
+  if(att>=0&&!legacy&&n>=LOOP_MIN){
+    const lrng=mulberry32(hash2(seed,6151));let want=lrng()<0.85?1:0;if(n>=14&&lrng()<0.5)want++;
+    const cand=[];for(let t=0;t<plan.turns.length;t++){if(!plan.turns[t].rev||t===plan.chaseRun||t+1===plan.chaseRun)continue;
+      const up=plan.runs[t],lo=plan.runs[t+1],ov=up.rooms.filter(x=>lo.rooms.includes(x)).length;if(ov<3)continue;
+      const dir=up.dir,F=x=>x*dir,uL=roomLo(Math.min(...up.rooms)),uH=roomHi(Math.max(...up.rooms)),lL=roomLo(Math.min(...lo.rooms)),lH=roomHi(Math.max(...lo.rooms));
+      const uEnd=dir>0?uH-1:uL+1,uStart=dir>0?uL:uH,lFar=dir>0?lL+1:lH-1;
+      // at least 20 tiles of the upper run after the hole (the long way, and room for the plate), 14 before it, and the
+      // lower run carrying on 14 tiles past it (the ladder's foot, the gate, and floor beyond)
+      const fmin=Math.max(F(uStart+dir*14),F(lFar+dir*14)),fmax=F(uEnd-dir*20);if(fmin>fmax)continue;
+      const f=clamp(F(uEnd)-Math.max(20,Math.round(0.45*ov*RW)),fmin,fmax),H=f*dir;
+      cand.push({t,dir,H,O:H+dir,rUp:bandRow(up.band),rLow:bandRow(lo.band),ok:false,plated:false,footed:false,
+        G:{t:'gate',open:0,tm:0,dur:0,latch:true,pair:LOOP_PAIR,far:true,loop:true}});}
+    for(let i=cand.length-1;i>0;i--){const j=Math.floor(lrng()*(i+1)),q=cand[i];cand[i]=cand[j];cand[j]=q;}
+    for(const lp of cand){if(loopAt.size>=want)break;if(loopAt.has(lp.t-1)||loopAt.has(lp.t+1))continue;loopAt.set(lp.t,lp);}
+  }
+  // the ladder's cells, kept from everything else until the ladder is cut (world columns, rows between the runs)
+  const loopZone=(lp,fn)=>{for(let rr=lp.rUp+1;rr<lp.rLow;rr++)for(const x of [lp.H-lp.dir,lp.H,lp.O,lp.O+lp.dir])fn(rr*cols+x,x,rr);};
+  let loopFail=false,loopUsed=0; // loopUsed: route tiles the loops' pieces took; the last run is built that much longer
+  // the hole and the ladder, from the upper run (its own column space: the hole at PC(H), the ladder's other column next)
+  function loopTop(lp){
+    const hm=PC(lp.H);if(c>hm-2)return false;
+    if(r!==lp.rUp){if(c>hm-4||!down())return false;}
+    if(r!==lp.rUp||c>hm-2)return false;
+    if(c<hm-2&&!flat(hm-2-c))return false;
+    loopZone(lp,q=>{resv[q]=0;});
+    let ok=W(hm-1,r)&&W(hm,r)&&W(hm+1,r);loopZone(lp,(q,x,rr)=>{if(ok&&!W(PC(x),rr))ok=false;});
+    if(!ok){loopZone(lp,q=>{resv[q]=1;});return false;}
+    set(hm-1,r,FLOOR);set(hm,r,EMPTY);set(hm+1,r,FLOOR);feat(hm,r,{t:'loophole'});
+    for(let j=1;j<lp.rLow-lp.rUp;j++){const a=j%2?hm:hm+1;set(a,r+j,FLOOR);set(j%2?hm+1:hm,r+j,EMPTY);}
+    loopZone(lp,(q,x)=>{if(x===lp.H-lp.dir||x===lp.O+lp.dir)resv[q]=1;}); // the ladder's walls stay walls
+    bot.push({a:'sjump',from:hm-1,to:hm+1});
+    c=hm+1;run=1;lp.ok=true;return true;}
+  // the plate, near the end of the upper run, on the walked line
+  function loopPlate(lp){
+    for(let k=0;k<10&&!lp.plated;k++){
+      if(W(c+1,r)&&W(c+2,r)&&W(c+3,r)){for(let i=1;i<=3;i++)set(c+i,r,FLOOR);
+        feat(c+2,r,{t:'plate',g:lp.G,press:-9,latch:true,where:'far below',pair:LOOP_PAIR,loop:true});lp.plate={c:PC(c+2),r};
+        bot.push({a:'walk',c:c+3});c+=3;run+=3;lp.plated=true;break;}
+      if(!flat(1))break;}
+    return lp.plated;}
+  // the foot of the ladder on the lower run, and the gate just past it (the lower run's space: the ladder at La, La+1)
+  function loopFoot(lp){
+    const La=PC(lp.O);if(c>La-4)return false;
+    if(r!==lp.rLow){if(r!==lp.rLow-1||c>La-6||!down())return false;}
+    if(r!==lp.rLow||c>La-2)return false;
+    for(let xx=c+1;xx<=La+6;xx++)if(!W(xx,r))return false;
+    for(let xx=c+1;xx<=La+6;xx++)set(xx,r,FLOOR);
+    feat(La+4,r,lp.G);lp.gate={c:PC(La+4),r};
+    bot.push({a:'walk',c:La+6});c=La+6;run=3;lp.footed=true;
+    L.loops.push({t:lp.t,H:lp.H,O:lp.O,dir:lp.dir,rUp:lp.rUp,rLow:lp.rLow,gate:lp.gate,plate:lp.plate});
+    return true;}
   const runs=plan.runs;let entryP=-1,prevKit=null,pendDet=0,pendDbl=0;L.runsInfo=[];
+  for(const lp of loopAt.values())loopZone(lp,q=>{resv[q]=1;});
   for(let k=0;k<runs.length;k++){
     const rn=runs[k],dir=rn.dir,R0=bandRow(rn.band),first=k===0,last=k===runs.length-1,endRoom=rn.rooms[rn.rooms.length-1];
     if(first)entryP=dir>0?roomLo(rn.rooms[0])+1:roomHi(rn.rooms[0])-1;
@@ -900,14 +970,20 @@ function buildLevel(n,seed,test,legacy,att){
       L.start={x:entryP*TW+16,r,face:dir,door:PC(c-1)};c+=1;cEntry=c-2;
       {const kk=n<=2?ri(4,5):ri(1,3);flat(kk);}
     }
-    let target=R0,iter=0;vHi=last?vFar-14:vFar-3; // room to settle before the turn; the last run ends on open floor before the door
+    let target=R0,iter=0;const vHiRun=last?vFar-14:vFar-3; // room to settle before the turn; the last run ends on open floor before the door
+    // a loop's pieces come at set places: the run is built up to each (vHi held short of it), then the piece goes in
+    const stops=[],upL=loopAt.get(k),loL=loopAt.get(k-1);
+    if(upL){stops.push({at:PC(upL.H)-5,fn:()=>loopTop(upL),k:'loop-top'});stops.push({at:vFar-12,fn:()=>!upL.ok||loopPlate(upL),k:'loop-plate'});}
+    if(loL&&loL.ok)stops.push({at:PC(loL.O)-6,fn:()=>loopFoot(loL),k:'loop-foot'});
+    stops.sort((a,b)=>a.at-b.at);
     // (the last run has rooms in hand: it stops once the route is as long as planned and the floor has at least nine
     // tenths of the traps a floor this long used to hold, so a floor whose side passages took much of its length
     // doesn't come out short)
-    const trapsNow=()=>{let t=0;for(const q of L.segs)if(!MOVES.has(q.k)&&!q.k.startsWith('turn-'))t++;return t;};
-    const lastStop=progBase+(rn.cap+(first?2:0)),trapTarget=Math.floor(routeT*(n<=5?0.095:n<=8?0.085:0.08));
+    const trapsNow=()=>{let t=0;for(const q of L.segs)if(!MOVES.has(q.k)&&!q.k.startsWith('turn-')&&!q.k.startsWith('loop-'))t++;return t;};
+    const lastStop0=progBase+(rn.cap+(first?2:0)),trapTarget=Math.floor(routeT*(n<=5?0.095:n<=8?0.085:0.08));
+    for(;;){const st=stops.length?stops[0]:null;vHi=st?Math.min(vHiRun,st.at):vHiRun;
     while(c<vHi&&iter++<5000){
-      if(last&&prog()>=lastStop&&trapsNow()>=trapTarget)break;
+      if(last&&prog()>=lastStop0+loopUsed&&trapsNow()>=trapTarget)break;
       if(chaseWanted&&!L.ext.chase&&k===plan.chaseRun&&MX<0&&vHi-c>=60&&c-cEntry>=6){
         if(raw(c,r)===FLOOR&&!fe(c,r)&&!L.cps.some(q=>prog()-q.ord<12)){L.cps.push({c,r,x:c*TW+16,on:false,ord:prog()});nextCp=prog()+CP_GAP;}
         {const c0=c,r0=r;if(chaseSeg()){L.segs.push({k:'chase',c0,c1:c,r0,r1:r});breathe();continue;}}}
@@ -955,6 +1031,13 @@ function buildLevel(n,seed,test,legacy,att){
       }
       if(alcoves.length&&prog()>routeT*alcoves[0].at&&ch(0.3)){if(alcove(alcoves[0].type))alcoves.shift();}
     }
+    if(!st)break;
+    stops.shift();vHi=vHiRun;{const c0=c,r0=r;
+      if(st.fn()){if(c!==c0){L.segs.push({k:st.k,c0,c1:c,r0,r1:r});if(st.k!=='loop-plate')breathe();loopUsed+=c-c0;}}
+      else if(st.k==='loop-foot'||st.k==='loop-plate')loopFail=true;}
+    }
+    if(upL&&upL.ok&&!upL.plated)loopFail=true; // a gate with no plate: start the floor again
+    if(loopFail)return null;
     vHi=vFar;
     if(r<R0)down(); // back onto the band's floor
     // and on to the end of the run's last room: the turn has the next room column to itself
@@ -1704,7 +1787,7 @@ function tryDrink(){for(const it of L.items){if(it.taken||it.r!==pRow())continue
 function atDoor(){const d=L.door;return d&&d.r===pRow()&&Math.abs(P.x-d.x)<16;}
 function hurt(n,cause){if(P.state==='dead')return;P.hp-=n;P.flash=0.3;Snd.play('hurt');try{navigator.vibrate&&navigator.vibrate(40);}catch(e){}if(P.hp<=0){P.hp=0;die(cause);}}
 function die(cause){if(P.state==='dead')return;deathAt=gameTime;S.resume=null;writeSave();setState('dead');P.cause=cause;P.vx=0;P.vy=0;P.hp=0;P.sword=false;P.yo=0;mode='dead';deadT=0;Snd.play('die');if(cause==='blade'||cause==='spikes'||cause==='sword')sparks(P.x,P.y-24,8,'#d94a3a');}
-const PAIRN=['amber','teal'],PAIRC=['#e0a43a','#45b8b0'];
+const PAIRN=['amber','teal','violet'],PAIRC=['#e0a43a','#45b8b0','#a77ee6'];
 function gateMsg(f){const nm=f.pair!==undefined?'The '+PAIRN[f.pair]+' gate':'A gate';
   if(f.latch)return f.where?nm+' grinds open '+f.where+' and stays open.':'Somewhere on this floor, a gate grinds open and stays open.';
   return nm+' grinds open '+f.where+', but its sand is running. Get back before it shuts.';}
@@ -2238,6 +2321,8 @@ const HINTS={
   block:'A loose block. Hold Grab and press toward it to push, away to pull. Its weight holds a plate down for good, and you can climb over it.',
   chase:'A sandstorm. Keep running and jump everything in your way; the arch at the far end stops it.',
   secret:'Something glints up there. Side passages without gates hide gold flasks.',
+  shortcut:'A hole in the floor with ledges below it: a quick way down. Drop in, or jump it and go the long way round.',
+  loopgate:'A violet gate. It opens from the violet plate, which lies on the long way round. The ledges beside it climb back up to where you dropped in.',
   double:'Two marked gates. Each answers to the plate of its colour, one above and one below. The one with the hourglass will not stay open.',
 };
 function hint(id){if(S.hints[id])return;S.hints[id]=1;writeSave();if(!hintQ.includes(id))hintQ.push(id);}
@@ -2249,6 +2334,7 @@ function checkHints(){
     let c=pCol();
     for(let i=1;i<=2;i++){const nc=c+P.face*i;const f=F(L,nc,r);
       if(B(L,nc,r)===WALL)break;
+      if(f&&f.t==='loophole'){hint('shortcut');break;}
       if(!solidBelow(L,nc,r)){let w=0;for(let k=0;k<4;k++){if(!solidBelow(L,nc+P.face*k,r)&&B(L,nc+P.face*k,r)!==WALL)w++;else break;}
         if(w>=3){let bar=false;for(let k=0;k<4;k++){const ff=F(L,nc+P.face*k,r);if(ff&&ff.t==='bar')bar=true;}hint(bar?'swing':'wide');}else if(edgeBelow()&&B(L,nc,r+1)!==WALL&&solidBelow(L,nc,r+1))hint('drop');else hint('gap');break;}
       if(f){if(f.t==='spikes')hint('spikes');else if(f.t==='loose')hint(f.plank?'bridge':'loose');else if(f.t==='plate')hint('plate');else if(f.t==='chomp')hint('chomp');else if(f.t==='low')hint('crawl');else if(f.t==='closer')hint('closer');else if(f.t==='vent')hint('vent');else if(f.t==='pend')hint('pend');break;}
@@ -2260,7 +2346,7 @@ function checkHints(){
     for(const it of L.items)if(!it.taken&&it.r===r&&Math.abs(it.x-P.x)<40)hint('potion');
     for(const cp of L.cps)if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<70)hint('cp');
     for(const sn of SN)if(sn.alive&&sn.r===r&&Math.abs(sn.x-P.x)<110){hint('snake');if(lowAt(sn.x,sn.r)||lowAt(sn.x-20,sn.r)||lowAt(sn.x+20,sn.r))hint('poke');}
-    for(const o of L.dyn)if(o.f.t==='gate'&&o.f.far&&o.f.open<0.5&&o.r===r&&Math.abs(o.c*TW+16-P.x)<110){hint(o.f.pair!==undefined?'double':o.f.latch?'latch':'sandgate');}
+    for(const o of L.dyn)if(o.f.t==='gate'&&o.f.far&&o.f.open<0.5&&o.r===r&&Math.abs(o.c*TW+16-P.x)<110){hint(o.f.loop?'loopgate':o.f.pair!==undefined?'double':o.f.latch?'latch':'sandgate');}
     for(const o of L.dyn)if(o.f.t==='pend'&&o.r===r&&Math.abs(o.c*TW+16-P.x)<110)hint('pend');
     for(const o of L.dyn){if(o.r!==r)continue;const dx=Math.abs(o.c*TW+16-P.x);if(o.f.t==='saw'&&dx<120)hint('saw');if(o.f.t==='darter'&&dx<200)hint('darts');}
     for(const bl of L.ext.blocks)if(bl.r===r&&Math.abs(bl.c*TW+16-P.x)<90)hint('block');
@@ -3511,7 +3597,15 @@ function drawGate(ctx,f,X,Y,ys,half){
   ceilShade(ctx,pl);ctx.restore();}
   // a timed gate has its hourglass set into the wall above it, in a carved roundel centred on that wall's face
   if(!half&&!f.latch&&f.dur>0){const st=L.theme.style;gateRoundel(ctx,X+16-HX,pl.top-(st==='dungeon'||st==='forge'?12:16),f.tm>0&&f.tm<Infinity?f.tm/f.dur:1,f.tm>0&&f.tm<Infinity);}
+  // a marked gate wears its colour on the wall above it (the cross bar alone is lost in the ceiling's shadow); beside
+  // the hourglass when it has one
+  if(!half&&f.pair!==undefined){const tm=!f.latch&&f.dur>0,st=L.theme.style;pairPlaque(ctx,X+16-HX+(tm?15:0),pl.top-(tm?(st==='dungeon'||st==='forge'?12:16):10),PAIRC[f.pair]);}
 }
+// a small enamelled lozenge in a dark setting
+function pairPlaque(ctx,x,y,col){ctx.save();ctx.translate(x,y);const D=(k,dx,dy)=>{ctx.beginPath();ctx.moveTo(dx,dy-k);ctx.lineTo(dx+k,dy);ctx.lineTo(dx,dy+k);ctx.lineTo(dx-k,dy);ctx.closePath();};
+  ctx.fillStyle='rgba(0,0,0,.35)';D(6.2,0.9,1.1);ctx.fill();ctx.fillStyle='#0b0812';D(6,0,0);ctx.fill();
+  ctx.fillStyle=col;D(4.4,0,0);ctx.fill();ctx.fillStyle='rgba(255,255,255,.38)';ctx.beginPath();ctx.moveTo(0,-4.4);ctx.lineTo(4.4,0);ctx.lineTo(1.4,0);ctx.lineTo(-1.6,-2.6);ctx.closePath();ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.moveTo(-4.4,0);ctx.lineTo(0,4.4);ctx.lineTo(0.6,1.8);ctx.closePath();ctx.fill();ctx.restore();}
 function drawJaws(ctx,o,f,X,Y,ys,half){
   const k=chompK(f),pl=plane(X,Y,ys,o.c,o.r),sh=o.c%7,sc=0.8;
   // measured from the ceiling's underside: open, the upper teeth just clear the ceiling's front edge
@@ -3595,6 +3689,7 @@ function drawBlock(ctx,bl,th){const k=bl.mv?ease(Math.min(1,bl.mv.t/bl.mv.dur)):
     ctx.fillStyle=th.hi;ctx.fillRect(bx+1.2,by+1.2,TW-2.4,2.2);ctx.fillStyle=th.lo;ctx.fillRect(bx+1.2,by+TH-4,TW-2.4,2.8);
     ctx.strokeStyle='rgba(0,0,0,.45)';ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(bx+6,by+20);ctx.lineTo(bx+12,by+26);ctx.lineTo(bx+10,by+34);ctx.moveTo(bx+22,by+42);ctx.lineTo(bx+26,by+50);ctx.stroke();
     ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(bx+TW/2-5,by+TH/2-2,10,4);}
+const CUT_AT_WALL=new Set(['plate','xplate','closer','loose','spikes']);
 function drawDynamic(ctx,x0,x1,y0,y1){
   const th=L.theme,c0=Math.floor(x0/TW)-1,c1=Math.floor(x1/TW)+1,r0=Math.floor(y0/TH)-1,r1=Math.floor(y1/TH)+1;
   const inRoom=(c,r)=>c>=c0&&c<=c1&&r>=r0&&r<=r1;
@@ -3603,6 +3698,10 @@ function drawDynamic(ctx,x0,x1,y0,y1){
   if(inRoom(L.door.c,L.door.r))drawDoor(ctx,L.door.x,L.door.r,L.door.open,true);
   for(const cp of L.cps)if(inRoom(cp.c,cp.r))drawHourglass(ctx,cp);
   for(const o of L.dyn){if(!inRoom(o.c,o.r))continue;const f=o.f,X=o.c*TW,Y=o.r*TH,ys=SURF(o.r);
+    // a tile's top runs back and to the right of it; against a wall on that side its back corner is behind the wall's
+    // face (the plain floor stops there too), so these are cut at the face
+    const cut=CUT_AT_WALL.has(f.t)&&B(L,o.c+1,o.r)===WALL;
+    if(cut){ctx.save();ctx.beginPath();ctx.rect(X-200,Y-200,TW-HX+200,TH+400);ctx.clip();}
     switch(f.t){
       case'stone':drawStone(ctx,o,f);break;
       case'sanctum':{const ch=L.ext.chase,glow=ch&&ch.done?0.25:0.6+0.25*Math.sin(gameTime*3);ctx.strokeStyle='rgba(255,226,160,'+glow+')';ctx.lineWidth=2;
@@ -3644,6 +3743,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
       case'gate':drawGate(ctx,f,X,Y,ys,0);break;
       case'chomp':drawJaws(ctx,o,f,X,Y,ys,0);break;
     }
+    if(cut)ctx.restore();
   }
   for(const bl of L.ext.blocks){if(inRoom(bl.c,bl.r))drawBlock(ctx,bl,th);}
   for(const d of L.ext.darts){if(d.x<x0-10||d.x>x1+10)continue;const t=-(d.dir||-1)*10;ctx.strokeStyle='#0b0812';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(d.x+t,d.y);ctx.stroke();
@@ -4297,7 +4397,7 @@ window.__HK={genLevel,setKey,took,
   load(n,seed,test){clearInput();quiet=!!test;L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;mode="play";intro=0;FX.length=0;STORMG.length=0;clearRooms();cam.snap=true;updateCamera(0);return L;},
   loadMap(spec){return spec;},
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
-  get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,plantPose,legIK,mk,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
+  get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,plantPose,legIK,mk,drawDynamic,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
   get S(){return S;},get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName};
 
