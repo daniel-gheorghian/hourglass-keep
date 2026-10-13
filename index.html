@@ -85,10 +85,19 @@ kbd{font:700 11.5px/1 var(--f-body);letter-spacing:.08em;padding:3px 6px;border-
   h1{font-size:clamp(40px,8.5vh,64px)}
 }
 @media (orientation:landscape){.only-portrait{display:none}}
+/* landscape only: held upright, the game pauses behind a prompt to turn the phone */
+#rotate{position:fixed;inset:0;z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;background:#0b0912;color:var(--bone);text-align:center}
+#rotate svg{width:84px;height:84px;color:var(--sand);animation:tilt 2.4s ease-in-out infinite}
+#rotate p{margin:0;font:600 17px/1.4 var(--f-body);max-width:260px}
+#rotate small{font:500 13px/1.4 var(--f-body);color:var(--haze)}
+@keyframes tilt{0%,30%{transform:rotate(0)}55%,85%{transform:rotate(-90deg)}100%{transform:rotate(0)}}
+body.portrait #rotate{display:flex}
+@media (prefers-reduced-motion:reduce){#rotate svg{animation:none;transform:rotate(-90deg)}}
 @media (prefers-reduced-motion:reduce){.btn,#pad .ar{transition:none}}
 </style>
 </head>
 <body>
+<div id="rotate" role="alert" aria-live="polite"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="14" y="5" width="20" height="38" rx="4" fill="none" stroke="currentColor" stroke-width="2.6"/><rect x="21" y="38" width="6" height="2" rx="1" fill="currentColor"/></svg><p>Turn your phone sideways to play.</p><small>The game is paused.</small></div>
 <div id="app">
   <canvas id="game" width="320" height="192" aria-label="Hourglass Keep game view"></canvas>
   <div id="stage">
@@ -115,7 +124,6 @@ kbd{font:700 11.5px/1 var(--f-body);letter-spacing:.08em;padding:3px 6px;border-
           <button id="bHowT" type="button">How to play</button>
           <button id="bGfxT" type="button">Graphics</button>
         </div>
-        <p class="fine only-portrait">Turn your phone sideways for a bigger view.</p>
         <p class="fine" id="offlineNote">Runs offline once this page has loaded. Progress saves on this device as you play.</p>
         <p class="ver verTag"></p>
       </div>
@@ -149,7 +157,7 @@ kbd{font:700 11.5px/1 var(--f-body);letter-spacing:.08em;padding:3px 6px;border-
           <dt>Gates</dt><dd>A plate raises a gate. An hourglass on a gate means it shuts again, with the time left shown at the top. A red plate right in front of a gate slams it shut, so jump over it. Some gates open from a plate out of sight, up a climb or down a hole; colour-marked gates answer to the plate of the same colour.</dd>
           <dt>Traps</dt><dd>Jump saw blades as they come. Crouch under darts. When sand stirs behind you, run and do not stop until the arch.</dd>
           <dt>Sands</dt><dd>When you fall, <kbd>Grab</kbd> turns back time about five seconds. You carry three turns of the glass; every hourglass refills them.</dd>
-          <dt>Flasks</dt><dd>Stand on one and tap <kbd>Grab</kbd> to drink. Red heals one, gold adds a life, dark blue is poison. Gold flasks hide at the far end of side passages without a gate.</dd>
+          <dt>Flasks</dt><dd>Stand on one and tap <kbd>Grab</kbd> to drink. A small red flask heals one life, a large red one heals them all, gold adds a life, dark blue is poison. Large red flasks are rare and wait at the far ends of gated side passages; gold ones hide in passages without a gate.</dd>
           <dt>Exit</dt><dd>A floor plate somewhere opens the exit. Press up at the open door.</dd>
           <dt>Keys</dt><dd>Arrows move, <kbd>Space</kbd> jumps, <kbd>Shift</kbd> grabs, <kbd>P</kbd> pauses.</dd>
         </dl>
@@ -248,7 +256,7 @@ function themeName(n){const i=Math.floor((n-1)/4),t=THEMES[i%THEMES.length],k=Ma
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=8;
-const APP_VERSION='32'; // set by the build; shown on the title and pause screens
+const APP_VERSION='33'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(s.gen!==GEN){s.gen=GEN;s.cp=-1;s.resume=null;s.floorTime=0;}
@@ -471,6 +479,10 @@ function genLevel(n,seed,test,legacy){
       }
       p.o=o;p.b=k;}
     if(!reward&&ch(0.4))L.items.push({c:x0+1,r:b,x:(x0+1)*TW+16,type:'heal',taken:false});
+    // now and then the far end of a gated passage holds a large red flask instead (one a floor at most; from a hash, so the
+    // floor's layout is unchanged)
+    if(!reward&&!L.bigFlask&&hash2((seed|0)+x0*13,b*29+n)%100<13){L.bigFlask=true;const ex=L.items.find(it=>it.c===x0+1&&it.r===b);
+      if(ex)ex.type='big';else L.items.push({c:x0+1,r:b,x:(x0+1)*TW+16,type:'big',taken:false});}
     let lt=-9;for(let xx=x0+1;xx<=bend;xx++)if(xx-lt>=7&&raw(xx,b)===FLOOR&&!fe(xx,b)&&ch(0.5)){L.torches.push({c:xx,r:b});lt=xx;}
     const outs=[],backs=[];
     for(let i=pl.parts.length-1;i>=0;i--)outs.push(...pl.parts[i].o);
@@ -567,7 +579,9 @@ function genLevel(n,seed,test,legacy){
     for(let i=0;i<k;i++)if(!W(c+1,r+i)||!W(c+2,r+i))return false;
     for(let i=1;i<k;i++)if(!W(c,r+i))return false;
     for(let i=1;i<=3;i++)if(!W(c+i,r+k))return false;
-    for(let i=0;i<k;i++){set(c+1,r+i,EMPTY);feat(c+1,r+i,{t:'banner',top:i===0,bot:i===k-1});}
+    // one record for the whole hanging, shared by its tiles: where a slide has torn it (a..b, world y)
+    const bn={top:r*TH+9,bot:(r+k-1)*TH+TH-16,a:-1,b:-1,t:-9};
+    for(let i=0;i<k;i++){set(c+1,r+i,EMPTY);feat(c+1,r+i,{t:'banner',top:i===0,bot:i===k-1,bn});}
     for(let i=1;i<=3;i++)set(c+i,r+k,FLOOR);
     bot.push({a:'slide',from:c,to:c+3});
     c+=3;r+=k;run=2;return true;
@@ -793,7 +807,7 @@ function genLevel(n,seed,test,legacy){
   if(!secretDone){ // no room for a hidden passage: fall back to a gold flask in an alcove near the end
     for(let k=0;k<L.items.length;k++){const it=L.items[k];if(it.alc){it.type='life';secretDone=true;break;}}}
   // thin out flasks: the gold flask always stays; every other flask keeps FLASK_GAP columns from any kept one (alcoves before floor flasks)
-  {const FLASK_GAP=Math.round(35*PKW),kept=[],rank=it=>it.type==='life'?0:it.alc?1:2;
+  {const FLASK_GAP=Math.round(35*PKW),kept=[],rank=it=>it.type==='life'?0:it.type==='big'?1:it.alc?2:3;
     for(const it of L.items.slice().sort((a,b)=>rank(a)-rank(b)||a.c-b.c))if(kept.every(k=>Math.abs(k.c-it.c)>=FLASK_GAP))kept.push(it);
     L.items=L.items.filter(it=>kept.includes(it));}
   while(c<cols-3){set(c+1,r,FLOOR);c++;}
@@ -849,6 +863,37 @@ const PS={
   turn:mk({lean:-0.05,hF:0.12,kF:0.2,hB:0.1,kB:0.2,aF:0.45,eF:1.25,aB:0.45,eB:1.25}),
   lowStrike:mk({lean:0.62,head:-0.2,hF:1.0,kF:1.15,hB:-0.45,kB:0.35,aF:1.15,eF:0.25,aB:-0.8,eB:0.5,sw:-0.62}),
 };
+// ---- poses added for climbing, wall running and low leaps ----
+Object.assign(PS,{
+  // the low leap under a beam: ducked well forward, the leading knee driven up, the back leg trailing
+  jumpLow:mk({lean:0.82,head:-0.5,hF:1.35,kF:1.55,hB:-0.55,kB:1.45,aF:1.3,eF:0.3,aB:-0.85,eB:0.5,air:1,hy:22}),
+  jumpLowS:mk({lean:0.78,head:-0.5,hF:1.25,kF:1.9,hB:0.75,kB:1.9,aF:1.2,eF:0.35,aB:0.6,eB:0.45,air:1,hy:21}),
+  // climbing onto a ledge: hands pressing down on the floor, then one knee set on it
+  press:mk({lean:0.38,head:-0.1,hF:0.12,kF:0.25,hB:-0.05,kB:0.3,aF:0.55,eF:-0.35,aB:0.45,eB:-0.3,air:1,hy:22}),
+  kneelUp:mk({lean:0.48,head:-0.1,hF:1.4,kF:2.3,hB:-0.2,kB:0.3,aF:0.45,eF:-0.25,aB:0.35,eB:-0.2,air:1,hy:20}),
+  kneel:mk({lean:0.5,head:-0.05,hF:0.58,kF:2.16,hB:-0.75,kB:0.55,aF:0.35,eF:-0.2,aB:0.2,eB:-0.15,air:1,hy:20}),
+  // kicking up a shaft: just off the wall the pushing leg is still stretched back to it and the other knee is high;
+  // rising to the far wall the leading foot reaches for it and the arms go up for the next kick or the ledge
+  kickOff:mk({lean:0.12,head:-0.35,hF:1.25,kF:1.6,hB:-0.95,kB:0.15,aF:2.7,eF:0.15,aB:2.3,eB:0.25,air:1,hy:25}),
+  kickReach:mk({lean:-0.12,head:-0.4,hF:1.35,kF:1.0,hB:0.15,kB:0.5,aF:2.85,eF:0.05,aB:2.55,eB:0.15,air:1,hy:25}),
+});
+// running up a wall: the leading foot plants on the wall at hip height with the knee up while the other leg drives down
+// straight; the arms pump, then both reach for the top as the climb runs out
+function wallRunPose(ph,reach){const a=ph*6.2832,s=Math.sin(a),up=0.5+0.5*s,dn=1-up;
+  const o=mk({lean:-0.1,head:-0.3,air:1,hy:25,sw:0.25,hF:lerp(-0.15,1.5,up),kF:lerp(0.2,1.85,up),hB:lerp(-0.15,1.5,dn),kB:lerp(0.2,1.85,dn),aF:0.5-1.0*s,eF:1.0,aB:0.5+1.0*s,eB:1.0});
+  if(reach>0){o.aF=lerp(o.aF,Math.PI-0.35,reach);o.eF=lerp(o.eF,0.05,reach);o.aB=lerp(o.aB,Math.PI-0.5,reach);o.eB=lerp(o.eB,0.1,reach);o.head=lerp(o.head,-0.5,reach);}
+  return o;}
+// Climbing onto a ledge, k 0..1 (climbing down plays it backwards): pull up until the hands press on the floor; lift the
+// leading knee while still out over the drop; move in and set that knee on the floor (nothing below its surface inside
+// the edge); then stand. cs: x0,y0 hanging, x1,y1 standing on the ledge (y1 its surface).
+const CLIMB_T=0.72,CLIMB_DOWN_T=0.6,cfP=mk({});
+function climbFrame(cs,k){let x,y,p;
+  if(k<0.4){const u=k/0.4,e=ease(u);x=cs.x0;y=lerp(cs.y0,cs.y1+22,e);
+    p=u<0.55?lerpPose(PS.hang,PS.pull,ease(u/0.55),cfP):lerpPose(PS.pull,PS.press,ease((u-0.55)/0.45),cfP);}
+  else if(k<0.56){const u=(k-0.4)/0.16,e=ease(u);x=lerp(cs.x0,cs.x0+(cs.x1-cs.x0)*0.12,e);y=lerp(cs.y1+22,cs.y1+12,e);p=lerpPose(PS.press,PS.kneelUp,e,cfP);}
+  else if(k<0.76){const u=(k-0.56)/0.2,e=ease(u);x=lerp(cs.x0+(cs.x1-cs.x0)*0.12,cs.x1,e);y=lerp(cs.y1+12,cs.y1+10,e);p=lerpPose(PS.kneelUp,PS.kneel,e,cfP);}
+  else{const u=(k-0.76)/0.24,e=ease(u);x=cs.x1;y=lerp(cs.y1+10,cs.y1,e);p=lerpPose(PS.kneel,PS.crouch,e,cfP);}
+  return {x,y,p};}
 function crawlPose(ph){const a=ph*6.2832,s=Math.sin(a);
   return mk({lean:1.36,head:-0.95,hF:0.28+0.22*s,kF:1.78+0.1*s,hB:0.1-0.22*s,kB:1.66-0.1*s,aF:0.06-0.28*s,eF:-0.25,aB:-0.02+0.28*s,eB:-0.2});}
 function RP(ph,amp=1){return GFX().hd?runPoseHD(ph,amp):runPose(ph,amp);}
@@ -1260,7 +1305,7 @@ function applySnap(sn){gameTime=sn.t;
   G=sn.G.map(cloneE);P=cloneE(sn.P);P.foe=sn.P.foe>=0?G[sn.P.foe]||null:null;P.drinkIt=sn.P.drinkIt>=0?L.items[sn.P.drinkIt]:null;
   SN=sn.SN.map(o=>Object.assign({},o));pendingGuards=sn.pg.map(q=>({at:q.at,src:q.src>=0?G[q.src]:null,spec:q.spec}));
   L.dyn.forEach((o,i)=>Object.assign(o.f,sn.dyn[i]));L.base.set(sn.base);L.debris=sn.debris.map(d=>Object.assign({},d));L.rubble=new Set(sn.rubble);
-  L.items.forEach((it,i)=>{if(it.type!=='life')it.taken=sn.items[i];}); // a gold flask once drunk stays drunk
+  L.items.forEach((it,i)=>{if(it.type!=='life'&&it.type!=='big')it.taken=sn.items[i];}); // a gold or large flask once drunk stays drunk
   L.door.open=sn.door[0];L.door.opening=sn.door[1];L.ext=JSON.parse(sn.ext);rebuildBlocks();clearRooms();}
 function canRewind(){return (S.sands|0)>0&&REW.length>0;}
 function startRewind(){let ti=0;
@@ -1353,7 +1398,18 @@ function hazardEdge(maxD){
 }
 function tryJump(){const e=hazardEdge(30);if(e!==null&&Math.abs(e-P.x)>6){P.tx=e-P.face*4;setState('edgeWalk');return;}startJump('stand');}
 function startJump(kind){P.jumpKind=kind;if(kind==='run')launch();else setState('jumpPrep');}
-function launch(){const run=P.jumpKind==='run';setState('air');P.vx=P.face*(run?183:132);P.vy=run?-190:-159;P.fallY=P.y;P.autoGrab=true;Snd.play('jump');}
+// Under a beam (a gate's or a guillotine's lintel) a full jump would put his head through the stone: he takes a low,
+// flat leap instead, ducked forward. It carries a little less far, so it is only used where it still lands on safe floor.
+const LOWJ={run:[212,128],stand:[150,112]},HEAD_UP=52,HEAD_LOW=44;
+function beamOverhead(run){const row=pRow(),vx=run?183:132,vy=run?190:159,T=2*vy/GRAV;
+  for(let t=0.02;t<T;t+=0.02){const x=P.x+P.face*vx*t,h=vy*t-0.5*GRAV*t*t,c=Math.floor(x/TW);
+    if(B(L,c,row-1)===WALL&&B(L,c,row)!==WALL&&HEAD_UP+h>(SURF(row)-row*TH)-2)return true;}
+  return false;}
+function lowLandsSafe(run){const [vx,vy]=LOWJ[run?'run':'stand'],x=P.x+P.face*vx*2*vy/GRAV,c=Math.floor(x/TW),row=pRow(),f=F(L,c,row);
+  return solidBelow(L,c,row)&&B(L,c,row)!==WALL&&!(f&&(f.t==='spikes'||f.t==='loose'));}
+function launch(){const run=P.jumpKind==='run';let vx=run?183:132,vy=run?190:159;P.lowJump=false;
+  if(beamOverhead(run)&&lowLandsSafe(run)){[vx,vy]=LOWJ[run?'run':'stand'];P.lowJump=true;}
+  setState('air');P.vx=P.face*vx;P.vy=-vy;P.fallY=P.y;P.autoGrab=true;Snd.play('jump');}
 function startStep(){
   const row=pRow();let tx=P.x+P.face*13;
   if(!solidBelow(L,pCol(tx),row)){const edge=P.face>0?(pCol()+1)*TW:pCol()*TW;tx=edge-P.face*2;if((tx-P.x)*P.face<0)tx=P.x;}
@@ -1555,6 +1611,9 @@ function stAir(dt){
   if(gameTime-(P.wallT||-9)<0.12&&took('j',0.12)){const sd=P.wallS;P.vx=-sd*95;P.vy=-300;P.face=-sd;P.fallY=P.y;P.autoGrab=true;P.jumpKind='kick';P.wallT=-9;
     Snd.play('kick');dust(P.x+sd*6,P.y-20,4);hint('walljump');return;}
   const py=P.y;P.y+=P.vy*dt;
+  // a jump from the floor never carries his head into the stone overhead
+  if(P.vy<0&&(P.jumpKind==='run'||P.jumpKind==='stand')){const hh=P.lowJump?HEAD_LOW:HEAD_UP,rt=Math.floor((P.y-hh)/TH);
+    if(rt!==Math.floor((py-hh)/TH)&&B(L,pCol(),rt)===WALL){P.y=(rt+1)*TH+hh;P.vy=0;}}
   // a swing bar within reach of the hands
   if(P.autoGrab||I.g){const b=barNear();if(b){P.bar=b;P.sw0=gameTime;P.vx=0;P.vy=0;setState('swing');Snd.play('grab');hint('swing');return;}}
   if(P.vy>0){
@@ -1571,7 +1630,7 @@ function bannerAt(){const f=F(L,pCol(),rowOf(P.y-30));return !!(f&&f.t==='banner
 const SW_A=0.95,SW_W=2*Math.PI/1.15;
 function barNear(){const hx=P.x,hy=P.y-HANG;for(const o of L.dyn){const f=o.f;if(f.t!=='bar'||(f===P.lastBar&&gameTime-P.barOff<0.5))continue;if(Math.abs(hx-f.x)<15&&Math.abs(hy-f.y)<20)return f;}return null;}
 function swingPos(){const t=gameTime-P.sw0,th=SW_A*Math.sin(SW_W*t),b=P.bar;return {th,c:Math.cos(SW_W*t),hx:b.x+P.face*34*Math.sin(th),hy:b.y+34*Math.cos(th)};}
-function startWallRun(){const wc=pCol()+P.face;P.x=P.face>0?wc*TW-BW-1:(wc+1)*TW+BW+1;P.vx=0;P.vy=-330;P.fallY=P.y;P.autoGrab=true;P.jumpKind='wall';setState('wallrun');Snd.play('jump');hint('wallrun');}
+function startWallRun(){const wc=pCol()+P.face;P.x=P.face>0?wc*TW-BW-1:(wc+1)*TW+BW+1;P.vx=0;P.vy=-330;P.fallY=P.y;P.autoGrab=true;P.jumpKind='wall';setState('wallrun');P.ph=0.25;Snd.play('jump');hint('wallrun');}
 // distance to a wall face straight ahead on this floor (only across solid floor), or null
 function wallAhead(){const row=pRow();let c=pCol();for(let i=0;i<3;i++){const nc=c+P.face;if(B(L,nc,row)===WALL)return {d:P.face>0?nc*TW-P.x:P.x-(nc+1)*TW,wc:nc};if(!solidBelow(L,nc,row))return null;const f=F(L,nc,row);if(f&&(f.t==='gate'&&f.open<0.5))return null;c=nc;}return null;}
 function stGarde(ix){
@@ -1627,9 +1686,12 @@ function updatePlayer(dt){
     case'lowStrike':if(!P.hitDone&&P.t>=0.12){P.hitDone=true;for(const sn of SN){if(!sn.alive||sn.r!==pRow())continue;const dx=(sn.x-P.x)*P.face;if(dx>-4&&dx<48)killSnake(sn);}}if(P.t>=0.36)setState('stand');break;
     case'jumpPrep':if(P.t>=0.1)launch();break;
     case'push':case'pull':{const k=Math.min(1,P.t/0.55);P.x=lerp(P.sx,P.tx,ease(k));P.ph+=dt*1.6;if(k>=1){setState('stand');standOn();}break;}
-    case'wallrun':{P.vy+=GRAV*dt;const ny=P.y+P.vy*dt;if(B(L,pCol(),rowOf(ny-54))===WALL){P.vy=Math.max(P.vy,0);}else P.y=ny;P.ph+=dt*2.6;
-      if(P.vy>=0){setState('air');P.vx=0;}break;}
+    case'wallrun':{P.vy+=GRAV*dt;const ny=P.y+P.vy*dt;if(B(L,pCol(),rowOf(ny-54))===WALL){P.vy=Math.max(P.vy,0);}else P.y=ny;P.ph+=dt*4.2;
+      if(P.vy>=0){setState("air");P.vx=0;}break;}
     case'slide':{const py=P.y;P.vy=approach(P.vy,75,700*dt);P.y+=P.vy*dt;P.fallY=P.y-8;
+      // the blade goes in where his hands hold the cloth and splits the hanging down to them as he slides
+      {const hy=P.y-HANG+3,f=F(L,pCol(),rowOf(hy));if(f&&f.t==='banner'&&f.bn){const bn=f.bn;if(bn.a<0){bn.a=Math.max(bn.top+4,hy-6);bn.b=bn.a;Snd.play('swish');}
+        const nb=Math.min(bn.bot+8,hy);if(nb>bn.b){bn.b=nb;bn.t=gameTime;if(Math.random()<0.5){const th=L.theme;FX.push({x:pCol()*TW+16+(Math.random()-0.5)*4,y:hy+2,vx:(Math.random()-0.5)*30,vy:10+Math.random()*20,g:140,life:0.6+Math.random()*0.4,t:0,col:th.cloth||th.guard,sz:1.3});}}}}
       if(Math.floor(P.t*4)!==Math.floor((P.t-dt)*4))Snd.play('slide');if(Math.random()<0.3)FX.push({x:P.x+P.face*5,y:P.y-50,vx:(Math.random()-0.5)*20,vy:-10,g:60,life:0.4,t:0,col:'rgba(230,210,170,.6)',sz:1.2});
       const h=landingSurface(py,P.y);if(h){land(h);break;}
       if(!I.g||!bannerAt()){setState('air');P.vx=0;P.jumpKind=null;P.autoGrab=false;}break;}
@@ -1644,11 +1706,9 @@ function updatePlayer(dt){
     case'hang':{const lg=P.ledge;if(!solidBelow(L,lg.c,lg.r)){startFall(0);break;}
       if(I.u||took('u')){P.cs={x0:P.x,y0:P.y,x1:lg.xe-lg.s*10,y1:lg.ys};setState('climb');Snd.play('grab');break;}
       if(took('d')||took('j')){startFall(0);break;}break;}
-    case'climb':{const k=Math.min(1,P.t/0.6),cs=P.cs;
-      if(k<0.5){P.x=cs.x0;P.y=lerp(cs.y0,cs.y1+16,ease(k/0.5));}else{P.x=lerp(cs.x0,cs.x1,ease((k-0.5)/0.5));P.y=lerp(cs.y1+16,cs.y1,ease((k-0.5)/0.5));}
-      if(k>=1){P.x=cs.x1;P.y=cs.y1;P.fallY=P.y;setState('stand');standOn();}break;}
-    case'climbDown':{const k=Math.min(1,P.t/0.5),cs=P.cs;
-      if(k<0.5){P.x=lerp(cs.x0,cs.x1,ease(k/0.5));P.y=lerp(cs.y0,cs.y0+16,ease(k/0.5));}else{P.x=cs.x1;P.y=lerp(cs.y0+16,cs.y1,ease((k-0.5)/0.5));}
+    case'climb':{const k=Math.min(1,P.t/CLIMB_T),cf=climbFrame(P.cs,k);P.x=cf.x;P.y=cf.y;
+      if(k>=1){P.x=P.cs.x1;P.y=P.cs.y1;P.fallY=P.y;setState('stand');standOn();}break;}
+    case'climbDown':{const k=Math.min(1,P.t/CLIMB_DOWN_T),cs=P.cs,cf=climbFrame({x0:cs.x1,y0:cs.y1,x1:cs.x0,y1:cs.y0},1-k);P.x=cf.x;P.y=cf.y;
       if(k>=1){P.ledge=cs.ledge;P.x=cs.x1;P.y=cs.y1;setState('hang');}break;}
     case'jumpUp':{const cs=P.cs;
       if(cs){if(P.t<0.1)break;const k=Math.min(1,(P.t-0.1)/0.22);P.x=lerp(cs.x0,cs.x1,ease(k));P.y=lerp(cs.y0,cs.ys+HANG,ease(k));P.yo=-Math.sin(Math.PI*k)*6;
@@ -1658,6 +1718,7 @@ function updatePlayer(dt){
     case'bonk':{const k=P.t/0.3;P.yo=-Math.sin(Math.PI*Math.min(1,k))*5;if(k>=1){P.yo=0;setState('stand');}break;}
     case'drink':{const it=P.drinkIt;if(it&&!it.taken&&P.t>=0.35){it.taken=true;
         if(it.type==='heal'){P.hp=Math.min(S.maxHp,P.hp+1);Snd.play('drink');flashScreen('#ff6a3d',0.38,0.3);msg('Red flask. One life restored.',2.2);}
+        else if(it.type==='big'){P.hp=S.maxHp;Snd.play('life');flashScreen('#ff6a3d',0.5,0.45);msg('Large red flask. All your lives restored.',2.6);}
         else if(it.type==='life'){S.maxHp=Math.min(10,S.maxHp+1);P.hp=S.maxHp;flashScreen('#ffd76b',0.5,0.45);if(!S.lifeTaken.includes(L.n))S.lifeTaken.push(L.n);writeSave();Snd.play('life');msg('Gold flask. Your lives grow by one.',2.6);}
         else{msg('Poison. Dark blue flasks hurt.',2.4);Snd.play('poison');flashScreen('#3fae66',0.4,0.32);hurt(1,'poison');}}
       if(P.state==='drink'&&P.t>=0.8)setState('stand');break;}
@@ -1685,14 +1746,17 @@ function updatePlayer(dt){
     case'jumpPrep':case'landHurt':tgt=PS.crouch;break;
     case'push':{tgt=RP(P.ph,0.45);tgt.lean=0.5;tgt.aF=1.45;tgt.eF=0.2;tgt.aB=1.3;tgt.eB=0.3;rate=30;break;}
     case'pull':{tgt=RP(-P.ph,0.4);tgt.lean=-0.3;tgt.aF=1.5;tgt.eF=0.1;tgt.aB=1.4;tgt.eB=0.2;rate=30;break;}
-    case'wallrun':{tgt=RP(P.ph,1.1);tgt.lean=-0.28;tgt.aF=2.5;tgt.aB=2.1;tgt.eF=0.3;tgt.eB=0.3;rate=40;break;}
+    case'wallrun':tgt=wallRunPose(P.ph,clamp((P.vy+150)/150,0,1));rate=40;break;
     case'slide':{tgt=lerpPose(PS.hang,PS.reach,0.5,mk({}));tgt.hF=0.35;tgt.kF=0.5;tgt.hB=0.1;tgt.kB=0.4;rate=30;break;}
     case'swing':{tgt=lerpPose(PS.hang,PS.reach,0.4,mk({}));const th=P.swTh||0;tgt.rot=-th;tgt.hF=0.15-0.6*th;tgt.kF=0.3+0.5*Math.max(0,-th);tgt.hB=-0.1-0.4*th;tgt.kB=0.3;rate=60;break;}
-    case'air':tgt=P.jumpKind==='run'?PS.jumpR:P.jumpKind==='stand'?PS.jumpS:PS.fall;if(P.jumpKind&&P.vy>60)tgt=lerpPose(tgt,PS.land,0.4,tmpP);break;
+    case'air':
+      if(P.jumpKind==='kick'){tgt=lerpPose(PS.kickOff,PS.kickReach,clamp((P.vy+300)/260,0,1),tmpP);rate=30;break;}
+      if(P.jumpKind==='wall'){tgt=wallRunPose(P.ph,1);rate=30;break;}
+      tgt=P.jumpKind==='run'?(P.lowJump?PS.jumpLow:PS.jumpR):P.jumpKind==='stand'?(P.lowJump?PS.jumpLowS:PS.jumpS):PS.fall;if(P.jumpKind&&P.vy>60)tgt=lerpPose(tgt,PS.land,0.4,tmpP);break;
     case'land':tgt=PS.land;rate=40;break;
     case'hang':tgt=PS.hang;rate=30;break;
-    case'climb':{const k=P.t/0.6;tgt=k<0.5?lerpPose(PS.hang,PS.pull,ease(k/0.5),tmpP):lerpPose(PS.pull,PS.crouch,ease(Math.min(1,(k-0.5)/0.5)),tmpP);rate=50;break;}
-    case'climbDown':{const k=P.t/0.5;tgt=k<0.5?lerpPose(PS.crouch,PS.pull,ease(k/0.5),tmpP):lerpPose(PS.pull,PS.hang,ease(Math.min(1,(k-0.5)/0.5)),tmpP);rate=50;break;}
+    case'climb':tgt=climbFrame(P.cs,Math.min(1,P.t/CLIMB_T)).p;rate=60;break;
+    case'climbDown':{const cs=P.cs;tgt=climbFrame({x0:cs.x1,y0:cs.y1,x1:cs.x0,y1:cs.y0},1-Math.min(1,P.t/CLIMB_DOWN_T)).p;rate=60;break;}
     case'jumpUp':tgt=P.t<0.1?PS.crouch:PS.reach;rate=40;break;
     case'bonk':tgt=PS.crouch;break;
     case'drink':tgt=PS.drink;break;
@@ -2053,8 +2117,8 @@ function drawRoomStatic(g,rx,ry,stage){
     g.restore();
   }
   for(let rr=-1;rr<RH;rr++)for(let cc=0;cc<RW;cc++){const gc=rx*RW+cc,gr=ry*RH+rr;
-    if(isArchTop(gc,gr))drawArch(g,cc*TW,rr*TH,th,bgOn&&isOpenArch(gc,gr));}
-  for(const w of L.windows){if(Math.floor(w.c/RW)!==rx||Math.floor(w.r/RH)!==ry)continue;if(bgOn&&inOpening(w.c,w.r))continue;drawWindow(g,(w.c%RW)*TW+16,(w.r%RH)*TH+38,th,w.c,false);}
+    if(isArchTop(gc,gr))drawArch(g,cc*TW,rr*TH,th,bgOn&&isOpenArch(gc,gr),gc,gr);}
+  for(const w of L.windows){if(Math.floor(w.c/RW)!==rx||Math.floor(w.r/RH)!==ry)continue;if(bgOn&&inOpening(w.c,w.r))continue;drawWindow(g,(w.c%RW)*TW+16,(w.r%RH)*TH+38,th,w.c,bgOn);}
   }
   // neighbours one cell outside the room are drawn too, so faces that overhang a room edge don't leave seams
   if(all||stage===1){
@@ -2065,7 +2129,7 @@ function drawRoomStatic(g,rx,ry,stage){
   // 3. front faces of walls, low ceilings and cornices
   each((gc,gr,X,Y)=>{const b=B(L,gc,gr);
     if(b===WALL){g.save();g.beginPath();g.rect(X-HX,Y,TW,TH);g.clip();wallCell(g,X-HX,Y,gc,gr,th);g.restore();
-      if(st!=='dungeon'&&st!=='forge'&&B(L,gc,gr+1)!==WALL&&gr+1<L.rows&&!isLow(gc,gr+1))cornice(g,X-HX,Y,th);}
+      if(st!=='dungeon'&&st!=='forge'&&B(L,gc,gr+1)!==WALL&&gr+1<L.rows&&!isLow(gc,gr+1))cornice(g,X-HX,Y,th,gc,gr);}
     else if(isLow(gc,gr))lowCeil(g,X,Y,gc,gr,th);});
   }
   if(!(all||stage===2))return;
@@ -2103,41 +2167,99 @@ function lowCeil(g,X,Y,gc,gr,th){
   const lf=F(L,gc-1,gr);
   if(!(lf&&lf.t==='low')&&B(L,gc-1,gr)!==WALL){g.fillStyle='rgba(0,0,0,.35)';g.fillRect(fx,Y,1.4,yb-Y);}
 }
+// ---- the stonework's wear: smooth patches across the keep, from pristine through worn and damaged to partly fallen.
+// Palaces are kept up better than cisterns and crypts.
+const WEAR_BIAS={palace:-0.06,tile:-0.09,dungeon:0.05,forge:0.02,crypt:0.08};
+function wearAt(x,y){const gx=x/(TW*4.5),gy=y/(TH*1.3),ix=Math.floor(gx),iy=Math.floor(gy),fx=gx-ix,fy=gy-iy,sd=(L.seed|0)&0xffff;
+  const v=(a,b)=>(hash2(a*73+sd,b*151+977)%1000)/1000,sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy);
+  return lerp(lerp(v(ix,iy),v(ix+1,iy),sx),lerp(v(ix,iy+1),v(ix+1,iy+1),sx),sy)+(WEAR_BIAS[L.theme.style]||0);}
+// 0 pristine, 1 worn, 2 damaged, 3 partly fallen
+function wearLevel(x,y){const w=wearAt(x,y);return w<WEAR_T[0]?0:w<WEAR_T[1]?1:w<WEAR_T[2]?2:3;}
+const WEAR_T=[0.39,0.57,0.74];
+// a stone's outline: a rectangle with rounded corners and slightly uneven sides (seeded, so a stone that spans two
+// tiles comes out the same in both)
+function roughRect(g,x,y,w,h,jag,rad,rnd,keep){rad=Math.max(0.2,Math.min(rad,w/2-0.1,h/2-0.1));const J=k=>(rnd()-0.5)*2*jag*k;
+  const nT=Math.max(1,Math.round(w/9)),nS=Math.max(1,Math.round(h/9));
+  if(!keep)g.beginPath();g.moveTo(x+rad,y+J(0.5));
+  for(let i=1;i<nT;i++)g.lineTo(x+rad+(w-2*rad)*i/nT,y+J(0.6));
+  g.lineTo(x+w-rad,y+J(0.5));g.quadraticCurveTo(x+w+J(0.3),y+J(0.3),x+w+J(0.5),y+rad);
+  for(let i=1;i<nS;i++)g.lineTo(x+w+J(0.6),y+rad+(h-2*rad)*i/nS);
+  g.lineTo(x+w+J(0.5),y+h-rad);g.quadraticCurveTo(x+w+J(0.3),y+h+J(0.3),x+w-rad,y+h+J(0.5));
+  for(let i=nT-1;i>0;i--)g.lineTo(x+rad+(w-2*rad)*i/nT,y+h+J(0.6));
+  g.lineTo(x+rad,y+h+J(0.5));g.quadraticCurveTo(x+J(0.3),y+h+J(0.3),x+J(0.5),y+h-rad);
+  for(let i=nS-1;i>0;i--)g.lineTo(x+J(0.6),y+rad+(h-2*rad)*i/nS);
+  g.lineTo(x+J(0.5),y+rad);g.quadraticCurveTo(x+J(0.3),y+J(0.3),x+rad,y+J(0.5));g.closePath();}
+// One stone of a wall's front face, added to the tile's batch of paths (P) rather than drawn: a tile of stones is then
+// filled with a dozen calls instead of a dozen per stone. Every mark is kept inside its stone.
+function stoneFace(P,x,y,w,h,hv,W,th){const rnd=mulberry32(hv),gap=0.55+0.22*W,ix=x+gap,iy=y+gap,iw=w-2*gap,ih=h-2*gap;
+  if(iw<1.5||ih<1.5)return;
+  if(W===3&&rnd()<0.3){ // fallen out: a dark hollow with broken edges, the rubble core showing at its back
+    roughRect(P.hole,ix,iy,iw,ih,1.6,2.6,rnd,true);P.holeTop.rect(ix+2,iy+1,iw-4,2);
+    for(let i=0;i<3;i++){const ex=ix+iw*(0.25+0.5*rnd()),ey=iy+ih*(0.6+0.2*rnd()),rx=Math.min(3,iw*0.2),ry=Math.min(2,ih*0.2);P.core.moveTo(ex+rx,ey);P.core.ellipse(ex,ey,rx,ry,0,0,6.2832);}
+    return;}
+  const v=hv%3,rad=[0.9,1.9,2.3,2.7][W],base=P.base[v];
+  if(W===0){if(base.roundRect)base.roundRect(ix,iy,iw,ih,rad);else base.rect(ix,iy,iw,ih);}else roughRect(base,ix,iy,iw,ih,[0.22,0.5,0.8,1.05][W],rad,rnd,true);
+  const e=Math.min(rad,iw/3);
+  P.hi[W].rect(ix+e,iy,iw-2*e,1.1);P.shade.rect(ix+e,iy+ih-1.6,iw-2*e,1.6);
+  if(P.lit)P.lit.rect(ix+0.3,iy+e,1.1,ih-2*e);
+  {const pw=iw*(0.3+0.25*rnd()),ph=ih*(0.35+0.2*rnd());(rnd()<0.5?P.pl:P.pd).rect(ix+e+rnd()*Math.max(0,iw-2*e-pw),iy+1.5+rnd()*Math.max(0,ih-3-ph),pw,ph);}
+  for(let i=0,np=1+W*2+(rnd()*2|0);i<np;i++)P.pit.rect(ix+1.5+rnd()*(iw-3.5),iy+1.5+rnd()*(ih-3.5),0.7+rnd()*0.8,0.7);
+  if(W>=1)P.grime[W].rect(ix+e,iy+ih*0.62,iw-2*e,ih*0.38-0.5);
+  if(W>=2&&rnd()<0.6){let cx=ix+iw*(0.25+0.5*rnd()),cy=iy+0.5;P.crack.moveTo(cx,cy);for(let i=0;i<4;i++){cx=clamp(cx+(rnd()-0.5)*iw*0.25,ix+1,ix+iw-1);cy+=(ih-1)/4;P.crack.lineTo(cx,cy);}}
+  if(W>=1&&rnd()<0.18*W){const L0=rnd()<0.5,T0=rnd()<0.5,cx=L0?ix:ix+iw,cy=T0?iy:iy+ih,sx=L0?1:-1,sy=T0?1:-1,s1=2+rnd()*3,s2=2+rnd()*3; // a corner knocked off
+    P.chip.moveTo(cx-sx*0.6,cy-sy*0.6);P.chip.lineTo(cx+sx*s1,cy-sy*0.3);P.chip.lineTo(cx+sx*s1*0.4,cy+sy*s2*0.5);P.chip.lineTo(cx-sx*0.3,cy+sy*s2);P.chip.closePath();}}
+function stoneBatch(th){const N=()=>new Path2D();return {base:[N(),N(),N()],hole:N(),holeTop:N(),core:N(),hi:[N(),N(),N(),N()],shade:N(),lit:th.style==='palace'||th.style==='tile'?N():null,pl:N(),pd:N(),pit:N(),grime:[null,N(),N(),N()],crack:N(),chip:N()};}
+function fillStones(g,P,th){
+  const cols=[th.wall,th.wallA,th.wallB];for(let v=0;v<3;v++){g.fillStyle=cols[v];g.fill(P.base[v]);}
+  g.fillStyle='rgba(0,0,0,.62)';g.fill(P.hole);g.fillStyle='rgba(0,0,0,.4)';g.fill(P.holeTop);g.globalAlpha=0.45;g.fillStyle=th.lo;g.fill(P.core);
+  g.fillStyle=th.hi;for(let w=0;w<4;w++){g.globalAlpha=[1,0.8,0.62,0.5][w];g.fill(P.hi[w]);}g.globalAlpha=1;
+  g.fillStyle='rgba(0,0,0,.18)';g.fill(P.shade);if(P.lit){g.fillStyle='rgba(255,255,255,.07)';g.fill(P.lit);}
+  g.fillStyle='rgba(255,255,255,.06)';g.fill(P.pl);g.fillStyle='rgba(0,0,0,.08)';g.fill(P.pd);g.fillStyle='rgba(0,0,0,.22)';g.fill(P.pit);
+  for(let w=1;w<4;w++){g.fillStyle='rgba(0,0,0,'+(0.04+0.035*w)+')';g.fill(P.grime[w]);}
+  g.strokeStyle='rgba(0,0,0,.5)';g.lineWidth=0.7;g.stroke(P.crack);g.fillStyle=th.lo;g.fill(P.chip);}
+// the front face of a wall: courses of stones of uneven length (joints placed along the whole course, so a stone can
+// run across two tiles), each one shaped and aged by where it sits
 function wallCell(g,X,Y,gc,gr,th){
-  const [n,w]=STONE[th.style]||[4,32],h=TH/n;
-  g.fillStyle=th.lo;g.fillRect(X,Y,TW,TH);
-  for(let sy=0;sy<n;sy++){
-    const R=gr*n+sy,off=(R%2)*(w/2),y0=Y+sy*h;
-    const k0=Math.floor((gc*TW-off)/w);
-    for(let k=k0;k<=k0+TW/w;k++){
-      const x0=X+(k*w+off-gc*TW),v=hash2(k,R)%3;
-      g.fillStyle=v===0?th.wall:v===1?th.wallA:th.wallB;g.fillRect(x0+0.6,y0+0.6,w-1.2,h-1.2);
-      g.fillStyle=th.hi;g.fillRect(x0+0.6,y0+0.6,w-1.2,1.1);
-      g.fillStyle='rgba(0,0,0,.18)';g.fillRect(x0+0.6,y0+h-2.1,w-1.2,1.5);
-      if(th.style==='dungeon'&&hash2(k+5,R)%7===0){g.fillStyle='rgba(0,0,0,.16)';g.fillRect(x0+6+(hash2(k,R+3)%14),y0+5,3,2);}
-      if(th.style==='palace'||th.style==='tile'){g.fillStyle='rgba(255,255,255,.07)';g.fillRect(x0+0.6,y0+0.6,1.1,h-1.2);}
-    }
-  }
+  const [n,w]=STONE[th.style]||[4,32],h=TH/n,wx0=gc*TW;
+  g.fillStyle=th.lo;g.fillRect(X,Y,TW,TH);const P=stoneBatch(th);
+  for(let sy=0;sy<n;sy++){const R=gr*n+sy,y0=Y+sy*h,off=(R%2)*(w/2),jx=k=>k*w+off+((hash2(k*5+1,R*7+3)%1000)/1000-0.5)*w*0.6;
+    for(let k=Math.floor((wx0-off)/w)-1;jx(k)<wx0+TW;k++){const a=jx(k),b=jx(k+1);if(b<=wx0)continue;
+      stoneFace(P,X+(a-wx0),y0,b-a,h,hash2(k,R),wearLevel((a+b)/2,gr*TH+sy*h+h/2),th);}}
+  fillStones(g,P,th);
 }
 // decoration (arches, wall panels, hangings) is laid out on the terrain as built, not as it is now
 function D0(c,r){if(c<0||c>=L.cols||r<0)return WALL;if(r>=L.rows)return EMPTY;return L.base0?L.base0[r*L.cols+c]:L.base[r*L.cols+c];}
 function solidBelowD(c,r){const b=D0(c,r);if(b===FLOOR)return true;if(b===WALL)return false;return r+1<L.rows&&D0(c,r+1)===WALL;}
+// one brick or block of the back wall: pristine ones are plain, worn ones drift in tone and lose a corner, damaged ones
+// go out of true and crack, and in partly fallen stretches some are gone, leaving dark sockets
+function backBrick(Q,x,y,w,h,ci,hv,W){if(w<1)return;if(W===0){Q.base[ci].rect(x,y,w,h);return;}const rnd=mulberry32(hv);
+  if((W===3&&rnd()<0.2)||(W===2&&rnd()<0.04)){Q.hole.rect(x-0.3,y-0.3,w+0.6,h+0.6);Q.holeTop.rect(x,y,w,Math.min(2,h*0.3));return;}
+  if(W<2)Q.base[ci].rect(x,y,w,h);else roughRect(Q.base[ci],x,y,w,h,0.3+0.35*(W-2),Math.min(1.6,h*0.3),rnd,true);
+  const t=rnd();if(t<0.35)(t<0.17?Q.pl:Q.pd).rect(x+0.5,y+0.5,w-1,h-1);
+  if(rnd()<0.12*W){const L0=rnd()<0.5,T0=rnd()<0.5,cx=L0?x:x+w,cy=T0?y:y+h,sx=L0?1:-1,sy=T0?1:-1,s1=Math.min(w*0.4,1.5+rnd()*2.5),s2=Math.min(h*0.6,1.5+rnd()*2);
+    Q.chip.moveTo(cx-sx*0.4,cy-sy*0.4);Q.chip.lineTo(cx+sx*s1,cy);Q.chip.lineTo(cx,cy+sy*s2);Q.chip.closePath();}
+  if(W>=2&&rnd()<0.18){const a=x+w*(0.2+0.6*rnd());Q.crack.moveTo(a,y+0.4);Q.crack.lineTo(a+(rnd()-0.5)*4,y+h*0.5);Q.crack.lineTo(a+(rnd()-0.5)*5,y+h-0.4);}}
+function fillBricks(g,Q,cols,th){for(let i=0;i<cols.length;i++){g.fillStyle=cols[i];g.fill(Q.base[i]);}
+  g.fillStyle='rgba(0,0,0,.42)';g.fill(Q.hole);g.fillStyle='rgba(0,0,0,.3)';g.fill(Q.holeTop);
+  g.fillStyle='rgba(255,255,255,.05)';g.fill(Q.pl);g.fillStyle='rgba(0,0,0,.09)';g.fill(Q.pd);g.fillStyle=th.mortar;g.fill(Q.chip);
+  g.strokeStyle='rgba(0,0,0,.35)';g.lineWidth=0.6;g.stroke(Q.crack);}
 function backCell(g,X,Y,gc,gr,th){
   const st=th.style,h=hash2(gc*3+11,gr*5+7),fl=solidBelowD(gc,gr),low=D0(gc,gr-1)!==EMPTY;
+  // the back wall's own masonry: courses of uneven blocks or bricks, each aged by where it sits
+  const wx0=gc*TW,N=()=>new Path2D(),Q={base:[N(),N()],hole:N(),holeTop:N(),pl:N(),pd:N(),chip:N(),crack:N()};
   if(st==='palace'||st==='crypt'){
-    g.fillStyle=th.brick;g.fillRect(X,Y,TW,TH);
-    g.fillStyle=th.mortar;g.globalAlpha=0.55;
-    for(let by=0;by<4;by++){const R=gr*4+by,off=(R%2)*16;g.fillRect(X,Y+by*16,TW,0.8);const k0=Math.floor((gc*TW-off)/TW);for(let k=k0;k<=k0+1;k++)g.fillRect(X+k*TW+off-gc*TW,Y+by*16,0.8,16);}
-    g.globalAlpha=1;
+    g.fillStyle=th.brick;g.fillRect(X,Y,TW,TH);g.fillStyle=th.mortar;g.globalAlpha=0.55;g.fillRect(X,Y,TW,TH);g.globalAlpha=1;
+    for(let by=0;by<4;by++){const R=gr*4+by,off=(R%2)*16,y0=Y+by*16,jx=k=>k*32+off+((hash2(k*7+5,R*3+1)%1000)/1000-0.5)*10;
+      for(let k=Math.floor((wx0-off)/32)-1;jx(k)<wx0+TW;k++){const a=jx(k),b=jx(k+1);if(b<=wx0)continue;
+        backBrick(Q,X+(a-wx0)+0.4,y0+0.4,b-a-0.8,15.2,0,hash2(k,R+31),wearLevel((a+b)/2,gr*TH+by*16+8));}}
+    fillBricks(g,Q,[th.brick],th);
   }else{
     g.fillStyle=th.mortar;g.fillRect(X,Y,TW,TH);
-    for(let by=0;by<8;by++){
-      const R=gr*8+by,off=(R%2)*8,y0=Y+by*8;
-      const k0=Math.floor((gc*TW-off)/16);
-      for(let k=k0;k<=k0+2;k++){const x0=X+(k*16+off-gc*TW),hh=hash2(k+999,R);
+    for(let by=0;by<8;by++){const R=gr*8+by,off=(R%2)*8,y0=Y+by*8,jx=k=>k*16+off+((hash2(k*7+5,R*3+1)%1000)/1000-0.5)*4;
+      for(let k=Math.floor((wx0-off)/16)-1;jx(k)<wx0+TW;k++){const a=jx(k),b=jx(k+1);if(b<=wx0)continue;const hh=hash2(k+999,R);
         if(hh%11===0)continue;
-        g.fillStyle=hh%4===0?th.brick2:th.brick;g.fillRect(x0+0.7,y0+0.7,14.6,6.6);}
-    }
+        backBrick(Q,X+(a-wx0)+0.7,y0+0.7,b-a-1.4,6.6,hh%4===0?1:0,hh,wearLevel((a+b)/2,gr*TH+by*8+4));}}
+    fillBricks(g,Q,[th.brick,th.brick2],th);
   }
   if(st==='tile'&&fl)tilePanel(g,X,Y,th);
   if(st==='palace'&&fl){
@@ -2167,6 +2289,11 @@ function backCell(g,X,Y,gc,gr,th){
       g.beginPath();g.moveTo(vx-3.8,vy+9);g.lineTo(vx-3.8,vy);g.arc(vx,vy,3.8,Math.PI,0);g.lineTo(vx+3.8,vy+9);g.closePath();g.fill();
       g.fillStyle='#1a0d0a';for(let i=-1;i<=1;i++)g.fillRect(vx+i*2.2-0.4,vy-3,0.8,12);}
   }
+  // the back wall ages with the rest: stains, cracks, and where it is partly fallen, gaps where bricks came out
+  {const W=wearLevel(gc*TW+16,gr*TH+32);if(W>=1){const rq=mulberry32(hash2(gc*17+5,gr*29+3));
+    if(rq()<0.25*W){const sx=X+rq()*TW,sy=Y+rq()*TH*0.5,sr=10+rq()*14,sg=g.createRadialGradient(sx,sy,1,sx,sy+sr*0.6,sr);sg.addColorStop(0,'rgba(0,0,0,.16)');sg.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=sg;g.fillRect(sx-sr,sy-sr,sr*2,sr*2.2);}
+    if(W>=2&&rq()<0.6){g.strokeStyle='rgba(0,0,0,.4)';g.lineWidth=0.8;g.beginPath();let cx=X+4+rq()*24,cy=Y+2+rq()*20;g.moveTo(cx,cy);for(let i=0;i<5;i++){cx+=(rq()-0.5)*8;cy+=4+rq()*6;g.lineTo(cx,cy);}g.stroke();}
+  }}
   if(D0(gc,gr-1)!==EMPTY){const gr2=g.createLinearGradient(0,Y,0,Y+16);gr2.addColorStop(0,'rgba(0,0,0,.45)');gr2.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr2;g.fillRect(X,Y,TW,16);}
   const gr3=g.createLinearGradient(0,Y+TH-22,0,Y+TH);gr3.addColorStop(0,'rgba(0,0,0,0)');gr3.addColorStop(1,'rgba(0,0,0,.28)');g.fillStyle=gr3;g.fillRect(X,Y+TH-22,TW,22);
 }
@@ -2206,13 +2333,15 @@ function niche(g,x,y,th){
   p();g.fillStyle='rgba(0,0,0,.45)';g.fill();g.strokeStyle=th.trim;g.globalAlpha=0.55;g.lineWidth=0.9;g.stroke();g.globalAlpha=1;
   g.fillStyle=th.top;g.fillRect(x-w/2-1,bot,w+2,1.6);
 }
-function cornice(g,X,Y,th){
-  const yb=Y+TH;
+function cornice(g,X,Y,th,gc,gr){
+  const yb=Y+TH,W=gc===undefined?0:wearLevel(gc*TW+16,gr*TH+TH-4),rq=mulberry32(hash2((gc|0)*13+1,(gr|0)*7+5));
   g.fillStyle=th.lo;g.fillRect(X,yb-8,TW,8);
   for(let i=0;i<4;i++){const ax=X+i*8+4;
-    g.fillStyle=th.wallA;g.beginPath();g.moveTo(ax-3.6,yb);g.lineTo(ax-3.6,yb-3.2);g.quadraticCurveTo(ax-3.6,yb-6.4,ax,yb-7.4);g.quadraticCurveTo(ax+3.6,yb-6.4,ax+3.6,yb-3.2);g.lineTo(ax+3.6,yb);g.closePath();g.fill();
+    if(W===3&&rq()<0.35){g.fillStyle='rgba(0,0,0,.4)';g.fillRect(ax-3.6,yb-6,7.2,6);continue;} // this little arch has fallen
+    const top=W>=2&&rq()<0.3?yb-4.6-rq()*1.5:yb-7.4; // chipped
+    g.fillStyle=th.wallA;g.globalAlpha=W>=1?0.85:1;g.beginPath();g.moveTo(ax-3.6,yb);g.lineTo(ax-3.6,yb-3.2);g.quadraticCurveTo(ax-3.6,top+1,ax,top);g.quadraticCurveTo(ax+3.6,top+1,ax+3.6,yb-3.2);g.lineTo(ax+3.6,yb);g.closePath();g.fill();g.globalAlpha=1;
     g.fillStyle='rgba(0,0,0,.34)';g.fillRect(ax-2.2,yb-2.6,4.4,2.6);}
-  g.fillStyle=th.trim;g.globalAlpha=0.6;g.fillRect(X,yb-8.6,TW,0.8);g.globalAlpha=1;
+  g.fillStyle=th.trim;g.globalAlpha=W>=2?0.4:0.6;g.fillRect(X,yb-8.6,TW,0.8);g.globalAlpha=1;
   if(th.style==='tile'){g.fillStyle=th.tileA;g.fillRect(X,yb-1.2,TW,1.2);}
 }
 // arches along a floor; with the background on they open onto it, above a low parapet
@@ -2221,16 +2350,27 @@ function isArchTop(gc,gr){return gr>=0&&D0(gc,gr)===EMPTY&&D0(gc,gr+1)===FLOOR&&
 // only some stretches of arches open onto the view; the rest stay closed, so the keep keeps its walls
 function isOpenArch(gc,gr){if(!isArchTop(gc,gr))return false;const b=Math.floor(gc/4),op=k=>hash2(k*7+3,gr*13+5)%100<40;return op(b)&&!op(b-1);} // never two open stretches in a row
 function inOpening(gc,gr){return isOpenArch(gc,gr)||isOpenArch(gc,gr-1);}
-function drawArch(g,X,Y,th,open){
+function drawArch(g,X,Y,th,open,gc,gr){
   const st=th.style,round=st==='dungeon',x0=X+3.4,x1=X+TW-3.4,cx=X+TW/2,spring=Y+30,apex=Y+12,floor=Y+TH*2-4;
+  const W=gc===undefined?0:wearLevel(gc*TW+16,gr*TH+30),rq=mulberry32(hash2((gc|0)*41+3,(gr|0)*19+11));
   const curve=(a,b,ap)=>{if(round)g.arc(cx,spring,(b-a)/2,Math.PI,0);else{g.quadraticCurveTo(a,ap+7,cx,ap);g.quadraticCurveTo(b,ap+7,b,spring);}};
   if(open){const pb=floor-PARAPET;g.save();g.globalCompositeOperation='destination-out';g.fillStyle='#000';g.globalAlpha=1;g.beginPath();g.moveTo(x0,pb);g.lineTo(x0,spring);curve(x0,x1,apex);g.lineTo(x1,pb);g.closePath();g.fill();g.restore();
-    g.fillStyle='rgba(0,0,0,.35)';g.fillRect(x0-0.6,pb+1,x1-x0+1.2,2);g.fillStyle=st==='tile'?th.tileC:th.top;g.fillRect(x0-0.6,pb-0.8,x1-x0+1.2,1.8);}
+    g.fillStyle='rgba(0,0,0,.35)';g.fillRect(x0-0.6,pb+1,x1-x0+1.2,2);g.fillStyle=st==='tile'?th.tileC:th.top;g.fillRect(x0-0.6,pb-0.8,x1-x0+1.2,1.8);
+    if(W>=2){g.fillStyle='rgba(0,0,0,.45)';const bx=x0+rq()*(x1-x0-6);g.fillRect(bx,pb-0.8,3+rq()*3,1.8);}} // a bite out of the sill
   else{g.fillStyle=st==='tile'?'rgba(4,8,34,.42)':'rgba(0,0,0,.3)';
   g.beginPath();g.moveTo(x0,floor);g.lineTo(x0,spring);curve(x0,x1,apex);g.lineTo(x1,floor);g.closePath();g.fill();}
+  // partly fallen: a piece broken out of the ring on one side, and that side's column snapped off partway down
+  let brk=null;
+  if(W===3&&rq()<0.7){const s=rq()<0.5?-1:1;brk={s,hx:s<0?x0+1:x1-1,hy:spring-4-rq()*9,rw:5+rq()*4,rh:7+rq()*5,px:s<0?X+1.7:X+TW-1.7,top:spring+(floor-spring)*(0.3+0.4*rq())};}
+  g.save();
+  if(brk){g.beginPath();g.rect(X-10,Y-10,TW+20,TH*2+20);
+    for(let i=0;i<9;i++){const a=i/9*6.2832,rr=0.7+0.5*rq(),px=brk.hx+Math.cos(a)*brk.rw*rr,py=brk.hy+Math.sin(a)*brk.rh*rr;if(i)g.lineTo(px,py);else g.moveTo(px,py);}g.closePath();
+    g.moveTo(brk.px-4,Y-10);g.lineTo(brk.px+4,Y-10);g.lineTo(brk.px+4,brk.top+1.5*rq());g.lineTo(brk.px+1.5,brk.top-2*rq());g.lineTo(brk.px-1,brk.top+2*rq());g.lineTo(brk.px-4,brk.top-1.5*rq());g.closePath();
+    g.clip('evenodd');}
   const outline=st==='tile'?th.tileC:st==='dungeon'?th.wallB:th.trim;
+  if(W>=2)g.setLineDash([10+rq()*12,1.2+rq()*1.4,6+rq()*9,1+rq()*1.6]); // chips knocked out of the ring
   g.beginPath();g.moveTo(x0-1.2,spring);curve(x0-1.2,x1+1.2,apex-1.4);
-  g.strokeStyle=outline;g.lineWidth=round?3:1.3;g.globalAlpha=round?1:0.8;g.stroke();g.globalAlpha=1;
+  g.strokeStyle=outline;g.lineWidth=round?3:1.3;g.globalAlpha=round?(W>=1?0.85:1):(W>=1?0.62:0.8);g.stroke();g.globalAlpha=1;g.setLineDash([]);
   if(round){g.setLineDash([1.2,3]);g.strokeStyle=th.lo;g.lineWidth=3;g.stroke();g.setLineDash([]);}
   if(st==='tile'){g.beginPath();g.moveTo(x0+0.6,spring);curve(x0+0.6,x1-0.6,apex+1.6);g.strokeStyle=th.tileA;g.lineWidth=0.9;g.stroke();}
   if(st==='forge'){g.setLineDash([1,2.4]);g.strokeStyle=th.lo;g.lineWidth=2.4;g.beginPath();g.moveTo(x0-1.2,spring);curve(x0-1.2,x1+1.2,apex-1.4);g.stroke();g.setLineDash([]);}
@@ -2238,30 +2378,43 @@ function drawArch(g,X,Y,th,open){
     if(round||st==='forge'){g.fillStyle=th.wallB;g.fillRect(px-2.3,spring-1,4.6,floor-spring+1);g.fillStyle=th.hi;g.fillRect(px-2.3,spring-1,0.8,floor-spring+1);g.fillStyle='rgba(0,0,0,.25)';g.fillRect(px+1.3,spring-1,1,floor-spring+1);}
     else{const col=st==='tile'?th.tileC:th.trim;
       g.fillStyle='rgba(0,0,0,.35)';g.fillRect(px-1.8,spring,3.6,floor-spring);
-      g.fillStyle=col;g.globalAlpha=0.85;g.fillRect(px-1.15,spring,2.3,floor-spring);g.globalAlpha=1;
+      g.fillStyle=col;g.globalAlpha=W>=1?0.7:0.85;g.fillRect(px-1.15,spring,2.3,floor-spring);g.globalAlpha=1;
       g.fillStyle='rgba(0,0,0,.28)';g.fillRect(px+0.3,spring,0.85,floor-spring);
       g.fillStyle=col;g.fillRect(px-2.8,spring-2.6,5.6,2.6);g.fillRect(px-2.5,floor-3.4,5,3.4);
       g.fillStyle='rgba(0,0,0,.3)';g.fillRect(px-2.8,spring-0.7,5.6,0.7);}
+    if(W>=1){const gg=g.createLinearGradient(0,floor-16,0,floor);gg.addColorStop(0,'rgba(0,0,0,0)');gg.addColorStop(1,'rgba(0,0,0,'+(0.12+0.06*W)+')');g.fillStyle=gg;g.fillRect(px-3,floor-16,6,16);} // grime at the foot
   }
+  g.restore();
+  if(brk){ // the snapped column's broken top, and the fallen pieces lying at the foot of the arch
+    g.fillStyle=st==='tile'?th.tileC:round||st==='forge'?th.wallB:th.trim;g.globalAlpha=0.9;g.beginPath();g.moveTo(brk.px-2.3,brk.top+2.5);g.lineTo(brk.px-1.2,brk.top-1);g.lineTo(brk.px+0.6,brk.top+1.2);g.lineTo(brk.px+2.3,brk.top-0.4);g.lineTo(brk.px+2.3,brk.top+2.5);g.closePath();g.fill();g.globalAlpha=1;
+    for(let i=0;i<5;i++){const fx=brk.px+(rq()-0.5)*16,fy=floor-0.5-rq()*2,r0=1+rq()*2;g.fillStyle=i%2?th.wallB:th.lo;g.beginPath();g.moveTo(fx-r0,fy);g.lineTo(fx-r0*0.4,fy-r0);g.lineTo(fx+r0,fy-r0*0.5);g.lineTo(fx+r0*0.7,fy+0.4);g.closePath();g.fill();}}
+  if(W>=2&&rq()<0.7){ // a crack running out of the ring into the wall
+    g.strokeStyle='rgba(0,0,0,.38)';g.lineWidth=0.7;g.beginPath();let px=rq()<0.5?x0+2:x1-2,py=spring-6-rq()*8;g.moveTo(px,py);
+    for(let i=0;i<4;i++){px+=(rq()-0.5)*6;py-=3+rq()*4;g.lineTo(px,py);}g.stroke();}
 }
 function drawWindow(g,x,y,th,seed,open){
   const st=th.style;
+  // With the background on, a window is a real opening: the same scene the open arches look out on shows through it
+  // (cut out of the wall here; the backdrop is painted behind the room image). Bars, grates and tracery stay in front.
+  const cut=fn=>{g.save();g.globalCompositeOperation='destination-out';g.fillStyle='#000';g.globalAlpha=1;g.beginPath();fn();g.fill();g.restore();};
   if(st==='dungeon'){
-    g.fillStyle='#08060d';g.fillRect(x-3.6,y-11,7.2,21);g.fillStyle=th.sky;g.fillRect(x-2.6,y-10,5.2,19);
-    g.fillStyle='rgba(255,245,220,.75)';g.fillRect(x-1.8,y-6,0.7,0.7);g.fillRect(x+1.2,y+2,0.6,0.6);
+    g.fillStyle='#08060d';g.fillRect(x-3.6,y-11,7.2,21);
+    if(open)cut(()=>g.rect(x-2.6,y-10,5.2,19));else{g.fillStyle=th.sky;g.fillRect(x-2.6,y-10,5.2,19);
+    g.fillStyle='rgba(255,245,220,.75)';g.fillRect(x-1.8,y-6,0.7,0.7);g.fillRect(x+1.2,y+2,0.6,0.6);}
     g.fillStyle='#15171d';g.fillRect(x-0.7,y-11,1.4,21);g.fillRect(x-3.6,y-3,7.2,1.2);g.fillRect(x-3.6,y+4,7.2,1.2);
     g.fillStyle=th.top;g.fillRect(x-5,y+10,10,1.6);return;
   }
   if(st==='forge'){
     g.fillStyle='#0b0812';g.beginPath();g.arc(x,y,7.6,0,Math.PI*2);g.fill();
-    const fg=g.createRadialGradient(x,y,1,x,y,7);fg.addColorStop(0,'#ffb35a');fg.addColorStop(1,'#7a2412');g.fillStyle=fg;g.beginPath();g.arc(x,y,6.2,0,Math.PI*2);g.fill();
+    if(open)cut(()=>g.arc(x,y,6.2,0,Math.PI*2));else{const fg=g.createRadialGradient(x,y,1,x,y,7);fg.addColorStop(0,'#ffb35a');fg.addColorStop(1,'#7a2412');g.fillStyle=fg;g.beginPath();g.arc(x,y,6.2,0,Math.PI*2);g.fill();}
     g.strokeStyle='#1a0d0a';g.lineWidth=1.1;for(let i=-1;i<=1;i++){g.beginPath();g.moveTo(x+i*3,y-6);g.lineTo(x+i*3,y+6);g.moveTo(x-6,y+i*3);g.lineTo(x+6,y+i*3);g.stroke();}
     return;
   }
   if(st==='crypt'){
     g.fillStyle='#0b0812';g.beginPath();g.arc(x,y,7.2,0,Math.PI*2);g.fill();
     g.strokeStyle=th.trim;g.globalAlpha=0.6;g.lineWidth=1;g.beginPath();g.arc(x,y,7.8,0,Math.PI*2);g.stroke();g.globalAlpha=1;
-    star8(g,x,y,5.8,3.1,'#cfe6d6');g.fillStyle='rgba(207,230,214,.0)';return;
+    if(open)cut(()=>{for(let i=0;i<16;i++){const a=i*Math.PI/8-Math.PI/2,rr=i%2?3.1:5.8;g.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr);}g.closePath();});
+    else star8(g,x,y,5.8,3.1,'#cfe6d6');return;
   }
   const w=12,hgt=26,x0=x-w/2,x1=x+w/2,bot=y+hgt/2,apex=y-hgt/2,spring=apex+7;
   const shape=pad=>{g.beginPath();g.moveTo(x0-pad,bot+pad);g.lineTo(x0-pad,spring);g.quadraticCurveTo(x0-pad,apex+3,x,apex-pad);g.quadraticCurveTo(x1+pad,apex+3,x1+pad,spring);g.lineTo(x1+pad,bot+pad);g.closePath();};
@@ -2277,7 +2430,8 @@ function drawWindow(g,x,y,th,seed,open){
     g.fillRect(x+3,base-15,1.7,16);g.beginPath();g.moveTo(x+2.6,base-15);g.lineTo(x+3.85,base-18.5);g.lineTo(x+5.1,base-15);g.closePath();g.fill();
     g.beginPath();g.arc(x+5.6,base-3,2.3,Math.PI,0);g.fill();g.fillRect(x-7,base-3,14,4);
   }else{
-    g.fillStyle='rgba('+th.glow+',0.6)';g.fillRect(x0,apex-2,w,hgt+4);
+    if(open){g.globalCompositeOperation='destination-out';g.fillStyle='#000';g.fillRect(x0-2,apex-4,w+4,hgt+8);g.globalCompositeOperation='source-over';}
+    else{g.fillStyle='rgba('+th.glow+',0.6)';g.fillRect(x0,apex-2,w,hgt+4);}
     g.strokeStyle='#2e1d10';g.lineWidth=1.05;
     for(let k=-hgt;k<w+hgt;k+=3.4){g.beginPath();g.moveTo(x0+k,apex-2);g.lineTo(x0+k-hgt-4,bot+2);g.stroke();g.beginPath();g.moveTo(x0+k-hgt-4,apex-2);g.lineTo(x0+k,bot+2);g.stroke();}
   }
@@ -2286,23 +2440,54 @@ function drawWindow(g,x,y,th,seed,open){
   g.fillStyle=th.top;g.fillRect(x0-3,bot+1.6,w+6,1.8);
 }
 function slab(g,X,ys,th,lo,ro,gc,gr,wr){
-  const fx=X-HX,fr=fx+TW,ft=ys+HY,FH=5,br=wr?fr:fr+DX;
-  // the lip: front face of the floor slab, on the front plane
+  const fx=X-HX,fr=fx+TW,ft=ys+HY,FH=5,br=wr?fr:fr+DX,st=th.style,known=gc!==undefined;
+  const wx0=known?gc*TW:0,W=known?wearLevel(wx0+16,gr*TH+TH-4):0,rnd=mulberry32(known?hash2(gc*31+7,gr*17+3):1);
+  // flagstones of uneven length (joints placed along the whole floor, so they run on across tiles); the lip is cut at
+  // the same joints
+  const jf=k=>k*22+((hash2(k*3+7,(gr|0)*5+1)%1000)/1000-0.5)*10,flags=[];
+  if(known){for(let k=Math.floor(wx0/22)-1;jf(k)<wx0+TW;k++){const a=jf(k),b=jf(k+1);if(b<=wx0)continue;flags.push([Math.max(0,a-wx0),Math.min(TW,b-wx0),hash2(k,gr*13+7),a>wx0]);}}
+  else flags.push([0,TW,1,false]);
+  // the lip: front face of the slab, on the front plane
   g.fillStyle='rgba(0,0,0,.28)';g.fillRect(fx,ft+FH,TW,3);
   g.fillStyle=th.front;g.fillRect(fx,ft,TW,FH);
-  if(th.style==='palace'){g.fillStyle=th.inlay;for(let i=0;i<4;i++){const dx=fx+4+i*8,cy=ft+FH/2;g.beginPath();g.moveTo(dx,cy-1.7);g.lineTo(dx+1.7,cy);g.lineTo(dx,cy+1.7);g.lineTo(dx-1.7,cy);g.closePath();g.fill();}}
-  else if(th.style==='tile'){g.fillStyle=th.tileA;g.fillRect(fx,ft+1,TW,3);g.fillStyle=th.tileC;for(let i=0;i<4;i++)g.fillRect(fx+3.4+i*8,ft+1.9,1.2,1.2);}
-  else if(th.style==='forge'){g.fillStyle='rgba(0,0,0,.28)';for(let i=1;i<4;i++)g.fillRect(fx+i*8,ft,0.8,FH);}
+  for(const [a,b,hv,j] of flags){const t=hv%5;if(t<2){g.fillStyle=t?'rgba(255,255,255,.05)':'rgba(0,0,0,.07)';g.fillRect(fx+a,ft,b-a,FH);}
+    if(j&&st!=='palace'&&st!=='tile'){g.fillStyle='rgba(0,0,0,.32)';g.fillRect(fx+a-0.4,ft,0.8,FH);}}
+  if(st==='palace'){g.fillStyle=th.inlay;for(let i=0;i<4;i++){const dx=fx+4+i*8,cy=ft+FH/2;g.beginPath();g.moveTo(dx,cy-1.7);g.lineTo(dx+1.7,cy);g.lineTo(dx,cy+1.7);g.lineTo(dx-1.7,cy);g.closePath();g.fill();}}
+  else if(st==='tile'){g.fillStyle=th.tileA;g.fillRect(fx,ft+1,TW,3);g.fillStyle=th.tileC;for(let i=0;i<4;i++)g.fillRect(fx+3.4+i*8,ft+1.9,1.2,1.2);}
+  else if(st==='forge'){g.fillStyle='rgba(0,0,0,.28)';for(let i=1;i<4;i++)g.fillRect(fx+i*8,ft,0.8,FH);}
   g.fillStyle='rgba(0,0,0,.25)';g.fillRect(fx,ft,TW,0.8);
-  if(gc!==undefined&&hash2(gc,gr)%3===0&&th.style!=='palace'&&th.style!=='tile'){g.fillStyle='rgba(0,0,0,.22)';g.fillRect(fx+8+hash2(gr,gc)%14,ft+2,5,1);}
   // the walking surface, receding up and to the right
-  g.beginPath();g.moveTo(fx,ft);g.lineTo(fr,ft);g.lineTo(br,ys-HY);g.lineTo(fx+DX,ys-HY);g.closePath();
-  g.fillStyle=th.top;g.fill();
+  const top=()=>{g.beginPath();g.moveTo(fx,ft);g.lineTo(fr,ft);g.lineTo(br,ys-HY);g.lineTo(fx+DX,ys-HY);g.closePath();};
+  top();g.fillStyle=th.top;g.fill();
   g.save();g.clip();
+  // each flag a shade apart, their joints running back from the lip; some flags are split across their depth
+  for(const [a,b,hv,j] of flags){const t=hv%6,rq=mulberry32(hv);
+    if(t<3){g.fillStyle=t===0?'rgba(0,0,0,.07)':t===1?'rgba(255,255,255,.06)':'rgba(0,0,0,.035)';g.beginPath();g.moveTo(fx+a,ft);g.lineTo(fx+b,ft);g.lineTo(fx+b+DX,ys-HY);g.lineTo(fx+a+DX,ys-HY);g.closePath();g.fill();}
+    g.strokeStyle='rgba(0,0,0,.2)';g.lineWidth=0.7;g.beginPath();
+    if(j){const w1=(rq()-0.5)*0.8;g.moveTo(fx+a,ft);g.lineTo(fx+a+DX*0.5+w1,ft-DY*0.5);g.lineTo(fx+a+DX,ys-HY);}
+    if(hv%3===0){const d=0.4+rq()*0.2;g.moveTo(fx+a+DX*d,ft-DY*d);g.lineTo(fx+b+DX*d,ft-DY*d);}
+    g.stroke();}
   const sg=g.createLinearGradient(0,ys-HY,0,ft);sg.addColorStop(0,'rgba(0,0,0,.2)');sg.addColorStop(1,'rgba(255,255,255,.08)');g.fillStyle=sg;g.fillRect(fx,ys-HY,TW+DX,DY);
   g.strokeStyle='rgba(0,0,0,.16)';g.lineWidth=0.8;g.beginPath();g.moveTo(fx,ft);g.lineTo(fx+DX,ys-HY);g.stroke();
+  if(known&&W>=1){ // worn: a trodden path down the middle of the depth, a little darker and smoother
+    const p0=onFloor(X,0.33,ys),p1=onFloor(X+TW,0.33,ys),p2=onFloor(X+TW,0.67,ys),p3=onFloor(X,0.67,ys);
+    g.fillStyle='rgba(0,0,0,'+(0.035*W)+')';g.beginPath();g.moveTo(p0.x,p0.y);g.lineTo(p1.x,p1.y);g.lineTo(p2.x,p2.y);g.lineTo(p3.x,p3.y);g.closePath();g.fill();
+    g.fillStyle='rgba(0,0,0,.25)';for(let i=0;i<W*2;i++){const q=onFloor(X+2+rnd()*28,0.15+rnd()*0.7,ys);g.fillRect(q.x,q.y,0.9,0.6);}}
+  if(known&&W>=2&&rnd()<0.7){ // cracks running back across a flag
+    g.strokeStyle='rgba(0,0,0,.42)';g.lineWidth=0.65;g.beginPath();let x=fx+3+rnd()*(TW-6),y=ft;g.moveTo(x,y);
+    for(let i=1;i<=4;i++){x+=DX/4+(rnd()-0.5)*4;y=ft-(DY*i/4);g.lineTo(x,y);}g.stroke();}
   g.restore();
   g.fillStyle='rgba(255,255,255,.22)';g.fillRect(fx,ft-0.7,TW,0.7);
+  if(known&&W>=2){ // the lip chipped: notches knocked out of its top edge
+    for(let i=0,nc=W===3?2:1;i<nc;i++){if(rnd()<0.35)continue;const cx=fx+3+rnd()*(TW-9),cw=2.5+rnd()*3.5,cd=1.2+rnd()*1.8;
+      g.fillStyle=th.lo;g.beginPath();g.moveTo(cx,ft-0.8);g.lineTo(cx+cw*0.3,ft+cd);g.lineTo(cx+cw*0.8,ft+cd*0.7);g.lineTo(cx+cw,ft-0.8);g.closePath();g.fill();
+      g.fillStyle='rgba(0,0,0,.35)';g.fill();}}
+  if(known&&W===3&&rnd()<0.6){ // partly fallen: a chunk broken out of the front edge, and its rubble lying about
+    const bx=fx+4+rnd()*(TW-16),bw=7+rnd()*5;
+    g.fillStyle='rgba(0,0,0,.55)';g.beginPath();g.moveTo(bx,ft+FH);g.lineTo(bx+1,ft+1);g.lineTo(bx+bw*0.3,ft-1.6);g.lineTo(bx+bw*0.7,ft-1.1);g.lineTo(bx+bw,ft+0.6);g.lineTo(bx+bw-1,ft+FH);g.closePath();g.fill();
+    g.fillStyle=th.lo;g.fillRect(bx+1.5,ft+FH-1.2,bw-3,1.2);
+    for(let i=0;i<4;i++){const q=onFloor(X+rnd()*30,0.1+rnd()*0.8,ys),r0=0.9+rnd()*1.4;g.fillStyle=i%2?th.front:th.lo;
+      g.beginPath();g.moveTo(q.x-r0,q.y);g.lineTo(q.x-r0*0.3,q.y-r0*0.8);g.lineTo(q.x+r0,q.y-r0*0.4);g.lineTo(q.x+r0*0.6,q.y+r0*0.3);g.closePath();g.fill();}}
   // open ends: the left edge is the slanted end of the surface; the right end shows the slab's own side
   if(lo){g.strokeStyle='rgba(0,0,0,.4)';g.lineWidth=0.9;g.beginPath();g.moveTo(fx+DX,ys-HY);g.lineTo(fx,ft);g.lineTo(fx,ft+FH);g.stroke();}
   if(ro&&!wr){g.beginPath();g.moveTo(fr,ft);g.lineTo(fr+DX,ys-HY);g.lineTo(fr+DX,ys-HY+FH);g.lineTo(fr,ft+FH);g.closePath();g.fillStyle=th.lo;g.fill();g.fillStyle='rgba(0,0,0,.25)';g.fill();
@@ -2406,9 +2591,38 @@ function drawLight(ctx,t,th){
   ctx.fillStyle='#5b5a3e';ctx.beginPath();ctx.moveTo(x+2.6,ly-0.8);ctx.lineTo(x+5,ly-1.8);ctx.lineTo(x+4.6,ly+0.2);ctx.closePath();ctx.fill();
   fire(ctx,x+4.6,ly-1.6,0.8,seed,GHOST);embers(ctx,x+4.6,ly-10,3,seed,'#c8ffe4',20);
 }
+// a hanging banner, one tile of it; where a slide has split it, the two halves part along a ragged cut and sway
+function drawBannerTile(ctx,X,Y,f,th){const x0=X+7,w=18,y0=f.top?Y+9:Y,y1=f.bot?Y+TH-16:Y+TH,cl=th.cloth||th.guard,c2=th.cloth2||th.trim,bn=f.bn;
+  if(f.top){ctx.fillStyle='#0b0812';ctx.fillRect(X+3,Y+5,26,4);ctx.fillStyle=th.trim;ctx.fillRect(X+4,Y+5.6,24,2.4);}
+  const thru=bn&&bn.a>=0&&bn.b>=bn.bot-0.5,ta=bn&&bn.a>=0?Math.max(y0,bn.a):1e9,tb=bn&&bn.a>=0?Math.min(f.bot&&thru?y1+6:y1,bn.b):-1e9;
+  const whole=()=>{ctx.fillStyle='#0b0812';ctx.fillRect(x0-1,y0,w+2,y1-y0+(f.bot?1:0));ctx.fillStyle=cl;ctx.fillRect(x0,y0,w,y1-y0);
+    ctx.fillStyle=c2;ctx.fillRect(x0+2,y0,1.6,y1-y0);ctx.fillRect(x0+w-3.6,y0,1.6,y1-y0);
+    for(let yy=y0+10;yy<y1-6;yy+=22){ctx.beginPath();ctx.moveTo(x0+w/2,yy);ctx.lineTo(x0+w/2+5,yy+6);ctx.lineTo(x0+w/2,yy+12);ctx.lineTo(x0+w/2-5,yy+6);ctx.closePath();ctx.fill();}
+    if(f.bot){ctx.fillStyle=c2;for(let i=0;i<5;i++)ctx.fillRect(x0+1+i*3.8,y1,1.4,4);}};
+  if(!(tb>ta+0.5)){whole();return;}
+  // the cloth above and below the cut as it was
+  ctx.save();ctx.beginPath();ctx.rect(X-4,Y-4,TW+8,ta-(Y-4));if(!thru)ctx.rect(X-4,tb,TW+8,Y+TH+8-tb);ctx.clip();whole();ctx.restore();
+  // the two halves along the cut: the gap opens widest between the ends of the cut (or toward the free end once the
+  // cloth is split right through), the cut edge is ragged with loose threads, and the halves swing for a while
+  const L2=Math.max(1,bn.b-bn.a),mg=Math.min(9.5,4.5+L2*0.045),age=gameTime-bn.t,sw=Math.exp(-age*0.7)*Math.sin(gameTime*3.1);
+  const gap=y=>{const u=clamp((y-bn.a)/L2,0,1);return mg*(thru?Math.min(1,u*1.7):Math.pow(Math.sin(Math.PI*u),0.75));};
+  const rag=(y,s)=>((hash2(Math.round(y*0.7),s*31+(bn.top|0))%7)-3)*0.35;
+  const xm=x0+w/2,yEnd=thru&&f.bot?y1+4:tb;
+  for(const s of [-1,1]){const xo=s<0?x0:x0+w,dx=y=>s*1.6*sw*clamp((y-bn.a)/60,0,1);
+    const pts=[];for(let y=ta;y<yEnd;y+=2.5)pts.push([xm+s*gap(y)/2+rag(y,s)+dx(y),y]);pts.push([xm+s*gap(yEnd)/2+dx(yEnd),yEnd]);
+    const outer=y=>xo+dx(y)*0.6;
+    const shape=pad=>{ctx.beginPath();ctx.moveTo(outer(ta)-s*pad,ta);for(const q of pts)ctx.lineTo(q[0]+s*pad,q[1]);ctx.lineTo(outer(yEnd)-s*pad,yEnd);ctx.closePath();};
+    shape(-0.9);ctx.fillStyle='#0b0812';ctx.fill();
+    shape(0);ctx.fillStyle=cl;ctx.fill();
+    ctx.save();shape(0);ctx.clip();ctx.fillStyle=c2;ctx.fillRect(s<0?x0+2+dx(ta)*0.6:x0+w-3.6+dx(ta)*0.6,ta,1.6,yEnd-ta);
+    ctx.fillStyle='rgba(0,0,0,.22)';ctx.fillRect(Math.min(xm,xm+s*8),ta,8,yEnd-ta);ctx.restore(); // the cut edge curls into shadow
+    ctx.strokeStyle=c2;ctx.lineWidth=0.6;ctx.globalAlpha=0.8;ctx.beginPath();
+    for(let i=0;i<pts.length;i+=3){const q=pts[i];ctx.moveTo(q[0],q[1]);ctx.lineTo(q[0]-s*(1.2+(i%4)*0.5),q[1]+2.2);}ctx.stroke();ctx.globalAlpha=1;
+    if(thru&&f.bot){ctx.fillStyle=c2;for(let i=0;i<2;i++){const fx0=s<0?x0+1+i*3.8:x0+w-2.4-i*3.8;ctx.fillRect(fx0+dx(yEnd)*0.8,yEnd-4,1.4,4);}}}}
 function drawFlask(ctx,it){
-  const x=it.x,ys=SURF(it.r)-3,big=it.type==='life',r=big?4.2:3.2;
-  const col=it.type==='heal'?'#e0413a':it.type==='life'?'#f0c040':'#2b3fb8';
+  const x=it.x,ys=SURF(it.r)-3,big=it.type==='life'||it.type==='big',r=it.type==='big'?5.4:big?4.2:3.2;
+  const col=it.type==='heal'||it.type==='big'?'#e0413a':it.type==='life'?'#f0c040':'#2b3fb8';
+  if(it.type==='big'){ctx.fillStyle='#0b0812';ctx.fillRect(x-2.3,ys-2*r-7.5,4.6,8);ctx.fillStyle='rgba(220,230,240,.35)';ctx.fillRect(x-1.4,ys-2*r-6.5,2.8,7);ctx.fillStyle='#d8b04a';ctx.fillRect(x-2.6,ys-2*r-8.6,5.2,2.2);}
   ctx.fillStyle='#0b0812';ctx.beginPath();ctx.arc(x,ys-r,r+0.9,0,Math.PI*2);ctx.fill();ctx.fillRect(x-1.7,ys-2*r-5,3.4,6);
   ctx.fillStyle='rgba(220,230,240,.35)';ctx.beginPath();ctx.arc(x,ys-r,r,0,Math.PI*2);ctx.fill();
   ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,ys-r,r-0.5,-0.15,Math.PI+0.15);ctx.fill();
@@ -2877,13 +3091,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
         ctx.beginPath();for(let i=0;i<12;i++){const a=i/12*6.2832;ctx.lineTo(Math.cos(a)*14,Math.sin(a)*14);ctx.lineTo(Math.cos(a+0.26)*10.5,Math.sin(a+0.26)*10.5);}ctx.closePath();
         ctx.fillStyle='#c9ced8';ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=1.1;ctx.stroke();ctx.fillStyle='#7d8391';ctx.beginPath();ctx.arc(0,0,3.2,0,6.2832);ctx.fill();ctx.restore();break;}
       case'darter':{ctx.fillStyle='#0b0812';ctx.fillRect(f.x-5,f.y-4,6,8);ctx.fillStyle='#8a6a3a';ctx.fillRect(f.x-4,f.y-3,4,6);ctx.fillStyle='#0b0812';ctx.fillRect(f.x-4,f.y-1,4,2);break;}
-      case'banner':{const x0=X+7,w=18,y0=f.top?Y+9:Y,y1=f.bot?Y+TH-16:Y+TH,cl=th.cloth||th.guard,c2=th.cloth2||th.trim;
-        if(f.top){ctx.fillStyle='#0b0812';ctx.fillRect(X+3,Y+5,26,4);ctx.fillStyle=th.trim;ctx.fillRect(X+4,Y+5.6,24,2.4);}
-        ctx.fillStyle='#0b0812';ctx.fillRect(x0-1,y0,w+2,y1-y0+(f.bot?1:0));ctx.fillStyle=cl;ctx.fillRect(x0,y0,w,y1-y0);
-        ctx.fillStyle=c2;ctx.fillRect(x0+2,y0,1.6,y1-y0);ctx.fillRect(x0+w-3.6,y0,1.6,y1-y0);
-        for(let yy=y0+10;yy<y1-6;yy+=22){ctx.beginPath();ctx.moveTo(x0+w/2,yy);ctx.lineTo(x0+w/2+5,yy+6);ctx.lineTo(x0+w/2,yy+12);ctx.lineTo(x0+w/2-5,yy+6);ctx.closePath();ctx.fill();}
-        if(f.bot){ctx.fillStyle=c2;for(let i=0;i<5;i++)ctx.fillRect(x0+1+i*3.8,y1,1.4,4);}
-        break;}
+      case'banner':drawBannerTile(ctx,X,Y,f,th);break;
       case'bar':{const bx=f.x,by=f.y,cy=ceilingY(o.c,o.r);ctx.strokeStyle='#0b0812';ctx.lineWidth=1.6;
         ctx.beginPath();ctx.moveTo(bx-10,by);ctx.lineTo(bx-10,cy);ctx.moveTo(bx+10,by);ctx.lineTo(bx+10,cy);ctx.stroke();
         ctx.strokeStyle='#8f95a3';ctx.lineWidth=0.8;ctx.setLineDash([2,1.5]);ctx.beginPath();ctx.moveTo(bx-10,by);ctx.lineTo(bx-10,cy);ctx.moveTo(bx+10,by);ctx.lineTo(bx+10,cy);ctx.stroke();ctx.setLineDash([]);
@@ -2972,7 +3180,7 @@ function gatherLights(x0,x1,y0,y1){
   if(P&&!(P.state==='dead'&&P.y>L.rows*TH))add(P.x,P.y-26,84,'205,195,225',0.42,'fill');
   for(const g of G)if(g.alive&&!g.gone)add(g.x,g.y-26,56,'205,195,225',0.22,'fill');
   for(const sn of SN)if(sn.alive&&!sn.gone)add(sn.x,sn.y-4,34,'200,230,170',0.25,'fill');
-  for(const it of L.items)if(!it.taken){const col=it.type==='heal'?'255,90,70':it.type==='life'?'255,210,110':'110,130,255';add(it.x,SURF(it.r)-8,32,col,0.6,'item',{r:9,a:0.35});}
+  for(const it of L.items)if(!it.taken){const col=it.type==='heal'||it.type==='big'?'255,90,70':it.type==='life'?'255,210,110':'110,130,255';add(it.x,SURF(it.r)-8,it.type==='big'?42:32,col,it.type==='big'?0.75:0.6,'item',{r:9,a:0.35});}
   for(const cp of L.cps)if(cp.on)add(cp.x,SURF(cp.r)-14,46,'255,214,130',0.5,'item');
   if(L.door.open>0)add(L.door.x+HX,SURF(L.door.r)-26,120*Math.min(1,L.door.open),'255,196,120',0.9*Math.min(1,L.door.open),'door',{r:28,a:0.3*L.door.open});
   for(const o of L.dyn){const f=o.f,X=o.c*TW;if(X<x0-160||X>x1+160)continue;const ys=SURF(o.r);
@@ -3160,15 +3368,22 @@ function bgPaint(g,ly,rnd){const B=BG_BASE-(ly.lift||0),T=Math.PI*2,R=(a,b)=>a+r
 function openingsIn(x0,x1,y0,y1){const out=[],st=L.theme.style;
   for(let r=Math.max(0,Math.floor(y0/TH)-2);r<=Math.min(L.rows-1,Math.floor(y1/TH)+1);r++)for(let c=Math.max(0,Math.floor(x0/TW)-1);c<=Math.min(L.cols-1,Math.floor(x1/TW)+1);c++)
     if(isOpenArch(c,r))out.push([c*TW+3,r*TH+10,TW-6,TH*2-4-PARAPET-10+1]);
+  // the windows: each looks out on the same scene
+  const wr=st==='dungeon'?[3,11,6,21]:st==='forge'||st==='crypt'?[7,7.5,14,15]:[7.5,15,15,30];
+  for(const w of L.windows){const x=w.c*TW+16,y=w.r*TH+38;if(x<x0-20||x>x1+20||y<y0-24||y>y1+24||inOpening(w.c,w.r))continue;out.push([x-wr[0],y-wr[1],wr[2],wr[3]]);}
   return out;}
 let bgC=null,bgG=null;
 function drawBackdrop(ctx,cx,cy,vw,vh,VZ,camD,camDY){
   const ops=openingsIn(cx,cx+vw,cy,cy+vh);if(!ops.length)return;
   const art=BGART[L.theme.style]||BGART.dungeon,ly=bgLayers(L.theme.style),k=VZ/VS;
   // only the part of the screen the openings cover is painted (in view units)
-  let bx0=1e9,by0=1e9,bx1=-1e9,by1=-1e9;
-  for(const r of ops){const x0=(r[0]*VZ-camD)/VS,y0=(r[1]*VZ-camDY)/VS,x1=x0+r[2]*k,y1=y0+r[3]*k;bx0=Math.min(bx0,x0);by0=Math.min(by0,y0);bx1=Math.max(bx1,x1);by1=Math.max(by1,y1);}
-  bx0=Math.max(0,Math.floor(bx0));by0=Math.max(0,Math.floor(by0));bx1=Math.min(viewW,Math.ceil(bx1));by1=Math.min(ROOM_H,Math.ceil(by1));if(bx1<=bx0||by1<=by0)return;
+  // openings close together (a run of arches) are painted as one box; scattered windows each get their own
+  const boxes=[];
+  for(const r of ops){let b=[(r[0]*VZ-camD)/VS-1,(r[1]*VZ-camDY)/VS-1,0,0];b[2]=b[0]+r[2]*k+2;b[3]=b[1]+r[3]*k+2;
+    for(let i=boxes.length-1;i>=0;i--){const q=boxes[i];if(q[0]<=b[2]+6&&b[0]<=q[2]+6&&q[1]<=b[3]+6&&b[1]<=q[3]+6){b=[Math.min(b[0],q[0]),Math.min(b[1],q[1]),Math.max(b[2],q[2]),Math.max(b[3],q[3])];boxes.splice(i,1);}}
+    boxes.push(b);}
+  for(const bb of boxes)paintBackdrop(ctx,art,ly,Math.max(0,Math.floor(bb[0])),Math.max(0,Math.floor(bb[1])),Math.min(viewW,Math.ceil(bb[2])),Math.min(ROOM_H,Math.ceil(bb[3])));}
+function paintBackdrop(ctx,art,ly,bx0,by0,bx1,by1){if(bx1<=bx0||by1<=by0)return;
   // compose sky and layers at low resolution, then one scaled copy onto the screen (no clip: the room images drawn
   // next cover everything but the openings)
   const q=VS*BGQ,cw=Math.ceil(viewW*q),ch=Math.ceil(ROOM_H*q);
@@ -3277,6 +3492,7 @@ function ambientGlow(ctx,x0,x1,y0,y1){
   ctx.restore();
 }
 let vignette=null,vignette2=null;
+const renderXf={VZ:1,camD:0,camDY:0}; // the last frame's world-to-canvas transform (for tests)
 function render(){
   const ctx=gx;ctx.setTransform(1,0,0,1,0,0);
   ctx.fillStyle='#07060c';ctx.fillRect(0,0,cv.width,cv.height);
@@ -3286,6 +3502,7 @@ function render(){
   // zoom about a point at the hero's height: the view only ever shrinks, so it never shows past the level's edge
   const fxc=cam.x+viewW/2+sx,fyc=cam.y+ROOM_H*0.6+sy;
   const camD=Math.round((fxc-vw/2)*VZ),camDY=Math.round((fyc-vh*0.6)*VZ),cx=camD/VZ,cy=camDY/VZ;
+  renderXf.VZ=VZ;renderXf.camD=camD;renderXf.camDY=camDY;
   const rx0=Math.floor(cx/ROOM_W),rx1=Math.floor((cx+vw)/ROOM_W),ry0=Math.floor(cy/ROOM_H),ry1=Math.floor((cy+vh-0.01)/ROOM_H);
   if(gf.bg)drawBackdrop(ctx,cx,cy,vw,vh,VZ,camD,camDY);
   ctx.setTransform(1,0,0,1,0,0);
@@ -3366,6 +3583,8 @@ function layout(){
   const cs=getComputedStyle(app),iT=parseFloat(cs.paddingTop)||0,iR=parseFloat(cs.paddingRight)||0,iB=parseFloat(cs.paddingBottom)||0,iL=parseFloat(cs.paddingLeft)||0;
   const W=AW-iL-iR,H=AH-iT-iB;
   const portrait=H>W*1.05;
+  // landscape only: upright, the game pauses behind the turn-your-phone prompt
+  document.body.classList.toggle('portrait',portrait);if(portrait&&mode==='play')pause();
   const padSz=Math.round(clamp(Math.min(W,H)*0.36,124,168));
   let s,cl,ct,cw,ch;
   if(portrait){s=Math.min(AW/ROOM_W,(H-padSz-60)/ROOM_H);cw=Math.min(AW,ROOM_W*s);ch=ROOM_H*s;cl=(AW-cw)/2;ct=iT+Math.max(0,Math.min(36,(H-ch-padSz-40)/3));}
@@ -3549,7 +3768,7 @@ window.__HK={genLevel,setKey,took,
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
   get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
-  get S(){return S;},get REW(){return REW;},get PGQ(){return pendingGuards;},resolveStrike,wallTouch,SW_W,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName};
+  get S(){return S;},get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,wallTouch,SW_W,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName};
 
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 })();
