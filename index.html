@@ -256,7 +256,7 @@ function themeName(n){const i=Math.floor((n-1)/4),t=THEMES[i%THEMES.length],k=Ma
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=9;
-const APP_VERSION='37'; // set by the build; shown on the title and pause screens
+const APP_VERSION='38'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(s.gen!==GEN){s.gen=GEN;s.cp=-1;s.resume=null;s.floorTime=0;}
@@ -1047,11 +1047,24 @@ Object.assign(PS,{
   press:mk({lean:0.38,head:-0.1,hF:0.12,kF:0.25,hB:-0.05,kB:0.3,aF:0.55,eF:-0.35,aB:0.45,eB:-0.3,air:1,hy:22}),
   kneelUp:mk({lean:0.48,head:-0.1,hF:1.4,kF:2.3,hB:-0.2,kB:0.3,aF:0.45,eF:-0.25,aB:0.35,eB:-0.2,air:1,hy:20}),
   kneel:mk({lean:0.5,head:-0.05,hF:0.58,kF:2.16,hB:-0.75,kB:0.55,aF:0.35,eF:-0.2,aB:0.2,eB:-0.15,air:1,hy:20}),
-  // kicking up a shaft: just off the wall the pushing leg is still stretched back to it and the other knee is high;
-  // rising to the far wall the leading foot reaches for it and the arms go up for the next kick or the ledge
-  kickOff:mk({lean:0.12,head:-0.35,hF:1.25,kF:1.6,hB:-0.95,kB:0.15,aF:2.7,eF:0.15,aB:2.3,eB:0.25,air:1,hy:25}),
-  kickReach:mk({lean:-0.12,head:-0.4,hF:1.35,kF:1.0,hB:0.15,kB:0.5,aF:2.85,eF:0.05,aB:2.55,eB:0.15,air:1,hy:25}),
+  // kicking up a shaft (see KICK_VX): the push, the push leg stretched back to the wall he leaves, the other knee driven
+  // up and the arms swinging toward the next wall; the tuck, both knees up; the reach, the leading foot out for the wall
+  kickPush:mk({lean:0.3,head:-0.3,hF:1.4,kF:1.9,hB:-1.25,kB:0.15,aF:1.35,eF:0.35,aB:-0.7,eB:0.45,air:1,hy:25}),
+  kickTuck:mk({lean:0.1,head:-0.2,hF:1.55,kF:2.15,hB:0.55,kB:1.95,aF:1.65,eF:0.6,aB:0.55,eB:0.9,air:1,hy:25}),
+  kickReach:mk({lean:-0.22,head:-0.15,hF:1.45,kF:0.55,hB:0.85,kB:1.75,aF:1.2,eF:0.5,aB:-0.15,eB:0.6,air:1,hy:25}),
+  // sliding down a hanging on the blade (see SL_V): both hands on the hilt above his head where the blade is in the
+  // cloth, knees drawn up together ready for the floor, head down watching for it
+  slide:mk({lean:0.06,head:0.32,aF:Math.PI-0.12,eF:0.05,aB:Math.PI-0.4,eB:0.42,hF:0.6,kF:1.1,hB:0.38,kB:0.95,air:1,hy:24.5,sw:0.46}),
 });
+// planted on a wall between kicks, facing it: both soles on the stone (two-bone IK), knees folded to the chest, the body
+// leaning away from the wall, head up the shaft, arms drawn back ready to swing
+// in the air between kicks: push, then tuck, then the leading foot reaching out as the far wall comes near
+const kpA=mk({}),kpB=mk({});
+function kickPose(){const tk=gameTime-(P.kickT||-9),a=ease(clamp(tk/0.1,0,1)),wc=pCol()+P.face;let u=clamp(tk/0.32,0,1);
+  if(B(L,wc,rowOf(P.y-20))===WALL){const d=P.face>0?wc*TW-BW-P.x:P.x-(wc+1)*TW-BW;u=clamp(1-d/20,0,1);}
+  lerpPose(PS.kickPush,PS.kickTuck,a,kpA);return lerpPose(kpA,PS.kickReach,ease(clamp((u-0.45)/0.5,0,1)),kpB);}
+let KP=null;
+function plantPose(){if(!KP){KP=mk({lean:-0.34,head:-0.42,air:1,hy:25,aF:-0.25,eF:1.05,aB:-0.6,eB:0.85});[KP.hF,KP.kF]=legIK(10.5,0);[KP.hB,KP.kB]=legIK(10.5,8.5);}return KP;}
 // running up a wall: the leading foot plants on the wall at hip height with the knee up while the other leg drives down
 // straight; the arms pump, then both reach for the top as the climb runs out
 function wallRunPose(ph,reach){const a=ph*6.2832,s=Math.sin(a),up=0.5+0.5*s,dn=1-up;
@@ -1243,7 +1256,7 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
   leg(s.fF,s.kF,C('pants'),D('pants'),shadeHex(C('pants'),-0.42),C('boot'));
   if(o.sword&&o.smear&&!O.mono){const h=s.hF;for(const [f,al] of [[1,0.16],[0.5,0.3]]){const a=p.sw+o.smear*f,dx=Math.cos(a),dy=-Math.sin(a);ctx.globalAlpha=al*(o.alpha===undefined?1:o.alpha);
     ctx.fillStyle='#e8eef8';ctx.beginPath();ctx.moveTo(h[0],h[1]);ctx.lineTo(h[0]+Math.cos(p.sw)*18,h[1]-Math.sin(p.sw)*18);ctx.lineTo(h[0]+dx*18,h[1]+dy*18);ctx.closePath();ctx.fill();}ctx.globalAlpha=o.alpha===undefined?1:o.alpha;}
-  if(o.sword){const h=s.hF,a=p.sw,dx=Math.cos(a),dy=-Math.sin(a),nx2=-dy,ny2=dx,L2=18;
+  if(o.sword){const h=s.hF,a=p.sw,dx=Math.cos(a),dy=-Math.sin(a),nx2=-dy,ny2=dx,L2=o.swLen||18;
     const bl=new Path2D();bl.moveTo(h[0]+nx2*0.9,h[1]+ny2*0.9);bl.quadraticCurveTo(h[0]+dx*L2*0.6+nx2*1.6,h[1]+dy*L2*0.6+ny2*1.6,h[0]+dx*L2+nx2*2.6,h[1]+dy*L2+ny2*2.6);
     bl.quadraticCurveTo(h[0]+dx*L2*0.7-nx2*0.6,h[1]+dy*L2*0.7-ny2*0.6,h[0]-nx2*0.9,h[1]-ny2*0.9);bl.closePath();
     if(O.mono){ctx.fillStyle=O.mono;ctx.fill(bl);}else{ctx.strokeStyle=O.out;ctx.lineWidth=1.1;ctx.stroke(bl);ctx.fillStyle='#c9cfda';ctx.fill(bl);
@@ -1399,7 +1412,7 @@ function drawFigure(ctx,x,y,face,p,pal,o){
   if(!pal.bones){ctx.fillStyle=OUT;ctx.fillRect(hd[0]+1.8,hd[1]-1,1.2,1.4);}
   // front limbs
   limb([0,0],s.kF,s.fF,pal.pants,3.4);foot(s.fF,pal.boot);
-  if(o.sword)sw(s.hF,p.sw,17);
+  if(o.sword)sw(s.hF,p.sw,o.swLen||17);
   limb(s.sh,s.eF,s.hF,pal.skin,2.5);
   ctx.restore();
   if(o.flash>0&&!o.white&&!o.mono)drawFigure(ctx,x,y,face,p,pal.bones?PAL_WHITE_B:PAL_WHITE,Object.assign({},o,{white:true,flash:0,alpha:Math.min(0.75,o.flash*3)*(o.alpha===undefined?1:o.alpha)}));
@@ -1452,7 +1465,9 @@ const Snd={ctx:null,master:null,nb:null,
       case'guardDie':T(200,0.4,{to:70,vol:0.08,type:'sawtooth'});break;
       case'rewind':N(0.9,{vol:0.1,f:5000,type:'bandpass',to:600,q:2});[1318,1175,988,880,740,659].forEach((f,i)=>T(f,0.18,{vol:0.035,type:'sine',at:i*0.08}));break;
       case'kick':N(0.07,{vol:0.1,f:700});T(160,0.06,{to:90,vol:0.06,type:'square'});break;
+      case'plant':N(0.045,{vol:0.07,f:420,type:'lowpass'});break;
       case'slide':N(0.5,{vol:0.07,f:1800,type:'bandpass',q:0.7});break;
+      case'rip':N(0.07,{vol:0.055,f:2300+Math.random()*900,type:'bandpass',q:1.6});break;
       case'push':N(0.45,{vol:0.1,f:240,type:'bandpass',q:2,att:0.05});break;
       case'saw':N(0.16,{vol:0.05,f:3400,type:'bandpass',q:6});break;
       case'dart':N(0.09,{vol:0.07,f:2800,type:'bandpass',to:1400,q:3});break;
@@ -1561,7 +1576,7 @@ const pCol=(x=P.x)=>Math.floor(x/TW);
 const rowOf=y=>Math.floor((y-1)/TH);
 const pRow=()=>rowOf(P.y);
 const supported=(x=P.x)=>solidBelow(L,Math.floor(x/TW),pRow());
-function setState(s){if((s==='stop'||s==='turn')&&P.state==='run'&&GFX().fx&&Math.abs(P.vx)>60)dust(P.x-P.face*4,P.y,4);P.state=s;P.t=0;if(s!=='crouch'&&s!=='poke')P.lowSword=false;}
+function setState(s){if((s==='stop'||s==='turn')&&P.state==='run'&&GFX().fx&&Math.abs(P.vx)>60)dust(P.x-P.face*4,P.y,4);P.state=s;P.t=0;if(s!=='crouch'&&s!=='poke')P.lowSword=false;if(s!=='air')P.plant=null;}
 function setE(e,s){e.state=s;e.t=0;}
 function msg(text,dur=3,kind='msg'){banner={text,t:0,dur,kind};}
 // a short tinted pulse over the whole view; 'Softer flashes' turns it down to a faint wash
@@ -1737,7 +1752,7 @@ function tryGrab(py){
         const hc=lc+s;if(B(L,hc,r)!==EMPTY||B(L,hc,r+1)===WALL)continue;
         const xe=s>0?(lc+1)*TW:lc*TW,hx=xe+s*7;
         if(Math.abs(P.x-hx)>12)continue;
-        const face=-s;if(!I.g&&(face!==P.face||(ys<P.fallY-2&&!['wall','kick'].includes(P.jumpKind))))continue;
+        const face=-s;if(!I.g&&(face!==P.face||(ys<P.fallY-2&&!['wall','kick','slip'].includes(P.jumpKind))))continue;
         P.x=hx;P.y=ys+HANG;P.face=face;P.vx=0;P.vy=0;P.ledge={c:lc,r,s,xe,ys};P.jumpKind=null;setState('hang');Snd.play('grab');
         const lf=F(L,lc,r);if(lf&&lf.t==='loose')triggerLoose(lf);
         return true;
@@ -1814,13 +1829,45 @@ function stRun(dt,ix){
   if(took('u')||took('d')){P.pendingJump=false;setState('stop');}
   runMove(dt);
 }
+// ---- kicking up a shaft from wall to wall ----
+// The Two Thrones guides give the rhythm: "Wait for the Prince to hit each side of the wall then tap the jump button
+// again"; a parkour tic-tac plants the ball of the foot, leans away from the wall and pushes up and away with the head
+// already turned to the target. The first version launched him so hard (95 across, 300 up) that he was still rising fast
+// when he reached the far wall and kicked straight on, arms overhead the whole way: a steady climb through the air with
+// no contact, which read as flying. Now each kick is a lower arc that tops out as he reaches the far wall (about a third
+// of a second across, ~52px up), the soles plant there for a beat (knees folded, body leaning away, arms drawn back),
+// and only then does the push send him on. Jump pressed early is kept for the plant; with no Jump the soles hold for a
+// moment and then slip, and he drops away from the wall.
+const KICK_VX=62,KICK_VY=-275,PLANT_MIN=0.11,PLANT_STICK=0.16,PLANT_MAX=0.45;
+// sliding down a hanging (case 'slide'): steady speed, braking, and the blade's drawn length: it points into the cloth,
+// so it is drawn short, along the depth direction (up and right)
+const SL_V=170,SL_A=1100,SL_BLADE=9;
+function startPlant(sd,go){P.plant={sd,t0:gameTime,go};P.vx=0;P.face=sd;
+  Snd.play('plant');if(GFX().fx)dust(P.x+sd*7,P.y-22,2);if(P.lk)P.lk.sq=0.92;}
+function kickOff(sd){P.plant=null;P.vx=-sd*KICK_VX;P.vy=KICK_VY;P.face=-sd;P.fallY=P.y;P.autoGrab=true;P.jumpKind='kick';P.kickT=gameTime;P.wallT=-9;
+  P.pose=mk(PS.kickPush); // the facing flips here: the push leg is already stretched back to the wall
+  Snd.play('kick');dust(P.x+sd*6,P.y-20,4);hint('walljump');if(P.lk)P.lk.sqv+=2.2;}
+// one tick planted on a wall; false once he has left it (the rest of the air tick then runs as usual)
+function stPlant(dt){const pl=P.plant,pt=gameTime-pl.t0;
+  if(!pl.go&&took('j',0.15))pl.go=true;
+  if(pl.go&&pt>=PLANT_MIN){kickOff(pl.sd);return true;}
+  // where the wall ends below his hands (a ledge just under them) the soles don't hold: he slides down to catch its edge
+  const edge=B(L,Math.floor((P.x+pl.sd*(BW+1.5))/TW),rowOf(P.y-HANG+2))!==WALL;
+  P.vy=edge?approach(P.vy,190,1500*dt):pt<PLANT_STICK?approach(P.vy,0,1800*dt):approach(P.vy,120,600*dt);
+  if(pt>PLANT_MAX||wallTouch()!==pl.sd){P.plant=null;P.jumpKind='slip';return false;}
+  const py=P.y;P.y+=P.vy*dt;
+  if(P.vy>0){if((P.autoGrab||I.g)&&tryGrab(py)){P.plant=null;return true;}const h=landingSurface(py,P.y);if(h){P.plant=null;land(h);return true;}}
+  return true;}
 function stAir(dt){
+  if(P.plant&&stPlant(dt))return;
   P.vy=Math.min(P.vy+GRAV*dt,480);
   if(P.vx){const want=P.x+P.vx*dt,nx=clampMove(P.x,want,P.y,P);if(Math.abs(nx-want)>0.01)P.vx=0;P.x=nx;}
+  let ws=wallTouch();if(P.jumpKind==='kick'&&ws===-P.face&&gameTime-(P.kickT||-9)<0.15)ws=0; // the wall he has just left
+  if(ws){P.wallT=gameTime;P.wallS=ws;}
+  // arriving at the far wall from a kick, the soles plant on it
+  if(ws&&P.jumpKind==='kick'&&!P.plant&&ws===P.face&&gameTime-(P.kickT||-9)>0.1){startPlant(ws,false);stPlant(dt);return;}
   // kick off a wall: Jump while touching one (or just after leaving it)
-  const ws=wallTouch();if(ws){P.wallT=gameTime;P.wallS=ws;}
-  if(gameTime-(P.wallT||-9)<0.12&&took('j',0.12)){const sd=P.wallS;P.vx=-sd*95;P.vy=-300;P.face=-sd;P.fallY=P.y;P.autoGrab=true;P.jumpKind='kick';P.wallT=-9;
-    Snd.play('kick');dust(P.x+sd*6,P.y-20,4);hint('walljump');return;}
+  if(gameTime-(P.wallT||-9)<0.12&&took('j',0.12)){if(ws){startPlant(ws,true);stPlant(dt);}else kickOff(P.wallS);return;}
   const py=P.y;P.y+=P.vy*dt;
   // a jump from the floor never carries his head into the stone overhead
   if(P.vy<0&&(P.jumpKind==='run'||P.jumpKind==='stand')){const hh=P.lowJump?HEAD_LOW:HEAD_UP,rt=Math.floor((P.y-hh)/TH);
@@ -1829,7 +1876,7 @@ function stAir(dt){
   if(P.autoGrab||I.g){const b=barNear();if(b){P.bar=b;P.sw0=gameTime;P.vx=0;P.vy=0;setState('swing');Snd.play('grab');hint('swing');return;}}
   if(P.vy>0){
     if((P.autoGrab||I.g)&&tryGrab(py))return;
-    if(I.g&&bannerAt()){P.vy=Math.min(P.vy,140);P.x=pCol()*TW+16;setState('slide');Snd.play('slide');return;}
+    if(I.g&&bannerAt()){P.vy=Math.min(P.vy,140);P.vx=0;P.x=pCol()*TW+16;setState('slide');Snd.play('slide');return;}
     const h=landingSurface(py,P.y);if(h)return land(h);
   }
   if(P.y>L.rows*TH+90)die('fall');
@@ -1899,11 +1946,21 @@ function updatePlayer(dt){
     case'push':case'pull':{const k=Math.min(1,P.t/0.55);P.x=lerp(P.sx,P.tx,ease(k));P.ph+=dt*1.6;if(k>=1){setState('stand');standOn();}break;}
     case'wallrun':{P.vy+=GRAV*WR_G*dt;const ny=P.y+P.vy*dt;if(B(L,pCol(),rowOf(ny-54))===WALL){P.vy=Math.max(P.vy,0);}else P.y=ny;P.ph+=dt*4.2;
       if(P.vy>=0){setState("air");P.vx=0;}break;}
-    case'slide':{const py=P.y;P.vy=approach(P.vy,75,700*dt);P.y+=P.vy*dt;P.fallY=P.y-8;
+    // Sliding down a hanging on the blade: in Sands of Time to Two Thrones the Prince sinks the blade in and slides down
+    // to the next level in one quick, braked drop (the old knife-down-the-sail stunt; in The Black Pirate a counterweight
+    // let Fairbanks down at a steady pace). The first version crept down at 75px/s, slower than climbing down. Now the
+    // blade bites (a short check), then the drag of the cut holds him at SL_V, a little uneven as the weave gives.
+    case'slide':{const py=P.y;
+      if(P.t<0.07)P.vy=approach(P.vy,30,2600*dt);
+      else P.vy=approach(P.vy,SL_V*(1+0.1*Math.sin(P.t*31)),SL_A*dt);
+      P.y+=P.vy*dt;P.fallY=P.y-8;
       // the blade goes in where his hands hold the cloth and splits the hanging down to them as he slides
       {const hy=P.y-HANG+3,f=F(L,pCol(),rowOf(hy));if(f&&f.t==='banner'&&f.bn){const bn=f.bn;if(bn.a<0){bn.a=Math.max(bn.top+4,hy-6);bn.b=bn.a;Snd.play('swish');}
-        const nb=Math.min(bn.bot+8,hy);if(nb>bn.b){bn.b=nb;bn.t=gameTime;if(Math.random()<0.5){const th=L.theme;FX.push({x:pCol()*TW+16+(Math.random()-0.5)*4,y:hy+2,vx:(Math.random()-0.5)*30,vy:10+Math.random()*20,g:140,life:0.6+Math.random()*0.4,t:0,col:th.cloth||th.guard,sz:1.3});}}}}
-      if(Math.floor(P.t*4)!==Math.floor((P.t-dt)*4))Snd.play('slide');if(Math.random()<0.3)FX.push({x:P.x+P.face*5,y:P.y-50,vx:(Math.random()-0.5)*20,vy:-10,g:60,life:0.4,t:0,col:'rgba(230,210,170,.6)',sz:1.2});
+        const nb=Math.min(bn.bot+8,hy);if(nb>bn.b){bn.b=nb;bn.t=gameTime;const th=L.theme;
+          // torn threads and lint spray from the blade: more of them now that it cuts faster
+          for(let i=0;i<2;i++)if(Math.random()<0.55)FX.push({x:pCol()*TW+16+(Math.random()-0.5)*5,y:hy+1,vx:(Math.random()-0.5)*46,vy:-25+Math.random()*40,g:150,life:0.5+Math.random()*0.4,t:0,col:th.cloth||th.guard,sz:1.1+Math.random()*0.5});}}}
+      if(P.t>=0.07&&Math.floor(P.t*14)!==Math.floor((P.t-dt)*14))Snd.play('rip');
+      if(Math.floor(P.t*2.5)!==Math.floor((P.t-dt)*2.5))Snd.play('slide');if(Math.random()<0.45)FX.push({x:P.x+P.face*3,y:P.y-56,vx:(Math.random()-0.5)*24,vy:-30+Math.random()*12,g:50,life:0.35,t:0,col:'rgba(230,210,170,.55)',sz:1.1});
       const h=landingSurface(py,P.y);if(h){land(h);break;}
       if(!I.g||!bannerAt()){setState('air');P.vx=0;P.jumpKind=null;P.autoGrab=false;}break;}
     case'swing':{const sp=swingPos();P.x=sp.hx;P.y=sp.hy+24.5;P.swTh=sp.th;
@@ -1958,10 +2015,16 @@ function updatePlayer(dt){
     case'push':{tgt=RP(P.ph,0.45);tgt.lean=0.5;tgt.aF=1.45;tgt.eF=0.2;tgt.aB=1.3;tgt.eB=0.3;rate=30;break;}
     case'pull':{tgt=RP(-P.ph,0.4);tgt.lean=-0.3;tgt.aF=1.5;tgt.eF=0.1;tgt.aB=1.4;tgt.eB=0.2;rate=30;break;}
     case'wallrun':tgt=wallRunIK(P.wrY0-P.y,P.wrPose);rate=90;break;
-    case'slide':{tgt=lerpPose(PS.hang,PS.reach,0.5,mk({}));tgt.hF=0.35;tgt.kF=0.5;tgt.hB=0.1;tgt.kB=0.4;rate=30;break;}
+    // the blade bites with a jolt (arms stretched, knees snap up), then the drag shudders through the arms
+    // and as the floor comes up the knees bend for the landing
+    case'slide':{tgt=lerpPose(PS.slide,PS.reach,P.t<0.07?0.35:0,tmpP);const sh=Math.sin(P.t*47);tgt.lean+=0.04*sh;tgt.eF+=0.1*sh;tgt.eB-=0.1*sh;
+      let fy=null;for(let r=rowOf(P.y-1);r<L.rows&&fy===null;r++)if(solidBelow(L,pCol(),r))fy=SURF(r);
+      const k=fy===null?0:clamp(1-(fy-P.y)/52,0,1);if(k>0){tgt.hF=lerp(tgt.hF,1.0,k);tgt.kF=lerp(tgt.kF,1.75,k);tgt.hB=lerp(tgt.hB,0.75,k);tgt.kB=lerp(tgt.kB,1.55,k);tgt.head+=0.15*k;}
+      tgt.sw=P.face>0?0.46:Math.PI-0.46;rate=P.t<0.1?50:36;break;}
     case'swing':{tgt=lerpPose(PS.hang,PS.reach,0.4,mk({}));const th=P.swTh||0;tgt.rot=-th;tgt.hF=0.15-0.6*th;tgt.kF=0.3+0.5*Math.max(0,-th);tgt.hB=-0.1-0.4*th;tgt.kB=0.3;rate=60;break;}
     case'air':
-      if(P.jumpKind==='kick'){tgt=lerpPose(PS.kickOff,PS.kickReach,clamp((P.vy+300)/260,0,1),tmpP);rate=30;break;}
+      if(P.plant){tgt=plantPose();rate=45;break;}
+      if(P.jumpKind==='kick'){tgt=kickPose();rate=36;break;}
       if(P.jumpKind==='wall'){tgt=wallRunIK(WR_TOP+4,null);rate=30;break;}
       tgt=P.jumpKind==='run'?(P.lowJump?PS.jumpLow:PS.jumpR):P.jumpKind==='stand'?(P.lowJump?PS.jumpLowS:PS.jumpS):PS.fall;if(P.jumpKind&&P.vy>60)tgt=lerpPose(tgt,PS.land,0.4,tmpP);break;
     case'land':tgt=PS.land;rate=40;break;
@@ -3599,7 +3662,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     drawActor(ctx,g,g.x+(wc?wc.dx:0),g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:(g.alive&&g.state!=='idle'&&g.state!=='drop'),hasSword:!g.skel,flash:g.flash,alpha:g.alive?undefined:clamp(1-(g.t-1.1)/0.8,0,1)});ctx.restore();}
   if(P&&!(P.state==='dead'&&P.cause==='fall'&&P.y>L.rows*TH)){
     ctx.save();figClip(ctx,P.hideMode,P.hideLg,P.state==='dead'?null:wallPress(P.x,P.y,P.face,P.pose));
-    drawActor(ctx,P,P.x+(P.rdx||0),P.y+(P.rdy||0),P.face,P.pose,PAL_HERO,{yo:P.yo,sword:(P.sword&&!!P.foe)||P.state==='lowStrike'||P.state==='poke'||(P.lowSword&&P.state==='crouch'),hasSword:true,flash:P.flash,alpha:P.state==='exit'?Math.max(0,1-P.t*1.1):undefined,flutter:Math.min(1,Math.abs(P.vx)/90+(P.state==='air'?0.8:0)),time:gameTime});
+    drawActor(ctx,P,P.x+(P.rdx||0),P.y+(P.rdy||0),P.face,P.pose,PAL_HERO,{yo:P.yo,sword:(P.sword&&!!P.foe)||P.state==='lowStrike'||P.state==='poke'||(P.lowSword&&P.state==='crouch')||P.state==='slide',swLen:P.state==='slide'?SL_BLADE:0,hasSword:true,flash:P.flash,alpha:P.state==='exit'?Math.max(0,1-P.t*1.1):undefined,flutter:Math.min(1,Math.abs(P.vx)/90+(P.state==='air'?0.8:0)),time:gameTime});
     ctx.restore();
   }
   if(GFX().fx){drawTrails(ctx);drawRings(ctx);}
@@ -3703,7 +3766,7 @@ function keyLight(x,y){let best=null,bd=1e9;for(const q of frameLights){if(q.kin
 const AIRY=['air','hang','climb','climbDown','jumpUp','swing','wallrun','slide','fall','drop','exit'];
 function drawActor(ctx,e,x,y,face,pose,pal,o){
   const lk=e.lk;
-  if(GFX().hd){o=Object.assign({},o,{vx:lk?lk.cw:0,vy:lk?lk.cwy:0,time:gameTime,sq:lk&&Math.abs(lk.sq-1)>0.004?lk.sq:undefined,smear:lk&&Math.abs(lk.smear)>0.05?lk.smear:0});pose=livePose(e,pose);}
+  if(GFX().hd){o=Object.assign({},o,{vx:lk?lk.cw:0,vy:lk?lk.cwy*(e.state==='slide'?0.3:1):0,time:gameTime,sq:lk&&Math.abs(lk.sq-1)>0.004?lk.sq:undefined,smear:lk&&Math.abs(lk.smear)>0.05?lk.smear:0});pose=livePose(e,pose);}
   if(!GFX().hero||o.alpha===0){figDraw(ctx,x,y,face,pose,pal,o);return;}
   const solid=!(o.alpha<1);
   if(solid&&!AIRY.includes(e.state)){ctx.save();ctx.fillStyle='rgba(0,0,0,.42)';ctx.beginPath();ctx.ellipse(x,y+0.6,11,2.4,0,0,Math.PI*2);ctx.fill();ctx.restore();}
@@ -4234,7 +4297,7 @@ window.__HK={genLevel,setKey,took,
   load(n,seed,test){clearInput();quiet=!!test;L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;mode="play";intro=0;FX.length=0;STORMG.length=0;clearRooms();cam.snap=true;updateCamera(0);return L;},
   loadMap(spec){return spec;},
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
-  get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
+  get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,plantPose,legIK,mk,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
   get S(){return S;},get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName};
 
