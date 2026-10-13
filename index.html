@@ -256,7 +256,7 @@ function themeName(n){const i=Math.floor((n-1)/4),t=THEMES[i%THEMES.length],k=Ma
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=8;
-const APP_VERSION='34'; // set by the build; shown on the title and pause screens
+const APP_VERSION='35'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(s.gen!==GEN){s.gen=GEN;s.cp=-1;s.resume=null;s.floorTime=0;}
@@ -2151,10 +2151,14 @@ function drawRoomStatic(g,rx,ry,stage){
     backCell(g,X,Y,gc,gr,th);if(b!==WALL&&!isLow(gc,gr)&&!(bgOn&&inOpening(gc,gr)))decor(g,X,Y,gc,gr,th,lit);
     g.restore();
   }
+  // arch recesses, then the breaches (cut after the recesses so they open right through), then the arch frames, which
+  // stand in front of any break
   for(let rr=-1;rr<RH;rr++)for(let cc=0;cc<RW;cc++){const gc=rx*RW+cc,gr=ry*RH+rr;
-    if(isArchTop(gc,gr))drawArch(g,cc*TW,rr*TH,th,bgOn&&isOpenArch(gc,gr),gc,gr);}
-  for(const w of L.windows){if(Math.floor(w.c/RW)!==rx||Math.floor(w.r/RH)!==ry)continue;if(bgOn&&inOpening(w.c,w.r))continue;drawWindow(g,(w.c%RW)*TW+16,(w.r%RH)*TH+38,th,w.c,bgOn);}
-  drawWallHoles(g,rx,ry,th,bgOn);
+    if(isArchTop(gc,gr))drawArch(g,cc*TW,rr*TH,th,bgOn&&isOpenArch(gc,gr),gc,gr,'fill');}
+  drawBreaches(g,rx,ry,th,bgOn);
+  for(let rr=-1;rr<RH;rr++)for(let cc=0;cc<RW;cc++){const gc=rx*RW+cc,gr=ry*RH+rr;
+    if(isArchTop(gc,gr))drawArch(g,cc*TW,rr*TH,th,bgOn&&isOpenArch(gc,gr),gc,gr,'frame');}
+  for(const w of L.windows){if(Math.floor(w.c/RW)!==rx||Math.floor(w.r/RH)!==ry)continue;if(bgOn&&inOpening(w.c,w.r))continue;if(inBreach(w.c*TW+16,w.r*TH+38,true))continue;drawWindow(g,(w.c%RW)*TW+16,(w.r%RH)*TH+38,th,w.c,bgOn);}
   }
   // neighbours one cell outside the room are drawn too, so faces that overhang a room edge don't leave seams
   if(all||stage===1){
@@ -2178,48 +2182,123 @@ function drawRoomStatic(g,rx,ry,stage){
     if(f&&f.t==='spikes'){g.fillStyle='rgba(7,5,11,.8)';const m=gc%2?-1:1;for(const [bx,d] of SPK){const q=onFloor(X+16+m*(bx-16),d,ys);g.beginPath();g.ellipse(q.x,q.y,2.2,0.9,0,0,Math.PI*2);g.fill();}}
     if(L.rubble.has(gr*L.cols+gc)){const rnd=mulberry32(hash2(gc,gr+77));for(let i=0;i<6;i++){g.fillStyle=i%2?th.front:th.lo;const q=onFloor(X+4+rnd()*24,0.2+rnd()*0.6,ys),w=2+rnd()*4;g.fillRect(q.x,q.y-1,w,1.6+rnd()*1.2);}}
   });
-  drawHoleRubble(g,rx,ry,th);
+  drawBreachRubble(g,rx,ry,th);
 }
-// ---- holes broken right through the back wall where it has partly fallen: the scene outside shows through ----
-// Placed once per floor (from a hash, so the layout is untouched) on the wall between a corridor's floor and its ceiling,
-// never behind an arch, window, lamp, gate or trap. The outline steps along the brick courses, as if the bricks came
-// out one by one.
-function wallHoles(){if(L.holes)return L.holes;const out=[],st=L.theme.style,bh=(st==='palace'||st==='crypt')?16:8,taken=[];
-  const torch=new Set(L.torches.map(t=>t.r*L.cols+t.c)),win=new Set(L.windows.map(w=>w.r*L.cols+w.c)),sd=(L.seed|0)&0xffff;
-  for(let r=1;r<L.rows;r++)for(let c=3;c<L.cols-3;c++){
-    if(!solidBelowD(c,r)||D0(c,r)===WALL||D0(c,r-1)!==EMPTY)continue;
-    const W=wearLevel(c*TW+16,r*TH+20);if(W<2||hash2(c*13+sd,r*71+3)%100>=(W===3?72:28))continue;
-    if(taken.some(q=>q[1]===r&&Math.abs(q[0]-c)<3))continue;
-    // inside a closed arch the hole stays within its frame (the recess's back wall has fallen through); elsewhere it
-    // can be wider and must keep clear of any arch
-    const inArch=isArchTop(c,r-1);let ok=!inOpening(c,r)&&!inOpening(c,r-1);
-    for(let dc=inArch?0:-1;dc<=(inArch?0:1)&&ok;dc++){const cc=c+dc;
-      for(const rr of [r,r-1]){const k=rr*L.cols+cc,f=F(L,cc,rr);if(D0(cc,rr)===WALL||torch.has(k)||win.has(k)||(f&&f.t!=='loose'&&f.t!=='spikes'))ok=false;}
-      if((!inArch&&(isArchTop(cc,r-1)||isArchTop(cc,r)))||D0(cc,r-1)!==EMPTY)ok=false;}
-    if(inArch&&(torch.has(r*L.cols+c-1)||torch.has(r*L.cols+c+1)))ok=false;
-    if(!ok)continue;
-    taken.push([c,r]);const rnd=mulberry32(hash2(c*31+sd,r*17+5)),big=W===3;
-    const cx=inArch?c*TW+16+(rnd()-0.5)*3:c*TW+16+(rnd()-0.5)*14,cy=inArch?r*TH-12+rnd()*22:r*TH-22+rnd()*34;
-    const hw=inArch?(big?7.5+rnd()*3:5+rnd()*2.5):(big?14+rnd()*18:8+rnd()*7),hh=inArch?(big?12+rnd()*9:8+rnd()*4):(big?12+rnd()*12:8+rnd()*5);
-    const k0=Math.ceil((cy-hh)/bh),k1=Math.floor((cy+hh)/bh),rows=[];
-    for(let k=k0;k<k1;k++){const yc=(k+0.5)*bh,f=Math.sqrt(Math.max(0,1-((yc-cy)/hh)**2));const w=hw*f*(0.75+0.45*rnd());if(w<3)continue;rows.push([k*bh,(k+1)*bh,cx-w+(rnd()-0.5)*5,cx+w+(rnd()-0.5)*5]);}
-    if(rows.length<2)continue;
-    const pts=[];for(const q of rows){pts.push([q[3],q[0]],[q[3],q[1]]);}for(let i=rows.length-1;i>=0;i--){const q=rows[i];pts.push([q[2],q[1]],[q[2],q[0]]);}
-    let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;for(const [x,y] of pts){x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);}
-    out.push({pts,x0,x1,y0,y1,c,r,seed:hash2(c,r+911)});}
-  return (L.holes=out);}
-function holePath(h,ox,oy){const p=new Path2D();h.pts.forEach(([x,y],i)=>i?p.lineTo(x+ox,y+oy):p.moveTo(x+ox,y+oy));p.closePath();return p;}
-function drawWallHoles(g,rx,ry,th,bgOn){const ox=-rx*ROOM_W,oy=-ry*ROOM_H;
-  for(const h of wallHoles()){if(h.x1<-ox-6||h.x0>-ox+ROOM_W+6||h.y1<-oy-6||h.y0>-oy+ROOM_H+6)continue;const p=holePath(h,ox,oy);
-    if(bgOn){g.save();g.globalCompositeOperation='destination-out';g.fillStyle='#000';g.fill(p);g.restore();}else{g.fillStyle='#07060c';g.fill(p);}
-    // the wall's thickness seen in the break, shadowed, with a lit lower lip
-    g.save();g.clip(p);g.strokeStyle='rgba(0,0,0,.6)';g.lineWidth=5;g.stroke(p);g.strokeStyle=th.lo;g.globalAlpha=0.75;g.lineWidth=2.2;g.stroke(p);g.restore();
-    g.strokeStyle='rgba(0,0,0,.45)';g.lineWidth=0.9;g.stroke(p);}}
-// fallen bricks lying at the back of the floor under each hole
-function drawHoleRubble(g,rx,ry,th){const ox=-rx*ROOM_W,oy=-ry*ROOM_H;
-  for(const h of wallHoles()){const ys=SURF(h.r)+oy;if(h.x1<-ox-6||h.x0>-ox+ROOM_W+6||ys<-10||ys>ROOM_H+10)continue;const rnd=mulberry32(h.seed);
-    for(let i=0;i<7;i++){const q=onFloor(h.x0+ox+rnd()*(h.x1-h.x0),0.72+rnd()*0.24,ys),w=2+rnd()*3.5,hh=1.2+rnd()*1.6;g.fillStyle=i%3?th.brick:th.lo;
-      g.beginPath();g.moveTo(q.x-w/2,q.y);g.lineTo(q.x-w/2+0.6,q.y-hh);g.lineTo(q.x+w/2,q.y-hh+0.4);g.lineTo(q.x+w/2-0.3,q.y);g.closePath();g.fill();g.fillStyle='rgba(0,0,0,.3)';g.fillRect(q.x-w/2,q.y,w,0.8);}}}
+// ---- breaches: where a stretch of the keep has partly fallen, holes have opened right through its back wall ----
+// Modelled on how brick and block walls actually fail rather than drawn as shapes: the masonry over a gap stays up by
+// arching, so what comes down is the stepped, roughly 45-degree triangle above it and the hole's top is a corbelled
+// point; bricks come out whole along the real bond (toothed, stepped edges), the ones on the edge break across; the
+// wall's thickness shows inside; stepped cracks run out along the joints from the point and the corners; the bricks
+// around the hole are spalled and chipped; loose bricks lie on a broken sill and the rest is a mound on the floor.
+const BR_T=[5,-2.5]; // the back wall's thickness, as seen in a break (receding up and to the right)
+function brickBond(st){const big=st==='palace'||st==='crypt',bh=big?16:8,bw=big?32:16,jit=big?10:4;
+  return {bh,bw,joint:(k,R)=>k*bw+(R%2)*(bw/2)+((hash2(k*7+5,R*3+1)%1000)/1000-0.5)*jit};}
+function breaches(){if(L.breaches)return L.breaches;const out=[],st=L.theme.style,bd=brickBond(st),sd=(L.seed|0)&0xffff;
+  // (not where an open arcade already looks out, nor right beside one)
+  const okCell=(c,r)=>{if(!solidBelowD(c,r)||D0(c,r)===WALL||D0(c,r-1)!==EMPTY||wearLevel(c*TW+16,r*TH+20)!==3||inOpening(c-1,r)||inOpening(c,r)||inOpening(c+1,r))return false;
+    for(const rr of [r,r-1]){const f=F(L,c,rr);if(f&&(f.t==='gate'||f.t==='chomp'||f.t==='low'||f.t==='banner'||f.t==='bar'))return false;}return true;};
+  for(let r=1;r<L.rows;r++){let c=2;
+    while(c<L.cols-2){if(!okCell(c,r)){c++;continue;}let e=c;while(e+1<L.cols-2&&okCell(e+1,r))e++;
+      let s0=c;while(s0<=e){const rnd=mulberry32(hash2(s0*7+sd,r*13+1)),w=Math.min(e-s0+1,2+Math.floor(rnd()*4));
+        if(w>=2&&rnd()<0.85)out.push(makeBreach(s0,s0+w-1,r,rnd,bd));s0+=w+1;}
+      c=e+1;}}
+  return (L.breaches=out);}
+function makeBreach(c0,c1,r,rnd,bd){const {bh,bw}=bd,xa=c0*TW+3,xb=(c1+1)*TW-3,W=xb-xa,yTop=(r-1)*TH,yFl=SURF(r)-HY;
+  // The masonry above a hole stays up by arching: what falls is the stepped, roughly 45-degree triangle over the gap,
+  // so the top of the hole is a corbelled point (steeper or flatter, off centre), its sides go down ragged, and its
+  // foot is either a broken sill partway up or the floor itself, where the wall has gone to its base.
+  const toFloor=rnd()<0.4,yb=toFloor?yFl+3:yFl-(10+rnd()*Math.min(30,(yFl-yTop)*0.25));
+  // a hole about as tall as it is wide (taller where it runs down to the floor), never quite up to the ceiling
+  const Hh=clamp(W*(toFloor?0.95+0.5*rnd():0.65+0.45*rnd()),28,yb-yTop-7),cx=(xa+xb)/2+(rnd()-0.5)*W*0.2,ax=W/2,ay=toFloor?Hh*0.85:Hh/2,cy=toFloor?yb:yb-ay;
+  const xm=cx+(rnd()-0.5)*W*0.3,kl=0.7+0.6*rnd(),kr=0.7+0.6*rnd(),apex=yb-Hh,ph=rnd()*6.28,ph2=rnd()*6.28,ph3=rnd()*6.28;
+  // a squarish ellipse (the body of the hole, bulging at the sides and rounded at the foot) under a corbelled point,
+  // its outline wobbling at a scale of a few bricks
+  const depth=(x,y)=>{const dx=x-cx,dy=y-cy,t=Math.atan2(dy,dx),m=1+0.13*Math.sin(t*3+ph)+0.08*Math.sin(t*5+ph2);
+    const e=Math.pow(Math.abs(dx)/(ax*m),2.4)+Math.pow(Math.abs(dy)/(ay*m),2.4),blob=(1-e)*Math.min(ax,ay)/2.4;
+    const tent=y-(apex+Math.abs(x-xm)*(x<xm?kl:kr)+2.5*Math.sin(x*0.23+ph3));return Math.min(blob,tent);};
+  const R0=Math.floor((yTop-bh)/bh),R1=Math.floor((yFl-1)/bh),gone=new Map(),key=(k,R)=>R*100000+k,pieces=[],loose=[],cracks=[],halo=[];
+  const kRange=R=>[Math.floor((xa-bw)/bw)-2,Math.ceil((xb+bw)/bw)+1],big=bh>=16;
+  // (a wall of big blocks is a facing over a rubble core: the facing comes away from a wider patch than the hole itself)
+  const score=(k,R)=>{const a=bd.joint(k,R),b=bd.joint(k+1,R),h=hash2(k*13+3,R*29+7);return depth((a+b)/2,(R+0.5)*bh)+(big?bh*0.3:0)+((h%1000)/1000-0.5)*bh*0.9;};
+  for(let R=R0;R<=R1;R++){const [kA,kB]=kRange(R);for(let k=kA;k<=kB;k++){const a=bd.joint(k,R),b=bd.joint(k+1,R);if(b<xa||a>xb)continue;if(R*bh<yTop)continue;if(score(k,R)>0)gone.set(key(k,R),[a,b,R]);}}
+  if(gone.size<3)return null;
+  const isGone=(R,x0,x1)=>{for(let k=Math.floor(x0/bw)-2;k<=Math.ceil(x1/bw)+1;k++){const q=gone.get(key(k,R));if(q&&q[0]<x1-2&&q[1]>x0+2)return true;}return false;};
+  // whole bricks out; the bricks around the edge broken through toward the hole, or left standing but spalled
+  // (each brick overlaps its neighbours a little, so the cut has no hairline seams along the joints)
+  for(const [a,b,R] of gone.values())pieces.push([[a-0.6,R*bh-0.6],[b+0.6,R*bh-0.6],[b+0.6,(R+1)*bh+0.6],[a-0.6,(R+1)*bh+0.6]]);
+  for(let R=R0;R<=R1;R++){const [kA,kB]=kRange(R);for(let k=kA;k<=kB;k++){if(gone.has(key(k,R)))continue;const a=bd.joint(k,R),b=bd.joint(k+1,R),y0=R*bh,s=score(k,R);if(s<-bh*1.6||y0<yTop)continue;
+      const lG=gone.has(key(k-1,R)),rG=gone.has(key(k+1,R)),uG=isGone(R-1,a,b),dG=isGone(R+1,a,b),hq=mulberry32(hash2(k*41+1,R*17+9)),j=()=>hq();
+      if(s<-bh*0.5||!(lG||rG||uG||dG)){if(s>-bh*1.4)halo.push([a,b,R,hq()]);continue;}
+      if(uG&&j()<0.85){const f=[0.2+0.5*j(),0.15+0.6*j(),0.1+0.7*j(),0.15+0.6*j(),0.2+0.5*j()];pieces.push([[a,y0-0.6],[b,y0-0.6],[b,y0+f[0]*bh],[a+(b-a)*0.75,y0+f[1]*bh],[a+(b-a)*0.5,y0+f[2]*bh],[a+(b-a)*0.25,y0+f[3]*bh],[a,y0+f[4]*bh]]);}
+      else if(dG&&j()<(big?0.75:0.4)){const y1=y0+bh,f=[0.15+0.4*j(),0.1+0.45*j(),0.15+0.4*j()];pieces.push([[a,y1+0.6],[a,y1-f[0]*bh],[a+(b-a)*0.3,y1-f[1]*bh*0.7],[a+(b-a)*0.6,y1-f[1]*bh],[b,y1-f[2]*bh],[b,y1+0.6]]);}
+      else if(lG){const w=(b-a)*(big?0.35+0.45*j():0.2+0.45*j());pieces.push([[a-0.6,y0],[a+w*(0.4+0.7*j()),y0],[a+w*(0.6+0.5*j()),y0+bh*0.35],[a+w*(0.5+0.6*j()),y0+bh*0.7],[a+w*(0.3+0.7*j()),y0+bh],[a-0.6,y0+bh]]);}
+      else if(rG){const w=(b-a)*(big?0.35+0.45*j():0.2+0.45*j());pieces.push([[b-w*(0.4+0.7*j()),y0],[b+0.6,y0],[b+0.6,y0+bh],[b-w*(0.3+0.7*j()),y0+bh],[b-w*(0.5+0.6*j()),y0+bh*0.7],[b-w*(0.6+0.5*j()),y0+bh*0.35]]);}
+      else halo.push([a,b,R,hq()]);}}
+  // In a wall of big blocks the hole proper is broken through the core, so its outline is the core's (small rubble,
+  // no courses): traced round the deepest part of the damage, lumpy at the scale of the stones it is made of.
+  let facing=null,cut=pieces;
+  if(big){facing=pieces;cut=[];const thr=bh*0.5,hx=cx,hy=toFloor?yb-Hh*0.42:(apex+yb)/2;
+    if(depth(hx,hy)>thr+3){const pts=[],N=56,Rm=Math.max(ax,ay)*2;
+      for(let i=0;i<N;i++){const t=i/N*6.2832,c=Math.cos(t),sn=Math.sin(t);let d=0;while(d<Rm&&depth(hx+d*c,hy+d*sn)>thr)d+=3;if(d>0){let lo=d-3,hi=d;for(let it=0;it<3;it++){const m=(lo+hi)/2;if(depth(hx+m*c,hy+m*sn)>thr)lo=m;else hi=m;}d=hi;}
+        d=Math.max(3,d*(1+0.09*Math.sin(t*7+ph)+0.06*Math.sin(t*11+ph2))-(i%2?0.5:1.8)-rnd()*2.8);pts.push([hx+d*c,Math.min(yb,hy+d*sn)]);}
+      cut=[pts];}}
+  const box=ps=>{let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;for(const pc of ps)for(const [x,y] of pc){x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);}return [x0,x1,y0,y1];};
+  const [bx0,bx1,by0,by1]=cut.length?box(cut):[0,-1,0,-1],[fx0,fx1,fy0,fy1]=box(pieces);
+  // a few loose bricks resting on the broken sill
+  if(!toFloor&&!big)for(const [a,b,R] of gone.values()){if(loose.length>=2)break;if(!isGone(R+1,a,b)&&(R+1)*bh<yFl&&rnd()<0.3)loose.push([(a+b)/2+(rnd()-0.5)*6,(R+1)*bh,(rnd()-0.5)*0.7,bw*(0.4+0.3*rnd()),bh*0.7]);}
+  // stepped cracks along the joints: up from the point of the hole toward the ceiling, and down from the corners of a
+  // broken sill, the way cracks run out from the corners of an opening
+  const step=(x,R,dir,side,n)=>{const pts=[[x,dir<0?R*bh:(R+1)*bh]];for(let i=0;i<n;i++){const yy=dir<0?R*bh:(R+1)*bh;R+=dir;const ny=dir<0?R*bh:(R+1)*bh;
+      if(ny<yTop+1||ny>yFl-2)break;pts.push([x,ny]);let best=null;for(let k=Math.floor(x/bw)-2;k<=Math.floor(x/bw)+2;k++){const jx=bd.joint(k,R);if((jx-x)*side>1&&(!best||Math.abs(jx-x)<Math.abs(best-x)))best=jx;}if(best===null)break;x=best;pts.push([x,ny]);}
+    return pts.length>2?pts:null;};
+  {let top=null;for(const [a,b,R] of gone.values())if(!top||R<top[2])top=[a,b,R];
+    if(top&&rnd()<0.75){const c=step((top[0]+top[1])/2,top[2]-1,-1,rnd()<0.5?-1:1,1+Math.floor(rnd()*3));if(c)cracks.push(c);}}
+  if(!toFloor)for(const side of [-1,1]){let lowest=null;for(const [a,b,R] of gone.values()){const x=side<0?a:b;if(!lowest||R>lowest[1]||(R===lowest[1]&&(x-lowest[0])*side>0))lowest=[x,R];}
+    if(lowest&&rnd()<0.6){const c=step(lowest[0],lowest[1]+1,1,side,1+Math.floor(rnd()*3));if(c)cracks.push(c);}}
+  return {c0,c1,r,open:cut.length>0,x0:bx0,x1:bx1,y0:by0,y1:by1,fx0,fx1,fy0,fy1,pieces:cut,facing,loose,cracks,halo,bh,xm,toFloor,seed:hash2(c0*31+7,r*17+5)};}
+function breachPath(b,ox,oy,dx=0,dy=0,list=b.pieces){const p=new Path2D();for(const pc of list){pc.forEach(([x,y],i)=>i?p.lineTo(x+ox+dx,y+oy+dy):p.moveTo(x+ox+dx,y+oy+dy));p.closePath();}return p;}
+// is a point in a hole right through the wall (or, with any, anywhere its face has come away)?
+function inBreach(x,y,any){for(const b of breaches()){if(!b||x<b.fx0||x>b.fx1||y<b.fy0||y>b.fy1)continue;
+  for(const pc of any&&b.facing?b.facing.concat(b.pieces):b.pieces){let ins=false;for(let i=0,j=pc.length-1;i<pc.length;j=i++){const [xi,yi]=pc[i],[xj,yj]=pc[j];if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)ins=!ins;}if(ins)return true;}}return false;}
+function drawBreaches(g,rx,ry,th,bgOn){const ox=-rx*ROOM_W,oy=-ry*ROOM_H;
+  for(const b of breaches()){if(!b||b.fx1<-ox-12||b.fx0>-ox+ROOM_W+12||b.fy1<-oy-12||b.fy0>-oy+ROOM_H+12)continue;
+    const P=breachPath(b,ox,oy);
+    // the bricks around the hole: faces spalled off (a paler, rough scar with a shadowed lip), corners knocked off
+    for(const [a,bb,R,v] of b.halo){const x0=a+ox+0.6,x1=bb+ox-0.6,y0=R*b.bh+oy+0.5,y1=(R+1)*b.bh+oy-0.5,w=x1-x0,h=y1-y0,q=mulberry32((v*1e9)|0);if(w<2)continue;
+      if(v<0.5){const px=x0+w*(0.1+0.3*q()),pw=w*(0.35+0.4*q()),py=y0+h*(0.15+0.3*q()),pb=y1-h*0.1*q();
+        g.beginPath();g.moveTo(px,py+h*0.2*q());g.lineTo(px+pw*0.4,py);g.lineTo(px+pw,py+h*0.15*q());g.lineTo(Math.min(x1,px+pw+1),pb);g.lineTo(px+pw*0.3,pb-h*0.15*q());g.closePath();
+        g.fillStyle='rgba(255,236,205,.07)';g.fill();g.strokeStyle='rgba(0,0,0,.5)';g.lineWidth=0.7;g.beginPath();g.moveTo(px,py+h*0.2*q());g.lineTo(px+pw*0.4,py);g.lineTo(px+pw,py+h*0.15*q());g.stroke();}
+      else if(v<0.8){const L0=q()<0.5,T0=q()<0.5,cx=L0?x0:x1,cy=T0?y0:y1,sx=L0?1:-1,sy=T0?1:-1,s1=Math.min(w*0.45,2+q()*3),s2=Math.min(h*0.7,2+q()*2.5);
+        g.fillStyle=th.mortar;g.beginPath();g.moveTo(cx-sx*0.5,cy-sy*0.5);g.lineTo(cx+sx*s1,cy);g.lineTo(cx+sx*s1*0.4,cy+sy*s2*0.6);g.lineTo(cx,cy+sy*s2);g.closePath();g.fill();}
+}
+    // the broken edge's shadow line: stroked first and then mostly cut away, so only its outer half (and none of the joints
+    // between the bricks that came out) is left
+    if(b.facing){ // the facing gone: the core behind it, rough stone in mortar, shadowed under the facing that stands proud of it
+      const Fp=breachPath(b,ox,oy,0,0,b.facing),q=mulberry32(b.seed+5);g.strokeStyle='rgba(0,0,0,.45)';g.lineWidth=1.4;g.stroke(Fp);
+      g.save();g.clip(Fp);g.fillStyle=th.mortar;g.fillRect(b.fx0+ox-2,b.fy0+oy-2,b.fx1-b.fx0+4,b.fy1-b.fy0+4);g.fillStyle='rgba(0,0,0,.35)';g.fillRect(b.fx0+ox-2,b.fy0+oy-2,b.fx1-b.fx0+4,b.fy1-b.fy0+4);
+      const n=Math.round((b.fx1-b.fx0)*(b.fy1-b.fy0)/26);
+      for(let i=0;i<n;i++){const x=b.fx0+ox+q()*(b.fx1-b.fx0),y=b.fy0+oy+q()*(b.fy1-b.fy0),rr=1.6+q()*2.6,k=q();
+        g.fillStyle=k<0.45?th.brick:k<0.8?th.lo:th.mortar;g.globalAlpha=0.55+0.3*q();g.beginPath();
+        for(let v=0;v<5;v++){const a=v/5*6.2832+q()*0.8,d=rr*(0.6+0.5*q());g[v?'lineTo':'moveTo'](x+Math.cos(a)*d*1.3,y+Math.sin(a)*d);}g.closePath();g.fill();}
+      g.globalAlpha=1;const sh=new Path2D();sh.rect(b.fx0+ox-20,b.fy0+oy-20,b.fx1-b.fx0+40,b.fy1-b.fy0+40);sh.addPath(breachPath(b,ox,oy,1.6,2.4,b.facing));
+      g.fillStyle='rgba(0,0,0,.5)';g.fill(sh,'evenodd');g.restore();}
+    g.strokeStyle='rgba(0,0,0,.45)';g.lineWidth=1.4;g.stroke(P);
+    if(bgOn){g.save();g.globalCompositeOperation='destination-out';g.fillStyle='#000';g.fill(P);g.restore();}else{g.fillStyle='#07060c';g.fill(P);}
+    // the wall's own thickness, seen inside the break: everything of the opening that the back of the wall doesn't
+    // line up with; the broken tops of the bricks catch the light, the undersides are in shadow
+    g.save();g.clip(P);const gy=g.createLinearGradient(0,b.y0+oy,0,b.y1+oy);gy.addColorStop(0,'rgba(6,4,10,.95)');gy.addColorStop(1,th.lo);g.fillStyle=gy;g.fill(P);
+    g.fillStyle='rgba(0,0,0,.18)';g.fill(P);g.globalCompositeOperation='destination-out';g.fillStyle='#000';g.fill(breachPath(b,ox,oy,BR_T[0],BR_T[1]));g.restore();
+    // cracks running on from the ends, and loose bricks on the broken top
+    g.strokeStyle='rgba(0,0,0,.55)';g.lineWidth=0.8;for(const cr of b.cracks){g.beginPath();cr.forEach(([x,y],i)=>i?g.lineTo(x+ox,y+oy):g.moveTo(x+ox,y+oy));g.stroke();}
+    for(const [x,y,a,w,h] of b.loose){g.save();g.translate(x+ox,y+oy);g.rotate(a);g.fillStyle='rgba(0,0,0,.5)';g.fillRect(-w/2-0.5,-h-0.5,w+1,h+1);g.fillStyle=th.brick;g.fillRect(-w/2,-h,w,h);g.fillStyle='rgba(255,255,255,.1)';g.fillRect(-w/2,-h,w,1.2);g.fillStyle='rgba(0,0,0,.2)';g.fillRect(-w/2,-h*0.35,w,h*0.35);g.restore();}}}
+// the rubble of a breach: a low mound along the back of the floor beneath it, broken bricks on and around it
+function drawBreachRubble(g,rx,ry,th){const ox=-rx*ROOM_W,oy=-ry*ROOM_H;
+  for(const b of breaches()){if(!b)continue;const ys=SURF(b.r)+oy,X0=b.c0*TW+ox,X1=(b.c1+1)*TW+ox;if(X1<-8||X0>ROOM_W+8||ys<-10||ys>ROOM_H+10)continue;const rnd=mulberry32(b.seed);
+    const W=X1-X0,xm=b.xm+ox,hgt=3+Math.min(5,W/20);g.fillStyle=th.lo;g.beginPath();
+    for(let i=0;i<=12;i++){const x=X0+W*i/12,u=1-Math.min(1,Math.abs(x-xm)/(W*0.55)),q=onFloor(x,0.97,ys);g[i?'lineTo':'moveTo'](q.x,q.y-hgt*u*u*(0.8+0.4*rnd()));}
+    const e1=onFloor(X1,0.62,ys),e0=onFloor(X0,0.62,ys);g.lineTo(e1.x,e1.y);g.lineTo(e0.x,e0.y);g.closePath();g.fill();g.fillStyle='rgba(0,0,0,.25)';g.fill();
+    for(let i=0;i<Math.round(W/3);i++){const x=X0+rnd()*W,u=1-Math.min(1,Math.abs(x-xm)/(W*0.55)),q=onFloor(x,0.6+rnd()*0.38,ys),w=1.5+rnd()*3.5,hh=1+rnd()*1.8,lift=hgt*u*u*rnd();
+      g.fillStyle=i%3===0?th.lo:i%3===1?th.brick:th.front;g.beginPath();g.moveTo(q.x-w/2,q.y-lift);g.lineTo(q.x-w/2+0.6,q.y-lift-hh);g.lineTo(q.x+w/2,q.y-lift-hh+0.5);g.lineTo(q.x+w/2-0.3,q.y-lift);g.closePath();g.fill();}}}
 // a point on a floor's walking surface: x as measured along the actors' line, d from 0 (front) to 1 (back)
 function onFloor(x,d,ys){return {x:x+(d-0.5)*DX,y:ys+(0.5-d)*DY};}
 let ditherC=null;
@@ -2270,10 +2349,12 @@ function roughRect(g,x,y,w,h,jag,rad,rnd,keep){rad=Math.max(0.2,Math.min(rad,w/2
 // filled with a dozen calls instead of a dozen per stone. Every mark is kept inside its stone.
 function stoneFace(P,x,y,w,h,hv,W,th){const rnd=mulberry32(hv),gap=0.55+0.22*W,ix=x+gap,iy=y+gap,iw=w-2*gap,ih=h-2*gap;
   if(iw<1.5||ih<1.5)return;
-  if(W===3&&rnd()<0.3){ // fallen out: a dark hollow with broken edges, the rubble core showing at its back
-    roughRect(P.hole,ix,iy,iw,ih,1.6,2.6,rnd,true);P.holeTop.rect(ix+2,iy+1,iw-4,2);
-    for(let i=0;i<3;i++){const ex=ix+iw*(0.25+0.5*rnd()),ey=iy+ih*(0.6+0.2*rnd()),rx=Math.min(3,iw*0.2),ry=Math.min(2,ih*0.2);P.core.moveTo(ex+rx,ey);P.core.ellipse(ex,ey,rx,ry,0,0,6.2832);}
-    return;}
+  if(W===3&&rnd()<0.3){ // a stone broken open: an irregular piece of its face gone, the rubble core showing in the hollow
+    const ccx=ix+iw*(0.3+0.4*rnd()),ccy=iy+ih*(0.35+0.3*rnd()),rx=iw*(0.28+0.2*rnd()),ry=ih*(0.3+0.2*rnd()),n=9,pts=[];
+    for(let i=0;i<n;i++){const a=i/n*6.2832+rnd()*0.45,k=0.65+0.5*rnd();pts.push([clamp(ccx+Math.cos(a)*rx*k,ix+0.5,ix+iw-0.5),clamp(ccy+Math.sin(a)*ry*k,iy+0.5,iy+ih-0.5)]);}
+    pts.forEach(([x,y],i)=>i?P.hole.lineTo(x,y):P.hole.moveTo(x,y));P.hole.closePath();
+    P.holeTop.moveTo(pts[5][0],pts[5][1]);for(let i=6;i<=n;i++)P.holeTop.lineTo(pts[i%n][0],pts[i%n][1]);for(let i=n-1;i>=5;i--)P.holeTop.lineTo(pts[i][0]+(ccx-pts[i][0])*0.25,pts[i][1]+1.6);P.holeTop.closePath();
+    for(let i=0;i<3;i++){const ex=ccx+(rnd()-0.5)*rx,ey=ccy+ry*(0.1+0.3*rnd()),qx=Math.min(2.4,rx*0.35),qy=Math.min(1.6,ry*0.3);P.core.moveTo(ex+qx,ey);P.core.ellipse(ex,ey,qx,qy,0,0,6.2832);}}
   const v=hv%3,rad=[0.9,1.9,2.3,2.7][W],base=P.base[v];
   if(W===0){if(base.roundRect)base.roundRect(ix,iy,iw,ih,rad);else base.rect(ix,iy,iw,ih);}else roughRect(base,ix,iy,iw,ih,[0.22,0.5,0.8,1.05][W],rad,rnd,true);
   const e=Math.min(rad,iw/3);
@@ -2288,7 +2369,7 @@ function stoneFace(P,x,y,w,h,hv,W,th){const rnd=mulberry32(hv),gap=0.55+0.22*W,i
 function stoneBatch(th){const N=()=>new Path2D();return {base:[N(),N(),N()],hole:N(),holeTop:N(),core:N(),hi:[N(),N(),N(),N()],shade:N(),lit:th.style==='palace'||th.style==='tile'?N():null,pl:N(),pd:N(),pit:N(),grime:[null,N(),N(),N()],crack:N(),chip:N()};}
 function fillStones(g,P,th){
   const cols=[th.wall,th.wallA,th.wallB];for(let v=0;v<3;v++){g.fillStyle=cols[v];g.fill(P.base[v]);}
-  g.fillStyle='rgba(0,0,0,.62)';g.fill(P.hole);g.fillStyle='rgba(0,0,0,.4)';g.fill(P.holeTop);g.globalAlpha=0.45;g.fillStyle=th.lo;g.fill(P.core);
+  g.fillStyle='rgba(0,0,0,.52)';g.fill(P.hole);g.fillStyle='rgba(0,0,0,.35)';g.fill(P.holeTop);g.globalAlpha=0.5;g.fillStyle=th.lo;g.fill(P.core);
   g.fillStyle=th.hi;for(let w=0;w<4;w++){g.globalAlpha=[1,0.8,0.62,0.5][w];g.fill(P.hi[w]);}g.globalAlpha=1;
   g.fillStyle='rgba(0,0,0,.18)';g.fill(P.shade);if(P.lit){g.fillStyle='rgba(255,255,255,.07)';g.fill(P.lit);}
   g.fillStyle='rgba(255,255,255,.06)';g.fill(P.pl);g.fillStyle='rgba(0,0,0,.08)';g.fill(P.pd);g.fillStyle='rgba(0,0,0,.22)';g.fill(P.pit);
@@ -2307,31 +2388,45 @@ function wallCell(g,X,Y,gc,gr,th){
 // decoration (arches, wall panels, hangings) is laid out on the terrain as built, not as it is now
 function D0(c,r){if(c<0||c>=L.cols||r<0)return WALL;if(r>=L.rows)return EMPTY;return L.base0?L.base0[r*L.cols+c]:L.base[r*L.cols+c];}
 function solidBelowD(c,r){const b=D0(c,r);if(b===FLOOR)return true;if(b===WALL)return false;return r+1<L.rows&&D0(c,r+1)===WALL;}
-// one brick or block of the back wall: pristine ones are plain, worn ones drift in tone and lose a corner, damaged ones
-// go out of true and crack, and in partly fallen stretches some are gone, leaving dark sockets
-function backBrick(Q,x,y,w,h,ci,hv,W){if(w<1)return;if(W===0){Q.base[ci].rect(x,y,w,h);return;}const rnd=mulberry32(hv);
-  if((W===3&&rnd()<0.2)||(W===2&&rnd()<0.04)){Q.hole.rect(x-0.3,y-0.3,w+0.6,h+0.6);Q.holeTop.rect(x,y,w,Math.min(2,h*0.3));return;}
-  if(W<2)Q.base[ci].rect(x,y,w,h);else roughRect(Q.base[ci],x,y,w,h,0.3+0.35*(W-2),Math.min(1.6,h*0.3),rnd,true);
+// one brick or block of the back wall, by its stage of decay (after the ICOMOS-ISCS glossary of stone deterioration):
+// pristine ones are crisp; worn ones have lost their arrises (rounded edges) and drift in tone; damaged ones are out of
+// true, chipped, spalled (a patch of the face flaked off, its upper lip in shadow) and, in soft stone, pitted
+// (alveolization); in partly fallen stretches the odd one has dropped out of its socket
+function backBrick(Q,x,y,w,h,ci,hv,W,soft){if(w<1)return;if(W===0){Q.base[ci].rect(x,y,w,h);return;}const rnd=mulberry32(hv);
+  if(W===3&&rnd()<0.1){roughRect(Q.hole,x+0.2,y+0.2,w-0.4,h-0.4,0.7,Math.min(1.2,h*0.25),rnd,true);Q.holeTop.rect(x+1,y+0.5,w-2,Math.min(1.6,h*0.25));return;}
+  if(W===1){if(Q.base[ci].roundRect)Q.base[ci].roundRect(x+0.2,y+0.2,w-0.4,h-0.4,Math.min(1.1,h*0.2));else Q.base[ci].rect(x,y,w,h);}
+  else roughRect(Q.base[ci],x+0.2,y+0.2,w-0.4,h-0.4,0.3+0.35*(W-2),Math.min(1.6,h*0.3),rnd,true);
   const t=rnd();if(t<0.35)(t<0.17?Q.pl:Q.pd).rect(x+0.5,y+0.5,w-1,h-1);
   if(rnd()<0.12*W){const L0=rnd()<0.5,T0=rnd()<0.5,cx=L0?x:x+w,cy=T0?y:y+h,sx=L0?1:-1,sy=T0?1:-1,s1=Math.min(w*0.4,1.5+rnd()*2.5),s2=Math.min(h*0.6,1.5+rnd()*2);
     Q.chip.moveTo(cx-sx*0.4,cy-sy*0.4);Q.chip.lineTo(cx+sx*s1,cy);Q.chip.lineTo(cx,cy+sy*s2);Q.chip.closePath();}
-  if(W>=2&&rnd()<0.18){const a=x+w*(0.2+0.6*rnd());Q.crack.moveTo(a,y+0.4);Q.crack.lineTo(a+(rnd()-0.5)*4,y+h*0.5);Q.crack.lineTo(a+(rnd()-0.5)*5,y+h-0.4);}}
+  if(W>=2&&rnd()<0.16){const px=x+w*(0.1+0.4*rnd()),pw=w*(0.3+0.35*rnd()),py=y+h*(0.15+0.25*rnd()),pb=y+h*(0.75+0.2*rnd()),a=py+h*0.15*rnd(),b=py+h*0.12*rnd();
+    Q.spall.moveTo(px,a);Q.spall.lineTo(px+pw*0.45,py);Q.spall.lineTo(px+pw,b);Q.spall.lineTo(px+pw*0.9,pb);Q.spall.lineTo(px+pw*0.2,pb-h*0.1);Q.spall.closePath();
+    Q.lip.moveTo(px,a);Q.lip.lineTo(px+pw*0.45,py);Q.lip.lineTo(px+pw,b);}
+  if(soft&&W>=2&&rnd()<0.22){for(let i=0,n=3+(rnd()*5|0);i<n;i++){const ex=x+2+rnd()*(w-4),ey=y+2+rnd()*(h-4),r=0.6+rnd()*1.1;Q.pit.moveTo(ex+r,ey);Q.pit.ellipse(ex,ey,r,r*0.8,0,0,6.2832);}}}
 function fillBricks(g,Q,cols,th){for(let i=0;i<cols.length;i++){g.fillStyle=cols[i];g.fill(Q.base[i]);}
-  g.fillStyle='rgba(0,0,0,.42)';g.fill(Q.hole);g.fillStyle='rgba(0,0,0,.3)';g.fill(Q.holeTop);
+  g.fillStyle='rgba(0,0,0,.5)';g.fill(Q.hole);g.fillStyle='rgba(0,0,0,.3)';g.fill(Q.holeTop);
   g.fillStyle='rgba(255,255,255,.05)';g.fill(Q.pl);g.fillStyle='rgba(0,0,0,.09)';g.fill(Q.pd);g.fillStyle=th.mortar;g.fill(Q.chip);
-  g.strokeStyle='rgba(0,0,0,.35)';g.lineWidth=0.6;g.stroke(Q.crack);}
+  g.fillStyle='rgba(255,236,205,.07)';g.fill(Q.spall);g.strokeStyle='rgba(0,0,0,.5)';g.lineWidth=0.7;g.stroke(Q.lip);g.fillStyle='rgba(0,0,0,.32)';g.fill(Q.pit);}
+// a crack running down the back wall the way masonry cracks: stair-stepped along the joints, a course at a time
+function stepCrack(g,X,Y,gc,gr,bh,bw,jit,rq){const wx0=gc*TW;let R=gr*(TH/bh)+Math.floor(rq()*2),k=Math.floor((wx0+4+rq()*(TW-8))/bw),side=rq()<0.5?-1:1;
+  const jx=(k,R)=>k*bw+(R%2)*(bw/2)+((hash2(k*7+5,R*3+1)%1000)/1000-0.5)*jit;let x=jx(k,R),y=(R-gr*(TH/bh))*bh;
+  g.beginPath();g.moveTo(X+x-wx0,Y+y);for(let i=0,n=3+Math.floor(rq()*4);i<n&&y+bh<=TH-6;i++){y+=bh;g.lineTo(X+x-wx0,Y+y);R++;
+    let best=null;for(let kk=k-2;kk<=k+2;kk++){const q=jx(kk,R);if((q-x)*side>1&&(best===null||Math.abs(q-x)<Math.abs(best-x))){best=q;k=kk;}}if(best===null)break;
+    if(rq()<0.2)side=-side;x=best;g.lineTo(X+x-wx0,Y+y);}
+  g.stroke();}
 function backCell(g,X,Y,gc,gr,th){
   const st=th.style,h=hash2(gc*3+11,gr*5+7),fl=solidBelowD(gc,gr),low=D0(gc,gr-1)!==EMPTY;
   // the back wall's own masonry: courses of uneven blocks or bricks, each aged by where it sits
-  const wx0=gc*TW,N=()=>new Path2D(),Q={base:[N(),N()],hole:N(),holeTop:N(),pl:N(),pd:N(),chip:N(),crack:N()};
+  const wx0=gc*TW,N=()=>new Path2D(),Q={base:[N(),N()],hole:N(),holeTop:N(),pl:N(),pd:N(),chip:N(),spall:N(),lip:N(),pit:N()},Wc=wearLevel(gc*TW+16,gr*TH+32);
   if(st==='palace'||st==='crypt'){
     g.fillStyle=th.brick;g.fillRect(X,Y,TW,TH);g.fillStyle=th.mortar;g.globalAlpha=0.55;g.fillRect(X,Y,TW,TH);g.globalAlpha=1;
+    if(Wc){g.fillStyle='rgba(0,0,0,'+(0.1*Wc)+')';g.fillRect(X,Y,TW,TH);} // joints washed out and recessed: they read darker
     for(let by=0;by<4;by++){const R=gr*4+by,off=(R%2)*16,y0=Y+by*16,jx=k=>k*32+off+((hash2(k*7+5,R*3+1)%1000)/1000-0.5)*10;
       for(let k=Math.floor((wx0-off)/32)-1;jx(k)<wx0+TW;k++){const a=jx(k),b=jx(k+1);if(b<=wx0)continue;
-        backBrick(Q,X+(a-wx0)+0.4,y0+0.4,b-a-0.8,15.2,0,hash2(k,R+31),wearLevel((a+b)/2,gr*TH+by*16+8));}}
+        backBrick(Q,X+(a-wx0)+0.4,y0+0.4,b-a-0.8,15.2,0,hash2(k,R+31),wearLevel((a+b)/2,gr*TH+by*16+8),st==='palace');}}
     fillBricks(g,Q,[th.brick],th);
   }else{
-    g.fillStyle=th.mortar;g.fillRect(X,Y,TW,TH);
+    g.fillStyle=th.mortar;g.fillRect(X,Y,TW,TH);if(Wc){g.fillStyle='rgba(0,0,0,'+(0.12*Wc)+')';g.fillRect(X,Y,TW,TH);}
     for(let by=0;by<8;by++){const R=gr*8+by,off=(R%2)*8,y0=Y+by*8,jx=k=>k*16+off+((hash2(k*7+5,R*3+1)%1000)/1000-0.5)*4;
       for(let k=Math.floor((wx0-off)/16)-1;jx(k)<wx0+TW;k++){const a=jx(k),b=jx(k+1);if(b<=wx0)continue;const hh=hash2(k+999,R);
         if(hh%11===0)continue;
@@ -2367,9 +2462,20 @@ function backCell(g,X,Y,gc,gr,th){
       g.fillStyle='#1a0d0a';for(let i=-1;i<=1;i++)g.fillRect(vx+i*2.2-0.4,vy-3,0.8,12);}
   }
   // the back wall ages with the rest: stains, cracks, and where it is partly fallen, gaps where bricks came out
-  {const W=wearLevel(gc*TW+16,gr*TH+32);if(W>=1){const rq=mulberry32(hash2(gc*17+5,gr*29+3));
-    if(rq()<0.25*W){const sx=X+rq()*TW,sy=Y+rq()*TH*0.5,sr=10+rq()*14,sg=g.createRadialGradient(sx,sy,1,sx,sy+sr*0.6,sr);sg.addColorStop(0,'rgba(0,0,0,.16)');sg.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=sg;g.fillRect(sx-sr,sy-sr,sr*2,sr*2.2);}
-    if(W>=2&&rq()<0.6){g.strokeStyle='rgba(0,0,0,.4)';g.lineWidth=0.8;g.beginPath();let cx=X+4+rq()*24,cy=Y+2+rq()*20;g.moveTo(cx,cy);for(let i=0;i<5;i++){cx+=(rq()-0.5)*8;cy+=4+rq()*6;g.lineTo(cx,cy);}g.stroke();}
+  // The back wall's decay at the scale of the wall (the same glossary): soiling run down from the ceiling in streaks
+  // (green with algae where it is damp), a rising-damp tide mark along the foot of the wall with a pale line of salt
+  // efflorescence at its crest, and, once it is damaged, cracks stair-stepping down the joints.
+  {const W=Wc;if(W>=1){const rq=mulberry32(hash2(gc*17+5,gr*29+3)),damp=st==='dungeon'||st==='crypt';
+    if(D0(gc,gr-1)!==EMPTY)for(let i=0,n=(rq()<0.35*W?1:0)+(W>=2&&rq()<0.4?1:0);i<n;i++){const sx=X+2+rq()*(TW-6),sw=2+rq()*4,sl=18+rq()*26*W,sg=g.createLinearGradient(0,Y,0,Y+sl);
+      sg.addColorStop(0,damp?'rgba(40,70,45,.3)':'rgba(0,0,0,.24)');sg.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=sg;g.beginPath();g.moveTo(sx,Y);g.lineTo(sx+sw,Y);g.lineTo(sx+sw*0.6,Y+sl);g.lineTo(sx+sw*0.3,Y+sl);g.closePath();g.fill();}
+    if(fl&&st!=='tile'){const top=x=>Y+TH-4-(10+W*5)-3*Math.sin(x*0.07+gr)-2*Math.sin(x*0.19+gr*3);g.beginPath();g.moveTo(X,Y+TH);for(let x=0;x<=TW;x+=4)g.lineTo(X+x,top(wx0+x));g.lineTo(X+TW,Y+TH);g.closePath();
+      const dg=g.createLinearGradient(0,Y+TH-4-(10+W*5)-5,0,Y+TH);dg.addColorStop(0,'rgba(0,0,0,0)');dg.addColorStop(0.3,damp?'rgba(20,40,30,.22)':'rgba(0,0,0,.15)');dg.addColorStop(1,damp?'rgba(20,40,30,.12)':'rgba(0,0,0,.08)');g.fillStyle=dg;g.fill();
+      // the salt bloom: broken, patchy, strongest where the wave crests
+      g.lineWidth=1.3;for(let x=0;x<TW;x+=4){const wx=wx0+x,a=0.5+0.5*Math.sin(wx*0.05+gr*7)*Math.sin(wx*0.013+gr);if(a<0.35)continue;
+        const al=(0.03+0.025*W)*a;g.strokeStyle='rgba(235,230,215,'+al.toFixed(3)+')';g.beginPath();g.moveTo(X+x,top(wx)+0.6);g.lineTo(X+x+4,top(wx+4)+0.6);g.stroke();
+        g.strokeStyle='rgba(235,230,215,'+(al*0.4).toFixed(3)+')';g.lineWidth=3.2;g.stroke();g.lineWidth=1.3;}}
+    if(W>=2&&rq()<0.55){const big=st==='palace'||st==='crypt',sd=rq()*1e9|0;g.save();g.translate(0.7,0.7);g.strokeStyle='rgba(255,240,215,.1)';g.lineWidth=0.7;stepCrack(g,X,Y,gc,gr,big?16:8,big?32:16,big?10:4,mulberry32(sd));g.restore();
+      g.strokeStyle='rgba(0,0,0,.6)';g.lineWidth=0.8;stepCrack(g,X,Y,gc,gr,big?16:8,big?32:16,big?10:4,mulberry32(sd));}
   }}
   if(D0(gc,gr-1)!==EMPTY){const gr2=g.createLinearGradient(0,Y,0,Y+16);gr2.addColorStop(0,'rgba(0,0,0,.45)');gr2.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr2;g.fillRect(X,Y,TW,16);}
   const gr3=g.createLinearGradient(0,Y+TH-22,0,Y+TH);gr3.addColorStop(0,'rgba(0,0,0,0)');gr3.addColorStop(1,'rgba(0,0,0,.28)');g.fillStyle=gr3;g.fillRect(X,Y+TH-22,TW,22);
@@ -2427,15 +2533,17 @@ function isArchTop(gc,gr){return gr>=0&&D0(gc,gr)===EMPTY&&D0(gc,gr+1)===FLOOR&&
 // only some stretches of arches open onto the view; the rest stay closed, so the keep keeps its walls
 function isOpenArch(gc,gr){if(!isArchTop(gc,gr))return false;const b=Math.floor(gc/4),op=k=>hash2(k*7+3,gr*13+5)%100<40;return op(b)&&!op(b-1);} // never two open stretches in a row
 function inOpening(gc,gr){return isOpenArch(gc,gr)||isOpenArch(gc,gr-1);}
-function drawArch(g,X,Y,th,open,gc,gr){
+function drawArch(g,X,Y,th,open,gc,gr,part){
   const st=th.style,round=st==='dungeon',x0=X+3.4,x1=X+TW-3.4,cx=X+TW/2,spring=Y+30,apex=Y+12,floor=Y+TH*2-4;
   const W=gc===undefined?0:wearLevel(gc*TW+16,gr*TH+30),rq=mulberry32(hash2((gc|0)*41+3,(gr|0)*19+11));
   const curve=(a,b,ap)=>{if(round)g.arc(cx,spring,(b-a)/2,Math.PI,0);else{g.quadraticCurveTo(a,ap+7,cx,ap);g.quadraticCurveTo(b,ap+7,b,spring);}};
+  if(part!=='frame'){
   if(open){const pb=floor-PARAPET;g.save();g.globalCompositeOperation='destination-out';g.fillStyle='#000';g.globalAlpha=1;g.beginPath();g.moveTo(x0,pb);g.lineTo(x0,spring);curve(x0,x1,apex);g.lineTo(x1,pb);g.closePath();g.fill();g.restore();
     g.fillStyle='rgba(0,0,0,.35)';g.fillRect(x0-0.6,pb+1,x1-x0+1.2,2);g.fillStyle=st==='tile'?th.tileC:th.top;g.fillRect(x0-0.6,pb-0.8,x1-x0+1.2,1.8);
     if(W>=2){g.fillStyle='rgba(0,0,0,.45)';const bx=x0+rq()*(x1-x0-6);g.fillRect(bx,pb-0.8,3+rq()*3,1.8);}} // a bite out of the sill
   else{g.fillStyle=st==='tile'?'rgba(4,8,34,.42)':'rgba(0,0,0,.3)';
   g.beginPath();g.moveTo(x0,floor);g.lineTo(x0,spring);curve(x0,x1,apex);g.lineTo(x1,floor);g.closePath();g.fill();}
+  if(part==='fill')return;}
   // partly fallen: a piece broken out of the ring on one side, and that side's column snapped off partway down
   let brk=null;
   if(W===3&&rq()<0.7){const s=rq()<0.5?-1:1;brk={s,hx:s<0?x0+1:x1-1,hy:spring-4-rq()*9,rw:5+rq()*4,rh:7+rq()*5,px:s<0?X+1.7:X+TW-1.7,top:spring+(floor-spring)*(0.3+0.4*rq())};}
@@ -2576,7 +2684,7 @@ function embers(ctx,x,y,n,seed,col,rise){const t=gameTime;ctx.fillStyle=col;
   for(let i=0;i<n;i++){const ph=(t*0.65+i/n+seed*0.37)%1;ctx.globalAlpha=(1-ph)*0.9;ctx.fillRect(x+Math.sin(ph*8+i*2.3+seed)*2.6-0.5,y-ph*rise-0.5,1,1);}ctx.globalAlpha=1;}
 // a lamp whose wall has been opened onto the background has nothing to hang on: it stands on the floor or hangs
 // from the arch's keystone instead
-function lampFree(t){return GFX().bg&&inOpening(t.c,t.r);}
+function lampFree(t){return GFX().bg&&(inOpening(t.c,t.r)||inBreach(t.c*TW+16,SURF(t.r)-38));}
 // an iron floor stand: three splayed feet on the floor's back half and a pole up to the given height
 function floorStand(ctx,x,top,base,col,hi){
   ctx.strokeStyle='#0b0812';ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(x,base-2);ctx.lineTo(x,top);ctx.stroke();
@@ -3450,8 +3558,8 @@ function openingsIn(x0,x1,y0,y1){const out=[],st=L.theme.style;
     if(isOpenArch(c,r))out.push([c*TW+3,r*TH+10,TW-6,TH*2-4-PARAPET-10+1]);
   // the windows: each looks out on the same scene
   const wr=st==='dungeon'?[3,11,6,21]:st==='forge'||st==='crypt'?[7,7.5,14,15]:[7.5,15,15,30];
-  for(const w of L.windows){const x=w.c*TW+16,y=w.r*TH+38;if(x<x0-20||x>x1+20||y<y0-24||y>y1+24||inOpening(w.c,w.r))continue;out.push([x-wr[0],y-wr[1],wr[2],wr[3]]);}
-  for(const h of wallHoles())if(h.x1>=x0-4&&h.x0<=x1+4&&h.y1>=y0-4&&h.y0<=y1+4)out.push([h.x0,h.y0,h.x1-h.x0,h.y1-h.y0]);
+  for(const w of L.windows){const x=w.c*TW+16,y=w.r*TH+38;if(x<x0-20||x>x1+20||y<y0-24||y>y1+24||inOpening(w.c,w.r)||inBreach(x,y,true))continue;out.push([x-wr[0],y-wr[1],wr[2],wr[3]]);}
+  for(const b of breaches())if(b&&b.open&&b.x1>=x0-4&&b.x0<=x1+4&&b.y1>=y0-4&&b.y0<=y1+4)out.push([b.x0,b.y0,b.x1-b.x0,b.y1-b.y0]);
   return out;}
 let bgC=null,bgG=null;
 function drawBackdrop(ctx,cx,cy,vw,vh,VZ,camD,camDY){
@@ -3849,7 +3957,7 @@ window.__HK={genLevel,setKey,took,
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
   get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
-  get S(){return S;},get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,wallHoles,wallTouch,SW_W,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName};
+  get S(){return S;},get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName};
 
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 })();
