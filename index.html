@@ -256,7 +256,7 @@ function themeName(n){const i=Math.floor((n-1)/4),t=THEMES[i%THEMES.length],k=Ma
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=9;
-const APP_VERSION='36'; // set by the build; shown on the title and pause screens
+const APP_VERSION='37'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(s.gen!==GEN){s.gen=GEN;s.cp=-1;s.resume=null;s.floorTime=0;}
@@ -1009,6 +1009,7 @@ function buildLevel(n,seed,test,legacy,att){
     if(hash2((seed|0)+o.c*5,o.r*17+n)%100<62){g.latch=true;g.dur=0;for(const q of L.dyn)if(q.f.t==='plate'&&q.f.g===g)q.f.latch=true;
       for(const dd of L.detours||[])if(dd.timed&&dd.r===o.r&&o.c>=dd.c0&&o.c<=dd.c1){dd.timed=false;dd.dur=0;}}}
   rebuildBlocks(L);
+  settleLevel(L);
   return L;
 }
 
@@ -2335,6 +2336,7 @@ function drawRoomStatic(g,rx,ry,stage){
   for(let rr=-1;rr<RH;rr++)for(let cc=0;cc<RW;cc++){const gc=rx*RW+cc,gr=ry*RH+rr;
     if(isArchTop(gc,gr))drawArch(g,cc*TW,rr*TH,th,bgOn&&isOpenArch(gc,gr),gc,gr,'frame');}
   for(const w of L.windows){if(Math.floor(w.c/RW)!==rx||Math.floor(w.r/RH)!==ry)continue;if(bgOn&&inOpening(w.c,w.r))continue;if(inBreach(w.c*TW+16,w.r*TH+38,true))continue;drawWindow(g,(w.c%RW)*TW+16,(w.r%RH)*TH+38,th,w.c,bgOn);}
+  drawWallScars(g,rx,ry,th);drawHangings(g,rx,ry,th);
   }
   // neighbours one cell outside the room are drawn too, so faces that overhang a room edge don't leave seams
   if(all||stage===1){
@@ -2358,7 +2360,7 @@ function drawRoomStatic(g,rx,ry,stage){
     if(f&&f.t==='spikes'){g.fillStyle='rgba(7,5,11,.8)';const m=gc%2?-1:1;for(const [bx,d] of SPK){const q=onFloor(X+16+m*(bx-16),d,ys);g.beginPath();g.ellipse(q.x,q.y,2.2,0.9,0,0,Math.PI*2);g.fill();}}
     if(L.rubble.has(gr*L.cols+gc)){const rnd=mulberry32(hash2(gc,gr+77));for(let i=0;i<6;i++){g.fillStyle=i%2?th.front:th.lo;const q=onFloor(X+4+rnd()*24,0.2+rnd()*0.6,ys),w=2+rnd()*4;g.fillRect(q.x,q.y-1,w,1.6+rnd()*1.2);}}
   });
-  drawBreachRubble(g,rx,ry,th);
+  drawBreachRubble(g,rx,ry,th);drawFallen(g,rx,ry,th);
 }
 // ---- breaches: where a stretch of the keep has partly fallen, holes have opened right through its back wall ----
 // Modelled on how brick and block walls actually fail rather than drawn as shapes: the masonry over a gap stays up by
@@ -2673,19 +2675,116 @@ function tilePanel(g,X,Y,th){
 function decor(g,X,Y,gc,gr,th,lit){
   const st=th.style,h=hash2(gc*7+3,gr*11+5);
   const low=D0(gc,gr-1)!==EMPTY,onFloor=solidBelowD(gc,gr),isLit=lit.has(gr*L.cols+gc);
-  if(st==='palace'&&onFloor&&!isLit&&h%5===0)tapestry(g,X+16,Y+23,th);
   if(st==='crypt'&&onFloor&&(isLit||h%4===0))niche(g,X+16,Y+24,th);
 }
-function tapestry(g,x,y,th){
-  g.fillStyle='#0b0812';g.fillRect(x-6.6,y,13.2,25.2);
-  g.fillStyle=th.cloth;g.fillRect(x-6,y+0.4,12,24);
-  g.strokeStyle=th.cloth2;g.lineWidth=0.8;g.strokeRect(x-4.4,y+2,8.8,20.2);
-  star8(g,x,y+12,3.4,1.7,th.cloth2);
-  g.fillStyle=th.cloth;g.beginPath();g.arc(x,y+12,1,0,Math.PI*2);g.fill();
-  g.fillStyle=th.cloth2;for(let i=0;i<6;i++)g.fillRect(x-5.4+i*2.1,y+24.4,0.8,2.6);
-  g.fillStyle='rgba(0,0,0,.2)';g.fillRect(x+2,y+0.4,4,24);
-  g.fillStyle=th.trim;g.fillRect(x-8,y-1,16,1.4);g.fillRect(x-8.6,y-1.6,1.6,2.6);g.fillRect(x+7,y-1.6,1.6,2.6);
-}
+// ---- hangings and lights, and what the keep's decay has done to them ----
+// Prince of Persia hangs its palace tapestries from the top of a storey: the "tapestry" tiles (7 and 12, the doortops)
+// draw from the ceiling down. So here a tapestry hangs from a rod just under the ceiling, as far down as the wall allows
+// while staying above head height: short under a plain ceiling, long where the hall is open two storeys up.
+// Where the wall behind is damaged a tapestry is torn, where it has partly fallen the tapestry is down (its rod hanging
+// from one hook, the cloth in a heap on the floor) or gone with the wall; a lamp on damaged wall has come down and lies
+// broken and cold on the floor, and a working one takes its place a little way along, on wall that still stands.
+function settleLevel(LL){const sv=L;L=LL;try{settleLights();L.hangings=planHangings();}finally{L=sv;}}
+function lightWear(t){const x=t.c*TW+16,y=SURF(t.r)-38;return inBreach(x,y,true)||inBreach(x,y-14,true)||inBreach(x,y+10,true)?3:wearLevel(x,y);}
+function lampSpot(c,r){if(c<1||c>=L.cols-1||r<1||r>=L.rows)return false;if(L.base[r*L.cols+c]!==FLOOR||F(L,c,r))return false;
+  if(L.door&&L.door.r===r&&Math.abs(L.door.c-c)<=2)return false;if(L.start&&L.start.r===r&&Math.abs((L.start.door===undefined?1:L.start.door)-c)<=1)return false;return true;}
+function settleLights(){const add=[];
+  for(const t of L.torches){if(lightWear(t)<2)continue;t.broken=true;
+    for(const k of [1,-1,2,-2,3,-3,4,-4]){const q={c:t.c+k,r:t.r};
+      if(!lampSpot(q.c,q.r)||lightWear(q)>=2)continue;
+      if(L.torches.concat(add).some(o=>!o.broken&&o.r===q.r&&Math.abs(o.c-q.c)<4))continue;
+      add.push(q);break;}}
+  L.torches.push(...add);}
+function planHangings(){const out=[];if(L.theme.style!=='palace')return out;
+  const lit=new Set(L.torches.filter(t=>!t.broken).map(t=>t.r*L.cols+t.c)),win=new Set(L.windows.map(w=>w.r*L.cols+w.c));
+  for(let r=2;r<L.rows;r++)for(let c=1;c<L.cols-1;c++){
+    if(D0(c,r)===WALL||!solidBelowD(c,r))continue;
+    const h=hash2(c*7+3,r*11+5);if(h%5!==0||lit.has(r*L.cols+c))continue;
+    let cr=r-1;while(cr>0&&D0(c,cr)!==WALL&&r-cr<5)cr--; // the ceiling over this stretch of floor
+    if(D0(c,cr)!==WALL||r-cr<2)continue;
+    const top=(cr+1)*TH+5,bot=Math.min(SURF(r)-80,top+112);if(bot-top<30)continue;
+    let clash=false;
+    for(let rr=cr+1;rr<=r;rr++){if(win.has(rr*L.cols+c)||isArchTop(c,rr)||inOpening(c,rr)||D0(c-1,rr)===WALL||D0(c+1,rr)===WALL)clash=true; /* in a hall, not down a shaft */const f=F(L,c,rr);if(f&&(f.t==='banner'||f.t==='gate'||f.t==='low'||f.t==='chomp'))clash=true;}
+    if(clash||L.door&&L.door.r===r&&Math.abs(L.door.c-c)<=2||L.start&&L.start.r===r&&Math.abs((L.start.door===undefined?1:L.start.door)-c)<=1)continue;
+    const x=c*TW+16,mid=(top+bot)/2;
+    const state=inBreach(x,top+4,true)||inBreach(x,mid,true)||inBreach(x,bot-2,true)?4:wearLevel(x,mid); // 4: gone with the wall
+    out.push({c,r,x,top,bot,state,seed:h});}
+  return out;}
+// a tapestry on the back wall: intact, faded, torn, or down (only its rod left, askew)
+function drawHanging(g,hg,ox,oy,th){const x=hg.x+ox,top=hg.top+oy,bot=hg.bot+oy,rq=mulberry32(hg.seed),w=13,len=bot-top;
+  if(hg.state===4)return;
+  const rod=(a)=>{g.save();g.translate(x,top);g.rotate(a);g.fillStyle='#0b0812';g.fillRect(-9.5,-1.6,19,3);g.fillStyle=th.trim;g.fillRect(-9,-1.2,18,1.6);g.fillRect(-10,-2.2,2,3.4);g.fillRect(8,-2.2,2,3.4);g.restore();
+    g.fillStyle='#0b0812';g.fillRect(x-7.5,top-4,1.2,3);g.fillRect(x+6.3,top-4,1.2,3);};
+  if(hg.state===3){ // down: the rod hangs from one hook, a rag of cloth still caught on it
+    const s=rq()<0.5?-1:1,a=s*(0.55+0.3*rq());g.save();g.translate(x-s*8,top);g.rotate(a);g.translate(s*8,0);
+    g.fillStyle='#0b0812';g.fillRect(-9.5,-1.6,19,3);g.fillStyle=th.trim;g.fillRect(-9,-1.2,18,1.6);
+    g.fillStyle=th.cloth;g.globalAlpha=0.9;g.beginPath();g.moveTo(-3,1.4);g.lineTo(3,1.4);g.lineTo(2,6+rq()*5);g.lineTo(0,4);g.lineTo(-1.5,8+rq()*6);g.closePath();g.fill();g.globalAlpha=1;g.restore();
+    g.fillStyle='#0b0812';g.fillRect(x-s*8-0.6,top-4,1.2,3);return;}
+  // the cloth: a long panel with a gold border and a star, a pointed foot with a fringe; torn ones lose their lower part
+  const torn=hg.state===2,cut=torn?len*(0.5+0.3*rq()):len,yb=top+cut,pts=[[x-w/2,top+1],[x+w/2,top+1],[x+w/2,yb]];
+  if(torn){const n=5;for(let i=1;i<n;i++)pts.push([x+w/2-w*i/n,yb-(rq()*0.55+0.1)*Math.min(9,cut*0.2)*(i%2?1:0.35)]);pts.push([x-w/2,yb-rq()*6]);}
+  else pts.push([x,yb+6],[x-w/2,yb]);
+  const cloth=new Path2D();pts.forEach(([px,py],i)=>i?cloth.lineTo(px,py):cloth.moveTo(px,py));cloth.closePath();
+  g.save();g.translate(0.8,0.8);g.fillStyle='rgba(0,0,0,.45)';g.fill(cloth);g.restore();
+  g.fillStyle=th.cloth;g.fill(cloth);
+  g.save();g.clip(cloth);
+  g.strokeStyle=th.cloth2;g.lineWidth=0.9;g.beginPath();g.moveTo(x-w/2+2,top+3);g.lineTo(x-w/2+2,top+len-2);g.moveTo(x+w/2-2,top+3);g.lineTo(x+w/2-2,top+len-2);g.moveTo(x-w/2+2,top+4);g.lineTo(x+w/2-2,top+4);g.stroke();
+  for(let k=0;k<Math.max(1,Math.floor(len/40));k++){const sy=top+14+k*38;if(sy<yb-6)star8(g,x,sy,3.4,1.7,th.cloth2);}
+  g.fillStyle='rgba(255,255,255,.07)';g.fillRect(x-w/2,top,2.4,len); // folds catching the light
+  g.fillStyle='rgba(0,0,0,.18)';g.fillRect(x+1.6,top,1.2,len);g.fillRect(x+w/2-3,top,3,len);
+  if(hg.state>=1){g.fillStyle='rgba(30,20,10,'+(0.12+0.08*hg.state)+')';g.fillRect(x-w/2,top,w,len+8);} // faded, dusty
+  if(torn){ // a slash and a hole
+    g.fillStyle='rgba(8,5,10,.85)';const sx=x-3+rq()*6,sy=top+cut*(0.25+0.3*rq());g.beginPath();g.moveTo(sx,sy);g.lineTo(sx+3.5,sy+7);g.lineTo(sx+2.6,sy+8);g.lineTo(sx-0.4,sy+1.2);g.closePath();g.fill();
+    g.beginPath();g.ellipse(x-2+rq()*4,top+cut*(0.6+0.15*rq()),1.4,2,0,0,6.2832);g.fill();}
+  g.restore();
+  if(!torn){g.fillStyle=th.cloth2;for(let i=0;i<5;i++){const fx=x-w/2+1.5+i*(w-3)/4,fy=yb+6*(1-Math.abs(fx-x)/(w/2));g.fillRect(fx-0.4,fy-0.5,0.8,2.6);}}
+  else{g.strokeStyle=th.cloth;g.lineWidth=1;g.beginPath();const tx=x-w/2+2+rq()*(w-4);g.moveTo(tx,yb-2);g.quadraticCurveTo(tx+1.5,yb+6,tx-0.5,yb+9+rq()*6);g.stroke();} // a loose strand
+  rod(0);}
+function drawHangings(g,rx,ry,th){if(!L.hangings||!L.hangings.length)return;const ox=-rx*ROOM_W,oy=-ry*ROOM_H;
+  for(const hg of L.hangings){if(hg.x+16<rx*ROOM_W-8||hg.x-16>(rx+1)*ROOM_W+8||hg.bot+12<ry*ROOM_H||hg.top-8>(ry+1)*ROOM_H)continue;drawHanging(g,hg,ox,oy,th);}}
+// what's left on the wall where a lamp came down: the empty bracket or chain, and the soot it left
+function drawLampScar(g,t,ox,oy,th){const x=t.c*TW+16+ox,y=SURF(t.r)-38+oy,st=th.style,rq=mulberry32(hash2(t.c*5+1,t.r*9+2)),free=GFX().bg&&inOpening(t.c,t.r);
+  const sg=g.createRadialGradient(x+2,y-14,1,x+2,y-12,16);sg.addColorStop(0,'rgba(0,0,0,.28)');sg.addColorStop(1,'rgba(0,0,0,0)');if(!free){g.fillStyle=sg;g.fillRect(x-16,y-30,36,34);}
+  if(free){const key=(t.r-1)*TH+11+oy;g.strokeStyle='#0b0812';g.lineWidth=1.6;g.setLineDash([1.8,1.1]);g.beginPath();g.moveTo(x,key);g.lineTo(x+1,key+6+rq()*8);g.stroke();g.setLineDash([]);return;}
+  if(st==='dungeon'){g.fillStyle='#16181e';g.fillRect(x-3,y+1,6,10);g.fillStyle='#3b404b';g.fillRect(x-3,y+1,6,1);g.strokeStyle='#14151a';g.lineWidth=1.5;g.beginPath();g.moveTo(x,y+7);g.lineTo(x+4.5,y+5.5);g.stroke();}
+  else if(st==='palace'){g.fillStyle='#7c5c25';g.fillRect(x-4.4,y-2,3,11);g.fillStyle='#b48a3c';g.fillRect(x-4.4,y-2,3,1);g.strokeStyle='#8d6a2a';g.lineWidth=1.3;g.beginPath();g.moveTo(x-2.4,y+3);g.quadraticCurveTo(x-2.2,y-4,x+0.5,y-6.5);g.stroke();}
+  else if(st==='tile'){const top=B(L,t.c,t.r-1)===EMPTY?(t.r-1)*TH+oy:t.r*TH+oy;g.strokeStyle='#2a2016';g.lineWidth=0.8;g.beginPath();g.moveTo(x,top);g.lineTo(x+0.6,top+8+rq()*10);g.stroke();}
+  else if(st==='forge'){const by=y+2;g.strokeStyle='#120b08';g.lineWidth=1.6;g.beginPath();g.moveTo(x,by+12);g.lineTo(x,by+5);g.moveTo(x-4,by+10);g.lineTo(x-0.5,by+7);g.stroke();g.fillStyle='#120b08';g.fillRect(x-1.6,by+10,3.2,4);}}
+// a fallen lamp lying broken and cold on the floor below where it hung
+function drawFallenLamp(g,t,ox,oy,th){const st=th.style,rq=mulberry32(hash2(t.c*11+3,t.r*7+1)),ys=SURF(t.r)+oy,s=rq()<0.5?-1:1;
+  const at=(dx,d)=>onFloor(t.c*TW+16+ox+dx,d,ys);
+  if(st==='dungeon'){const p=at(s*3,0.78);g.save();g.translate(p.x,p.y-1);g.rotate(s*(1.35+0.15*rq()));
+      g.strokeStyle='#0b0812';g.lineWidth=3;g.beginPath();g.moveTo(0,5);g.lineTo(0,-8);g.stroke();g.strokeStyle='#4a3020';g.lineWidth=1.8;g.stroke();
+      g.fillStyle='#120c08';g.beginPath();g.ellipse(0,-9,2.4,2.9,0,0,6.2832);g.fill();g.restore();
+    g.fillStyle='rgba(40,38,44,.7)';for(let i=0;i<5;i++){const q=at(s*(8+rq()*8),0.7+rq()*0.25);g.fillRect(q.x,q.y-1,1.2,1);}}
+  else if(st==='palace'){const p=at(s*2,0.8);g.save();g.translate(p.x,p.y-4.5);g.rotate(s*1.45);
+      g.fillStyle='#0b0812';g.beginPath();g.moveTo(-5,-3);g.quadraticCurveTo(-4,-9,0,-9.5);g.quadraticCurveTo(4,-9,5,-3);g.lineTo(4.2,5);g.lineTo(0,8);g.lineTo(-4.2,5);g.closePath();g.fill();
+      g.fillStyle='#8a6a2a';g.beginPath();g.moveTo(-5,-3);g.quadraticCurveTo(-4,-9,0,-9.5);g.quadraticCurveTo(4,-9,3.5,-4);g.closePath();g.fill();
+      g.fillStyle='#1a1410';g.fillRect(-3.3,-2.4,6.6,6.6);g.fillStyle='rgba(255,240,210,.25)';g.fillRect(-3.3,-2.4,2,6.6);g.restore();
+    for(let i=0;i<6;i++){const q=at(s*(-6+rq()*16),0.6+rq()*0.35);g.fillStyle='rgba(240,225,190,'+(0.35+0.3*rq())+')';g.beginPath();g.moveTo(q.x,q.y);g.lineTo(q.x+1.6,q.y-0.6);g.lineTo(q.x+0.6,q.y+0.5);g.closePath();g.fill();}}
+  else if(st==='tile'){const p=at(s*2,0.8);g.save();g.translate(p.x,p.y-5);g.rotate(s*0.5);
+      g.fillStyle='#0b0812';g.beginPath();for(let i=0;i<8;i++){const a=i*Math.PI/4+Math.PI/8;g[i?'lineTo':'moveTo'](Math.cos(a)*6.4,Math.sin(a)*6.4);}g.closePath();g.fill();
+      const panes=['rgba(50,100,170,.55)','rgba(140,100,50,.5)'];for(let i=0;i<8;i++){if(rq()<0.4)continue;const a0=i*Math.PI/4,a1=a0+Math.PI/4;g.fillStyle=panes[i%2];g.beginPath();g.moveTo(0,0);g.lineTo(Math.cos(a0)*5,Math.sin(a0)*5);g.lineTo(Math.cos(a1)*5,Math.sin(a1)*5);g.closePath();g.fill();}
+      g.restore();
+    for(let i=0;i<7;i++){const q=at(s*(-7+rq()*18),0.6+rq()*0.35);g.fillStyle=i%2?'rgba(70,140,230,.6)':'rgba(255,190,90,.55)';g.beginPath();g.moveTo(q.x,q.y);g.lineTo(q.x+1.8,q.y-0.7);g.lineTo(q.x+0.5,q.y+0.6);g.closePath();g.fill();}}
+  else if(st==='forge'){const p=at(s*2,0.8);g.save();g.translate(p.x,p.y-3);g.rotate(s*1.2);g.strokeStyle='#120b08';g.lineWidth=1.3;g.beginPath();g.moveTo(-6.4,-3);g.lineTo(-3.6,4);g.lineTo(3.6,4);g.lineTo(6.4,-3);g.stroke();g.restore();
+    for(let i=0;i<9;i++){const q=at(s*(3+rq()*12),0.62+rq()*0.33);g.fillStyle=i%3?'#1c1614':'#2c2624';g.beginPath();g.ellipse(q.x,q.y-0.6,1.3+rq(),0.9,0,0,6.2832);g.fill();}}
+  else{const p=at(s*2,0.82);g.fillStyle='rgba(10,20,16,.45)';g.beginPath();g.ellipse(p.x+s*5,p.y,7,1.6,0,0,6.2832);g.fill();
+    g.save();g.translate(p.x,p.y-2);g.rotate(s*1.3);g.fillStyle='#0b0812';g.beginPath();g.ellipse(0,0,4.6,2.4,0,0,6.2832);g.fill();g.fillStyle=th.wallB;g.beginPath();g.ellipse(0,-0.3,3.8,1.7,0,0,6.2832);g.fill();
+      g.strokeStyle='#0b0812';g.lineWidth=0.6;g.beginPath();g.moveTo(-1,-1.5);g.lineTo(0.5,0.4);g.lineTo(-0.3,1.6);g.stroke();g.restore();}}
+// a tapestry that came down: crumpled on the floor under where it hung
+function drawFallenCloth(g,hg,ox,oy,th){const rq=mulberry32(hg.seed+3),ys=SURF(hg.r)+oy,p0=onFloor(hg.x+ox-8,0.82,ys),p1=onFloor(hg.x+ox+9,0.82,ys);
+  g.fillStyle='rgba(0,0,0,.3)';g.beginPath();g.ellipse((p0.x+p1.x)/2,(p0.y+p1.y)/2+0.5,11,2.2,0,0,6.2832);g.fill();
+  const pts=[];for(let i=0;i<=8;i++){const u=i/8,x=p0.x+(p1.x-p0.x)*u,y=p0.y+(p1.y-p0.y)*u;pts.push([x,y-(Math.sin(u*Math.PI)*(3.5+rq()*2)+rq()*1.2)]);}
+  g.fillStyle=th.cloth;g.beginPath();g.moveTo(p0.x,p0.y);for(const [x,y] of pts)g.lineTo(x,y);g.lineTo(p1.x,p1.y);g.closePath();g.fill();
+  g.fillStyle='rgba(0,0,0,.25)';g.beginPath();g.moveTo(p0.x,p0.y);for(let i=0;i<=8;i+=2)g.lineTo(pts[i][0],pts[i][1]+1.6);g.lineTo(p1.x,p1.y);g.closePath();g.fill();
+  g.strokeStyle=th.cloth2;g.lineWidth=0.8;g.beginPath();g.moveTo(pts[1][0],pts[1][1]+0.5);g.quadraticCurveTo(pts[4][0],pts[4][1]+2.5,pts[7][0],pts[7][1]+0.8);g.stroke();
+  if(hg.state===3)return;g.fillStyle='#0b0812';g.fillRect(pts[2][0]-3,pts[2][1]+1,7,1.2);g.fillStyle=th.trim;g.fillRect(pts[2][0]-3,pts[2][1]+0.6,7,0.8);} // its rod came down with it
+function drawWallScars(g,rx,ry,th){const ox=-rx*ROOM_W,oy=-ry*ROOM_H;
+  for(const t of L.torches){if(!t.broken||t.c<rx*RW-1||t.c>(rx+1)*RW||t.r<ry*RH-1||t.r>(ry+1)*RH+1)continue;if(lightWear(t)<4&&!inBreach(t.c*TW+16,SURF(t.r)-38,true))drawLampScar(g,t,ox,oy,th);}}
+function drawFallen(g,rx,ry,th){const ox=-rx*ROOM_W,oy=-ry*ROOM_H;
+  for(const t of L.torches){if(!t.broken||t.c<rx*RW-1||t.c>(rx+1)*RW||t.r<ry*RH-1||t.r>(ry+1)*RH+1)continue;drawFallenLamp(g,t,ox,oy,th);}
+  for(const hg of L.hangings||[]){if(hg.state<3||hg.c<rx*RW-1||hg.c>(rx+1)*RW||hg.r<ry*RH-1||hg.r>(ry+1)*RH+1)continue;drawFallenCloth(g,hg,ox,oy,th);}}
 function niche(g,x,y,th){
   const w=11,top=y-12,bot=y+9;
   const p=()=>{g.beginPath();g.moveTo(x-w/2,bot);g.lineTo(x-w/2,top+6);g.quadraticCurveTo(x-w/2,top,x,top-3);g.quadraticCurveTo(x+w/2,top,x+w/2,top+6);g.lineTo(x+w/2,bot);g.closePath();};
@@ -3436,7 +3535,7 @@ function drawBlock(ctx,bl,th){const k=bl.mv?ease(Math.min(1,bl.mv.t/bl.mv.dur)):
 function drawDynamic(ctx,x0,x1,y0,y1){
   const th=L.theme,c0=Math.floor(x0/TW)-1,c1=Math.floor(x1/TW)+1,r0=Math.floor(y0/TH)-1,r1=Math.floor(y1/TH)+1;
   const inRoom=(c,r)=>c>=c0&&c<=c1&&r>=r0&&r<=r1;
-  for(const t of L.torches)if(inRoom(t.c,t.r))drawLight(ctx,t,th);
+  for(const t of L.torches)if(!t.broken&&inRoom(t.c,t.r))drawLight(ctx,t,th);
   {const sd=L.start.door===undefined?1:L.start.door;if(inRoom(sd,L.start.r))drawDoor(ctx,sd*TW+16,L.start.r,0,false);}
   if(inRoom(L.door.c,L.door.r))drawDoor(ctx,L.door.x,L.door.r,L.door.open,true);
   for(const cp of L.cps)if(inRoom(cp.c,cp.r))drawHourglass(ctx,cp);
@@ -3534,7 +3633,7 @@ function stripCanvas(key,stops){let c=spriteCache.get(key);if(c)return c;c=docum
 // every light that reaches the view this frame (world units); kind: torch, win, fill, item...
 function gatherLights(x0,x1,y0,y1){
   const th=L.theme,lk=LOOK[th.style]||LOOK.dungeon,out=[],t=gameTime,add=(x,y,r,col,a,kind,bloom)=>{if(x+r>x0&&x-r<x1&&y+r>y0&&y-r<y1)out.push({x,y,r,col,a,kind,bloom});};
-  for(const tc of L.torches){const sd=(tc.c*7+tc.r*13)%10,fl=0.92+0.06*Math.sin(t*13+sd)+0.04*Math.sin(t*7.3+sd*1.7),lo=th.style==='palace'&&lampFree(tc)?[0,0]:LAMP[th.style]||LAMP.dungeon,x=tc.c*TW+16+lo[0],y=SURF(tc.r)-38+lo[1];
+  for(const tc of L.torches){if(tc.broken)continue;const sd=(tc.c*7+tc.r*13)%10,fl=0.92+0.06*Math.sin(t*13+sd)+0.04*Math.sin(t*7.3+sd*1.7),lo=th.style==='palace'&&lampFree(tc)?[0,0]:LAMP[th.style]||LAMP.dungeon,x=tc.c*TW+16+lo[0],y=SURF(tc.r)-38+lo[1];
     add(x,y,150*fl,th.glow,0.95,'torch',{r:26,a:0.42});add(x,y+22,70,th.glow,0.45*fl,'torch');}
   {const st=th.style,hw=st==='dungeon'?2.6:6,hh=st==='dungeon'?10.5:st==='forge'||st==='crypt'?6.5:13;
     const bgOn=GFX().bg;for(const w of L.windows){if(bgOn&&inOpening(w.c,w.r))continue; // that window isn't drawn: the arch is open there
@@ -3786,7 +3885,7 @@ function updateAmbient(dt){
   if(st==='tile'){if(ambCount('fly')<13)AMB.push({k:'fly',x:rr(v.x0,v.x1),y:rr(v.y0+10,v.y1-20),vx:rr(-8,8),vy:rr(-6,6),t:0,life:rr(7,14),ph:rr(0,6)});
     if(ambCount('petal')<6&&Math.random()<dt*0.9)AMB.push({k:'petal',x:rr(v.x0,v.x1),y:v.y0-6,vx:rr(-6,6),vy:rr(10,18),t:0,life:14,ph:rr(0,6),rot:rr(0,6),col:Math.random()<0.6?'#e88aa0':'#f4d6dc'});}
   if(st==='forge'){if(ambCount('ash')<36)AMB.push({k:'ash',x:rr(v.x0,v.x1),y:v.y0+rr(-10,Hh*0.4),vx:rr(-4,4),vy:rr(6,14),t:0,life:rr(8,14),ph:rr(0,6),sz:rr(1,2.2)});
-    if(due('sparks',1,2.6)){const ls=L.torches.filter(q=>q.c*TW>v.x0-20&&q.c*TW<v.x1+20&&q.r*TH>v.y0-TH&&q.r*TH<v.y1);if(ls.length){const q=ls[Math.floor(Math.random()*ls.length)],x=q.c*TW+16,y=SURF(q.r)-46;
+    if(due('sparks',1,2.6)){const ls=L.torches.filter(q=>!q.broken&&q.c*TW>v.x0-20&&q.c*TW<v.x1+20&&q.r*TH>v.y0-TH&&q.r*TH<v.y1);if(ls.length){const q=ls[Math.floor(Math.random()*ls.length)],x=q.c*TW+16,y=SURF(q.r)-46;
       for(let i=0;i<14;i++)AMB.push({k:'spark',x,y,vx:rr(-50,50),vy:rr(-170,-70),t:0,life:rr(0.6,1.2)});}}
     if(ambCount('smoke')<7&&Math.random()<dt*0.9){const c=Math.floor(rr(v.x0,v.x1)/TW),r=Math.floor(rr(v.y0,v.y1)/TH);if(hasCeil(c,r))AMB.push({k:'smoke',x:c*TW,y:r*TH+ceilOff(c,r)+8,vx:rr(4,9),vy:rr(-0.5,0.5),t:0,life:rr(6,10),sz:rr(18,30)});}}
   if(st==='crypt'&&ambCount('wisp')<4&&Math.random()<dt*0.8)AMB.push({k:'wisp',x:rr(v.x0,v.x1),y:rr(v.y0+20,v.y1-10),vx:rr(-10,10),vy:rr(-4,4),t:0,life:rr(9,16),ph:rr(0,6),trail:[]});
@@ -3844,7 +3943,7 @@ function ambientGlow(ctx,x0,x1,y0,y1){
   for(const p of AMB)if(p.k==='ash'){const a=fadeIO(p);if(a<=0)continue;ctx.globalAlpha=a*0.55;ctx.fillStyle=p.sz>1.8?'rgb(255,170,90)':'rgb(186,176,170)';ctx.fillRect(p.x,p.y,p.sz,p.sz*0.7);}
   ctx.globalAlpha=1;ctx.globalCompositeOperation='lighter';
   // moths around every lamp in view (everywhere)
-  for(const q of L.torches){const lo=st==='palace'&&lampFree(q)?[0,0]:LAMP[st]||LAMP.dungeon,lx=q.c*TW+16+lo[0],ly=SURF(q.r)-38+lo[1];if(lx<x0-30||lx>x1+30||ly<y0-30||ly>y1+30)continue;
+  for(const q of L.torches){if(q.broken)continue;const lo=st==='palace'&&lampFree(q)?[0,0]:LAMP[st]||LAMP.dungeon,lx=q.c*TW+16+lo[0],ly=SURF(q.r)-38+lo[1];if(lx<x0-30||lx>x1+30||ly<y0-30||ly>y1+30)continue;
     for(let i=0;i<2;i++){const sd=q.c*3+q.r*7+i*11,mx=lx+10*Math.sin(t*2.1+sd)+4*Math.sin(t*6.7+sd*2),my=ly-6+7*Math.sin(t*2.9+sd*1.3)+3*Math.cos(t*8.3+sd),w=Math.abs(Math.sin(t*28+sd));
       ctx.globalAlpha=0.8;ctx.fillStyle='rgb(255,236,200)';ctx.fillRect(mx-0.6,my-0.5,1.2,1);ctx.globalAlpha=0.5;ctx.fillRect(mx-1.6*w,my-0.9,1.6*w,0.7);ctx.fillRect(mx,my-0.9,1.6*w,0.7);}}
   for(const p of AMB){const a=fadeIO(p);if(a<=0)continue;
