@@ -270,6 +270,39 @@ window.runBot = function (n, seed, opts) {
         }
         else if (ph === 2) { if (p.state === 'stand' && row() === r0) press('u'); if (p.state === 'hang') set('u', true); if (p.state === 'stand' && row() < r0) { set('u', false); ins._u.shift(); ph = 1; } }
         break;
+      case 'lift': { // a lift. Counterweight: stand on the call plate at the landing until the platform is here, step on, hold Up or
+        // Down until it stops, step off. Chain-loop: stand at the landing's edge, step on as a slab passes, hold on to the far landing.
+        const sc = ins.from + dir;
+        if (ins.chn) {
+          if (ins._r0 === undefined) { ins._r0 = row(); ins._lf = H.L.lifts.find(q => q.t === 'chain' && q.c0 === sc && q.entryRow === row()); if (!ins._lf) return fail(ins, 'no chain lift here'); }
+          const f = ins._lf;
+          if (ph === 0) { if (p.state === 'lift') ph = 2; else if (gotoD((dir > 0 ? sc * TW : (sc + 1) * TW) - dir * 8, dir)) ph = 1; }   // (a tiptoe up to the edge may already step on a slab)
+          else if (ph === 1) { // press toward the shaft only on a frame when a slab is passing the landing
+            if (p.state === 'lift') ph = 2;
+            else if (p.state === 'stand' && H.chainWin(f, 0, H.gameTime + 1 / 60) >= 0) { set('g', false); set(fwd, true); }
+            else allOff();
+            if (frames - f0 > 60 * 90) return fail(ins, 'no slab came');
+          }
+          else if (ph === 2) { set(fwd, true); if (p.state === 'step') ph = 3; }   // holding on toward the far landing: he steps off as a slab passes it
+          else if (ph === 3) { allOff(); if (p.state === 'stand') { if (ins.up ? row() < ins._r0 : row() > ins._r0) ph = 4; else return fail(ins, 'stepped off at the wrong landing'); } }
+          else if (ph === 4) { if (goto(cx(ins.to))) next(); }
+          break;
+        }
+        if (ph === 0) { if (gotoD(cx(ins.from), dir)) { ins._lf = H.L.lifts.find(q => q.t === 'lift' && q.sc === sc && (ins.up ? q.rB : q.rT) === row()); if (!ins._lf) return fail(ins, 'no lift here'); ph = 1; } }
+        else if (ph === 1) {
+          const f = ins._lf, here = ins.up ? f.yB : f.yT;
+          if (Math.abs(f.y - here) < 0.01 && f[ins.up ? 'gB' : 'gT'] > 0.9) ph = 2;               // it is here and the grating is open
+          else if (frames - f0 > 60 * 60) return fail(ins, 'lift never came');                     // (standing on the plate calls it)
+        }
+        else if (ph === 2) { if (goto(cx(sc))) { ph = 3; f1 = frames; } }
+        else if (ph === 3) {
+          const f = ins._lf, far = ins.up ? f.yT : f.yB;
+          set(ins.up ? 'u' : 'd', p.state === 'stand' || p.state === 'lift');
+          if (p.state === 'stand' && Math.abs(f.y - far) < 0.01 && frames - f1 > 5) { allOff(); ph = 4; }
+          else if (frames - f1 > 60 * 80) return fail(ins, 'ride never ended');
+        }
+        else if (ph === 4) { if (goto(cx(ins.to))) next(); }
+        break; }
       case 'drink':
         if (ph === 0) { allOff(); if (p.state === 'stand') { press('g'); ph = 1; } }
         else if (ph === 1) { if (p.state === 'stand') next(); }
