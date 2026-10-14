@@ -344,7 +344,8 @@ function genLevel(n,seed,test,legacy){
   return buildLevel(n,seed,test,legacy,-1);
 }
 function buildLevel(n,seed,test,legacy,att){
-  const rng=mulberry32(seed), ri=(a,b)=>a+Math.floor(rng()*(b-a+1)), ch=p=>rng()<p;
+  let rngX=null; // while a side passage's corridor is filled, the floor's main stream is left alone (see fillCorridor)
+  const rng0=mulberry32(seed), rng=()=>(rngX||rng0)(), ri=(a,b)=>a+Math.floor(rng()*(b-a+1)), ch=p=>rng()<p;
   const d=Math.min(1,(n-1)/24);
   // A floor with a sandstorm chase is built four rooms longer, so the chase adds to the floor instead of eating into it.
   // The chase roll is the 4th draw of the floor's stream (the first three never depend on the width), so peek at it first.
@@ -374,7 +375,7 @@ function buildLevel(n,seed,test,legacy,att){
   const feat=(c,r,f)=>{newFeats.push(f);const q=r*cols+PC(c);if(jr)jr.push(q,L.feat[q],1);return (L.feat[q]=f);};
   const fe=(c,r)=>{const p=PC(c);return (p<0||p>=cols||r<0||r>=rows)?null:L.feat[r*cols+p];};
   const bot=L.path;
-  let r=0, c=0, run=3;
+  let r=0, c=0, run=3, calm=false; // calm: obstacles laid in a side passage's corridor (no timers, no pits, no captain)
   ri(1,9);ri(1,3);ri(1,9); // the stream's first three draws (the fourth is the sandstorm roll peeked above)
   // progress along the route, in tiles: what guards, checkpoints and the rest are spaced by
   let progBase=0,cEntry=0;const prog=()=>progBase+(c-cEntry);
@@ -383,7 +384,7 @@ function buildLevel(n,seed,test,legacy,att){
   const lifeFloor=n%3===0;
   const CP_GAP=Math.round(45*PKW), alcoves=[{at:0.22,type:'heal'},{at:0.6,type:'heal'}];
   // breathing room after a trap, from its own stream: two or three tiles of plain floor, and every few traps a longer rest
-  const prng=mulberry32(hash2(seed,4421));let sinceRest=0,restAt=3+Math.floor(prng()*3);
+  const prng0=mulberry32(hash2(seed,4421)),prng=()=>(rngX||prng0)();let sinceRest=0,restAt=3+Math.floor(prng()*3);
   function breathe(){let k=2+(prng()<0.4?1:0);if(++sinceRest>=restAt){k+=3+Math.floor(prng()*3);sinceRest=0;restAt=3+Math.floor(prng()*3);}
     const r0=run;while(k>0&&!flat(k))k--;run=r0;} // the trap mix stays as it was: padding doesn't count as run-up
   let chaseWanted=n>=6&&ch(0.65);rng();
@@ -392,7 +393,7 @@ function buildLevel(n,seed,test,legacy,att){
   const keepWall=new Set(); // cells the open-hall pass must leave solid (the far wall of a kick shaft)
   const ghp=Math.min(5,2+Math.floor((n-1)/5));
   // guard skill: 0 recruit, 1 soldier, 2 veteran. Drawn from its own stream so the floor layout is unchanged.
-  const trng=mulberry32(hash2(seed,9137)),tierOf=()=>{if(n<=2)return 0;const x=trng(),a=Math.max(0.12,0.62-0.8*d),v=Math.min(0.4,0.04+0.55*d);return x<a?0:x<1-v?1:2;},gHp=t=>ghp;
+  const trng=mulberry32(hash2(seed,9137)),tierOf=()=>{if(n<=2)return 0;const x=(calm?crng:trng)(),a=Math.max(0.12,0.62-0.8*d),v=Math.min(0.4,0.04+0.55*d);return x<a?0:x<1-v?1:2;},gHp=t=>ghp;
 
   function flat(k){for(let i=1;i<=k;i++)if(!W(c+i,r))return false;for(let i=1;i<=k;i++)set(c+i,r,FLOOR);c+=k;run+=k;bot.push({a:'walk',c});return true;}
   function pitOk(cc,depth){depth=Math.min(depth,rows-1-r);for(let k=0;k<=depth;k++){if(r+k<rows&&!W(cc,r+k))return false;}return true;}
@@ -460,7 +461,7 @@ function buildLevel(n,seed,test,legacy,att){
     c+=len;run=1;return true;
   }
   function gate(){
-    const m=ri(2,5), withGap=n>=6&&m>=3&&ch(0.45), closer=!withGap&&n>=4&&m>=3&&ch(0.45);
+    const m=ri(2,5), withGap=!calm&&n>=6&&m>=3&&ch(0.45), closer=!withGap&&n>=4&&m>=3&&ch(0.45);
     const len=m+3;
     for(let i=1;i<=len;i++)if(!W(c+i,r))return false;
     if(withGap&&!pitOk(c+3,1))return false;
@@ -473,7 +474,7 @@ function buildLevel(n,seed,test,legacy,att){
     // thin margin on top: you have to go at once.
     // (measured: a running jump over the pit is quicker than the plain run, so a jump earns no extra time; jumping a
     // closer costs a moment to line up.) Slack over the fastest run: 1.15 on the first floors down to 1.03.
-    const timed=hash2((seed|0)+c*7,r*31+n)%100<25+20*d,need=(m*TW+16+BW)/RUN+(closer?0.2:withGap?-0.1:0.05),slack=lerp(1.15,1.03,clamp(0.6*d+0.4*rng(),0,1));
+    const timed=!calm&&hash2((seed|0)+c*7,r*31+n)%100<25+20*d,need=(m*TW+16+BW)/RUN+(closer?0.2:withGap?-0.1:0.05),slack=lerp(1.15,1.03,clamp(0.6*d+0.4*rng(),0,1));
     const g={t:"gate",open:0,tm:0,dur:timed?Math.ceil(need*slack*10)/10:0,latch:!timed};
     feat(c+m+2,r,g);
     feat(c+1,r,{t:'plate',g,press:-9,latch:!timed,near:true});
@@ -585,6 +586,41 @@ function buildLevel(n,seed,test,legacy,att){
     return t;}
   const timerK=()=>0.84+0.14*rng()+0.1*(1-d); // timer over the estimated route back (a careful pace): 0.84 (tight) .. 1.08
   function rectOk(c0,c1,r0,r1){for(let xx=c0;xx<=c1;xx++)for(let rr=r0;rr<=r1;rr++)if(!W(xx,rr))return false;return true;}
+  // The corridor beside a side passage carries ordinary obstacles like the rest of the run (a bare stretch would give the
+  // branch away). They are laid before the corridor floor goes in, from c up to column cEnd, in the order the bot walks
+  // them (all before the passage's mouth). Nothing that digs (pits, loose floor) as a cellar may lie beneath; nothing tall
+  // (stones, pendulum) where a gallery lies above, i.e. from column tallLim on. Its own random stream, so the passage is unchanged.
+  const crng=mulberry32(hash2(seed,7703));
+  function fillCorridor(cEnd,tallLim,pl,x0){
+    // a gallery's holes and loose planks must keep their drop: beneath them nothing may stand that has a lintel (a gate,
+    // chomper or low roof would turn the gap into a dent) or that hurts (a fall would land on it); a guard may
+    const ban=new Set(),hole=(x,w)=>{for(let i=-1;i<=w;i++)ban.add(x+i);};
+    if(pl&&pl.gal){for(const p of pl.parts){const s0=x0+p.off;
+      if(p.k==='gap1')hole(s0+1,1);else if(p.k==='gap2'||p.k==='skel')hole(s0+3,2);else if(p.k==='loose'||p.k==='bridge')hole(s0+3,p.m);}
+      if(pl.chain)hole(x0+pl.chainOff,5);}
+    const hits=(a,b)=>{for(let i=a;i<=b;i++)if(ban.has(i))return true;return false;};
+    const sv={c,run,vHi,lg:lastGuard,sr:sinceRest,ra:restAt};vHi=Math.min(vHi,cEnd);calm=true;rngX=crng;sinceRest=-99; // (no long rests in here)
+    let guardIn=false,tries=0;
+    flat(1+Math.floor(crng()*2));
+    while(c<cEnd&&tries++<60){
+      const o=[],A=(w,k,f,sp)=>{if(w>0&&(sp<0||!hits(c,c+sp)))o.push([w,k,f]);},tall=c+7<tallLim;
+      if(n>=2)A(1.2,'spikes',()=>spikes(n>=6&&crng()<0.4?2:1),3);
+      if(n>=4)A(0.9,'chomp',chomp,n>=10?5:3);
+      if(n>=3)A(0.9,'tunnel',tunnel,7);
+      if(n>=3)A(0.8,'gate',gate,8);
+      if(n>=3&&!guardIn)A(0.7,'guard',guard,-1);
+      if(n>=5)A(0.5,'saw',sawSeg,5);
+      if(style==='dungeon'&&n>=2&&tall)A(0.9,'stones',stones,6);
+      if(style==='tile'&&tall)A(0.9,'pend',pendulum,6);
+      if(style==='forge')A(0.9,'vents',vents,6);
+      let done=false;
+      while(o.length&&!done){let tot=0;for(const q of o)tot+=q[0];let x=crng()*tot,i=0;for(;i<o.length-1;i++){x-=o[i][0];if(x<=0)break;}
+        const [,kd,f]=o.splice(i,1)[0],c0=c,gN=L.guards.length;
+        if(f()){L.segs.push({k:kd,c0,c1:c,r0:r,r1:r,corr:1});if(L.guards.length>gN){guardIn=true;extraG+=L.guards.length-gN;}breathe();done=true;}}
+      if(!done&&!flat(1))break;
+    }
+    c=sv.c;run=sv.run;vHi=sv.vHi;lastGuard=sv.lg;sinceRest=sv.sr;restAt=sv.ra;calm=false;rngX=null;
+  }
   function detourGate(galPref,fewer=0){
     const gal=galPref===undefined?r>=3&&(r>rows-4||ch(0.5)):galPref&&r>=3;
     if(!gal&&r>rows-4)return false;
@@ -594,12 +630,14 @@ function buildLevel(n,seed,test,legacy,att){
     if(c+len>vHi)return false;
     if(!rectOk(c+1,c+len,gal?r-3:r,gal?r:r+3))return false;
     if(gal&&pl.tall&&!rectOk(c+1,c+len,r-4,r-4))return false;
+    fillCorridor(e-3,gal?x0-1:1e9,pl,x0);
     for(let xx=c+1;xx<=c+len;xx++)set(xx,r,FLOOR);
     if(gal){set(e,r-1,EMPTY);set(e-1,r-1,FLOOR);set(e-1,r-2,EMPTY);}
     else{set(e,r,EMPTY);set(e+1,r,EMPTY);set(e,r+1,EMPTY);set(e+1,r+1,FLOOR);}
     const g={t:'gate',open:0,tm:0,dur:0,latch:!timed,far:true};feat(gc,r,g);
     const br=carveBranch(pl,x0,g,gal?'below':'above',timed,false);
-    let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&raw(xx,r)===FLOOR&&!fe(xx,r)&&ch(0.45)){L.torches.push({c:xx,r});lt=xx;}
+    // (the torches' draws are made as if the corridor were still bare, so the fill leaves the stream as it was)
+    let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&(gal||(xx!==e&&xx!==e+1))&&xx!==gc&&ch(0.45)){if(raw(xx,r)===FLOOR&&!fe(xx,r))L.torches.push({c:xx,r});lt=xx;}
     const exit=gal?[{a:'walk',c:e-2},{a:'hangdrop',from:e-2},{a:'drop',from:e-1},{a:'walk',c:c+len}]:[{a:'walk',c:e},{a:'climb',from:e},{a:'climb',from:e+1},{a:'walk',c:c+len}];
     if(timed)g.dur=Math.round((estPath([...br.backs,...exit],x0)*timerK()+0.3)*10)/10;
     if(gal)bot.push({a:'walk',c:e},{a:'climb',from:e,dir:-1},{a:'climb',from:e-1,dir:-1},...br.outs,...br.backs,...exit);
@@ -618,6 +656,7 @@ function buildLevel(n,seed,test,legacy,att){
     if(c+len>vHi||x0c<c+2||x0g<c+2)return false;
     if(!rectOk(c+1,c+len,r-3,r+3))return false;
     if(pg.tall&&!rectOk(c+1,c+len,r-4,r-4))return false;
+    fillCorridor(ec-3,x0g-1,pg,x0g);
     for(let xx=c+1;xx<=c+len;xx++)set(xx,r,FLOOR);
     set(ec,r,EMPTY);set(ec+1,r,EMPTY);set(ec,r+1,EMPTY);set(ec+1,r+1,FLOOR); // cellar mouth
     set(eg,r-1,EMPTY);set(eg-1,r-1,FLOOR);set(eg-1,r-2,EMPTY); // gallery step
@@ -631,7 +670,7 @@ function buildLevel(n,seed,test,legacy,att){
     if(tg){bot.push(...celIn,...celOut,...galSeq);G2.dur=Math.round((estPath([...brG.backs,{a:'walk',c:eg-2},{a:'hangdrop',from:eg-2},{a:'drop',from:eg-1},{a:'walk',c:g2c+1}],x0g)*timerK()+0.3)*10)/10;}
     else{bot.push({a:'walk',c:ec-1},{a:'rjump',from:ec-1,to:ec+2},...galSeq,...celInR,...celOut);G2.dur=Math.round((estPath([...brC.backs,{a:'walk',c:ec},{a:'climb',from:ec},{a:'climb',from:ec+1},{a:'walk',c:g2c+1}],x0c)*timerK()+0.3)*10)/10;}
     bot.push({a:'walk',c:c+len});
-    let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&raw(xx,r)===FLOOR&&!fe(xx,r)&&ch(0.45)){L.torches.push({c:xx,r});lt=xx;}
+    let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&xx!==ec&&xx!==ec+1&&xx!==g1c&&xx!==g2c&&ch(0.45)){if(raw(xx,r)===FLOOR&&!fe(xx,r))L.torches.push({c:xx,r});lt=xx;}
     L.detours=(L.detours||[]);L.detours.push({double:true,tg,c,len,ec,eg,g1c,g2c,r,dur:G2.dur,kindsG:pg.kinds.slice(),kindsC:pc.kinds.slice()});
     c+=len;run=2;return true;
   }
@@ -744,6 +783,7 @@ function buildLevel(n,seed,test,legacy,att){
     if(c+len>vHi)return false;
     if(!rectOk(c+1,c+len,gal?r-3:r,gal?r:r+3))return false;
     if(gal&&pl.tall&&!rectOk(c+1,c+len,r-4,r-4))return false;
+    fillCorridor(e-3,gal?x0-1:1e9,pl,x0);
     for(let xx=c+1;xx<=c+len;xx++)set(xx,r,FLOOR);
     if(gal){set(e,r-1,EMPTY);set(e-1,r-1,FLOOR);set(e-1,r-2,EMPTY);}
     else{set(e,r,EMPTY);set(e+1,r,EMPTY);set(e,r+1,EMPTY);set(e+1,r+1,FLOOR);}
@@ -753,15 +793,15 @@ function buildLevel(n,seed,test,legacy,att){
     const outs=br.outs.slice();outs.push({a:'drink'});
     if(gal)bot.push({a:'walk',c:e},{a:'climb',from:e,dir:-1},{a:'climb',from:e-1,dir:-1},...outs,...br.backs,...exit);
     else bot.push({a:'walk',c:e-1},{a:'hangdrop',from:e-1},...outs,...br.backs,...exit);
-    L.detours=(L.detours||[]);L.detours.push({secret:true,gal,c,len,x0,kinds:pl.kinds.slice()});
+    L.detours=(L.detours||[]);L.detours.push({secret:true,gal,c,len,x0,r,kinds:pl.kinds.slice()});
     c+=len;run=2;return true;
   }
   function guard(){
     const off=(c+1)%RW;
-    if(off>3){if(!flat(RW-off))return false;}
+    if(off>3){if(calm&&RW-off>2)return false;if(!flat(RW-off))return false;} // (in a corridor fill, not at the price of a long bare run-up)
     for(let i=1;i<=7;i++)if(!W(c+i,r))return false;
     for(let i=1;i<=7;i++)set(c+i,r,FLOOR);
-    const cap=n%5===0&&L.guards.length-extraG===guardsWanted-1,tier=cap?2:tierOf();
+    const cap=!calm&&n%5===0&&L.guards.length-extraG===guardsWanted-1,tier=cap?2:tierOf();
     L.guards.push({x:(c+6)*TW+16,r,lo:(c+1)*TW+10,hi:(c+7)*TW+22,hp:cap?ghp+2:gHp(tier),cap,tier,reinf:(!cap&&n>=6&&ch(Math.min(0.55,0.12+0.5*d)))?1:0});
     bot.push({a:'walk',c:c+7});
     c+=7;run+=7;lastGuard=prog();return true;
@@ -968,7 +1008,8 @@ function buildLevel(n,seed,test,legacy,att){
     // (the last run has rooms in hand: it stops once the route is as long as planned and the floor has at least nine
     // tenths of the traps a floor this long used to hold, so a floor whose side passages took much of its length
     // doesn't come out short)
-    const trapsNow=()=>{let t=0;for(const q of L.segs)if(!MOVES.has(q.k)&&!q.k.startsWith('turn-')&&!q.k.startsWith('loop-'))t++;return t;};
+    // (the corridor fill doesn't count: the route must not end sooner for it)
+    const trapsNow=()=>{let t=0;for(const q of L.segs)if(!q.corr&&!MOVES.has(q.k)&&!q.k.startsWith('turn-')&&!q.k.startsWith('loop-'))t++;return t;};
     const lastStop0=progBase+(rn.cap+(first?2:0)),trapTarget=Math.floor(routeT*(n<=5?0.095:n<=8?0.085:0.08));
     for(;;){const st=stops.length?stops[0]:null;vHi=st?Math.min(vHiRun,st.at):vHiRun;
     while(c<vHi&&iter++<5000){
