@@ -17,7 +17,7 @@ with sync_playwright() as p:
     pg.on('pageerror',lambda e:errs.append(str(e)))
     pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(300); pg.add_script_tag(path='bot.js')
     fl=pg.evaluate(FIND,WANT)
-    print('floors with a damaging shortcut:',len(fl))
+    print('floors with a chamber shortcut (hgap, now only where it saves a quarter of the chamber and ten tiles):',len(fl),'(the damaging forks of kinds 2 and 4 are in forktest.py)')
     for f in fl:
         # the drop route: one life lost, then the rest of the floor along the bot's path, all the way to the door
         r=pg.evaluate('''([n,seed,h,j])=>{const L=__HK.genLevel(n,seed,true),p=L.path;const hole={a:'drop',from:j.from};if(j.dir)hole.dir=j.dir;

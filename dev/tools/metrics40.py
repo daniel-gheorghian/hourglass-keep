@@ -24,7 +24,7 @@ JS='''()=>{const H=__HK,out={};const MOV=new Set(['flat','up','down','drop2']),V
     // storeys climbed or dropped in turns, and the share done by plain steps
     let st=0,all=0;for(const q of L.segs){if(!q.k.startsWith('turn-'))continue;const h=Math.abs(q.r1-q.r0);all+=h;if(STEP.has(q.k))st+=h;}
     acc.push({route,traps:tr.length,vert:tr.filter(q=>VERT.has(q.k)).length+turnsV,gapMin:gaps.length?Math.min(...gaps):99,gapMean:gaps.reduce((a,b)=>a+b,0)/Math.max(1,gaps.length),
-      guards:L.guards.length,cps:L.cps.length,det:(L.detours||[]).length,loops:(L.loops||[]).length,bare,bareS,stepSt:st,allSt:all});}
+      guards:L.guards.length,cps:L.cps.length,det:(L.detours||[]).length,loops:(L.forks||L.loops||[]).length,bare,bareS,stepSt:st,allSt:all});}
     out[n]=acc;}return out;}'''
 out={}
 for tag,f in (BASE,CUR):

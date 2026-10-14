@@ -48,8 +48,12 @@ service worker's cache to `hourglass-keep-vN`, which is what makes installed cop
 | `python3 run2.py 1 27 4` | the bot finishes floors 1 to 27, 4 seeds each, without fighting | all passed, 0 runs with damage |
 | `python3 run2.py 1 27 2 fight` | the same, fighting every guard | all passed |
 | `python3 rendersmoke.py 1 27` | every floor renders without errors | no errors |
-| `python3 loopscan.py`, `laddertest.py`, `e2eloop.py` | loops are built; their ladders work both ways; a floor taken through the shortcut first can still be finished | all ok |
-| `python3 metrics39.py` | route length, trap count and trap spacing against the previous release (edit the two files at its top) | no floor shorter, padding kept |
+| `python3 forkscan.py`, `forktest.py` | forks are built (kinds per floor band); every fork's shortcut branch is played to the door: kind 1 fighting its guard, kinds 2 and 4 stepping off the broken lip (exactly one life lost), kind 3 through its traps; a grating is solid, its gate open and its flask in place | all ok |
+| `python3 metrics40.py` | route length, trap count and trap spacing against the last release (edit the two files at its top) | no floor shorter, padding kept |
+| `respawnplates.py`, `puzzlescan.py`, `slabresume.py` | plates stay pressed after a respawn; the puzzle menu's pairs are built; a slab-jammed plate is restored | all ok |
+| `primtest.py`, `hdtest.py`, `vertscan.py`, `lifttest.py` | every chamber move works for the bot; the chamber's damaging drop (hgap) costs exactly one life where it is placed; counts of vertical moves; both kinds of lift ride | all ok |
+
+Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chambershot.py` and `liftshot.py` do the same for chambers and lifts.
 
 3. Commit as `vN: what changed`, push to `main`.
 4. About two minutes later, check that https://daniel-gheorghian.github.io/hourglass-keep/sw.js shows `hourglass-keep-vN`.
@@ -59,6 +63,12 @@ service worker's cache to `hourglass-keep-vN`, which is what makes installed cop
 ## Rules the owner has set
 
 - Levels stay fully generated: no hand-made levels or rooms.
+- A drop that costs health must be worth it and must look like one (owner, 2026-10-14). It has its own look, made from the tile
+  type (`hurtdrop`: a ragged, broken lip with nothing to grip, a darker shaft, a pile of rubble on the floor it lands on), never
+  like a spiked pit or a plain gap. The generator keeps one only if it skips at least one landing with its obstacle or guard and
+  saves 25% of the chamber's (or the fork's) route by `estPath()` and at least 10 tiles of walking; otherwise nothing is placed.
+  Route length is counted along the safe way and the bot always takes the safe way; `forktest.py` and `hdtest.py` take the
+  damaging one.
 - A change must not make floors shorter or remove the plain floor left after each trap (`breathe()`).
   Check with `metrics39.py` whenever the generator changes.
 - Changes to feel or level design are usually asked for with research first: how the Prince of Persia
@@ -76,6 +86,11 @@ service worker's cache to `hourglass-keep-vN`, which is what makes installed cop
   lays one obstacle and plain tiles on each landing (`landingObstacle`, own stream `vrng`), and falls back to the old `KITS`.
   New moves: `collapse` (loose ledge drops him a storey), `jumpdown`, `jumpup` (bot action `jgrab`: Grab held in the air), and
   `hgap`, the damaging shortcut (the bot jumps it; `hdtest.py` drops in). Checks: `vertscan.py`, `primtest.py`, `hdtest.py`.
+- Forks (floor 6 on): a switchback gets one of four forks, drawn from its own stream (`frng`): 1 a guard on the short way, traps on
+  the long one (PoP1 level 2); 2 a damaging descent beside the long safe way (PoP1 levels 5 and 7); 3 a short dense way against
+  a long easy one (Unexplored); 4 a one-way damaging hole, one in five with a grating and a flask behind a violet gate for
+  whoever goes the long way. The short way is a chamber of the turns' own moves cut under the upper run (`forkChamber`); its
+  bot actions are taken out of `L.path` and kept in `L.forks[i].sc`. Floor length is counted along the long way.
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized from `estPath()` at a careful pace, times 0.84 to 1.08.
 - Pose angles are measured from straight down; positive means forward.

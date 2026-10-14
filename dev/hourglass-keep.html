@@ -910,7 +910,7 @@ function buildLevel(n,seed,test,legacy,att){
   function hurtGapSeg(){
     if(r+2>rows-2||!W(c+1,r)||!W(c+1,r+1)||!W(c+1,r+2)||!W(c+2,r)||!W(c+3,r))return false;
     set(c+1,r,EMPTY);set(c+1,r+1,EMPTY);set(c+1,r+2,FLOOR);feat(c+1,r,{t:'hurtdrop'});set(c+2,r,FLOOR);set(c+3,r,FLOOR);
-    hd={at:bot.length,c,r,t:c+1};
+    hd={at:bot.length,c,r,t:c+1,sg:L.segs.length};
     bot.push({a:'sjump',from:c,to:c+2,hd:1});
     c+=3;run=2;return true;
   }
@@ -1140,19 +1140,19 @@ function buildLevel(n,seed,test,legacy,att){
     bot.length=sv.path;newFeats.length=sv.nf;touched.length=sv.tc;L.segs.length=sv.sg;c=sv.c;r=sv.r;run=sv.run;
     L.guards.length=sv.gd;L.snakeSpecs.length=sv.sn;extraG=sv.xg;lastGuard=sv.lg;sinceRest=sv.sr;restAt=sv.ra;}
   // one obstacle on the landing (flat tiles, the obstacle, then at least two plain tiles after it); false when nothing fits before cEnd
-  function landingObstacle(cEnd,noDig){
-    const sv={vHi,lg:lastGuard,sr:sinceRest,ra:restAt,rx:rngX,cm:calm};
-    vHi=Math.min(vHi,cEnd);calm=true;rngX=vrng;sinceRest=-99;
+  function landingObstacle(cEnd,noDig,only,rs,noGuard){
+    rs=rs||vrng;const sv={vHi,lg:lastGuard,sr:sinceRest,ra:restAt,rx:rngX,cm:calm};
+    vHi=Math.min(vHi,cEnd);calm=true;rngX=rs;sinceRest=-99;
     const o=[],A=(w,k,f)=>{if(w>0)o.push([w,k,f]);};
-    A(1.2,'spikes',()=>spikes(n>=6&&vrng()<0.4?2:1));
+    A(1.2,'spikes',()=>spikes(n>=6&&rs()<0.4?2:1));
     if(!noDig){A(1.0,'gap1',()=>gap(1));A(0.9,'loose',()=>loose(1));}
     if(n>=4)A(0.9,'chomp',chomp);
-    A(0.9,'tunnel',tunnel);A(0.8,'guard',guard);
+    A(0.9,'tunnel',tunnel);if(!noGuard)A(0.8,'guard',guard);
     if(n>=5)A(0.5,'saw',sawSeg);
     if(style==='dungeon')A(0.9,'stones',stones);if(style==='tile')A(0.9,'pend',pendulum);if(style==='forge')A(0.9,'vents',vents);
     if(style==='palace'&&!noDig)A(0.9,'bridge',bridge);
     let done=false;flat(1); // (a plain tile to run up from)
-    while(o.length&&!done){let tot=0;for(const q of o)tot+=q[0];let x=vrng()*tot,i=0;for(;i<o.length-1;i++){x-=o[i][0];if(x<=0)break;}
+    while(o.length&&!done){let tot=0;for(const q of o)tot+=q[0];let x=rs()*tot,i=0;for(;i<o.length-1;i++){x-=o[i][0];if(x<=0)break;}
       const [,kd,f]=o.splice(i,1)[0],c0=c,r0=r,gN=L.guards.length,s0=snap();
       if(f()){const c1=c;L.segs.push({k:kd,c0,c1,r0,r1:r,corr:1});if(L.guards.length>gN)extraG+=L.guards.length-gN;breathe();
         if(c-c1>=2)done=true;else restore(s0);}else restore(s0);}
@@ -1173,7 +1173,7 @@ function buildLevel(n,seed,test,legacy,att){
     for(const kit of shuf(fit(old.slice())))tries.push([kit,chamber]);
     if(chamber)for(const kit of fit(old))tries.push([kit,false]);
     const keep=[rMin,rMax];rMin=-1e9;rMax=1e9;let res=null;
-    const hdRoll=chamber&&!t.rev&&t.down&&!sk&&n>=5&&vrng()<0.2; // now and then a chamber carries the damaging shortcut (floor 5 on)
+    const hdRoll=chamber&&!t.rev&&t.down&&!sk&&n>=5&&vrng()<0.5; // now and then a chamber carries the damaging shortcut (floor 5 on); the roll is generous because most kits give no placement that is worth a life (see below)
     for(let [kit,ob] of tries){
       if(sk==='G4'){kit=kit.slice();kit.splice(1+Math.floor(zr()*(kit.length-1)),0,'gslot');}
       let hasHd=false;
@@ -1194,6 +1194,9 @@ function buildLevel(n,seed,test,legacy,att){
       if(ok&&t.rev){const lnd=c+LAND[lastM];for(const q of touched){const rr=Math.floor(q/cols);if(rr>=nextRow-1&&L.base[q]!==WALL&&PC(q%cols)<lnd){ok=false;break;}}}
       if(ok&&ob&&!nOb)ok=false;
       if(ok&&hasHd&&!(r===nextRow&&hurtCorridor(nextRow)))ok=false;
+      // worth a life: the drop must pass at least one landing's obstacle or guard, save a quarter of the chamber's time and ten tiles' walk
+      if(ok&&hasHd){const tL=estPath(bot.slice(hd.at+1),hd.c+2)+6*L.segs.slice(hd.sg).filter(q=>q.k==='guard').length,tS=Math.abs(c-hd.t)*0.34+1,tC=estPath(bot.slice(sv.path),sv.c),sk2=L.segs.slice(hd.sg).some(q=>!/^turn-/.test(q.k));
+        if(!(sk2&&tL-tS>=0.25*tC&&(tL-tS)/0.34>=10))ok=false;}
       if(ok&&r===nextRow&&(!sk||gateSlot.done)){res={land:c+LAND[lastM],kit,slot:sk,botEnd,ob:nOb};if(hasHd)(L.hurtdrops=L.hurtdrops||[]).push({jump:hd.at,next:bot.length,r:hd.r,floor:n});jr=null;gateSlot=null;break;}
       restore(sv);jr=null;
     }
@@ -1209,6 +1212,8 @@ function buildLevel(n,seed,test,legacy,att){
     for(let i=m.det;i<(L.detours||[]).length;i++){const dd=L.detours[i];dd.c0=Math.min(PC(dd.c),PC(dd.c+dd.len));dd.c1=Math.max(PC(dd.c),PC(dd.c+dd.len));}
     if(L.secret&&!L.secret.fixed){L.secret.c=PC(L.secret.c);L.secret.fixed=true;}
     for(let i=m.segs;i<L.segs.length;i++){const q=L.segs[i];q.c0=PC(q.c0);q.c1=PC(q.c1);q.dir=MX<0?1:-1;}
+    if(MX>=0)for(const lp of forkMirror)for(const a of lp.sc){if(a.c!==undefined)a.c=PC(a.c);if(a.from!==undefined)a.from=PC(a.from);if(a.to!==undefined)a.to=PC(a.to);a.dir=-(a.dir||1);}
+    forkMirror.length=0;
     if(MX<0)return;
     for(let i=m.items;i<L.items.length;i++){const it=L.items[i];it.c=PC(it.c);it.x=PXx(it.x);}
     for(let i=m.guards;i<L.guards.length;i++){const g=L.guards[i],lo=g.lo;g.x=PXx(g.x);g.lo=PXx(g.hi);g.hi=PXx(lo);g.face=1;g.pit=-(g.pit||1);}
@@ -1229,59 +1234,147 @@ function buildLevel(n,seed,test,legacy,att){
   function keepClear(list){for(const idx of list){const p=idx%cols,rr=(idx-p)/cols;
     for(let dy=-2;dy<=0;dy++)for(let dx=-1;dx<=1;dx++){const q=(rr+dy)*cols+p+dx;if(rr+dy>=0&&rr+dy<rows&&p+dx>=0&&p+dx<cols&&L.base[q]===WALL)resv[q]=1;}}}
   const sideTry=(f,g0)=>{for(let fw=0;fw<=2;fw++)if(f(g0,fw)||f(!g0,fw))return true;return false;};
-  // ---- loops (see LOOPS): which switchbacks carry one, and where its hole opens (world column H; the ladder takes
-  // columns H and O=H+dir, walled in by H-dir and H+2dir) ----
-  const loopAt=new Map();L.loops=[];
+  // ---- forks (see FORKS): which switchbacks carry one, which of four kinds, and where its hole opens (world column H; the
+  // shortcut chamber lies under the upper run from H on, in the band between the runs, and ends on the lower run at Xl) ----
+  const FZ=24; // how far (tiles) the shortcut chamber may reach along the run from its hole
+  const forkAt=new Map();L.forks=[];const forkMirror=[];let cpHold=false; // cpHold: no checkpoint between a fork's plate and its gate
+  const frng=mulberry32(hash2(seed,6451)); // the forks' own stream: which kind, which kit, the guard's skill and the landings' obstacles
   if(att>=0&&!legacy&&n>=LOOP_MIN){
     const lrng=mulberry32(hash2(seed,6151));let want=lrng()<0.85?1:0;if(n>=14&&lrng()<0.5)want++;
     const cand=[];for(let t=0;t<plan.turns.length;t++){if(!plan.turns[t].rev||t===plan.chaseRun||t+1===plan.chaseRun)continue;
       const up=plan.runs[t],lo=plan.runs[t+1],ov=up.rooms.filter(x=>lo.rooms.includes(x)).length;if(ov<3)continue;
       const dir=up.dir,F=x=>x*dir,uL=roomLo(Math.min(...up.rooms)),uH=roomHi(Math.max(...up.rooms)),lL=roomLo(Math.min(...lo.rooms)),lH=roomHi(Math.max(...lo.rooms));
       const uEnd=dir>0?uH-1:uL+1,uStart=dir>0?uL:uH,lFar=dir>0?lL+1:lH-1;
-      // at least 20 tiles of the upper run after the hole (the long way, and room for the plate), 14 before it, and the
-      // lower run carrying on 14 tiles past it (the ladder's foot, the gate, and floor beyond)
-      const fmin=Math.max(F(uStart+dir*14),F(lFar+dir*14)),fmax=F(uEnd-dir*20);if(fmin>fmax)continue;
-      const f=clamp(F(uEnd)-Math.max(20,Math.round(0.45*ov*RW)),fmin,fmax),H=f*dir;
-      cand.push({t,dir,H,O:H+dir,rUp:bandRow(up.band),rLow:bandRow(lo.band),ok:false,plated:false,footed:false,
+      // at least 26 tiles of the upper run after the hole (the long way, the chamber and room for the plate), 14 before it, and
+      // the lower run carrying on 14 tiles past it
+      const fmin=Math.max(F(uStart+dir*14),F(lFar+dir*14)),fmax=F(uEnd)-26;if(fmin>fmax)continue;
+      const f=clamp(F(uEnd)-Math.max(30,Math.round(0.45*ov*RW)),fmin,fmax),H=f*dir;
+      cand.push({t,dir,H,O:H,rUp:bandRow(up.band),rLow:bandRow(lo.band),ok:false,plated:false,footed:false,v:0,grate:false,
         G:{t:'gate',open:0,tm:0,dur:0,latch:true,pair:LOOP_PAIR,far:true,loop:true}});}
     for(let i=cand.length-1;i>0;i--){const j=Math.floor(lrng()*(i+1)),q=cand[i];cand[i]=cand[j];cand[j]=q;}
-    for(const lp of cand){if(loopAt.size>=want)break;if(loopAt.has(lp.t-1)||loopAt.has(lp.t+1))continue;loopAt.set(lp.t,lp);}
+    for(const lp of cand){if(forkAt.size>=want)break;if(forkAt.has(lp.t-1)||forkAt.has(lp.t+1))continue;forkAt.set(lp.t,lp);}
+    // the kind: 1 guard against traps (PoP1 level 2), 2 a damaging descent (PoP1 levels 5 and 7), 3 a long easy way against a short
+    // dense one (Unexplored), 4 a one-way hole (and now and then a grating over it, with a flask below for whoever goes the long way)
+    for(const lp of forkAt.values()){
+      const w=n<10?[0.35,0.25,0,0.40]:n<18?[0.30,0.20,0.25,0.25]:[0.25,0.20,0.35,0.20];let x=frng(),v=1;for(let i=0;i<4;i++){x-=w[i];if(x<=0){v=i+1;break;}}
+      lp.v=v;lp.grate=v===4&&frng()<0.2;lp.order=({1:[1,2,4],2:[2,4],3:[3,1,2,4],4:[4,2]})[v];}
   }
-  // the ladder's cells, kept from everything else until the ladder is cut (world columns, rows between the runs)
-  const loopZone=(lp,fn)=>{for(let rr=lp.rUp+1;rr<lp.rLow;rr++)for(const x of [lp.H-lp.dir,lp.H,lp.O,lp.O+lp.dir])fn(rr*cols+x,x,rr);};
-  let loopFail=false,loopUsed=0; // loopUsed: route tiles the loops' pieces took; the last run is built that much longer
-  // the hole and the ladder, from the upper run (its own column space: the hole at PC(H), the ladder's other column next)
-  function loopTop(lp){
+  // the chamber's cells, kept from everything else until it is cut (world columns, the rows between the runs)
+  const forkZone=(lp,fn)=>{for(let rr=lp.rUp+1;rr<lp.rLow;rr++)for(let k=-1;k<=FZ;k++){const x=lp.H+lp.dir*k;if(x>=1&&x<cols-1)fn(rr*cols+x,x,rr);}};
+  let xHold=false; // true while a fork's long way is being laid: the door's plate may not lie on a stretch the shortcut skips
+  let loopFail=false,loopUsed=0; // loopUsed: route tiles the forks' pieces took; the last run is built that much longer
+  // The shortcut is a short chamber of the turns' own moves, cut under the run from its hole to the lower run. Its kit: the
+  // moves whose drops add up to the storeys left; the first starts at the hole (a step, a hanging drop or a banner), the last
+  // drops two storeys or more so nothing stands just above the lower run's floor.
+  function forkKits(v,D){
+    const dmg=v===2||v===4,out=[],seen=new Set(),first=['down','drop2','banner3','banner4'].filter(m=>MV[m].n<=n);
+    const pool=Object.keys(MV).filter(m=>MV[m].dr>0&&MV[m].n<=n&&/^(down|drop2|banner[34]|collapse|jumpdown)$/.test(m)&&(v!==4||m==='down'||m==='drop2'));
+    for(let a=0;a<60&&out.length<10;a++){
+      let rem=D-(dmg?2:0);const kit=[];
+      while(rem>0&&kit.length<6){let o=pool.filter(m=>MV[m].dr<=rem&&(kit.length||dmg||first.includes(m)));if(!o.length)break;let tot=0;for(const m of o)tot+=MV[m].wt;let x=frng()*tot,m=o[0];
+        for(const q of o){x-=MV[q].wt;if(x<=0){m=q;break;}}kit.push(m);rem-=MV[m].dr;}
+      if(rem||!kit.length||MV[kit[kit.length-1]].dr<2)continue;
+      if(dmg)kit.unshift('drop2');
+      if((v===1&&kit.length<2)||(v===3&&kit.length<3))continue;
+      const key=kit.join();if(seen.has(key))continue;seen.add(key);out.push(kit);}
+    return out;}
+  // a guard alone on a landing: the fight is the toll of this way (his own stream; not counted against the floor's guards)
+  function forkGuard(){
+    const off=(c+1)%RW;if(off>3&&RW-off<=3&&!flat(RW-off))return false;
+    for(let i=1;i<=7;i++)if(!W(c+i,r))return false;
+    for(let i=1;i<=7;i++)set(c+i,r,FLOOR);
+    const x=frng(),tier=n<=8?(x<0.6?0:1):n<=16?(x<0.2?0:x<0.85?1:2):(x<0.1?1:2);
+    L.guards.push({x:(c+6)*TW+16,r,lo:(c+1)*TW+10,hi:(c+7)*TW+22,hp:gHp(tier),cap:false,tier,reinf:0});extraG++;
+    bot.push({a:'walk',c:c+7});c+=7;run+=7;return true;}
+  // does a damaging shortcut save enough? (Prince of Persia asks a life for a real saving) At least 25% of the way round by the
+  // time a careful player takes, at least 10 tiles of it, by the plan; and at the foot, that it passes an obstacle or guard.
+  function forkWorth(sc,hm,cEnd,vFar){
+    const tilesLong=(vFar-hm)+12+(vFar-cEnd),tilesShort=cEnd-hm,tLong=tilesLong*0.34+4,tShort=estPath(sc,hm-1)+1;
+    return tilesLong-tilesShort>=10&&tLong-tShort>=0.25*tLong;}
+  // the chamber under the run; true when one of the kits fits (otherwise everything it wrote is taken back)
+  function forkChamber(lp,v,hm,vFar){
+    const rUp=lp.rUp,rLow=lp.rLow,D=rLow-rUp,lim=Math.min(hm+FZ,vFar-6),dmg=v===2||v===4;
+    if(r!==rUp||!W(hm-1,rUp)||!W(hm,rUp)||!W(hm+1,rUp))return false;
+    const keep=[rMin,rMax,vHi,run];
+    for(const kit of forkKits(v,D)){
+      jr=[];const s0=snap(),sb=bot.length;let ok=true,lastM=null,gi=-1,nOb=0,gOk=false;
+      rMin=-1e9;rMax=1e9;vHi=lim;
+      set(hm-1,rUp,FLOOR);c=hm-1;r=rUp;run=3;
+      if(v===1)gi=Math.floor(frng()*(kit.length-1));
+      for(let mi=0;mi<kit.length&&ok;mi++){const m=kit[mi],t0=c,r0=r;
+        if(!NEWMV.has(m))run=3;
+        if(!PRIM[m]()){ok=false;break;}
+        if(mi===0){ // the hole: the run goes on past it on firm floor
+          if(!W(hm+1,rUp)){ok=false;break;}
+          set(hm+1,rUp,FLOOR);
+          if(dmg)feat(hm,rUp,{t:'hurtdrop',fork:v});else{const ef=fe(hm,rUp);if(ef)ef.fork=v;else feat(hm,rUp,{t:'loophole',fork:v});}}
+        lastM=m;L.segs.push({k:'fork-'+m,c0:t0,c1:c,r0,r1:r});
+        if(mi<kit.length-1){
+          let reserve=1;for(let j=mi+1;j<kit.length;j++)reserve+=MV[kit[j]].w+(kit[j]==='jumpdown'||kit[j]==='jumpup'?0:1);
+          if(v===1&&mi===gi){const gN=L.segs.length;if(vHi-reserve>=c+12&&forkGuard()&&flat(3)){gOk=true;L.segs.push({k:'fork-guard',c0:c-7,c1:c,r0:r,r1:r});}else ok=false;}
+          else if(v===3){const g0=L.segs.length;if(landingObstacle(lim-reserve,r+2>rLow-2,null,frng,true)){nOb++;for(let q=g0;q<L.segs.length;q++)L.segs[q].k='fork-'+L.segs[q].k;}}
+        }
+      }
+      if(ok&&r===rLow&&(v!==1||gOk)&&(v!==3||nOb>=2)){
+        const lnd=c+LAND[lastM];
+        for(let i=s0.tc;i<touched.length&&ok;i++){const q=touched[i],rr=Math.floor(q/cols);if(rr>=rLow-1&&L.base[q]!==WALL&&PC(q%cols)<lnd)ok=false;}
+        const sc=bot.slice(sb);
+        if(ok&&dmg&&!forkWorth(sc,hm,c,vFar))ok=false;
+        if(ok){bot.length=sb;lp.sc=sc;lp.Xl=PC(c);lp.O=lp.Xl;lp.kit=kit.slice();lp.gs=s0.gd;lp.ge=L.guards.length;lp.sgHole=L.segs.length;forkMirror.push(lp);
+          bot.push({a:'sjump',from:hm-1,to:hm+1,fork:1});lp.holeIdx=bot.length-1;jr=null;rMin=keep[0];rMax=keep[1];vHi=keep[2];r=rUp;return true;}
+      }
+      restore(s0);jr=null;
+    }
+    rMin=keep[0];rMax=keep[1];vHi=keep[2];run=keep[3];return false;}
+  // the grating: a floor tile with bars over a shaft that falls straight to the lower run (no way down; a window)
+  function forkGrate(lp,hm){
+    const rUp=lp.rUp;if(!W(hm-1,rUp)||!W(hm,rUp)||!W(hm+1,rUp))return false;
+    for(let rr=rUp+1;rr<lp.rLow;rr++)if(!W(hm,rr))return false;
+    for(let i=-1;i<=1;i++)set(hm+i,rUp,FLOOR);feat(hm,rUp,{t:'grate',fork:4});
+    for(let rr=rUp+1;rr<lp.rLow;rr++)set(hm,rr,EMPTY);
+    bot.push({a:'walk',c:hm+1});lp.Xl=PC(hm);lp.O=lp.Xl;lp.sc=[];lp.holeIdx=-1;lp.gs=lp.ge=L.guards.length;lp.sgHole=L.segs.length;return true;}
+  // the hole (or grating) in the upper run's floor and the chamber under it (the run's own column space: the hole at hm)
+  function forkTop(lp,vFar){
     const hm=PC(lp.H);if(c>hm-2)return false;
     if(r!==lp.rUp){if(c>hm-4||!down())return false;}
     if(r!==lp.rUp||c>hm-2)return false;
     if(c<hm-2&&!flat(hm-2-c))return false;
-    loopZone(lp,q=>{resv[q]=0;});
-    let ok=W(hm-1,r)&&W(hm,r)&&W(hm+1,r);loopZone(lp,(q,x,rr)=>{if(ok&&!W(PC(x),rr))ok=false;});
-    if(!ok){loopZone(lp,q=>{resv[q]=1;});return false;}
-    set(hm-1,r,FLOOR);set(hm,r,EMPTY);set(hm+1,r,FLOOR);feat(hm,r,{t:'loophole'});
-    for(let j=1;j<lp.rLow-lp.rUp;j++){const a=j%2?hm:hm+1;set(a,r+j,FLOOR);set(j%2?hm+1:hm,r+j,EMPTY);}
-    loopZone(lp,(q,x)=>{if(x===lp.H-lp.dir||x===lp.O+lp.dir)resv[q]=1;}); // the ladder's walls stay walls
-    bot.push({a:'sjump',from:hm-1,to:hm+1,loop:1}); // (marked: a test that takes the hole instead finds it by this)
-    c=hm+1;run=1;lp.ok=true;return true;}
-  // the plate, near the end of the upper run, on the walked line
+    forkZone(lp,q=>{resv[q]=0;});
+    let done=false;
+    if(lp.grate)done=forkGrate(lp,hm);
+    else for(const v of lp.order){if(forkChamber(lp,v,hm,vFar)){lp.v=v;done=true;break;}}
+    if(!done){forkZone(lp,q=>{resv[q]=1;});return false;}
+    forkZone(lp,q=>{if(L.base[q]===WALL)resv[q]=1;}); // the rock around the chamber stays rock
+    lp.p0=prog();c=hm+1;run=1;lp.ok=true;xHold=true;
+    if(lp.v===1&&n>=4&&pend.length<3)pend.push(puzzlePick()); // the long way against a guard: with a puzzle on it
+    return true;}
+  // the plate of the grating's gate, near the end of the upper run, on the walked line
   function loopPlate(lp){
     for(let k=0;k<10&&!lp.plated;k++){
       if(W(c+1,r)&&W(c+2,r)&&W(c+3,r)){for(let i=1;i<=3;i++)set(c+i,r,FLOOR);
         feat(c+2,r,{t:'plate',g:lp.G,press:-9,latch:true,where:'far below',pair:LOOP_PAIR,loop:true});lp.plate={c:PC(c+2),r};
-        bot.push({a:'walk',c:c+3});c+=3;run+=3;lp.plated=true;break;}
+        bot.push({a:'walk',c:c+3});c+=3;run+=3;lp.plated=true;cpHold=true;break;}
       if(!flat(1))break;}
     return lp.plated;}
-  // the foot of the ladder on the lower run, and the gate just past it (the lower run's space: the ladder at La, La+1)
-  function loopFoot(lp){
+  // the foot on the lower run: plain floor where the chamber lands (or, under a grating, the gate and the flask), the run
+  // carrying on (the lower run's space: the chamber's last landing at La)
+  function forkFoot(lp){
     const La=PC(lp.O);if(c>La-4)return false;
     if(r!==lp.rLow){if(r!==lp.rLow-1||c>La-6||!down())return false;}
     if(r!==lp.rLow||c>La-2)return false;
-    for(let xx=c+1;xx<=La+6;xx++)if(!W(xx,r))return false;
-    for(let xx=c+1;xx<=La+6;xx++)set(xx,r,FLOOR);
-    feat(La+4,r,lp.G);lp.gate={c:PC(La+4),r};
-    bot.push({a:'walk',c:La+6});c=La+6;run=3;lp.footed=true;
-    L.loops.push({t:lp.t,H:lp.H,O:lp.O,dir:lp.dir,rUp:lp.rUp,rLow:lp.rLow,gate:lp.gate,plate:lp.plate});
+    for(let xx=c+1;xx<=La+6;xx++)if(raw(xx,r)===WALL)resv[r*cols+PC(xx)]=0; // (the halo kept clear round the chamber's landing is the lower run's own floor)
+    for(let xx=c+1;xx<=La+6;xx++)if(!W(xx,r)&&!(raw(xx,r)===FLOOR&&!fe(xx,r)))return false;
+    if(lp.v===2||lp.v===4){ // a damaging shortcut must pass something on the long way
+      let sk=0;for(let q=lp.sgHole;q<L.segs.length;q++){const k=L.segs[q].k;if(!/^(turn-|fork-)/.test(k)&&!MOVES.has(k))sk++;}
+      if(!sk&&!lp.grate)return false;}
+    for(let xx=c+1;xx<=La+6;xx++)if(W(xx,r))set(xx,r,FLOOR);
+    if(lp.grate){feat(La-3,r,lp.G);lp.gate={c:PC(La-3),r};
+      L.items.push({c:La+1,r,x:(La+1)*TW+16,type:L.bigFlask?'heal':'big',taken:false,fork:true});if(!L.bigFlask)L.bigFlask=true;}
+    bot.push({a:'walk',c:La+6});c=La+6;run=3;lp.footed=true;cpHold=false;xHold=false;lp.footIdx=bot.length;
+    const sc=lp.sc||[],tilesLong=prog()-lp.p0,tilesShort=Math.abs(lp.Xl-lp.H)+1;
+    L.forks.push({t:lp.t,v:lp.v,grate:lp.grate,dir:lp.dir,H:lp.H,Xl:lp.Xl,O:lp.O,rUp:lp.rUp,rLow:lp.rLow,hp:(lp.v===2||lp.v===4)&&!lp.grate?1:0,sc,holeIdx:lp.holeIdx,footIdx:lp.footIdx,
+      guards:[lp.gs,lp.ge],kit:lp.kit,gate:lp.gate,plate:lp.plate,tilesLong,tilesShort,
+      tLong:Math.round(estPath(bot.slice(lp.holeIdx+1,lp.footIdx),PC(lp.H)+1)*10)/10,tShort:Math.round(estPath(sc,PC(lp.H)-1)*10)/10});
     return true;}
   // ---- the puzzle menu: where the plate is (P1..P5) and where its gate stands (G1..), chosen separately ----
   // A pair is a name like 'P2G1'. Weights are per roll of the puzzle option (about the old 0.22 detour + 0.08 double); a
@@ -1311,7 +1404,7 @@ function buildLevel(n,seed,test,legacy,att){
   // plate goes back to plain floor.
   const REM=[['P4',0.4,6],['P5',0.3,4],['P1',0.3,5]];
   function remoteRoll(k){
-    if(att<0||legacy||k>=runs.length-1||k===plan.chaseRun||loopAt.has(k)||loopAt.has(k-1))return null;
+    if(att<0||legacy||k>=runs.length-1||k===plan.chaseRun||forkAt.has(k)||forkAt.has(k-1))return null;
     const forced=typeof window!=='undefined'&&window.__PZ;
     const o=REM.filter(m=>n>=m[2]&&(!forced||forced===m[0]));if(!o.length)return null;
     if(!forced&&zr()>=0.03)return null;
@@ -1334,7 +1427,7 @@ function buildLevel(n,seed,test,legacy,att){
       if(!flat(1))break;}
     return false;}
   const runs=plan.runs;let entryP=-1,prevKit=null,planBase=0;const pend=[];L.runsInfo=[];
-  for(const lp of loopAt.values())loopZone(lp,q=>{resv[q]=1;});
+  for(const lp of forkAt.values())forkZone(lp,q=>{resv[q]=1;});
   for(let k=0;k<runs.length;k++){
     const rn=runs[k],dir=rn.dir,R0=bandRow(rn.band),first=k===0,last=k===runs.length-1,endRoom=rn.rooms[rn.rooms.length-1];
     if(first)entryP=dir>0?roomLo(rn.rooms[0])+1:roomHi(rn.rooms[0])-1;
@@ -1349,35 +1442,36 @@ function buildLevel(n,seed,test,legacy,att){
     }
     let target=R0,iter=0;let vHiRun=last?vFar-14:vFar-3; // room to settle before the turn; the last run ends on open floor before the door
     // a loop's pieces come at set places: the run is built up to each (vHi held short of it), then the piece goes in
-    const stops=[],upL=loopAt.get(k),loL=loopAt.get(k-1);
-    if(upL){stops.push({at:PC(upL.H)-5,fn:()=>loopTop(upL),k:'loop-top'});stops.push({at:vFar-12,fn:()=>!upL.ok||loopPlate(upL),k:'loop-plate'});}
-    if(loL&&loL.ok)stops.push({at:PC(loL.O)-6,fn:()=>loopFoot(loL),k:'loop-foot'});
+    const stops=[],upL=forkAt.get(k),loL=forkAt.get(k-1);
+    if(upL){stops.push({at:PC(upL.H)-5,fn:()=>forkTop(upL,vFar),k:'fork-top'});if(upL.grate)stops.push({at:vFar-12,fn:()=>!upL.ok||loopPlate(upL),k:'fork-plate'});}
+    if(loL&&loL.ok)stops.push({at:PC(loL.O)-6,fn:()=>forkFoot(loL),k:'fork-foot'});
     const rem=remoteRoll(k);if(rem)stops.push({at:vFar-3-remAt(rem.nm),fn:()=>remotePlate(rem),k:'rem-plate'});
     stops.sort((a,b)=>a.at-b.at);
     // (the last run has rooms in hand: it stops once the route is as long as planned and the floor has at least nine
     // tenths of the traps a floor this long used to hold, so a floor whose side passages took much of its length
     // doesn't come out short)
     // (the corridor fill doesn't count: the route must not end sooner for it)
-    const trapsNow=()=>{let t=0;for(const q of L.segs)if(!q.corr&&!MOVES.has(q.k)&&!q.k.startsWith('turn-')&&!q.k.startsWith('loop-')&&q.k!=='puzzle'&&q.k!=='rem-plate')t++;return t;};
+    const trapsNow=()=>{let t=0;for(const q of L.segs)if(!q.corr&&!MOVES.has(q.k)&&!q.k.startsWith('turn-')&&!q.k.startsWith('fork-')&&q.k!=='puzzle'&&q.k!=='rem-plate')t++;return t;};
     const LAST_EXTRA=38; // (the puzzle menu changes which turns and obstacles a floor draws; the last run is held a little long so no floor comes out shorter than before)
     const lastStop0=Math.max(progBase,planBase)+(rn.cap+(first?2:0)),trapTarget=Math.floor(routeT*(n<=5?0.095:n<=8?0.085:0.08));
     for(;;){const st=stops.length?stops[0]:null;vHi=st?Math.min(vHiRun,st.at):vHiRun;
     while(c<vHi&&iter++<5000){
       if(last&&prog()>=lastStop0+loopUsed+LAST_EXTRA&&trapsNow()>=trapTarget)break;
       if(chaseWanted&&!L.ext.chase&&k===plan.chaseRun&&MX<0&&vHi-c>=60&&c-cEntry>=6){
-        if(raw(c,r)===FLOOR&&!fe(c,r)&&!L.cps.some(q=>prog()-q.ord<12)){L.cps.push({c,r,x:c*TW+16,on:false,ord:prog()});nextCp=prog()+CP_GAP;}
+        if(!cpHold&&raw(c,r)===FLOOR&&!fe(c,r)&&!L.cps.some(q=>prog()-q.ord<12)){L.cps.push({c,r,x:c*TW+16,on:false,ord:prog()});nextCp=prog()+CP_GAP;}
         {const c0=c,r0=r;if(chaseSeg()){L.segs.push({k:'chase',c0,c1:c,r0,r1:r});breathe();continue;}}}
       if(!secretDone&&prog()>=secretAt&&prog()<routeT*0.9&&c-cEntry>=8){const c0=c,r0=r,g0=ch(0.5);if(sideTry(secretPassage,g0)){secretDone=true;L.segs.push({k:'secret',c0,c1:c,r0,r1:r});breathe();continue;}}
-      if(!xDone&&prog()>routeT*0.82&&W(c+1,r)&&W(c+2,r)){
+      if(!xDone&&!xHold&&prog()>routeT*0.82&&W(c+1,r)&&W(c+2,r)){
         set(c+1,r,FLOOR);set(c+2,r,FLOOR);feat(c+1,r,{t:'xplate',press:-9});
         bot.push({a:'walk',c:c+2});c+=2;run+=2;xDone=true;continue;
       }
       if(L.guards.length-extraG<guardsWanted&&prog()-lastGuard>=guardGap&&c+12<vHi){const c0=c,r0=r,sk=style==='crypt'&&ch(0.5);if(sk?skeleton():guard()){L.segs.push({k:sk?'skel':'guard',c0,c1:c,r0,r1:r});flat(1);breathe();continue;}}
       if(pend.length&&c-cEntry>=8&&vHi-c>=30){const c0=c,r0=r,nm=pend[0],sg=puzzleTry(nm);if(sg){pend.shift();L.segs.push({k:sg,puz:nm,c0,c1:c,r0,r1:r});breathe();continue;}}
-      if(prog()>=nextCp&&c<vHi-12&&raw(c,r)===FLOOR&&!fe(c,r)&&!L.items.some(it=>it.c===c&&it.r===r)){L.cps.push({c,r,x:c*TW+16,on:false,ord:prog()});nextCp=Math.max(nextCp+CP_GAP,prog()+CP_GAP*0.7);}
+      if(!cpHold&&prog()>=nextCp&&c<vHi-12&&raw(c,r)===FLOOR&&!fe(c,r)&&!L.items.some(it=>it.c===c&&it.r===r)){L.cps.push({c,r,x:c*TW+16,on:false,ord:prog()});nextCp=Math.max(nextCp+CP_GAP,prog()+CP_GAP*0.7);}
       if(r===target||ch(0.08))target=ri(rMin,rMax);
       const opts=[];const add=(w,f,kd)=>{if(w>0)opts.push([w,f,kd]);};
-      add(run<2?4:1.4,()=>flat(ri(1,3)),'flat');
+      const easy=!!(upL&&upL.ok&&upL.v===3&&c>PC(upL.H)); // the long way of a dense fork is the easy one: more plain floor, no puzzles
+      add((run<2?4:1.4)*(easy?2.5:1),()=>flat(ri(1,3)),'flat');
       add(n<=2?2.2:1.5,()=>gap(1),'gap1');
       if(n>=2)add(1.3,()=>gap(2),'gap2');
       if(n>=4)add(0.9,()=>gap(3),'gap3');
@@ -1389,7 +1483,7 @@ function buildLevel(n,seed,test,legacy,att){
       if(n>=3)add(1.0,()=>loose(n>=5&&ch(0.45)?2:1),'loose');
       if(n>=4)add(0.9,chomp,'chomp');
       if(n>=3)add(0.75,gate,'gate');
-      if(n>=4&&!(typeof window!=='undefined'&&REM.some(m=>m[0]===window.__PZ)))add((n>=7?0.30:0.22)*PZ_W,()=>{const nm=puzzlePick();if(c-cEntry>=8&&vHi-c>=30){const sg=puzzleTry(nm);if(sg){puzzleSeg=sg;puzzleNm=nm;return true;}}
+      if(n>=4&&!(typeof window!=='undefined'&&REM.some(m=>m[0]===window.__PZ)))add((n>=7?0.30:0.22)*PZ_W*(easy?0:1),()=>{const nm=puzzlePick();if(c-cEntry>=8&&vHi-c>=30){const sg=puzzleTry(nm);if(sg){puzzleSeg=sg;puzzleNm=nm;return true;}}
         if(pend.length<3)pend.push(nm);return false;},'puzzle');
       if(n>=6)add(0.3,swingSeg,'swing');
       if(n>=5)add(0.1,sawSeg,'saw');
@@ -1414,10 +1508,10 @@ function buildLevel(n,seed,test,legacy,att){
     }
     if(!st)break;
     stops.shift();vHi=vHiRun;{const c0=c,r0=r;
-      if(st.fn()){if(c!==c0){L.segs.push({k:st.k,c0:st.k==='rem-plate'&&rem.c0!==undefined?rem.c0:c0,c1:c,r0,r1:r});if(st.k==='rem-plate')vHiRun=Math.min(vHiRun,c);else{if(st.k!=='loop-plate')breathe();loopUsed+=c-c0;}}}
-      else if(st.k==='loop-foot'||st.k==='loop-plate')loopFail=true;}
+      if(st.fn()){if(c!==c0){L.segs.push({k:st.k,c0:st.k==='rem-plate'&&rem.c0!==undefined?rem.c0:c0,c1:c,r0,r1:r});if(st.k==='rem-plate')vHiRun=Math.min(vHiRun,c);else{if(st.k!=='fork-plate')breathe();loopUsed+=c-c0;}}}
+      else if(st.k==='fork-foot'||st.k==='fork-plate')loopFail=true;}
     }
-    if(upL&&upL.ok&&!upL.plated)loopFail=true; // a gate with no plate: start the floor again
+    if(upL&&upL.ok&&upL.grate&&!upL.plated)loopFail=true; // a gate with no plate: start the floor again
     if(loopFail)return null;
     if(last&&c<vHiRun-20&&prog()<lastStop0+loopUsed+LAST_EXTRA)return null; // the last run boxed in (a reserved cell ahead) with room to spare: lay the floor out again, so no floor comes out short
     vHi=vFar;
@@ -1457,7 +1551,7 @@ function buildLevel(n,seed,test,legacy,att){
   if(!secretDone){ // no room for a hidden passage: fall back to a gold flask in an alcove near the end
     for(let k=0;k<L.items.length;k++){const it=L.items[k];if(it.alc){it.type='life';secretDone=true;break;}}}
   // thin out flasks: the gold flask always stays; every other flask keeps FLASK_GAP tiles of route from any kept one (alcoves before floor flasks)
-  {const FLASK_GAP=Math.round(35*PKW),kept=[],rank=it=>it.type==='life'?0:it.type==='big'?1:it.alc?2:3;
+  {const FLASK_GAP=Math.round(35*PKW),kept=[],rank=it=>it.type==='life'?0:(it.type==='big'||it.fork)?1:it.alc?2:3;
     for(const it of L.items.slice().sort((a,b)=>rank(a)-rank(b)||a.ord-b.ord))if(kept.every(k=>Math.abs(k.ord-it.ord)>=FLASK_GAP))kept.push(it);
     L.items=L.items.filter(it=>kept.includes(it));}
   // open a hall over everything the prince moves through: one row of headroom above every floor, gap and shaft top.
@@ -2137,7 +2231,8 @@ function tryUp(){
 }
 function edgeBelow(){
   const r=pRow(),c=pCol();if(r+1>=L.rows)return null;
-  for(const s of [P.face,-P.face]){const hc=c+s;if(B(L,hc,r)!==EMPTY||B(L,hc,r+1)===WALL)continue;const xe=s>0?(c+1)*TW:c*TW;if(Math.abs(P.x-xe)>26)continue;return {s,xe,c,r};}
+  for(const s of [P.face,-P.face]){const hc=c+s;if(B(L,hc,r)!==EMPTY||B(L,hc,r+1)===WALL)continue;{const hf=F(L,hc,r);if(hf&&hf.t==='hurtdrop')continue;} // (a broken lip: nothing to hang from)
+    const xe=s>0?(c+1)*TW:c*TW;if(Math.abs(P.x-xe)>26)continue;return {s,xe,c,r};}
   return null;
 }
 function tryDown(){
@@ -2792,8 +2887,10 @@ const HINTS={
   block:'A loose block. Hold Grab and press toward it to push, away to pull. Its weight holds a plate down for good, and you can climb over it.',
   chase:'A sandstorm. Keep running and jump everything in your way; the arch at the far end stops it.',
   secret:'Something glints up there. Side passages without gates hide gold flasks.',
-  shortcut:'A hole in the floor with ledges below it: a quick way down. Drop in, or jump it and go the long way round.',
-  loopgate:'A violet gate. It opens from the violet plate, which lies on the long way round. The ledges beside it climb back up to where you dropped in.',
+  fork1:'Two ways on. Drop through the hole and fight a guard, or jump it and take the long way with its traps.',
+  fork3:'Two ways on. The hole is short but crowded with traps; the long way round is quieter.',
+  fork4:'A grating over a deep shaft. There is no way through. Something waits below, behind a violet gate.',
+  loopgate:'A violet gate. It opens from the violet plate, which lies on the long way round.',
   slabplate:'A loose slab hangs in the gallery over this plate. Run across it up there and it falls and holds the plate down.',
   slabgate:'This gate shuts the moment the plate is let go. Something heavy must hold the plate down: look for a loose slab above it.',
   slabcloser:'A closing plate too wide to jump. A loose slab hangs in the gallery above it: let it fall and the plate is jammed.',
@@ -2814,7 +2911,7 @@ function checkHints(){
     let c=pCol();
     for(let i=1;i<=2;i++){const nc=c+P.face*i;const f=F(L,nc,r);
       if(B(L,nc,r)===WALL)break;
-      if(f&&f.t==='loophole'){hint('shortcut');break;}
+      if(f&&f.fork&&HINTS['fork'+f.fork]&&f.t!=='hurtdrop'){hint('fork'+f.fork);break;}
       if(f&&f.t==='jgrab'){hint('jgrab');break;}
       if(f&&f.t==='hurtdrop'){hint('hurtdrop');break;}
       if(!solidBelow(L,nc,r)){let w=0;for(let k=0;k<4;k++){if(!solidBelow(L,nc+P.face*k,r)&&B(L,nc+P.face*k,r)!==WALL)w++;else break;}
@@ -2987,14 +3084,34 @@ function drawRoomStatic(g,rx,ry,stage){
   // 4. floors: walking surface, front lip and open ends
   each((gc,gr,X,Y)=>{
     if(B(L,gc,gr)===WALL||!solidBelow(L,gc,gr))return;
-    const f=F(L,gc,gr);if(f&&((f.t==='loose'&&f.s<2)||f.t==='plate'||f.t==='xplate'||f.t==='lplate'||f.t==='closer'))return;
+    const f=F(L,gc,gr);if(f&&((f.t==='loose'&&f.s<2)||f.t==='plate'||f.t==='xplate'||f.t==='lplate'||f.t==='closer'||f.t==='grate'))return;
     const lo=B(L,gc-1,gr)!==WALL&&!solidBelow(L,gc-1,gr),ro=B(L,gc+1,gr)!==WALL&&!solidBelow(L,gc+1,gr);
     const ys=Y+TH-4;slab(g,X,ys,th,lo,ro,gc,gr,B(L,gc+1,gr)===WALL);
     if(f&&f.t==='spikes'){g.fillStyle='rgba(7,5,11,.8)';const m=gc%2?-1:1;for(const [bx,d] of SPK){const q=onFloor(X+16+m*(bx-16),d,ys);g.beginPath();g.ellipse(q.x,q.y,2.2,0.9,0,0,Math.PI*2);g.fill();}}
     if(L.rubble.has(gr*L.cols+gc)){const rnd=mulberry32(hash2(gc,gr+77));for(let i=0;i<6;i++){g.fillStyle=i%2?th.front:th.lo;const q=onFloor(X+4+rnd()*24,0.2+rnd()*0.6,ys),w=2+rnd()*4;g.fillRect(q.x,q.y-1,w,1.6+rnd()*1.2);}}
   });
+  // the damaging drop (a hole two storeys deep with no grip on its lip): ragged, bitten edges on both sides, a darker shaft
+  // and a pile of the fallen stone on the floor it lands on. Drawn from the tile type, so every such drop looks the same.
+  each((gc,gr,X,Y)=>{
+    const f0=F(L,gc,gr),fu=F(L,gc,gr-1),fu2=F(L,gc,gr-2);
+    if((fu&&fu.t==='hurtdrop')||(fu2&&fu2.t==='hurtdrop')){ // the shaft: the two empty cells
+      const hh=fu&&fu.t==='hurtdrop'?TH:TH-18,sg=g.createLinearGradient(0,Y,0,Y+hh);sg.addColorStop(0,'rgba(4,3,8,.5)');sg.addColorStop(1,'rgba(4,3,8,.68)');g.fillStyle=sg;g.fillRect(X-HX,Y,TW+DX,hh);}
+    if(fu2&&fu2.t==='hurtdrop'&&B(L,gc,gr)!==WALL){drawHeap(g,{c:gc,r:gr},X,Y+TH-4,th,true);}
+    if(B(L,gc,gr)===WALL||!solidBelow(L,gc,gr))return;
+    const fr2=F(L,gc+1,gr),fl2=F(L,gc-1,gr),rh=fr2&&fr2.t==='hurtdrop',lh=fl2&&fl2.t==='hurtdrop';
+    if(!rh&&!lh)return;
+    const ys=Y+TH-4,fx=X-HX,ft=ys+HY,rnd=mulberry32(hash2(gc*5+1,gr*7+3));
+    g.fillStyle='rgba(4,3,8,.92)';
+    // bites out of the lip and the surface at the broken end: jagged triangles of different sizes
+    for(let i=0;i<5;i++){const w=3+rnd()*5,hgt=2+rnd()*4,yy=ft+rnd()*5,ex=rh?fx+TW:fx; // (right end / left end)
+      const dir=rh?-1:1;g.beginPath();g.moveTo(ex,yy);g.lineTo(ex+dir*w,yy+hgt*0.4);g.lineTo(ex+dir*w*0.3,yy+hgt);g.lineTo(ex,yy+hgt*0.7);g.closePath();g.fill();}
+    for(let i=0;i<4;i++){const q=onFloor((rh?X+TW-2:X+2)-(rh?1:-1)*rnd()*9,0.1+rnd()*0.85,ys),w=2+rnd()*4;
+      g.beginPath();g.moveTo(q.x,q.y);g.lineTo(q.x+(rh?w:-w),q.y+1.6);g.lineTo(q.x+(rh?w*0.4:-w*0.4),q.y-1.5);g.closePath();g.fill();}
+    g.strokeStyle='rgba(255,255,255,.14)';g.lineWidth=0.7;g.beginPath();const ex2=rh?fx+TW-6:fx+6;g.moveTo(ex2,ft);g.lineTo(ex2+(rh?2:-2),ft+3);g.lineTo(ex2+(rh?-1:1),ft+FHH);g.stroke();
+  });
   drawBreachRubble(g,rx,ry,th);drawFallen(g,rx,ry,th);
 }
+const FHH=5;
 // ---- breaches: where a stretch of the keep has partly fallen, holes have opened right through its back wall ----
 // Modelled on how brick and block walls actually fail rather than drawn as shapes: the masonry over a gap stays up by
 // arching, so what comes down is the stepped, roughly 45-degree triangle above it and the hole's top is a corbelled
@@ -4034,7 +4151,7 @@ function drawPlank(ctx,X,ys,sh){
 }
 // a flat piece set into a floor's walking surface (plates), raised by lift
 // the slab that fell on a plate: broken chunks lying on it, one tilted, with chips round about
-function drawHeap(ctx,o,X,ys,th){if(!L.rubble.has(o.r*L.cols+o.c))return;const rnd=mulberry32(hash2(o.c,o.r+91));
+function drawHeap(ctx,o,X,ys,th,force){if(!force&&!L.rubble.has(o.r*L.cols+o.c))return;const rnd=mulberry32(hash2(o.c,o.r+91));
   ctx.fillStyle='rgba(0,0,0,.35)';{const q=onFloor(X+16,0.5,ys);ctx.beginPath();ctx.ellipse(q.x,q.y+1,15,4.2,0,0,6.2832);ctx.fill();}
   const chunk=(x0,x1,d0,d1,h0,h1,col,side)=>{const a=onFloor(x0,d0,ys),b=onFloor(x1,d0,ys),c2=onFloor(x1,d1,ys),d=onFloor(x0,d1,ys);
     ctx.lineWidth=0.9;ctx.strokeStyle='#0b0812';
@@ -4291,6 +4408,12 @@ function drawDynamic(ctx,x0,x1,y0,y1){
           ctx.fillStyle='#8d94a2';ctx.beginPath();ctx.moveTo(x+0.15,b);ctx.lineTo(tx,tip);ctx.lineTo(x+1.3,b);ctx.fill();}
         break;}
       case'gate':drawGate(ctx,f,X,Y,ys,0);break;
+      case'grate':{ // an iron grating over a shaft: you see the dark below through the bars
+        floorQuad(ctx,X,X+TW,0,1,ys,0);ctx.fillStyle='#04030a';ctx.fill();
+        ctx.strokeStyle='#0b0812';ctx.lineWidth=2.4;ctx.beginPath();for(let i=0;i<6;i++){const a=onFloor(X+3+i*5.2,0.04,ys),b=onFloor(X+3+i*5.2,0.96,ys);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}ctx.stroke();
+        ctx.strokeStyle='#8f95a3';ctx.lineWidth=1.1;ctx.stroke();
+        ctx.strokeStyle='#0b0812';ctx.lineWidth=2;for(const d of [0.04,0.5,0.96]){const a=onFloor(X,d,ys),b=onFloor(X+TW,d,ys);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.strokeStyle='#6d7280';ctx.lineWidth=0.9;ctx.stroke();ctx.strokeStyle='#0b0812';ctx.lineWidth=2;}
+        break;}
       case'chomp':drawJaws(ctx,o,f,X,Y,ys,0);break;
     }
     if(cut)ctx.restore();
