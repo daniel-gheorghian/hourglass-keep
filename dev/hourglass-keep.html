@@ -598,6 +598,7 @@ function buildLevel(n,seed,test,legacy,att){
     if(pl&&pl.gal){for(const p of pl.parts){const s0=x0+p.off;
       if(p.k==='gap1')hole(s0+1,1);else if(p.k==='gap2'||p.k==='skel')hole(s0+3,2);else if(p.k==='loose'||p.k==='bridge')hole(s0+3,p.m);}
       if(pl.chain)hole(x0+pl.chainOff,5);}
+    if(pl&&pl.ban)for(const x of pl.ban)ban.add(x);
     const hits=(a,b)=>{for(let i=a;i<=b;i++)if(ban.has(i))return true;return false;};
     const sv={c,run,vHi,lg:lastGuard,sr:sinceRest,ra:restAt};vHi=Math.min(vHi,cEnd);calm=true;rngX=crng;sinceRest=-99; // (no long rests in here)
     let guardIn=false,tries=0;
@@ -672,6 +673,49 @@ function buildLevel(n,seed,test,legacy,att){
     bot.push({a:'walk',c:c+len});
     let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&xx!==ec&&xx!==ec+1&&xx!==g1c&&xx!==g2c&&ch(0.45)){if(raw(xx,r)===FLOOR&&!fe(xx,r))L.torches.push({c:xx,r});lt=xx;}
     L.detours=(L.detours||[]);L.detours.push({double:true,tg,c,len,ec,eg,g1c,g2c,r,dur:G2.dur,kindsG:pg.kinds.slice(),kindsC:pc.kinds.slice()});
+    c+=len;run=2;return true;
+  }
+
+  // ---- puzzles of the plate-opens-a-gate kind in other shapes (see the menu at puzzlePick) ----
+  // The puzzles' own random stream, so the floor's other draws are left alone.
+  const zrng=mulberry32(hash2(seed,8209)),zr=()=>zrng(),zi=(a,b)=>a+Math.floor(zr()*(b-a+1));
+  // A fill of ordinary obstacles for a stretch of corridor that a puzzle leaves between its parts; the bot's actions for it
+  // are taken out and returned (the puzzle puts them where the bot reaches that stretch).
+  function fillAside(c0,cEnd,pl){
+    const sv={c,run},n0=bot.length;c=c0;run=2;fillCorridor(cEnd,0,pl,0);const acts=bot.splice(n0);c=sv.c;run=sv.run;return acts;}
+  // Slab puzzles (Prince of Persia levels 4, 5, 9, 11). In the gallery one storey above the corridor a loose tile hangs over
+  // a plate of the corridor below. Run over the tile, it falls behind you, and the slab on the plate holds it down for good.
+  //  p2: the plate itself opens a gate far along the corridor; the gate drops too fast to outrun (it stays open only while the
+  //      plate is held), so the slab is the one way to get through.
+  //  p3: an ordinary latched plate and its gate, but four closing plates lie in front of the gate (too wide to jump, measured:
+  //      a running jump carries about 3.1 tiles); the slab on one of them jams the lot.
+  function slabGate(kind){
+    const p3=kind==='p3';
+    if(r<3)return false;
+    const e=c+6+zi(0,5);let lc,gc,pl=0,nookEnd,jumpTo;
+    if(p3){gc=e+9+zi(0,3);lc=gc-3;pl=e+3+zi(0,gc-9-e);nookEnd=gc-1;}
+    else{lc=e+3+zi(0,2);gc=lc+10+zi(0,3);nookEnd=lc+2;}
+    const len=gc+1-c;
+    if(c+len>vHi)return false;
+    if(!rectOk(c+1,c+len,r-3,r))return false;
+    fillCorridor(e-3,1e9,null,0);
+    const post=p3?[]:fillAside(lc+1,gc-4,{gal:true,parts:[],ban:[lc-1,lc+1]});
+    for(let xx=c+1;xx<=c+len;xx++)set(xx,r,FLOOR);
+    set(e,r-1,EMPTY);set(e+1,r-1,FLOOR);set(e+1,r-2,EMPTY); // the stair up into the gallery
+    for(let xx=e+2;xx<=nookEnd;xx++)set(xx,r-2,FLOOR);
+    const lf={t:'loose',s:0,tm:0};feat(lc,r-2,lf);
+    if(p3){
+      const g={t:'gate',open:0,tm:0,dur:0,latch:true};feat(gc,r,g);
+      feat(pl,r,{t:'plate',g,press:-9,latch:true,near:true});
+      const cl={t:'closer',g,press:-9,jam:0,slabF:lf};for(let q=1;q<=4;q++)feat(gc-q,r,cl);
+    }else{
+      const g={t:'gate',open:0,tm:0,dur:0.2,latch:false,blockGate:true,slab:true,far:true};feat(gc,r,g);
+      feat(lc,r,{t:'plate',g,press:-9,latch:false,jam:0,slabF:lf});
+    }
+    bot.push({a:'walk',c:e},{a:'climb',from:e},{a:'climb',from:e+1},{a:'runover',from:e+2,to:nookEnd},{a:'sjump',from:lc+1,to:lc-1,dir:-1},
+      {a:'walk',c:e+2},{a:'hangdrop',from:e+2,dir:-1},{a:'drop',from:e+1,dir:-1},...post,{a:'walk',c:gc+1});
+    let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&xx!==gc&&zr()<0.45){if(raw(xx,r)===FLOOR&&!fe(xx,r))L.torches.push({c:xx,r});lt=xx;}
+    L.detours=(L.detours||[]);L.detours.push({puz:p3?'P3G1':'P2G1',c,len,e,lc,gc,r});
     c+=len;run=2;return true;
   }
   // ---- vertical moves ----
@@ -1119,7 +1163,7 @@ function buildLevel(n,seed,test,legacy,att){
   // fewer timed side-passage gates: about two in five of them are let stay open once their plate is found (decided by a
   // hash, so the layout itself does not change)
   for(const o of L.dyn){const g=o.f;if(g.t!=='gate'||!g.far||g.latch||g.pair!==undefined||!(g.dur>0))continue;
-    if(hash2((seed|0)+o.c*5,o.r*17+n)%100<62){g.latch=true;g.dur=0;for(const q of L.dyn)if(q.f.t==='plate'&&q.f.g===g)q.f.latch=true;
+    if(!g.slab&&hash2((seed|0)+o.c*5,o.r*17+n)%100<62){g.latch=true;g.dur=0;for(const q of L.dyn)if(q.f.t==='plate'&&q.f.g===g)q.f.latch=true;
       for(const dd of L.detours||[])if(dd.timed&&dd.r===o.r&&o.c>=dd.c0&&o.c<=dd.c1){dd.timed=false;dd.dur=0;}}}
   rebuildBlocks(L);
   settleLevel(L);
@@ -1623,7 +1667,7 @@ function startLevel(n,cpIdx){
   if((S.lifeTaken||[]).includes(n))for(const it of L.items)if(it.type==='life')it.taken=true;
   if(cpIdx>=0&&L.cps[cpIdx]){const cp=L.cps[cpIdx];for(let i=0;i<=cpIdx;i++)L.cps[i].on=true;L.cpIndex=cpIdx;P.x=cp.x;P.y=SURF(cp.r);P.fallY=P.y;const before=(sp,x)=>sp&&sp.ord!==undefined&&cp.ord!==undefined?sp.ord<cp.ord:x<cp.x;
     // plates pressed before the checkpoint stay pressed: the floor is rebuilt, so press them again and leave their gates open
-    const pd=new Set(S.cpPlates||[]);for(const o of L.dyn)if(o.f.t==='plate'&&o.f.latch&&pd.has(o.c+','+o.r)){o.f.g.tm=Infinity;o.f.g.open=1;o.f.told=1;}
+    const pd=new Set(S.cpPlates||[]);for(const o of L.dyn){const k=o.c+','+o.r;if(o.f.t==='plate'&&(o.f.latch||o.f.slabF)&&pd.has(k)){if(o.f.slabF)jamRestore(o);o.f.g.tm=Infinity;o.f.g.open=1;o.f.told=1;}else if(o.f.t==='closer'&&o.f.slabF&&pd.has(k))jamRestore(o);}
     G.forEach((g,i)=>{if(before(L.guards[i],g.x)){g.alive=false;g.gone=true;}});SN.forEach((sn,i)=>{if(before(L.snakeSpecs[i],sn.hi)){sn.alive=false;sn.gone=true;}});}
   FX.length=0;STORMG.length=0;clearRooms();hitStop=0;banner=null;
   levelTime=S.floorTime||0;
@@ -1825,7 +1869,15 @@ function gateMsg(f){const nm=f.pair!==undefined?'The '+PAIRN[f.pair]+' gate':'A 
   return nm+' grinds open '+f.where+', but its sand is running. Get back before it shuts.';}
 // a passage's crumbling chain and ambush wake the first time its plate (or prize) is reached
 // the latching plates pressed so far on this floor (their gates stand open for good), as "c,r" keys
-function pressedPlates(){return L.dyn.filter(o=>o.f.t==='plate'&&o.f.latch&&o.f.g.tm===Infinity).map(o=>o.c+','+o.r);}
+function pressedPlates(){return L.dyn.filter(o=>(o.f.t==='plate'&&o.f.latch&&o.f.g.tm===Infinity)||(o.f.t==='closer'&&o.f.jam)).map(o=>o.c+','+o.r);}
+// A loose slab that lands on a plate presses it for good (the rubble stays on it); one that lands on a closing plate
+// jams it, and it no longer slams its gate (Prince of Persia levels 4, 5, 9 and 11).
+function jamAt(c,r){const f=F(L,c,r);if(!f||f.jam||(f.t!=='plate'&&f.t!=='closer'))return;f.jam=1;f.press=gameTime;
+  if(f.t==='plate'){f.latch=true;f.g.latch=true;f.near=true;pressPlate(f);msg('The slab lands on the plate and holds it down. A gate grinds open and stays open.',3.6);}
+  else msg('The slab jams the closing plate. It will not spring now.',3.4);}
+// (a floor rebuilt after a checkpoint: a jam made before it is made again, the slab already fallen)
+function jamRestore(o){const f=o.f;if(!f.slabF)return;f.jam=1;f.press=-9;if(f.t==='plate'){f.latch=true;f.g.latch=true;}
+  const sl=L.dyn.find(q=>q.f===f.slabF);if(sl){sl.f.s=2;L.base[sl.r*L.cols+sl.c]=EMPTY;}L.rubble.add(o.r*L.cols+o.c);}
 function pressPlate(f){if(f.g.tm<=0&&f.g.open<0.05)Snd.play('gate');f.press=gameTime;
   if(f.latch){if(f.g.tm!==Infinity){f.g.tm=Infinity;Snd.play('door');if(!f.chain&&!f.near)msg(gateMsg(f),3.4);}}
   else{if(f.where&&!f.told){f.told=1;if(!f.chain)msg(gateMsg(f),3.8);}f.g.tm=f.g.dur;f.g.slam=false;}
@@ -1853,7 +1905,7 @@ function standOn(){
     if(f.t==='loose')triggerLoose(f);
     else if(f.t==='plate')pressPlate(f);
     else if(f.t==='trigger')armPassage(f);
-    else if(f.t==='closer'){f.press=gameTime;if(f.g.tm>0||f.g.open>0.05){f.g.tm=0;f.g.slam=true;Snd.play('gate');shake(0.9);hint('closer');}}
+    else if(f.t==='closer'&&!f.jam){f.press=gameTime;if(f.g.tm>0||f.g.open>0.05){f.g.tm=0;f.g.slam=true;Snd.play('gate');shake(0.9);hint('closer');}}
     else if(f.t==='xplate'){f.press=gameTime;if(!L.door.opening&&L.door.open<1){L.door.opening=true;msg('A heavy door grinds open somewhere on this floor.',3.4);Snd.play('door');}}
   }
   for(let i=0;i<L.cps.length;i++){const cp=L.cps[i];if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<14){cp.on=true;L.cpIndex=i;S.cp=i;S.floorTime=levelTime;S.cpPlates=pressedPlates();const fill=(S.sands|0)<SANDS;S.sands=SANDS;writeSave();msg(fill?'The hourglass turns and your glass fills. If you fall, you rise here.':'The hourglass turns. If you fall, you rise here.',3.2);Snd.play('cp');sparks(cp.x,SURF(cp.r)-22,10,'#e8c47f');}}
@@ -2305,7 +2357,7 @@ function updateFeatures(dt){
     d.vy=Math.min(d.vy+GRAV*dt,480);const py=d.y;d.y+=d.vy*dt;
     if(!d.hitP&&alive&&Math.abs(P.x-d.x)<11&&d.y>P.y-48&&d.y-8<P.y&&!['air'].includes(P.state)&&py<P.y-20){d.hitP=true;hurt(1,'crush');if(P.state!=='dead'&&!['hang','climb'].includes(P.state)){setState('landHurt');}}
     let landed=false;
-    for(let r=Math.floor((py+4)/TH);r<=Math.floor((d.y+4)/TH)-1;r++){const ys=SURF(r);if(py<ys&&d.y>=ys&&solidBelow(L,d.c,r)){landed=true;if(B(L,d.c,r)===FLOOR)L.rubble.add(r*L.cols+d.c);invalidateCell(d.c,r);dust(d.x,ys,6);if(tileVisible(d.c,r)){Snd.play('crash');shake(1.4);}break;}}
+    for(let r=Math.floor((py+4)/TH);r<=Math.floor((d.y+4)/TH)-1;r++){const ys=SURF(r);if(py<ys&&d.y>=ys&&solidBelow(L,d.c,r)){landed=true;if(B(L,d.c,r)===FLOOR){L.rubble.add(r*L.cols+d.c);if(d.kind==='slab')jamAt(d.c,r);}invalidateCell(d.c,r);dust(d.x,ys,6);if(tileVisible(d.c,r)){Snd.play('crash');shake(1.4);}break;}}
     if(landed||d.y>L.rows*TH+120)L.debris.splice(i,1);
   }
 }
@@ -3583,6 +3635,13 @@ function drawPlank(ctx,X,ys,sh){
   ctx.restore();
 }
 // a flat piece set into a floor's walking surface (plates), raised by lift
+// the slab that fell on a plate: a few broken pieces lying on it, one big wedge leaning, chips round about
+function drawHeap(ctx,o,X,ys,th){if(!L.rubble.has(o.r*L.cols+o.c))return;const rnd=mulberry32(hash2(o.c,o.r+91));
+  const piece=(x0,x1,d0,d1,h,col)=>{const a=onFloor(x0,d0,ys),b=onFloor(x1,d0,ys),c2=onFloor(x1,d1,ys),d=onFloor(x0,d1,ys);
+    ctx.fillStyle=col;ctx.strokeStyle='#0b0812';ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(a.x,a.y-h*0.6);ctx.lineTo(b.x,b.y-h);ctx.lineTo(c2.x,c2.y-h*0.5);ctx.lineTo(d.x,d.y-h*0.3);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,.14)';ctx.fill();ctx.fillStyle=th.front;ctx.beginPath();ctx.moveTo(d.x,d.y-h*0.3);ctx.lineTo(c2.x,c2.y-h*0.5);ctx.lineTo(c2.x,c2.y);ctx.lineTo(d.x,d.y);ctx.closePath();ctx.fill();ctx.stroke();};
+  piece(X+2,X+17,0.15,0.62,6+rnd()*2,th.top);piece(X+15,X+30,0.3,0.85,4+rnd()*2,th.hi||th.top);piece(X+7,X+22,0.55,0.95,3,th.top);
+  for(let i=0;i<7;i++){const q=onFloor(X+2+rnd()*28,0.1+rnd()*0.85,ys);ctx.fillStyle=i%2?th.front:th.lo;ctx.fillRect(q.x,q.y-2.4,1.6+rnd()*2.6,1.6+rnd()*1.4);}}
 function floorQuad(ctx,x0,x1,d0,d1,ys,lift){const a=onFloor(x0,d0,ys),b=onFloor(x1,d0,ys),c=onFloor(x1,d1,ys),d=onFloor(x0,d1,ys);
   ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(b.x,b.y+lift);ctx.lineTo(a.x,a.y+lift);ctx.closePath();ctx.fillStyle='#0b0812';ctx.fill();
   ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(c.x,c.y);ctx.lineTo(d.x,d.y);ctx.closePath();}
@@ -3630,7 +3689,7 @@ function drawGate(ctx,f,X,Y,ys,half){
     ctx.fillStyle='#b8bdc8';ctx.beginPath();ctx.moveTo(x-0.9,bot-0.5);ctx.lineTo(x,bot+1.9);ctx.lineTo(x+0.9,bot-0.5);ctx.fill();}
   ceilShade(ctx,pl);ctx.restore();}
   // a timed gate has its hourglass set into the wall above it, in a carved roundel centred on that wall's face
-  if(!half&&!f.latch&&f.dur>0){const st=L.theme.style;gateRoundel(ctx,X+16-HX,pl.top-(st==='dungeon'||st==='forge'?12:16),f.tm>0&&f.tm<Infinity?f.tm/f.dur:1,f.tm>0&&f.tm<Infinity);}
+  if(!half&&!f.latch&&f.dur>0&&!f.slab){const st=L.theme.style;gateRoundel(ctx,X+16-HX,pl.top-(st==='dungeon'||st==='forge'?12:16),f.tm>0&&f.tm<Infinity?f.tm/f.dur:1,f.tm>0&&f.tm<Infinity);}
   // a marked gate wears its colour on the wall above it (the cross bar alone is lost in the ceiling's shadow); beside
   // the hourglass when it has one
   if(!half&&f.pair!==undefined){const tm=!f.latch&&f.dur>0,st=L.theme.style;pairPlaque(ctx,X+16-HX+(tm?15:0),pl.top-(tm?(st==='dungeon'||st==='forge'?12:16):10),PAIRC[f.pair]);}
@@ -3760,13 +3819,13 @@ function drawDynamic(ctx,x0,x1,y0,y1){
         ctx.fillStyle='rgba(0,0,0,.6)';for(const ex of [fx,fx+TW]){ctx.beginPath();ctx.moveTo(ex-0.8,ft+5);ctx.lineTo(ex-0.8,ft);ctx.lineTo(ex-0.8+DX,ys-HY);ctx.lineTo(ex+0.8+DX,ys-HY);ctx.lineTo(ex+0.8,ft);ctx.lineTo(ex+0.8,ft+5);ctx.closePath();ctx.fill();}
         ctx.strokeStyle='rgba(0,0,0,.62)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(X+7,ys-3);ctx.lineTo(X+10,ys+1);ctx.lineTo(X+15,ys-1);ctx.lineTo(X+14,ys+3);ctx.moveTo(X+21,ys-3);ctx.lineTo(X+22,ys+3.5);ctx.moveTo(X+15,ys-1);ctx.lineTo(X+19,ys-2.5);ctx.stroke();
         ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(fx+11,ft);ctx.lineTo(fx+12,ft+2.5);ctx.lineTo(fx+10.5,ft+5);ctx.moveTo(fx+24,ft);ctx.lineTo(fx+23,ft+5);ctx.stroke();ctx.restore();}break;
-      case'closer':{dynSlab(ctx,o.c,o.r,X,ys,th);const dn=gameTime-f.press<0.12,lift=dn?1:2.4;
+      case'closer':{dynSlab(ctx,o.c,o.r,X,ys,th);const dn=f.jam||gameTime-f.press<0.12,lift=dn?1:2.4;
         ctx.save();ctx.translate(0,-lift);floorQuad(ctx,X+1,X+31,0.03,0.97,ys,lift);ctx.fillStyle='#8f2f2a';ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=0.7;ctx.stroke();
-        ctx.strokeStyle='#0b0812';ctx.lineWidth=1.1;ctx.beginPath();for(let i=0;i<3;i++){const a=onFloor(X+9+i*7,0.25,ys),b=onFloor(X+9+i*7,0.75,ys);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}ctx.stroke();ctx.restore();break;}
-      case'plate':case'xplate':{dynSlab(ctx,o.c,o.r,X,ys,th);const dn=gameTime-f.press<0.12,lift=dn?1:2.4;
+        ctx.strokeStyle='#0b0812';ctx.lineWidth=1.1;ctx.beginPath();for(let i=0;i<3;i++){const a=onFloor(X+9+i*7,0.25,ys),b=onFloor(X+9+i*7,0.75,ys);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}ctx.stroke();ctx.restore();if(f.jam)drawHeap(ctx,o,X,ys,th);break;}
+      case'plate':case'xplate':{dynSlab(ctx,o.c,o.r,X,ys,th);const dn=f.jam||gameTime-f.press<0.12,lift=dn?1:2.4;
         ctx.save();ctx.translate(0,-lift);floorQuad(ctx,X+1,X+31,0.03,0.97,ys,lift);ctx.fillStyle=f.t==='xplate'?'#d8b04a':f.pair!==undefined?PAIRC[f.pair]:th.top;ctx.fill();
         ctx.fillStyle='rgba(255,255,255,.18)';ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=0.7;ctx.stroke();
-        if(f.t==='xplate'){const q=onFloor(X+16,0.5,ys);ctx.fillStyle='#0b0812';ctx.beginPath();ctx.ellipse(q.x,q.y,1.6,0.9,0,0,Math.PI*2);ctx.fill();}ctx.restore();break;}
+        if(f.t==='xplate'){const q=onFloor(X+16,0.5,ys);ctx.fillStyle='#0b0812';ctx.beginPath();ctx.ellipse(q.x,q.y,1.6,0.9,0,0,Math.PI*2);ctx.fill();}ctx.restore();if(f.jam)drawHeap(ctx,o,X,ys,th);break;}
       case'spikes':{const e=f.ext;if(e<=0.02)break;const m=o.c%2?-1:1;
         // a few thin needles of uneven height and lean, rooted at slightly different depths of the floor
         for(const [bx,d,hh,ln] of SPK){const q=onFloor(X+16+m*(bx-16),d,ys),x=q.x,b=q.y,tx=x+m*ln*e,tip=b-hh*e;
