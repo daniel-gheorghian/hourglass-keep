@@ -1576,11 +1576,13 @@ function makeGuard(gd,i){const d=L.d,cap=gd.cap,sk=!!gd.skel,tr=cap?CAPT:TIERS[g
 function makeSnake(sp){return {x:sp.x,r:sp.r,y:SURF(sp.r),lo:sp.lo,hi:sp.hi,dir:sp.dir||-1,state:'slither',t:0,ph:Math.random()*6,alive:true,gone:false,cool:0,lunge:0,hitDone:false};}
 
 function startLevel(n,cpIdx){
-  quiet=false;L=genLevel(n,levelSeed(n),false,n===S.legacyFloor);REW.length=0;rw=null;if(cpIdx<0)S.sands=SANDS;
+  quiet=false;L=genLevel(n,levelSeed(n),false,n===S.legacyFloor);REW.length=0;rw=null;if(cpIdx<0){S.sands=SANDS;S.cpPlates=[];}
   G=L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];
   P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;
   if((S.lifeTaken||[]).includes(n))for(const it of L.items)if(it.type==='life')it.taken=true;
   if(cpIdx>=0&&L.cps[cpIdx]){const cp=L.cps[cpIdx];for(let i=0;i<=cpIdx;i++)L.cps[i].on=true;L.cpIndex=cpIdx;P.x=cp.x;P.y=SURF(cp.r);P.fallY=P.y;const before=(sp,x)=>sp&&sp.ord!==undefined&&cp.ord!==undefined?sp.ord<cp.ord:x<cp.x;
+    // plates pressed before the checkpoint stay pressed: the floor is rebuilt, so press them again and leave their gates open
+    const pd=new Set(S.cpPlates||[]);for(const o of L.dyn)if(o.f.t==='plate'&&o.f.latch&&pd.has(o.c+','+o.r)){o.f.g.tm=Infinity;o.f.g.open=1;o.f.told=1;}
     G.forEach((g,i)=>{if(before(L.guards[i],g.x)){g.alive=false;g.gone=true;}});SN.forEach((sn,i)=>{if(before(L.snakeSpecs[i],sn.hi)){sn.alive=false;sn.gone=true;}});}
   FX.length=0;STORMG.length=0;clearRooms();hitStop=0;banner=null;
   levelTime=S.floorTime||0;
@@ -1781,6 +1783,8 @@ function gateMsg(f){const nm=f.pair!==undefined?'The '+PAIRN[f.pair]+' gate':'A 
   if(f.latch)return f.where?nm+' grinds open '+f.where+' and stays open.':'Somewhere on this floor, a gate grinds open and stays open.';
   return nm+' grinds open '+f.where+', but its sand is running. Get back before it shuts.';}
 // a passage's crumbling chain and ambush wake the first time its plate (or prize) is reached
+// the latching plates pressed so far on this floor (their gates stand open for good), as "c,r" keys
+function pressedPlates(){return L.dyn.filter(o=>o.f.t==='plate'&&o.f.latch&&o.f.g.tm===Infinity).map(o=>o.c+','+o.r);}
 function pressPlate(f){if(f.g.tm<=0&&f.g.open<0.05)Snd.play('gate');f.press=gameTime;
   if(f.latch){if(f.g.tm!==Infinity){f.g.tm=Infinity;Snd.play('door');if(!f.chain&&!f.near)msg(gateMsg(f),3.4);}}
   else{if(f.where&&!f.told){f.told=1;if(!f.chain)msg(gateMsg(f),3.8);}f.g.tm=f.g.dur;f.g.slam=false;}
@@ -1811,7 +1815,7 @@ function standOn(){
     else if(f.t==='closer'){f.press=gameTime;if(f.g.tm>0||f.g.open>0.05){f.g.tm=0;f.g.slam=true;Snd.play('gate');shake(0.9);hint('closer');}}
     else if(f.t==='xplate'){f.press=gameTime;if(!L.door.opening&&L.door.open<1){L.door.opening=true;msg('A heavy door grinds open somewhere on this floor.',3.4);Snd.play('door');}}
   }
-  for(let i=0;i<L.cps.length;i++){const cp=L.cps[i];if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<14){cp.on=true;L.cpIndex=i;S.cp=i;S.floorTime=levelTime;const fill=(S.sands|0)<SANDS;S.sands=SANDS;writeSave();msg(fill?'The hourglass turns and your glass fills. If you fall, you rise here.':'The hourglass turns. If you fall, you rise here.',3.2);Snd.play('cp');sparks(cp.x,SURF(cp.r)-22,10,'#e8c47f');}}
+  for(let i=0;i<L.cps.length;i++){const cp=L.cps[i];if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<14){cp.on=true;L.cpIndex=i;S.cp=i;S.floorTime=levelTime;S.cpPlates=pressedPlates();const fill=(S.sands|0)<SANDS;S.sands=SANDS;writeSave();msg(fill?'The hourglass turns and your glass fills. If you fall, you rise here.':'The hourglass turns. If you fall, you rise here.',3.2);Snd.play('cp');sparks(cp.x,SURF(cp.r)-22,10,'#e8c47f');}}
 }
 function tryGrab(py){
   const hp=py-HANG,hn=P.y-HANG;
@@ -2412,7 +2416,7 @@ function update(dt){
 function levelComplete(){
   mode='card';
   const n=L.n,ft=levelTime,fd=S.floorDeaths||0;
-  S.time+=ft;S.level=n+1;S.cp=-1;S.floorTime=0;S.floorDeaths=0;S.resume=null;S.legacyFloor=0;writeSave();
+  S.time+=ft;S.level=n+1;S.cp=-1;S.floorTime=0;S.floorDeaths=0;S.resume=null;S.legacyFloor=0;S.cpPlates=[];writeSave();
   Snd.play('clear');
   $('cEyebrow').textContent='Floor '+n+' cleared';
   $('cTitle').textContent=themeName(n);
@@ -4306,7 +4310,7 @@ $('bGfxT').onclick=()=>{gfxReturn='title';syncGfx();show('gfx');};
 $('bGfxP').onclick=()=>{gfxReturn='pause';syncGfx();show('gfx');};
 $('bGfxClose').onclick=()=>show(gfxReturn);
 $('bResume').onclick=resume;
-$('bRestart').onclick=()=>{hideAll();S.cp=-1;S.resume=null;S.floorTime=levelTime;startLevel(L.n,-1);wake(true);};
+$('bRestart').onclick=()=>{hideAll();S.cp=-1;S.cpPlates=[];S.resume=null;S.floorTime=levelTime;startLevel(L.n,-1);wake(true);};
 $('bQuit').onclick=goTitle;
 $('bNext').onclick=nextFloor;
 $('bCardMenu').onclick=goTitle;
