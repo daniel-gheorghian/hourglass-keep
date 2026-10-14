@@ -68,7 +68,7 @@ window.runBot = function (n, seed, opts) {
     if (opts.stop && opts.stop(H)) return { ok: 'stopped', frames };
     const ins = path[i];
     const p = P();
-    if (p.hp < lastHp) { hurtCount++; (window.__hurts = window.__hurts || []).push(n + ':' + (ins && ins.a) + '@' + (ins && (ins.from ?? ins.c)) + ':' + p.state + ':ph' + ph + ':x' + Math.round(p.x) + ':c' + col() + ':' + (p.cause || '')); } lastHp = p.hp;
+    if (p.hp < lastHp) { hurtCount++; (window.__hurts = window.__hurts || []).push(n + ':i' + i + ':' + (ins && ins.a) + '@' + (ins && (ins.from ?? ins.c)) + ':' + p.state + ':ph' + ph + ':x' + Math.round(p.x) + ':c' + col() + ':' + (p.cause || '')); } lastHp = p.hp;
     if (H.mode === 'dead' || p.state === 'dead') return { ok: false, n, seed, i, ins, why: 'died:' + p.cause, x: p.x, y: p.y, state: p.state, trace: trace.slice(-10), hurt: hurtCount };
     if (H.mode === 'card') return { ok: true, n, seed, frames, hurt: hurtCount, fights };
     if (opts.done && opts.done(H)) return { ok: true, n, seed, frames, hurt: hurtCount, fights };
@@ -117,6 +117,20 @@ window.runBot = function (n, seed, opts) {
         else if (ph === 3) {
           if (p.state === 'hang') set('u', true);
           if (p.state === 'stand') { if (past(ins.to, dir)) next(); else return fail(ins, 'rjump short'); }
+        }
+        break;
+      case 'collapse': // stand on the loose ledge and let it drop him a storey
+        if (ph === 0) { if (gotoD(cx(ins.to), dir)) { ph = 1; r0 = row(); } }
+        else if (ph === 1) { allOff(); if (p.state === 'air') ph = 2; else if (frames - f0 > 60 * 20) return fail(ins, 'ledge did not give way'); }
+        else if (ph === 2) { if (p.state === 'stand' && row() > r0) next(); }
+        break;
+      case 'jgrab': // a running jump with Grab held in the air catches a ledge a storey up; then climb
+        if (ph === 0) { if (gotoD(cx(ins.from - 2 * dir), dir)) { ph = 1; r0 = row(); } }
+        else if (ph === 1) { set('g', false); set(back, false); set(fwd, true); if (p.state === 'run' && (p.x - (cx(ins.from) - 44 * dir)) * dir >= 0) { press('j'); ph = 2; } }
+        else if (ph === 2) { if (p.state === 'air' || p.state === 'hang') { set(fwd, false); set('g', true); ph = 3; } }
+        else if (ph === 3) {
+          if (p.state === 'hang') { set('g', false); set('u', true); }
+          if (p.state === 'stand') { if (row() < r0 && past(ins.to, dir)) next(); else return fail(ins, 'jgrab missed'); }
         }
         break;
       case 'climb':
