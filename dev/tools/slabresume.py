@@ -1,7 +1,7 @@
 # (for the closers the gate is still shut at that moment: its own plate comes later)
 # A floor saved after a slab has fallen on its plate (or closers) comes back with the slab fallen, the plate jammed and the gate open.
 from playwright.sync_api import sync_playwright
-JS='''([n,sd,kind])=>{const H=__HK;let L=H.load(n,sd,true);const d=L.detours.find(q=>q.puz===kind);if(!d)return {err:'none'};
+JS='''([n,sd,kind])=>{const H=__HK;let L=H.load(n,sd,true);const d=(L.detours||[]).find(q=>q.puz===kind);if(!d)return {err:'none'};
   const pf=()=>H.L.dyn.find(o=>o.f.slabF&&(kind==='P2G1'?o.f.t==='plate':o.f.t==='closer')&&o.r===d.r&&o.c>=d.c0&&o.c<=d.c1);
   let saved=false,snap=null;
   const r=runBot(n,sd,{stop:H=>{const o=pf();if(o&&o.f.jam&&!snap&&['stand','run'].includes(H.P.state)){H.snapshotResume();snap=JSON.parse(JSON.stringify(H.S.resume));return true;}return false;}});
@@ -17,7 +17,7 @@ with sync_playwright() as p:
         for s in range(6):
             sd=30000+s*101+n*7
             for k in fl:
-                if len(fl[k])<3 and pg.evaluate("([n,sd,k])=>!!__HK.genLevel(n,sd,true).detours.find(q=>q.puz===k)",[n,sd,k]): fl[k].append((n,sd))
+                if len(fl[k])<3 and pg.evaluate("([n,sd,k])=>!!(__HK.genLevel(n,sd,true).detours||[]).find(q=>q.puz===k)",[n,sd,k]): fl[k].append((n,sd))
     bad=0
     for k,lst in fl.items():
         for n,sd in lst:
