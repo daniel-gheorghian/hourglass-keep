@@ -1,0 +1,4 @@
+passed 36 / 37  avg bot time 478s  runs with damage 2
+{"ok": false, "n": 39, "seed": 933783, "i": 51, "ins": {"a": "tiptoe", "from": 102, "to": 104}, "why": "timeout ph2", "x": 3329.4999999999973, "y": 508, "state": "lowStrike", "col": 104, "row": 7, "trace": ["walk@102", "walk@102", "walk@102", "walk@102", "walk@102", "walk@102", "walk@102", "walk@102", "walk@102", "tiptoe@102"]}
+hurts ['9:crawl@312:crouch', '30:crawl@6:crouch']
+errors []

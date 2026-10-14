@@ -1,0 +1,8 @@
+# screenshots, films and frame dumps the tools write: kept local, never committed
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.mp4
+*.webm
+__pycache__/

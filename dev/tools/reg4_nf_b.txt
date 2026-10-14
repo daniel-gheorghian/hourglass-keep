@@ -1,0 +1,4 @@
+passed 35 / 36  avg bot time 486s  runs with damage 1
+{"ok": false, "n": 26, "seed": 922535, "i": 27, "ins": {"a": "walk", "c": 69}, "why": "timeout ph0", "x": 2209.624999999999, "y": 316, "state": "lowStrike", "col": 69, "row": 4, "trace": ["walk@69", "walk@69", "walk@69", "walk@69", "walk@69", "walk@69", "walk@69", "walk@69", "walk@69", "walk@69"]}
+hurts ['38:crawl@548:hurt']
+errors []

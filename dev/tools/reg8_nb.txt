@@ -1,0 +1,4 @@
+passed 39 / 40  avg bot time 488s  runs with damage 1
+{"ok": false, "n": 22, "seed": 922134, "i": 197, "ins": {"a": "climb", "from": 506}, "why": "timeout ph1", "x": 16209.76388888877, "y": 316, "state": "stand", "col": 506, "row": 4, "trace": ["climb@506", "climb@506", "climb@506", "climb@506", "climb@506", "climb@506", "climb@506", "climb@506", "climb@506", "climb@506"]}
+hurts ['32:darts@537:landHurt']
+errors []

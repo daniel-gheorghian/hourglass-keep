@@ -1,0 +1,4 @@
+passed 39 / 40  avg bot time 308s  runs with damage 1
+{"ok": false, "n": 17, "seed": 921662, "i": 99, "ins": {"a": "push", "from": 248, "n": 2}, "why": "timeout ph0", "x": 7943.111547291088, "y": 444, "state": "push", "col": 248, "row": 6, "trace": ["push@248", "push@248", "push@248", "push@248", "push@248", "push@248", "push@248", "push@248", "push@248", "push@248"]}
+hurts ['9:crawl@250:hurt']
+errors []

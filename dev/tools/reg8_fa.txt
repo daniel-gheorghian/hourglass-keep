@@ -1,0 +1,4 @@
+passed 19 / 20  avg bot time 353s  runs with damage 0
+{"ok": false, "n": 18, "seed": 701746, "i": 88, "ins": {"a": "climb", "from": 222, "to": 223}, "why": "timeout ph0", "x": 7111, "y": 437, "state": "hang", "col": 222, "row": 6, "trace": ["climb@222", "climb@222", "climb@222", "climb@222", "climb@222", "climb@222", "climb@222", "climb@222", "climb@222", "climb@222"]}
+hurts []
+errors []
