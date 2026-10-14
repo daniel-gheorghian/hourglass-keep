@@ -2939,7 +2939,7 @@ const HINTS={
   secret:'Something glints up there. Side passages without gates hide gold flasks.',
   fork1:'Two ways on. Drop through the hole and fight a guard, or jump it and take the long way with its traps.',
   fork3:'Two ways on. The hole is short but crowded with traps; the long way round is quieter.',
-  fork4:'A grating over a deep shaft. There is no way through. Something waits below, behind a violet gate.',
+  fork4:'A grating over a deep shaft. There is no way through. Crouch on it and hold Down to look: something waits below, behind a violet gate.',
   loopgate:'A violet gate. It opens from the violet plate, which lies on the long way round.',
   slabplate:'A loose slab hangs in the gallery over this plate. Run across it up there and it falls and holds the plate down.',
   slabgate:'This gate shuts the moment the plate is let go. Something heavy must hold the plate down: look for a loose slab above it.',
@@ -2991,6 +2991,14 @@ function checkHints(){
 const cam={rx:0,ry:0,x:0,y:0,gy:0,snap:true};
 const FRAME=0.66;
 let viewW=ROOM_W;const hud={l:6,r:ROOM_W-6,t:3,over:false};
+// the grating he is crouching on (or beside) and what lies below it: the floor's level and the middle of the flask and its gate,
+// or null when he is not at one or the flask has been drunk
+function gratePeek(){
+  const r=pRow();
+  for(const o of L.dyn){if(o.f.t!=='grate'||o.r!==r||Math.abs(P.x-(o.c*TW+16))>40)continue;
+    const fk=L.forks.find(q=>q.grate&&q.rUp===r),it=fk&&L.items.find(i=>i.fork&&!i.taken);if(!it)continue;
+    return {y:SURF(it.r),x:fk.gate?(it.x+fk.gate.c*TW+16)/2:it.x};}
+  return null;}
 function updateCamera(dt){
   if(!P||!L)return;
   const foe=P.foe&&P.foe.alive?P.foe:null;
@@ -3004,12 +3012,17 @@ function updateCamera(dt){
   else if(st==='crouch'&&P.peekT>0.4)gy=P.y+56;
   else if(st==='dead')gy=cam.gy;
   if(cam.snap||!dt)gy=st==='dead'?cam.gy||P.y:P.y;
-  cam.gy=gy;
+  // crouching over a grating looks down the shaft: the view drops to the lower run, framing the flask and its violet gate (the
+  // prince leaves the picture while he looks; letting go brings the view back)
+  const pk=st==='crouch'&&P.peekT>0.4&&!cam.snap?gratePeek():null;
+  if(pk){gy=pk.y;t=clamp(pk.x-viewW/2,-viewW*0.15,L.cols*TW-viewW*0.85);cam.pk=1;}
+  else if(cam.pk>0)cam.pk=Math.max(0,cam.pk-dt*1.1);
+  cam.gy=pk?cam.gy:gy;
   let ty=gy-ROOM_H*FRAME;
   const maxY=L.rows*TH-ROOM_H;
-  if(cam.snap||!dt){cam.x=t;cam.y=ty;cam.snap=false;}
-  else{cam.x+=(t-cam.x)*(1-Math.exp(-dt*3.2));cam.y+=(ty-cam.y)*(1-Math.exp(-dt*5));}
-  if(st!=='dead'){cam.y=Math.max(cam.y,P.y-ROOM_H+6);cam.y=Math.min(cam.y,P.y-56);}
+  if(cam.snap||!dt){cam.x=t;cam.y=ty;cam.snap=false;cam.pk=0;}
+  else{cam.x+=(t-cam.x)*(1-Math.exp(-dt*(pk?5:3.2)));cam.y+=(ty-cam.y)*(1-Math.exp(-dt*(pk?3:5)));}
+  if(st!=='dead'&&!(cam.pk>0)){cam.y=Math.max(cam.y,P.y-ROOM_H+6);cam.y=Math.min(cam.y,P.y-56);}
   cam.y=clamp(cam.y,0,Math.max(0,maxY));
   cam.rx=Math.floor((cam.x+viewW/2)/ROOM_W);cam.ry=Math.floor((cam.y+ROOM_H/2)/ROOM_H);
 }
@@ -4398,11 +4411,22 @@ function drawLiftChain(ctx,f,half){
   if(half)return;
   const th=L.theme,xE=f.c0*TW+16,xX=f.c1*TW+16,xm=(xE+xX)/2,X0=f.ca*TW,top=f.rT*TH;
   liftShaftBack(ctx,X0,2*TW,top,f.yB);
-  // the chain: up the entry column, over the top, down the exit column, back along the bottom
-  const yc0=f.yT+4,yc1=f.yB+4;
-  liftChainLine(ctx,xE,yc1,xE,yc0);liftChainLine(ctx,xE,yc0,xX,yc0);liftChainLine(ctx,xX,yc0,xX,yc1);liftChainLine(ctx,xX,yc1,xE,yc1);
-  const spin=CHAIN_V*gameTime/14*f.dx;
-  liftWheel(ctx,xm,f.yT-12,14,10,spin);liftWheel(ctx,xm,f.yB-12,14,10,spin);
+  // the chain: a heavy link chain up the entry column, over the top, down the exit column and back along the bottom. Its links
+  // are laid along the same path the slabs ride (chainPos with a made-up slab), alternate flat and edge-on, and travel with
+  // the chain, so the eye sees at once which strand climbs and which falls. Brass chevrons on the two upright strands point
+  // the way they go (up on the entry side, down on the exit side). A small sprocket sits in each corner of the loop, drawn
+  // behind everyone, so no wheel fills the space he stands in.
+  const per=f.per,H=f.yB-f.yT,V=CHAIN_V*gameTime,nl=Math.round(per/6),sp=per/nl,at=s=>chainPos(f,0,(s-f.off)/CHAIN_V);
+  const vert=s=>{s=((s%per)+per)%per;return s<H||(s>=H+32&&s<2*H+32);};
+  for(let k=0;k<nl;k++){const s=V+k*sp,q=at(s),v=vert(s),e=k%2,w=v?(e?4.6:2.4):(e?7.4:5),h=v?(e?7.4:5):(e?4.6:2.4);
+    ctx.fillStyle='#0b0812';ctx.fillRect(q.x-w/2-0.6,q.y+3-h/2-0.6,w+1.2,h+1.2);
+    ctx.fillStyle=e?'#8a909e':'#c4c9d4';ctx.fillRect(q.x-w/2,q.y+3-h/2,w,h);
+    if(e){ctx.fillStyle='#1b1626';if(v)ctx.fillRect(q.x-0.8,q.y+3-h/2+1.6,1.6,h-3.2);else ctx.fillRect(q.x-w/2+1.6,q.y+3-0.8,w-3.2,1.6);}}
+  const nc=Math.max(2,Math.round(per/56)),sc=per/nc;
+  for(let k=0;k<nc;k++){const s=V+k*sc;if(!vert(s))continue;const q=at(s),d=((s%per)+per)%per<H?-1:1;ctx.save();ctx.translate(q.x,q.y+3);
+    ctx.beginPath();ctx.moveTo(-6,-d*2.5);ctx.lineTo(0,d*3.5);ctx.lineTo(6,-d*2.5);ctx.lineJoin='miter';
+    ctx.strokeStyle='#0b0812';ctx.lineWidth=5;ctx.stroke();ctx.strokeStyle='#f0c878';ctx.lineWidth=2.4;ctx.stroke();ctx.restore();}
+  for(const yy of [f.yT,f.yB])for(const xx of [xE,xX])liftWheel(ctx,xx,yy+3,7.5,8,CHAIN_V*gameTime/6*f.dx);
   for(let i=0;i<f.n;i++){const q=chainPos(f,i,gameTime);
     ctx.fillStyle='#0b0812';ctx.fillRect(q.x-3,q.y+HY,6,6);ctx.fillStyle='#b98a4a';ctx.fillRect(q.x-2,q.y+HY+0.5,4,4);
     slab(ctx,q.x-16,q.y,th,true,true);}
@@ -4464,6 +4488,9 @@ function drawDynamic(ctx,x0,x1,y0,y1){
         ctx.strokeStyle='#0b0812';ctx.lineWidth=2.4;ctx.beginPath();for(let i=0;i<6;i++){const a=onFloor(X+3+i*5.2,0.04,ys),b=onFloor(X+3+i*5.2,0.96,ys);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}ctx.stroke();
         ctx.strokeStyle='#8f95a3';ctx.lineWidth=1.1;ctx.stroke();
         ctx.strokeStyle='#0b0812';ctx.lineWidth=2;for(const d of [0.04,0.5,0.96]){const a=onFloor(X,d,ys),b=onFloor(X+TW,d,ys);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.strokeStyle='#6d7280';ctx.lineWidth=0.9;ctx.stroke();ctx.strokeStyle='#0b0812';ctx.lineWidth=2;}
+        // a glint far down between the bars while the flask below is still there (crouch on the grating to look down at it)
+        if(L.items.some(i=>i.fork&&!i.taken)){const k=(Math.sin(gameTime*2.4)+1)/2,q=onFloor(X+16,0.5,ys);ctx.fillStyle='rgba(255,120,100,'+(0.25+0.6*k)+')';
+          ctx.fillRect(q.x-0.7,q.y-3.2*k-1,1.4,6.4*k+2);ctx.fillRect(q.x-3.2*k-1,q.y-0.7,6.4*k+2,1.4);}
         break;}
       case'chomp':drawJaws(ctx,o,f,X,Y,ys,0);break;
     }

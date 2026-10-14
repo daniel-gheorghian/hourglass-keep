@@ -53,6 +53,7 @@ if mode == 'release':
 unit = ['forkscan.py', 'respawnplates.py', 'puzzlescan.py', 'slabresume.py', 'primtest.py',
         'hdtest.py', 'vertscan.py', 'lifttest.py', 'featurescan.py']
 J += [(u[:-3], [u], tail_check()) for u in unit if os.path.exists(os.path.join(HERE, u))]
+J += [('gratepeek', ['gratepeek.py', '6', '27', '6'], tail_check(r'tested [1-9]\d* bad 0 '))] # crouching on a grating shows the flask below
 # longest jobs first so the tail of the run isn't one slow floor
 RANK = {'featbot fight': 0, 'run2 fight': 1, 'rendersmoke': 2, 'featbot': 3, 'metrics40': 4, 'featurescan': 4, 'forktest': 5, 'run2': 6}
 def floor_of(a): return max([int(x) for x in a[1:] if x.isdigit()] or [0])
