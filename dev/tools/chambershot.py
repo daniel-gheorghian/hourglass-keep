@@ -1,5 +1,5 @@
 # chambershot.py out.png n seed want [Z]: the rooms around the first turn chamber that holds the move `want` (e.g. collapse, jumpup,
-# hgap), the moving parts drawn in, each piece of the chamber labelled. Run from dev/tools.
+# hgap; FEAT='{"flag":"tower"}' forces a floor feature), the moving parts drawn in, each piece of the chamber labelled. Run from dev/tools.
 from playwright.sync_api import sync_playwright
 import os,sys
 out,n,seed,want=sys.argv[1],int(sys.argv[2]),int(sys.argv[3]),sys.argv[4];Z=float(sys.argv[5]) if len(sys.argv)>5 else 2
@@ -18,6 +18,7 @@ JS='''([n,seed,want,Z])=>{const H=__HK;const L=H.load(n,seed,true);
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page(); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
     pg.goto('file://'+f); pg.wait_for_timeout(400); pg.evaluate("window.__HKfreeze=true")
+    if os.environ.get('FEAT'): pg.evaluate('window.__FEAT='+os.environ['FEAT'])  # e.g. FEAT='{"flag":"tower"}' (unit F: a floor forced to a feature)
     u=pg.evaluate(JS,[n,seed,want,Z]); b.close()
 if not u: print('no chamber with',want,errs[:3]); sys.exit(1)
 import base64
