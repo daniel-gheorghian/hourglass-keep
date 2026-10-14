@@ -1,6 +1,6 @@
 from playwright.sync_api import sync_playwright
 import json,sys
-f=sys.argv[1] if len(sys.argv)>1 else '/home/claude/hourglass-keep.html'
+f=sys.argv[1] if len(sys.argv)>1 else '/Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page(); pg.goto('file://'+f); pg.wait_for_timeout(300)
     print(pg.evaluate(r'''()=>{const o={walljump:[],slide:[]};for(let n=1;n<=27;n++)for(let s=0;s<6;s++){const seed=700000+n*97+s*13;const L=__HK.load(n,seed,true);

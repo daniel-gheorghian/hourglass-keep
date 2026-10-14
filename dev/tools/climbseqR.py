@@ -5,7 +5,7 @@ out=sys.argv[1] if len(sys.argv)>1 else 'climbseq.png'
 with sync_playwright() as p:
     b=p.chromium.launch(); ctx=b.new_context(viewport={'width':844,'height':390},device_scale_factor=3)
     pg=ctx.new_page(); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(400); pg.add_script_tag(path='bot.js')
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(400); pg.add_script_tag(path='bot.js')
     pg.evaluate("window.__HKfreeze=true;document.querySelectorAll('.screen').forEach(e=>e.hidden=true);document.getElementById('app').classList.add('overlay')")
     # stop at the first hang on a wall's near face
     r=pg.evaluate('''()=>{window.__fl=9;return runBot(window.__fl||7,782,{fight:false,stop:H=>{const p=H.P;if(p.state==='hang'&&p.ledge&&p.ledge.s>0){const b=H.L.base[(p.ledge.r+1)*H.L.cols+p.ledge.c];return true;}return false;}});}''')

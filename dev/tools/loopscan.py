@@ -1,6 +1,6 @@
 from playwright.sync_api import sync_playwright
 import json,sys
-f=sys.argv[1] if len(sys.argv)>1 else '/home/claude/hourglass-keep.html'
+f=sys.argv[1] if len(sys.argv)>1 else '/Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'
 lo,hi,ns=(int(sys.argv[2]),int(sys.argv[3]),int(sys.argv[4])) if len(sys.argv)>4 else (1,27,4)
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page(); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e))); pg.goto('file://'+f); pg.wait_for_timeout(300)

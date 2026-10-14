@@ -3,7 +3,7 @@ import json
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page(viewport={'width':844,'height':390})
     errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(300)
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(300)
     out=pg.evaluate('''()=>{const H=__HK;const S=H.S;
       // find a floor with a gold flask under the player's save seed
       let n=3;for(;n<60;n+=3){H.startLevel(n,-1);if(H.L.items.some(i=>i.type==='life'))break;}

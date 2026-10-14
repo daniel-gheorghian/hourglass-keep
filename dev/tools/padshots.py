@@ -2,7 +2,7 @@ from playwright.sync_api import sync_playwright
 from PIL import Image, ImageDraw, ImageFont
 import sys
 # same floor, same depth into it, old vs new: a wide view of the corridor
-files=[('v30 (before)','v30_hooks.html'),('v31 (after)','/home/claude/hourglass-keep.html')]
+files=[('v30 (before)','v30_hooks.html'),('v31 (after)','/Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html')]
 scenes=[(9,4242,0.22),(14,5151,0.4),(22,777,0.55)]
 rows=[]
 with sync_playwright() as p:

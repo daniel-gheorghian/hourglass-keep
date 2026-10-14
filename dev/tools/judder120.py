@@ -25,4 +25,4 @@ def run(src,newapi):
     r.update({'meanSpeed':round(m,1),'speedJitterSD':round(sd,1),'jitterPct':round(100*sd/abs(m),1) if m else None,'minV':round(min(v),1),'maxV':round(max(v),1)})
     print(src.split('/')[-1],json.dumps(r),errs[:3])
 run(__import__('os').getcwd()+'/hk_v20_release.html',False)
-run('/home/claude/hourglass-keep.html',True)
+run('/Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html',True)

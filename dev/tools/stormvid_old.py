@@ -5,7 +5,7 @@ out=sys.argv[1] if len(sys.argv)>1 else 'storm_end.mp4'; n=int(sys.argv[2]) if l
 d='stvframes_old';shutil.rmtree(d,ignore_errors=True);os.makedirs(d)
 with sync_playwright() as p:
     b=p.chromium.launch(); ctx=b.new_context(viewport={'width':844,'height':390},device_scale_factor=1); pg=ctx.new_page(); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.goto('file:///tmp/claude-0/-home-claude-hourglass-keep/f01bc65f-8e08-5e8f-8f80-4fcb704e8720/scratchpad/hk_v31_release.html'); pg.wait_for_timeout(500); pg.add_script_tag(path='bot.js')
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/tools/hk_v31_release.html'); pg.wait_for_timeout(500); pg.add_script_tag(path='bot.js')
     pg.evaluate("window.__HKfreeze=true;document.querySelectorAll('.screen').forEach(e=>e.hidden=true);document.getElementById('app').classList.add('overlay');__HK.S.set.gfx.atmo=true")
     info=pg.evaluate('''([n,seed])=>{window.__fr=[];let k=0,after=0;const r=runBot(n,seed,{fight:false,stop:H=>{const c=H.L.ext.chase;if(!c||!c.on)return false;
         if(H.P.x<(c.c1-14)*32&&!c.done)return false;k++;

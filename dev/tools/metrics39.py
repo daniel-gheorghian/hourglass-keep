@@ -1,7 +1,7 @@
 from playwright.sync_api import sync_playwright
 import json,statistics as S,sys
 out={}
-for tag,f in [('v38','/tmp/claude-0/-home-claude-hourglass-keep/f01bc65f-8e08-5e8f-8f80-4fcb704e8720/scratchpad/hk_v38_release.html'),('v39','/home/claude/hourglass-keep.html')]:
+for tag,f in [('v38','/Users/dan/Documents/Projects/hourglass-keep/dev/tools/hk_v38_release.html'),('v39','/Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html')]:
   with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page(); pg.goto('file://'+f); pg.wait_for_timeout(300)
     out[tag]=pg.evaluate('''()=>{const H=__HK,out={};const MOV=new Set(['flat','up','down','drop2']),VERT=new Set(['wallrun','shaft','banner']);

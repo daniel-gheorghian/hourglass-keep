@@ -1,7 +1,7 @@
 from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page(); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(400)
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(400)
     print(pg.evaluate('''()=>{const H=__HK;const L=H.load(3,5555,true);const b=H.breaches().filter(Boolean)[5];
       const ox=-7*320,oy=0;const mk=(dx,dy)=>{const p=new Path2D();for(const pc of b.pieces){pc.forEach(([x,y],i)=>i?p.lineTo(x+ox+dx,y+oy+dy):p.moveTo(x+ox+dx,y+oy+dy));p.closePath();}return p;};
       const c=document.createElement('canvas');c.width=320;c.height=192;const g=c.getContext('2d');const P=mk(0,0),S=mk(5,-2.5);

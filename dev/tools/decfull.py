@@ -4,7 +4,7 @@ import io,sys
 out=sys.argv[1]; n=int(sys.argv[2]); state=int(sys.argv[3])
 with sync_playwright() as p:
     b=p.chromium.launch(); ctx=b.new_context(viewport={'width':844,'height':390},device_scale_factor=2); pg=ctx.new_page(); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(500)
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(500)
     pg.evaluate("window.__HKfreeze=true;document.querySelectorAll('.screen').forEach(e=>e.hidden=true);document.getElementById('app').classList.add('overlay')")
     r=pg.evaluate('''([n,state])=>{const H=__HK;for(let s=0;s<40;s++){const L=H.load(n,900+s*11,true);const hs=(L.hangings||[]).filter(h=>state<0?true:h.state===state);
         // pick one with another hanging or lamp close by

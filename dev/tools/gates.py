@@ -2,7 +2,7 @@ from playwright.sync_api import sync_playwright
 import json
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page()
-    pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(300)
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(300)
     pg.add_script_tag(path='bot.js')
     # patch: real levels, guards removed, chompers frozen open, gates real
     pg.evaluate('''()=>{const H=__HK;const orig=H.load;H.load=function(n,s){const L=orig.call(H,n,s,false);

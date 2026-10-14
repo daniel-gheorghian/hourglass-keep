@@ -2,7 +2,7 @@ from playwright.sync_api import sync_playwright
 import json
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page(); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(500); pg.add_script_tag(path='bot.js')
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(500); pg.add_script_tag(path='bot.js')
     pg.evaluate("window.__HKfreeze=true")
     r=pg.evaluate('''()=>{const H=__HK;runBot(7,707,{stop:H=>H.P.state==='push'});['l','r','u','d','j','g'].forEach(k=>H.setKey('kb',k,false));const b0=H.L.ext.blocks[0].c;
       for(let i=0;i<60;i++)H.tick(1);const b1=H.L.ext.blocks[0].c;for(let i=0;i<360;i++)H.tick(1);

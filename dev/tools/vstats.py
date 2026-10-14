@@ -1,7 +1,7 @@
 from playwright.sync_api import sync_playwright
 import json
 with sync_playwright() as p:
-    b=p.chromium.launch(); pg=b.new_page(); pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(300)
+    b=p.chromium.launch(); pg=b.new_page(); pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(300)
     r=pg.evaluate('''()=>{const H=__HK,out={};for(const n of [2,5,9,14,20,26]){const acc=[];for(let s=0;s<6;s++){const L=H.genLevel(n,3000+s*17,true);
         const segs=L.segs.filter(q=>q.k!=='secret'&&q.k!=='detour'&&q.k!=='double');let rmin=99,rmax=-1,bandCh=0,rowCh=0,vert=0,longest=0,cur=0,lastBand=-1,startBand=-1,curStart=0;
         const band=r=>Math.floor(r/3);

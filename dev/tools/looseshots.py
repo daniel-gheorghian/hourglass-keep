@@ -1,7 +1,7 @@
 from playwright.sync_api import sync_playwright
 from PIL import Image, ImageDraw, ImageFont
 import base64,io,os,sys
-files=[('v33','v32_hooks.html' if len(sys.argv)<2 else sys.argv[1]),('now','/home/claude/hourglass-keep.html')]
+files=[('v33','v32_hooks.html' if len(sys.argv)<2 else sys.argv[1]),('now','/Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html')]
 font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',18)
 rows=[]
 with sync_playwright() as p:

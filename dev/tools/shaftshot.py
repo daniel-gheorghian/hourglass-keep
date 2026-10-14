@@ -1,7 +1,7 @@
 from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     b=p.chromium.launch(); ctx=b.new_context(viewport={'width':844,'height':390},device_scale_factor=2)
-    pg=ctx.new_page(); pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(500); pg.add_script_tag(path='bot.js')
+    pg=ctx.new_page(); pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(500); pg.add_script_tag(path='bot.js')
     pg.evaluate("window.__HKfreeze=true;document.querySelectorAll('.screen').forEach(e=>e.hidden=true);document.getElementById('app').classList.add('overlay')")
     print(pg.evaluate('''()=>{const H=__HK;const L=H.load(6,502,true);const ins=L.path.find(a=>a.a==='walljump');const c=ins.from;const P=H.P;
        P.x=c*32+16;P.y=7*64-4;P.fallY=P.y;P.state='stand';P.face=1;H.cam.snap=true;

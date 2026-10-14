@@ -6,8 +6,8 @@ H='''(legacyArg)=>{const out={};for(let n=1;n<=40;n++)for(let s=0;s<5;s++){const
   out[n+':'+s]={h,cols:L.cols,chase:!!L.ext.chase,guards:L.guards.length,gates:L.dyn.filter(o=>o.f.t==='gate').length,acts:L.path.length,detours:(L.detours||[]).length};}return out;}'''
 with sync_playwright() as p:
     b=p.chromium.launch();pg=b.new_page()
-    pg.goto('file:///tmp/claude-0/-home-claude-hourglass-keep/f01bc65f-8e08-5e8f-8f80-4fcb704e8720/scratchpad/hk_v16_release.html');pg.wait_for_timeout(300);old=pg.evaluate(H,False)
-    pg.goto('file:///home/claude/hourglass-keep.html');pg.wait_for_timeout(300);new=pg.evaluate(H,False);leg=pg.evaluate(H,True)
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/tools/hk_v16_release.html');pg.wait_for_timeout(300);old=pg.evaluate(H,False)
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html');pg.wait_for_timeout(300);new=pg.evaluate(H,False);leg=pg.evaluate(H,True)
     b.close()
 same_nochase=sum(1 for k in old if not old[k]['chase'] and old[k]['h']==new[k]['h']);nochase=sum(1 for k in old if not old[k]['chase'])
 legacy_same=sum(1 for k in old if old[k]['h']==leg[k]['h'])

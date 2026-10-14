@@ -29,7 +29,7 @@ def draw(data,label,y0,im,d):
     return y0+(r1+1)*S
 with sync_playwright() as p:
     b=p.chromium.launch(); out=[]
-    for label,f in (('Before (v30)','v30_hooks.html'),('After (v31)','/home/claude/hourglass-keep.html')):
+    for label,f in (('Before (v30)','v30_hooks.html'),('After (v31)','/Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html')):
         pg=b.new_page(); pg.goto('file://'+os.path.abspath(f)); pg.wait_for_timeout(300)
         out.append((label,pg.evaluate(JS,[12,2468,NC]))); pg.close()
     b.close()

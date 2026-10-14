@@ -3,7 +3,7 @@ import json
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page(viewport={'width':844,'height':390}); errs=[]
     pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(300); pg.add_script_tag(path='bot.js')
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(300); pg.add_script_tag(path='bot.js')
     print(pg.evaluate('''()=>{let N=0,ch=0,sec=0,life=0;for(let n=3;n<=40;n++)for(let s=0;s<5;s++){N++;const L=__HK.genLevel(n,s*77+n,false);if(L.ext.chase)ch++;if(L.detours&&L.detours.some(d=>d.secret))sec++;if(L.items.some(i=>i.type==='life'))life++;}return 'per floor: chase '+(ch/N).toFixed(2)+', secret passage '+(sec/N).toFixed(2)+', floors with a gold flask '+(life/N).toFixed(2);}'''))
     cases=pg.evaluate('''()=>{const out=[];for(let n=6;n<=40&&out.length<12;n+=3)for(let s=0;s<20;s++){const L=__HK.genLevel(n,900+s,true);if(L.ext.chase&&(n%3!==0||L.detours.some(d=>d.secret))){out.push([n,900+s]);break;}}return out;}''')
     for n,s in cases:

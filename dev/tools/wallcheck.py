@@ -2,7 +2,7 @@ from playwright.sync_api import sync_playwright
 from PIL import Image
 with sync_playwright() as p:
     b=p.chromium.launch(); ctx=b.new_context(viewport={'width':844,'height':390},device_scale_factor=2)
-    pg=ctx.new_page(); pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(500)
+    pg=ctx.new_page(); pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(500)
     pg.evaluate("window.__HKfreeze=true;document.querySelectorAll('.screen').forEach(e=>e.hidden=true);document.getElementById('app').classList.add('overlay')")
     ims=[]
     for i,(n,side) in enumerate([(7,1),(7,-1),(15,1),(18,-1)]):

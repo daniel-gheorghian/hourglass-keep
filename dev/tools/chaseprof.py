@@ -1,6 +1,6 @@
 from playwright.sync_api import sync_playwright
 import json,sys
-src=sys.argv[1] if len(sys.argv)>1 else '/home/claude/hourglass-keep.html'
+src=sys.argv[1] if len(sys.argv)>1 else '/Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'
 with sync_playwright() as p:
     b=p.chromium.launch(); ctx=b.new_context(viewport={'width':844,'height':390},device_scale_factor=2)
     pg=ctx.new_page(); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))

@@ -6,6 +6,6 @@ JS=r'''([n,seed,gc,gr])=>{const L=__HK.load(n,seed,true);const o=L.dyn.find(q=>q
  const i=L.path.findIndex(a=>(a.c!==undefined&&a.c>=gc)||(a.to!==undefined&&a.to>=gc&&a.from<gc));
  return {n,t:o.f.t,dur:o.f.dur,latch:o.f.latch,far:!!o.f.far,block:!!o.f.blockGate,plate:pl&&[pl.c,pl.r],closer:cl&&cl.c,path:L.path.slice(Math.max(0,i-4),i+2)};}'''
 with sync_playwright() as p:
-    b=p.chromium.launch(); pg=b.new_page(); pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(300)
+    b=p.chromium.launch(); pg=b.new_page(); pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(300)
     for c in cases: print(json.dumps(pg.evaluate(JS,list(c))))
     b.close()

@@ -4,7 +4,7 @@ import json
 with sync_playwright() as p:
     b=p.chromium.launch(); ctx=b.new_context(viewport={'width':844,'height':390},device_scale_factor=2)
     pg=ctx.new_page(); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(800)
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(800)
     pg.screenshot(path='lt_title.png')
     pg.click('#bNew'); pg.wait_for_timeout(2500)
     s=pg.evaluate("({mode:__HK.mode,x:__HK.P.x,r:Math.floor(__HK.P.y/64),face:__HK.P.face,start:__HK.L.start,door:__HK.L.door&&{c:__HK.L.door.c,r:__HK.L.door.r},cols:__HK.L.cols,rows:__HK.L.rows})")

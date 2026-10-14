@@ -31,7 +31,7 @@ JS = r'''([n,trials,react])=>{
 }'''
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page()
-    pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(300)
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(300)
     for react in (0.15, 0.22):
         for n in (1,5,10,15,20,25,30):
             print('react',react, pg.evaluate(JS,[n,40,react]))

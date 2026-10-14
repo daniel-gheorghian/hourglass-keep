@@ -4,7 +4,7 @@ lo,hi=int(sys.argv[1]),int(sys.argv[2])
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page(viewport={'width':844,'height':390}); errs=[]
     pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(300); pg.add_script_tag(path='bot.js')
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(300); pg.add_script_tag(path='bot.js')
     rows=[]
     for n in range(lo,hi+1):
         r=pg.evaluate('''(n)=>{const use=[];const seen=new Set();

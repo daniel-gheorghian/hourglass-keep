@@ -3,7 +3,7 @@ from PIL import Image
 with sync_playwright() as p:
     b=p.chromium.launch(); ctx=b.new_context(viewport={'width':844,'height':390},device_scale_factor=2)
     pg=ctx.new_page(); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(400); pg.add_script_tag(path='bot.js')
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(400); pg.add_script_tag(path='bot.js')
     pg.evaluate("window.__HKfreeze=true;document.querySelectorAll('.screen').forEach(e=>e.hidden=true);document.getElementById('app').classList.add('overlay')")
     ims=[]
     for i,(n,cond) in enumerate([(6,"H.P.state==='strike'&&H.P.t>0.17&&H.P.t<0.24"),(9,"H.P.state==='strike'&&H.P.t>0.2&&H.P.t<0.26"),(12,"H.G.some(g=>g.state==='strike'&&g.trail&&g.trail.length>4)"),(15,"H.P.state==='blocked'&&H.P.t<0.05")]):

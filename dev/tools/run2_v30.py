@@ -5,7 +5,7 @@ base=int(sys.argv[5]) if len(sys.argv)>5 else 700000
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page(viewport={'width':844,'height':390}); errs=[]
     pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.goto('file:///tmp/claude-0/-home-claude-hourglass-keep/f01bc65f-8e08-5e8f-8f80-4fcb704e8720/scratchpad/v30_hooks.html'); pg.wait_for_timeout(300); pg.add_script_tag(path='bot.js')
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/tools/v30_hooks.html'); pg.wait_for_timeout(300); pg.add_script_tag(path='bot.js')
     res=[];fails=[]
     for n in range(lo,hi+1):
         for s in range(seeds):

@@ -1,7 +1,7 @@
 from playwright.sync_api import sync_playwright
 from PIL import Image, ImageDraw, ImageFont
 import base64,io,os,sys
-f=sys.argv[1] if len(sys.argv)>1 else '/home/claude/hourglass-keep.html'; out=sys.argv[2] if len(sys.argv)>2 else 'br.png'
+f=sys.argv[1] if len(sys.argv)>1 else '/Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'; out=sys.argv[2] if len(sys.argv)>2 else 'br.png'
 floors=[int(x) for x in (sys.argv[3].split(',') if len(sys.argv)>3 else '3,7,11,15,19,23'.split(','))]
 pick=int(sys.argv[4]) if len(sys.argv)>4 else 0
 font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',18)

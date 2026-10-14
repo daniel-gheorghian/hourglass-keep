@@ -17,6 +17,6 @@ JS=r'''([mode])=>{const H=__HK;let at=null;
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page(viewport={'width':844,'height':390}); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
     for mode in ['late','early']:
-        pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(300); pg.add_script_tag(path='bot.js')
+        pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(300); pg.add_script_tag(path='bot.js')
         print(mode, pg.evaluate(JS,[mode]))
     print(errs[:3]); b.close()

@@ -3,7 +3,7 @@ import base64,os,subprocess,shutil
 d='vidframes';shutil.rmtree(d,ignore_errors=True);os.makedirs(d)
 with sync_playwright() as p:
     b=p.chromium.launch(); ctx=b.new_context(viewport={'width':844,'height':390},device_scale_factor=1); pg=ctx.new_page(); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(400); pg.add_script_tag(path='bot.js')
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(400); pg.add_script_tag(path='bot.js')
     pg.evaluate("window.__HKfreeze=true;document.querySelectorAll('.screen').forEach(e=>e.hidden=true);document.getElementById('app').classList.add('overlay')")
     k=0
     pg.evaluate('''()=>{window.__rec=[];let on=false,c=0;runBot(11,788,{fight:false,stop:H=>{const ch=H.L.ext.chase;if(!on&&ch&&ch.on&&ch.t>0.8)on=true;if(on){c++;if(c%2===0){H.render();window.__rec.push(document.getElementById('game').toDataURL('image/jpeg',0.85));}if(window.__rec.length>=150)return true;}return false;}});}''')

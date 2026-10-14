@@ -4,7 +4,7 @@ import sys,os
 out,js=sys.argv[1],sys.argv[2]
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page(viewport={'width':1200,'height':400}); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(300)
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(300)
     pg.evaluate('''(js)=>{const H=__HK;const items=new Function('H','return ('+js+')')(H);document.body.innerHTML='';const c=document.createElement('canvas');const W=150,Hh=170;c.width=W*items.length;c.height=Hh;document.body.appendChild(c);
       const g=c.getContext('2d');g.fillStyle='#2a2430';g.fillRect(0,0,c.width,c.height);
       items.forEach(([lab,pose,face,o,wall],i)=>{g.save();g.translate(i*W+W/2,Hh-20);g.scale(2.4,2.4);

@@ -1,6 +1,6 @@
 from playwright.sync_api import sync_playwright
 import json,sys
-f=sys.argv[1] if len(sys.argv)>1 else '/home/claude/hourglass-keep.html'
+f=sys.argv[1] if len(sys.argv)>1 else '/Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'
 lo,hi,ns=(int(sys.argv[2]),int(sys.argv[3]),int(sys.argv[4])) if len(sys.argv)>4 else (6,27,2)
 JS=r'''([n,seed])=>{window.__hurts=[];const H=__HK;const L0=H.load(n,seed,true);if(!L0.loops.length)return null;
   // play the floor, but at the first loop take the hole: down the ledges to the shut gate, back up, then on the long way

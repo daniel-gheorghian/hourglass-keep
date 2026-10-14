@@ -3,7 +3,7 @@ import json,sys
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page(viewport={'width':844,'height':390}); errs=[]
     pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(300); pg.add_script_tag(path='bot.js')
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(300); pg.add_script_tag(path='bot.js')
     stats=pg.evaluate('''()=>{let N=0,dbl=0,timed=0,det=0;for(let n=4;n<=40;n++)for(let s=0;s<5;s++){N++;const L=__HK.genLevel(n,s*101+n*3,false);for(const d of L.detours||[]){if(d.double)dbl++;else{det++;if(d.timed)timed++;}}}return {perFloor:{double:(dbl/N).toFixed(2),detour:(det/N).toFixed(2),timedDetour:(timed/N).toFixed(2)}};}''')
     print(json.dumps(stats))
     # find floors with a double gate / timed detour and play them

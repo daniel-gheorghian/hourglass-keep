@@ -12,7 +12,7 @@ with sync_playwright() as p:
     pg.tap('#bNew'); pg.wait_for_timeout(200); pg.keyboard.down('ArrowRight'); pg.wait_for_timeout(500); pg.keyboard.up('ArrowRight'); pg.wait_for_timeout(3500)
     out['v1_save_level']=pg.evaluate('__HK.S.level')
     # deploy v2 (what GitHub Pages will serve after the push)
-    for f in ['index.html','sw.js']: shutil.copy('/home/claude/hourglass-keep/'+f, SP+'/srv/'+f)
+    for f in ['index.html','sw.js']: shutil.copy('/Users/dan/Documents/Projects/hourglass-keep/'+f, SP+'/srv/'+f)
     # first launch after deploy (the user opens the app online): old page served from cache, new worker installs
     pg.goto('http://127.0.0.1:8766/'); pg.wait_for_timeout(2500)
     out['after_1st_open_has_pause_btn']=pg.evaluate("!!document.getElementById('bPause')")

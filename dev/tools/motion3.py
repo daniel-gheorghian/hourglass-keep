@@ -5,7 +5,7 @@ import base64,io,sys,json,os
 # usage: motion.py out.png n seed "pred-js" [count] [every] [file] [cropW] [cropH] [dy]
 out,n,seed,pred=sys.argv[1],int(sys.argv[2]),int(sys.argv[3]),sys.argv[4]
 count=int(sys.argv[5]) if len(sys.argv)>5 else 10; every=int(sys.argv[6]) if len(sys.argv)>6 else 3
-f=sys.argv[7] if len(sys.argv)>7 and sys.argv[7]!='-' else '/home/claude/hourglass-keep.html'
+f=sys.argv[7] if len(sys.argv)>7 and sys.argv[7]!='-' else '/Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'
 cw=int(sys.argv[8]) if len(sys.argv)>8 else 220; chh=int(sys.argv[9]) if len(sys.argv)>9 else 260; dy=int(sys.argv[10]) if len(sys.argv)>10 else -60
 with sync_playwright() as p:
     b=p.chromium.launch(); ctx=b.new_context(viewport={'width':844,'height':390},device_scale_factor=2); pg=ctx.new_page(); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))

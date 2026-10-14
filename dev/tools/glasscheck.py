@@ -3,7 +3,7 @@ from PIL import Image
 with sync_playwright() as p:
     b=p.chromium.launch(); ctx=b.new_context(viewport={'width':844,'height':390},device_scale_factor=2)
     pg=ctx.new_page(); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(400)
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(400)
     pg.evaluate("window.__HKfreeze=true;document.querySelectorAll('.screen').forEach(e=>e.hidden=true);document.getElementById('app').classList.add('overlay')")
     for i,(n,op) in enumerate([(7,0),(14,1)]):
         pg.evaluate('''([n,op])=>{const H=__HK;const L=H.load(n,321,true);const o=L.dyn.find(q=>q.f.t==='gate'&&!q.f.latch&&q.f.dur>0.3&&q.c>5);

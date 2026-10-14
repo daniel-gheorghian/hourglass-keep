@@ -1,6 +1,6 @@
 from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
-    b=p.chromium.launch(); pg=b.new_page(); pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(300)
+    b=p.chromium.launch(); pg=b.new_page(); pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(300)
     print(pg.evaluate('''()=>{const H=__HK;const L=H.load(6,500,true);const ins=L.path.find(a=>a.a==='wallrun');const c=ins.from,P=H.P;
       // find the row: the floor tile at c
       let r=0;for(let rr=0;rr<L.rows;rr++)if(L.base[rr*L.cols+c]===1)r=rr;

@@ -2,7 +2,7 @@ import json, sys
 from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page()
-    pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(300)
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(300)
     r=pg.evaluate('''()=>{const out=[];for(const n of [1,3,5,10,15,20,30]){let tot=0,maxScreen=0,heal=0,poison=0,life=0,K=30;const hashes=[];
       for(let s=0;s<K;s++){const L=__HK.genLevel(n,5000+s*77,false);tot+=L.items.length;
         for(const it of L.items){if(it.type==='heal')heal++;else if(it.type==='poison')poison++;else life++;}

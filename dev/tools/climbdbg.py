@@ -2,7 +2,7 @@ from playwright.sync_api import sync_playwright
 import sys
 n,s,cc0,f=int(sys.argv[1]),int(sys.argv[2]),int(sys.argv[3]),sys.argv[4]=='fight'
 with sync_playwright() as p:
-    b=p.chromium.launch(); pg=b.new_page(); pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(300); pg.add_script_tag(path='bot.js')
+    b=p.chromium.launch(); pg=b.new_page(); pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(300); pg.add_script_tag(path='bot.js')
     print(pg.evaluate(r'''([n,s,cc0,f])=>{const H=__HK;const L0=H.genLevel(n,s,!f);const i=L0.path.findIndex(a=>a.a==='climb'&&a.from===cc0);
       const ctx=L0.path.slice(Math.max(0,i-5),i+3).map(a=>JSON.stringify(a)).join(' ');
       let r=-1;for(let rr=0;rr<L0.rows;rr++)if(L0.base[rr*L0.cols+cc0]===1)r=rr;

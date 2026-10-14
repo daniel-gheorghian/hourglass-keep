@@ -8,7 +8,7 @@ with sync_playwright() as p:
     errs=[]
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.on('console', lambda m: errs.append('console:'+m.text) if m.type=='error' else None)
-    pg.goto('file:///home/claude/hourglass-keep.html')
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html')
     pg.wait_for_timeout(500)
     pg.add_script_tag(path='bot.js')
     res=[]; fails=[]

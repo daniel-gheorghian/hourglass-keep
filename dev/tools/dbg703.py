@@ -1,6 +1,6 @@
 from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
-    b=p.chromium.launch(); pg=b.new_page(); pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(300); pg.add_script_tag(path='bot.js')
+    b=p.chromium.launch(); pg=b.new_page(); pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(300); pg.add_script_tag(path='bot.js')
     print(pg.evaluate(r'''()=>{const H=__HK;const L0=H.genLevel(7,703,true);const i=L0.path.findIndex(a=>a.a==='walk'&&a.c===248);
       const ctx=L0.path.slice(Math.max(0,i-4),i+3).map(a=>JSON.stringify(a)).join(' ');
       let r=-1;for(let rr=0;rr<L0.rows;rr++)if(L0.base[rr*L0.cols+248]===1)r=rr;

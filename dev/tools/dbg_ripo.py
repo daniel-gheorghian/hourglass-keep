@@ -11,5 +11,5 @@ JS=r'''()=>{const H=__HK;let g=null;for(let k=0;k<200&&!g;k++){H.load(13,5000+k*
    if(P.state!==prevP||g.state!==prevG){log.push((f/60).toFixed(2)+' '+s+' hp'+P.hp+'/'+g.hp+' dx'+Math.round(g.x-P.x));prevP=P.state;prevG=g.state;}
  }return log.slice(0,60).join('\n');}'''
 with sync_playwright() as p:
-    b=p.chromium.launch();pg=b.new_page();pg.goto('file:///home/claude/hourglass-keep.html');pg.wait_for_timeout(300)
+    b=p.chromium.launch();pg=b.new_page();pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html');pg.wait_for_timeout(300)
     print(pg.evaluate(JS));b.close()

@@ -6,4 +6,4 @@ JS=r'''()=>{let bad=[],tot=0;const solid=(L,c,r)=>{const b=L.base[r*L.cols+c];if
     for(const x of [g.lo-18,g.hi+18]){const c=Math.floor(x/32);if(!solid(L,c,g.r)||L.base[g.r*L.cols+c]===2)bad.push(n+':'+s+' x'+Math.round(x)+' c'+c);}}}
  return {guards:tot,unsafe:bad.length,examples:bad.slice(0,8)};}'''
 with sync_playwright() as p:
-    b=p.chromium.launch();pg=b.new_page();pg.goto('file:///home/claude/hourglass-keep.html');pg.wait_for_timeout(300);print(pg.evaluate(JS));b.close()
+    b=p.chromium.launch();pg=b.new_page();pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html');pg.wait_for_timeout(300);print(pg.evaluate(JS));b.close()

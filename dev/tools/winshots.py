@@ -1,7 +1,7 @@
 from playwright.sync_api import sync_playwright
 from PIL import Image
 import sys,os
-f=sys.argv[1] if len(sys.argv)>1 else '/home/claude/hourglass-keep.html'; out=sys.argv[2] if len(sys.argv)>2 else 'win_themes.png'
+f=sys.argv[1] if len(sys.argv)>1 else '/Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'; out=sys.argv[2] if len(sys.argv)>2 else 'win_themes.png'
 with sync_playwright() as p:
     b=p.chromium.launch(); ctx=b.new_context(viewport={'width':844,'height':390},device_scale_factor=2); pg=ctx.new_page(); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
     pg.goto('file://'+os.path.abspath(f)); pg.wait_for_timeout(500)

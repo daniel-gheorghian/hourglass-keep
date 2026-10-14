@@ -2,7 +2,7 @@ from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     b=p.chromium.launch(); ctx=b.new_context(viewport={'width':844,'height':390},device_scale_factor=2)
     pg=ctx.new_page(); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(800)
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(800)
     # start on floor 9 directly through the save, as a returning player would
     pg.evaluate("(()=>{const s=JSON.parse(localStorage.getItem('hourglass-keep-v1')||'null');})()")
     pg.click('#bNew'); pg.wait_for_timeout(1500)

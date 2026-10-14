@@ -4,7 +4,7 @@ with sync_playwright() as p:
     for name,(w,h) in {'land':(844,390),'se':(667,375),'port':(390,844),'tab':(1024,768)}.items():
         ctx=b.new_context(viewport={'width':w,'height':h},device_scale_factor=2,has_touch=True,is_mobile=True)
         pg=ctx.new_page(); pg.on('pageerror',lambda e:errs.append(name+':'+str(e)))
-        pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(500)
+        pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(500)
         pg.screenshot(path=f'v4_{name}_title.png')
         pg.tap('#bNew'); pg.wait_for_timeout(300)
         pg.evaluate("__HK.setKey('kb','r',true)"); pg.wait_for_timeout(900); pg.evaluate("__HK.setKey('kb','r',false)"); pg.wait_for_timeout(2300)

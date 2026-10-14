@@ -11,7 +11,7 @@ JS=r'''([n,s,kind])=>{const H=__HK;const L=H.load(n,s,true);const idx=L.path.fin
   const log=[];const r0=runBot.__single?0:0;
   return {map:map.join('\n'),ins:JSON.stringify(ins),row:r};}'''
 with sync_playwright() as p:
-    b=p.chromium.launch(); pg=b.new_page(); pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(300); pg.add_script_tag(path='bot.js')
+    b=p.chromium.launch(); pg=b.new_page(); pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(300); pg.add_script_tag(path='bot.js')
     n,s,kind=int(sys.argv[1]),int(sys.argv[2]),sys.argv[3]
     out=pg.evaluate(JS,[n,s,kind]); print(out['ins'],'row',out['row']); print(out['map'])
     # now drive the same action manually with the bot's logic, logging states

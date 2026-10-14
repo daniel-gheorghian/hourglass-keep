@@ -1,7 +1,7 @@
 from playwright.sync_api import sync_playwright
 import json
 with sync_playwright() as p:
-    b=p.chromium.launch(); pg=b.new_page(); pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(300)
+    b=p.chromium.launch(); pg=b.new_page(); pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(300)
     r=pg.evaluate('''()=>{const H=__HK;const out={};
       // tiptoe across live spikes, and onto a flask without drinking it
       for(let n=2;n<30;n++){const L=H.load(n,600+n,true);const sp=L.dyn.find(o=>o.f.t==='spikes'&&!o.f.fixed);if(!sp)continue;

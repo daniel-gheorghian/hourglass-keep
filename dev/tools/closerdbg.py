@@ -9,5 +9,5 @@ JS=r'''()=>{const H=__HK;for(let s=0;s<12;s++){const n=4;const L=H.load(n,1000+n
   H.setKey('kb','r',false);
   return {plate:pl.c,closer:cl.c,gate:o.c,gx:o.c*32+16,tr:tr.join(' ')};}}'''
 with sync_playwright() as p:
-    b=p.chromium.launch(); pg=b.new_page(); pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(300)
+    b=p.chromium.launch(); pg=b.new_page(); pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(300)
     print(pg.evaluate(JS)); b.close()

@@ -1,7 +1,7 @@
 from playwright.sync_api import sync_playwright
 import json
 with sync_playwright() as p:
-    b=p.chromium.launch(); pg=b.new_page(); pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(300); pg.add_script_tag(path='bot.js')
+    b=p.chromium.launch(); pg=b.new_page(); pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(300); pg.add_script_tag(path='bot.js')
     r=pg.evaluate('''()=>{const H=__HK;const out=[];
       for(const n of [17,18,19,20,37]){const res=runBot(n,4242+n,{fight:true});const L=H.L;
         out.push({n,ok:res.ok,secs:Math.round((res.frames||0)/60),skeletons:L.guards.filter(g=>g.skel).length,skeletonsInPit:H.G.filter(g=>g.skel&&g.gone).length,

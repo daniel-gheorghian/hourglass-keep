@@ -1,7 +1,7 @@
 from playwright.sync_api import sync_playwright
 import json,collections
 with sync_playwright() as p:
-    b=p.chromium.launch(); pg=b.new_page(); pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(400)
+    b=p.chromium.launch(); pg=b.new_page(); pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(400)
     cdp=pg.context.new_cdp_session(pg); cdp.send('Profiler.enable'); cdp.send('Profiler.setSamplingInterval',{'interval':100})
     pg.evaluate("()=>{window.__Ls=[];for(let s=0;s<12;s++){window.__Ls.push(__HK.load(19,1000+s,true));}}")
     cdp.send('Profiler.start')

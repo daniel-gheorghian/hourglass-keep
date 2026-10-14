@@ -3,7 +3,7 @@ from PIL import Image, ImageDraw, ImageFont
 import base64,io,json
 with sync_playwright() as p:
     b=p.chromium.launch(); ctx=b.new_context(viewport={'width':844,'height':390},device_scale_factor=2); pg=ctx.new_page(); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(400)
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(400)
     pg.evaluate("window.__HKfreeze=true;document.querySelectorAll('.screen').forEach(e=>e.hidden=true);document.getElementById('app').classList.add('overlay')")
     res=pg.evaluate('''()=>{const H=__HK;const L=H.load(4,544,true);const o=L.dyn.find(q=>q.f.t==='chomp');const P=H.P;
       let sc=o.c-3;while(sc<o.c-1&&H.L.base[o.r*H.L.cols+sc]!==1)sc++;P.x=sc*32+16;P.y=(o.r+1)*64-4;P.fallY=P.y;P.state='stand';P.face=1;H.cam.snap=true;H.tick(2);

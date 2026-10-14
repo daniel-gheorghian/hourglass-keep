@@ -3,7 +3,7 @@ from PIL import Image
 import base64,io
 with sync_playwright() as p:
     b=p.chromium.launch(); ctx=b.new_context(viewport={'width':844,'height':390},device_scale_factor=2); pg=ctx.new_page(); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.goto('file:///home/claude/hourglass-keep.html'); pg.wait_for_timeout(500)
+    pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(500)
     pg.evaluate("window.__HKfreeze=true;document.querySelectorAll('.screen').forEach(e=>e.hidden=true);document.getElementById('app').classList.add('overlay')")
     r=pg.evaluate('''()=>{const H=__HK;let floors=0,withBig=0;for(let n=4;n<=30;n++)for(let s=0;s<10;s++){const L=H.genLevel(n,7000+n*31+s,true);floors++;if(L.items.some(i=>i.type==='big'))withBig++;}
       for(let n=6;n<=30;n++)for(let s=0;s<10;s++){const L=H.load(n,7000+n*31+s,true);const it=L.items.find(i=>i.type==='big');if(!it)continue;
