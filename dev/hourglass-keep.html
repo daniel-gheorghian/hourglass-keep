@@ -486,8 +486,8 @@ function buildLevel(n,seed,test,legacy,att){
     c+=len;run=1;return true;
   }
   // ---- side passages: a mini level in a gallery above the corridor or a cellar below it, walked out to a plate and back ----
-  function planBranch(gal,want,chain,amb){
-    const kinds=[style==='palace'&&ch(0.6)?'bridge':'loose'];let fighters=0;
+  function planBranch(gal,want,chain,amb,only){
+    const kinds=[only||(style==='palace'&&ch(0.6)?'bridge':'loose')];let fighters=0;
     while(kinds.length<want){
       const o=[],A=(w,k)=>{if(w>0)o.push([w,k]);};
       A(0.7,'flat');A(1.2,'spikes');A(1.2,'gap1');A(n>=5?1:0,'gap2');A(0.9,'loose');A(0.9,'tunnel');A(n>=6?0.8:0,'chomp');
@@ -517,10 +517,10 @@ function buildLevel(n,seed,test,legacy,att){
     const zoneOff=amb?x:-1;x+=amb?7:(chain?2:0);
     for(const p of parts){x+=2+(prng()<0.35?1:0);p.off=x;x+=p.w;} // a little floor between the obstacles of a passage too
     x+=2;
-    return {gal,kinds,parts,chain,amb,chainOff,zoneOff,bw:x,tall:kinds.some(k=>k==='stones'||k==='pend')};
+    return {gal,kinds,parts,chain,amb,chainOff,zoneOff,bw:x,tall:kinds.some(k=>k==='stones'||k==='pend'),dy:undefined};
   }
   function carveBranch(pl,x0,g,where,timed,reward){
-    const gal=pl.gal,b=gal?r-2:r+2,bend=x0+pl.bw-1;
+    const gal=pl.gal,b=pl.dy!==undefined?r+pl.dy:gal?r-2:r+2,bend=x0+pl.bw-1;
     for(let xx=x0;xx<=bend;xx++)set(xx,b,FLOOR);
     const below=(xx,spk)=>{if(!gal){set(xx,b+1,FLOOR);if(spk)feat(xx,b+1,{t:'spikes',fixed:true,ext:1});}};
     const hole=xx=>{set(xx,b,EMPTY);below(xx,true);};
@@ -716,6 +716,30 @@ function buildLevel(n,seed,test,legacy,att){
       {a:'walk',c:e+2},{a:'hangdrop',from:e+2,dir:-1},{a:'drop',from:e+1,dir:-1},...post,{a:'walk',c:gc+1});
     let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&xx!==gc&&zr()<0.45){if(raw(xx,r)===FLOOR&&!fe(xx,r))L.torches.push({c:xx,r});lt=xx;}
     L.detours=(L.detours||[]);L.detours.push({puz:p3?'P3G1':'P2G1',c,len,e,lc,gc,r});
+    c+=len;run=2;return true;
+  }
+
+  // A plate in a small alcove one storey off the corridor: a ledge over it reached by one climb, or a nook under it reached by
+  // dropping through a one-tile hole in its floor (and climbed out of at the hole's far side). A few tiles long, with a single
+  // obstacle in it: the cheap shape of "a plate opens a gate", next to the long gallery and cellar branches.
+  function alcovePlate(up){
+    if(up&&r<3)return false;
+    if(!up&&r>rows-5)return false;
+    const menu=['spikes','gap1','loose'];if(n>=6)menu.push('chomp');if(n>=5)menu.push('tunnel');
+    const only=menu[Math.floor(zr()*menu.length)];
+    const pl=planBranch(up,1,false,false,only);pl.dy=up?-1:1;
+    const x0=c+2,bend=x0+pl.bw-1,e=up?bend+1:bend,gc=e+3,len=e+4-c;
+    if(c+len>vHi)return false;
+    if(!rectOk(c+1,c+len,up?r-2:r,up?r:r+3))return false;
+    fillCorridor(e-3,up?x0-1:1e9,pl,x0);
+    for(let xx=c+1;xx<=c+len;xx++)set(xx,r,FLOOR);
+    if(up)set(e,r-1,EMPTY);else set(e,r,EMPTY);
+    const g={t:'gate',open:0,tm:0,dur:0,latch:true,far:true};feat(gc,r,g);
+    const br=carveBranch(pl,x0,g,up?'below':'above',false,false);
+    let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&(up||xx!==e)&&xx!==gc&&zr()<0.45){if(raw(xx,r)===FLOOR&&!fe(xx,r))L.torches.push({c:xx,r});lt=xx;}
+    if(up)bot.push({a:'walk',c:e},{a:'climb',from:e,dir:-1},...br.outs,...br.backs,{a:'walk',c:e-1},{a:'drop',from:e-1},{a:'walk',c:c+len});
+    else bot.push({a:'walk',c:e-1},{a:'drop',from:e-1},...br.outs,...br.backs,{a:'walk',c:e},{a:'climb',from:e},{a:'walk',c:c+len});
+    L.detours=(L.detours||[]);L.detours.push({puz:'P5G1',up,c,len,x0,bend,e,gc,r,only});
     c+=len;run=2;return true;
   }
   // ---- vertical moves ----
@@ -1029,7 +1053,27 @@ function buildLevel(n,seed,test,legacy,att){
     bot.push({a:'walk',c:La+6});c=La+6;run=3;lp.footed=true;
     L.loops.push({t:lp.t,H:lp.H,O:lp.O,dir:lp.dir,rUp:lp.rUp,rLow:lp.rLow,gate:lp.gate,plate:lp.plate});
     return true;}
-  const runs=plan.runs;let entryP=-1,prevKit=null,pendDet=0,pendDbl=0;L.runsInfo=[];
+  // ---- the puzzle menu: where the plate is (P1..P5) and where its gate stands (G1..), chosen separately ----
+  // A pair is a name like 'P2G1'. Weights are per roll of the puzzle option (about the old 0.22 detour + 0.08 double); a
+  // floor's puzzles are drawn from their own stream, and one that doesn't fit is tried again at the next clear stretch.
+  //   P1 branch plate (gallery above / cellar below, walked out and back)   P2 slab over the plate (gate too quick to outrun)
+  //   P3 slab jams the closers before a gate                                P5 plate in a one-storey alcove
+  //   double: two branch plates, one gate timed
+  let puzzleSeg='puzzle',puzzleNm='';
+  const MENU=[['P1G1',0.09,4],['P5G1',0.045,4],['P2G1',0.05,4],['P3G1',0.035,5],['double',0.08,7]];
+  function puzzlePick(){
+    if(typeof window!=='undefined'&&window.__PZ&&MENU.some(m=>m[0]===window.__PZ))return window.__PZ;
+    const o=MENU.filter(m=>n>=m[2]);let tot=0;for(const m of o)tot+=m[1];let x=zr()*tot;for(const m of o){x-=m[1];if(x<=0)return m[0];}return o[0][0];}
+  // lay the puzzle; returns the segment kind for the metrics (or false when it did not fit)
+  function puzzleTry(nm){
+    switch(nm){
+      case'P1G1':return sideTry(detourGate,zr()<0.5)?'detour':false;
+      case'double':return doubleGate()?'double':false;
+      case'P5G1':return alcovePlate(zr()<0.5)?'puzzle':false;
+      case'P2G1':return slabGate('p2')?'puzzle':false;
+      case'P3G1':return slabGate('p3')?'puzzle':false;
+    }return false;}
+  const runs=plan.runs;let entryP=-1,prevKit=null;const pend=[];L.runsInfo=[];
   for(const lp of loopAt.values())loopZone(lp,q=>{resv[q]=1;});
   for(let k=0;k<runs.length;k++){
     const rn=runs[k],dir=rn.dir,R0=bandRow(rn.band),first=k===0,last=k===runs.length-1,endRoom=rn.rooms[rn.rooms.length-1];
@@ -1067,8 +1111,7 @@ function buildLevel(n,seed,test,legacy,att){
         bot.push({a:'walk',c:c+2});c+=2;run+=2;xDone=true;continue;
       }
       if(L.guards.length-extraG<guardsWanted&&prog()-lastGuard>=guardGap&&c+12<vHi){const c0=c,r0=r,sk=style==='crypt'&&ch(0.5);if(sk?skeleton():guard()){L.segs.push({k:sk?'skel':'guard',c0,c1:c,r0,r1:r});flat(1);breathe();continue;}}
-      if(pendDet>0&&c-cEntry>=8&&vHi-c>=30){const c0=c,r0=r,g0=ch(0.5);if(sideTry(detourGate,g0)){pendDet--;L.segs.push({k:'detour',c0,c1:c,r0,r1:r});breathe();continue;}}
-      if(pendDbl>0&&c-cEntry>=8&&vHi-c>=30){const c0=c,r0=r;if(doubleGate()){pendDbl--;L.segs.push({k:'double',c0,c1:c,r0,r1:r});breathe();continue;}}
+      if(pend.length&&c-cEntry>=8&&vHi-c>=30){const c0=c,r0=r,nm=pend[0],sg=puzzleTry(nm);if(sg){pend.shift();L.segs.push({k:sg,puz:nm,c0,c1:c,r0,r1:r});breathe();continue;}}
       if(prog()>=nextCp&&c<vHi-12&&raw(c,r)===FLOOR&&!fe(c,r)&&!L.items.some(it=>it.c===c&&it.r===r)){L.cps.push({c,r,x:c*TW+16,on:false,ord:prog()});nextCp=Math.max(nextCp+CP_GAP,prog()+CP_GAP*0.7);}
       if(r===target||ch(0.08))target=ri(rMin,rMax);
       const opts=[];const add=(w,f,kd)=>{if(w>0)opts.push([w,f,kd]);};
@@ -1082,8 +1125,8 @@ function buildLevel(n,seed,test,legacy,att){
       if(n>=3)add(1.0,()=>loose(n>=5&&ch(0.45)?2:1),'loose');
       if(n>=4)add(0.9,chomp,'chomp');
       if(n>=3)add(0.75,gate,'gate');
-      if(n>=4)add(0.22,()=>{if(c-cEntry<8||vHi-c<30){pendDet=Math.min(2,pendDet+1);return false;}if(sideTry(detourGate,ch(0.5)))return true;pendDet=Math.min(2,pendDet+1);return false;},'detour');
-      if(n>=7)add(0.08,()=>{if(c-cEntry<8||vHi-c<30||!doubleGate()){pendDbl=1;return false;}return true;},'double');
+      if(n>=4)add(n>=7?0.30:0.22,()=>{const nm=puzzlePick();if(c-cEntry>=8&&vHi-c>=30){const sg=puzzleTry(nm);if(sg){puzzleSeg=sg;puzzleNm=nm;return true;}}
+        if(pend.length<3)pend.push(nm);return false;},'puzzle');
       if(n>=6)add(0.3,swingSeg,'swing');
       if(n>=5)add(0.1,sawSeg,'saw');
       if(n>=6&&r===rMax)add(0.12,dartSeg,'darts');
@@ -1097,7 +1140,7 @@ function buildLevel(n,seed,test,legacy,att){
       let x=rng()*tot,chosen=opts[0][1],kind=opts[0][2];
       for(const o of opts){x-=o[0];if(x<=0){chosen=o[1];kind=o[2];break;}}
       const before=c,rBefore=r;
-      if(chosen()){L.segs.push({k:kind,c0:before,c1:c,r0:rBefore,r1:r});if(!MOVES.has(kind))breathe();}
+      if(chosen()){L.segs.push(kind==='puzzle'?{k:puzzleSeg,puz:puzzleNm,c0:before,c1:c,r0:rBefore,r1:r}:{k:kind,c0:before,c1:c,r0:rBefore,r1:r});if(!MOVES.has(kind))breathe();}
       else{if(!flat(1))break;}
       if(c!==before&&raw(c,r)===FLOOR&&!fe(c,r)){
         if(ch(0.07))L.items.push({c,r,x:c*TW+16,type:(n>=8&&ch(0.2))?'poison':'heal',taken:false});
@@ -3635,13 +3678,17 @@ function drawPlank(ctx,X,ys,sh){
   ctx.restore();
 }
 // a flat piece set into a floor's walking surface (plates), raised by lift
-// the slab that fell on a plate: a few broken pieces lying on it, one big wedge leaning, chips round about
+// the slab that fell on a plate: broken chunks lying on it, one tilted, with chips round about
 function drawHeap(ctx,o,X,ys,th){if(!L.rubble.has(o.r*L.cols+o.c))return;const rnd=mulberry32(hash2(o.c,o.r+91));
-  const piece=(x0,x1,d0,d1,h,col)=>{const a=onFloor(x0,d0,ys),b=onFloor(x1,d0,ys),c2=onFloor(x1,d1,ys),d=onFloor(x0,d1,ys);
-    ctx.fillStyle=col;ctx.strokeStyle='#0b0812';ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(a.x,a.y-h*0.6);ctx.lineTo(b.x,b.y-h);ctx.lineTo(c2.x,c2.y-h*0.5);ctx.lineTo(d.x,d.y-h*0.3);ctx.closePath();ctx.fill();ctx.stroke();
-    ctx.fillStyle='rgba(255,255,255,.14)';ctx.fill();ctx.fillStyle=th.front;ctx.beginPath();ctx.moveTo(d.x,d.y-h*0.3);ctx.lineTo(c2.x,c2.y-h*0.5);ctx.lineTo(c2.x,c2.y);ctx.lineTo(d.x,d.y);ctx.closePath();ctx.fill();ctx.stroke();};
-  piece(X+2,X+17,0.15,0.62,6+rnd()*2,th.top);piece(X+15,X+30,0.3,0.85,4+rnd()*2,th.hi||th.top);piece(X+7,X+22,0.55,0.95,3,th.top);
-  for(let i=0;i<7;i++){const q=onFloor(X+2+rnd()*28,0.1+rnd()*0.85,ys);ctx.fillStyle=i%2?th.front:th.lo;ctx.fillRect(q.x,q.y-2.4,1.6+rnd()*2.6,1.6+rnd()*1.4);}}
+  ctx.fillStyle='rgba(0,0,0,.35)';{const q=onFloor(X+16,0.5,ys);ctx.beginPath();ctx.ellipse(q.x,q.y+1,15,4.2,0,0,6.2832);ctx.fill();}
+  const chunk=(x0,x1,d0,d1,h0,h1,col,side)=>{const a=onFloor(x0,d0,ys),b=onFloor(x1,d0,ys),c2=onFloor(x1,d1,ys),d=onFloor(x0,d1,ys);
+    ctx.lineWidth=0.9;ctx.strokeStyle='#0b0812';
+    ctx.fillStyle=side;ctx.beginPath();ctx.moveTo(d.x,d.y-h0);ctx.lineTo(c2.x,c2.y-h1);ctx.lineTo(c2.x,c2.y);ctx.lineTo(d.x,d.y);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(a.x,a.y-h0);ctx.lineTo(b.x,b.y-h1);ctx.lineTo(c2.x,c2.y-h1);ctx.lineTo(d.x,d.y-h0);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.strokeStyle='rgba(0,0,0,.55)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo((a.x+b.x)/2,(a.y+b.y)/2-(h0+h1)/2);ctx.lineTo((c2.x+d.x)/2+1,(c2.y+d.y)/2-(h0+h1)/2);ctx.stroke();};
+  const wb=th.wallB||th.front;
+  chunk(X+3,X+17,0.12,0.6,5,9,th.hi||th.top,wb);chunk(X+16,X+29,0.3,0.78,7,3,th.top,wb);chunk(X+8,X+21,0.62,0.95,3,5,th.hi||th.top,wb);
+  for(let i=0;i<8;i++){const q=onFloor(X+1+rnd()*30,0.05+rnd()*0.9,ys);ctx.fillStyle=i%2?wb:th.hi||th.top;ctx.strokeStyle='#0b0812';ctx.lineWidth=0.5;const w=1.6+rnd()*2.6,h=1.2+rnd()*1.6;ctx.fillRect(q.x,q.y-h,w,h);ctx.strokeRect(q.x,q.y-h,w,h);}}
 function floorQuad(ctx,x0,x1,d0,d1,ys,lift){const a=onFloor(x0,d0,ys),b=onFloor(x1,d0,ys),c=onFloor(x1,d1,ys),d=onFloor(x0,d1,ys);
   ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(b.x,b.y+lift);ctx.lineTo(a.x,a.y+lift);ctx.closePath();ctx.fillStyle='#0b0812';ctx.fill();
   ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(c.x,c.y);ctx.lineTo(d.x,d.y);ctx.closePath();}

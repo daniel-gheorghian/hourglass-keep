@@ -8,7 +8,7 @@ JS='''()=>{const H=__HK,out={};const MOV=new Set(['flat','up','down','drop2']),V
   const STEP=new Set(['turn-up','turn-down','turn-drop2']);
   // a trap is any seg that is not a plain move, a turn piece, a loop piece or a fork piece (unknown kinds count as traps)
   const isTrap=q=>!MOV.has(q.k)&&!/^(turn-|loop-|fork-)/.test(q.k);
-  const SIDE=new Set(['detour','double','secret']); // the side passage's own seg spans its corridor: not an obstacle in it
+  const SIDE=new Set(['detour','double','secret','puzzle']); // the side passage's own seg spans its corridor: not an obstacle in it
   for(let n=1;n<=27;n++){const acc=[];for(let s=0;s<20;s++){const L=H.genLevel(n,30000+s*101+n*7,true);
     const tr=L.segs.filter(isTrap);
     const turnsV=L.segs.filter(q=>/turn-(banner|shaft|wallrun)/.test(q.k)).length;
