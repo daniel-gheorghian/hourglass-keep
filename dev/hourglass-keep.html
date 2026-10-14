@@ -362,7 +362,7 @@ function buildLevel(n,seed,test,legacy,att){
   // band b's floor lies on row 6+3b: headroom and galleries above the top band, pits and cellars below the bottom one
   const cols=(plan.W+2)*RW, rows=6+3*(plan.H-1)+7, roomsW=cols/RW, roomsH=Math.ceil(rows/RH), bandRow=b=>6+3*b;
   const L={n,seed,d,cols,rows,roomsW,roomsH,chaseFloor,base:new Uint8Array(cols*rows).fill(WALL),feat:new Array(cols*rows).fill(null),
-    items:[],guards:[],snakeSpecs:[],torches:[],windows:[],cps:[],path:[],debris:[],dyn:[],rubble:new Set(),segs:[],plan,routeT,
+    items:[],guards:[],snakeSpecs:[],torches:[],windows:[],cps:[],path:[],debris:[],dyn:[],rubble:new Set(),segs:[],puzzles:[],plan,routeT,
     theme:THEMES[Math.floor((n-1)/4)%THEMES.length],door:null,start:null,cpIndex:-1,test:!!test,ext:{darts:[],blocks:[]}};
   // Runs heading left are built exactly as runs heading right, in a mirrored column space (MX - c), as Spelunky mirrors
   // its rooms; everything a run writes goes through these, and what holds pixel positions is mirrored after the run.
@@ -391,6 +391,7 @@ function buildLevel(n,seed,test,legacy,att){
   let secretAt=lifeFloor?Math.floor(routeT*(0.25+0.3*rng())):-1, secretDone=!lifeFloor;
   let lastGuard=-2, nextCp=CP_GAP, xDone=false, lastTorch=-9, extraG=0;
   const keepWall=new Set(); // cells the open-hall pass must leave solid (the far wall of a kick shaft)
+  let gateSlot=null; // while a turn is built for a plate's remote gate: {kind:'G2'|'G3'|'G4',g,last,done}
   const ghp=Math.min(5,2+Math.floor((n-1)/5));
   // guard skill: 0 recruit, 1 soldier, 2 veteran. Drawn from its own stream so the floor layout is unchanged.
   const trng=mulberry32(hash2(seed,9137)),tierOf=()=>{if(n<=2)return 0;const x=(calm?crng:trng)(),a=Math.max(0.12,0.62-0.8*d),v=Math.min(0.4,0.04+0.55*d);return x<a?0:x<1-v?1:2;},gHp=t=>ghp;
@@ -581,7 +582,7 @@ function buildLevel(n,seed,test,legacy,att){
       if(a.a==='walk'){mv(a.c);t+=0.2;continue;}
       if(a.from!==undefined)mv(a.from);
       const dd=a.to!==undefined?Math.abs(a.to-a.from):0;
-      t+=({runover:dd*0.32+0.4,sjump:1.0,rjump:1.7,rjumpg:2.8,tiptoe:dd*0.8+0.5,crawl:dd*0.8+1.3,timed:dd*0.32+2.6,climb:1.3,hangdrop:1.8,drop:0.9})[a.a]||0;
+      t+=({runover:dd*0.32+0.4,sjump:1.0,rjump:1.7,rjumpg:2.8,tiptoe:dd*0.8+0.5,crawl:dd*0.8+1.3,timed:dd*0.32+2.6,climb:1.3,hangdrop:1.8,drop:0.9,slide:2.2,walljump:1.6+0.9*(a.k||2),wallrun:2.2})[a.a]||0;
       if(a.to!==undefined)cur=a.to;}
     return t;}
   const timerK=()=>0.84+0.14*rng()+0.1*(1-d); // timer over the estimated route back (a careful pace): 0.84 (tight) .. 1.08
@@ -622,12 +623,12 @@ function buildLevel(n,seed,test,legacy,att){
     }
     c=sv.c;run=sv.run;vHi=sv.vHi;lastGuard=sv.lg;sinceRest=sv.sr;restAt=sv.ra;calm=false;rngX=null;
   }
-  function detourGate(galPref,fewer=0){
+  function detourGate(galPref,fewer=0,ext){
     const gal=galPref===undefined?r>=3&&(r>rows-4||ch(0.5)):galPref&&r>=3;
     if(!gal&&r>rows-4)return false;
-    const timed=n>=6&&ch(0.35);
+    const timed=!ext&&n>=6&&ch(0.35);
     const pl=planBranch(gal,Math.max(1,2+Math.floor(d*3)+(ch(0.5)?1:0)-fewer),ch(0.6),!timed&&n>=5&&ch(0.5));
-    const x0=c+2,bend=x0+pl.bw-1,e=gal?bend+2:bend,gc=gal?e+3:e+4,len=(gal?e+4:e+5)-c;
+    const x0=c+2,bend=x0+pl.bw-1,e=gal?bend+2:bend,gc=gal?e+3:e+4,len=(ext?(gal?e+2:e+3):(gal?e+4:e+5))-c;
     if(c+len>vHi)return false;
     if(!rectOk(c+1,c+len,gal?r-3:r,gal?r:r+3))return false;
     if(gal&&pl.tall&&!rectOk(c+1,c+len,r-4,r-4))return false;
@@ -635,8 +636,8 @@ function buildLevel(n,seed,test,legacy,att){
     for(let xx=c+1;xx<=c+len;xx++)set(xx,r,FLOOR);
     if(gal){set(e,r-1,EMPTY);set(e-1,r-1,FLOOR);set(e-1,r-2,EMPTY);}
     else{set(e,r,EMPTY);set(e+1,r,EMPTY);set(e,r+1,EMPTY);set(e+1,r+1,FLOOR);}
-    const g={t:'gate',open:0,tm:0,dur:0,latch:!timed,far:true};feat(gc,r,g);
-    const br=carveBranch(pl,x0,g,gal?'below':'above',timed,false);
+    const g=ext?ext.g:{t:'gate',open:0,tm:0,dur:0,latch:!timed,far:true};if(!ext)feat(gc,r,g);
+    const br=carveBranch(pl,x0,g,ext?'further on':gal?'below':'above',timed,false);if(ext){ext.pc=x0;ext.r=br.b;}
     // (the torches' draws are made as if the corridor were still bare, so the fill leaves the stream as it was)
     let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&(gal||(xx!==e&&xx!==e+1))&&xx!==gc&&ch(0.45)){if(raw(xx,r)===FLOOR&&!fe(xx,r))L.torches.push({c:xx,r});lt=xx;}
     const exit=gal?[{a:'walk',c:e-2},{a:'hangdrop',from:e-2},{a:'drop',from:e-1},{a:'walk',c:c+len}]:[{a:'walk',c:e},{a:'climb',from:e},{a:'climb',from:e+1},{a:'walk',c:c+len}];
@@ -722,20 +723,20 @@ function buildLevel(n,seed,test,legacy,att){
   // A plate in a small alcove one storey off the corridor: a ledge over it reached by one climb, or a nook under it reached by
   // dropping through a one-tile hole in its floor (and climbed out of at the hole's far side). A few tiles long, with a single
   // obstacle in it: the cheap shape of "a plate opens a gate", next to the long gallery and cellar branches.
-  function alcovePlate(up){
+  function alcovePlate(up,ext){
     if(up&&r<3)return false;
     if(!up&&r>rows-5)return false;
     const menu=['spikes','gap1','loose'];if(n>=6)menu.push('chomp');if(n>=5)menu.push('tunnel');
     const only=menu[Math.floor(zr()*menu.length)];
     const pl=planBranch(up,1,false,false,only);pl.dy=up?-1:1;
-    const x0=c+2,bend=x0+pl.bw-1,e=up?bend+1:bend,gc=e+3,len=e+4-c;
+    const x0=c+2,bend=x0+pl.bw-1,e=up?bend+1:bend,gc=e+3,len=(ext?e+2:e+4)-c;
     if(c+len>vHi)return false;
     if(!rectOk(c+1,c+len,up?r-2:r,up?r:r+3))return false;
     fillCorridor(e-3,up?x0-1:1e9,pl,x0);
     for(let xx=c+1;xx<=c+len;xx++)set(xx,r,FLOOR);
     if(up)set(e,r-1,EMPTY);else set(e,r,EMPTY);
-    const g={t:'gate',open:0,tm:0,dur:0,latch:true,far:true};feat(gc,r,g);
-    const br=carveBranch(pl,x0,g,up?'below':'above',false,false);
+    const g=ext?ext.g:{t:'gate',open:0,tm:0,dur:0,latch:true,far:true};if(!ext)feat(gc,r,g);
+    const br=carveBranch(pl,x0,g,ext?'further on':up?'below':'above',false,false);if(ext){ext.pc=x0;ext.r=br.b;}
     let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&(up||xx!==e)&&xx!==gc&&zr()<0.45){if(raw(xx,r)===FLOOR&&!fe(xx,r))L.torches.push({c:xx,r});lt=xx;}
     if(up)bot.push({a:'walk',c:e},{a:'climb',from:e,dir:-1},...br.outs,...br.backs,{a:'walk',c:e-1},{a:'drop',from:e-1},{a:'walk',c:c+len});
     else bot.push({a:'walk',c:e-1},{a:'drop',from:e-1},...br.outs,...br.backs,{a:'walk',c:e},{a:'climb',from:e},{a:'walk',c:c+len});
@@ -759,6 +760,7 @@ function buildLevel(n,seed,test,legacy,att){
     for(let i=0;i<=k;i++)if(!W(c+2,r-i))return false;
     set(c+1,r,FLOOR);for(let i=1;i<=k;i++){set(c+1,r-i,EMPTY);keepWall.add((r-i)*cols+PC(c));}
     set(c+2,r-k,FLOOR);set(c+3,r-k,FLOOR);
+    if(gateSlot&&gateSlot.kind==='G2'&&gateSlot.last&&!gateSlot.done){feat(c+3,r-k,gateSlot.g);gateSlot.done=true;} // a gate on the landing ledge
     feat(c+1,r,{t:'shaftfoot'});
     bot.push({a:'walljump',from:c+1,k});
     c+=3;r-=k;run=1;return true;
@@ -772,6 +774,7 @@ function buildLevel(n,seed,test,legacy,att){
     const bn={top:r*TH+9,bot:(r+k-1)*TH+TH-16,a:-1,b:-1,t:-9};
     for(let i=0;i<k;i++){set(c+1,r+i,EMPTY);feat(c+1,r+i,{t:'banner',top:i===0,bot:i===k-1,bn});}
     for(let i=1;i<=3;i++)set(c+i,r+k,FLOOR);
+    if(gateSlot&&gateSlot.kind==='G3'&&!gateSlot.done){feat(c+2,r+k,gateSlot.g);gateSlot.done=true;} // a gate on the floor at the foot of the slide
     bot.push({a:'slide',from:c,to:c+3});
     c+=3;r+=k;run=2;return true;
   }
@@ -953,21 +956,45 @@ function buildLevel(n,seed,test,legacy,att){
     u3:[['up','up','up'],['shaft3'],['wallrun','up'],['shaft2','up']],
     u6:[['shaft3','shaft3'],['up','up','up','up','up','up'],['shaft3','up','up','up'],['wallrun','up','wallrun','up']]};
   const PRIM={drop2:()=>drop2(),down:()=>down(),up:()=>up(),banner3:()=>n>=4&&bannerSeg(3),banner4:()=>n>=4&&bannerSeg(4),
-    shaft2:()=>n>=5&&shaftSeg(2),shaft3:()=>n>=5&&shaftSeg(3),wallrun:()=>n>=3&&wallRunSeg()};
+    shaft2:()=>n>=5&&shaftSeg(2),shaft3:()=>n>=5&&shaftSeg(3),wallrun:()=>n>=3&&wallRunSeg(),gslot:()=>gateSlotSeg()};
   const LAND={drop2:-1,down:-1,up:0,banner3:-2,banner4:-2,shaft2:-1,shaft3:-1,wallrun:-1}; // where he stands after it, from c
-  function buildTurn(t,nextRow){
-    const key=(t.down?'d':'u')+(3*t.k),kits=(t.rev&&KITS[key+'r']?KITS[key+'r']:KITS[key]).slice();
+  // G4: three tiles of floor between two moves of a turn, a gate on the middle one
+  function gateSlotSeg(){
+    if(!W(c+1,r)||!W(c+2,r)||!W(c+3,r))return false;
+    for(let i=1;i<=3;i++)set(c+i,r,FLOOR);
+    feat(c+2,r,gateSlot.g);gateSlot.done=true;
+    bot.push({a:'walk',c:c+3});c+=3;run=3;return true;}
+  // Where a plate's gate may stand in a turn (the compatibility table; a pair not listed is never chosen):
+  //   G2 top of a kick shaft:   the kit ends with a shaft, and the turn carries on the same way (a switchback would send him
+  //                             back from the ledge, away from a gate at its far end)
+  //   G3 foot of a banner slide: the kit holds a banner that isn't its last move, or the turn carries on the same way
+  //   G4 between two moves:     any kit of two or more moves (the floor between them is laid for it)
+  const slotOk=(kit,rev,k)=>{const last=kit[kit.length-1];
+    if(k==='G2')return !rev&&(last==='shaft2'||last==='shaft3');
+    if(k==='G3'){const i=kit.findIndex(m=>m==='banner3'||m==='banner4');return i>=0&&(i<kit.length-1||!rev);}
+    if(k==='G4')return kit.length>=2;return false;};
+  function turnKinds(t){const key=(t.down?'d':'u')+(3*t.k),ks=(t.rev&&KITS[key+'r']?KITS[key+'r']:KITS[key]);
+    return ['G2','G3','G4'].filter(k=>ks.some(kit=>slotOk(kit,t.rev,k)));}
+  // need: {g, kinds:[..]} (a gate to stand in this turn), or null. Returns res.slot = the kind used, res.botEnd = the length of
+  // the bot's path once past the gate.
+  function buildTurn(t,nextRow,need){
+    const key=(t.down?'d':'u')+(3*t.k);let kits=(t.rev&&KITS[key+'r']?KITS[key+'r']:KITS[key]).slice();
+    let sk=null;
+    if(need){const ok=need.kinds.filter(k=>kits.some(kit=>slotOk(kit,t.rev,k)));if(!ok.length)return null;sk=ok[Math.floor(zr()*ok.length)];kits=kits.filter(kit=>slotOk(kit,t.rev,sk));}
     for(let i=kits.length-1;i>0;i--){const j=Math.floor(rng()*(i+1)),q=kits[i];kits[i]=kits[j];kits[j]=q;}
     const keep=[rMin,rMax];rMin=-1e9;rMax=1e9;let res=null;
-    for(const kit of kits){
+    for(let kit of kits){
+      if(sk==='G4'){kit=kit.slice();kit.splice(1+Math.floor(zr()*(kit.length-1)),0,'gslot');}
       const sv={kw:new Set(keepWall),path:bot.length,nf:newFeats.length,tc:touched.length,sg:L.segs.length,c,r,run};jr=[];
-      let ok=true,lastM=null;
-      for(const m of kit){run=3;const t0=c,r0=r;if(!PRIM[m]()){ok=false;break;}lastM=m;L.segs.push({k:'turn-'+m,c0:t0,c1:c,r0,r1:r});}
-      if(ok&&r===nextRow){res={land:c+LAND[lastM],kit};jr=null;break;}
+      gateSlot=sk?{kind:sk,g:need.g,last:false,done:false}:null;
+      let ok=true,lastM=null,botEnd=-1;
+      for(let mi=0;mi<kit.length;mi++){const m=kit[mi];run=3;const t0=c,r0=r;if(gateSlot)gateSlot.last=mi===kit.length-1;if(!PRIM[m]()){ok=false;break;}
+        if(m!=='gslot')lastM=m;L.segs.push({k:'turn-'+m,c0:t0,c1:c,r0,r1:r});if(gateSlot&&gateSlot.done&&botEnd<0)botEnd=bot.length;}
+      if(ok&&r===nextRow&&(!sk||gateSlot.done)){res={land:c+LAND[lastM],kit,slot:sk,botEnd};jr=null;gateSlot=null;break;}
       for(let i=jr.length-3;i>=0;i-=3){if(jr[i+2])L.feat[jr[i]]=jr[i+1];else L.base[jr[i]]=jr[i+1];}jr=null;keepWall.clear();for(const k of sv.kw)keepWall.add(k);
       bot.length=sv.path;newFeats.length=sv.nf;touched.length=sv.tc;L.segs.length=sv.sg;c=sv.c;r=sv.r;run=sv.run;
     }
-    rMin=keep[0];rMax=keep[1];return res;
+    gateSlot=null;rMin=keep[0];rMax=keep[1];return res;
   }
   // what a run leaves to the generator's lists is in its own column space: put it back on the map
   const PXx=x=>(MX+1)*TW-x;
@@ -1065,14 +1092,43 @@ function buildLevel(n,seed,test,legacy,att){
     if(typeof window!=='undefined'&&window.__PZ&&MENU.some(m=>m[0]===window.__PZ))return window.__PZ;
     const o=MENU.filter(m=>n>=m[2]);let tot=0;for(const m of o)tot+=m[1];let x=zr()*tot;for(const m of o){x-=m[1];if(x<=0)return m[0];}return o[0][0];}
   // lay the puzzle; returns the segment kind for the metrics (or false when it did not fit)
-  function puzzleTry(nm){
+  function puzzleTry(nm){let sg=false;
     switch(nm){
-      case'P1G1':return sideTry(detourGate,zr()<0.5)?'detour':false;
-      case'double':return doubleGate()?'double':false;
-      case'P5G1':return alcovePlate(zr()<0.5)?'puzzle':false;
-      case'P2G1':return slabGate('p2')?'puzzle':false;
-      case'P3G1':return slabGate('p3')?'puzzle':false;
-    }return false;}
+      case'P1G1':sg=sideTry(detourGate,zr()<0.5)?'detour':false;break;
+      case'double':sg=doubleGate()?'double':false;break;
+      case'P5G1':sg=alcovePlate(zr()<0.5)?'puzzle':false;break;
+      case'P2G1':sg=slabGate('p2')?'puzzle':false;break;
+      case'P3G1':sg=slabGate('p3')?'puzzle':false;break;
+    }
+    if(sg)L.puzzles.push({puz:nm});return sg;}
+  // ---- plates whose gate stands in the next turn (planned for a whole run, before it is built) ----
+  // P4: a plate on the corridor near the end of a run, a clear dash to the end, and a gate one turn later (a timed gate:
+  // press the plate and run, as in Prince of Persia level 3). The run is built up to the plate (a stop, like a loop's
+  // pieces), then held to plain floor; the turn is built with a slot for the gate (see slotOk); if no kit has the room the
+  // plate goes back to plain floor.
+  const REM=[['P4',0.5,6],['P5',0.3,4],['P1',0.2,5]];
+  function remoteRoll(k){
+    if(att<0||legacy||k>=runs.length-1||k===plan.chaseRun||loopAt.has(k)||loopAt.has(k-1))return null;
+    const forced=typeof window!=='undefined'&&window.__PZ;
+    const o=REM.filter(m=>n>=m[2]&&(!forced||forced===m[0]));if(!o.length)return null;
+    if(!forced&&zr()>=0.2)return null;
+    let tot=0;for(const m of o)tot+=m[1];let x=zr()*tot,nm=o[0][0];for(const m of o){x-=m[1];if(x<=0){nm=m[0];break;}}
+    return {nm,g:null,placed:false};}
+  // how many tiles before the end of a run its plate's stop lies (the alcove or branch is built from there)
+  const remAt=nm=>nm==='P4'?zi(8,13):nm==='P5'?24+zi(0,6):44+zi(0,8);
+  function remotePlate(rm){
+    if(rm.nm!=='P4'){ // a latched plate in an alcove or a branch; its gate stands in the turn
+      rm.g={t:'gate',open:0,tm:0,dur:0,latch:true,far:true,fix:true};rm.botIdx=bot.length;
+      rm.placed=rm.nm==='P5'?alcovePlate(zr()<0.5,rm):sideTry((gp,fw)=>detourGate(gp,fw,rm),zr()<0.5);return rm.placed;}
+    for(let q=0;q<10;q++){
+      if(W(c+1,r)&&W(c+2,r)&&W(c+3,r)){
+        for(let i=1;i<=3;i++)set(c+i,r,FLOOR);
+        const g={t:'gate',open:0,tm:0,dur:0.2,latch:false,far:true,fix:true,race:true};
+        feat(c+2,r,{t:'plate',g,press:-9,latch:false,where:'ahead',fwd:true});
+        rm.g=g;rm.pc=c+2;rm.r=r;rm.botIdx=bot.length;
+        bot.push({a:'walk',c:c+3});c+=3;run+=3;rm.placed=true;return true;}
+      if(!flat(1))break;}
+    return false;}
   const runs=plan.runs;let entryP=-1,prevKit=null;const pend=[];L.runsInfo=[];
   for(const lp of loopAt.values())loopZone(lp,q=>{resv[q]=1;});
   for(let k=0;k<runs.length;k++){
@@ -1087,11 +1143,12 @@ function buildLevel(n,seed,test,legacy,att){
       L.start={x:entryP*TW+16,r,face:dir,door:PC(c-1)};c+=1;cEntry=c-2;
       {const kk=n<=2?ri(4,5):ri(1,3);flat(kk);}
     }
-    let target=R0,iter=0;const vHiRun=last?vFar-14:vFar-3; // room to settle before the turn; the last run ends on open floor before the door
+    let target=R0,iter=0;let vHiRun=last?vFar-14:vFar-3; // room to settle before the turn; the last run ends on open floor before the door
     // a loop's pieces come at set places: the run is built up to each (vHi held short of it), then the piece goes in
     const stops=[],upL=loopAt.get(k),loL=loopAt.get(k-1);
     if(upL){stops.push({at:PC(upL.H)-5,fn:()=>loopTop(upL),k:'loop-top'});stops.push({at:vFar-12,fn:()=>!upL.ok||loopPlate(upL),k:'loop-plate'});}
     if(loL&&loL.ok)stops.push({at:PC(loL.O)-6,fn:()=>loopFoot(loL),k:'loop-foot'});
+    const rem=remoteRoll(k);if(rem)stops.push({at:vFar-3-remAt(rem.nm),fn:()=>remotePlate(rem),k:'rem-plate'});
     stops.sort((a,b)=>a.at-b.at);
     // (the last run has rooms in hand: it stops once the route is as long as planned and the floor has at least nine
     // tenths of the traps a floor this long used to hold, so a floor whose side passages took much of its length
@@ -1125,7 +1182,7 @@ function buildLevel(n,seed,test,legacy,att){
       if(n>=3)add(1.0,()=>loose(n>=5&&ch(0.45)?2:1),'loose');
       if(n>=4)add(0.9,chomp,'chomp');
       if(n>=3)add(0.75,gate,'gate');
-      if(n>=4)add(n>=7?0.30:0.22,()=>{const nm=puzzlePick();if(c-cEntry>=8&&vHi-c>=30){const sg=puzzleTry(nm);if(sg){puzzleSeg=sg;puzzleNm=nm;return true;}}
+      if(n>=4&&!(typeof window!=='undefined'&&REM.some(m=>m[0]===window.__PZ)))add(n>=7?0.30:0.22,()=>{const nm=puzzlePick();if(c-cEntry>=8&&vHi-c>=30){const sg=puzzleTry(nm);if(sg){puzzleSeg=sg;puzzleNm=nm;return true;}}
         if(pend.length<3)pend.push(nm);return false;},'puzzle');
       if(n>=6)add(0.3,swingSeg,'swing');
       if(n>=5)add(0.1,sawSeg,'saw');
@@ -1150,7 +1207,7 @@ function buildLevel(n,seed,test,legacy,att){
     }
     if(!st)break;
     stops.shift();vHi=vHiRun;{const c0=c,r0=r;
-      if(st.fn()){if(c!==c0){L.segs.push({k:st.k,c0,c1:c,r0,r1:r});if(st.k!=='loop-plate')breathe();loopUsed+=c-c0;}}
+      if(st.fn()){if(c!==c0){L.segs.push({k:st.k,c0,c1:c,r0,r1:r});if(st.k==='rem-plate')vHiRun=Math.min(vHiRun,c);else{if(st.k!=='loop-plate')breathe();loopUsed+=c-c0;}}}
       else if(st.k==='loop-foot'||st.k==='loop-plate')loopFail=true;}
     }
     if(upL&&upL.ok&&!upL.plated)loopFail=true; // a gate with no plate: start the floor again
@@ -1172,7 +1229,13 @@ function buildLevel(n,seed,test,legacy,att){
     if(!last){
       const t=plan.turns[k],nextRow=bandRow(runs[k+1].band),tcol=endRoom+dir;
       vHi=PC(dir>0?roomHi(tcol)-1:roomLo(tcol)+1);vLo=c-2;touched=[];
-      next=buildTurn(t,nextRow);
+      if(rem&&rem.placed){
+        next=buildTurn(t,nextRow,{g:rem.g,kinds:turnKinds(t)});
+        if(next&&rem.nm!=='P4'){const pz=rem.nm+'G'+next.slot.slice(1);rem.g.puz=pz;L.puzzles.push({puz:pz});}
+        else if(next){const pz='P4'+next.slot;rem.g.est=1.5*estPath(bot.slice(rem.botIdx,next.botEnd),rem.pc); // (the walk's estimate is the bot's own pace, and a careful player is slower: so the gates are sized half over it)
+        rem.g.dur=Math.round((rem.g.est*timerK()+0.3)*10)/10;rem.g.puz=pz;L.puzzles.push({puz:pz});}
+        else{L.feat[rem.r*cols+PC(rem.pc)]=null;next=buildTurn(t,nextRow);} // no room for its gate in this turn: the plate is plain floor
+      }else next=buildTurn(t,nextRow);
       if(!next)return null;
       next.cells=touched;
       entryP=t.rev?PC(next.land):PC(c);
@@ -1206,7 +1269,7 @@ function buildLevel(n,seed,test,legacy,att){
   // fewer timed side-passage gates: about two in five of them are let stay open once their plate is found (decided by a
   // hash, so the layout itself does not change)
   for(const o of L.dyn){const g=o.f;if(g.t!=='gate'||!g.far||g.latch||g.pair!==undefined||!(g.dur>0))continue;
-    if(!g.slab&&hash2((seed|0)+o.c*5,o.r*17+n)%100<62){g.latch=true;g.dur=0;for(const q of L.dyn)if(q.f.t==='plate'&&q.f.g===g)q.f.latch=true;
+    if(!g.slab&&!g.fix&&hash2((seed|0)+o.c*5,o.r*17+n)%100<62){g.latch=true;g.dur=0;for(const q of L.dyn)if(q.f.t==='plate'&&q.f.g===g)q.f.latch=true;
       for(const dd of L.detours||[])if(dd.timed&&dd.r===o.r&&o.c>=dd.c0&&o.c<=dd.c1){dd.timed=false;dd.dur=0;}}}
   rebuildBlocks(L);
   settleLevel(L);
@@ -1907,7 +1970,7 @@ function atDoor(){const d=L.door;return d&&d.r===pRow()&&Math.abs(P.x-d.x)<16;}
 function hurt(n,cause){if(P.state==='dead')return;P.hp-=n;P.flash=0.3;Snd.play('hurt');try{navigator.vibrate&&navigator.vibrate(40);}catch(e){}if(P.hp<=0){P.hp=0;die(cause);}}
 function die(cause){if(P.state==='dead')return;deathAt=gameTime;S.resume=null;writeSave();setState('dead');P.cause=cause;P.vx=0;P.vy=0;P.hp=0;P.sword=false;P.yo=0;mode='dead';deadT=0;Snd.play('die');if(cause==='blade'||cause==='spikes'||cause==='sword')sparks(P.x,P.y-24,8,'#d94a3a');}
 const PAIRN=['amber','teal','violet'],PAIRC=['#e0a43a','#45b8b0','#a77ee6'];
-function gateMsg(f){const nm=f.pair!==undefined?'The '+PAIRN[f.pair]+' gate':'A gate';
+function gateMsg(f){if(f.fwd)return 'Somewhere ahead a gate grinds open, but its sand is running. Run for it!';const nm=f.pair!==undefined?'The '+PAIRN[f.pair]+' gate':'A gate';
   if(f.latch)return f.where?nm+' grinds open '+f.where+' and stays open.':'Somewhere on this floor, a gate grinds open and stays open.';
   return nm+' grinds open '+f.where+', but its sand is running. Get back before it shuts.';}
 // a passage's crumbling chain and ambush wake the first time its plate (or prize) is reached
@@ -2452,6 +2515,10 @@ const HINTS={
   secret:'Something glints up there. Side passages without gates hide gold flasks.',
   shortcut:'A hole in the floor with ledges below it: a quick way down. Drop in, or jump it and go the long way round.',
   loopgate:'A violet gate. It opens from the violet plate, which lies on the long way round. The ledges beside it climb back up to where you dropped in.',
+  slabplate:'A loose slab hangs in the gallery over this plate. Run across it up there and it falls and holds the plate down.',
+  slabgate:'This gate shuts the moment the plate is let go. Something heavy must hold the plate down: look for a loose slab above it.',
+  slabcloser:'A closing plate too wide to jump. A loose slab hangs in the gallery above it: let it fall and the plate is jammed.',
+  racegate:'The hourglass on this gate means it will not stay open. Its plate lies back the way you came: press it, then run for the gate.',
   double:'Two marked gates. Each answers to the plate of its colour, one above and one below. The one with the hourglass will not stay open.',
 };
 function hint(id){if(S.hints[id])return;S.hints[id]=1;writeSave();if(!hintQ.includes(id))hintQ.push(id);}
@@ -2466,7 +2533,7 @@ function checkHints(){
       if(f&&f.t==='loophole'){hint('shortcut');break;}
       if(!solidBelow(L,nc,r)){let w=0;for(let k=0;k<4;k++){if(!solidBelow(L,nc+P.face*k,r)&&B(L,nc+P.face*k,r)!==WALL)w++;else break;}
         if(w>=3){let bar=false;for(let k=0;k<4;k++){const ff=F(L,nc+P.face*k,r);if(ff&&ff.t==='bar')bar=true;}hint(bar?'swing':'wide');}else if(edgeBelow()&&B(L,nc,r+1)!==WALL&&solidBelow(L,nc,r+1))hint('drop');else hint('gap');break;}
-      if(f){if(f.t==='spikes')hint('spikes');else if(f.t==='loose')hint(f.plank?'bridge':'loose');else if(f.t==='plate')hint('plate');else if(f.t==='chomp')hint('chomp');else if(f.t==='low')hint('crawl');else if(f.t==='closer')hint('closer');else if(f.t==='vent')hint('vent');else if(f.t==='pend')hint('pend');break;}
+      if(f){if(f.t==='spikes')hint('spikes');else if(f.t==='loose')hint(f.plank?'bridge':'loose');else if(f.t==='plate')hint('plate');else if(f.t==='chomp')hint('chomp');else if(f.t==='low')hint('crawl');else if(f.t==='closer')hint(f.slabF?'slabcloser':'closer');else if(f.t==='vent')hint('vent');else if(f.t==='pend')hint('pend');break;}
     }
     if(canClimbUp())hint('climb');
     {const f0=F(L,pCol(),r),f1=F(L,pCol()+P.face,r);if((f0&&f0.t==='shaftfoot')||(f1&&f1.t==='shaftfoot'))hint('shaft');const fb=F(L,pCol()+P.face,r);if(fb&&fb.t==='banner')hint('banner');}
@@ -2475,7 +2542,8 @@ function checkHints(){
     for(const it of L.items)if(!it.taken&&it.r===r&&Math.abs(it.x-P.x)<40)hint('potion');
     for(const cp of L.cps)if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<70)hint('cp');
     for(const sn of SN)if(sn.alive&&sn.r===r&&Math.abs(sn.x-P.x)<110){hint('snake');if(lowAt(sn.x,sn.r)||lowAt(sn.x-20,sn.r)||lowAt(sn.x+20,sn.r))hint('poke');}
-    for(const o of L.dyn)if(o.f.t==='gate'&&o.f.far&&o.f.open<0.5&&o.r===r&&Math.abs(o.c*TW+16-P.x)<110){hint(o.f.loop?'loopgate':o.f.pair!==undefined?'double':o.f.latch?'latch':'sandgate');}
+    for(const o of L.dyn)if(o.f.t==='gate'&&o.f.far&&o.f.open<0.5&&o.r===r&&Math.abs(o.c*TW+16-P.x)<110){hint(o.f.loop?'loopgate':o.f.pair!==undefined?'double':o.f.slab?'slabgate':o.f.race?'racegate':o.f.latch?'latch':'sandgate');}
+    for(const o of L.dyn)if(o.f.slabF&&!o.f.jam&&o.r===r&&Math.abs(o.c*TW+16-P.x)<150)hint(o.f.t==='closer'?'slabcloser':'slabplate');
     for(const o of L.dyn)if(o.f.t==='pend'&&o.r===r&&Math.abs(o.c*TW+16-P.x)<110)hint('pend');
     for(const o of L.dyn){if(o.r!==r)continue;const dx=Math.abs(o.c*TW+16-P.x);if(o.f.t==='saw'&&dx<120)hint('saw');if(o.f.t==='darter'&&dx<200)hint('darts');}
     for(const bl of L.ext.blocks)if(bl.r===r&&Math.abs(bl.c*TW+16-P.x)<90)hint('block');
