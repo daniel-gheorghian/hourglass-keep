@@ -269,7 +269,7 @@ function solidBelow(L,c,r){const b=B(L,c,r);if(b===FLOOR)return true;if(b===WALL
 // A run never lies directly on top of another: the band between is left for the side passages.
 // Many candidate plans are walked and the best one kept, scored on its proportions (neither a tower nor a strip),
 // on going down about three times in five, and on room for side passages.
-const ROUTE_SLACK=1.05;
+const ROUTE_SLACK=1.06;
 // ---- loops ----
 // Unexplored lays a level around a loop: two arcs between the same two places, the short one barred by a lock whose key
 // lies on the long one ("the player takes path A to the goal, only to discover a locked door", then goes round by B
@@ -345,6 +345,10 @@ function routePlan(n,seed,budget,needChase,att){
 // the fallback when no plan fits: today's single strip, one run heading right
 function stripPlan(budget){const k=Math.ceil((budget+12)/RW)+1,rooms=[];for(let i=0;i<k;i++)rooms.push(i);return {W:k,H:1,chaseRun:0,turns:[],runs:[{dir:1,band:0,cap:budget,rooms}]};}
 // ================= generator =================
+const FEAT_FLAT=1.6; // how much plain floor the featured obstacle's extra weight takes out of the menu (1 = its whole extra weight)
+const FLAT_K=3; // weight of plain floor in the run's menu (v39 had 1)
+const CH_PLAIN=0.6; // chance a chamber's landings are all plain floor
+const FILL_PLAIN=0.85,LAND_PLAIN=0.7; // chance a stretch of side-passage corridor / a turn landing is left plain
 const PADK=1.46, padK=n=>n<=5?1.52:PADK, MOVES=new Set(['flat','up','down','drop2']);
 // ---- oatmeal spice: a few big choices per floor (Boris the Brave, "oatmeal spice"; Emily Short's "bowls of oatmeal") ----
 // Menus drawn independently at every spot average out to the same mix on every floor. So a floor also carries three discrete
@@ -382,7 +386,8 @@ function genLevel(n,seed,test,legacy){
 function buildLevel(n,seed,test,legacy,att){
   let rngX=null; // while a side passage's corridor is filled, the floor's main stream is left alone (see fillCorridor)
   const rng0=mulberry32(seed), rng=()=>(rngX||rng0)(), ri=(a,b)=>a+Math.floor(rng()*(b-a+1)), ch=p=>rng()<p;
-  const d=Math.min(1,(n-1)/24), FT=legacy?{move:null,puzzle:null,obstacle:null,flag:null}:featFor(n,seed), FL=FT.flag;
+  const d=Math.min(1,(n-1)/24), FT=legacy?{move:null,puzzle:null,obstacle:null,flag:null}:featFor(n,seed);let FL=FT.flag;
+  if(att<0&&FL==='longway'){FT.flag=FL=null;} // the last resort layout has no forks: a floor that could not be given one is not a longway floor (its card says nothing)
   // A floor with a sandstorm chase is built four rooms longer, so the chase adds to the floor instead of eating into it.
   // The chase roll is the 4th draw of the floor's stream (the first three never depend on the width), so peek at it first.
   const peek=mulberry32(seed);peek();peek();peek();const chaseFloor=n>=6&&peek()<0.65;
@@ -619,12 +624,15 @@ function buildLevel(n,seed,test,legacy,att){
     return {outs,backs,plate,bend,x0,b};
   }
   // rough time for a careful player to follow a plan (used to size gate timers)
-  function estPath(acts,cur){let t=0;const mv=c2=>{t+=Math.abs(c2-cur)*0.34;cur=c2;};
+  // careful: the pace a timer is sized on. A race (P4: press the plate, run for the gate) is walks, drops and slides, where the bot
+  // needs more than the plain table below says, so there every action takes what the bot measured (floors 6 to 27) and a little over,
+  // and even the tightest factor of timerK (0.84) stays beatable. (The plain table also feeds the worth-a-life and fork choices.)
+  function estPath(acts,cur,careful){let t=0;const mv=c2=>{t+=Math.abs(c2-cur)*(careful?0.55:0.34);cur=c2;};
     for(const a of acts){
-      if(a.a==='walk'){mv(a.c);t+=0.2;continue;}
+      if(a.a==='walk'){mv(a.c);t+=careful?0.4:0.2;continue;}
       if(a.from!==undefined)mv(a.from);
       const dd=a.to!==undefined?Math.abs(a.to-a.from):0;
-      t+=({runover:dd*0.32+0.4,sjump:1.0,rjump:1.7,rjumpg:2.8,tiptoe:dd*0.8+0.5,crawl:dd*0.8+1.3,timed:dd*0.32+2.6,climb:1.3,hangdrop:1.8,drop:0.9,slide:2.2,walljump:1.6+0.9*(a.k||2),wallrun:2.2,collapse:1.5,jgrab:3.0,lift:a.chn?3.5+(a.k*64+32)/CHAIN_V:1.2+a.k})[a.a]||0;
+      t+=({runover:dd*0.32+0.4,sjump:careful?1.2:1.0,rjump:careful?2.8:1.7,rjumpg:careful?4.0:2.8,tiptoe:dd*0.8+0.5,crawl:dd*0.8+1.3,timed:dd*0.32+2.6,climb:1.3,hangdrop:1.8,drop:careful?1.45:0.9,slide:careful?4.0:2.2,walljump:1.6+0.9*(a.k||2),wallrun:2.2,collapse:careful?2.2:1.5,jgrab:careful?4.2:3.0,lift:a.chn?(careful?3.8:3.5)+(a.k*64+32)/CHAIN_V:careful?1.5+1.1*a.k:1.2+a.k})[a.a]||0;
       if(a.to!==undefined)cur=a.to;}
     return t;}
   const timerK=()=>0.84+0.14*rng()+0.1*(1-d); // timer over the estimated route back (a careful pace): 0.84 (tight) .. 1.08
@@ -634,6 +642,7 @@ function buildLevel(n,seed,test,legacy,att){
   // them (all before the passage's mouth). Nothing that digs (pits, loose floor) as a cellar may lie beneath; nothing tall
   // (stones, pendulum) where a gallery lies above, i.e. from column tallLim on. Its own random stream, so the passage is unchanged.
   const crng=mulberry32(hash2(seed,7703));
+  const plrng=mulberry32(hash2(seed,9301)); // which landings stay plain
   function fillCorridor(cEnd,tallLim,pl,x0){
     // a gallery's holes and loose planks must keep their drop: beneath them nothing may stand that has a lintel (a gate,
     // chomper or low roof would turn the gap into a dent) or that hurts (a fall would land on it); a guard may
@@ -647,6 +656,7 @@ function buildLevel(n,seed,test,legacy,att){
     let guardIn=false,tries=0;
     flat(1+Math.floor(crng()*2));
     while(c<cEnd&&tries++<60){
+      if(crng()<FILL_PLAIN){if(!flat(1+Math.floor(crng()*3)))break;continue;} // a stretch left as plain floor (v39 had a bare corridor; a full one gives the branch away, a thin one keeps the traps near v39)
       const o=[],A=(w,k,f,sp)=>{if(w>0&&(sp<0||!hits(c,c+sp)))o.push([w,k,f]);},tall=c+7<tallLim;
       if(n>=2)A(1.2*OB('spikes'),'spikes',()=>spikes(n>=6&&crng()<0.4?2:1),3);
       if(n>=4)A(0.9*OB('chomp'),'chomp',chomp,n>=10?5:3);
@@ -1193,7 +1203,7 @@ function buildLevel(n,seed,test,legacy,att){
     let done=false;flat(1); // (a plain tile to run up from)
     while(o.length&&!done){let tot=0;for(const q of o)tot+=q[0];let x=rs()*tot,i=0;for(;i<o.length-1;i++){x-=o[i][0];if(x<=0)break;}
       const [,kd,f]=o.splice(i,1)[0],c0=c,r0=r,gN=L.guards.length,s0=snap();
-      if(f()){const c1=c;L.segs.push({k:kd,c0,c1,r0,r1:r,corr:1});if(L.guards.length>gN)extraG+=L.guards.length-gN;breathe();
+      if(f()){const c1=c;L.segs.push({k:kd,c0,c1,r0,r1:r,corr:2});if(L.guards.length>gN)extraG+=L.guards.length-gN;breathe();
         if(c-c1>=2)done=true;else restore(s0);}else restore(s0);}
     vHi=sv.vHi;lastGuard=sv.lg;sinceRest=sv.sr;restAt=sv.ra;rngX=sv.rx;calm=sv.cm;
     return done;}
@@ -1214,7 +1224,9 @@ function buildLevel(n,seed,test,legacy,att){
     for(const kit of byFam(shuf(fit(old.slice()))))tries.push([kit,chamber]);
     if(chamber)for(const kit of fit(old))tries.push([kit,false]);
     const keep=[rMin,rMax];rMin=-1e9;rMax=1e9;let res=null;
+    const chPlain=plrng()<CH_PLAIN; // a chamber with no obstacle on its landings at all (the moves are the challenge)
     const hdRoll=chamber&&!t.rev&&t.down&&!sk&&n>=5&&vrng()<0.5; // now and then a chamber carries the damaging shortcut (floor 5 on); the roll is generous because most kits give no placement that is worth a life (see below)
+    const plainCh=chPlain&&!hdRoll;
     for(let [kit,ob] of tries){
       if(sk==='G4'){kit=kit.slice();kit.splice(1+Math.floor(zr()*(kit.length-1)),0,'gslot');}
       let hasHd=false;
@@ -1222,18 +1234,19 @@ function buildLevel(n,seed,test,legacy,att){
         for(let i=0;i<kit.length-2&&!hasHd;i++){let rem=0;for(let j=i+1;j<kit.length;j++)rem+=MV[kit[j]].dr;if(rem===2){kit=kit.slice();kit.splice(i+1,0,'hgap');hasHd=true;}}}
       jr=[];const sv=snap();
       gateSlot=sk?{kind:sk,g:need.g,last:false,done:false}:null;
-      let ok=true,lastM=null,botEnd=-1,nOb=0;
+      let ok=true,lastM=null,botEnd=-1,nOb=0,skipped=0;
       for(let mi=0;mi<kit.length;mi++){const m=kit[mi];if(!NEWMV.has(m))run=3;const t0=c,r0=r;if(gateSlot)gateSlot.last=mi===kit.length-1;if(!PRIM[m]()){ok=false;break;}
         if(m!=='gslot'&&m!=='hgap')lastM=m;L.segs.push({k:'turn-'+m,c0:t0,c1:c,r0,r1:r});if(gateSlot&&gateSlot.done&&botEnd<0)botEnd=bot.length;
         // a landing: one obstacle, with room kept for the moves still to come (none before a gate: its timer is sized on the walk to it)
         const lastMove=mi===kit.length-1;
         if(ob&&m!=='gslot'&&m!=='hgap'&&(!lastMove||(!t.rev&&!nOb))&&(!sk||gateSlot.done)){
           let reserve=1;for(let j=mi+1;j<kit.length;j++)reserve+=kit[j]==='gslot'?3:kit[j]==='hgap'?4:(MV[kit[j]].w+(kit[j]==='jumpdown'||kit[j]==='jumpup'?0:1));
-          if(landingObstacle(vHi-reserve,t.rev&&r+2>nextRow-2))nOb++;}
+          if(plainCh||(plrng()<LAND_PLAIN&&nOb+skipped<kit.length-1)){skipped++;const k=Math.max(0,Math.min(3,vHi-reserve-c));if(k)flat(k);} // a plain landing (trap density; the run-up for the next move stays); a chamber keeps at least one obstacle unless it is plain throughout
+          else if(landingObstacle(vHi-reserve,t.rev&&r+2>nextRow-2))nOb++;}
       }
       // a switchback returns along the floor under the chamber: nothing may stand just above it, or in the way of it
       if(ok&&t.rev){const lnd=c+LAND[lastM];for(const q of touched){const rr=Math.floor(q/cols);if(rr>=nextRow-1&&L.base[q]!==WALL&&PC(q%cols)<lnd){ok=false;break;}}}
-      if(ok&&ob&&!nOb)ok=false;
+      if(ok&&ob&&!nOb&&!plainCh)ok=false;
       if(ok&&hasHd&&!(r===nextRow&&hurtCorridor(nextRow)))ok=false;
       // worth a life: the drop must pass at least one landing's obstacle or guard, save a quarter of the chamber's time and ten tiles' walk
       if(ok&&hasHd){const tL=estPath(bot.slice(hd.at+1),hd.c+2)+6*L.segs.slice(hd.sg).filter(q=>q.k==='guard').length,tS=Math.abs(c-hd.t)*0.34+1,tC=estPath(bot.slice(sv.path),sv.c),sk2=L.segs.slice(hd.sg).some(q=>!/^turn-/.test(q.k));
@@ -1517,7 +1530,7 @@ function buildLevel(n,seed,test,legacy,att){
       if(r===target||ch(0.08))target=ri(rMin,rMax);
       const opts=[];const add=(w,f,kd)=>{if(w>0)opts.push([w,f,kd]);};
       const easy=!!(upL&&upL.ok&&upL.v===3&&c>PC(upL.H)); // the long way of a dense fork is the easy one: more plain floor, no puzzles
-      add((run<2?4:1.4)*(easy?2.5:1)*(FL==='barracks'?1.3:1),()=>flat(ri(1,3)),'flat');
+      add((n>=3?FLAT_K:1)*(run<2?4:1.4)*(easy?2.5:1)*(FL==='barracks'?1.3:1),()=>flat(ri(1,3)),'flat');
       add(n<=2?2.2:1.5,()=>gap(1),'gap1');
       if(n>=2)add(1.3,()=>gap(2),'gap2');
       if(n>=4)add(0.9,()=>gap(3),'gap3');
@@ -1529,7 +1542,7 @@ function buildLevel(n,seed,test,legacy,att){
       if(n>=3)add(1.0*OB('loose')*TK,()=>loose(n>=5&&ch(0.45)?2:1),'loose');
       if(n>=4)add(0.9*OB('chomp')*TK,chomp,'chomp');
       if(n>=3)add(0.75*TK,gate,'gate');
-      if(n>=4&&!(typeof window!=='undefined'&&REM.some(m=>m[0]===window.__PZ)))add((n>=7?0.30:0.22)*PZ_W*(easy?0:1)*(FT.puzzle==='timed'?0.5:1)*(FL==='maze'?0.6:1),()=>{const nm=puzzlePick();if(c-cEntry>=8&&vHi-c>=30){const sg=puzzleTry(nm);if(sg){puzzleSeg=sg;puzzleNm=nm;
+      if(n>=4&&!(typeof window!=='undefined'&&REM.some(m=>m[0]===window.__PZ)))add((n>=7?0.30:0.22)*PZ_W*(easy?0:1)*(FT.puzzle==='timed'?0.5:1)*(FL==='maze'?3.5:1),()=>{const nm=puzzlePick();if(c-cEntry>=8&&vHi-c>=30){const sg=puzzleTry(nm);if(sg){puzzleSeg=sg;puzzleNm=nm;
           if(FL==='maze')for(let q=zi(1,2);q>0&&pend.length<3;q--)pend.push(puzzlePick()); // a gate maze: the next gate is laid at the next clear stretch, back to back
           return true;}}
         if(pend.length<3)pend.push(nm);return false;},'puzzle');
@@ -1543,7 +1556,7 @@ function buildLevel(n,seed,test,legacy,att){
       if(style==='tile')add(0.85,pendulum,'pend');
       if(style==='forge')add(0.9,vents,'vents');
       // the featured obstacle's extra weight comes out of the plain floor, so a floor does not hold more traps for it
-      if(FT.obstacle){const ob=OB(FT.obstacle);for(const o of opts)if(o[2]===FT.obstacle)opts[0][0]+=0.8*o[0]*(1-1/ob);}
+      if(FT.obstacle){const ob=OB(FT.obstacle);for(const o of opts)if(o[2]===FT.obstacle)opts[0][0]+=FEAT_FLAT*o[0]*(1-1/ob);}
       let tot=0;for(const o of opts)tot+=o[0];
       let x=rng()*tot,chosen=opts[0][1],kind=opts[0][2];
       for(const o of opts){x-=o[0];if(x<=0){chosen=o[1];kind=o[2];break;}}
@@ -1584,9 +1597,10 @@ function buildLevel(n,seed,test,legacy,att){
       if(rem&&rem.placed){
         next=buildTurn(t,nextRow,{g:rem.g,kinds:turnKinds(t)});
         if(next&&rem.nm!=='P4'){const pz=rem.nm+'G'+next.slot.slice(1);rem.g.puz=pz;L.puzzles.push({puz:pz});}
-        else if(next){const pz='P4'+next.slot;rem.g.est=1.5*estPath(bot.slice(rem.botIdx,next.botEnd),rem.pc); // (the walk's estimate is the bot's own pace, and a careful player is slower: so the gates are sized half over it)
+        else if(next){const pz='P4'+next.slot;rem.g.est=estPath(bot.slice(rem.botIdx,next.botEnd),rem.pc,true); // (like every gate: the estimate at a careful pace, times timerK)
         rem.g.dur=Math.round((rem.g.est*timerK()+0.3)*10)/10;rem.g.puz=pz;L.puzzles.push({puz:pz});}
-        else{L.feat[rem.r*cols+PC(rem.pc)]=null;next=buildTurn(t,nextRow);} // no room for its gate in this turn: the plate is plain floor
+        else if(rem.nm!=='P4')return null; // no room for its gate in this turn: the branch would be a dead-end room with no plate, so lay the floor out again
+        else{L.feat[rem.r*cols+PC(rem.pc)]=null;next=buildTurn(t,nextRow);} // (a timed corridor plate with no room for its gate is plain floor)
       }else next=buildTurn(t,nextRow);
       if(!next)return null;
       next.cells=touched;
@@ -1598,6 +1612,7 @@ function buildLevel(n,seed,test,legacy,att){
     prevKit=next;
   }
   MX=-1;vLo=-1e9;vHi=1e9;rMin=0;rMax=1e9;touched=null;
+  if(FL==='longway'&&att>=0&&!L.forks.length)return null; // a longway floor always holds a fork: lay it out again
   if(!secretDone){ // no room for a hidden passage: fall back to a gold flask in an alcove near the end
     for(let k=0;k<L.items.length;k++){const it=L.items[k];if(it.alc){it.type='life';secretDone=true;break;}}}
   // thin out flasks: the gold flask always stays; every other flask keeps FLASK_GAP tiles of route from any kept one (alcoves before floor flasks)

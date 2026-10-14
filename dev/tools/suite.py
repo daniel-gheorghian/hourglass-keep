@@ -28,7 +28,7 @@ def render_check(out):
 def tail_check(pat=None, n=2):
     def f(out):
         lines = out.strip().splitlines()
-        ok = bool(re.search(pat, out)) if pat else True
+        ok = bool(re.search(pat, out)) if pat else not re.search(r'FAILURES [1-9]', out) # (the unit scripts end with 'FAILURES n')
         return (ok, ' | '.join(l.strip()[:110] for l in lines[-n:]))
     return f
 
@@ -48,10 +48,14 @@ def feat_check(out):
     m = re.search(r'TOTAL passed (\d+) / (\d+) with damage (\d+)', out)
     return (bool(m) and m[1] == m[2], (int(m[1]), int(m[2]), int(m[3])) if m else None)
 J += [('featbot', ['featbot.py', '2', '-', 'all', str(n)], feat_check) for n in [4, 6, 9, 13, 18, 24, 27]]
+def p4_check(out):
+    m = re.search(r'P4 gates (\d+) runs passed (\d+) / (\d+) with damage (\d+)', out)
+    return (bool(m) and m[2] == m[3] and m[4] == '0', (int(m[2]), int(m[3]), int(m[4])) if m else None)
+J += [('p4bot', ['p4bot.py', str(n), str(n), '3'], p4_check) for n in range(6, 28)] # the timed remote plates (P4), timers without an extra factor
 if mode == 'release':
     J += [('featbot fight', ['featbot.py', '3', 'fight', 'flags', str(n)], feat_check) for n in [9, 18, 24, 25, 27]]
 unit = ['forkscan.py', 'respawnplates.py', 'puzzlescan.py', 'slabresume.py', 'primtest.py',
-        'hdtest.py', 'vertscan.py', 'lifttest.py', 'featurescan.py']
+        'hdtest.py', 'vertscan.py', 'lifttest.py', 'featurescan.py', 'orphanscan.py', 'mazescan.py']
 J += [(u[:-3], [u], tail_check()) for u in unit if os.path.exists(os.path.join(HERE, u))]
 # longest jobs first so the tail of the run isn't one slow floor
 RANK = {'featbot fight': 0, 'run2 fight': 1, 'rendersmoke': 2, 'featbot': 3, 'metrics40': 4, 'featurescan': 4, 'forktest': 5, 'run2': 6}
@@ -75,7 +79,7 @@ allok = True
 print('%-13s %-4s %7s  %s' % ('test', 'ok', 'cpu s', 'result'))
 for g, rs in groups.items():
     ok = all(r[1] for r in rs); allok &= ok; cpu = sum(r[3] for r in rs)
-    if g.startswith('featbot'):
+    if g.startswith('featbot') or g == 'p4bot':
         tot = [r[2] for r in rs if isinstance(r[2], tuple)]
         p, n, h = (sum(x[i] for x in tot) for i in range(3))
         dmg_ok = g == 'featbot fight' or h == 0; ok &= dmg_ok; allok &= dmg_ok

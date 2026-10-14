@@ -58,6 +58,8 @@ service worker's cache to `hourglass-keep-vN`, which is what makes installed cop
 | `python3 metrics40.py` | route length, trap count and trap spacing against the last release (edit the two files at its top) | no floor shorter, padding kept |
 | `respawnplates.py`, `puzzlescan.py`, `slabresume.py` | plates stay pressed after a respawn; the puzzle menu's pairs are built; a slab-jammed plate is restored | all ok |
 | `primtest.py`, `hdtest.py`, `vertscan.py`, `lifttest.py` | every chamber move works for the bot; the chamber's damaging drop (hgap) costs exactly one life where it is placed; counts of vertical moves; both kinds of lift ride | all ok |
+| `p4bot.py lo hi [seeds]` | the bot plays floors forced to timed remote plates (P4, run for a gate in the next turn); the timers carry no extra factor | every run passes, 0 damage |
+| `orphanscan.py`, `mazescan.py` | no gate side passage is left without its plate (floors 1 to 27, 20 seeds); maze floors hold at least 1.5 times the gate puzzles of ordinary floors of the band, longway floors always a fork | 0 orphans, ratio >= 1.5, forks >= 1 |
 | `featurescan.py [file]`, `featbot.py` | a floor's featured families hold their share of their category (mean and minimum), flags come about one floor in nine, floors differ more than before (sameness); the bot plays floors forced to every flag and family (`window.__FEAT`) | shares near or over 40%, 0 damage |
 
 Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chambershot.py` and `liftshot.py` do the same for chambers and lifts.
@@ -106,6 +108,11 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   (one floor in nine, from floor 4, never two in a row): tower (lifts everywhere), rotten (collapses and loose floors), barracks
   (many more guards, fewer other traps), longway (forks are all kind 3 or 4, mostly with a grating), maze (gate puzzles chained
   back to back). `window.__FEAT={flag,move,puzzle,obstacle}` forces them in tests; the card between floors names a flag.
+- Trap density (unit G1): traps per floor are held to about +15% over v39 (floor 12 about 77, floor 27 about 107), not by shortening
+  anything. `LAND_PLAIN`, `CH_PLAIN` (a chamber's landings left plain), `FILL_PLAIN` (a stretch of side-passage corridor left plain, in
+  `fillCorridor`) and `FLAT_K` (weight of plain floor in the run's menu) set it; check with `metrics40.py`. A remote plate (P1, P5) whose gate
+  finds no room in the turn makes `buildLevel` lay the floor out again, so no dead-end side room is left behind. Timed gates (P4 too)
+  are `estPath()` times `timerK()`; `estPath` times a careful pace (`WALK_T` and the action table, measured against the bot) so that the tightest factor 0.84 is still beatable. A longway floor always holds a fork (else it is laid out again, and the last resort drops the flag).
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized from `estPath()` at a careful pace, times 0.84 to 1.08.
 - Pose angles are measured from straight down; positive means forward.
