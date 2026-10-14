@@ -679,6 +679,7 @@ function buildLevel(n,seed,test,legacy,att){
 
   // ---- puzzles of the plate-opens-a-gate kind in other shapes (see the menu at puzzlePick) ----
   // The puzzles' own random stream, so the floor's other draws are left alone.
+  const krng=mulberry32(hash2(seed,7919));
   const zrng=mulberry32(hash2(seed,8209)),zr=()=>zrng(),zi=(a,b)=>a+Math.floor(zr()*(b-a+1));
   // A fill of ordinary obstacles for a stretch of corridor that a puzzle leaves between its parts; the bot's actions for it
   // are taken out and returned (the puzzle puts them where the bot reaches that stretch).
@@ -716,7 +717,7 @@ function buildLevel(n,seed,test,legacy,att){
     bot.push({a:'walk',c:e},{a:'climb',from:e},{a:'climb',from:e+1},{a:'runover',from:e+2,to:nookEnd},{a:'sjump',from:lc+1,to:lc-1,dir:-1},
       {a:'walk',c:e+2},{a:'hangdrop',from:e+2,dir:-1},{a:'drop',from:e+1,dir:-1},...post,{a:'walk',c:gc+1});
     let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&xx!==gc&&zr()<0.45){if(raw(xx,r)===FLOOR&&!fe(xx,r))L.torches.push({c:xx,r});lt=xx;}
-    L.detours=(L.detours||[]);L.detours.push({puz:p3?'P3G1':'P2G1',c,len,e,lc,gc,r});
+    L.detours=(L.detours||[]);L.detours.push({puz:p3?'P3G1':'P2G1',c,len,e,lc,gc,pl:p3?pl:lc,r});
     c+=len;run=2;return true;
   }
 
@@ -980,8 +981,9 @@ function buildLevel(n,seed,test,legacy,att){
   function buildTurn(t,nextRow,need){
     const key=(t.down?'d':'u')+(3*t.k);let kits=(t.rev&&KITS[key+'r']?KITS[key+'r']:KITS[key]).slice();
     let sk=null;
-    if(need){const ok=need.kinds.filter(k=>kits.some(kit=>slotOk(kit,t.rev,k)));if(!ok.length)return null;sk=ok[Math.floor(zr()*ok.length)];kits=kits.filter(kit=>slotOk(kit,t.rev,sk));}
-    for(let i=kits.length-1;i>0;i--){const j=Math.floor(rng()*(i+1)),q=kits[i];kits[i]=kits[j];kits[j]=q;}
+    if(need){const ok=need.kinds.filter(k=>kits.some(kit=>slotOk(kit,t.rev,k)));if(!ok.length)return null;const pool=ok.concat(ok.includes('G2')?['G2','G2']:[]);sk=pool[Math.floor(zr()*pool.length)]; // (the shaft's ledge is the rarest slot: it is drawn three times as often when a kit has it)
+    kits=kits.filter(kit=>slotOk(kit,t.rev,sk));}
+    for(let i=kits.length-1;i>0;i--){const j=Math.floor(krng()*(i+1)),q=kits[i];kits[i]=kits[j];kits[j]=q;} // (its own stream: which kit a turn gets does not move with the obstacles and puzzles drawn before it)
     const keep=[rMin,rMax];rMin=-1e9;rMax=1e9;let res=null;
     for(let kit of kits){
       if(sk==='G4'){kit=kit.slice();kit.splice(1+Math.floor(zr()*(kit.length-1)),0,'gslot');}
@@ -1059,7 +1061,7 @@ function buildLevel(n,seed,test,legacy,att){
     set(hm-1,r,FLOOR);set(hm,r,EMPTY);set(hm+1,r,FLOOR);feat(hm,r,{t:'loophole'});
     for(let j=1;j<lp.rLow-lp.rUp;j++){const a=j%2?hm:hm+1;set(a,r+j,FLOOR);set(j%2?hm+1:hm,r+j,EMPTY);}
     loopZone(lp,(q,x)=>{if(x===lp.H-lp.dir||x===lp.O+lp.dir)resv[q]=1;}); // the ladder's walls stay walls
-    bot.push({a:'sjump',from:hm-1,to:hm+1});
+    bot.push({a:'sjump',from:hm-1,to:hm+1,loop:1}); // (marked: a test that takes the hole instead finds it by this)
     c=hm+1;run=1;lp.ok=true;return true;}
   // the plate, near the end of the upper run, on the walked line
   function loopPlate(lp){
@@ -1086,8 +1088,8 @@ function buildLevel(n,seed,test,legacy,att){
   //   P1 branch plate (gallery above / cellar below, walked out and back)   P2 slab over the plate (gate too quick to outrun)
   //   P3 slab jams the closers before a gate                                P5 plate in a one-storey alcove
   //   double: two branch plates, one gate timed
-  let puzzleSeg='puzzle',puzzleNm='';
-  const MENU=[['P1G1',0.09,4],['P5G1',0.045,4],['P2G1',0.05,4],['P3G1',0.035,5],['double',0.08,7]];
+  let puzzleSeg='puzzle',puzzleNm='';const PZ_W=0.75; // (the roll of the puzzle option: with the pending retries this holds a floor to about the number of gate puzzles it had)
+  const MENU=[['P1G1',0.056,4],['P5G1',0.03,4],['P2G1',0.03,4],['P3G1',0.022,5],['double',0.05,7]];
   function puzzlePick(){
     if(typeof window!=='undefined'&&window.__PZ&&MENU.some(m=>m[0]===window.__PZ))return window.__PZ;
     const o=MENU.filter(m=>n>=m[2]);let tot=0;for(const m of o)tot+=m[1];let x=zr()*tot;for(const m of o){x-=m[1];if(x<=0)return m[0];}return o[0][0];}
@@ -1106,17 +1108,18 @@ function buildLevel(n,seed,test,legacy,att){
   // press the plate and run, as in Prince of Persia level 3). The run is built up to the plate (a stop, like a loop's
   // pieces), then held to plain floor; the turn is built with a slot for the gate (see slotOk); if no kit has the room the
   // plate goes back to plain floor.
-  const REM=[['P4',0.5,6],['P5',0.3,4],['P1',0.2,5]];
+  const REM=[['P4',0.4,6],['P5',0.3,4],['P1',0.3,5]];
   function remoteRoll(k){
     if(att<0||legacy||k>=runs.length-1||k===plan.chaseRun||loopAt.has(k)||loopAt.has(k-1))return null;
     const forced=typeof window!=='undefined'&&window.__PZ;
     const o=REM.filter(m=>n>=m[2]&&(!forced||forced===m[0]));if(!o.length)return null;
-    if(!forced&&zr()>=0.2)return null;
+    if(!forced&&zr()>=0.03)return null;
     let tot=0;for(const m of o)tot+=m[1];let x=zr()*tot,nm=o[0][0];for(const m of o){x-=m[1];if(x<=0){nm=m[0];break;}}
     return {nm,g:null,placed:false};}
   // how many tiles before the end of a run its plate's stop lies (the alcove or branch is built from there)
   const remAt=nm=>nm==='P4'?zi(8,13):nm==='P5'?24+zi(0,6):44+zi(0,8);
   function remotePlate(rm){
+    flat(2);rm.c0=c; // (plain floor before the plate, as after any trap)
     if(rm.nm!=='P4'){ // a latched plate in an alcove or a branch; its gate stands in the turn
       rm.g={t:'gate',open:0,tm:0,dur:0,latch:true,far:true,fix:true};rm.botIdx=bot.length;
       rm.placed=rm.nm==='P5'?alcovePlate(zr()<0.5,rm):sideTry((gp,fw)=>detourGate(gp,fw,rm),zr()<0.5);return rm.placed;}
@@ -1154,11 +1157,12 @@ function buildLevel(n,seed,test,legacy,att){
     // tenths of the traps a floor this long used to hold, so a floor whose side passages took much of its length
     // doesn't come out short)
     // (the corridor fill doesn't count: the route must not end sooner for it)
-    const trapsNow=()=>{let t=0;for(const q of L.segs)if(!q.corr&&!MOVES.has(q.k)&&!q.k.startsWith('turn-')&&!q.k.startsWith('loop-'))t++;return t;};
+    const trapsNow=()=>{let t=0;for(const q of L.segs)if(!q.corr&&!MOVES.has(q.k)&&!q.k.startsWith('turn-')&&!q.k.startsWith('loop-')&&q.k!=='puzzle'&&q.k!=='rem-plate')t++;return t;};
+    const LAST_EXTRA=24; // (the puzzle menu changes which turns and obstacles a floor draws; the last run is held a little long so no floor comes out shorter than before)
     const lastStop0=progBase+(rn.cap+(first?2:0)),trapTarget=Math.floor(routeT*(n<=5?0.095:n<=8?0.085:0.08));
     for(;;){const st=stops.length?stops[0]:null;vHi=st?Math.min(vHiRun,st.at):vHiRun;
     while(c<vHi&&iter++<5000){
-      if(last&&prog()>=lastStop0+loopUsed&&trapsNow()>=trapTarget)break;
+      if(last&&prog()>=lastStop0+loopUsed+LAST_EXTRA&&trapsNow()>=trapTarget)break;
       if(chaseWanted&&!L.ext.chase&&k===plan.chaseRun&&MX<0&&vHi-c>=60&&c-cEntry>=6){
         if(raw(c,r)===FLOOR&&!fe(c,r)&&!L.cps.some(q=>prog()-q.ord<12)){L.cps.push({c,r,x:c*TW+16,on:false,ord:prog()});nextCp=prog()+CP_GAP;}
         {const c0=c,r0=r;if(chaseSeg()){L.segs.push({k:'chase',c0,c1:c,r0,r1:r});breathe();continue;}}}
@@ -1182,7 +1186,7 @@ function buildLevel(n,seed,test,legacy,att){
       if(n>=3)add(1.0,()=>loose(n>=5&&ch(0.45)?2:1),'loose');
       if(n>=4)add(0.9,chomp,'chomp');
       if(n>=3)add(0.75,gate,'gate');
-      if(n>=4&&!(typeof window!=='undefined'&&REM.some(m=>m[0]===window.__PZ)))add(n>=7?0.30:0.22,()=>{const nm=puzzlePick();if(c-cEntry>=8&&vHi-c>=30){const sg=puzzleTry(nm);if(sg){puzzleSeg=sg;puzzleNm=nm;return true;}}
+      if(n>=4&&!(typeof window!=='undefined'&&REM.some(m=>m[0]===window.__PZ)))add((n>=7?0.30:0.22)*PZ_W,()=>{const nm=puzzlePick();if(c-cEntry>=8&&vHi-c>=30){const sg=puzzleTry(nm);if(sg){puzzleSeg=sg;puzzleNm=nm;return true;}}
         if(pend.length<3)pend.push(nm);return false;},'puzzle');
       if(n>=6)add(0.3,swingSeg,'swing');
       if(n>=5)add(0.1,sawSeg,'saw');
@@ -1207,7 +1211,7 @@ function buildLevel(n,seed,test,legacy,att){
     }
     if(!st)break;
     stops.shift();vHi=vHiRun;{const c0=c,r0=r;
-      if(st.fn()){if(c!==c0){L.segs.push({k:st.k,c0,c1:c,r0,r1:r});if(st.k==='rem-plate')vHiRun=Math.min(vHiRun,c);else{if(st.k!=='loop-plate')breathe();loopUsed+=c-c0;}}}
+      if(st.fn()){if(c!==c0){L.segs.push({k:st.k,c0:st.k==='rem-plate'&&rem.c0!==undefined?rem.c0:c0,c1:c,r0,r1:r});if(st.k==='rem-plate')vHiRun=Math.min(vHiRun,c);else{if(st.k!=='loop-plate')breathe();loopUsed+=c-c0;}}}
       else if(st.k==='loop-foot'||st.k==='loop-plate')loopFail=true;}
     }
     if(upL&&upL.ok&&!upL.plated)loopFail=true; // a gate with no plate: start the floor again
@@ -1218,7 +1222,7 @@ function buildLevel(n,seed,test,legacy,att){
     if(!last){let kk=0;while(c+kk<vFar&&W(c+kk+1,r))kk++;if(kk)flat(kk);}
     const runEnd=c,runCells=touched;
     if(last){
-      for(let kk=0;kk<12&&c<vFar-1&&W(c+1,r);kk++){set(c+1,r,FLOOR);c++;}
+      for(let kk=0;kk<16&&c<vFar-1&&W(c+1,r);kk++){set(c+1,r,FLOOR);c++;}
       bot.push({a:'walk',c:c-1});
       L.door={c:PC(c-1),r,x:PC(c-1)*TW+16,open:xDone?0:1,opening:!xDone};
       bot.push({a:'door'});
@@ -1821,6 +1825,7 @@ function applyResume(R){
   if(!R||!L||R.n!==L.n)return false;
   for(const i of R.fallen||[]){const o=L.dyn[i];if(o&&o.f.t==='loose'){o.f.s=2;L.base[o.r*L.cols+o.c]=EMPTY;}}
   for(const k of R.rubble||[])L.rubble.add(k);
+  for(const o of L.dyn)if(o.f.slabF&&o.f.slabF.s===2&&!o.f.jam)jamRestore(o); // a slab that had fallen on a plate or closer still lies on it
   const tk=new Set(R.takenAt||[]);for(const it of L.items)if(tk.has(it.c+','+it.r))it.taken=true;
   for(const i of R.dead||[]){const g=G[i];if(g&&!g.gone){g.alive=false;g.gone=true;g.state='dying';lerpPose(g.pose,PS.dead,1,g.pose);}}
   (R.cps||[]).forEach((on,i)=>{if(on&&L.cps[i])L.cps[i].on=true;});

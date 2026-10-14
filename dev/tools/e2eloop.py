@@ -5,7 +5,7 @@ lo,hi,ns=(int(sys.argv[2]),int(sys.argv[3]),int(sys.argv[4])) if len(sys.argv)>4
 JS=r'''([n,seed])=>{const H=__HK;const L0=H.load(n,seed,true);if(!L0.loops.length)return null;
   // play the floor, but at the first loop take the hole: down the ledges to the shut gate, back up, then on the long way
   const q=L0.loops[0],h=q.rLow-q.rUp,dir=q.dir,col=j=>j%2?q.H:q.O;
-  const path=L0.path.map(a=>Object.assign({},a));const i=path.findIndex(a=>a.a==='sjump'&&a.from===q.H-dir&&a.to===q.O);if(i<0)return {err:'no sjump'};
+  const path=L0.path.map(a=>Object.assign({},a));const i=path.findIndex(a=>a.a==='sjump'&&a.loop&&a.from===q.H-dir&&a.to===q.O);if(i<0)return {err:'no sjump'};
   const seq=[{a:'drop',from:q.H-dir,dir}];for(let j=1;j<h;j++){const a=col(j),b=col(j+1);seq.push({a:'drop',from:a,dir:Math.sign(b-a)});}
   seq.push({a:'look'});
   const X=col(h-1),Y=X===q.H?q.O:q.H;seq.push({a:'walk',c:Y},{a:'climb',from:Y,dir:Math.sign(X-Y)});for(let j=h-1;j>=1;j--){const a=col(j),b=j>1?col(j-1):q.O;seq.push({a:'climb',from:a,dir:Math.sign(b-a)});}
