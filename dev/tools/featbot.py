@@ -1,4 +1,4 @@
-# featbot.py [seeds [fight [flags]]]: the bot on floors forced to each rare flag and to each featured family (window.__FEAT),
+# featbot.py [seeds [fight [flags [floors]]]] (floors: comma list, e.g. 9,18, so suite.py can split it per floor): the bot on floors forced to each rare flag and to each featured family (window.__FEAT),
 # so every flag and every family is played through, not just the ones the seeds happen to draw. 0 damage on the safe way.
 import json, sys
 from playwright.sync_api import sync_playwright
@@ -9,6 +9,7 @@ FAM=[('move',v,3) for v in ['plain','collapse','jumps','banners','lifts']]+[('pu
 FLOORS=[4,6,9,13,18,24,27]
 ONLY=len(sys.argv)>3 and sys.argv[3]=='flags' # (just the flags, on the deep floors)
 if ONLY: FLOORS=[9,18,24,25,27]; FAM=[]
+if len(sys.argv)>4: FLOORS=[int(x) for x in sys.argv[4].split(',')]
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page(viewport={'width':844,'height':390}); errs=[]
     pg.on('pageerror',lambda e:errs.append(str(e)))

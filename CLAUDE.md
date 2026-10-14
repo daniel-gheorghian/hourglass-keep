@@ -41,7 +41,13 @@ service worker's cache to `hourglass-keep-vN`, which is what makes installed cop
 ## Release routine
 
 1. Change the source, then build with the next N.
-2. Run the regression suite from `dev/tools`:
+2. Run the regression suite from `dev/tools` with `python3 suite.py release`. It runs every test below spread over the
+   machine's cores (one floor per job, one Chromium per job) and prints one line per test, ending in `ALL OK` or `FAILURES`.
+   Tiers: `suite.py quick` (bot with one seed plus the unit tests, ~2 min) while working; `suite.py` (bot with four seeds,
+   forks, flag and family floors, metrics, unit tests, ~5 min) before each commit; `suite.py release` (adds the fight runs
+   and the render check, ~20 min) before a release. Run long suites in the background rather than polling them. The
+   default process count is the number of physical cores; more only slows a laptop down. A new test should take a floor
+   range so `suite.py` can split it, and be added to its list. The tests it runs:
 
 | Command | Checks | Pass |
 |---|---|---|
