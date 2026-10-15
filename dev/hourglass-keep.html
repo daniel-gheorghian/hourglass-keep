@@ -3275,6 +3275,7 @@ function drawRoomStatic(g,rx,ry,stage){
     if(isArchTop(gc,gr))drawArch(g,cc*TW,rr*TH,th,bgOn&&isOpenArch(gc,gr),gc,gr,'frame');}
   for(const w of L.windows){if(Math.floor(w.c/RW)!==rx||Math.floor(w.r/RH)!==ry)continue;if(bgOn&&inOpening(w.c,w.r))continue;if(inBreach(w.c*TW+16,w.r*TH+38,true))continue;drawWindow(g,(w.c%RW)*TW+16,(w.r%RH)*TH+38,th,w.c,bgOn);}
   drawWallScars(g,rx,ry,th);drawHangings(g,rx,ry,th);
+  if(GLFX.ao)aoBack(g,rx,ry,B,solidBelow,isLow);
   }
   // neighbours one cell outside the room are drawn too, so faces that overhang a room edge don't leave seams
   if(all||stage===1){
@@ -3325,7 +3326,31 @@ function drawRoomStatic(g,rx,ry,stage){
     g.strokeStyle='rgba(255,255,255,.14)';g.lineWidth=0.7;g.beginPath();const ex2=rh?fx+TW-6:fx+6;g.moveTo(ex2,ft);g.lineTo(ex2+(rh?2:-2),ft+3);g.lineTo(ex2+(rh?-1:1),ft+FHH);g.stroke();
   });
   drawBreachRubble(g,rx,ry,th);drawFallen(g,rx,ry,th);
+  if(GLFX.ao)aoFloor(g,rx,ry,B,solidBelow);
 }
+// ---- corner shading (S3 unit B, item 10; GLFX.ao): ambient occlusion baked into the room image, from the tile map alone ----
+// Where two surfaces meet, less of the room's light reaches the corner, so the back wall darkens softly just above a floor,
+// under a ceiling or a ledge and beside a wall, and a floor darkens where it runs into a wall. As in tile/voxel AO (0fps,
+// "Ambient occlusion for Minecraft-like worlds"), each edge of a cell is shaded from its neighbour alone and a corner, where two
+// solid neighbours meet, gets both shadings and so comes out darker. Drawn 'source-atop', so an opening onto the sky is left alone.
+const AO_K={floor:.36,ceil:.32,side:.26,top:.28,reach:20}; // strength of each edge, and how far (px) the soft dark reaches
+function aoBand(g,x0,y0,x1,y1,horiz,a,fromEnd){const gr=horiz?g.createLinearGradient(x0,0,x1,0):g.createLinearGradient(0,y0,0,y1);
+  const k0=fromEnd?0:1,c='rgba(0,0,0,';gr.addColorStop(0,c+(a*k0)+')');gr.addColorStop(0.55,c+(a*0.32)+')');gr.addColorStop(1,c+(a*(1-k0))+')');g.fillStyle=gr;g.fillRect(x0,y0,x1-x0,y1-y0);}
+function aoBack(g,rx,ry,B,solidBelow,isLow){const R=AO_K.reach;g.save();g.globalCompositeOperation='source-atop';
+  for(let rr=0;rr<RH;rr++)for(let cc=0;cc<RW;cc++){const gc=rx*RW+cc,gr=ry*RH+rr,X=cc*TW,Y=rr*TH;if(B(L,gc,gr)===WALL)continue;
+    g.save();g.beginPath();g.rect(X,Y,TW,TH);g.clip();
+    if(solidBelow(L,gc,gr))aoBand(g,X,Y+TH-8-R,X+TW,Y+TH-6,false,AO_K.floor,true); // the foot of the wall, down to where the floor's back edge meets it
+    if(gr>0&&B(L,gc,gr-1)!==EMPTY&&!isLow(gc,gr)){const y=Y+ceilOff(gc,gr);aoBand(g,X,y,X+TW,y+R,false,AO_K.ceil,false);} // under a ceiling or a ledge
+    if(B(L,gc-1,gr)===WALL)aoBand(g,X+HX,Y,X+HX+R,Y+TH,true,AO_K.side,false); // beside a wall on the left (behind its side face)
+    if(B(L,gc+1,gr)===WALL)aoBand(g,X+TW-HX-R,Y,X+TW-HX,Y+TH,true,AO_K.side,true); // and on the right (behind its front face)
+    g.restore();}
+  g.restore();}
+function aoFloor(g,rx,ry,B,solidBelow){const R=AO_K.reach*0.8;g.save();g.globalCompositeOperation='source-atop';
+  for(let rr=0;rr<RH;rr++)for(let cc=0;cc<RW;cc++){const gc=rx*RW+cc,gr=ry*RH+rr,X=cc*TW,ys=rr*TH+TH-4;
+    if(B(L,gc,gr)===WALL||!solidBelow(L,gc,gr))continue;const f=F(L,gc,gr);if(f&&(f.t==='loose'||f.t==='plate'||f.t==='xplate'||f.t==='lplate'||f.t==='closer'||f.t==='grate'))continue;
+    if(B(L,gc+1,gr)===WALL)aoBand(g,X+TW-HX-R,ys-HY,X+TW-HX,ys+HY,true,AO_K.top,true); // the walking surface where it runs into a wall
+    if(B(L,gc-1,gr)===WALL)aoBand(g,X-HX,ys-HY,X-HX+R,ys+HY,true,AO_K.top,false);}
+  g.restore();}
 const FHH=5;
 // ---- breaches: where a stretch of the keep has partly fallen, holes have opened right through its back wall ----
 // Modelled on how brick and block walls actually fail rather than drawn as shapes: the masonry over a gap stays up by
@@ -5187,8 +5212,22 @@ function bgLayers(style,tod=0){const key=style+':'+tod+':'+VS.toFixed(2);let v=b
     const rnd=mulberry32(hash2(i*31+7,style.length*97+i));
     // everything is drawn twice, a layer-width apart, so the strip tiles seamlessly
     for(const ox of [0,-BG_W,BG_W]){g.save();g.translate(ox,0);bgPaint(g,ly,mulberry32(hash2(i*31+7,style.length*97+i)));g.restore();}
+    if(GLFX.bgblur&&ly.kind!=='stars')bgSoften(c,g,bgBlurR(ly.f)*sc);
     return {c,f:ly.f,drift:ly.drift||0};});
   bgCache.set(key,v);return v;}
+// ---- distance blur (S3 unit B, item 9; GLFX.bgblur): the view through the arches is a little out of focus, so the playfield
+// reads first. Done once, when a layer is painted (never per frame): the nearer layers stay sharper than the far ones, like a
+// lens focused on the prince (Hollow Knight blurs its background layers, with aerial perspective on top). The blur is a small
+// image pyramid on the GPU (halve the layer once or twice with smoothing, then scale it back up): Safari's canvas `filter` is
+// still off by default, and a blur over the pixels in JS took ~1 s a theme.
+function bgBlurR(f){return 0.6+1.4*clamp(1-f/0.32,0,1);} // in background units: ~0.6 for the nearest layer, ~1.9 for the farthest
+function bgSoften(c,g,R){const lv=R<1.4?0:R<3?1:2;if(!lv)return;const w=c.width,h=c.height,p=4<<lv,W=w+2*p,Hh=h+2*p;
+  const mk=(a,b)=>{const q=document.createElement('canvas');q.width=a;q.height=b;q.getContext('2d').imageSmoothingEnabled=true;return q;};
+  const t=mk(W,Hh),tg=t.getContext('2d');for(const ox of [p-w,p,p+w])tg.drawImage(c,ox,p); // the strip tiles sideways: wrap it into the margins
+  tg.drawImage(t,0,p,W,1,0,0,W,p);tg.drawImage(t,0,p+h-1,W,1,0,p+h,W,p); // and repeat its top and bottom rows
+  const lev=[t];for(let i=0;i<lv;i++){const s=lev[i],d=mk(Math.ceil(s.width/2),Math.ceil(s.height/2));d.getContext('2d').drawImage(s,0,0,d.width,d.height);lev.push(d);}
+  for(let i=lv-1;i>=0;i--){const u=lev[i],ug=u.getContext('2d');ug.clearRect(0,0,u.width,u.height);ug.drawImage(lev[i+1],0,0,u.width,u.height);}
+  g.save();g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,w,h);g.drawImage(t,p,p,w,h,0,0,w,h);g.restore();}
 function bgPaint(g,ly,rnd){const B=BG_BASE-(ly.lift||0),T=Math.PI*2,R=(a,b)=>a+rnd()*(b-a);g.fillStyle=ly.col;
   const ground=()=>g.fillRect(-2,B,BG_W+4,BG_H-B+2);
   switch(ly.kind){
@@ -5493,6 +5532,7 @@ const GLSH={
     #endif
     varying vec2 v_u;uniform sampler2D u_sc,u_map,u_bl,u_mk;uniform vec2 u_d,u_vg,u_px,u_mp;uniform float u_t,u_sat;uniform vec4 u_fx;uniform vec3 u_sh,u_hi;
     ${GLSL_A}
+    uniform sampler2D u_rl;uniform float u_rk; // relief lighting (unit B): the factor from glRelief, and its strength (0 = off)
     void main(){
       vec3 m=texture2D(u_mk,v_u).rgb; // mask: r shadow, g heat, b storm
       vec2 uv=v_u;float hz=m.g*u_fx.y,st=m.b*u_fx.z;
@@ -5501,6 +5541,7 @@ const GLSH={
       if(e>.01)uv+=vec2(sin(v_u.y*40.+u_t*2.),sin(v_u.x*60.-u_t*3.)*.7)*e*vec2(1.8,1.3)*u_px;
       uv=hkWarp(uv); // S3-A
       vec3 s=hkScene(uv),l=texture2D(u_map,v_u).rgb*1.5;
+      l*=1.+(texture2D(u_rl,v_u).r-.5)*2.*u_rk; // relief: lamp light raking across the stone
       float sh=(m.r*2.+texture2D(u_mk,v_u+vec2(u_mp.x,0.)).r+texture2D(u_mk,v_u-vec2(u_mp.x,0.)).r+texture2D(u_mk,v_u+vec2(0.,u_mp.y)).r+texture2D(u_mk,v_u-vec2(0.,u_mp.y)).r)/6.;
       l=mix(l,max(l,vec3(.95,.7,.42)),st*.55); // the storm is bright with its own dust
       l*=1.-sh*.85*u_fx.x; // a shadow takes the light away and a little of the ambient
@@ -5622,6 +5663,83 @@ function glMask(lights,VZ,camD,camDY){
   if(any||GLP.mkHad)gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,mkC);
   GLP.mkHad=!!any;
 }
+// ---- relief lighting (S3 unit B, item 2; GLFX.relief): lamp light rakes across the joints, cracks and broken edges of the stone ----
+// Normal-mapped 2D (Sprite Lamp, Dead Cells' rendered normal maps) needs a height map of the surface. The walls are drawn in 2D,
+// so the height is taken from the room images themselves, the way Sobel normal-map tools derive it from a picture: brighter
+// stone stands proud, the dark joints, cracks, holes and openings sink. The room images hold only the static keep (no prince,
+// no guards, no HUD), so nothing that moves is embossed. Each room image is copied once, at half its size, into a GL texture
+// when it is built or rebuilt (at most one copy a frame); every frame a half-resolution pass draws the rooms in view from
+// those textures and, per pixel, turns the height slope into a tilt and compares it with which way the light map rises (the
+// way toward the lamps), giving a factor around 1 that the composite multiplies the light by. Where the light map is flat
+// (ambient only) there is no direction, so no relief. Things drawn over the walls that would carry the wall's pattern (the
+// prince, guards, flames, traps, items, falling stone) are rubbed back to neutral with soft ellipses.
+Object.assign(GLFX,{relief:true,ao:true,bgblur:true}); // unit B's switches: relief (Torchlight), corner shading and distance blur (both modes)
+const GLREL={n:0,gl:null,rp:null,xp:null,buf:null,fb:null,fw:0,fh:0,tex:new Map(),list:[],on:0,V:new Float32Array(64*24),sc:null,sg:null,ul:null,uk:null},GLREL_MAX=10,GLREL_K=0.32;
+const GLRV=`attribute vec2 a_p;attribute vec2 a_t;varying vec2 v_t,v_s;void main(){v_t=a_t;v_s=a_p*.5+.5;gl_Position=vec4(a_p,0.,1.);}`;
+const GLRS={room:[GLRV,`precision mediump float;varying vec2 v_t,v_s;uniform sampler2D u_rm,u_map;uniform vec2 u_tx,u_lo;uniform float u_k;
+    float H(vec2 o){vec4 c=texture2D(u_rm,v_t+o*u_tx);return dot(c.rgb,vec3(.3,.59,.11))*c.a;} // height: the stone's brightness (an opening is a deep hole)
+    float M(vec2 o){return dot(texture2D(u_map,v_s+o*u_lo).rgb,vec3(.3,.59,.11));}
+    void main(){float a=texture2D(u_rm,v_t).a;
+      vec2 gh=vec2(H(vec2(1.,0.))-H(vec2(-1.,0.)),H(vec2(0.,1.))-H(vec2(0.,-1.)))*.5+vec2(H(vec2(1.,1.))-H(vec2(-1.,1.))+H(vec2(1.,-1.))-H(vec2(-1.,-1.)),H(vec2(1.,1.))-H(vec2(1.,-1.))+H(vec2(-1.,1.))-H(vec2(-1.,-1.)))*.25; // Sobel
+      vec2 gl=vec2(M(vec2(1.,0.))-M(vec2(-1.,0.)),M(vec2(0.,1.))-M(vec2(0.,-1.)));float m=length(gl); // the light map rises toward the lamps
+      float e=length(gh);vec2 n=-gh*u_k*smoothstep(.025,.07,e);n/=max(1.,length(n)); // (only edges: a gentle painted shading, like a floor's sheen, is not read as a slope) the surface's tilt: a face leaning toward the lamp catches it, one leaning away is in its own shade
+      float f=dot(n,gl/max(m,1e-4))*smoothstep(.003,.04,m)*a;
+      gl_FragColor=vec4(.5+.5*f,0.,0.,1.);}`],
+  ex:[GLRV,`precision mediump float;varying vec2 v_t;void main(){gl_FragColor=vec4(.5,0.,0.,1.-smoothstep(.4,1.,length(v_t)));}`]};
+function glRelInit(gl){const R=GLREL;R.gl=gl;R.tex.clear();R.fb=null;R.fw=R.fh=0;
+  const mk=(src,names)=>{const p=glMake(gl,src);gl.bindAttribLocation(p,0,'a_p');gl.bindAttribLocation(p,1,'a_t');return glLink(gl,p,names);};
+  R.rp=mk(GLRS.room,['u_rm','u_map','u_tx','u_lo','u_k']);R.xp=mk(GLRS.ex,[]);
+  R.buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,R.buf);gl.bufferData(gl.ARRAY_BUFFER,R.V.byteLength,gl.DYNAMIC_DRAW);
+  R.ul=gl.getUniformLocation(GLP.P.final.p,'u_rl');R.uk=gl.getUniformLocation(GLP.P.final.p,'u_rk');}
+// one room image, at half size, into its texture (reusing the oldest one once the pool is full)
+function glRelUpload(gl,key,c){const R=GLREL;let e=R.tex.get(key);R.tex.delete(key);
+  if(!e&&R.tex.size>=GLREL_MAX){const k0=R.tex.keys().next().value;e=R.tex.get(k0);R.tex.delete(k0);}
+  if(!e)e={id:0,t:glTex(gl,1,1),w:1,h:1};if(!c._rid)c._rid=++GLREL.n; // (the copy remembers its room image by a number, not by holding on to it)
+  const w=Math.max(1,Math.ceil(c.width/2)),h=Math.max(1,Math.ceil(c.height/2));
+  if(!R.sc){R.sc=document.createElement('canvas');R.sg=R.sc.getContext('2d');}
+  if(R.sc.width!==w||R.sc.height!==h){R.sc.width=w;R.sc.height=h;}else R.sg.clearRect(0,0,w,h);
+  R.sg.imageSmoothingEnabled=true;R.sg.drawImage(c,0,0,w,h);
+  gl.bindTexture(gl.TEXTURE_2D,e.t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,R.sc);e.id=c._rid;e.w=w;e.h=h;R.tex.set(key,e);return e;}
+function glRelQuad(o,x0,y0,x1,y1,u0,v0,u1,v1){const V=GLREL.V,w=cv.width,h=cv.height,X0=x0/w*2-1,X1=x1/w*2-1,Y0=1-y0/h*2,Y1=1-y1/h*2;let i=o*24;
+  i=glRelV(V,i,X0,Y0,u0,v0);i=glRelV(V,i,X1,Y0,u1,v0);i=glRelV(V,i,X1,Y1,u1,v1);i=glRelV(V,i,X0,Y0,u0,v0);i=glRelV(V,i,X1,Y1,u1,v1);glRelV(V,i,X0,Y1,u0,v1);}
+function glRelV(V,i,x,y,u,v){V[i]=x;V[i+1]=y;V[i+2]=u;V[i+3]=v;return i+4;}
+// a soft neutral ellipse over something drawn on the wall (world centre and half sizes)
+function glRelEx(n,x,y,hx,hy,VZ,camD,camDY){if(n>=64)return n;const sx=x*VZ-camD,sy=y*VZ-camDY,ax=hx*VZ,ay=hy*VZ;if(sx+ax<0||sx-ax>cv.width||sy+ay<0||sy-ay>cv.height)return n;
+  glRelQuad(n,sx-ax,sy-ay,sx+ax,sy+ay,-1,1,1,-1);return n+1;}
+function glRelief(lights,VZ,camD,camDY){
+  const R=GLREL,gl=GLP.gl,w=cv.width,h=cv.height;R.on=0;if(!GLFX.relief)return;
+  let lit=false;for(const q of lights)if(GLSTRONG[q.kind]||q.kind==='fire'){lit=true;break;} // no lamp near: nothing to rake, skip the pass
+  if(!lit)return;
+  if(R.gl!==gl)glRelInit(gl);
+  gl.activeTexture(gl.TEXTURE0);
+  const fw=Math.ceil(w/2),fh=Math.ceil(h/2);if(!R.fb||R.fw!==fw||R.fh!==fh){if(R.fb){gl.deleteTexture(R.fb.t);gl.deleteFramebuffer(R.fb.f);}R.fb=glFbo(gl,fw,fh);R.fw=fw;R.fh=fh;}
+  // the rooms in view (as render() draws them), each with its texture; a room built since its copy is copied again
+  const cx=camD/VZ,cy=camDY/VZ,vw=w/VZ,vh=h/VZ,rx0=Math.floor(cx/ROOM_W),rx1=Math.floor((cx+vw)/ROOM_W),ry0=Math.floor(cy/ROOM_H),ry1=Math.floor((cy+vh-0.01)/ROOM_H);
+  let up=0,n=0;R.list.length=0;
+  for(let ry=ry0;ry<=ry1;ry++)for(let rx=rx0;rx<=rx1;rx++){const key=rx+','+ry,c=roomCache.get(key);if(!c)continue;let e=R.tex.get(key);
+    if(!e||e.id!==c._rid){if(up)continue;e=glRelUpload(gl,key,c);up=1;}else{R.tex.delete(key);R.tex.set(key,e);}
+    const xa=Math.round(rx*ROOM_W*VZ)-camD,xb=Math.round((rx+1)*ROOM_W*VZ)-camD,ya=Math.round(ry*ROOM_H*VZ)-camDY,yb=Math.round((ry+1)*ROOM_H*VZ)-camDY;
+    glRelQuad(n,xa,ya,xb,yb,0,1,1,0);R.list.push(e);n++;}
+  if(!up)for(let ry=ry0-1;ry<=ry1+1&&!up;ry++)for(let rx=rx0-1;rx<=rx1+1;rx++){const key=rx+','+ry,c=roomCache.get(key);if(!c)continue;const e=R.tex.get(key);if(!e||e.id!==c._rid){glRelUpload(gl,key,c);up=1;break;}} // copy a neighbour ahead of time
+  const nr=n;
+  if(P)n=glRelEx(n,P.x,P.y-30,22,40,VZ,camD,camDY);
+  for(const e of G)if(!e.gone)n=glRelEx(n,e.x,e.y+(e.yo||0)-30,24,40,VZ,camD,camDY);
+  for(const q of lights){const k=q.kind;if(k==='torch'&&q.r>=100)n=glRelEx(n,q.x,q.y-4,12,20,VZ,camD,camDY);else if(k==='trap'||k==='item'||k==='fire')n=glRelEx(n,q.x,q.y,Math.min(26,q.r*0.6),Math.min(30,q.r*0.7),VZ,camD,camDY);
+    else if(k==='fill'&&q.r<50)n=glRelEx(n,q.x,q.y,14,12,VZ,camD,camDY);}
+  for(const d of L.debris)n=glRelEx(n,d.x,d.y-8,20,16,VZ,camD,camDY);
+  for(const o of L.dyn)if(o.f.t==='gate'&&o.f.open>0&&o.f.open<1)n=glRelEx(n,o.c*TW+16-HX,o.r*TH+30,14,38,VZ,camD,camDY); // (a gate on the move)
+  gl.bindFramebuffer(gl.FRAMEBUFFER,R.fb.f);gl.viewport(0,0,fw,fh);gl.clearColor(.5,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);
+  if(!nr)return;
+  gl.bindBuffer(gl.ARRAY_BUFFER,R.buf);gl.bufferSubData(gl.ARRAY_BUFFER,0,R.V,0,n*24);
+  gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,16,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,2,gl.FLOAT,false,16,8);
+  const U=R.rp.u;gl.useProgram(R.rp.p);gl.uniform1i(U.u_rm,0);gl.uniform1i(U.u_map,1);gl.uniform1f(U.u_k,6.);gl.uniform2f(U.u_lo,7*VZ/w,7*VZ/h);
+  gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,GLP.fb.map.t);gl.activeTexture(gl.TEXTURE0);
+  for(let i=0;i<nr;i++){const e=R.list[i];gl.bindTexture(gl.TEXTURE_2D,e.t);gl.uniform2f(U.u_tx,1/e.w,1/e.h);gl.drawArrays(gl.TRIANGLES,i*6,6);}
+  if(n>nr){gl.useProgram(R.xp.p);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.drawArrays(gl.TRIANGLES,nr*6,(n-nr)*6);gl.disable(gl.BLEND);}
+  gl.disableVertexAttribArray(1);R.on=1;
+}
+// (called with the composite program in use) the relief factor's texture on unit 4, and its strength (0 when the pass was skipped)
+function glReliefUse(){const R=GLREL,gl=GLP.gl;if(R.gl!==gl||!R.ul)return;gl.uniform1f(R.uk,R.on?GLREL_K:0);if(R.on){gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,R.fb.t);}gl.uniform1i(R.ul,4);}
 // light kinds that flicker in the shader (how much): a flame wavers fastest, a flask pulses a little
 // how much of a theme's ambient colour the dark keeps in Torchlight: the cool themes sat near black between lamps, so they keep more
 const GLAMBT={dungeon:0.78,tile:0.8,crypt:0.9,palace:0.62,forge:0.6};
@@ -5648,6 +5766,7 @@ function glFrame(lights,VZ,camD,camDY,th){
     gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,4,gl.FLOAT,false,S4,24);gl.enableVertexAttribArray(3);gl.vertexAttribPointer(3,3,gl.FLOAT,false,S4,40);
     gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE);gl.drawArrays(gl.TRIANGLES,0,n*6);gl.disable(gl.BLEND);
     gl.disableVertexAttribArray(1);gl.disableVertexAttribArray(2);gl.disableVertexAttribArray(3);}
+  glRelief(lights,VZ,camD,camDY); // (unit B) the relief factor, at half resolution, into its own buffer
   // 3. full-screen passes: bright-pass, blur, composite
   gl.bindBuffer(gl.ARRAY_BUFFER,GLP.tri);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
   const bind=(unit,tex)=>{gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,tex);};
@@ -5658,6 +5777,7 @@ function glFrame(lights,VZ,camD,camDY,th){
   {const U=P.final.u,gr=gradeOf(th.style),on=GLFX.grade&&GFX().grade;gl.uniform1i(U.u_mk,3);gl.uniform2f(U.u_px,1/w,1/h);gl.uniform2f(U.u_mp,1/lw,1/lh);gl.uniform1f(U.u_t,t%1000);
     gl.uniform4f(U.u_fx,GLFX.shadow?1:0,GLFX.heat?1:0,GLFX.storm?1:0,0);gl.uniform1f(U.u_sat,on?gr.sat:1);gl.uniform3fv(U.u_sh,on?gr.sh:GLNEUT);gl.uniform3fv(U.u_hi,on?gr.hi:GLNEUT);}
   hkUniforms(P.final.u,VZ,camD,camDY,w,h); // S3-A
+  glReliefUse(); // (unit B)
   gl.uniform1i(P.final.u.u_sc,0);gl.uniform1i(P.final.u.u_map,1);gl.uniform1i(P.final.u.u_bl,2);gl.uniform2f(P.final.u.u_d,0,1.6/lh);gl.uniform2f(P.final.u.u_vg,viewW/ROOM_H,0.62*Math.max(viewW,ROOM_W)/ROOM_H);
   gl.drawArrays(gl.TRIANGLES,0,3);
   bind(0,GLP.tex);
@@ -5973,6 +6093,7 @@ window.__HK={tapCloth,THEMES,progOf,themeName,hint,learn,HINTS,HINT_MOVE,get ban
   levelCompleteHook:null,render,layout,startLevel,
   get S(){return S;},get GLP(){return GLP;},glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V};
 Object.assign(window.__HK,{hurt,HK,DISS,GLFX,setClock:f=>{performance.now=f;}}); // S3-A (tests)
+Object.assign(window.__HK,{GLFX,GLREL,clearRooms,bgCache,bgLayers,solidBelow:(c,r)=>solidBelow(L,c,r),roomCanvas}); // (unit B's switches and caches, for its tests)
 
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 })();
