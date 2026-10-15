@@ -3315,6 +3315,8 @@ function drawBreaches(g,rx,ry,th,bgOn){const ox=-rx*ROOM_W,oy=-ry*ROOM_H;
     // line up with; the broken tops of the bricks catch the light, the undersides are in shadow
     g.save();g.clip(P);const gy=g.createLinearGradient(0,b.y0+oy,0,b.y1+oy);gy.addColorStop(0,'rgba(6,4,10,.95)');gy.addColorStop(1,th.lo);g.fillStyle=gy;g.fill(P);
     g.fillStyle='rgba(0,0,0,.18)';g.fill(P);g.globalCompositeOperation='destination-out';g.fillStyle='#000';g.fill(breachPath(b,ox,oy,BR_T[0],BR_T[1]));g.restore();
+    // a pale lit lip along the broken edge, in every theme, so a breach reads as a break even where no sky shows through it
+    g.save();g.strokeStyle='rgba(255,236,205,.34)';g.lineWidth=1;g.stroke(breachPath(b,ox,oy,0,-1));g.restore();
     // cracks running on from the ends, and loose bricks on the broken top
     g.strokeStyle='rgba(0,0,0,.55)';g.lineWidth=0.8;for(const cr of b.cracks){g.beginPath();cr.forEach(([x,y],i)=>i?g.lineTo(x+ox,y+oy):g.moveTo(x+ox,y+oy));g.stroke();}
     for(const [x,y,a,w,h] of b.loose){g.save();g.translate(x+ox,y+oy);g.rotate(a);g.fillStyle='rgba(0,0,0,.5)';g.fillRect(-w/2-0.5,-h-0.5,w+1,h+1);g.fillStyle=th.brick;g.fillRect(-w/2,-h,w,h);g.fillStyle='rgba(255,255,255,.1)';g.fillRect(-w/2,-h,w,1.2);g.fillStyle='rgba(0,0,0,.2)';g.fillRect(-w/2,-h*0.35,w,h*0.35);g.restore();}}}
@@ -3823,7 +3825,7 @@ function drawLight(ctx,t,th){
   const glow=(gx,gy,r,a)=>{ctx.save();ctx.globalCompositeOperation='lighter';const gr=ctx.createRadialGradient(gx,gy,1,gx,gy,r);gr.addColorStop(0,'rgba('+th.glow+','+(a+f*0.04)*GLOWK+')');gr.addColorStop(1,'rgba('+th.glow+',0)');ctx.fillStyle=gr;ctx.fillRect(gx-r,gy-r,r*2,r*2);ctx.restore();};
   if(st==='dungeon'&&free){ // pitch torch set in a tall iron stand
     glow(x+2,y-8,42,0.32);
-    floorStand(ctx,x+3.2,y+8,base,'#2a2d36','#4a4f5c');
+    floorStand(ctx,x+3.2,y+8,base-3.5,'#2a2d36','#4a4f5c'); // set back on the floor's far edge, its feet clear of the walkway
     ctx.fillStyle='#0b0812';ctx.beginPath();ctx.moveTo(x+0.4,y+3);ctx.lineTo(x+6,y+3);ctx.lineTo(x+4.6,y+9);ctx.lineTo(x+1.8,y+9);ctx.closePath();ctx.fill();
     ctx.fillStyle='#3b404b';ctx.fillRect(x+0.8,y+3.4,4.8,1.2);
     ctx.strokeStyle='#0b0812';ctx.lineWidth=3.4;ctx.beginPath();ctx.moveTo(x+3.2,y+4);ctx.lineTo(x+3.1,y-4);ctx.stroke();ctx.strokeStyle='#5a3920';ctx.lineWidth=2;ctx.stroke();
@@ -3939,6 +3941,9 @@ function drawFlask(ctx,it){
 }
 function drawHourglass(ctx,cp){
   const x=cp.x,ys=SURF(cp.r)-3;
+  // drawn 1.35 times larger, on a small plinth of the theme's trim, so the game's title object is easy to find
+  ctx.save();ctx.translate(x,ys+3);ctx.scale(1.35,1.35);ctx.translate(-x,-ys-3);
+  ctx.fillStyle='#0b0812';ctx.fillRect(x-8,ys-1,16,4);ctx.fillStyle=L.theme.trim||L.theme.top;ctx.fillRect(x-7,ys,14,2.2);
   ctx.fillStyle='#0b0812';ctx.fillRect(x-6,ys-5,12,5);ctx.fillStyle=L.theme.top;ctx.fillRect(x-5,ys-4,10,3);
   const top=ys-21;ctx.fillStyle='#0b0812';ctx.fillRect(x-6,top-1.5,12,2.4);ctx.fillRect(x-6,ys-7,12,2.4);
   ctx.fillStyle='#d8b04a';ctx.fillRect(x-5.5,top-1,11,1.4);ctx.fillRect(x-5.5,ys-6.5,11,1.4);
@@ -3948,6 +3953,7 @@ function drawHourglass(ctx,cp){
   ctx.beginPath();ctx.moveTo(x-3.4*(1-k),top+2+k*4);ctx.lineTo(x+3.4*(1-k),top+2+k*4);ctx.lineTo(x,ys-13.5);ctx.closePath();ctx.fill();
   ctx.beginPath();ctx.moveTo(x-4,ys-7.2);ctx.lineTo(x+4,ys-7.2);ctx.lineTo(x+2*k+0.5,ys-7.2-3*k-0.6);ctx.lineTo(x-2*k-0.5,ys-7.2-3*k-0.6);ctx.closePath();ctx.fill();
   if(cp.on){ctx.fillRect(x-0.4,ys-13.5,0.8,6);ctx.save();ctx.globalCompositeOperation='lighter';const gr=ctx.createRadialGradient(x,ys-13,1,x,ys-13,22);gr.addColorStop(0,'rgba(232,196,127,.35)');gr.addColorStop(1,'rgba(232,196,127,0)');ctx.fillStyle=gr;ctx.fillRect(x-24,ys-36,48,48);ctx.restore();}
+  ctx.restore();
 }
 function drawDoor(ctx,x,r,open,isExit){
   // a doorway cut into the back wall: it stands on the floor's back edge, and because depth recedes up and to the
@@ -4487,7 +4493,8 @@ function drawDynamic(ctx,x0,x1,y0,y1){
         ctx.save();ctx.beginPath();ctx.rect(sx-16,cy-18,32,18-2.2);ctx.clip();ctx.translate(sx,cy);ctx.rotate(gameTime*14);
         ctx.beginPath();for(let i=0;i<12;i++){const a=i/12*6.2832;ctx.lineTo(Math.cos(a)*14,Math.sin(a)*14);ctx.lineTo(Math.cos(a+0.26)*10.5,Math.sin(a+0.26)*10.5);}ctx.closePath();
         ctx.fillStyle='#c9ced8';ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=1.1;ctx.stroke();ctx.fillStyle='#7d8391';ctx.beginPath();ctx.arc(0,0,3.2,0,6.2832);ctx.fill();ctx.restore();break;}
-      case'darter':{const fx=f.dir>0?f.x+4:f.x;ctx.fillStyle='#0b0812';ctx.fillRect(fx-5,f.y-4,6,8);ctx.fillStyle='#8a6a3a';ctx.fillRect(fx-4,f.y-3,4,6);ctx.fillStyle='#0b0812';ctx.fillRect(fx-4,f.y-1,4,2);break;}
+      case'darter':{const fx=f.dir>0?f.x+4:f.x;ctx.fillStyle='#0b0812';ctx.fillRect(fx-6,f.y-6,8,12);ctx.fillStyle='#b88a44';ctx.fillRect(fx-5,f.y-5,6,10);ctx.fillStyle='#e8c070';ctx.fillRect(fx-5,f.y-5,6,1.5);ctx.fillRect(fx-5,f.y-5,1.2,10); // a bronze face with a glint on its rim and a dark muzzle
+        ctx.fillStyle='#0b0812';ctx.fillRect(fx-4,f.y-1.5,4,3);break;}
       case'banner':drawBannerTile(ctx,X,Y,f,th);break;
       case'bar':{const bx=f.x,by=f.y,cy=ceilingY(o.c,o.r);ctx.strokeStyle='#0b0812';ctx.lineWidth=1.6;
         ctx.beginPath();ctx.moveTo(bx-10,by);ctx.lineTo(bx-10,cy);ctx.moveTo(bx+10,by);ctx.lineTo(bx+10,cy);ctx.stroke();
@@ -4594,13 +4601,14 @@ function gatherLights(x0,x1,y0,y1){
   for(const g of G)if(g.alive&&!g.gone)add(g.x,g.y-26,56,'205,195,225',0.22,'fill');
   for(const sn of SN)if(sn.alive&&!sn.gone)add(sn.x,sn.y-4,34,'200,230,170',0.25,'fill');
   for(const it of L.items)if(!it.taken){const col=it.type==='heal'||it.type==='big'?'255,90,70':it.type==='life'?'255,210,110':'110,130,255';add(it.x,SURF(it.r)-8,it.type==='big'?42:32,col,it.type==='big'?0.75:0.6,'item',{r:9,a:0.35});}
-  for(const cp of L.cps)if(cp.on)add(cp.x,SURF(cp.r)-14,46,'255,214,130',0.5,'item');
+  for(const cp of L.cps)add(cp.x,SURF(cp.r)-14,cp.on?46:38,'255,214,130',cp.on?0.5:0.42,'item'); // an unlit hourglass keeps a faint gold glint
   if(L.door.open>0)add(L.door.x+HX,SURF(L.door.r)-26,120*Math.min(1,L.door.open),'255,196,120',0.9*Math.min(1,L.door.open),'door',{r:28,a:0.3*L.door.open});
   for(const o of L.dyn){const f=o.f,X=o.c*TW;if(X<x0-160||X>x1+160)continue;const ys=SURF(o.r);
     if(f.t==='vent'){const ph=cyc(f,t);if(ph>=0.75)add(X+16,ys-24,110,'255,140,60',0.9*Math.min(1,(ph-0.75)/0.04)*Math.min(1,(1-ph)/0.05),'fire');}
     else if(f.t==='gate'&&!f.latch&&f.dur>0&&f.tm>0&&f.tm<Infinity)add(X+16-HX,o.r*TH-12,34,'255,200,120',0.55,'item');
     // traps keep a faint glint of their own so the dark never hides them
-    else if(f.t==='spikes'||f.t==='chomp'||f.t==='darter'||f.t==='closer'||(f.t==='loose'&&f.s<2))add(X+16,ys-8,30,'225,222,240',0.2,'trap');
+    else if(f.t==='spikes'||f.t==='chomp'||f.t==='closer'||f.t==='plate'||f.t==='xplate'||f.t==='lplate'||(f.t==='loose'&&f.s<2))add(X+16,ys-8,30,'225,222,240',0.36,'trap');
+    else if(f.t==='darter')add(f.x+(f.dir>0?4:0),f.y,34,'255,214,150',0.5,'trap');
     else if(f.t==='saw')add(sawX(f,t),ys-10,38,'225,222,240',0.28,'trap');
     else if(f.t==='lift')add(X+16,f.y-14,40,'225,215,190',0.3,'trap');
     else if(f.t==='chain')add(X+16+f.dx*16,(f.yT+f.yB)/2,60,'225,215,190',0.25,'trap');
@@ -4626,11 +4634,14 @@ function lightPass(ctx,lights,sc,camD,camDY,gradeOnly){
 function bloomPass(ctx,lights){
   ctx.save();ctx.globalCompositeOperation='lighter';
   for(const q of lights){if(!q.bloom)continue;ctx.globalAlpha=Math.min(1,q.bloom.a);const r=q.bloom.r;ctx.drawImage(lightSprite(q.col),q.x-r,q.y-r,2*r,2*r);
-    if(q.kind==='win'){ctx.globalAlpha=1;const x0=q.x-q.hw,x1=q.x+q.hw,y0=q.y-q.hh,y1=q.y+q.hh,dx=-42,dy=112,gr=ctx.createLinearGradient(q.x,q.y,q.x+dx,q.y+dy);
-      gr.addColorStop(0,'rgba('+q.col+',0.22)');gr.addColorStop(1,'rgba('+q.col+',0)');ctx.fillStyle=gr;
-      ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y0);ctx.lineTo(x1,y1);ctx.lineTo(x1+dx,y1+dy);ctx.lineTo(x0+dx,y1+dy);ctx.lineTo(x0+dx,y0+dy);ctx.closePath();ctx.fill();}}
+    if(q.kind==='win')winShaft(ctx,q,0.22);}
   ctx.restore();
 }
+// moonlight falling through a window as a slanted shaft (a = its strength at the sill); in Torchlight the scene is multiplied by
+// the dark afterwards, so the shaft is drawn stronger there
+function winShaft(ctx,q,a){ctx.globalAlpha=1;const x0=q.x-q.hw,x1=q.x+q.hw,y0=q.y-q.hh,y1=q.y+q.hh,dx=-42,dy=112,gr=ctx.createLinearGradient(q.x,q.y,q.x+dx,q.y+dy);
+  gr.addColorStop(0,'rgba('+q.col+','+a+')');gr.addColorStop(1,'rgba('+q.col+',0)');ctx.fillStyle=gr;
+  ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y0);ctx.lineTo(x1,y1);ctx.lineTo(x1+dx,y1+dy);ctx.lineTo(x0+dx,y1+dy);ctx.lineTo(x0+dx,y0+dy);ctx.closePath();ctx.fill();}
 // atmosphere in the world: mist pooling on the floors, dust drifting in the light, extra embers over the flames
 function atmoPass(ctx,lights,x0,x1,y0,y1){
   const th=L.theme,lk=LOOK[th.style]||LOOK.dungeon,t=gameTime;ctx.save();ctx.globalCompositeOperation='lighter';
@@ -5058,6 +5069,8 @@ function glMask(lights,VZ,camD,camDY){
   GLP.mkHad=!!any;
 }
 // light kinds that flicker in the shader (how much): a flame wavers fastest, a flask pulses a little
+// how much of a theme's ambient colour the dark keeps in Torchlight: the cool themes sat near black between lamps, so they keep more
+const GLAMBT={dungeon:0.78,tile:0.8,crypt:0.9,palace:0.62,forge:0.6};
 const GLFLICK={torch:0.6,fire:1,door:0.5,item:0.35};
 function glFrame(lights,VZ,camD,camDY,th){
   const {gl,P}=GLP,w=cv.width,h=cv.height,lw=Math.ceil(w/4),lh=Math.ceil(h/4),lk=LOOK[th.style]||LOOK.dungeon,t=gameTime;
@@ -5073,7 +5086,7 @@ function glFrame(lights,VZ,camD,camDY,th){
     if(cx+r<0||cx-r>w||cy+r<0||cy-r>h)continue;
     for(let k=0;k<6;k++){const o=(n*6+k)*GLSTRIDE;B[o]=GLK[k][0];B[o+1]=GLK[k][1];B[o+2]=cx;B[o+3]=cy;B[o+4]=r;B[o+5]=0;B[o+6]=fl;B[o+7]=ph;B[o+8]=0;B[o+9]=0;B[o+10]=col[0]*a;B[o+11]=col[1]*a;B[o+12]=col[2]*a;}
     n++;}
-  const am=lk.amb.split(','),GLAMB=0.55; // ambient, darker than the classic map's so the gaps between torches fall into shadow (owner, v41)
+  const am=lk.amb.split(','),GLAMB=GLAMBT[th.style]||0.55; // ambient, darker than the classic map's so the gaps between torches fall into shadow (owner, v41)
   gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.map.f);gl.viewport(0,0,lw,lh);gl.clearColor(am[0]*GLAMB/255/1.5,am[1]*GLAMB/255/1.5,am[2]*GLAMB/255/1.5,1);gl.clear(gl.COLOR_BUFFER_BIT);
   if(n){gl.useProgram(P.light.p);gl.uniform2f(P.light.u.u_s,w,h);gl.uniform1f(P.light.u.u_t,t);
     gl.bindBuffer(gl.ARRAY_BUFFER,GLP.lb);gl.bufferSubData(gl.ARRAY_BUFFER,0,B,0,n*6*GLSTRIDE);
@@ -5130,7 +5143,8 @@ function render(){
   ctx.save();ctx.beginPath();ctx.rect(cx,cy,vw,vh);ctx.clip();
   drawDynamic(ctx,cx,cx+vw,cy,cy+vh);
   if(gf.atmo)ambientLit(ctx,cx,cx+vw,cy,cy+vh);
-  if(sh){if(gf.grade)lightPass(ctx,frameLights,VZ,camD,camDY,true);} // (the shader adds the lights and the bloom)
+  if(sh){if(gf.grade)lightPass(ctx,frameLights,VZ,camD,camDY,true); // (the shader adds the lights and the bloom)
+    if(gf.light){ctx.save();ctx.globalCompositeOperation='lighter';for(const q of frameLights)if(q.kind==='win')winShaft(ctx,q,0.42);ctx.restore();}} // window shafts, as in Classic
   else{if(gf.light||gf.grade)lightPass(ctx,frameLights,VZ,camD,camDY);
   if(gf.light)bloomPass(ctx,frameLights);}
   if(gf.atmo){atmoPass(ctx,frameLights,cx,cx+vw,cy,cy+vh);ambientGlow(ctx,cx,cx+vw,cy,cy+vh);}
