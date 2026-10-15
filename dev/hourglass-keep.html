@@ -44,6 +44,7 @@ body{font-family:var(--f-body);overflow:hidden;overscroll-behavior:none;-webkit-
 #bJump.on{background:rgba(228,104,59,.45)}
 #bGrab.on{background:rgba(232,196,127,.38)}
 #app.overlay #pad,#app.overlay .btn{opacity:.6}
+body.panelOpen #pad,body.panelOpen .btn,body.panelOpen #bPause{visibility:hidden}
 #app.overlay #pad{background:radial-gradient(circle at 50% 50%,rgba(232,196,127,.16) 0 24%,rgba(10,8,20,.32) 25% 100%)}
 .screen{position:fixed;inset:0;z-index:5;display:grid;place-items:center;background:var(--shade);padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));overflow:auto;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
 .panel{width:min(560px,100%);display:grid;gap:14px;padding-block:8px}
@@ -2944,7 +2945,7 @@ const HINTS={
   chomp:'Blades snap shut on a rhythm. Watch one cycle, then go.',
   fight:'Grab strikes. Press up to block as his blade rises, then strike back at once.',
   parried:'Parried. Guards block blows thrown in a rush, and the good ones strike straight back. Press up to block, then hit him while he reels.',
-  ranks:'Guards differ, and their dress shows it: plain cloth for a recruit, blue with a red sash for a soldier, crimson and a red plume for a veteran, purple and gold for a captain. The better ones parry a flurry of blows and punish it.',
+  ranks:'Guards differ, and their dress shows it: plain cloth, blue and red, crimson with a plume, purple and gold. The better ones parry a flurry of blows.',
   poke:'A snake in the tunnel. Crouch and press Grab before you crawl in to draw your blade low, then Grab thrusts. Or wait for it to come out.',
   potion:'A flask. Stand on it and press Grab to drink.',
   cp:'Touch the hourglass. If you fall after it, you start again from here.',
@@ -3023,8 +3024,9 @@ function checkHints(){
     if(L.secret&&Math.abs(L.secret.c*TW+16-P.x)<120&&Math.abs(L.secret.r-r)<=1&&L.items.some(it=>it.hidden&&!it.taken))hint('secret');
     if(L.door.r===r&&Math.abs(L.door.x-P.x)<120){if(L.door.open<0.95)hint('door');else hint('enter');}
   }
+  if(hintQ.length&&intro>0)hintQ[0].t=gameTime; // the floor's title comes first
   if(hintQ.length&&gameTime-hintQ[0].t>2.5)hintQ.length=0; // too late: he has moved on
-  if(!banner&&hintQ.length){const id=hintQ.shift().id;if(hintDue(id)){S.hints[id]=1;hintSeen[id]=1;writeSave();msg(HINTS[id],3.8,'hint');}}
+  if(!banner&&intro<=0&&hintQ.length){const id=hintQ.shift().id;if(hintDue(id)){S.hints[id]=1;hintSeen[id]=1;writeSave();msg(HINTS[id],3.8,'hint');}}
 }
 
 // ================= main update =================
@@ -4508,10 +4510,13 @@ function drawDynamic(ctx,x0,x1,y0,y1){
       case'stone':drawStone(ctx,o,f);break;
       case'sanctum':{const ch=L.ext.chase,glow=ch&&ch.done?0.25:0.6+0.25*Math.sin(gameTime*3);ctx.strokeStyle='rgba(255,226,160,'+glow+')';ctx.lineWidth=2;
         ctx.beginPath();ctx.moveTo(X+4,ys-2);ctx.lineTo(X+4,Y+10);ctx.quadraticCurveTo(X+16,Y-6,X+28,Y+10);ctx.lineTo(X+28,ys-2);ctx.stroke();break;}
-      case'saw':{const sx=sawX(f,gameTime),cy=ys+2;ctx.fillStyle='#07050b';ctx.fillRect(f.x0-14,ys-1.4,f.x1-f.x0+28,2.2);
-        ctx.save();ctx.beginPath();ctx.rect(sx-16,cy-18,32,18-2.2);ctx.clip();ctx.translate(sx,cy);ctx.rotate(gameTime*14);
+      case'saw':{const sx=sawX(f,gameTime),cy=ys+2,sw=f.x1-f.x0+28;
+        // the slot it runs in: a metal rim, a dark groove, and the blade sunk into it (cut off at the groove's middle, a dark lip drawn over its foot)
+        ctx.fillStyle='#8a90a0';ctx.fillRect(f.x0-14,ys-2.6,sw,1);ctx.fillStyle='#07050b';ctx.fillRect(f.x0-14,ys-1.6,sw,3.4);
+        ctx.save();ctx.beginPath();ctx.rect(sx-16,cy-18,32,18-2.6);ctx.clip();ctx.translate(sx,cy);ctx.rotate(gameTime*14);
         ctx.beginPath();for(let i=0;i<12;i++){const a=i/12*6.2832;ctx.lineTo(Math.cos(a)*14,Math.sin(a)*14);ctx.lineTo(Math.cos(a+0.26)*10.5,Math.sin(a+0.26)*10.5);}ctx.closePath();
-        ctx.fillStyle='#c9ced8';ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=1.1;ctx.stroke();ctx.fillStyle='#7d8391';ctx.beginPath();ctx.arc(0,0,3.2,0,6.2832);ctx.fill();ctx.restore();break;}
+        ctx.fillStyle='#c9ced8';ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=1.1;ctx.stroke();ctx.fillStyle='#7d8391';ctx.beginPath();ctx.arc(0,0,3.2,0,6.2832);ctx.fill();ctx.restore();
+        ctx.fillStyle='#07050b';ctx.fillRect(sx-15,ys-0.6,30,1.6);ctx.fillStyle='#8a90a0';ctx.fillRect(sx-15,ys-2.6,3,1);ctx.fillRect(sx+12,ys-2.6,3,1);break;}
       case'darter':{const fx=f.dir>0?f.x+4:f.x;ctx.fillStyle='#0b0812';ctx.fillRect(fx-5,f.y-4,6,8);ctx.fillStyle='#8a6a3a';ctx.fillRect(fx-4,f.y-3,4,6);ctx.fillStyle='#0b0812';ctx.fillRect(fx-4,f.y-1,4,2);break;}
       case'banner':drawBannerTile(ctx,X,Y,f,th);break;
       case'bar':{const bx=f.x,by=f.y,cy=ceilingY(o.c,o.r);ctx.strokeStyle='#0b0812';ctx.lineWidth=1.6;
@@ -4925,8 +4930,8 @@ function ambientGlow(ctx,x0,x1,y0,y1){
   ctx.globalAlpha=1;ctx.globalCompositeOperation='lighter';
   // moths around every lamp in view (everywhere)
   for(const q of L.torches){if(q.broken)continue;const lo=st==='palace'&&lampFree(q)?[0,0]:LAMP[st]||LAMP.dungeon,lx=q.c*TW+16+lo[0],ly=SURF(q.r)-38+lo[1];if(lx<x0-30||lx>x1+30||ly<y0-30||ly>y1+30)continue;
-    for(let i=0;i<2;i++){const sd=q.c*3+q.r*7+i*11,mx=lx+10*Math.sin(t*2.1+sd)+4*Math.sin(t*6.7+sd*2),my=ly-6+7*Math.sin(t*2.9+sd*1.3)+3*Math.cos(t*8.3+sd),w=Math.abs(Math.sin(t*28+sd));
-      ctx.globalAlpha=0.8;ctx.fillStyle='rgb(255,236,200)';ctx.fillRect(mx-0.6,my-0.5,1.2,1);ctx.globalAlpha=0.5;ctx.fillRect(mx-1.6*w,my-0.9,1.6*w,0.7);ctx.fillRect(mx,my-0.9,1.6*w,0.7);}}
+    for(let i=0;i<2;i++){const sd=q.c*3+q.r*7+i*11,mx=lx+8*Math.sin(t*2.1+sd)+3*Math.sin(t*6.7+sd*2),my=ly-6+6*Math.sin(t*2.9+sd*1.3)+2*Math.cos(t*8.3+sd),w=Math.abs(Math.sin(t*28+sd));
+      ctx.globalAlpha=0.3;ctx.drawImage(lightSprite('255,190,110'),mx-3,my-3,6,6);ctx.globalAlpha=0.55;ctx.fillStyle='rgb(255,206,140)';const mw=w>0.5?1.5:1;ctx.fillRect(mx-mw/2,my-0.5,mw,1);}} // a warm speck in the lamp's glow, its wings a two-frame flicker
   for(const p of AMB){const a=fadeIO(p);if(a<=0)continue;
     switch(p.k){
       case'fly':{const b=0.5+0.5*Math.sin(t*3.1+p.ph);ctx.globalAlpha=a*(0.15+0.85*b*b);ctx.drawImage(lightSprite('210,255,120'),p.x-5,p.y-5,10,10);ctx.fillStyle='rgb(240,255,190)';ctx.fillRect(p.x-0.5,p.y-0.5,1,1);break;}
@@ -5176,7 +5181,7 @@ function render(){
   if(mode==='rewind'){ctx.fillStyle='rgba(214,160,80,.22)';ctx.fillRect(0,0,viewW,ROOM_H);ctx.fillStyle='rgba(255,226,160,.55)';
     for(let i=0;i<70;i++){const h=hash2(i,77),x=(h%1000)/1000*viewW,y=((h>>>10)%1000)/1000*ROOM_H,sp=0.3+((h>>>20)%100)/100;ctx.fillRect((x+performance.now()*0.12*sp)%viewW,y,1.4,0.8);}
     ctx.textAlign='center';ctx.fillStyle='#ffe2a0';ctx.font='16px Lalezar, Georgia, serif';ctx.fillText('The sands turn back',viewW/2,ROOM_H*0.38);}
-  drawHUD(ctx);
+  if(!document.body.classList.contains('panelOpen'))drawHUD(ctx);
   drawOverlayText(ctx);
   if(GLP.fps){ctx.textAlign='left';ctx.textBaseline='top';ctx.font='600 7px monospace';ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(hud.l-1,ROOM_H-17,92,12);ctx.fillStyle='#9fffd2';
     ctx.fillText((sh?'TORCH ':'CLASSIC ')+GLP.ms.toFixed(1)+' ms  '+(GLP.ms>0?Math.round(1000/GLP.ms):0)+' fps',hud.l+1,ROOM_H-15);}
@@ -5207,12 +5212,14 @@ function wrapText(ctx,text,maxW){const words=text.split(' '),lines=[];let cur=''
 function drawOverlayText(ctx){
   ctx.textAlign='center';ctx.textBaseline='middle';
   if(intro>0&&mode==='play'){const a=Math.min(1,intro/0.6,(2.6-intro)/0.3);ctx.globalAlpha=Math.max(0,a);
-    ctx.fillStyle='rgba(8,6,14,.55)';ctx.fillRect(0,ROOM_H/2-30,viewW,56);
-    ctx.fillStyle='#e8c47f';ctx.font='28px Lalezar, Georgia, serif';ctx.fillText('Floor '+L.n,viewW/2,ROOM_H/2-6);
-    ctx.fillStyle='#f2e9d8';ctx.font='600 9px Vazirmatn, system-ui, sans-serif';ctx.fillText(themeName(L.n).toUpperCase(),viewW/2,ROOM_H/2+15);ctx.globalAlpha=1;}
+    // out of the prince's way: under the HUD, or at the bottom when he stands high in the view
+    const iy=P&&(P.y-cam.y)-46<hud.t+19+54?ROOM_H-60:hud.t+19;
+    ctx.fillStyle='rgba(8,6,14,.55)';ctx.fillRect(0,iy,viewW,48);
+    ctx.fillStyle='#e8c47f';ctx.font='26px Lalezar, Georgia, serif';ctx.fillText('Floor '+L.n,viewW/2,iy+17);
+    ctx.fillStyle='#f2e9d8';ctx.font='600 9px Vazirmatn, system-ui, sans-serif';ctx.fillText(themeName(L.n).toUpperCase(),viewW/2,iy+37);ctx.globalAlpha=1;}
   if(banner&&mode==='play'){const a=Math.min(1,banner.t/0.25,(banner.dur-banner.t)/0.4);ctx.globalAlpha=Math.max(0,a);
     const low=P&&(P.y-cam.y)<ROOM_H*0.55;
-    const bw=low&&hud.over?Math.min(300,viewW*0.56):Math.min(300,viewW-28),bx=(viewW-bw)/2;
+    const bw=low&&hud.over?Math.min(300,viewW*0.56):Math.min(380,viewW-28),bx=(viewW-bw)/2;
     ctx.font='600 8.5px Vazirmatn, system-ui, sans-serif';const lines=wrapText(ctx,banner.text,bw-24);const h=10+lines.length*11;
     const by=low?ROOM_H-h-8:hud.t+19;
     ctx.fillStyle='rgba(10,8,20,.82)';ctx.fillRect(bx,by,bw,h);ctx.fillStyle=banner.kind==='hint'?'#e8c47f':'#e4683b';ctx.fillRect(bx,by,2,h);
@@ -5310,8 +5317,10 @@ document.addEventListener('dblclick',e=>e.preventDefault());
 // ================= screens =================
 const screens=['title','pause','card','how','confirm','gfx'];
 let howReturn='title',gfxReturn='title';
-function show(id){for(const s of screens)$(s).hidden=s!==id;}
-function hideAll(){for(const s of screens)$(s).hidden=true;}
+// while a panel is open the HUD and the touch controls are hidden (they showed faintly through the panel's backdrop)
+function panelOn(on){document.body.classList.toggle('panelOpen',on);if(L)try{render();}catch(e){}}
+function show(id){for(const s of screens)$(s).hidden=s!==id;panelOn(true);}
+function hideAll(){for(const s of screens)$(s).hidden=true;panelOn(false);}
 function refreshTitle(){
   const has=S.started;
   $('bContinue').hidden=!has;
