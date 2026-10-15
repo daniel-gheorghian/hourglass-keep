@@ -677,7 +677,7 @@ function buildLevel(n,seed,test,legacy,att){
       if(a.a==='walk'){mv(a.c);t+=careful?0.4:0.2;continue;}
       if(a.from!==undefined)mv(a.from);
       const dd=a.to!==undefined?Math.abs(a.to-a.from):0;
-      t+=({runover:dd*0.32+0.4,sjump:careful?1.2:1.0,rjump:careful?2.8:1.7,rjumpg:careful?4.0:2.8,tiptoe:dd*0.8+0.5,crawl:dd*0.8+1.3,timed:dd*0.32+2.6,climb:1.3,hangdrop:1.8,drop:careful?1.45:0.9,slide:careful?4.0:2.2,walljump:1.6+0.9*(a.k||2),wallrun:2.2,collapse:careful?2.2:1.5,jgrab:careful?4.2:3.0,lift:a.chn?(careful?3.8:3.5)+(a.k*64+32)/CHAIN_V:careful?1.5+1.1*a.k:1.2+a.k})[a.a]||0;
+      t+=({runover:dd*0.32+0.4,sjump:careful?1.2:1.0,rjump:careful?2.8:1.7,rjumpg:careful?4.0:2.8,tiptoe:dd*0.8+0.5,crawl:dd*0.8+1.3,timed:dd*0.32+2.6,climb:1.3,drink:DR_T,hangdrop:1.8,drop:careful?1.45:0.9,slide:careful?4.0:2.2,walljump:1.6+0.9*(a.k||2),wallrun:2.2,collapse:careful?2.2:1.5,jgrab:careful?4.2:3.0,lift:a.chn?(careful?3.8:3.5)+(a.k*64+32)/CHAIN_V:careful?1.5+1.1*a.k:1.2+a.k})[a.a]||0;
       if(a.to!==undefined)cur=a.to;}
     return t;}
   const timerK=()=>0.84+0.14*rng()+0.1*(1-d); // timer over the estimated route back (a careful pace): 0.84 (tight) .. 1.08
@@ -1709,7 +1709,6 @@ const PS={
   parry:mk({lean:-0.06,hF:0.3,kF:0.42,hB:-0.42,kB:0.3,aF:1.25,eF:1.05,aB:-0.5,eB:0.9,sw:1.5}),
   hurt:mk({lean:-0.38,head:-0.3,hF:0.2,kF:0.4,hB:-0.42,kB:0.5,aF:0.5,eF:0.6,aB:-0.6,eB:0.4}),
   dead:mk({lean:0,head:0.25,hF:0.12,kF:0.3,hB:-0.1,kB:0.45,aF:2.1,eF:0.4,aB:1.7,eB:0.6,rot:-1.5,air:1,hy:3}),
-  drink:mk({lean:-0.08,head:-0.35,aF:2.4,eF:2.0,aB:-0.1,eB:0.2}),
   step:mk({lean:0.1,hF:0.4,kF:0.15,hB:-0.28,kB:0.3,aF:-0.1,eF:0.35,aB:0.25,eB:0.35}),
   turn:mk({lean:-0.05,hF:0.12,kF:0.2,hB:0.1,kB:0.2,aF:0.45,eF:1.25,aB:0.45,eB:1.25}),
   lowStrike:mk({lean:0.62,head:-0.2,hF:1.0,kF:1.15,hB:-0.45,kB:0.35,aF:1.15,eF:0.25,aB:-0.8,eB:0.5,sw:-0.62}),
@@ -1793,6 +1792,29 @@ function climbFrame(cs,k){let x,y,p;
   else if(k<0.76){const u=(k-0.56)/0.2,e=ease(u);x=lerp(cs.x0+(cs.x1-cs.x0)*0.12,cs.x1,e);y=lerp(cs.y1+12,cs.y1+10,e);p=lerpPose(PS.kneelUp,PS.kneel,e,cfP);}
   else{const u=(k-0.76)/0.24,e=ease(u);x=cs.x1;y=lerp(cs.y1+10,cs.y1,e);p=lerpPose(PS.kneel,PS.crouch,e,cfP);}
   return {x,y,p};}
+// Drinking a flask (1.3 s). The body: a hip hinge with the front knee deep and a straight-ish arm closes the hand on the flask's neck
+// (the flask is lifted off the floor at 0.31 s); the torso rises and the elbow folds as the flask comes up to the mouth (0.72 s);
+// the head goes back and the flask tips, its colour draining from the body as it empties (0.72 to 0.99 s), with a small gulp dip of
+// the head at 0.9 s, which is when the flask takes effect; then the arm lowers, the empty flask is let go (1.15 s) and falls, and he
+// straightens. The order (reach, take, lift to the mouth, drink, lower, return) is the one in a kinematic study of drinking from a
+// glass (PMC1562432: elbow about 136 degrees at the mouth); the beats and the sound before the head goes back follow PoP1's
+// drinkpotion sequence (SDLPoP seqtbl.c: reach, sound, head back, hold, effect, lower), timed 0.9 times a PoP1-at-12fps drink.
+// Each key: [time, pose, flask tilt (negative = neck swings back toward the mouth), liquid left 0..1].
+const DR_T=1.3,DR_GRASP=0.306,DR_SIP=0.74,DR_FX=0.9,DR_REL=1.152,DR_G=0.27,DR_BACK=0.99;
+const DK=(()=>{const G=mk({lean:0.85,head:-0.4,hF:1.0,kF:1.7,hB:0.5,kB:1.5,aF:0.45,eF:0.1,aB:0.1,eB:0.3});
+  return [[0,mk({}),0,1],[DR_G,G,0,1],[0.36,G,0,1],
+  [0.495,mk({lean:0.5,head:-0.2,hF:0.6,kF:1.0,hB:0.1,kB:0.8,aF:0.8,eF:1.0,aB:0.2,eB:0.3}),0,1],
+  [0.63,mk({lean:0.1,head:-0.3,hF:0.1,kF:0.15,hB:-0.1,kB:0.2,aF:1.45,eF:2.0,aB:0,eB:0.2}),-0.5,1],
+  [0.72,mk({lean:0,head:-0.35,aF:1.5,eF:2.5,aB:-0.05,eB:0.2}),-1.1,1],
+  [0.855,mk({lean:-0.12,head:-0.6,aF:1.7,eF:2.5,aB:-0.15,eB:0.2}),-1.9,0.5],
+  [0.9,mk({lean:-0.09,head:-0.5,aF:1.7,eF:2.5,aB:-0.15,eB:0.2}),-1.9,0.45],
+  [DR_BACK,mk({lean:-0.14,head:-0.7,aF:1.9,eF:2.4,aB:-0.15,eB:0.2}),-2.3,0],
+  [DR_REL,mk({lean:0.04,head:-0.1,aF:0.9,eF:1.2,aB:0,eB:0.2}),-0.4,0],
+  [DR_T,mk({}),-0.4,0]];})();
+const dkOut={p:mk({}),tilt:0,fill:1};
+function drinkFrame(t){let i=1;while(i<DK.length-1&&t>DK[i][0])i++;
+  const a=DK[i-1],b=DK[i],u=clamp((t-a[0])/(b[0]-a[0]),0,1),e=u*0.5+ease(u)*0.5;
+  lerpPose(a[1],b[1],e,dkOut.p);dkOut.tilt=lerp(a[2],b[2],e);dkOut.fill=lerp(a[3],b[3],u);return dkOut;}
 function crawlPose(ph){const a=ph*6.2832,s=Math.sin(a);
   return mk({lean:1.36,head:-0.95,hF:0.28+0.22*s,kF:1.78+0.1*s,hB:0.1-0.22*s,kB:1.66-0.1*s,aF:0.06-0.28*s,eF:-0.25,aB:-0.02+0.28*s,eB:-0.2});}
 function RP(ph,amp=1){return GFX().hd?runPoseHD(ph,amp):runPose(ph,amp);}
@@ -2206,7 +2228,7 @@ function snapAll(){const p=cloneE(P);p.foe=P.foe?G.indexOf(P.foe):-1;p.drinkIt=P
     dyn:L.dyn.map(o=>Object.assign({},o.f)),base:L.base.slice(),debris:L.debris.map(d=>Object.assign({},d)),rubble:[...L.rubble],items:L.items.map(it=>it.taken),
     door:[L.door.open,L.door.opening],ext:JSON.stringify(L.ext)};}
 function applySnap(sn){gameTime=sn.t;
-  G=sn.G.map(cloneE);P=cloneE(sn.P);P.foe=sn.P.foe>=0?G[sn.P.foe]||null:null;P.drinkIt=sn.P.drinkIt>=0?L.items[sn.P.drinkIt]:null;
+  L.flk=[];G=sn.G.map(cloneE);P=cloneE(sn.P);P.foe=sn.P.foe>=0?G[sn.P.foe]||null:null;P.drinkIt=sn.P.drinkIt>=0?L.items[sn.P.drinkIt]:null;
   SN=sn.SN.map(o=>Object.assign({},o));pendingGuards=sn.pg.map(q=>({at:q.at,src:q.src>=0?G[q.src]:null,spec:q.spec}));
   L.dyn.forEach((o,i)=>Object.assign(o.f,sn.dyn[i]));L.base.set(sn.base);L.debris=sn.debris.map(d=>Object.assign({},d));L.rubble=new Set(sn.rubble);
   L.items.forEach((it,i)=>{if(it.type!=='life'&&it.type!=='big')it.taken=sn.items[i];}); // a gold or large flask once drunk stays drunk
@@ -2258,7 +2280,8 @@ const pRow=()=>rowOf(P.y);
 const supported=(x=P.x)=>solidBelow(L,Math.floor(x/TW),pRow());
 const LRN_ST={climb:['climb'],drink:['potion'],push:['block'],pull:['block'],slide:['banner'],wallrun:['wallrun'],climbDown:['drop'],poke:['poke','snake'],lowStrike:['snake']}; // states that mean a move was done
 function learn(...ids){let w=false;for(const id of ids)if(!S.learned[id]){S.learned[id]=1;w=true;}if(w)writeSave();}
-function setState(s){if(P){const lk=LRN_ST[s];if(lk)learn(...lk);else if(s==='lift'&&P.lift)learn(P.lift.t==='chain'?'chain':'lift');}if((s==='stop'||s==='turn')&&P.state==='run'&&GFX().fx&&Math.abs(P.vx)>60)dust(P.x-P.face*4,P.y,4);P.state=s;P.t=0;if(s!=='crouch'&&s!=='poke')P.lowSword=false;if(s!=='air')P.plant=null;}
+function setState(s){if(P&&P.state==='drink'&&s!=='drink'){dropFlask();if(P.dkG&&!P.dkFx&&s!=='dead'&&s!=='exit')drinkFx();} // knocked out of the drink with the flask in hand: it takes effect at once and the flask falls
+  if(P){const lk=LRN_ST[s];if(lk)learn(...lk);else if(s==='lift'&&P.lift)learn(P.lift.t==='chain'?'chain':'lift');}if((s==='stop'||s==='turn')&&P.state==='run'&&GFX().fx&&Math.abs(P.vx)>60)dust(P.x-P.face*4,P.y,4);P.state=s;P.t=0;if(s!=='crouch'&&s!=='poke')P.lowSword=false;if(s!=='air')P.plant=null;}
 function setE(e,s){e.state=s;e.t=0;}
 function msg(text,dur=3,kind='msg'){banner={text,t:0,dur,kind};}
 // a short tinted pulse over the whole view; 'Softer flashes' turns it down to a faint wash
@@ -2388,7 +2411,26 @@ function stCrouch(dt,ix){
     if(Math.abs(nx-P.x)>0.01){P.x=nx;const ph0=P.ph;P.ph+=CRAWL*dt/26;P.crawling=true;if(!S.learned.crawl)learn('crawl');if(Math.floor(ph0*2)!==Math.floor(P.ph*2))Snd.play('step');}
   }
 }
-function tryDrink(){for(const it of L.items){if(it.taken||it.r!==pRow())continue;if(Math.abs(it.x-P.x)<14){P.drinkIt=it;setState('drink');return true;}}return false;}
+function tryDrink(){for(const it of L.items){if(it.taken||it.r!==pRow())continue;if(Math.abs(it.x-P.x)<14){
+  // he steps to where his front hand lands on the flask (about 19 px ahead of the hip), but never onto a gap or into a wall
+  let tx=it.x-P.face*19.6;const ok=x=>solidBelow(L,Math.floor((x-BW)/TW),pRow())&&solidBelow(L,Math.floor((x+BW)/TW),pRow());
+  for(let i=0;i<12&&!ok(tx);i++)tx+=Math.sign(P.x-tx)*2;if(!ok(tx))tx=P.x;
+  P.drinkIt=it;P.dkG=P.dkS=P.dkFx=P.dkRel=false;P.sx=P.x;P.tx=clampMove(P.x,tx,P.y,P);setState('drink');return true;}}return false;}
+// the flask in his front hand: where it is, and the bits of the frame (tilt, liquid left)
+function handFlask(){const s=skel(GFX().hd?livePose(P,P.pose):P.pose);return {x:P.x+(P.rdx||0)+P.face*s.hF[0],y:P.y+(P.rdy||0)-s.hipH+(P.yo||0)+s.hF[1]};}
+const flaskR=type=>type==='big'?5.4:type==='life'?4.2:3.2;
+// he lets go of the flask (or is knocked out of the drink with it in his hand): it falls from the hand and lies, then fades
+function dropFlask(){if(P.dkRel||!P.dkG||!P.drinkIt)return;P.dkRel=true;const it=P.drinkIt,h=handFlask(),d=flaskR(it.type)+2,tl=drinkFrame(P.t).tilt;
+  (L.flk||(L.flk=[])).push({type:it.type,x:h.x+P.face*(-d*Math.sin(tl)),y:h.y+d*Math.cos(tl),r:flaskR(it.type),gy:SURF(pRow())-3,face:P.face,vy:0,rot0:tl,rot:tl,ft:0,lt:0,fill:it.type==='poison'?0:0});}
+function drinkFx(){const it=P.drinkIt;P.dkFx=true;if(!it)return;
+  if(it.type==='heal'){P.hp=Math.min(S.maxHp,P.hp+1);flashScreen('#ff6a3d',0.38,0.3,true);msg('Red flask. One life restored.',2.2);}
+  else if(it.type==='big'){P.hp=S.maxHp;Snd.play('life');flashScreen('#ff6a3d',0.5,0.45,true);msg('Large red flask. All your lives restored.',2.6);}
+  else if(it.type==='life'){S.maxHp=Math.min(10,S.maxHp+1);P.hp=S.maxHp;flashScreen('#ffd76b',0.5,0.45,true);if(!S.lifeTaken.includes(L.n))S.lifeTaken.push(L.n);writeSave();Snd.play('life');msg('Gold flask. Your lives grow by one.',2.6);}
+  else{msg('Poison. Dark blue flasks hurt.',2.4);Snd.play('poison');flashScreen('#3fae66',0.4,0.32,true);hurt(1,'poison');}}
+function updateFlasks(dt){if(!L.flk)return;
+  for(let i=L.flk.length-1;i>=0;i--){const f=L.flk[i];
+    if(f.lt>0||f.y>=f.gy-f.r){f.y=f.gy-f.r;f.lt+=dt;f.rot=1.4;if(f.lt>0.35)L.flk.splice(i,1);continue;}
+    f.ft+=dt;f.vy+=GRAV*dt;f.y+=f.vy*dt;f.rot=lerp(f.rot0,1.4,Math.min(1,f.ft/0.3));if(f.y>=f.gy-f.r){f.y=f.gy-f.r;f.lt=0.0001;}}}
 function atDoor(){const d=L.door;return d&&d.r===pRow()&&Math.abs(P.x-d.x)<16;}
 function hurt(n,cause){if(P.state==='dead')return;P.hp-=n;P.flash=0.3;Snd.play('hurt');try{navigator.vibrate&&navigator.vibrate(40);}catch(e){}if(P.hp<=0){P.hp=0;die(cause);}}
 function die(cause){if(P.state==='dead')return;deathAt=gameTime;S.resume=null;writeSave();setState('dead');P.cause=cause;P.flash=0;for(const g of G)if(g.flash>0)g.flash=0;P.vx=0;P.vy=0;P.hp=0;P.sword=false;P.yo=0;mode='dead';deadT=0;Snd.play('die');if(cause==='blade'||cause==='spikes'||cause==='sword')sparks(P.x,P.y-24,8,'#d94a3a');}
@@ -2426,8 +2468,9 @@ function updateBlocks(dt){for(const bl of L.ext.blocks){
   if(bl.mv){bl.mv.t+=dt;if(bl.mv.t>=bl.mv.dur){const fc=bl.mv.from;L.base[bl.r*L.cols+fc]=bl.under;bl.under=bl.under2;bl.c=bl.mv.to;bl.mv=null;rebuildBlocks();invalidateCell(fc,bl.r);invalidateCell(bl.c,bl.r);}}
   if(!bl.mv){const f=F(L,bl.c,bl.r);if(f&&f.t==='plate'){pressPlate(f);f.g.heldAt=gameTime;}}}}
 function armPassage(f){if(f.armed)return;f.armed=1;
-  if(f.chain){f.chain.forEach((t,k)=>{if(t.s===0){t.s=1;t.tm=-(1.8+0.36*k);}});Snd.play('creak');msg((f.g?gateMsg(f)+' ':'')+'The cracked floor behind you is starting to give way. Run!',3.8);}
-  if(f.amb&&!quiet)pendingGuards.push({at:gameTime+0.6,spec:f.amb});}
+  const dk=f.t==='trigger'?DR_T-0.8:0; // the flask's own tile arms it and the drink takes 1.3 s now (it took 0.8): the time to run for it is kept
+  if(f.chain){f.chain.forEach((t,k)=>{if(t.s===0){t.s=1;t.tm=-(1.8+dk+0.36*k);}});Snd.play('creak');msg((f.g?gateMsg(f)+' ':'')+'The cracked floor behind you is starting to give way. Run!',3.8);}
+  if(f.amb&&!quiet)pendingGuards.push({at:gameTime+0.6+dk,spec:f.amb});}
 function triggerLoose(f){if(f.s!==0)return;if(f.drop&&!f.sturdy)learn('collapse');if(f.sturdy){if(!f.creaked){f.creaked=1;Snd.play('creak');}return;}f.s=1;f.tm=0;Snd.play('creak');}
 function standOn(){
   const c=pCol(),r=pRow(),f=F(L,c,r);
@@ -2700,12 +2743,14 @@ function updatePlayer(dt){
       else{P.yo=-Math.sin(Math.PI*clamp((P.t-0.08)/0.36,0,1))*16;if(P.t>=0.46){P.yo=0;setState('stand');}}
       break;}
     case'bonk':{const k=P.t/0.3;P.yo=-Math.sin(Math.PI*Math.min(1,k))*5;if(k>=1){P.yo=0;setState('stand');}break;}
-    case'drink':{const it=P.drinkIt;if(it&&!it.taken&&P.t>=0.35){it.taken=true;
-        if(it.type==='heal'){P.hp=Math.min(S.maxHp,P.hp+1);Snd.play('drink');flashScreen('#ff6a3d',0.38,0.3,true);msg('Red flask. One life restored.',2.2);}
-        else if(it.type==='big'){P.hp=S.maxHp;Snd.play('life');flashScreen('#ff6a3d',0.5,0.45,true);msg('Large red flask. All your lives restored.',2.6);}
-        else if(it.type==='life'){S.maxHp=Math.min(10,S.maxHp+1);P.hp=S.maxHp;flashScreen('#ffd76b',0.5,0.45,true);if(!S.lifeTaken.includes(L.n))S.lifeTaken.push(L.n);writeSave();Snd.play('life');msg('Gold flask. Your lives grow by one.',2.6);}
-        else{msg('Poison. Dark blue flasks hurt.',2.4);Snd.play('poison');flashScreen('#3fae66',0.4,0.32,true);hurt(1,'poison');}}
-      if(P.state==='drink'&&P.t>=0.8)setState('stand');break;}
+    case'drink':{const it=P.drinkIt,t=P.t;
+      if(it&&!P.dkG&&t>=DR_GRASP){P.dkG=true;it.taken=true;} // the flask leaves the floor into his hand
+      if(t<DR_G)P.x=clampMove(P.x,lerp(P.sx,P.tx,ease(t/DR_G)),P.y,P);
+      else if(t>=DR_BACK)P.x=clampMove(P.x,lerp(P.tx,P.sx,ease(Math.min(1,(t-DR_BACK)/(DR_T-DR_BACK)))),P.y,P);
+      if(it&&P.dkG&&!P.dkS&&t>=DR_SIP){P.dkS=true;Snd.play('drink');} // the flask reaches the lips
+      if(it&&P.dkG&&!P.dkFx&&t>=DR_FX){drinkFx();if(P.state!=='drink')break;} // the swallow
+      if(t>=DR_REL)dropFlask();
+      if(t>=DR_T)setState('stand');break;}
     case'garde':stGarde(ix);break;
     case'advance':case'retreat':{const k=Math.min(1,P.t/0.2);P.x=clampMove(P.x,lerp(P.sx,P.tx,k),P.y,P);if(k>=1)setState('garde');break;}
     case'strike':if(!P.hitDone&&P.t>=0.17){P.hitDone=true;resolveStrike(P,P.foe);}if(P.state==='strike'&&P.t>=0.4)setState(P.foe&&P.foe.alive?'garde':'stand');break;
@@ -2749,7 +2794,7 @@ function updatePlayer(dt){
     case'climbDown':{const cs=P.cs;tgt=climbFrame({x0:cs.x1,y0:cs.y1,x1:cs.x0,y1:cs.y0},1-Math.min(1,P.t/CLIMB_DOWN_T)).p;rate=60;break;}
     case'jumpUp':tgt=P.t<0.1?PS.crouch:PS.reach;rate=40;break;
     case'bonk':tgt=PS.crouch;break;
-    case'drink':tgt=PS.drink;break;
+    case'drink':tgt=drinkFrame(P.t).p;rate=60;break;
     case'garde':case'advance':case'retreat':case'blocked':tgt=PS.garde;break;
     case'strike':tgt=P.t<0.17?PS.windup:PS.lunge;rate=P.t<0.17?30:55;break;
     case'parry':tgt=PS.parry;rate=45;break;
@@ -3134,6 +3179,7 @@ function update(dt){
   updateFeatures(dt);
   if(mode==='play')updatePlayer(dt);
   else if(P.state==='dead'){P.t+=dt;lerpPose(P.pose,PS.dead,1-Math.exp(-dt*9),P.pose);}
+  updateFlasks(dt);
   for(const g of G)updateGuard(g,dt);
   for(const sn of SN)updateSnake(sn,dt);
   for(let i=pendingGuards.length-1;i>=0;i--){const q=pendingGuards[i];if(gameTime<q.at||mode!=='play')continue;
@@ -4106,17 +4152,27 @@ function drawBannerTile(ctx,X,Y,f,th){const x0=X+2,w=28,y0=f.top?Y+9:Y,y1=f.bot?
     ctx.strokeStyle=c2;ctx.lineWidth=0.6;ctx.globalAlpha=0.8;ctx.beginPath();
     for(let i=0;i<pts.length;i+=3){const q=pts[i];ctx.moveTo(q[0],q[1]);ctx.lineTo(q[0]-s*(1.2+(i%4)*0.5),q[1]+2.2);}ctx.stroke();ctx.globalAlpha=1;
     if(thru&&f.bot){ctx.fillStyle=c2;for(let i=0;i<2;i++){const fx0=s<0?x0+1+i*3.8:x0+w-2.4-i*3.8;ctx.fillRect(fx0+dx(yEnd)*0.8,yEnd-4,1.4,4);}}}}
-function drawFlask(ctx,it){
-  const x=it.x,ys=SURF(it.r)-3,big=it.type==='life'||it.type==='big',r=it.type==='big'?5.4:big?4.2:3.2;
-  const col=it.type==='heal'||it.type==='big'?'#e0413a':it.type==='life'?'#f0c040':'#2b3fb8';
-  if(it.type==='big'){ctx.fillStyle='#0b0812';ctx.fillRect(x-2.3,ys-2*r-7.5,4.6,8);ctx.fillStyle='rgba(220,230,240,.35)';ctx.fillRect(x-1.4,ys-2*r-6.5,2.8,7);ctx.fillStyle='#d8b04a';ctx.fillRect(x-2.6,ys-2*r-8.6,5.2,2.2);}
-  ctx.fillStyle='#0b0812';ctx.beginPath();ctx.arc(x,ys-r,r+0.9,0,Math.PI*2);ctx.fill();ctx.fillRect(x-1.7,ys-2*r-5,3.4,6);
-  ctx.fillStyle='rgba(220,230,240,.35)';ctx.beginPath();ctx.arc(x,ys-r,r,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,ys-r,r-0.5,-0.15,Math.PI+0.15);ctx.fill();
-  ctx.fillStyle='rgba(220,230,240,.4)';ctx.fillRect(x-0.9,ys-2*r-4,1.8,4.5);
-  ctx.fillStyle='#8a5a32';ctx.fillRect(x-1.3,ys-2*r-5.5,2.6,1.8);
-  const b=(gameTime*0.9+x*0.13)%1;ctx.fillStyle='rgba(255,255,255,.6)';ctx.beginPath();ctx.arc(x+Math.sin(b*9)*1.1,ys-r-b*r*1.4,0.6,0,Math.PI*2);ctx.fill();
+// A flask with its base at (0,0), upright; fill is the liquid left (1 = as on the floor), tilt the angle it is held at (the liquid
+// stays level in the world), ph a phase for the bubble (none while carried).
+function flaskBody(ctx,type,ph,fill,tilt){
+  const big=type==='life'||type==='big',r=flaskR(type);
+  const col=type==='heal'||type==='big'?'#e0413a':type==='life'?'#f0c040':'#2b3fb8';
+  if(type==='big'){ctx.fillStyle='#0b0812';ctx.fillRect(-2.3,-2*r-7.5,4.6,8);ctx.fillStyle='rgba(220,230,240,.35)';ctx.fillRect(-1.4,-2*r-6.5,2.8,7);ctx.fillStyle='#d8b04a';ctx.fillRect(-2.6,-2*r-8.6,5.2,2.2);}
+  ctx.fillStyle='#0b0812';ctx.beginPath();ctx.arc(0,-r,r+0.9,0,Math.PI*2);ctx.fill();ctx.fillRect(-1.7,-2*r-5,3.4,6);
+  ctx.fillStyle='rgba(220,230,240,.35)';ctx.beginPath();ctx.arc(0,-r,r,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=col;
+  if(fill>=1&&!tilt){ctx.beginPath();ctx.arc(0,-r,r-0.5,-0.15,Math.PI+0.15);ctx.fill();}
+  else if(fill>0.01){const R=r-0.5,h0=-0.15*R,h=h0+(R-h0)*(1-fill);ctx.save();ctx.beginPath();ctx.arc(0,-r,R,0,Math.PI*2);ctx.clip();ctx.translate(0,-r);ctx.rotate(-tilt);ctx.fillRect(-R-1,h,2*R+2,2*R+2);ctx.restore();}
+  ctx.fillStyle='rgba(220,230,240,.4)';ctx.fillRect(-0.9,-2*r-4,1.8,4.5);
+  ctx.fillStyle='#8a5a32';ctx.fillRect(-1.3,-2*r-5.5,2.6,1.8);
+  if(ph!==undefined){const b=(gameTime*0.9+ph*0.13)%1;ctx.fillStyle='rgba(255,255,255,.6)';ctx.beginPath();ctx.arc(Math.sin(b*9)*1.1,-r-b*r*1.4,0.6,0,Math.PI*2);ctx.fill();}
 }
+function drawFlask(ctx,it){ctx.save();ctx.translate(it.x,SURF(it.r)-3);flaskBody(ctx,it.type,it.x,1,0);ctx.restore();}
+// the flask he is drinking: held by the neck in the front hand, tipping as the frame says; and one that has been let go, falling and lying
+function drawHeldFlask(ctx){const it=P.drinkIt,fr=drinkFrame(P.t),h=handFlask();
+  ctx.save();ctx.translate(h.x,h.y);ctx.scale(P.face,1);ctx.rotate(fr.tilt);ctx.translate(0,2*flaskR(it.type)+2);flaskBody(ctx,it.type,undefined,fr.fill,fr.tilt);ctx.restore();}
+function drawLooseFlasks(ctx){for(const f of L.flk||[]){ctx.save();if(f.lt>0.15)ctx.globalAlpha=Math.max(0,1-(f.lt-0.15)/0.2);
+  ctx.translate(f.x,f.y);ctx.scale(f.face,1);ctx.rotate(f.rot);ctx.translate(0,f.r);flaskBody(ctx,f.type,undefined,0,f.rot);ctx.restore();}}
 function drawHourglass(ctx,cp){
   const x=cp.x,ys=SURF(cp.r)-3;
   // drawn 1.35 times larger, on a small plinth of the theme's trim, so the game's title object is easy to find
@@ -4813,6 +4869,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     for(let i=0;i<3;i++){const a=gameTime*1.1+i*2.1,k=(Math.sin(a)+1)/2,px=sx+Math.cos(i*2.1+gameTime*0.3)*9,py=sy+Math.sin(i*1.3+gameTime*0.4)*7,R=1.5+3.6*k;
       ctx.fillStyle='rgba(255,230,150,'+(0.35+0.6*k)+')';ctx.beginPath();ctx.moveTo(px,py-R);ctx.lineTo(px+R*0.22,py-R*0.22);ctx.lineTo(px+R,py);ctx.lineTo(px+R*0.22,py+R*0.22);ctx.lineTo(px,py+R);ctx.lineTo(px-R*0.22,py+R*0.22);ctx.lineTo(px-R,py);ctx.lineTo(px-R*0.22,py-R*0.22);ctx.closePath();ctx.fill();}}
   for(const it of L.items)if(!it.taken&&inRoom(it.c,it.r))drawFlask(ctx,it);
+  drawLooseFlasks(ctx);
   for(const d of L.debris){ctx.save();ctx.translate(d.x-16,d.y);
     if(d.kind==='plank')drawPlank(ctx,0,0,0);
     else if(d.kind==='rock'){const rk=[[4,-11],[9,-15],[19,-14],[27,-10],[28,-2],[21,1],[8,1],[4,-4]];ctx.beginPath();rk.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();ctx.fillStyle=th.wallB;ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=1.4;ctx.stroke();
@@ -4828,6 +4885,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
       drawActor(ctx,P,P.x+(P.rdx||0),P.y+(P.rdy||0),P.face,P.pose,PAL_HERO,{yo:P.yo,hasSword:true,time:gameTime});ctx.restore();}
     ctx.save();figClip(ctx,P.hideMode,P.hideLg,P.state==='dead'?null:wallPress(P.x,P.y,P.face,P.pose));
     drawActor(ctx,P,P.x+(P.rdx||0),P.y+(P.rdy||0),P.face,P.pose,PAL_HERO,{yo:P.yo,sword:(P.sword&&!!P.foe)||P.state==='lowStrike'||P.state==='poke'||(P.lowSword&&P.state==='crouch')||P.state==='slide',swLen:P.state==='slide'?SL_BLADE:0,hasSword:true,flash:P.flash,alpha:P.state==='exit'?Math.max(0,1-P.t*1.1):undefined,flutter:Math.min(1,Math.abs(P.vx)/90+(P.state==='air'?0.8:0)),time:gameTime});
+    if(P.state==='drink'&&P.dkG&&!P.dkRel&&P.drinkIt)drawHeldFlask(ctx);
     ctx.restore();
   }
   if(GFX().fx){drawTrails(ctx);drawRings(ctx);}
