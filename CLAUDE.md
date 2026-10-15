@@ -42,18 +42,25 @@ service worker's cache to `hourglass-keep-vN`, which is what makes installed cop
 
 1. Change the source, then build with the next N.
 2. Run the regression suite from `dev/tools` with `python3 suite.py release`. It runs every test below spread over the
-   machine's cores (one floor per job, one Chromium per job) and prints one line per test, ending in `ALL OK` or `FAILURES`.
-   Tiers: `suite.py quick` (bot with one seed plus the unit tests, ~2 min) while working; `suite.py` (bot with four seeds,
-   forks, flag and family floors, metrics, unit tests, ~5 min) before each commit; `suite.py release` (adds the fight runs
-   and the render check, ~20 min) before a release. Run long suites in the background rather than polling them. The
-   default process count is the number of physical cores; more only slows a laptop down. A new test should take a floor
+   machine's cores and prints one line per test, ending in `ALL OK` or `FAILURES`, then the five slowest jobs. The bot and render
+   runs are split one floor (and seed) per job; each of the N workers (`suiteworker.py`) starts ONE Chromium and runs its jobs
+   in turn, each in a fresh browser context, so nothing leaks between jobs. The test scripts are unchanged and still run
+   standalone. A job over its 25-minute limit, or one that kills its browser, fails with a message and the worker is replaced.
+   `run2`, `featbot`, `p4bot`, `forktest` and `rendersmoke` also fail a run whose page CPU time per game frame is over budget
+   (`slowguard.py`, 0.3 ms/frame; healthy runs are 0.02 to 0.1), naming the floor and seed: a leak like v41's particles shows
+   up as a failure, not as a long wait. `HK_MS_PER_FRAME` and `HK_RUN_WALL` override the budgets.
+   Tiers: `suite.py quick` (bot with one seed plus the unit tests, ~4 min) while working; `suite.py` (bot with four seeds,
+   forks, flag and family floors, metrics, unit tests, ~6 min) before each commit; `suite.py release` (adds the fight runs
+   and the render check, ~15 to 20 min) before a release (times on an 8-core laptop, longer if it is busy). Run long suites in
+   the background rather than polling them. The default process count is the number of physical cores; more only slows a
+   laptop down. A new test should take a floor
    range so `suite.py` can split it, and be added to its list. The tests it runs:
 
 | Command | Checks | Pass |
 |---|---|---|
 | `python3 run2.py 1 27 4` | the bot finishes floors 1 to 27, 4 seeds each, without fighting | all passed, 0 runs with damage |
 | `python3 run2.py 1 27 2 fight` | the same, fighting every guard | all passed |
-| `python3 rendersmoke.py 1 27` | every floor renders without errors | no errors |
+| `python3 rendersmoke.py 1 27 both` | every floor renders without errors, played once with the sampled frames alternating between Classic and Torchlight (shader live, WebGL frame not blank); `torch` or no argument: one mode only | no errors |
 | `python3 forkscan.py`, `forktest.py` | forks are built (kinds per floor band); every fork's shortcut branch is played to the door: kind 1 fighting its guard, kinds 2 and 4 stepping off the broken lip (exactly one life lost), kind 3 through its traps; a grating is solid, its gate open and its flask in place | all ok |
 | `python3 metrics40.py` | route length, trap count and trap spacing against the last release (edit the two files at its top) | no floor shorter, padding kept |
 | `respawnplates.py`, `puzzlescan.py`, `slabresume.py` | plates stay pressed after a respawn; the puzzle menu's pairs are built; a slab-jammed plate is restored | all ok |
