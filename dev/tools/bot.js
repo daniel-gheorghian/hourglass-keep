@@ -1,7 +1,15 @@
 // Plays a generated floor from its own path plan. opts.fight: keep guards and fight them.
 // Every action takes an optional dir (1 = rightward, the default; -1 = leftward).
+// Every run is repeatable: Math.random (the guards' choices, the bot's own strikes, effects) is replaced for the run by a
+// stream seeded from the floor and seed (opts.rseed overrides), so a failure in a fight run can be replayed exactly.
 window.runBot = function (n, seed, opts) {
   opts = opts || {};
+  let a = ((opts.rseed != null ? opts.rseed : n * 7919 + seed) >>> 0) || 1;
+  const mr = Math.random;
+  Math.random = () => { a = (a + 0x6D2B79F5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  try { return runBot0(n, seed, opts); } finally { Math.random = mr; }
+};
+function runBot0(n, seed, opts) {
   const H = window.__HK;
   const L = H.load(n, seed, !opts.fight);
   const TW = 32, cx = c => c * TW + 16;

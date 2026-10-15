@@ -23,7 +23,7 @@ FLOORS = range(1, 28)
 # (group, argv, check(stdout) -> (ok, summary)); groups with several jobs are merged into one line.
 def run2_check(out):
     m = re.search(r'passed (\d+) / (\d+).*runs with damage (\d+)', out)
-    return (bool(m), (int(m[1]), int(m[2]), int(m[3])) if m else None)
+    return (bool(m) and m[1] == m[2], (int(m[1]), int(m[2]), int(m[3])) if m else None)  # every run must pass
 def render_check(out):
     bad = re.findall(r"\(\d+, (?!True)\w+", out) or ("errors []" not in out)
     return (not bad, out.strip().splitlines()[-1][:120] if out.strip() else '')
