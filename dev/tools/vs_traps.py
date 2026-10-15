@@ -117,4 +117,4 @@ def run(rig):
     for k, (n, sd) in enumerate(((7, 10900), (11, 10930), (15, 10960), (21, 10990))):
         S('T-grate-%d' % (k + 1), n, sd, "const q=L.forks.find(q=>q.grate&&V.near(q.H,q.rUp,3));return q&&V.near(q.H,q.rUp,3)", 'A fork grating over a shaft (kind 4 with a flask below).', 'traps', 'trap-grate', tries=200, modes=T1)
     rig.scene('T-grate-peek', 8, 10900, "const q=L.forks.find(q=>q.grate&&V.near(q.H,q.rUp,0));return q&&V.near(q.H,q.rUp,0)", 'Crouching on the grating and holding Down: the view drops to the flask behind its violet gate.',
-              'traps', 'trap-grate', tries=250, modes=T1, js='H.setKey("kb","d",true);H.tick(90)', js2='')
+              'traps', 'trap-grate', tries=250, modes=T1, js='H.setKey("kb","d",true)', js2='V.hold(90,{state:"crouch"})') # (settle() forces "stand" every tick, so the crouch needs its own hold)
