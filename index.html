@@ -300,7 +300,7 @@ const skyOf=th=>todSkyCol(th.sky,L&&L.prog?L.prog.tod:0);
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=9;
-const APP_VERSION='46'; // set by the build; shown on the title and pause screens
+const APP_VERSION='47'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},learned:prev?prev.learned:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(!s.learned){s.learned={};if(s.level>2){s.learned.gap=s.learned.climb=s.learned.drop=1;}if(s.maxHp>3)s.learned.potion=1;} // an old save: whoever got past floor 2 can run, jump, climb and let go; the rest of the moves come back as hints until done
@@ -2450,7 +2450,7 @@ function standOn(){
     else if(f.t==='closer'&&!f.jam){f.press=gameTime;if(f.g.tm>0||f.g.open>0.05){f.g.tm=0;f.g.slam=true;Snd.play('gate');shake(0.9);hint('closer');}}
     else if(f.t==='xplate'){f.press=gameTime;if(!L.door.opening&&L.door.open<1){L.door.opening=true;msg('A heavy door grinds open somewhere on this floor.',3.4);Snd.play('door');}}
   }
-  for(let i=0;i<L.cps.length;i++){const cp=L.cps[i];if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<14){cp.on=true;L.cpIndex=i;S.cp=i;S.floorTime=levelTime;S.cpPlates=pressedPlates();const fill=(S.sands|0)<SANDS;S.sands=SANDS;writeSave();msg(fill?'The hourglass turns and your glass fills. If you fall, you rise here.':'The hourglass turns. If you fall, you rise here.',3.2);Snd.play('cp');sparks(cp.x,SURF(cp.r)-22,10,'#e8c47f');}}
+  for(let i=0;i<L.cps.length;i++){const cp=L.cps[i];if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<14){cp.on=true;cp.onAt=gameTime;L.cpIndex=i;S.cp=i;S.floorTime=levelTime;S.cpPlates=pressedPlates();const fill=(S.sands|0)<SANDS;S.sands=SANDS;writeSave();msg(fill?'The hourglass turns and your glass fills. If you fall, you rise here.':'The hourglass turns. If you fall, you rise here.',3.2);Snd.play('cp');sparks(cp.x,SURF(cp.r)-26,10,'rgb('+(L.theme.glow||'232,196,127')+')');}}
 }
 // a jump that ends hanging on a ledge: across a pit (gap, wide) or a storey up with Grab held (jgrab)
 function learnGrab(ys){const jk=P.jumpKind;if(jk!=='run'&&jk!=='stand')return;const dx=Math.abs(P.x-P.jx);if(dx>=40)learn('gap');if(jk==='run'&&ys<P.jy-40)learn('jgrab');else if(jk==='run'&&dx>=80)learn('wide');}
@@ -3390,13 +3390,15 @@ function drawBreaches(g,rx,ry,th,bgOn){const ox=-rx*ROOM_W,oy=-ry*ROOM_H;
       g.globalAlpha=1;const sh=new Path2D();sh.rect(b.fx0+ox-20,b.fy0+oy-20,b.fx1-b.fx0+40,b.fy1-b.fy0+40);sh.addPath(breachPath(b,ox,oy,1.6,2.4,b.facing));
       g.fillStyle='rgba(0,0,0,.5)';g.fill(sh,'evenodd');g.restore();}
     g.strokeStyle='rgba(0,0,0,.45)';g.lineWidth=1.4;g.stroke(P);
+    // a pale lit lip along the broken edge, in every theme, so a breach reads as a break even where no sky shows through it
+    // (stroked before the hole is cut: the path is one quad per fallen brick, and the cut takes away every joint between
+    // them, leaving only the outer edge)
+    g.save();g.strokeStyle='rgba(255,236,205,.34)';g.lineWidth=1;g.stroke(breachPath(b,ox,oy,0,-1));g.restore();
     if(bgOn){g.save();g.globalCompositeOperation='destination-out';g.fillStyle='#000';g.fill(P);g.restore();}else{g.fillStyle=th.mortar;g.fill(P);}
     // the wall's own thickness, seen inside the break: everything of the opening that the back of the wall doesn't
     // line up with; the broken tops of the bricks catch the light, the undersides are in shadow
     g.save();g.clip(P);const gy=g.createLinearGradient(0,b.y0+oy,0,b.y1+oy);gy.addColorStop(0,'rgba(6,4,10,.95)');gy.addColorStop(1,th.lo);g.fillStyle=gy;g.fill(P);
     g.fillStyle='rgba(0,0,0,.18)';g.fill(P);g.globalCompositeOperation='destination-out';g.fillStyle='#000';g.fill(breachPath(b,ox,oy,BR_T[0],BR_T[1]));g.restore();
-    // a pale lit lip along the broken edge, in every theme, so a breach reads as a break even where no sky shows through it
-    g.save();g.strokeStyle='rgba(255,236,205,.34)';g.lineWidth=1;g.stroke(breachPath(b,ox,oy,0,-1));g.restore();
     // cracks running on from the ends, and loose bricks on the broken top
     g.strokeStyle='rgba(0,0,0,.55)';g.lineWidth=0.8;for(const cr of b.cracks){g.beginPath();cr.forEach(([x,y],i)=>i?g.lineTo(x+ox,y+oy):g.moveTo(x+ox,y+oy));g.stroke();}
     for(const [x,y,a,w,h] of b.loose){g.save();g.translate(x+ox,y+oy);g.rotate(a);g.fillStyle='rgba(0,0,0,.5)';g.fillRect(-w/2-0.5,-h-0.5,w+1,h+1);g.fillStyle=th.brick;g.fillRect(-w/2,-h,w,h);g.fillStyle='rgba(255,255,255,.1)';g.fillRect(-w/2,-h,w,1.2);g.fillStyle='rgba(0,0,0,.2)';g.fillRect(-w/2,-h*0.35,w,h*0.35);g.restore();}}}
@@ -4128,21 +4130,86 @@ function drawFlask(ctx,it){
   ctx.fillStyle='#8a5a32';ctx.fillRect(x-1.3,ys-2*r-5.5,2.6,1.8);
   const b=(gameTime*0.9+x*0.13)%1;ctx.fillStyle='rgba(255,255,255,.6)';ctx.beginPath();ctx.arc(x+Math.sin(b*9)*1.1,ys-r-b*r*1.4,0.6,0,Math.PI*2);ctx.fill();
 }
+// ---- the hourglass (checkpoint): it floats over a small pedestal of the floor's theme, its frame made of the theme's
+// own material and its glass and sand tinted with the theme's light. Unlit, its sand lies spent in the lower bulb; when
+// he touches it, it turns over, the sand starts to run and it lights up like a torch (a glass that lights inside when
+// reached: Shovel Knight's checkpoints; a lit/unlit beacon of safety: Dark Souls' bonfires).
+const HG_MAT={ // cap, cap shade, post, accent
+  dungeon:['#8d93a6','#4a4f5e','#5d6272','#c9cdd8'],     // Cistern: wrought iron, rivets
+  palace:['#e2bd7c','#9a7046','#d8b04a','#7c2f22'],      // Sandstone: gilt with carnelian beads
+  tile:['#d8b04a','#1f3c82','#d8b04a','#2d9fc4'],        // Lapis: gold caps on a lapis band, turquoise
+  forge:['#2a2224','#171011','#3a2c2a','#ff7a32'],       // Forge: blackened iron, seams still glowing
+  crypt:['#5f9c86','#2a5244','#3d6f5c','#cfe6d6']};      // Jade: verdigris bronze, pale jade
+function hgBulbs(ctx,w,h){ctx.beginPath();ctx.moveTo(-w,-h);ctx.quadraticCurveTo(-w*1.15,-h*0.28,-0.9,0);ctx.quadraticCurveTo(-w*1.15,h*0.28,-w,h);
+  ctx.lineTo(w,h);ctx.quadraticCurveTo(w*1.15,h*0.28,0.9,0);ctx.quadraticCurveTo(w*1.15,-h*0.28,w,-h);ctx.closePath();}
+function drawHgPedestal(ctx,th,st,x,fl,h,wear){const q=mulberry32(h),K='#0b0812';
+  const stone=st==='palace'?['#c69a64','#a8794c','#5f432a']:st==='tile'?['#b9ae92','#9a8f74','#5a5240']:st==='forge'?['#3a2c2a','#2a2224','#171011']:st==='crypt'?['#5f9c86','#3d6f5c','#1a3b32']:['#6c7590','#535c74','#2b3041'];
+  const box=(x0,y0,w,hh,c)=>{ctx.fillStyle=K;ctx.fillRect(x0-0.6,y0-0.6,w+1.2,hh+1.2);ctx.fillStyle=c;ctx.fillRect(x0,y0,w,hh);};
+  // base, shaft, top slab
+  box(x-8,fl-3.4,16,3.4,stone[1]);box(x-5.5,fl-9,11,5.6,stone[1]);box(x-7,fl-11,14,2.2,stone[0]);
+  ctx.fillStyle='rgba(255,255,255,.18)';ctx.fillRect(x-7,fl-11,14,0.6);ctx.fillRect(x-8,fl-3.4,16,0.5);
+  ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(x+2.5,fl-9,3,5.6);ctx.fillRect(x-8,fl-1,16,1); // shaft's shaded side
+  // the theme's ornament on the shaft
+  if(st==='dungeon'){ctx.fillStyle='#4a4f5e';ctx.fillRect(x-5.5,fl-7.2,11,1.4);ctx.fillStyle='#c9cdd8';ctx.fillRect(x-4,fl-6.9,0.9,0.9);ctx.fillRect(x+3,fl-6.9,0.9,0.9);} // an iron band
+  else if(st==='palace'){ctx.fillStyle=th.inlay||'#7c2f22';ctx.fillRect(x-5.5,fl-7,11,1.2);ctx.fillStyle='#d8b04a';ctx.fillRect(x-1,fl-7.4,2,2);} // carnelian inlay, a gilt boss
+  else if(st==='tile'){ctx.fillStyle='#1f3c82';ctx.fillRect(x-4.5,fl-8.3,9,4.3);ctx.fillStyle='#2d9fc4';ctx.fillRect(x-4.5,fl-8.3,9,0.6);ctx.fillRect(x-4.5,fl-4.6,9,0.6);star8(ctx,x,fl-6.2,1.9,0.9,'#d8b04a');} // a glazed lapis tile
+  else if(st==='forge'){ctx.fillStyle='rgba(255,122,50,.75)';ctx.fillRect(x-5.5,fl-6.6,11,0.6);ctx.fillStyle='#5a4a44';for(const rx of [-4,3.2])ctx.fillRect(x+rx,fl-8.4,0.9,0.9);} // a glowing seam, rivets
+  else{ctx.fillStyle='#22a898';ctx.fillRect(x-5.5,fl-7.4,11,1.4);ctx.fillStyle='rgba(240,250,240,.6)';for(let i=0;i<4;i++)ctx.fillRect(x-4.6+i*2.8,fl-7.1,0.8,0.8);} // a turquoise glaze band
+  // damage by the wear of the wall there: worn, a corner chipped and a chip at its foot; damaged, more corners, a crack
+  // down the shaft and rubble; partly fallen, the most of each
+  wear=wear|0;if(wear<=0)return;const n=wear===1?1:wear===2?2+(q()<0.5?1:0):4;
+  const corners=[[x-7,fl-11,1,1],[x+7,fl-11,-1,1],[x-8,fl-3.4,1,1],[x+8,fl-3.4,-1,1],[x-5.5,fl-4,1,-1],[x+5.5,fl-4,-1,-1]];
+  for(let i=0;i<n;i++){const [cx,cy,sx,sy]=corners[Math.floor(q()*corners.length)],a=1.6+q()*1.8,b=1.2+q()*1.5;
+    ctx.fillStyle=K;ctx.beginPath();ctx.moveTo(cx-sx*0.7,cy-sy*0.7);ctx.lineTo(cx+sx*a,cy-sy*0.7);ctx.lineTo(cx+sx*a*0.4,cy+sy*b*0.5);ctx.lineTo(cx-sx*0.7,cy+sy*b);ctx.closePath();ctx.fill();
+    ctx.fillStyle=stone[2];ctx.beginPath();ctx.moveTo(cx+sx*a*0.9,cy);ctx.lineTo(cx+sx*a*0.4,cy+sy*b*0.45);ctx.lineTo(cx,cy+sy*b*0.9);ctx.closePath();ctx.fill();}
+  if(wear>=2){ctx.strokeStyle='rgba(0,0,0,.65)';ctx.lineWidth=0.7;ctx.beginPath();let cx=x-3+q()*5,cy=fl-11;ctx.moveTo(cx,cy);
+    for(let i=0;i<2+wear;i++){cx+=(q()-0.5)*3;cy+=1.6+q()*1.4;if(cy>fl-0.5)break;ctx.lineTo(cx,cy);}ctx.stroke();}
+  for(let i=0;i<(wear-1)*2+1;i++){const rx=x+(q()<0.5?-1:1)*(8.5+q()*4),w=1.2+q()*1.6;ctx.fillStyle=K;ctx.fillRect(rx-0.4,fl-w*0.7-0.4,w+0.8,w*0.7+0.8);ctx.fillStyle=stone[1];ctx.fillRect(rx,fl-w*0.7,w,w*0.7);}}
 function drawHourglass(ctx,cp){
-  const x=cp.x,ys=SURF(cp.r)-3;
-  // drawn 1.35 times larger, on a small plinth of the theme's trim, so the game's title object is easy to find
-  ctx.save();ctx.translate(x,ys+3);ctx.scale(1.35,1.35);ctx.translate(-x,-ys-3);
-  ctx.fillStyle='#0b0812';ctx.fillRect(x-8,ys-1,16,4);ctx.fillStyle=L.theme.trim||L.theme.top;ctx.fillRect(x-7,ys,14,2.2);
-  ctx.fillStyle='#0b0812';ctx.fillRect(x-6,ys-5,12,5);ctx.fillStyle=L.theme.top;ctx.fillRect(x-5,ys-4,10,3);
-  const top=ys-21;ctx.fillStyle='#0b0812';ctx.fillRect(x-6,top-1.5,12,2.4);ctx.fillRect(x-6,ys-7,12,2.4);
-  ctx.fillStyle='#d8b04a';ctx.fillRect(x-5.5,top-1,11,1.4);ctx.fillRect(x-5.5,ys-6.5,11,1.4);
-  ctx.fillStyle='rgba(220,230,240,.28)';ctx.beginPath();ctx.moveTo(x-4.5,top+0.5);ctx.lineTo(x+4.5,top+0.5);ctx.lineTo(x+0.8,ys-13.5);ctx.lineTo(x+4.5,ys-7);ctx.lineTo(x-4.5,ys-7);ctx.lineTo(x-0.8,ys-13.5);ctx.closePath();ctx.fill();
-  const k=cp.on?Math.min(1,(gameTime%6)/6):0;
-  ctx.fillStyle='#e8c47f';
-  ctx.beginPath();ctx.moveTo(x-3.4*(1-k),top+2+k*4);ctx.lineTo(x+3.4*(1-k),top+2+k*4);ctx.lineTo(x,ys-13.5);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.moveTo(x-4,ys-7.2);ctx.lineTo(x+4,ys-7.2);ctx.lineTo(x+2*k+0.5,ys-7.2-3*k-0.6);ctx.lineTo(x-2*k-0.5,ys-7.2-3*k-0.6);ctx.closePath();ctx.fill();
-  if(cp.on){ctx.fillRect(x-0.4,ys-13.5,0.8,6);ctx.save();ctx.globalCompositeOperation='lighter';const gr=ctx.createRadialGradient(x,ys-13,1,x,ys-13,22);gr.addColorStop(0,'rgba(232,196,127,.35)');gr.addColorStop(1,'rgba(232,196,127,0)');ctx.fillStyle=gr;ctx.fillRect(x-24,ys-36,48,48);ctx.restore();}
+  const th=L.theme,st=th.style,M=HG_MAT[st]||HG_MAT.palace,gl=th.glow||'255,200,120',x=cp.x,fl=SURF(cp.r)-1;
+  const lit=cp.on,turn=lit&&cp.onAt!==undefined?clamp((gameTime-cp.onAt)/0.7,0,1):1,bob=Math.sin(gameTime*1.7+x*0.05)*1.6;
+  // the pedestal: the theme's own stone and ornament, worn as much as the wall behind it (wearLevel, the same random
+  // patches as the walls: pristine, worn, damaged, partly fallen); the glass above it is never damaged
+  drawHgPedestal(ctx,th,st,x,fl,hash2(cp.c*37+11,cp.r*19+3),wearLevel(x,fl-20));
+  const ptop=fl-11;
+  ctx.fillStyle='rgba(0,0,0,'+(0.32-bob*0.03)+')';ctx.beginPath();ctx.ellipse(x,ptop+0.4,4.6-bob*0.3,0.9,0,0,6.2832);ctx.fill();
+  if(lit){ctx.save();ctx.globalCompositeOperation='lighter';ctx.fillStyle='rgba('+gl+',.35)';ctx.beginPath();ctx.ellipse(x,ptop+0.2,6.5,1.5,0,0,6.2832);ctx.fill();ctx.restore();}
+  const cy=fl-25+bob;
+  ctx.save();ctx.translate(x,cy);
+  if(lit){ // the lit glass: a halo as strong as a lamp's (the light map adds the room light; this carries Classic too)
+    ctx.save();ctx.globalCompositeOperation='lighter';const k=0.85+0.15*Math.sin(gameTime*3+x);
+    let gr=ctx.createRadialGradient(0,0,1,0,0,30);gr.addColorStop(0,'rgba('+gl+','+(0.55*k*turn)+')');gr.addColorStop(1,'rgba('+gl+',0)');ctx.fillStyle=gr;ctx.fillRect(-32,-32,64,64);
+    if(!GFX().light){gr=ctx.createRadialGradient(0,0,4,0,0,70);gr.addColorStop(0,'rgba('+gl+','+(0.22*turn)+')');gr.addColorStop(1,'rgba('+gl+',0)');ctx.fillStyle=gr;ctx.fillRect(-72,-72,144,144);}
+    ctx.restore();}
+  ctx.rotate(lit?Math.PI*(1-ease(turn)):0); // turning over when he reaches it (drawn upside down until it has turned)
+  const w=4.3,h=8;
+  // glass: dark rim, tinted body
+  hgBulbs(ctx,w,h);ctx.lineWidth=2.2;ctx.strokeStyle='#0b0812';ctx.stroke();ctx.fillStyle='rgba('+gl+','+(lit?0.2:0.1)+')';ctx.fill();ctx.fillStyle='rgba(12,9,20,'+(lit?0.25:0.55)+')';ctx.fill();
+  // sand: theme light mixed into gold, bright and running when lit, dull and spent when not
+  const k=lit&&turn>=1?((gameTime-(cp.onAt||0)-0.7)%8)/8:0,f=lit?(turn<1?1:1-k):0;
+  ctx.save();hgBulbs(ctx,w,h);ctx.clip();ctx.fillStyle=lit?'rgb('+gl+')':'rgba('+gl+',.45)';
+  if(f>0.02){const t=-h+(h-1)*(1-f);ctx.fillRect(-w-1,t,2*w+2,-t);}
+  const hh=(h-1)*(1-f);if(hh>0.1){ctx.beginPath();ctx.moveTo(-w-1,h);ctx.lineTo(w+1,h);ctx.lineTo(w+1,h-hh*0.75);ctx.lineTo(0,h-hh);ctx.lineTo(-w-1,h-hh*0.75);ctx.closePath();ctx.fill();}
+  if(lit&&turn>=1)ctx.fillRect(-0.4,0,0.8,h-hh);
+  if(lit){ctx.globalCompositeOperation='lighter';ctx.fillStyle='rgba(255,255,255,.35)';ctx.fillRect(-0.5,-1.5,1,3);}
   ctx.restore();
+  hgBulbs(ctx,w,h);ctx.lineWidth=0.7;ctx.strokeStyle='rgba(230,236,248,'+(lit?0.8:0.5)+')';ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,.5)';ctx.fillRect(-w+1.2,-h+1.5,0.9,3.2);
+  // the frame: two caps and posts in the theme's material
+  const cap=(yy)=>{ctx.fillStyle='#0b0812';ctx.fillRect(-7,yy-1.7,14,3.4);ctx.fillStyle=M[0];ctx.fillRect(-6.3,yy-1.1,12.6,2.2);ctx.fillStyle=M[1];ctx.fillRect(-6.3,yy+0.3,12.6,0.8);
+    if(st==='dungeon'){ctx.fillStyle=M[3];for(const rx of [-4.5,0,4.5])ctx.fillRect(rx-0.5,yy-0.7,1,1);}
+    else if(st==='palace'){ctx.fillStyle=M[3];ctx.beginPath();ctx.arc(0,yy,1.2,0,6.2832);ctx.fill();}
+    else if(st==='tile'){ctx.fillStyle=M[1];ctx.fillRect(-4.5,yy-0.5,9,1);ctx.fillStyle=M[3];ctx.fillRect(-0.6,yy-0.6,1.2,1.2);}
+    else if(st==='forge'){ctx.fillStyle=M[3];ctx.globalAlpha=lit?0.95:0.55;ctx.fillRect(-6.3,yy-0.15,12.6,0.5);ctx.globalAlpha=1;}
+    else{ctx.fillStyle=M[3];for(const rx of [-3.8,3.8])ctx.fillRect(rx-0.6,yy-0.6,1.2,1.2);}};
+  ctx.fillStyle='#0b0812';ctx.fillRect(-6.4,-h,2.4,2*h);ctx.fillRect(4,-h,2.4,2*h);ctx.fillStyle=M[2];ctx.fillRect(-5.8,-h,1.2,2*h);ctx.fillRect(4.6,-h,1.2,2*h);
+  if(st==='palace'||st==='crypt'){ctx.fillStyle=M[0];for(const px of [-5.2,5.2])for(const yy of [-3.5,3.5]){ctx.beginPath();ctx.arc(px,yy,1.1,0,6.2832);ctx.fill();}} // turned posts
+  cap(-h-0.6);cap(h+0.6);
+  if(st==='palace'||st==='tile'){ctx.fillStyle=M[0];ctx.beginPath();ctx.moveTo(-1.6,-h-2.2);ctx.lineTo(0,-h-4.2);ctx.lineTo(1.6,-h-2.2);ctx.fill();} // a finial
+  ctx.restore();
+  // sand motes drifting up round it while it runs
+  if(lit){ctx.save();ctx.globalCompositeOperation='lighter';for(let i=0;i<5;i++){const u=(gameTime*0.35+i/5+x*0.01)%1;ctx.globalAlpha=(1-u)*0.8*turn;ctx.fillStyle='rgb('+gl+')';
+      ctx.fillRect(x+Math.sin(u*8+i*1.7)*(6+u*4),cy+10-u*30,1,1);}ctx.restore();}
 }
 // ---- doors: each theme's own (a Persian pishtaq doorway: a pointed arch in a rectangular frame, spandrels over the springing) ----
 // the arch head as a path: round for the Cistern, pointed for the rest; with yb given it is the whole opening down to the floor
@@ -4319,15 +4386,20 @@ function drawPend(ctx,o,f){
   ctx.restore();
 }
 function drawVentBase(ctx,o,f){
-  const x=o.c*TW+16,ys=SURF(o.r)-3,ph=cyc(f,gameTime),warm=ph>=0.6?Math.min(1,(ph-0.6)/0.15):0;
-  ctx.fillStyle='#0b0812';ctx.fillRect(x-10,ys-1.4,20,3.4);
-  ctx.fillStyle='rgba(255,'+Math.round(120+80*warm)+',60,'+(0.25+0.6*warm)+')';ctx.fillRect(x-9,ys-0.8,18,2);
-  ctx.fillStyle='#2a1712';for(let i=-2;i<=2;i++)ctx.fillRect(x+i*4-0.6,ys-1.4,1.2,3.4);
-  if(warm>0&&ph<0.75){ctx.fillStyle='rgba(60,50,48,'+(0.35*warm)+')';for(let i=0;i<3;i++){const u=((gameTime*1.3+i/3)%1);ctx.beginPath();ctx.arc(x+Math.sin(u*7+i)*3,ys-4-u*16,1.6+u*2.6,0,Math.PI*2);ctx.fill();}}
+  // a grate set into the middle of the floor's top face (front to back depth 0.12 to 0.88), drawn in the floor's own
+  // perspective (sheared like the slab), so it reads as a hole in the walkway and not a slot along the back wall
+  const x=o.c*TW+16,ys=SURF(o.r),ph=cyc(f,gameTime),warm=ph>=0.6?Math.min(1,(ph-0.6)/0.15):0;
+  const q=(dx,d)=>onFloor(x+dx,d,ys),quad=(a,b,d0,d1)=>{const p=[q(a,d0),q(b,d0),q(b,d1),q(a,d1)];ctx.beginPath();p.forEach((v,i)=>i?ctx.lineTo(v.x,v.y):ctx.moveTo(v.x,v.y));ctx.closePath();};
+  quad(-11,11,0.08,0.92);ctx.fillStyle='#0b0812';ctx.fill();                                     // the frame's dark cut
+  quad(-9.5,9.5,0.18,0.82);ctx.fillStyle='rgba(255,'+Math.round(110+90*warm)+',50,'+(0.18+0.7*warm)+')';ctx.fill(); // the glow down the shaft
+  ctx.strokeStyle='#3a2219';ctx.lineWidth=1.3;ctx.beginPath();                                    // bars, running front to back
+  for(let i=-2;i<=2;i++){const a=q(i*4,0.12),b=q(i*4,0.88);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}ctx.stroke();
+  ctx.strokeStyle='rgba(255,220,180,.22)';ctx.lineWidth=0.7;ctx.beginPath();{const a=q(-11,0.08),b=q(11,0.08);ctx.moveTo(a.x,a.y+0.4);ctx.lineTo(b.x,b.y+0.4);}ctx.stroke(); // the lit front lip
+  if(warm>0&&ph<0.75){ctx.fillStyle='rgba(60,50,48,'+(0.35*warm)+')';for(let i=0;i<3;i++){const u=((gameTime*1.3+i/3)%1);ctx.beginPath();ctx.arc(x+Math.sin(u*7+i)*3,ys-2-u*16,1.6+u*2.6,0,Math.PI*2);ctx.fill();}}
 }
 function drawVentFire(ctx,o,f){
   const ph=cyc(f,gameTime);if(ph<0.75)return;
-  const x=o.c*TW+16,ys=SURF(o.r)-3,k=Math.min(1,(ph-0.75)/0.04)*Math.min(1,(1-ph)/0.05),seed=o.c%7;
+  const x=o.c*TW+16,ys=SURF(o.r)+0.5,k=Math.min(1,(ph-0.75)/0.04)*Math.min(1,(1-ph)/0.05),seed=o.c%7; // rising from the grate's centre
   ctx.save();ctx.globalCompositeOperation='lighter';const gr=ctx.createRadialGradient(x,ys-20,2,x,ys-20,46);gr.addColorStop(0,'rgba(255,140,60,'+(0.45*k)+')');gr.addColorStop(1,'rgba(255,140,60,0)');ctx.fillStyle=gr;ctx.fillRect(x-48,ys-68,96,72);ctx.restore();
   fire(ctx,x-3,ys,2.1*k,seed,FORGE);fire(ctx,x+3,ys,1.8*k,seed+2.3,FORGE);fire(ctx,x,ys,2.6*k,seed+4.1,FORGE);
   embers(ctx,x,ys-30*k,5,seed,'#ffd27a',30);
@@ -4348,13 +4420,25 @@ function drawStone(ctx,o,f,again){
   if(!again&&(f.s===1?Math.random()<0.5:Math.random()<0.012)){FX.push({x:x+(Math.random()-0.5)*20,y:cy+16,vx:0,vy:10,g:300,life:0.5,t:0,col:'rgba(210,200,180,.7)',sz:1.2});}
 }
 // a small hourglass emblem: marks gates that close again; the sand shows the time left while open
-function drawGlass(ctx,x,y,frac,cap){ctx.save();ctx.translate(x,y);
-  ctx.fillStyle=cap||'#0b0812';ctx.fillRect(-4.5,-6,9,2);ctx.fillRect(-4.5,4.5,9,2);
-  ctx.beginPath();ctx.moveTo(-3.5,-4);ctx.lineTo(3.5,-4);ctx.lineTo(0.6,0.2);ctx.lineTo(3.5,4.5);ctx.lineTo(-3.5,4.5);ctx.lineTo(-0.6,0.2);ctx.closePath();
-  ctx.fillStyle='rgba(240,232,210,.25)';ctx.fill();ctx.strokeStyle='#d8b04a';ctx.lineWidth=0.9;ctx.stroke();
-  const f=clamp(frac,0,1);ctx.fillStyle='#e8c47f';
-  ctx.beginPath();const ty=-4+4*(1-f);ctx.moveTo(-3.5*f,ty);ctx.lineTo(3.5*f,ty);ctx.lineTo(0,0.2);ctx.closePath();if(f>0.02)ctx.fill();
-  const bh=4.3*(1-f);ctx.beginPath();ctx.moveTo(-3.5,4.5);ctx.lineTo(3.5,4.5);ctx.lineTo(3.5-bh*0.7,4.5-bh);ctx.lineTo(-3.5+bh*0.7,4.5-bh);ctx.closePath();ctx.fill();
+// An hourglass icon (HUD turns of the glass, gate timers). One silhouette in every state, as HUD icons are read by
+// their shape first: caps wider than the glass, two posts and rounded bulbs (straight triangles meeting at a point read
+// as an X at this size), a dark rim so it holds on any wall. The state is in the sand alone: sand in the top bulb is
+// time to come (bright), sand in the bottom bulb has run (spent: dull when frac is 0 and dim is set).
+function drawGlass(ctx,x,y,frac,cap,dim){ctx.save();ctx.translate(x,y);
+  const f=clamp(frac,0,1),bulbs=()=>{ctx.beginPath();ctx.moveTo(-3.7,-5.4);ctx.quadraticCurveTo(-4.3,-1.5,-0.75,0);ctx.quadraticCurveTo(-4.3,1.5,-3.7,5.4);
+    ctx.lineTo(3.7,5.4);ctx.quadraticCurveTo(4.3,1.5,0.75,0);ctx.quadraticCurveTo(4.3,-1.5,3.7,-5.4);ctx.closePath();};
+  // the dark rim round the whole shape, then the glass (dark inside, so the sand stands out)
+  ctx.fillStyle='#0b0812';ctx.fillRect(-6,-8,12,3.6);ctx.fillRect(-6,4.4,12,3.6);ctx.fillRect(-5.6,-5,2.2,10);ctx.fillRect(3.4,-5,2.2,10);
+  bulbs();ctx.lineWidth=2.4;ctx.strokeStyle='#0b0812';ctx.stroke();ctx.fillStyle='rgba(28,22,40,.92)';ctx.fill();
+  const sand=dim?'#8c7448':'#f2cf86';ctx.save();bulbs();ctx.clip();ctx.fillStyle=sand;
+  if(f>0.02){const t=-5.4+5*(1-f);ctx.fillRect(-5,t,10,-t);}                                     // the top bulb, emptying from the top
+  const h=5*(1-f);if(h>0.1){ctx.beginPath();ctx.moveTo(-5,5.4);ctx.lineTo(5,5.4);ctx.lineTo(5,5.4-h*0.8);ctx.lineTo(0,5.4-h);ctx.lineTo(-5,5.4-h*0.8);ctx.closePath();ctx.fill();} // the heap below
+  if(f>0.02&&f<0.98)ctx.fillRect(-0.35,0,0.7,5.4-h);                                              // the running thread
+  ctx.restore();
+  bulbs();ctx.lineWidth=0.8;ctx.strokeStyle='rgba(225,232,245,.75)';ctx.stroke();                 // the glass's own edge
+  ctx.fillStyle='rgba(255,255,255,.55)';ctx.fillRect(-2.9,-4.4,0.8,2.4);                          // a glint
+  ctx.fillStyle=cap||'#d8b04a';ctx.fillRect(-5.2,-7.2,10.4,2);ctx.fillRect(-5.2,5.2,10.4,2);ctx.fillRect(-4.9,-5.2,0.9,10.4);ctx.fillRect(4,-5.2,0.9,10.4); // caps and posts
+  ctx.fillStyle='rgba(255,245,210,.5)';ctx.fillRect(-5.2,-7.2,10.4,0.6);ctx.fillRect(-5.2,5.2,10.4,0.6);
   ctx.restore();}
 // the sandstorm: a churning wall of dark sand whose front is at ch.wx
 // the sandstorm in the new style: a towering wall of sand whose front boils forward in rolling billows, lit gold on
@@ -4545,7 +4629,7 @@ function gateRoundel(ctx,cx,cy,frac,running){const th=L.theme,T=Math.PI*2;ctx.sa
   ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,7.2,0,T);ctx.fill();
   ctx.lineWidth=1;ctx.strokeStyle='rgba(0,0,0,.55)';ctx.beginPath();ctx.arc(cx,cy,7,Math.PI,T);ctx.stroke();      // recess: shadowed top lip
   ctx.strokeStyle='rgba(255,255,255,.14)';ctx.beginPath();ctx.arc(cx,cy,7,0,Math.PI);ctx.stroke();
-  ctx.translate(cx,cy);ctx.scale(0.86,0.86);drawGlass(ctx,0,0,frac,'#b8902e');ctx.restore();}
+  ctx.translate(cx,cy);ctx.scale(0.74,0.74);drawGlass(ctx,0,0,frac,'#b8902e');ctx.restore();}
 // where a gate or jaw runs up into the ceiling, the ceiling's shadow falls across it
 function ceilShade(ctx,pl){const H=18,g=ctx.createLinearGradient(0,pl.top,0,pl.top+H);g.addColorStop(0,'rgba(6,4,10,.92)');g.addColorStop(0.12,'rgba(6,4,10,.7)');g.addColorStop(0.45,'rgba(6,4,10,.32)');g.addColorStop(1,'rgba(6,4,10,0)');
   ctx.fillStyle=g;ctx.fillRect(pl.L0-4,pl.top,pl.W+8,H);}
@@ -4834,8 +4918,11 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     const wc=g.alive?wallPress(g.x,g.y,g.face,g.pose):null;ctx.save();figClip(ctx,0,null,wc);
     drawActor(ctx,g,g.x+(wc?wc.dx:0),g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:(g.alive&&g.state!=='idle'&&g.state!=='drop'),hasSword:!g.skel,pale:true,flash:g.flash,alpha:g.alive?undefined:clamp(1-(g.t-1.1)/0.8,0,1)});ctx.restore();}
   if(P&&!(P.state==='dead'&&P.cause==='fall'&&P.y>L.rows*TH)){
-    if(P.hideMode>0&&P.hideLg){ // behind the wall's face he is not removed but dimmed, so a climb reads as one continuous move
-      const lg=P.hideLg;ctx.save();ctx.beginPath();if(P.hideMode===2)ctx.rect(-1e5,lg.ys+1.5,2e5,1e5);else ctx.rect(lg.xe-HX,lg.ys+1.5,TW,HANG+16);ctx.clip();ctx.globalAlpha=0.4;
+    // behind the wall's face he is dimmed while he moves (jumping up, climbing), so a climb reads as one continuous move;
+    // once he hangs still the wall covers him as in PoP1, where a wall's front is drawn over the Kid (SDLPoP draw_tile_fore)
+    const dimA=P.state==='hang'?0.4*Math.max(0,1-P.t/0.3):0.4;
+    if(P.hideMode>0&&P.hideLg&&dimA>0.01){
+      const lg=P.hideLg;ctx.save();ctx.beginPath();if(P.hideMode===2)ctx.rect(-1e5,lg.ys+1.5,2e5,1e5);else ctx.rect(lg.xe-HX,lg.ys+1.5,TW,HANG+16);ctx.clip();ctx.globalAlpha=dimA;
       drawActor(ctx,P,P.x+(P.rdx||0),P.y+(P.rdy||0),P.face,P.pose,PAL_HERO,{yo:P.yo,hasSword:true,time:gameTime});ctx.restore();}
     ctx.save();figClip(ctx,P.hideMode,P.hideLg,P.state==='dead'?null:wallPress(P.x,P.y,P.face,P.pose));
     drawActor(ctx,P,P.x+(P.rdx||0),P.y+(P.rdy||0),P.face,P.pose,PAL_HERO,{yo:P.yo,sword:(P.sword&&!!P.foe)||P.state==='lowStrike'||P.state==='poke'||(P.lowSword&&P.state==='crouch')||P.state==='slide',swLen:P.state==='slide'?SL_BLADE:0,hasSword:true,flash:P.flash,alpha:P.state==='exit'?Math.max(0,1-P.t*1.1):undefined,flutter:Math.min(1,Math.abs(P.vx)/90+(P.state==='air'?0.8:0)),time:gameTime});
@@ -4890,7 +4977,8 @@ function gatherLights(x0,x1,y0,y1){
   for(const g of G)if(g.alive&&!g.gone)add(g.x,g.y-26,56,'205,195,225',0.22,'fill');
   for(const sn of SN)if(sn.alive&&!sn.gone)add(sn.x,sn.y-4,34,'200,230,170',0.25,'fill');
   for(const it of L.items)if(!it.taken){const col=it.type==='heal'||it.type==='big'?'255,90,70':it.type==='life'?'255,210,110':'110,130,255';add(it.x,SURF(it.r)-8,it.type==='big'?42:32,col,it.type==='big'?0.75:0.6,'item',{r:9,a:0.35});}
-  for(const cp of L.cps)add(cp.x,SURF(cp.r)-14,cp.on?46:38,'255,214,130',cp.on?0.5:0.42,'item'); // an unlit hourglass keeps a faint gold glint
+  for(const cp of L.cps){const gc=th.glow||'255,214,130',y=SURF(cp.r)-26; // lit, it lights the room like a lamp (torch strength); unlit it keeps a faint glint
+    if(cp.on){const k=cp.onAt!==undefined?clamp((gameTime-cp.onAt)/0.7,0,1):1;add(cp.x,y,150*k,gc,0.95*k,'item',{r:26,a:0.42*k});}else add(cp.x,y,38,gc,0.42,'item');}
   if(L.door.open>0)add(L.door.x+HX,SURF(L.door.r)-26,120*Math.min(1,L.door.open),'255,196,120',0.9*Math.min(1,L.door.open),'door',{r:28,a:0.3*L.door.open});
   for(const o of L.dyn){const f=o.f,X=o.c*TW;if(X<x0-160||X>x1+160)continue;const ys=SURF(o.r);
     if(f.t==='vent'){const ph=cyc(f,t);if(ph>=0.75)add(X+16,ys-24,110,'255,140,60',0.9*Math.min(1,(ph-0.75)/0.04)*Math.min(1,(1-ph)/0.05),'fire');}
@@ -5493,10 +5581,10 @@ function drawHUD(ctx){
   ctx.fillStyle='#e8c47f';ctx.font='11px Lalezar, Georgia, serif';const label='FLOOR '+L.n;ctx.fillText(label,x,top+7.5);
   x+=ctx.measureText(label).width+6;
   ctx.fillStyle='#cfc7e6';ctx.font='600 7.5px Vazirmatn, system-ui, sans-serif';ctx.fillText(fmt(levelTime),x,top+7);
-  x+=ctx.measureText(fmt(levelTime)).width+9;for(let i=0;i<SANDS;i++){ctx.globalAlpha=i<(S.sands|0)?1:0.3;drawGlass(ctx,x+i*8,top+7,i<(S.sands|0)?1:0);}ctx.globalAlpha=1;const leftEnd=x+SANDS*8;
+  x+=ctx.measureText(fmt(levelTime)).width+9;x+=2;for(let i=0;i<SANDS;i++){const on=i<(S.sands|0);drawGlass(ctx,x+i*13,top+7.5,on?1:0,on?null:'#7a6234',!on);}const leftEnd=x+SANDS*13;
   if(P){let tg=null,bd=1e9;for(const o of L.dyn){const f=o.f;if(f.t!=='gate'||!(f.tm>0)||f.tm===Infinity||!(f.dur>0)||gameTime-(f.heldAt||-9)<0.2)continue;const dd=Math.abs(o.c*TW+16-P.x)+Math.abs(o.r*TH-P.y)*2;if(dd<bd){bd=dd;tg=f;}}
     if(tg){const fr=tg.tm/tg.dur,cx=viewW/2,col=fr>0.5?'#e8c47f':fr>0.25?'#f0a040':'#ff5a4a',ty=leftEnd>cx-24?top+21:top+7;
-      if(!(fr<0.25&&Math.floor(tg.tm*4)%2)){drawGlass(ctx,cx-14,ty,fr);ctx.textAlign='left';ctx.fillStyle=col;ctx.font='12px Lalezar, Georgia, serif';ctx.fillText(tg.tm.toFixed(1),cx-6,ty+1);}}}
+      if(!(fr<0.25&&Math.floor(tg.tm*4)%2)){drawGlass(ctx,cx-15,ty,fr);ctx.textAlign='left';ctx.fillStyle=col;ctx.font='12px Lalezar, Georgia, serif';ctx.fillText(tg.tm.toFixed(1),cx-6,ty+1);}}}
   const foe=P&&P.foe&&P.foe.alive?P.foe:null;
   if(foe&&foe.skel){const sx=hud.r-6,sy=top+6;ctx.fillStyle='#e9e3cf';ctx.beginPath();ctx.arc(sx,sy,4.2,0,Math.PI*2);ctx.fill();ctx.fillRect(sx-2.6,sy+2,5.2,3);ctx.fillStyle='#0b0812';ctx.fillRect(sx-2.6,sy-1,1.8,1.8);ctx.fillRect(sx+0.8,sy-1,1.8,1.8);ctx.fillRect(sx-0.4,sy+3,0.8,2);}
   else if(foe){const tr=foe.tr||TIERS[0];for(let i=0;i<foe.maxHp;i++){const hx=hud.r-7-i*10;heart(ctx,hx,top+2,i<foe.hp,tr.heart,tr.hi);}
