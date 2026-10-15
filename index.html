@@ -260,10 +260,11 @@ function themeName(n){const i=Math.floor((n-1)/4),t=THEMES[i%THEMES.length],k=Ma
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=9;
-const APP_VERSION='43'; // set by the build; shown on the title and pause screens
+const APP_VERSION='44'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
-  hints:prev?prev.hints:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
-function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(s.gen!==GEN){s.gen=GEN;s.cp=-1;s.resume=null;s.floorTime=0;}
+  hints:prev?prev.hints:{},learned:prev?prev.learned:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
+function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(!s.learned){s.learned={};if(s.level>2){s.learned.gap=s.learned.climb=s.learned.drop=1;}if(s.maxHp>3)s.learned.potion=1;} // an old save: whoever got past floor 2 can run, jump, climb and let go; the rest of the moves come back as hints until done
+    if(s.gen!==GEN){s.gen=GEN;s.cp=-1;s.resume=null;s.floorTime=0;}
     if(!s.chaseLen){s.chaseLen=1;if(s.started&&(s.cp>=0||s.resume||s.floorTime>0))s.legacyFloor=s.level;}return s;}}catch(e){}return null;}
 let S=loadSave()||newSave();
 if(S.set.lightDef!==1){S.set.lightDef=1;S.set.lightMode='torch';} // Torchlight is the default from v42, once, also for saves that stored Classic only because it was the default
@@ -2150,7 +2151,7 @@ function makeGuard(gd,i){const d=L.d,cap=gd.cap,sk=!!gd.skel,tr=cap?CAPT:TIERS[g
 function makeSnake(sp){return {x:sp.x,r:sp.r,y:SURF(sp.r),lo:sp.lo,hi:sp.hi,dir:sp.dir||-1,state:'slither',t:0,ph:Math.random()*6,alive:true,gone:false,cool:0,lunge:0,hitDone:false};}
 
 function startLevel(n,cpIdx){
-  quiet=false;L=genLevel(n,levelSeed(n),false,n===S.legacyFloor);REW.length=0;rw=null;if(cpIdx<0){S.sands=SANDS;S.cpPlates=[];}
+  quiet=false;if(hintFloor!==n){hintFloor=n;hintSeen={};}hintQ.length=0;L=genLevel(n,levelSeed(n),false,n===S.legacyFloor);REW.length=0;rw=null;if(cpIdx<0){S.sands=SANDS;S.cpPlates=[];}
   G=L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];
   P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;
   if((S.lifeTaken||[]).includes(n))for(const it of L.items)if(it.type==='life')it.taken=true;
@@ -2226,7 +2227,9 @@ const pCol=(x=P.x)=>Math.floor(x/TW);
 const rowOf=y=>Math.floor((y-1)/TH);
 const pRow=()=>rowOf(P.y);
 const supported=(x=P.x)=>solidBelow(L,Math.floor(x/TW),pRow());
-function setState(s){if((s==='stop'||s==='turn')&&P.state==='run'&&GFX().fx&&Math.abs(P.vx)>60)dust(P.x-P.face*4,P.y,4);P.state=s;P.t=0;if(s!=='crouch'&&s!=='poke')P.lowSword=false;if(s!=='air')P.plant=null;}
+const LRN_ST={climb:['climb'],drink:['potion'],push:['block'],pull:['block'],slide:['banner'],wallrun:['wallrun'],climbDown:['drop'],poke:['poke','snake'],lowStrike:['snake']}; // states that mean a move was done
+function learn(...ids){let w=false;for(const id of ids)if(!S.learned[id]){S.learned[id]=1;w=true;}if(w)writeSave();}
+function setState(s){if(P){const lk=LRN_ST[s];if(lk)learn(...lk);else if(s==='lift'&&P.lift)learn(P.lift.t==='chain'?'chain':'lift');}if((s==='stop'||s==='turn')&&P.state==='run'&&GFX().fx&&Math.abs(P.vx)>60)dust(P.x-P.face*4,P.y,4);P.state=s;P.t=0;if(s!=='crouch'&&s!=='poke')P.lowSword=false;if(s!=='air')P.plant=null;}
 function setE(e,s){e.state=s;e.t=0;}
 function msg(text,dur=3,kind='msg'){banner={text,t:0,dur,kind};}
 // a short tinted pulse over the whole view; 'Softer flashes' turns it down to a faint wash
@@ -2262,7 +2265,7 @@ function clampMove(x0,x1,y,self,crawl){
 // ================= player =================
 function startFall(vx){setState('air');P.vx=vx;P.vy=0;P.fallY=P.y;P.autoGrab=false;P.jumpKind=null;}
 function nearGuard(range){let best=null,bd=1e9;for(const g of G){if(!g.alive||g.state==='drop'||g.state==='fall')continue;if(Math.abs(g.y-P.y)>8)continue;const d=Math.abs(g.x-P.x);if(d<range&&d<bd){best=g;bd=d;}}return best;}
-function enterGarde(g){P.foe=g;P.face=g.x>P.x?1:-1;if(!P.sword)Snd.play('draw');P.sword=true;P.lowSword=false;P.vx=0;setState('garde');hint(g.skel?'skel':'fight');if(!g.skel&&(g.tier>0||g.cap)&&S.hints.fight)hint('ranks');}
+function enterGarde(g){P.foe=g;P.face=g.x>P.x?1:-1;if(!P.sword)Snd.play('draw');P.sword=true;P.lowSword=false;P.vx=0;setState('garde');hint(g.skel?'skel':'fight');if(!g.skel&&(g.tier>0||g.cap)&&(S.hints.fight||S.learned.fight))hint('ranks');}
 function hazardEdge(maxD){
   const row=pRow();let c=pCol();
   for(let i=0;i<3;i++){
@@ -2288,7 +2291,7 @@ function beamOverhead(run){const row=pRow(),vx=run?183:132,vy=run?190:159,T=2*vy
   return false;}
 function lowLandsSafe(run){const [vx,vy]=LOWJ[run?'run':'stand'],x=P.x+P.face*vx*2*vy/GRAV,c=Math.floor(x/TW),row=pRow(),f=F(L,c,row);
   return solidBelow(L,c,row)&&B(L,c,row)!==WALL&&!(f&&(f.t==='spikes'||f.t==='loose'));}
-function launch(){const run=P.jumpKind==='run';let vx=run?183:132,vy=run?190:159;P.lowJump=false;
+function launch(){const run=P.jumpKind==='run';P.jx=P.x;P.jy=P.y;let vx=run?183:132,vy=run?190:159;P.lowJump=false;
   if(beamOverhead(run)&&lowLandsSafe(run)){[vx,vy]=LOWJ[run?'run':'stand'];P.lowJump=true;}
   setState('air');P.vx=P.face*vx;P.vy=-vy;P.fallY=P.y;P.autoGrab=true;Snd.play('jump');}
 function startStep(){
@@ -2353,7 +2356,7 @@ function stCrouch(dt,ix){
     if(!solidBelow(L,Math.floor((want+ix*6)/TW),pRow()))return;
     let nx=clampMove(P.x,want,P.y,P,true);
     const lim=crouchLimit(ix);if(lim!==null&&(nx-lim)*ix>0)nx=(P.x-lim)*ix>0?P.x:lim;
-    if(Math.abs(nx-P.x)>0.01){P.x=nx;const ph0=P.ph;P.ph+=CRAWL*dt/26;P.crawling=true;if(Math.floor(ph0*2)!==Math.floor(P.ph*2))Snd.play('step');}
+    if(Math.abs(nx-P.x)>0.01){P.x=nx;const ph0=P.ph;P.ph+=CRAWL*dt/26;P.crawling=true;if(!S.learned.crawl)learn('crawl');if(Math.floor(ph0*2)!==Math.floor(P.ph*2))Snd.play('step');}
   }
 }
 function tryDrink(){for(const it of L.items){if(it.taken||it.r!==pRow())continue;if(Math.abs(it.x-P.x)<14){P.drinkIt=it;setState('drink');return true;}}return false;}
@@ -2396,12 +2399,12 @@ function updateBlocks(dt){for(const bl of L.ext.blocks){
 function armPassage(f){if(f.armed)return;f.armed=1;
   if(f.chain){f.chain.forEach((t,k)=>{if(t.s===0){t.s=1;t.tm=-(1.8+0.36*k);}});Snd.play('creak');msg((f.g?gateMsg(f)+' ':'')+'The cracked floor behind you is starting to give way. Run!',3.8);}
   if(f.amb&&!quiet)pendingGuards.push({at:gameTime+0.6,spec:f.amb});}
-function triggerLoose(f){if(f.s!==0)return;if(f.sturdy){if(!f.creaked){f.creaked=1;Snd.play('creak');}return;}f.s=1;f.tm=0;Snd.play('creak');}
+function triggerLoose(f){if(f.s!==0)return;if(f.drop&&!f.sturdy)learn('collapse');if(f.sturdy){if(!f.creaked){f.creaked=1;Snd.play('creak');}return;}f.s=1;f.tm=0;Snd.play('creak');}
 function standOn(){
   const c=pCol(),r=pRow(),f=F(L,c,r);
   if(f){
     if(f.t==='loose')triggerLoose(f);
-    else if(f.t==='plate')pressPlate(f);
+    else if(f.t==='plate'){learn('plate');pressPlate(f);}
     else if(f.t==='trigger')armPassage(f);
     else if(f.t==='lplate'){f.press=gameTime;const lf=f.lf,y=f.e?lf.yB:lf.yT;if(!liftDocked(lf,!f.e)&&lf.tgt!==y&&!(P.state==='lift'&&P.lift===lf)){lf.tgt=y;Snd.play('gate');hint('lift');}}
     else if(f.t==='closer'&&!f.jam){f.press=gameTime;if(f.g.tm>0||f.g.open>0.05){f.g.tm=0;f.g.slam=true;Snd.play('gate');shake(0.9);hint('closer');}}
@@ -2409,6 +2412,8 @@ function standOn(){
   }
   for(let i=0;i<L.cps.length;i++){const cp=L.cps[i];if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<14){cp.on=true;L.cpIndex=i;S.cp=i;S.floorTime=levelTime;S.cpPlates=pressedPlates();const fill=(S.sands|0)<SANDS;S.sands=SANDS;writeSave();msg(fill?'The hourglass turns and your glass fills. If you fall, you rise here.':'The hourglass turns. If you fall, you rise here.',3.2);Snd.play('cp');sparks(cp.x,SURF(cp.r)-22,10,'#e8c47f');}}
 }
+// a jump that ends hanging on a ledge: across a pit (gap, wide) or a storey up with Grab held (jgrab)
+function learnGrab(ys){const jk=P.jumpKind;if(jk!=='run'&&jk!=='stand')return;const dx=Math.abs(P.x-P.jx);if(dx>=40)learn('gap');if(jk==='run'&&ys<P.jy-40)learn('jgrab');else if(jk==='run'&&dx>=80)learn('wide');}
 function tryGrab(py){
   const hp=py-HANG,hn=P.y-HANG;
   for(let r=Math.floor((hp+4)/TH)-1;r<=Math.floor((hn+4)/TH)-1;r++){
@@ -2421,7 +2426,7 @@ function tryGrab(py){
         const xe=s>0?(lc+1)*TW:lc*TW,hx=xe+s*7;
         if(Math.abs(P.x-hx)>12)continue;
         const face=-s;if(!I.g&&(face!==P.face||(ys<P.fallY-2&&!['wall','kick','slip'].includes(P.jumpKind))))continue;
-        P.x=hx;P.y=ys+HANG;P.face=face;P.vx=0;P.vy=0;P.ledge={c:lc,r,s,xe,ys};P.jumpKind=null;setState('hang');Snd.play('grab');
+        learnGrab(ys);P.x=hx;P.y=ys+HANG;P.face=face;P.vx=0;P.vy=0;P.ledge={c:lc,r,s,xe,ys};P.jumpKind=null;setState('hang');Snd.play('grab');
         const lf=F(L,lc,r);if(lf&&lf.t==='loose')triggerLoose(lf);
         return true;
       }
@@ -2441,7 +2446,9 @@ function landingSurface(py,ny){
   return null;
 }
 function land(h){
-  P.y=h.ys;P.vy=0;const dist=h.ys-P.fallY;P.jumpKind=null;
+  P.y=h.ys;P.vy=0;const dist=h.ys-P.fallY;
+  if(P.jumpKind==='run'||P.jumpKind==='stand'){const a=Math.min(P.x,P.jx),b=Math.max(P.x,P.jx);if(b-a>=40)learn('gap');for(let c=pCol(a);c<=pCol(b);c++){const sf=F(L,c,h.r);if(sf&&sf.t==='spikes'&&c!==pCol()){learn('spikes');break;}}} // a jump that cleared spikes counts
+  P.jumpKind=null;
   const f=F(L,pCol(),h.r);
   if(f&&f.t==='spikes'){f.ext=1;return die('spikes');}
   if(dist>=170){flashScreen('#ffffff',0.55,0.3);return die('fall');}
@@ -2516,7 +2523,7 @@ function startPlant(sd,go){P.plant={sd,t0:gameTime,go};P.vx=0;P.face=sd;
   Snd.play('plant');if(GFX().fx)dust(P.x+sd*7,P.y-22,2);if(P.lk)P.lk.sq=0.92;}
 function kickOff(sd){P.plant=null;P.vx=-sd*KICK_VX;P.vy=KICK_VY;P.face=-sd;P.fallY=P.y;P.autoGrab=true;P.jumpKind='kick';P.kickT=gameTime;P.wallT=-9;
   P.pose=mk(PS.kickPush); // the facing flips here: the push leg is already stretched back to the wall
-  Snd.play('kick');dust(P.x+sd*6,P.y-20,4);hint('walljump');if(P.lk)P.lk.sqv+=2.2;}
+  Snd.play('kick');dust(P.x+sd*6,P.y-20,4);hint('walljump');learn('walljump','shaft');if(P.lk)P.lk.sqv+=2.2;}
 // one tick planted on a wall; false once he has left it (the rest of the air tick then runs as usual)
 function stPlant(dt){const pl=P.plant,pt=gameTime-pl.t0;
   if(!pl.go&&took('j',0.15))pl.go=true;
@@ -2583,9 +2590,11 @@ function resolveStrike(att,def){
   if(dx<6||dx>40||Math.abs(def.y-att.y)>8)return;
   if(def.state==='parry'&&def.t<0.32){
     if(att===P)setState('blocked');else setE(att,'blocked');
+    if(isP)learn('parried');
     if(!isP){if(Math.random()<def.ripo)def.ripoAt=def.t+0.08;if(!def.skel)hint('parried');}
     Snd.play('clang');sparks((att.x+def.x)/2+att.face*4,att.y-31,10,'#ffe6a8');ring((att.x+def.x)/2+att.face*4,att.y-31,'#ffe6a8',9);shake(0.8);hitStop=0.05;return;
   }
+  if(att===P)learn('fight');
   if(isP){if(P.inv>0)return;P.inv=0.3;flashScreen('#d8231c',0.42,0.2);hurt(1,'sword');if(P.state!=='dead'){setState('hurt');knock(P,att.face);}}
   else if(def.skel){def.flash=0.2;def.pendingParry=null;setE(def,'hurt');def.combo=gameTime-def.lastHit<1.4?def.combo+1:1;def.lastHit=gameTime;
     {const nx=clampMove(def.x,def.x+att.face*SKEL_KNOCK,def.y,def);def.x=def.pit<0?Math.min(def.hi,nx):Math.max(def.lo,nx);}
@@ -2607,7 +2616,7 @@ function updatePlayer(dt){
     case'turn':if(P.t>=0.14)setState('stand');break;
     case'run':stRun(dt,ix);break;
     case'stop':P.vx=approach(P.vx,0,700*dt);if(ix===P.face&&!I.g){setState('run');break;}runMove(dt);if(P.state==='stop'&&Math.abs(P.vx)<1){P.vx=0;setState('stand');}break;
-    case'step':{const k=Math.min(1,P.t/0.3);P.x=lerp(P.sx,P.tx,ease(k));if(k>=1){setState('stand');if(!supported())startFall(0);else standOn();}break;}
+    case'step':{const k=Math.min(1,P.t/0.3);P.x=lerp(P.sx,P.tx,ease(k));if(k>=1){const sf=F(L,pCol(),pRow());if(sf&&sf.t==='spikes')learn('spikes');setState('stand');if(!supported())startFall(0);else standOn();}break;}
     case'edgeWalk':P.x=approach(P.x,P.tx,120*dt);if(!supported()){startFall(0);break;}if(Math.abs(P.x-P.tx)<0.3)startJump('stand');break;
     case'crouch':stCrouch(dt,ix);break;
     case'poke':if(!supported()){startFall(0);break;}if(!P.hitDone&&P.t>=0.1){P.hitDone=true;for(const sn of SN){if(!sn.alive||sn.r!==pRow())continue;const dx=(sn.x-P.x)*P.face;if(dx>-4&&dx<40)killSnake(sn);}}if(P.t>=0.34)setState('crouch');break;
@@ -2635,7 +2644,7 @@ function updatePlayer(dt){
       if(!I.g||!bannerAt()){setState('air');P.vx=0;P.jumpKind=null;P.autoGrab=false;}break;}
     case'swing':{const sp=swingPos();P.x=sp.hx;P.y=sp.hy+24.5;P.swTh=sp.th;
       if(Math.floor(((gameTime-P.sw0)*SW_W)/Math.PI)!==Math.floor(((gameTime-P.sw0-dt)*SW_W)/Math.PI))Snd.play('swing');
-      if(took('j')){const c=sp.c;setState('air');P.fallY=P.y;P.autoGrab=true;P.jumpKind='swing';
+      if(took('j')){learn('swing');const c=sp.c;setState('air');P.fallY=P.y;P.autoGrab=true;P.jumpKind='swing';
         if(c>0.15){P.vx=P.face*(120+80*c);P.vy=-(130+90*c);}else{P.vx=P.face*45*c;P.vy=-20;}Snd.play('jump');P.lastBar=P.bar;P.barOff=gameTime;P.bar=null;break;}
       if(took('d')){setState('air');P.fallY=P.y;P.vx=0;P.vy=0;P.autoGrab=false;P.jumpKind=null;P.lastBar=P.bar;P.barOff=gameTime;P.bar=null;}break;}
     case'air':stAir(dt);break;
@@ -2983,7 +2992,12 @@ const HINTS={
   chain:'Step on as a slab passes.',
   double:'Two marked gates. Each answers to the plate of its colour, one above and one below. The one with the hourglass will not stay open.',
 };
-function hint(id){if(S.hints[id])return;S.hints[id]=1;writeSave();if(!hintQ.includes(id))hintQ.push(id);}
+// A hint for a move comes back (once a floor) until the move is done; the moves are the ids in HINT_MOVE, learned by learn() where they succeed.
+// Every other hint is plain information and shows once ever. One hint at a time: while one waits or shows, new ones are dropped (they come again).
+const HINT_MOVE=new Set(['gap','wide','climb','drop','spikes','crawl','fight','parried','poke','snake','potion','plate','block','wallrun','walljump','swing','banner','shaft','collapse','jgrab','lift','chain']);
+let hintFloor=-1,hintSeen={};
+function hintDue(id){return HINT_MOVE.has(id)?!S.learned[id]&&!hintSeen[id]:!S.hints[id];}
+function hint(id){if(hintQ.length||!hintDue(id))return;hintQ.push({id,t:gameTime});}
 function checkHints(){
   if(mode!=='play'||!P||P.state==='dead')return;
   if(L.n===1&&levelTime>1.2)hint('move');
@@ -3015,7 +3029,8 @@ function checkHints(){
     if(L.secret&&Math.abs(L.secret.c*TW+16-P.x)<120&&Math.abs(L.secret.r-r)<=1&&L.items.some(it=>it.hidden&&!it.taken))hint('secret');
     if(L.door.r===r&&Math.abs(L.door.x-P.x)<120){if(L.door.open<0.95)hint('door');else hint('enter');}
   }
-  if(!banner&&hintQ.length){const id=hintQ.shift();msg(HINTS[id],4.6,'hint');}
+  if(hintQ.length&&gameTime-hintQ[0].t>2.5)hintQ.length=0; // too late: he has moved on
+  if(!banner&&hintQ.length){const id=hintQ.shift().id;if(hintDue(id)){S.hints[id]=1;hintSeen[id]=1;writeSave();msg(HINTS[id],3.8,'hint');}}
 }
 
 // ================= main update =================
@@ -5385,7 +5400,7 @@ addEventListener('orientationchange',()=>setTimeout(layout,120));
 if(window.claude&&window.claude.hot&&window.claude.hot.snapshot){try{window.claude.hot.snapshot(()=>({save:S}));}catch(e){}}
 
 // test hooks
-window.__HK={genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
+window.__HK={hint,learn,HINTS,HINT_MOVE,get banner(){return banner;},set banner(v){banner=v;},genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
   load(n,seed,test){clearInput();quiet=!!test;L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;mode="play";intro=0;FX.length=0;STORMG.length=0;clearRooms();cam.snap=true;updateCamera(0);return L;},
   loadMap(spec){return spec;},
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
