@@ -89,7 +89,7 @@ window.runBot = function (n, seed, opts) {
       else if (p.state === 'garde') {
         if (g.state === 'blocked' || g.state === 'hurt') press('g');
         else if (Math.abs(g.x - p.x) > 34) press(g.x > p.x ? 'r' : 'l');
-        else if (g.state !== 'strike' && Math.random() < (g.skel ? 0.16 : 0.08)) press('g');
+        else if (g.state !== 'strike' && (window.botRnd || Math.random)() < (g.skel ? 0.16 : 0.08)) press('g');
       }
       step(); continue;
     }
