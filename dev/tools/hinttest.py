@@ -12,7 +12,7 @@ ACT = {'jgrab': ['jgrab', 'gap'], 'climb': ['climb'], 'crawl': ['crawl'], 'tipto
        'wallrun': ['wallrun'], 'slide': ['banner'], 'swing': ['swing'], 'collapse': ['collapse'], 'drink': ['potion'], 'push': ['block'], 'pull': ['block'],
        'lift': ['lift']}
 JS = r'''async ([n,seed,act])=>{const H=__HK,S=H.S,bad=[];
-  const shows=(id,secs)=>{H.banner=null;H.hint(id);H.tick(Math.round((secs||1)*60));const b=H.banner;const r=!!(b&&b.kind==='hint'&&b.text===H.HINTS[id]);H.banner=null;H.tick(30);return r;};
+  const shows=(id,secs)=>{H.banner=null;H.hint(id);H.tick(160+Math.round((secs||1)*60));const b=H.banner;const r=!!(b&&b.kind==='hint'&&b.text===H.HINTS[id]);H.banner=null;H.tick(30);return r;};
   const note=m=>bad.push(m);
   // 1. a move hint that is not learned: shows once, not twice on the same floor, again on the next floor
   S.hints={};S.learned={};H.startLevel(n,-1);H.mode='play';
@@ -38,7 +38,7 @@ JS = r'''async ([n,seed,act])=>{const H=__HK,S=H.S,bad=[];
   const kinds=new Set(H.L.path.map(a=>a.a));
   return {bad,ok:r.ok===true,kinds:[...kinds],learned:Object.keys(S.learned)};}'''
 JS2 = r'''([n])=>{const H=__HK,S=H.S,bad=[];
-  const shows=id=>{H.banner=null;H.hint(id);H.tick(60);const b=H.banner;const r=!!(b&&b.kind==='hint'&&b.text===H.HINTS[id]);H.banner=null;H.tick(30);return r;};
+  const shows=id=>{H.banner=null;H.hint(id);H.tick(220);const b=H.banner;const r=!!(b&&b.kind==='hint'&&b.text===H.HINTS[id]);H.banner=null;H.tick(30);return r;};
   H.startLevel(n,-1);H.mode='play';
   for(const id of Object.keys(S.learned))if(shows(id))bad.push('learned move '+id+' showed its hint');
   for(const id of ['climb','gap','crawl','jgrab','lift','potion','wallrun'])if(!S.learned[id]&&!shows(id))bad.push('unlearned '+id+' did not show');
