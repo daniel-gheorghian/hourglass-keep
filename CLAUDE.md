@@ -29,7 +29,7 @@ they load `bot.js` by a relative path and write their output next to themselves.
 
 ## Build
 
-From the repo root, with N the release number (current release v40, next v41):
+From the repo root, with N the release number (current release v41, next v42):
 
 ```
 python3 dev/tools/build.py dev/hourglass-keep.html index.html sw.js N
