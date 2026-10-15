@@ -10,7 +10,7 @@ hi = int(sys.argv[2]) if len(sys.argv) > 2 else lo
 f = '/Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'
 ACT = {'jgrab': ['jgrab', 'gap'], 'climb': ['climb'], 'crawl': ['crawl'], 'tiptoe': ['spikes'], 'walljump': ['walljump', 'shaft'],
        'wallrun': ['wallrun'], 'slide': ['banner'], 'swing': ['swing'], 'collapse': ['collapse'], 'drink': ['potion'], 'push': ['block'], 'pull': ['block'],
-       'lift': ['lift']}
+       'lift': ['lift'], 'chain': ['chain']}  # (a chain lift is a 'lift' action with chn: it learns 'chain', not 'lift')
 JS = r'''async ([n,seed,act])=>{const H=__HK,S=H.S,bad=[];
   const shows=(id,secs)=>{H.banner=null;H.hint(id);H.tick(160+Math.round((secs||1)*60));const b=H.banner;const r=!!(b&&b.kind==='hint'&&b.text===H.HINTS[id]);H.banner=null;H.tick(30);return r;};
   const note=m=>bad.push(m);
@@ -35,7 +35,7 @@ JS = r'''async ([n,seed,act])=>{const H=__HK,S=H.S,bad=[];
   // 4. play the floor with the bot: the moves its path uses are learned, and their hints never show again
   S.hints={};S.learned={};
   const r=await runBot(n,seed,{});
-  const kinds=new Set(H.L.path.map(a=>a.a));
+  const kinds=new Set(H.L.path.map(a=>a.a==='lift'&&a.chn?'chain':a.a));
   return {bad,ok:r.ok===true,kinds:[...kinds],learned:Object.keys(S.learned)};}'''
 JS2 = r'''([n])=>{const H=__HK,S=H.S,bad=[];
   const shows=id=>{H.banner=null;H.hint(id);H.tick(220);const b=H.banner;const r=!!(b&&b.kind==='hint'&&b.text===H.HINTS[id]);H.banner=null;H.tick(30);return r;};

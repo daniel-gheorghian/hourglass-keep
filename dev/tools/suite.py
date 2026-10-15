@@ -1,5 +1,5 @@
 # The regression suite in one command, spread over the machine's cores.
-#   python3 suite.py quick     bot on floors 1-27 with one seed, plus the unit tests (while iterating)
+#   python3 suite.py quick     bot on floors 1-35 with one seed, plus the unit tests (while iterating)
 #   python3 suite.py           before each commit: bot 4 seeds, forks, flag/family floors, metrics, unit tests
 #   python3 suite.py release   before a release: all of that plus the fight runs and the render check
 #   -j N                       number of Chromium processes (default: physical cores; more only slows a laptop down)
@@ -18,7 +18,7 @@ def physical_cores():
     try: return int(subprocess.run(['sysctl', '-n', 'hw.physicalcpu'], capture_output=True, text=True).stdout.strip())
     except Exception: return max(2, (os.cpu_count() or 4) // 2)
 jobs = int(args[args.index('-j') + 1]) if '-j' in args else physical_cores()
-FLOORS = range(1, 28)
+FLOORS = range(1, 36) # (the owner plays past floor 30: the bot and render runs go to 35)
 
 # (group, argv, check(stdout) -> (ok, summary)); groups with several jobs are merged into one line.
 def run2_check(out):
@@ -59,7 +59,7 @@ if mode == 'release':
     J += [('featbot fight', ['featbot.py', '3', 'fight', 'flags', str(n), 'flag:' + w], feat_check) for n in [9, 18, 24, 25, 27] for w in ['tower', 'rotten', 'barracks', 'longway', 'maze']] # one flag on one floor per job
 unit = ['forkscan.py', 'respawnplates.py', 'puzzlescan.py', 'slabresume.py', 'primtest.py',
         'hdtest.py', 'vertscan.py', 'lifttest.py', 'featurescan.py', 'orphanscan.py', 'mazescan.py', 'glauto.py']
-J += [('hinttest', ['hinttest.py', str(n), str(n)], tail_check()) for n in [1, 3, 6, 9, 12, 16, 20, 24, 27, 32]] # hints until learned: moves the bot uses are learned, their hints stop (floor 1 also checks the old-save migration)
+J += [('hinttest', ['hinttest.py', str(n), str(n)], tail_check()) for n in [1, 3, 6, 9, 10, 12, 16, 20, 24, 27, 32, 35]] # hints until learned: moves the bot uses are learned, their hints stop (floor 1 also checks the old-save migration)
 J += [(u[:-3], [u], tail_check()) for u in unit if os.path.exists(os.path.join(HERE, u))]
 J += [('gratepeek', ['gratepeek.py', '6', '27', '6'], tail_check(r'tested [1-9]\d* bad 0 '))] # crouching on a grating shows the flask below
 # longest jobs first so the tail of the run isn't one slow floor
