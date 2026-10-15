@@ -3379,7 +3379,7 @@ function drawBreaches(g,rx,ry,th,bgOn){const ox=-rx*ROOM_W,oy=-ry*ROOM_H;
       g.globalAlpha=1;const sh=new Path2D();sh.rect(b.fx0+ox-20,b.fy0+oy-20,b.fx1-b.fx0+40,b.fy1-b.fy0+40);sh.addPath(breachPath(b,ox,oy,1.6,2.4,b.facing));
       g.fillStyle='rgba(0,0,0,.5)';g.fill(sh,'evenodd');g.restore();}
     g.strokeStyle='rgba(0,0,0,.45)';g.lineWidth=1.4;g.stroke(P);
-    if(bgOn){g.save();g.globalCompositeOperation='destination-out';g.fillStyle='#000';g.fill(P);g.restore();}else{g.fillStyle='#07060c';g.fill(P);}
+    if(bgOn){g.save();g.globalCompositeOperation='destination-out';g.fillStyle='#000';g.fill(P);g.restore();}else{g.fillStyle=th.mortar;g.fill(P);}
     // the wall's own thickness, seen inside the break: everything of the opening that the back of the wall doesn't
     // line up with; the broken tops of the bricks catch the light, the undersides are in shadow
     g.save();g.clip(P);const gy=g.createLinearGradient(0,b.y0+oy,0,b.y1+oy);gy.addColorStop(0,'rgba(6,4,10,.95)');gy.addColorStop(1,th.lo);g.fillStyle=gy;g.fill(P);
@@ -3482,6 +3482,9 @@ function wallCell(g,X,Y,gc,gr,th){
     for(let k=Math.floor((wx0-off)/w)-1;jx(k)<wx0+TW;k++){const a=jx(k),b=jx(k+1);if(b<=wx0)continue;
       stoneFace(P,X+(a-wx0),y0,b-a,h,hash2(k,R),wearLevel((a+b)/2,gr*TH+sy*h+h/2),th);}}
   fillStones(g,P,th);
+  const hh=hash2(gc*17+3,gr*29+7);
+  if(gr%2===1){g.fillStyle='rgba(0,0,0,.26)';g.fillRect(X,Y+TH-3.2,TW,3.2);g.fillStyle='rgba(255,240,215,.16)';g.fillRect(X,Y+TH-3.2,TW,1.1);} // a string course every second storey: the mass of wall is not one flat texture
+  else if(hh%17===0){const nx=X+16,ny=Y+TH*0.55;g.beginPath();g.moveTo(nx-5,ny+11);g.lineTo(nx-5,ny-3);g.quadraticCurveTo(nx-5,ny-9,nx,ny-12);g.quadraticCurveTo(nx+5,ny-9,nx+5,ny-3);g.lineTo(nx+5,ny+11);g.closePath();g.fillStyle='rgba(4,3,8,.5)';g.fill();g.strokeStyle='rgba(255,240,215,.2)';g.lineWidth=0.9;g.stroke();} // a blind niche now and then
 }
 // decoration (arches, wall panels, hangings) is laid out on the terrain as built, not as it is now
 function D0(c,r){if(c<0||c>=L.cols||r<0)return WALL;if(r>=L.rows)return EMPTY;return L.base0?L.base0[r*L.cols+c]:L.base[r*L.cols+c];}
