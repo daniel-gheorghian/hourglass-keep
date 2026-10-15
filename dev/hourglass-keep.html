@@ -2237,10 +2237,10 @@ function canRewind(){return (S.sands|0)>0&&REW.length>0;}
 function startRewind(){let ti=0;
   for(let i=REW.length-1;i>=0;i--){const sn=REW[i];if(sn.t<=deathAt-4.5&&REW_STATES.includes(sn.P.state)&&!sn.P.dead){ti=i;break;}}
   S.sands=(S.sands|0)-1;S.floorDeaths=(S.floorDeaths||0)+1;S.deaths++;writeSave();
-  rw={idx:REW.length-1,target:ti,acc:0};mode='rewind';banner=null;flashFx=null;FX.length=0;hitStop=0;Snd.play('rewind');}
+  rw={idx:REW.length-1,target:ti,acc:0};rwBeg=performance.now()/1000;mode='rewind';banner=null;flashFx=null;FX.length=0;hitStop=0;Snd.play('rewind');}
 function stepRewind(){rw.acc+=1.6;while(rw.acc>=1&&rw.idx>rw.target){rw.acc-=1;rw.idx--;}
   applySnap(REW[rw.idx]);
-  if(rw.idx<=rw.target){REW.length=rw.target+1;rw=null;mode='play';clearInput();P.inv=1.2;P.stumble=0;deadT=0;
+  if(rw.idx<=rw.target){REW.length=rw.target+1;rw=null;rwEnd=performance.now()/1000;mode='play';clearInput();P.inv=1.2;P.stumble=0;deadT=0;
     msg((S.sands>0?'The sands turn back. '+S.sands+(S.sands===1?' turn':' turns')+' of the glass left.':'The sands turn back. The glass is empty until the next hourglass.'),2.8);}}
 const STABLE=['stand','run','stop','garde','advance','retreat','land','crouch','step','turn','parry','strike','blocked'];
 function snapshotResume(){
@@ -2432,7 +2432,7 @@ function updateFlasks(dt){if(!L.flk)return;
     if(f.lt>0||f.y>=f.gy-f.r){f.y=f.gy-f.r;f.lt+=dt;f.rot=1.4;if(f.lt>0.35)L.flk.splice(i,1);continue;}
     f.ft+=dt;f.vy+=GRAV*dt;f.y+=f.vy*dt;f.rot=lerp(f.rot0,1.4,Math.min(1,f.ft/0.3));if(f.y>=f.gy-f.r){f.y=f.gy-f.r;f.lt=0.0001;}}}
 function atDoor(){const d=L.door;return d&&d.r===pRow()&&Math.abs(P.x-d.x)<16;}
-function hurt(n,cause){if(P.state==='dead')return;P.hp-=n;P.flash=0.3;Snd.play('hurt');try{navigator.vibrate&&navigator.vibrate(40);}catch(e){}if(P.hp<=0){P.hp=0;die(cause);}}
+function hurt(n,cause){if(P.state==='dead')return;if(n>0)hitAt=performance.now()/1000;P.hp-=n;P.flash=0.3;Snd.play('hurt');try{navigator.vibrate&&navigator.vibrate(40);}catch(e){}if(P.hp<=0){P.hp=0;die(cause);}}
 function die(cause){if(P.state==='dead')return;deathAt=gameTime;S.resume=null;writeSave();setState('dead');P.cause=cause;P.flash=0;for(const g of G)if(g.flash>0)g.flash=0;P.vx=0;P.vy=0;P.hp=0;P.sword=false;P.yo=0;mode='dead';deadT=0;Snd.play('die');if(cause==='blade'||cause==='spikes'||cause==='sword')sparks(P.x,P.y-24,8,'#d94a3a');}
 const PAIRN=['amber','teal','violet'],PAIRC=['#e0a43a','#45b8b0','#a77ee6'];
 function gateMsg(f){if(f.fwd)return 'Somewhere ahead a gate grinds open, but its sand is running. Run for it!';const nm=f.pair!==undefined?'The '+PAIRN[f.pair]+' gate':'A gate';
@@ -2830,6 +2830,7 @@ function updateGuard(g,dt){
     return;}
   if(!g.alive){lerpPose(g.pose,PS.dead,1-Math.exp(-dt*9),g.pose);
     // a defeated guard lies still for a moment, then crumbles away like sand
+    if(DISS.on){if(g.t>DISS.t0)dissGrains(g,dt);if(g.t>DISS.t0+DISS.dur+0.15)g.gone=true;return;}
     if(g.t>1.1&&g.t-dt<=1.1){for(let i=0;i<14;i++)FX.push({x:g.x+(Math.random()-0.5)*34,y:g.y-2-Math.random()*8,vx:(Math.random()-0.5)*26,vy:-8-Math.random()*22,g:40,life:0.6+Math.random()*0.5,t:0,col:'rgba(214,190,140,.8)',sz:1.3});}
     if(g.t>1.9)g.gone=true;return;}
   const dx=P.x-g.x,adx=Math.abs(dx),same=Math.abs(P.y-g.y)<8&&P.state!=='dead'&&P.state!=='exit';
@@ -4962,7 +4963,8 @@ function drawDynamic(ctx,x0,x1,y0,y1){
   for(const sn of SN){if(sn.gone||sn.x<x0-30||sn.x>x1+30||sn.y<y0||sn.y>y1+20)continue;if(GFX().hd)drawSnakeHD(ctx,sn);else drawSnake(ctx,sn);}
   for(const g of G){if(g.gone)continue;if(g.x<x0-30||g.x>x1+30||g.y<y0-10||g.y>y1+70)continue;
     const wc=g.alive?wallPress(g.x,g.y,g.face,g.pose):null;ctx.save();figClip(ctx,0,null,wc);
-    drawActor(ctx,g,g.x+(wc?wc.dx:0),g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:(g.alive&&g.state!=='idle'&&g.state!=='drop'),hasSword:!g.skel,pale:true,flash:g.flash,alpha:g.alive?undefined:clamp(1-(g.t-1.1)/0.8,0,1)});ctx.restore();}
+    if(!g.alive&&DISS.on&&g.t>DISS.t0)dissolveGuard(ctx,g,(g.t-DISS.t0)/DISS.dur,c=>drawActor(c,g,g.x,g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:false,hasSword:!g.skel,pale:true,flash:g.flash})); // S3-A: crumbles into sand
+    else{if(g.dz)g.dz.on=false;drawActor(ctx,g,g.x+(wc?wc.dx:0),g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:(g.alive&&g.state!=='idle'&&g.state!=='drop'),hasSword:!g.skel,pale:true,flash:g.flash,alpha:g.alive||DISS.on?undefined:clamp(1-(g.t-1.1)/0.8,0,1)});}ctx.restore();}
   if(P&&!(P.state==='dead'&&P.cause==='fall'&&P.y>L.rows*TH)){
     // behind the wall's face he is dimmed while he moves (jumping up, climbing), so a climb reads as one continuous move;
     // once he hangs still the wall covers him as in PoP1, where a wall's front is drawn over the Kid (SDLPoP draw_tile_fore)
@@ -4983,6 +4985,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
 }
 // things that give off their own light: drawn after the lighting pass so it never dims them
 function drawEmissive(ctx,x0,x1,y0,y1){
+  for(const g of G)if(g.dz&&!g.alive&&!g.gone)dissGlow(ctx,g); // S3-A
   for(const o of L.dyn)if(o.f.t==='vent'&&o.c*TW>x0-60&&o.c*TW<x1+60)drawVentFire(ctx,o,o.f);
   {const chs=L.ext.chase;if(chs&&chs.on){const D=chs.diss;
     if((chs.fade||0)<1||(D&&!D.over)){if(GFX().atmo)drawStormHD(ctx,chs,x0,x1,y0,y1);else if((chs.fade||0)<1)drawStorm(ctx,chs,x0,x1,y0,y1);}
@@ -5369,6 +5372,107 @@ const renderXf={VZ:1,camD:0,camDY:0}; // the last frame's world-to-canvas transf
 // frame time that stays above ~22 ms while the shader is on.
 const GLP={on:false,dead:false,gl:null,cv:null,sceneC:null,sceneG:null,sw:0,sh:0,note:'',ms:0,lastR:0,fps:/[?&]fps\b/.test(location.search),why:'',sum:0,n:0,wsum:0,wn:0,skip:true,used:false};
 const GLV=`attribute vec2 a_p;varying vec2 v_u;void main(){v_u=a_p*0.5+0.5;gl_Position=vec4(a_p,0.,1.);}`;
+// ================= S3-A: feel (rewind look, hit and last-life feedback, sand dissolve) =================
+// Three effects, each behind a constant (GLFX.rewind / GLFX.hit / GLFX.low here, DISS.on below). HK holds this frame's strengths,
+// filled once per render by hkFxUpdate: rw (the sands turning back, eased in and out), hit (a short decaying punch when the prince
+// is hurt), low (the slow pulse at the screen's edges on the last life) and dist (1, or 0.25 under "Softer flashes").
+const HK={rw:0,hit:0,low:0,dist:1,now:0};let hkT=0,hitAt=-9,rwBeg=-9,rwEnd=-9,lowK=0;
+const sstep=x=>{x=x<0?0:x>1?1:x;return x*x*(3-2*x);};
+function hkFxUpdate(){const now=performance.now()/1000,dt=Math.min(0.1,Math.max(0,now-hkT)),calm=!!S.set.calm;hkT=now;HK.now=now;HK.dist=calm?0.25:1;
+  // rewind: up in 0.18 s, and when play resumes the world is still sepia and fades back over half a second
+  HK.rw=mode==='rewind'&&rw?sstep((now-rwBeg)/0.18):1-sstep((now-rwEnd)/0.55);
+  const ha=now-hitAt;HK.hit=ha<0.4?(1-ha/0.4)*(1-ha/0.4):0; // (once per hurt, 0.4 s: well under the three-flashes-a-second line, and it is a smear, not a flash)
+  // the last life: eased in and out, pulsing about once in 2.3 s; "Softer flashes" holds it still and faint
+  lowK+=(((mode==='play'&&P&&P.hp===1&&S.maxHp>1&&P.state!=='dead')?1:0)-lowK)*Math.min(1,dt*2.5);
+  HK.low=lowK*(calm?0.3:0.3+0.7*(0.5+0.5*Math.sin(now*6.283/2.3-1.57)));}
+// shader side (Torchlight): u_a = rewind, hit, low, distortion scale; u_c = the prince in uv, and a clock that keeps running while
+// the game's own time runs backwards. Rewind: ripples running inward to the prince, sepia from the luma with a sand glow where he
+// stands, the edges drawn in. Hit: the scene read again along the line from the prince with red and blue offset in opposite ways
+// (a chromatic split) and smeared toward him (a radial blur).
+const GLSL_A=`uniform vec4 u_a;uniform vec3 u_c;
+    vec2 hkWarp(vec2 uv){float k=u_a.x*u_a.w;if(k<.003)return uv;vec2 d=(uv-u_c.xy)*vec2(u_vg.x,1.);float r=length(d);
+      return uv-d/(r+.001)*vec2(1./u_vg.x,1.)*sin(r*30.+u_c.z*8.)*k*exp(-r*1.4)*.006;}
+    vec3 hkScene(vec2 uv){float k=u_a.y;if(k<.003)return texture2D(u_sc,uv).rgb;vec2 d=(uv-u_c.xy)*k*u_a.w*.06;vec3 s=vec3(0.);
+      for(int i=0;i<4;i++){float f=float(i)/3.;s+=vec3(texture2D(u_sc,uv-d*f*1.25).r,texture2D(u_sc,uv-d*f).g,texture2D(u_sc,uv-d*f*.75).b);}return s*.25;}
+    vec3 hkGrade(vec3 c,vec2 uv){float k=u_a.x,l=u_a.z;if(k<.003&&l<.003)return c;
+      vec2 d=(uv-u_c.xy)*vec2(u_vg.x,1.);float e=length((uv-.5)*vec2(1.7,1.9));
+      if(k>.003){float lm=dot(c,vec3(.299,.587,.114));c=mix(c,vec3(lm)*vec3(1.2,.95,.66)+vec3(.03,.018,0.),k*.85);
+        c+=vec3(.32,.22,.09)*exp(-dot(d,d)*6.)*k*.14;c*=1.-k*smoothstep(.85-.35*k,1.3,e)*.6;}
+      if(l>.003)c=mix(c,vec3(.5,.03,.05)*(.6+dot(c,vec3(.33))),l*smoothstep(.55,1.15,e)*.42);
+      return c;}`;
+function hkUniforms(U,VZ,camD,camDY,w,h){const {gl}=GLP;
+  gl.uniform4f(U.u_a,GLFX.rewind?HK.rw:0,GLFX.hit?HK.hit:0,GLFX.low?HK.low:0,HK.dist);
+  gl.uniform3f(U.u_c,P?(P.x*VZ-camD)/w:.5,P?1-((P.y-30)*VZ-camDY)/h:.5,HK.now%1000);}
+// Classic, and the grains in both modes: the sands turn back in 2D. Classic gets a desaturate (the 'saturation' blend with grey), a
+// sepia multiply, the edges drawn in (one cached gradient, scaled), rings running inward; both draw sand streaks flowing in to him.
+let rwGrad=null,rwGradW=0;
+function rewind2D(ctx,sh){const W=viewW,H=ROOM_H,k=HK.rw,now=HK.now,calm=HK.dist<1,px=P?clamp(P.x-cam.x,0,W):W/2,py=P?clamp(P.y-cam.y-30,0,H):H/2;
+  if(!(sh&&GLFX.rewind)){ctx.save();
+    ctx.globalCompositeOperation='saturation';ctx.globalAlpha=0.85*k;ctx.fillStyle='#808080';ctx.fillRect(0,0,W,H);
+    ctx.globalCompositeOperation='multiply';ctx.globalAlpha=0.6*k;ctx.fillStyle='#f2cf94';ctx.fillRect(0,0,W,H);
+    ctx.globalCompositeOperation='source-over';
+    if(!rwGrad||rwGradW!==W){rwGradW=W;rwGrad=ctx.createRadialGradient(0,0,H*0.5,0,0,Math.max(W,H)*0.85);rwGrad.addColorStop(0,'rgba(40,24,8,0)');rwGrad.addColorStop(1,'rgba(40,24,8,.7)');}
+    ctx.globalAlpha=k;ctx.translate(W/2,H/2);const s=1-0.4*k;ctx.scale(s,s);ctx.fillStyle=rwGrad;ctx.fillRect(-W*2,-H*2,W*4,H*4);ctx.setTransform(VS,0,0,VS,0,0);
+    if(!calm){ctx.strokeStyle='rgba(255,226,160,.4)';ctx.lineWidth=1.2;for(let i=0;i<3;i++){const f=(now*0.9+i/3)%1;ctx.globalAlpha=k*Math.sin(f*3.14159)*0.7;ctx.beginPath();ctx.ellipse(px,py,10+(1-f)*W*0.5,6+(1-f)*H*0.5,0,0,6.2832);ctx.stroke();}}
+    ctx.restore();}
+  ctx.save();ctx.globalAlpha=Math.min(1,k*1.2);ctx.strokeStyle='rgba(255,226,160,.7)';ctx.lineWidth=0.9;ctx.beginPath();
+  for(let i=0,n=calm?28:64;i<n;i++){const h=hash2(i,77),a=(h%1000)/1000*6.2832,R=30+((h>>>10)%1000)/1000*W*0.55,f=(now*(0.45+((h>>>20)%100)/160)+((h>>>4)%100)/100)%1,r=R*(1-f),c=Math.cos(a),sn=Math.sin(a),x=px+c*r*1.3,y=py+sn*r*0.8;
+    if(x<0||x>W||y<0||y>H)continue;ctx.moveTo(x,y);ctx.lineTo(x+c*(2+7*(1-f)),y+sn*(2+5*(1-f)));}
+  ctx.stroke();ctx.restore();
+  if(mode==='rewind'){ctx.textAlign='center';ctx.fillStyle='#ffe2a0';ctx.font='16px Lalezar, Georgia, serif';ctx.fillText('The sands turn back',W/2,H*0.38);}}
+// last life in Classic: a dark red glow at the edges, pulsing slowly (the shader does the same in Torchlight)
+let lowGrad=null,lowGradW=0;
+function lowEdge2D(ctx){const k=HK.low;if(k<0.01)return;const W=viewW,H=ROOM_H;
+  if(!lowGrad||lowGradW!==W){lowGradW=W;lowGrad=ctx.createRadialGradient(W/2,H/2,H*0.5,W/2,H/2,Math.max(W,H)*0.7);lowGrad.addColorStop(0,'rgba(120,6,12,0)');lowGrad.addColorStop(1,'rgba(120,6,12,.6)');}
+  ctx.globalAlpha=k;ctx.fillStyle=lowGrad;ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}
+// ---- the sand dissolve (both modes) ----
+// A defeated guard lies still for t0, then 'dur' seconds of crumbling: a fixed noise (ranked, so the share gone is exactly the
+// progress) is the threshold; below it a pixel is gone, in a thin band above it the pixel glows white-gold to amber (the sand
+// burning off its edge, as in the usual dissolve shaders), and grains fall from the body (dissGrains). The guard is drawn into a
+// small canvas first, masked with a canvas built from the noise by putImageData (no reading back, nothing allocated per frame).
+const DISS={on:true,t0:1.1,dur:1.0,W:128,H:80,OX:64,OY:68,w:0.07,NW:192,NH:120};
+let dissN=null,dissCM=null,dissCE=null,dissIm=null,dissIe=null,dissM=null,dissE=null,dissK=0,dissRow=null,dissCol=null,DISS_RAMP=null,dissM32=null,dissE32=null;
+function dissInit(){const {NW,NH}=DISS,r=mulberry32(4711),v=new Float32Array(NW*NH),n=NW*NH;
+  const layer=(cell,amp)=>{const gw=Math.ceil(NW/cell)+2,gh=Math.ceil(NH/cell)+2,gr=new Float32Array(gw*gh);for(let i=0;i<gr.length;i++)gr[i]=r();
+    for(let y=0;y<NH;y++){const fy=y/cell,iy=fy|0,ty=fy-iy,sy=ty*ty*(3-2*ty);for(let x=0;x<NW;x++){const fx=x/cell,ix=fx|0,tx=fx-ix,sx=tx*tx*(3-2*tx),a=gr[iy*gw+ix],b=gr[iy*gw+ix+1],c=gr[(iy+1)*gw+ix],d=gr[(iy+1)*gw+ix+1];
+      v[y*NW+x]+=amp*((a+(b-a)*sx)*(1-sy)+(c+(d-c)*sx)*sy);}}};
+  layer(1,0.3);layer(3,0.4);layer(11,0.3); // grain, clumps, drifts
+  const ix=Array.from({length:n},(_,i)=>i).sort((a,b)=>v[a]-v[b]);dissN=new Float32Array(n);for(let k=0;k<n;k++)dissN[ix[k]]=k/(n-1);
+  const rp=[[255,246,205],[255,232,160],[255,206,110],[246,176,84],[226,150,70],[214,170,110]];DISS_RAMP=new Uint32Array(16); // (ABGR, little endian)
+  for(let i=0;i<16;i++){const t=i/15*(rp.length-1),a=rp[Math.floor(t)],b=rp[Math.min(rp.length-1,Math.ceil(t))],f=t%1,c=a.map((x,j)=>Math.round(x+(b[j]-x)*f));DISS_RAMP[i]=((255<<24)|(c[2]<<16)|(c[1]<<8)|c[0])>>>0;}
+  dissRow=new Int32Array(DISS.H*4);dissCol=new Int32Array(DISS.W*4);}
+function dissBuf(K){if(dissK===K)return;dissK=K;const W=DISS.W*K,H=DISS.H*K,mk=()=>{const c=document.createElement('canvas');c.width=W;c.height=H;return c;};
+  dissCM=mk();dissCE=mk();dissM=dissCM.getContext('2d');dissE=dissCE.getContext('2d');dissIm=dissM.createImageData(W,H);dissIe=dissE.createImageData(W,H);
+  dissM32=new Uint32Array(dissIm.data.buffer);dissE32=new Uint32Array(dissIe.data.buffer);}
+function dissolveGuard(ctx,g,p,draw){
+  if(!dissN)dissInit();
+  const K=clamp(Math.round(renderXf.VZ),1,3),W=DISS.W*K,H=DISS.H*K,w=DISS.w,q=clamp(p,0,1)*(1+w),bx=Math.round(g.x)-DISS.OX,by=Math.round(g.y)-DISS.OY;
+  dissBuf(K);
+  let z=g.dz;if(!z){const mk=()=>document.createElement('canvas');z=g.dz={T:mk(),E:mk(),K:0,on:false,ox:Math.floor(Math.random()*(DISS.NW-DISS.W)),oy:Math.floor(Math.random()*(DISS.NH-DISS.H)),pts:null,n:0,acc:0,bx:0,by:0};}
+  if(z.K!==K){z.K=K;z.T.width=z.E.width=W;z.T.height=z.E.height=H;}
+  const t=z.T.getContext('2d'),e=z.E.getContext('2d');
+  t.setTransform(1,0,0,1,0,0);t.globalCompositeOperation='source-over';t.globalAlpha=1;t.clearRect(0,0,W,H);
+  t.setTransform(K,0,0,K,-bx*K,-by*K);draw(t);t.setTransform(1,0,0,1,0,0);
+  if(!z.pts){ // once: where the body is, in the noise's cells, for the grains to start from
+    const id=t.getImageData(0,0,W,H).data,pts=[];for(let y=0;y<H;y+=K)for(let x=0;x<W;x+=K)if(id[(y*W+x)*4+3]>128)pts.push([x/K+bx-g.x,y/K+by-g.y,((y/K|0)+z.oy)*DISS.NW+(x/K|0)+z.ox]);
+    const n=Math.min(80,pts.length);z.pts=new Float32Array(n*3);for(let i=0;i<n;i++)z.pts.set(pts[Math.floor(Math.random()*pts.length)],i*3);z.n=n;}
+  const m=dissM32,ed=dissE32,NW=DISS.NW;
+  for(let y=0;y<H;y++)dissRow[y]=((y/K|0)+z.oy)*NW;for(let x=0;x<W;x++)dissCol[x]=(x/K|0)+z.ox;
+  let i=0;for(let y=0;y<H;y++){const rb=dissRow[y];for(let x=0;x<W;x++,i++){const v=dissN[rb+dissCol[x]];
+    if(v<q){m[i]=0;ed[i]=0;}else{m[i]=0xFFFFFFFF;const d=v-q;ed[i]=d<w?DISS_RAMP[(d/w*15)|0]:0;}}}
+  dissM.putImageData(dissIm,0,0);dissE.putImageData(dissIe,0,0);
+  t.globalCompositeOperation='destination-in';t.drawImage(dissCM,0,0);t.globalCompositeOperation='source-atop';t.drawImage(dissCE,0,0);t.globalCompositeOperation='source-over';
+  e.setTransform(1,0,0,1,0,0);e.globalCompositeOperation='source-over';e.clearRect(0,0,W,H);e.drawImage(dissCE,0,0);e.globalCompositeOperation='destination-in';e.drawImage(z.T,0,0);e.globalCompositeOperation='source-over';
+  z.on=true;z.bx=bx;z.by=by;
+  ctx.drawImage(z.T,bx,by,DISS.W,DISS.H);return true;}
+// the burning edge of the sand, drawn after the lighting so it glows (called from drawEmissive)
+function dissGlow(ctx,g){const z=g.dz;if(!z||!z.on)return;ctx.globalCompositeOperation='lighter';ctx.globalAlpha=0.85;ctx.drawImage(z.E,z.bx,z.by,DISS.W,DISS.H);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';}
+const GRAIN_COL=['rgba(255,232,160,.95)','rgba(246,186,92,.9)','rgba(226,196,140,.85)','rgba(214,170,110,.85)'];
+function dissGrains(g,dt){const z=g.dz;if(!z||!z.pts||!z.n||FX.length>240)return;
+  const q=clamp((g.t-DISS.t0)/DISS.dur,0,1)*(1+DISS.w);z.acc+=dt*(S.set.calm?45:100);
+  while(z.acc>=1){z.acc--;const k=(Math.random()*z.n|0)*3,v=dissN[z.pts[k+2]|0];if(v>q||v<q-0.3)continue; // a spot of the body that is crumbling just now
+    const vy=-6-Math.random()*12,h=Math.max(0,-z.pts[k+1]),gr=90;
+    FX.push({x:g.x+z.pts[k]+(Math.random()-0.5)*2,y:g.y+z.pts[k+1],vx:(Math.random()-0.5)*16,vy,g:gr,life:Math.max(0.15,(-vy+Math.sqrt(vy*vy+2*gr*h))/gr),t:0,col:GRAIN_COL[(Math.random()*4)|0],sz:1.1+Math.random()*1.1});}}
 const GLSH={
   light:[`attribute vec2 a_k;attribute vec4 a_c;attribute vec4 a_o;attribute vec3 a_col;uniform vec2 u_s;varying vec2 v_k;varying vec3 v_col;varying vec2 v_f;
     void main(){v_k=a_k;v_col=a_col;v_f=a_o.xy;vec2 p=a_c.xy+a_k*a_c.z;gl_Position=vec4(p.x/u_s.x*2.-1.,1.-p.y/u_s.y*2.,0.,1.);}`,
@@ -5388,13 +5492,15 @@ const GLSH={
     precision mediump float;
     #endif
     varying vec2 v_u;uniform sampler2D u_sc,u_map,u_bl,u_mk;uniform vec2 u_d,u_vg,u_px,u_mp;uniform float u_t,u_sat;uniform vec4 u_fx;uniform vec3 u_sh,u_hi;
+    ${GLSL_A}
     void main(){
       vec3 m=texture2D(u_mk,v_u).rgb; // mask: r shadow, g heat, b storm
       vec2 uv=v_u;float hz=m.g*u_fx.y,st=m.b*u_fx.z;
       if(hz>.01){uv+=vec2(sin(v_u.y*260.+u_t*7.+v_u.x*50.)+.6*sin(v_u.y*110.-u_t*4.3),.7*sin(v_u.x*180.+u_t*5.))*hz*vec2(1.7,.9)*u_px;} // heat: the scene is read a little off, in rising ripples
       float e=st*(1.-st)*4.; // the storm's edge: a slow wave across its front
       if(e>.01)uv+=vec2(sin(v_u.y*40.+u_t*2.),sin(v_u.x*60.-u_t*3.)*.7)*e*vec2(1.8,1.3)*u_px;
-      vec3 s=texture2D(u_sc,uv).rgb,l=texture2D(u_map,v_u).rgb*1.5;
+      uv=hkWarp(uv); // S3-A
+      vec3 s=hkScene(uv),l=texture2D(u_map,v_u).rgb*1.5;
       float sh=(m.r*2.+texture2D(u_mk,v_u+vec2(u_mp.x,0.)).r+texture2D(u_mk,v_u-vec2(u_mp.x,0.)).r+texture2D(u_mk,v_u+vec2(0.,u_mp.y)).r+texture2D(u_mk,v_u-vec2(0.,u_mp.y)).r)/6.;
       l=mix(l,max(l,vec3(.95,.7,.42)),st*.55); // the storm is bright with its own dust
       l*=1.-sh*.85*u_fx.x; // a shadow takes the light away and a little of the ambient
@@ -5403,6 +5509,7 @@ const GLSH={
       c+=b*.6; // bloom
       if(st>.01){float g=fract(sin(dot(floor(vec2(v_u.x*420.-u_t*260.,v_u.y*110.)),vec2(12.9898,78.233)))*43758.5); // sand: a warm haze and streaks blowing along
         c=mix(c,vec3(.62,.42,.24)*(.4+dot(c,vec3(.33))),st*.22)+vec3(.9,.65,.35)*step(.975,g)*st*.16;}
+      c=hkGrade(c,v_u); // S3-A: rewind sepia and edges, last-life pulse
       float lm=dot(c,vec3(.299,.587,.114));c=mix(vec3(lm),c,u_sat)*mix(u_sh,u_hi,smoothstep(.08,.75,lm)); // the theme's grade: cooler or warmer shadows and lights
       c=c/(1.+max(c-.85,0.)*.6); // roll the bright end off instead of clipping it
       vec2 q=(v_u-vec2(.5,.45))*vec2(u_vg.x,1.);float v=smoothstep(.4,u_vg.y,length(q))*.66; // vignette (u_vg = aspect, outer radius)
@@ -5426,6 +5533,7 @@ function glInit(){
     const lp=P.light.p;gl.bindAttribLocation(lp,0,'a_k');gl.bindAttribLocation(lp,1,'a_c');gl.bindAttribLocation(lp,2,'a_o');gl.bindAttribLocation(lp,3,'a_col');
     for(const k in P){gl.linkProgram(P[k].p);if(!gl.getProgramParameter(P[k].p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(P[k].p));}
     for(const k in P){const u=P[k].u;for(const n in u)u[n]=gl.getUniformLocation(P[k].p,n);}
+    for(const n of ['u_a','u_c'])P.final.u[n]=gl.getUniformLocation(P.final.p,n); // S3-A
     const tri=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,tri);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
     const lb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,lb);gl.bufferData(gl.ARRAY_BUFFER,GLLIGHTS.byteLength,gl.DYNAMIC_DRAW);
     const sc=document.createElement('canvas');sc.width=cv.width;sc.height=cv.height;
@@ -5450,7 +5558,8 @@ function glSize(){
   GLP.mkC.width=lw;GLP.mkC.height=lh;if(GLP.mtex)gl.deleteTexture(GLP.mtex);GLP.mtex=glTex(gl,lw,lh);GLP.mkHad=true;
 }
 // ---- the effect mask: one small 2D canvas (the light map's size) read by the composite. r = shadows, g = heat, b = storm ----
-const GLFX={shadow:true,heat:true,storm:true,grade:true}; // each effect behind a constant: false turns it off in code
+const GLFX={shadow:true,heat:true,storm:true,grade:true};
+GLFX.rewind=GLFX.hit=GLFX.low=true; // S3-A // each effect behind a constant: false turns it off in code
 // per theme grade: tint of the shadows and of the lights, and saturation (kept subtle: the 2D grade still runs under it)
 const GLGRADE={dungeon:{sh:[.93,.98,1.07],hi:[1.04,1.01,.96],sat:.96},palace:{sh:[1.04,.99,.93],hi:[1.07,1.02,.92],sat:1.1},tile:{sh:[.95,.98,1.06],hi:[1.04,1.02,.95],sat:1.05},
   forge:{sh:[1.07,.94,.9],hi:[1.1,.99,.9],sat:1.1},crypt:{sh:[.9,1.06,1.0],hi:[.97,1.06,.99],sat:.92}};
@@ -5548,6 +5657,7 @@ function glFrame(lights,VZ,camD,camDY,th){
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);gl.useProgram(P.final.p);bind(0,GLP.tex);bind(1,GLP.fb.map.t);bind(2,GLP.fb.bl.t);bind(3,GLP.mtex);
   {const U=P.final.u,gr=gradeOf(th.style),on=GLFX.grade&&GFX().grade;gl.uniform1i(U.u_mk,3);gl.uniform2f(U.u_px,1/w,1/h);gl.uniform2f(U.u_mp,1/lw,1/lh);gl.uniform1f(U.u_t,t%1000);
     gl.uniform4f(U.u_fx,GLFX.shadow?1:0,GLFX.heat?1:0,GLFX.storm?1:0,0);gl.uniform1f(U.u_sat,on?gr.sat:1);gl.uniform3fv(U.u_sh,on?gr.sh:GLNEUT);gl.uniform3fv(U.u_hi,on?gr.hi:GLNEUT);}
+  hkUniforms(P.final.u,VZ,camD,camDY,w,h); // S3-A
   gl.uniform1i(P.final.u.u_sc,0);gl.uniform1i(P.final.u.u_map,1);gl.uniform1i(P.final.u.u_bl,2);gl.uniform2f(P.final.u.u_d,0,1.6/lh);gl.uniform2f(P.final.u.u_vg,viewW/ROOM_H,0.62*Math.max(viewW,ROOM_W)/ROOM_H);
   gl.drawArrays(gl.TRIANGLES,0,3);
   bind(0,GLP.tex);
@@ -5566,7 +5676,7 @@ function glTime(ms){
 function syncLightMode(){const b=document.getElementById('gShader');if(!b)return;const m=S.set.lightMode==='torch';b.setAttribute('aria-pressed',String(m));
   b.firstChild.nodeValue='Lighting: '+(m?'Torchlight':'Classic');b.querySelector('small').textContent=GLP.dead?'Not available on this device':m?'Lamps flicker and bloom, light falls off in the dark':'The lighting this game shipped with';}
 function render(){
-  const sh=shaderOn();
+  const sh=shaderOn();hkFxUpdate(); // S3-A
   if(sh){if(!GLP.used){GLP.skip=true;GLP.wsum=GLP.wn=0;}GLP.cv.style.display='';glSize();}else if(GLP.cv&&GLP.cv.style.display!=='none')GLP.cv.style.display='none';
   GLP.used=sh;GLOWK=sh?0.5:1;
   let ctx=sh?GLP.sceneG:gx;ctx.setTransform(1,0,0,1,0,0);
@@ -5601,11 +5711,9 @@ function render(){
     ctx=gx;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);ctx.setTransform(VS,0,0,VS,0,0);} // from here on only what the shader must not darken: flashes, HUD, text
   else{if(!vignette){vignette=ctx.createRadialGradient(viewW/2,ROOM_H/2,ROOM_H*0.45,viewW/2,ROOM_H/2,Math.max(viewW,ROOM_W)*0.66);vignette.addColorStop(0,'rgba(5,3,10,0)');vignette.addColorStop(1,'rgba(5,3,10,.5)');
     vignette2=ctx.createRadialGradient(viewW/2,ROOM_H*0.55,ROOM_H*0.4,viewW/2,ROOM_H*0.55,Math.max(viewW,ROOM_W)*0.62);vignette2.addColorStop(0,'rgba(5,3,10,0)');vignette2.addColorStop(1,'rgba(5,3,10,.66)');}
-  ctx.fillStyle=gf.grade?vignette2:vignette;ctx.fillRect(0,0,viewW,ROOM_H);}
+  ctx.fillStyle=gf.grade?vignette2:vignette;ctx.fillRect(0,0,viewW,ROOM_H);lowEdge2D(ctx);} // S3-A: last life, Classic
   if(flashFx){ctx.globalAlpha=Math.max(0,flashFx.a*(1-flashFx.t/flashFx.dur));if(flashFx.edge){const px=P?clamp(P.x-cam.x,40,viewW-40):viewW/2,py=P?clamp(P.y-cam.y-30,40,ROOM_H-40):ROOM_H/2,gr=ctx.createRadialGradient(px,py,26,px,py,Math.max(viewW,ROOM_H)*0.62);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,flashFx.col);ctx.fillStyle=gr;}else ctx.fillStyle=flashFx.col;ctx.fillRect(0,0,viewW,ROOM_H);ctx.globalAlpha=1;}
-  if(mode==='rewind'){ctx.fillStyle='rgba(214,160,80,.22)';ctx.fillRect(0,0,viewW,ROOM_H);ctx.fillStyle='rgba(255,226,160,.55)';
-    for(let i=0;i<70;i++){const h=hash2(i,77),x=(h%1000)/1000*viewW,y=((h>>>10)%1000)/1000*ROOM_H,sp=0.3+((h>>>20)%100)/100;ctx.fillRect((x+performance.now()*0.12*sp)%viewW,y,1.4,0.8);}
-    ctx.textAlign='center';ctx.fillStyle='#ffe2a0';ctx.font='16px Lalezar, Georgia, serif';ctx.fillText('The sands turn back',viewW/2,ROOM_H*0.38);}
+  if(HK.rw>0.003)rewind2D(ctx,sh); // S3-A: the sands turn back (Classic: the whole look; both: sand streaks)
   if(!document.body.classList.contains('panelOpen'))drawHUD(ctx);
   drawOverlayText(ctx);
   if(GLP.fps){ctx.textAlign='left';ctx.textBaseline='top';ctx.font='600 7px monospace';ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(hud.l-1,ROOM_H-17,92,12);ctx.fillStyle='#9fffd2';
@@ -5864,6 +5972,7 @@ window.__HK={tapCloth,THEMES,progOf,themeName,hint,learn,HINTS,HINT_MOVE,get ban
   get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,plantPose,legIK,mk,drawDynamic,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
   get S(){return S;},get GLP(){return GLP;},glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V};
+Object.assign(window.__HK,{hurt,HK,DISS,GLFX,setClock:f=>{performance.now=f;}}); // S3-A (tests)
 
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 })();
