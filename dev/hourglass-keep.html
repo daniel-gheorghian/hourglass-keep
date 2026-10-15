@@ -4977,8 +4977,8 @@ function glFrame(lights,VZ,camD,camDY,th){
     if(cx+r<0||cx-r>w||cy+r<0||cy-r>h)continue;
     for(let k=0;k<6;k++){const o=(n*6+k)*GLSTRIDE;B[o]=GLK[k][0];B[o+1]=GLK[k][1];B[o+2]=cx;B[o+3]=cy;B[o+4]=r;B[o+5]=0;B[o+6]=fl;B[o+7]=ph;B[o+8]=0;B[o+9]=0;B[o+10]=col[0]*a;B[o+11]=col[1]*a;B[o+12]=col[2]*a;}
     n++;}
-  const am=lk.amb.split(',');
-  gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.map.f);gl.viewport(0,0,lw,lh);gl.clearColor(am[0]/255/1.5,am[1]/255/1.5,am[2]/255/1.5,1);gl.clear(gl.COLOR_BUFFER_BIT);
+  const am=lk.amb.split(','),GLAMB=0.55; // ambient, darker than the classic map's so the gaps between torches fall into shadow (owner, v41)
+  gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.map.f);gl.viewport(0,0,lw,lh);gl.clearColor(am[0]*GLAMB/255/1.5,am[1]*GLAMB/255/1.5,am[2]*GLAMB/255/1.5,1);gl.clear(gl.COLOR_BUFFER_BIT);
   if(n){gl.useProgram(P.light.p);gl.uniform2f(P.light.u.u_s,w,h);gl.uniform1f(P.light.u.u_t,t);
     gl.bindBuffer(gl.ARRAY_BUFFER,GLP.lb);gl.bufferSubData(gl.ARRAY_BUFFER,0,B,0,n*6*GLSTRIDE);
     const S4=GLSTRIDE*4;gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,S4,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,4,gl.FLOAT,false,S4,8);
