@@ -255,6 +255,7 @@ function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(s.gen!==GEN){s.gen=GEN;s.cp=-1;s.resume=null;s.floorTime=0;}
     if(!s.chaseLen){s.chaseLen=1;if(s.started&&(s.cp>=0||s.resume||s.floorTime>0))s.legacyFloor=s.level;}return s;}}catch(e){}return null;}
 let S=loadSave()||newSave();
+if(S.set.lightDef!==1){S.set.lightDef=1;S.set.lightMode='torch';} // Torchlight is the default from v42, once, also for saves that stored Classic only because it was the default
 function writeSave(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 
 // ================= level access =================
@@ -2726,7 +2727,8 @@ function spawnDrop(s,r,hp,tier){const ng=makeGuard({x:s.x,r,lo:s.lo,hi:s.hi,hp,c
 function guardMove(g,dir){let tx=clamp(g.x+g.face*dir*13,g.lo,g.hi);if(dir>0&&Math.abs(P.x-tx)<20)tx=P.x-g.face*20;g.sx=g.x;g.tx=tx;setE(g,dir>0?'advance':'retreat');}
 function updateGuard(g,dt){
   g.t+=dt;if(g.flash>0)g.flash-=dt;
-  if(g.state==='fall'){g.vy=Math.min(g.vy+GRAV*dt,480);g.y+=g.vy*dt;g.x+=g.fx*24*dt;lerpPose(g.pose,PS.fall,1-Math.exp(-dt*12),g.pose);
+  if(g.state==='fall'){if(g.gone)return; // landed already: without this a fallen guard burst into sparks (and crashed) every frame from then on
+    g.vy=Math.min(g.vy+GRAV*dt,480);g.y+=g.vy*dt;g.x+=g.fx*24*dt;lerpPose(g.pose,PS.fall,1-Math.exp(-dt*12),g.pose);
     if(g.y>SURF(g.r)+TH*2-8||g.t>1.6||(g.y>=SURF(g.r+1)&&solidBelow(L,Math.floor(g.x/TW),g.r+1))){g.alive=false;g.gone=true;sparks(g.x,g.y-12,16,'#e9e3cf');dust(g.x,g.y,8);if(tileVisible(Math.floor(g.x/TW),g.r+2))Snd.play('crash');}
     return;}
   if(g.state==='drop'){g.vy=Math.min(g.vy+GRAV*dt,480);g.y+=g.vy*dt;lerpPose(g.pose,PS.fall,1-Math.exp(-dt*12),g.pose);
