@@ -5220,8 +5220,8 @@ function bgLayers(style,tod=0){const key=style+':'+tod+':'+VS.toFixed(2);let v=b
 // lens focused on the prince (Hollow Knight blurs its background layers, with aerial perspective on top). The blur is a small
 // image pyramid on the GPU (halve the layer once or twice with smoothing, then scale it back up): Safari's canvas `filter` is
 // still off by default, and a blur over the pixels in JS took ~1 s a theme.
-function bgBlurR(f){return 0.6+1.4*clamp(1-f/0.32,0,1);} // in background units: ~0.6 for the nearest layer, ~1.9 for the farthest
-function bgSoften(c,g,R){const lv=R<1.4?0:R<3?1:2;if(!lv)return;const w=c.width,h=c.height,p=4<<lv,W=w+2*p,Hh=h+2*p;
+function bgBlurR(f){return 1.2+2.8*clamp(1-f/0.32,0,1);} // in background units: ~1.2 for the nearest layer, ~4 for the farthest (owner: stronger)
+function bgSoften(c,g,R){const lv=R<1.4?0:R<3?1:R<6?2:3;if(!lv)return;const w=c.width,h=c.height,p=4<<lv,W=w+2*p,Hh=h+2*p;
   const mk=(a,b)=>{const q=document.createElement('canvas');q.width=a;q.height=b;q.getContext('2d').imageSmoothingEnabled=true;return q;};
   const t=mk(W,Hh),tg=t.getContext('2d');for(const ox of [p-w,p,p+w])tg.drawImage(c,ox,p); // the strip tiles sideways: wrap it into the margins
   tg.drawImage(t,0,p,W,1,0,0,W,p);tg.drawImage(t,0,p+h-1,W,1,0,p+h,W,p); // and repeat its top and bottom rows
@@ -5674,7 +5674,7 @@ function glMask(lights,VZ,camD,camDY){
 // (ambient only) there is no direction, so no relief. Things drawn over the walls that would carry the wall's pattern (the
 // prince, guards, flames, traps, items, falling stone) are rubbed back to neutral with soft ellipses.
 Object.assign(GLFX,{relief:true,ao:true,bgblur:true}); // unit B's switches: relief (Torchlight), corner shading and distance blur (both modes)
-const GLREL={n:0,gl:null,rp:null,xp:null,buf:null,fb:null,fw:0,fh:0,tex:new Map(),list:[],on:0,V:new Float32Array(64*24),sc:null,sg:null,ul:null,uk:null},GLREL_MAX=10,GLREL_K=0.32;
+const GLREL={n:0,gl:null,rp:null,xp:null,buf:null,fb:null,fw:0,fh:0,tex:new Map(),list:[],on:0,V:new Float32Array(64*24),sc:null,sg:null,ul:null,uk:null},GLREL_MAX=10,GLREL_K=0.6;
 const GLRV=`attribute vec2 a_p;attribute vec2 a_t;varying vec2 v_t,v_s;void main(){v_t=a_t;v_s=a_p*.5+.5;gl_Position=vec4(a_p,0.,1.);}`;
 const GLRS={room:[GLRV,`precision mediump float;varying vec2 v_t,v_s;uniform sampler2D u_rm,u_map;uniform vec2 u_tx,u_lo;uniform float u_k;
     float H(vec2 o){vec4 c=texture2D(u_rm,v_t+o*u_tx);return dot(c.rgb,vec3(.3,.59,.11))*c.a;} // height: the stone's brightness (an opening is a deep hole)
