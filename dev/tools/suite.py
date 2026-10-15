@@ -38,6 +38,7 @@ J += [('run2', ['run2.py', str(n), str(n), str(seeds)], run2_check) for n in FLO
 if mode == 'release':
     J += [('run2 fight', ['run2.py', str(n), str(n), '2', 'fight'], run2_check) for n in FLOORS]
     J += [('rendersmoke', ['rendersmoke.py', str(n), str(n)], render_check) for n in FLOORS]
+    J += [('rendersmoke torch', ['rendersmoke.py', str(n), str(n), 'torch'], render_check) for n in FLOORS] # the WebGL torchlight pass
 if mode != 'quick':
     J += [('metrics40', ['metrics40.py'], tail_check(r'FLAGS', 1))]
 def fork_check(out):
@@ -55,11 +56,11 @@ J += [('p4bot', ['p4bot.py', str(n), str(n), '3'], p4_check) for n in range(6, 2
 if mode == 'release':
     J += [('featbot fight', ['featbot.py', '3', 'fight', 'flags', str(n)], feat_check) for n in [9, 18, 24, 25, 27]]
 unit = ['forkscan.py', 'respawnplates.py', 'puzzlescan.py', 'slabresume.py', 'primtest.py',
-        'hdtest.py', 'vertscan.py', 'lifttest.py', 'featurescan.py', 'orphanscan.py', 'mazescan.py']
+        'hdtest.py', 'vertscan.py', 'lifttest.py', 'featurescan.py', 'orphanscan.py', 'mazescan.py', 'glauto.py']
 J += [(u[:-3], [u], tail_check()) for u in unit if os.path.exists(os.path.join(HERE, u))]
 J += [('gratepeek', ['gratepeek.py', '6', '27', '6'], tail_check(r'tested [1-9]\d* bad 0 '))] # crouching on a grating shows the flask below
 # longest jobs first so the tail of the run isn't one slow floor
-RANK = {'featbot fight': 0, 'run2 fight': 1, 'rendersmoke': 2, 'featbot': 3, 'metrics40': 4, 'featurescan': 4, 'forktest': 5, 'run2': 6}
+RANK = {'featbot fight': 0, 'run2 fight': 1, 'rendersmoke': 2, 'rendersmoke torch': 2, 'featbot': 3, 'metrics40': 4, 'featurescan': 4, 'forktest': 5, 'run2': 6}
 def floor_of(a): return max([int(x) for x in a[1:] if x.isdigit()] or [0])
 J.sort(key=lambda j: (RANK.get(j[0], 7), -floor_of(j[1])))
 
@@ -93,7 +94,7 @@ for g, rs in groups.items():
         p, n, h = (sum(x[i] for x in tot) for i in range(3))
         dmg_ok = g == 'run2 fight' or h == 0; ok &= dmg_ok; allok &= dmg_ok
         s = 'passed %d / %d, runs with damage %d' % (p, n, h)
-    elif g == 'rendersmoke':
+    elif g.startswith('rendersmoke'):
         s = 'floors %d, %s' % (len(rs), 'no errors' if ok else 'ERRORS')
     else:
         s = rs[0][2]

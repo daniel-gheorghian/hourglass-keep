@@ -24,6 +24,8 @@ body{font-family:var(--f-body);overflow:hidden;overscroll-behavior:none;-webkit-
 #stage>*{pointer-events:auto}
 #game{position:absolute;display:block;border-radius:4px;box-shadow:0 0 0 1px var(--line),0 18px 50px rgba(0,0,0,.55)}
 #app.overlay #game{border-radius:0;box-shadow:none}
+#glc{position:absolute;display:block;border-radius:4px;pointer-events:none}
+#app.overlay #glc{border-radius:0}
 #bPause{appearance:none;display:grid;place-items:center;padding:0;border-radius:50%;border:1.5px solid var(--line-strong);background:rgba(10,8,20,.45);color:var(--bone);cursor:pointer;touch-action:manipulation;z-index:3}
 #bPause svg{width:50%;height:50%;pointer-events:none}
 #bPause::before{content:'';position:absolute;inset:-12px} /* a bigger target than it looks */
@@ -191,6 +193,7 @@ body.portrait #rotate{display:flex}
           <button id="gFx" type="button" aria-pressed="true">Effects &amp; camera<small>Sword trails, impacts, shake, fight close-up</small></button>
           <button id="gHd" type="button" aria-pressed="true">New characters<small>Shaded bodies, flowing cloth, smoother moves</small></button>
           <button id="gBg" type="button" aria-pressed="true">Background<small>Views through the arches, moving in layers</small></button>
+          <button id="gShader" type="button" aria-pressed="false">Lighting: Classic<small>The lighting this game shipped with</small></button>
         </div>
         <p class="fine">If the game stutters, switch off Lighting first, then Atmosphere.</p>
         <div class="menu"><button id="bGfxClose" class="primary" type="button">Done</button></div>
@@ -3094,7 +3097,7 @@ function levelComplete(){
 
 // ================= rendering =================
 const cv=document.getElementById('game'),gx=cv.getContext('2d');
-let VS=1;
+let VS=1,GLOWK=1; // GLOWK: how much of each lamp's own drawn glow stays (half when the shader adds the light)
 const roomCache=new Map();
 let roomBuilds=0,prefetched=0,drawBuilds=0,roomJob=null;
 function newRoomCanvas(){const c=document.createElement('canvas');c.width=Math.max(1,Math.round(ROOM_W*VS));c.height=Math.max(1,Math.round(ROOM_H*VS));
@@ -3800,7 +3803,7 @@ function floorStand(ctx,x,top,base,col,hi){
 function drawLight(ctx,t,th){
   const free=lampFree(t),base=SURF(t.r)-HY+1.5,key=(t.r-1)*TH+11;
   const x=t.c*TW+16,y=SURF(t.r)-38,st=th.style,tm=gameTime,seed=(t.c*7+t.r*13)%10,f=Math.sin(tm*13+seed)*0.6+Math.sin(tm*7.3+seed*1.7)*0.4;
-  const glow=(gx,gy,r,a)=>{ctx.save();ctx.globalCompositeOperation='lighter';const gr=ctx.createRadialGradient(gx,gy,1,gx,gy,r);gr.addColorStop(0,'rgba('+th.glow+','+(a+f*0.04)+')');gr.addColorStop(1,'rgba('+th.glow+',0)');ctx.fillStyle=gr;ctx.fillRect(gx-r,gy-r,r*2,r*2);ctx.restore();};
+  const glow=(gx,gy,r,a)=>{ctx.save();ctx.globalCompositeOperation='lighter';const gr=ctx.createRadialGradient(gx,gy,1,gx,gy,r);gr.addColorStop(0,'rgba('+th.glow+','+(a+f*0.04)*GLOWK+')');gr.addColorStop(1,'rgba('+th.glow+',0)');ctx.fillStyle=gr;ctx.fillRect(gx-r,gy-r,r*2,r*2);ctx.restore();};
   if(st==='dungeon'&&free){ // pitch torch set in a tall iron stand
     glow(x+2,y-8,42,0.32);
     floorStand(ctx,x+3.2,y+8,base,'#2a2d36','#4a4f5c');
@@ -4590,11 +4593,11 @@ function gatherLights(x0,x1,y0,y1){
 }
 let lightC=null,lightG=null;
 // one low-resolution light map (ambient + every light, then the colour grade) multiplied over the scene
-function lightPass(ctx,lights,sc,camD,camDY){
+function lightPass(ctx,lights,sc,camD,camDY,gradeOnly){
   const g=GFX(),th=L.theme,lk=LOOK[th.style]||LOOK.dungeon,W=cv.width,Hh=cv.height,lw=Math.ceil(W/4),lh=Math.ceil(Hh/4);
   if(!lightC||lightC.width!==lw||lightC.height!==lh){lightC=document.createElement('canvas');lightC.width=lw;lightC.height=lh;lightG=lightC.getContext('2d');}
   const l=lightG;l.setTransform(1,0,0,1,0,0);l.globalCompositeOperation='source-over';l.globalAlpha=1;
-  if(g.light){l.fillStyle='rgb('+lk.amb+')';l.fillRect(0,0,lw,lh);l.globalCompositeOperation='lighter';l.setTransform(sc/4,0,0,sc/4,-camD/4,-camDY/4);
+  if(g.light&&!gradeOnly){l.fillStyle='rgb('+lk.amb+')';l.fillRect(0,0,lw,lh);l.globalCompositeOperation='lighter';l.setTransform(sc/4,0,0,sc/4,-camD/4,-camDY/4);
     for(const q of lights){l.globalAlpha=Math.min(1,q.a);l.drawImage(lightSprite(q.col),q.x-q.r,q.y-q.r,2*q.r,2*q.r);}
     l.globalAlpha=1;l.setTransform(1,0,0,1,0,0);}
   else{l.fillStyle='#fff';l.fillRect(0,0,lw,lh);}
@@ -4889,8 +4892,128 @@ function ambientGlow(ctx,x0,x1,y0,y1){
 }
 let vignette=null,vignette2=null;
 const renderXf={VZ:1,camD:0,camDY:0}; // the last frame's world-to-canvas transform (for tests)
+
+// ================= torchlight: a WebGL pass over the finished 2D frame =================
+// Optional ("Lighting mode: Torchlight" in Graphics). The scene is still drawn entirely in Canvas 2D, into an off-screen
+// canvas; the shader only post-processes it: a quarter-resolution light map (ambient + every light of gatherLights, each
+// with its own flicker), the scene multiplied by it (lights may burn brighter than the classic multiply can), a bright-pass
+// bloom blurred at quarter resolution, and a vignette. The HUD stays on the visible 2D canvas, above the GL canvas.
+// If WebGL is missing, the context is lost or a frame throws, the game goes back to Classic by itself; so does a
+// frame time that stays above ~22 ms while the shader is on.
+const GLP={on:false,dead:false,gl:null,cv:null,sceneC:null,sceneG:null,sw:0,sh:0,note:'',ms:0,lastR:0,fps:/[?&]fps\b/.test(location.search),why:'',sum:0,n:0,wsum:0,wn:0,skip:true,used:false};
+const GLV=`attribute vec2 a_p;varying vec2 v_u;void main(){v_u=a_p*0.5+0.5;gl_Position=vec4(a_p,0.,1.);}`;
+const GLSH={
+  light:[`attribute vec2 a_k;attribute vec4 a_c;attribute vec4 a_o;attribute vec3 a_col;uniform vec2 u_s;varying vec2 v_k;varying vec3 v_col;varying vec2 v_f;
+    void main(){v_k=a_k;v_col=a_col;v_f=a_o.xy;vec2 p=a_c.xy+a_k*a_c.z;gl_Position=vec4(p.x/u_s.x*2.-1.,1.-p.y/u_s.y*2.,0.,1.);}`,
+   `precision mediump float;varying vec2 v_k;varying vec3 v_col;varying vec2 v_f;uniform float u_t;
+    void main(){float d=length(v_k);if(d>=1.)discard;
+      float f=d<.28?mix(1.,.62,d/.28):d<.62?mix(.62,.2,(d-.28)/.34):mix(.2,0.,(d-.62)/.38); // the same falloff as the classic light sprite
+      float ph=v_f.y,fl=1.+v_f.x*(.05*sin(u_t*17.+ph)+.04*sin(u_t*29.3+ph*2.1)+.03*sin(u_t*43.+ph*3.7));
+      gl_FragColor=vec4(v_col*f*fl,1.);}`],
+  bright:[GLV,`precision mediump float;varying vec2 v_u;uniform sampler2D u_sc,u_map;uniform vec2 u_px;
+    void main(){vec3 s=(texture2D(u_sc,v_u+u_px*vec2(-1.,-1.)).rgb+texture2D(u_sc,v_u+u_px*vec2(1.,-1.)).rgb+texture2D(u_sc,v_u+u_px*vec2(-1.,1.)).rgb+texture2D(u_sc,v_u+u_px*vec2(1.,1.)).rgb)*.25;
+      vec3 l=s*texture2D(u_map,v_u).rgb*1.5;gl_FragColor=vec4(max(l-.7,0.)*1.6,1.);}`],
+  blur:[GLV,`precision mediump float;varying vec2 v_u;uniform sampler2D u_t0;uniform vec2 u_d;
+    void main(){gl_FragColor=vec4(texture2D(u_t0,v_u).rgb*.4+(texture2D(u_t0,v_u+u_d).rgb+texture2D(u_t0,v_u-u_d).rgb)*.24+(texture2D(u_t0,v_u+u_d*2.2).rgb+texture2D(u_t0,v_u-u_d*2.2).rgb)*.06,1.);}`],
+  final:[GLV,`precision mediump float;varying vec2 v_u;uniform sampler2D u_sc,u_map,u_bl;uniform vec2 u_d;uniform vec2 u_vg;
+    void main(){vec3 s=texture2D(u_sc,v_u).rgb,l=texture2D(u_map,v_u).rgb*1.5;vec3 c=s*l;
+      vec3 b=texture2D(u_bl,v_u).rgb*.4+(texture2D(u_bl,v_u+u_d).rgb+texture2D(u_bl,v_u-u_d).rgb)*.24+(texture2D(u_bl,v_u+u_d*2.2).rgb+texture2D(u_bl,v_u-u_d*2.2).rgb)*.06;
+      c+=b*.6; // bloom
+      c=c/(1.+max(c-.85,0.)*.6); // roll the bright end off instead of clipping it
+      vec2 q=(v_u-vec2(.5,.45))*vec2(u_vg.x,1.);float v=smoothstep(.4,u_vg.y,length(q))*.66; // vignette (u_vg = aspect, outer radius)
+      gl_FragColor=vec4(mix(c,vec3(.02,.012,.04),v),1.);}`]};
+function glMake(gl,src){const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o;};
+  const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,src[0]));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,src[1]));return p;}
+function glLink(gl,p,names){gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));const u={};for(const n of names)u[n]=gl.getUniformLocation(p,n);return {p,u};}
+function glTex(gl,w,h){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return t;}
+function glFbo(gl,w,h){const t=glTex(gl,w,h),f=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,f);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);return {t,f,w,h};}
+const GLMAXL=64,GLSTRIDE=13,GLLIGHTS=new Float32Array(GLMAXL*6*GLSTRIDE),GLCOL=new Map(),GLK=[[-1,-1],[1,-1],[1,1],[-1,-1],[1,1],[-1,1]];
+function glInit(){
+  if(GLP.on)return true;if(GLP.dead)return false;
+  try{
+    const c=document.createElement('canvas');c.id='glc';c.width=cv.width;c.height=cv.height;
+    const gl=c.getContext('webgl2',{alpha:false,antialias:false,depth:false,stencil:false,powerPreference:'high-performance'})||c.getContext('webgl',{alpha:false,antialias:false,depth:false,stencil:false});
+    if(!gl)throw new Error('no webgl');
+    const P={light:glLink(gl,glMake(gl,GLSH.light),['u_s','u_t']),bright:glLink(gl,glMake(gl,GLSH.bright),['u_sc','u_map','u_px']),blur:glLink(gl,glMake(gl,GLSH.blur),['u_t0','u_d']),final:glLink(gl,glMake(gl,GLSH.final),['u_sc','u_map','u_bl','u_d','u_vg'])};
+    // (attribute slots are fixed so one buffer layout serves every program)
+    for(const k of ['bright','blur','final'])gl.bindAttribLocation(P[k].p,0,'a_p');
+    const lp=P.light.p;gl.bindAttribLocation(lp,0,'a_k');gl.bindAttribLocation(lp,1,'a_c');gl.bindAttribLocation(lp,2,'a_o');gl.bindAttribLocation(lp,3,'a_col');
+    for(const k in P){gl.linkProgram(P[k].p);if(!gl.getProgramParameter(P[k].p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(P[k].p));}
+    for(const k in P){const u=P[k].u;for(const n in u)u[n]=gl.getUniformLocation(P[k].p,n);}
+    const tri=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,tri);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+    const lb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,lb);gl.bufferData(gl.ARRAY_BUFFER,GLLIGHTS.byteLength,gl.DYNAMIC_DRAW);
+    const sc=document.createElement('canvas');sc.width=cv.width;sc.height=cv.height;
+    c.addEventListener('webglcontextlost',e=>{e.preventDefault();glKill('context lost');});
+    cv.parentNode.insertBefore(c,cv);
+    Object.assign(GLP,{gl,cv:c,P,tri,lb,sceneC:sc,sceneG:sc.getContext('2d'),tex:glTex(gl,1,1),sw:0,sh:0,fb:null,on:true});
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);gl.disable(gl.DEPTH_TEST);glSize();
+    return true;
+  }catch(e){GLP.dead=true;GLP.why=String(e&&e.message||e);GLP.on=false;return false;}
+}
+function glKill(why){GLP.dead=true;GLP.why=why;GLP.on=false;if(GLP.cv)GLP.cv.style.display='none';if(S&&S.set&&S.set.lightMode==='torch'){S.set.lightMode='classic';writeSave();}syncLightMode();}
+// canvas and framebuffers follow the visible canvas's size
+function glSize(){
+  const {gl}=GLP,w=cv.width,h=cv.height,s=GLP.cv.style,t=cv.style;
+  if(s.left!==t.left||s.top!==t.top||s.width!==t.width||s.height!==t.height){s.left=t.left;s.top=t.top;s.width=t.width;s.height=t.height;}
+  if(GLP.sw===w&&GLP.sh===h)return;
+  GLP.cv.width=GLP.sceneC.width=w;GLP.cv.height=GLP.sceneC.height=h;GLP.sw=w;GLP.sh=h;
+  const lw=Math.ceil(w/4),lh=Math.ceil(h/4);
+  gl.bindTexture(gl.TEXTURE_2D,GLP.tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,GLP.sceneC);GLP.texOk=true;
+  GLP.fb={map:glFbo(gl,lw,lh),br:glFbo(gl,lw,lh),bl:glFbo(gl,lw,lh)};
+}
+// light kinds that flicker in the shader (how much): a flame wavers fastest, a flask pulses a little
+const GLFLICK={torch:0.6,fire:1,door:0.5,item:0.35};
+function glFrame(lights,VZ,camD,camDY,th){
+  const {gl,P}=GLP,w=cv.width,h=cv.height,lw=Math.ceil(w/4),lh=Math.ceil(h/4),lk=LOOK[th.style]||LOOK.dungeon,t=gameTime;
+  glSize();
+  // 1. upload the 2D frame (once)
+  gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,GLP.tex);gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,GLP.sceneC);
+  // 2. light map: ambient, then every light added as a quad with its own falloff and flicker
+  let n=0;const B=GLLIGHTS;
+  for(const q of lights){if(n>=GLMAXL)break;
+    let col=GLCOL.get(q.col);if(!col){col=q.col.split(',').map(Number);GLCOL.set(q.col,col);}
+    const a=Math.min(1,q.a)*0.8/1.5/255,cx=q.x*VZ-camD,cy=q.y*VZ-camDY,r=q.r*VZ,fl=GLFLICK[q.kind]||0,ph=(q.x*0.37+q.y*0.11)%6.283;
+    if(cx+r<0||cx-r>w||cy+r<0||cy-r>h)continue;
+    for(let k=0;k<6;k++){const o=(n*6+k)*GLSTRIDE;B[o]=GLK[k][0];B[o+1]=GLK[k][1];B[o+2]=cx;B[o+3]=cy;B[o+4]=r;B[o+5]=0;B[o+6]=fl;B[o+7]=ph;B[o+8]=0;B[o+9]=0;B[o+10]=col[0]*a;B[o+11]=col[1]*a;B[o+12]=col[2]*a;}
+    n++;}
+  const am=lk.amb.split(',');
+  gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.map.f);gl.viewport(0,0,lw,lh);gl.clearColor(am[0]/255/1.5,am[1]/255/1.5,am[2]/255/1.5,1);gl.clear(gl.COLOR_BUFFER_BIT);
+  if(n){gl.useProgram(P.light.p);gl.uniform2f(P.light.u.u_s,w,h);gl.uniform1f(P.light.u.u_t,t);
+    gl.bindBuffer(gl.ARRAY_BUFFER,GLP.lb);gl.bufferSubData(gl.ARRAY_BUFFER,0,B,0,n*6*GLSTRIDE);
+    const S4=GLSTRIDE*4;gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,S4,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,4,gl.FLOAT,false,S4,8);
+    gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,4,gl.FLOAT,false,S4,24);gl.enableVertexAttribArray(3);gl.vertexAttribPointer(3,3,gl.FLOAT,false,S4,40);
+    gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE);gl.drawArrays(gl.TRIANGLES,0,n*6);gl.disable(gl.BLEND);
+    gl.disableVertexAttribArray(1);gl.disableVertexAttribArray(2);gl.disableVertexAttribArray(3);}
+  // 3. full-screen passes: bright-pass, blur, composite
+  gl.bindBuffer(gl.ARRAY_BUFFER,GLP.tri);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+  const bind=(unit,tex)=>{gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,tex);};
+  gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.br.f);gl.viewport(0,0,lw,lh);gl.useProgram(P.bright.p);bind(0,GLP.tex);bind(1,GLP.fb.map.t);
+  gl.uniform1i(P.bright.u.u_sc,0);gl.uniform1i(P.bright.u.u_map,1);gl.uniform2f(P.bright.u.u_px,1.5/w,1.5/h);gl.drawArrays(gl.TRIANGLES,0,3);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.bl.f);gl.useProgram(P.blur.p);bind(0,GLP.fb.br.t);gl.uniform1i(P.blur.u.u_t0,0);gl.uniform2f(P.blur.u.u_d,1.6/lw,0);gl.drawArrays(gl.TRIANGLES,0,3);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);gl.useProgram(P.final.p);bind(0,GLP.tex);bind(1,GLP.fb.map.t);bind(2,GLP.fb.bl.t);
+  gl.uniform1i(P.final.u.u_sc,0);gl.uniform1i(P.final.u.u_map,1);gl.uniform1i(P.final.u.u_bl,2);gl.uniform2f(P.final.u.u_d,0,1.6/lh);gl.uniform2f(P.final.u.u_vg,viewW/ROOM_H,0.62*Math.max(viewW,ROOM_W)/ROOM_H);
+  gl.drawArrays(gl.TRIANGLES,0,3);
+  bind(0,GLP.tex);
+}
+// is the shader pass in use this frame? (the setting, the Lighting switch of Graphics, and a working context)
+function shaderOn(){return S.set.lightMode==='torch'&&GFX().light&&glInit();}
+// frame-time bookkeeping, fed by the loop with the time since the previous drawn frame; drops back to Classic when slow
+function glTime(ms){
+  GLP.sum+=ms;GLP.n++;if(GLP.sum>=500){GLP.ms=GLP.sum/GLP.n;GLP.sum=0;GLP.n=0;}
+  GLP.wsum+=ms;GLP.wn++;
+  if(GLP.wsum>=2000){const avg=GLP.wsum/GLP.wn;GLP.wsum=0;GLP.wn=0;
+    if(GLP.skip)GLP.skip=false; // the first window after switching on holds the shader compile
+    else if(S.set.lightMode==='torch'&&GLP.used&&!window.__HKnoauto&&avg>22){S.set.lightMode='classic';syncLightMode();
+      if(!S.set.slowNote){S.set.slowNote=true;msg('Torchlight was too slow here, so lighting is back to Classic.',4.5);}writeSave();}}
+}
+function syncLightMode(){const b=document.getElementById('gShader');if(!b)return;const m=S.set.lightMode==='torch';b.setAttribute('aria-pressed',String(m));
+  b.firstChild.nodeValue='Lighting: '+(m?'Torchlight':'Classic');b.querySelector('small').textContent=GLP.dead?'Not available on this device':m?'Lamps flicker and bloom, light falls off in the dark':'The lighting this game shipped with';}
 function render(){
-  const ctx=gx;ctx.setTransform(1,0,0,1,0,0);
+  const sh=shaderOn();
+  if(sh){if(!GLP.used){GLP.skip=true;GLP.wsum=GLP.wn=0;}GLP.cv.style.display='';glSize();}else if(GLP.cv&&GLP.cv.style.display!=='none')GLP.cv.style.display='none';
+  GLP.used=sh;GLOWK=sh?0.5:1;
+  let ctx=sh?GLP.sceneG:gx;ctx.setTransform(1,0,0,1,0,0);
   ctx.fillStyle='#07060c';ctx.fillRect(0,0,cv.width,cv.height);
   if(!L)return;
   const gf=GFX(),z=zoom,VZ=VS*z,vw=viewW/z,vh=ROOM_H/z;
@@ -4909,22 +5032,27 @@ function render(){
   ctx.save();ctx.beginPath();ctx.rect(cx,cy,vw,vh);ctx.clip();
   drawDynamic(ctx,cx,cx+vw,cy,cy+vh);
   if(gf.atmo)ambientLit(ctx,cx,cx+vw,cy,cy+vh);
-  if(gf.light||gf.grade)lightPass(ctx,frameLights,VZ,camD,camDY);
-  if(gf.light)bloomPass(ctx,frameLights);
+  if(sh){if(gf.grade)lightPass(ctx,frameLights,VZ,camD,camDY,true);} // (the shader adds the lights and the bloom)
+  else{if(gf.light||gf.grade)lightPass(ctx,frameLights,VZ,camD,camDY);
+  if(gf.light)bloomPass(ctx,frameLights);}
   if(gf.atmo){atmoPass(ctx,frameLights,cx,cx+vw,cy,cy+vh);ambientGlow(ctx,cx,cx+vw,cy,cy+vh);}
   if(gf.light)drawEmissive(ctx,cx,cx+vw,cy,cy+vh);
   ctx.restore();
   ctx.setTransform(VS,0,0,VS,0,0);
   if(gf.atmo)hazePass(ctx);
-  if(!vignette){vignette=ctx.createRadialGradient(viewW/2,ROOM_H/2,ROOM_H*0.45,viewW/2,ROOM_H/2,Math.max(viewW,ROOM_W)*0.66);vignette.addColorStop(0,'rgba(5,3,10,0)');vignette.addColorStop(1,'rgba(5,3,10,.5)');
+  if(sh){try{glFrame(frameLights,VZ,camD,camDY,L.theme);}catch(e){glKill(String(e&&e.message||e));return render();}
+    ctx=gx;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);ctx.setTransform(VS,0,0,VS,0,0);} // from here on only what the shader must not darken: flashes, HUD, text
+  else{if(!vignette){vignette=ctx.createRadialGradient(viewW/2,ROOM_H/2,ROOM_H*0.45,viewW/2,ROOM_H/2,Math.max(viewW,ROOM_W)*0.66);vignette.addColorStop(0,'rgba(5,3,10,0)');vignette.addColorStop(1,'rgba(5,3,10,.5)');
     vignette2=ctx.createRadialGradient(viewW/2,ROOM_H*0.55,ROOM_H*0.4,viewW/2,ROOM_H*0.55,Math.max(viewW,ROOM_W)*0.62);vignette2.addColorStop(0,'rgba(5,3,10,0)');vignette2.addColorStop(1,'rgba(5,3,10,.66)');}
-  ctx.fillStyle=gf.grade?vignette2:vignette;ctx.fillRect(0,0,viewW,ROOM_H);
+  ctx.fillStyle=gf.grade?vignette2:vignette;ctx.fillRect(0,0,viewW,ROOM_H);}
   if(flashFx){ctx.globalAlpha=Math.max(0,flashFx.a*(1-flashFx.t/flashFx.dur));ctx.fillStyle=flashFx.col;ctx.fillRect(0,0,viewW,ROOM_H);ctx.globalAlpha=1;}
   if(mode==='rewind'){ctx.fillStyle='rgba(214,160,80,.22)';ctx.fillRect(0,0,viewW,ROOM_H);ctx.fillStyle='rgba(255,226,160,.55)';
     for(let i=0;i<70;i++){const h=hash2(i,77),x=(h%1000)/1000*viewW,y=((h>>>10)%1000)/1000*ROOM_H,sp=0.3+((h>>>20)%100)/100;ctx.fillRect((x+performance.now()*0.12*sp)%viewW,y,1.4,0.8);}
     ctx.textAlign='center';ctx.fillStyle='#ffe2a0';ctx.font='16px Lalezar, Georgia, serif';ctx.fillText('The sands turn back',viewW/2,ROOM_H*0.38);}
   drawHUD(ctx);
   drawOverlayText(ctx);
+  if(GLP.fps){ctx.textAlign='left';ctx.textBaseline='top';ctx.font='600 7px monospace';ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(hud.l-1,ROOM_H-17,92,12);ctx.fillStyle='#9fffd2';
+    ctx.fillText((sh?'TORCH ':'CLASSIC ')+GLP.ms.toFixed(1)+' ms  '+(GLP.ms>0?Math.round(1000/GLP.ms):0)+' fps',hud.l+1,ROOM_H-15);}
 }
 function fmt(s){s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),sec=s%60;return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(sec).padStart(2,'0');}
 function heart(ctx,x,y,full,fill,line){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+7,y);ctx.lineTo(x+3.5,y+9);ctx.closePath();ctx.fillStyle=full?fill:'rgba(10,8,20,.45)';ctx.fill();ctx.strokeStyle=line;ctx.lineWidth=0.8;ctx.stroke();}
@@ -5065,7 +5193,8 @@ function refreshTitle(){
   $('bNew').textContent=has?'New run':'Enter the keep';
 }
 const GFXB={gLight:'light',gAtmo:'atmo',gGrade:'grade',gHero:'hero',gFx:'fx',gHd:'hd',gBg:'bg'};
-function syncGfx(){const g=GFX();for(const id in GFXB)$(id).setAttribute('aria-pressed',String(!!g[GFXB[id]]));}
+function syncGfx(){const g=GFX();syncLightMode();for(const id in GFXB)$(id).setAttribute('aria-pressed',String(!!g[GFXB[id]]));}
+$('gShader').onclick=()=>{if(S.set.lightMode==='torch')S.set.lightMode='classic';else{S.set.lightMode='torch';if(!glInit()){S.set.lightMode='classic';}}writeSave();syncLightMode();render();};
 for(const id in GFXB)$(id).onclick=()=>{const g=GFX(),k=GFXB[id];g[k]=!g[k];if(k==='fx'){shakeA=0;zoom=1;}if(k==='bg')clearRooms();writeSave();syncGfx();render();};
 function syncToggles(){$('tSound').setAttribute('aria-pressed',String(S.set.sound));$('tSaver').setAttribute('aria-pressed',String(S.set.saver));$('tLefty').setAttribute('aria-pressed',String(S.set.lefty));$('tCalm').setAttribute('aria-pressed',String(!!S.set.calm));}
 function pause(){if(mode!=='play')return;snapshotResume();mode='paused';clearInput();S.floorTime=levelTime;writeSave();
@@ -5143,8 +5272,8 @@ function loop(ts){
   if(window.__HKfreeze){last=0;return;}
   const dt=last?Math.min(0.1,(ts-last)/1000):0;last=ts;
   if(mode==='play'||mode==='dead'||mode==='rewind'){acc+=dt;let n=0;while(acc>=STEP&&n<6){acc-=STEP;n++;snapPrev();if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}if(n>=6)acc=0;
-    frame++;if(S.set.saver&&(frame&1))return;const b0=roomBuilds;renderAt(acc/STEP);idleFrames=0;drawBuilds+=roomBuilds-b0;if(roomBuilds===b0)roomWork();}
-  else{acc=0;if(++idleFrames%20===0)render();}
+    frame++;if(S.set.saver&&(frame&1))return;{const iv=(ts-GLP.lastR)/(S.set.saver?2:1);if(GLP.lastR&&iv<250)glTime(iv);GLP.lastR=ts;}const b0=roomBuilds;renderAt(acc/STEP);idleFrames=0;drawBuilds+=roomBuilds-b0;if(roomBuilds===b0)roomWork();}
+  else{acc=0;GLP.lastR=0;if(++idleFrames%20===0)render();}
 }
 
 // ================= boot =================
@@ -5168,7 +5297,7 @@ window.__HK={genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
   get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,plantPose,legIK,mk,drawDynamic,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
-  get S(){return S;},get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V};
+  get S(){return S;},get GLP(){return GLP;},glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V};
 
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 })();
