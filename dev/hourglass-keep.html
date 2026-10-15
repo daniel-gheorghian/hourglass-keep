@@ -4898,6 +4898,9 @@ const renderXf={VZ:1,camD:0,camDY:0}; // the last frame's world-to-canvas transf
 // canvas; the shader only post-processes it: a quarter-resolution light map (ambient + every light of gatherLights, each
 // with its own flicker), the scene multiplied by it (lights may burn brighter than the classic multiply can), a bright-pass
 // bloom blurred at quarter resolution, and a vignette. The HUD stays on the visible 2D canvas, above the GL canvas.
+// Four more effects ride on the composite (GLFX below switches each off in code): soft shadows of the prince and guards on the
+// back wall, heat shimmer over vents (and forge torches), haze and a wave at the sandstorm's front, and a per-theme colour grade.
+// They share one small mask (glMask): red = shadow, green = heat, blue = storm, drawn in 2D at the light map's resolution.
 // If WebGL is missing, the context is lost or a frame throws, the game goes back to Classic by itself; so does a
 // frame time that stays above ~22 ms while the shader is on.
 const GLP={on:false,dead:false,gl:null,cv:null,sceneC:null,sceneG:null,sw:0,sh:0,note:'',ms:0,lastR:0,fps:/[?&]fps\b/.test(location.search),why:'',sum:0,n:0,wsum:0,wn:0,skip:true,used:false};
@@ -4915,10 +4918,28 @@ const GLSH={
       vec3 l=s*texture2D(u_map,v_u).rgb*1.5;gl_FragColor=vec4(max(l-.7,0.)*1.6,1.);}`],
   blur:[GLV,`precision mediump float;varying vec2 v_u;uniform sampler2D u_t0;uniform vec2 u_d;
     void main(){gl_FragColor=vec4(texture2D(u_t0,v_u).rgb*.4+(texture2D(u_t0,v_u+u_d).rgb+texture2D(u_t0,v_u-u_d).rgb)*.24+(texture2D(u_t0,v_u+u_d*2.2).rgb+texture2D(u_t0,v_u-u_d*2.2).rgb)*.06,1.);}`],
-  final:[GLV,`precision mediump float;varying vec2 v_u;uniform sampler2D u_sc,u_map,u_bl;uniform vec2 u_d;uniform vec2 u_vg;
-    void main(){vec3 s=texture2D(u_sc,v_u).rgb,l=texture2D(u_map,v_u).rgb*1.5;vec3 c=s*l;
+  final:[GLV,`#ifdef GL_FRAGMENT_PRECISION_HIGH
+    precision highp float;
+    #else
+    precision mediump float;
+    #endif
+    varying vec2 v_u;uniform sampler2D u_sc,u_map,u_bl,u_mk;uniform vec2 u_d,u_vg,u_px,u_mp;uniform float u_t,u_sat;uniform vec4 u_fx;uniform vec3 u_sh,u_hi;
+    void main(){
+      vec3 m=texture2D(u_mk,v_u).rgb; // mask: r shadow, g heat, b storm
+      vec2 uv=v_u;float hz=m.g*u_fx.y,st=m.b*u_fx.z;
+      if(hz>.01){uv+=vec2(sin(v_u.y*260.+u_t*7.+v_u.x*50.)+.6*sin(v_u.y*110.-u_t*4.3),.7*sin(v_u.x*180.+u_t*5.))*hz*vec2(1.7,.9)*u_px;} // heat: the scene is read a little off, in rising ripples
+      float e=st*(1.-st)*4.; // the storm's edge: a slow wave across its front
+      if(e>.01)uv+=vec2(sin(v_u.y*40.+u_t*2.),sin(v_u.x*60.-u_t*3.)*.7)*e*vec2(1.8,1.3)*u_px;
+      vec3 s=texture2D(u_sc,uv).rgb,l=texture2D(u_map,v_u).rgb*1.5;
+      float sh=(m.r*2.+texture2D(u_mk,v_u+vec2(u_mp.x,0.)).r+texture2D(u_mk,v_u-vec2(u_mp.x,0.)).r+texture2D(u_mk,v_u+vec2(0.,u_mp.y)).r+texture2D(u_mk,v_u-vec2(0.,u_mp.y)).r)/6.;
+      l=mix(l,max(l,vec3(.95,.7,.42)),st*.55); // the storm is bright with its own dust
+      l*=1.-sh*.85*u_fx.x; // a shadow takes the light away and a little of the ambient
+      vec3 c=s*l*(1.-sh*.4*u_fx.x);
       vec3 b=texture2D(u_bl,v_u).rgb*.4+(texture2D(u_bl,v_u+u_d).rgb+texture2D(u_bl,v_u-u_d).rgb)*.24+(texture2D(u_bl,v_u+u_d*2.2).rgb+texture2D(u_bl,v_u-u_d*2.2).rgb)*.06;
       c+=b*.6; // bloom
+      if(st>.01){float g=fract(sin(dot(floor(vec2(v_u.x*420.-u_t*260.,v_u.y*110.)),vec2(12.9898,78.233)))*43758.5); // sand: a warm haze and streaks blowing along
+        c=mix(c,vec3(.62,.42,.24)*(.4+dot(c,vec3(.33))),st*.22)+vec3(.9,.65,.35)*step(.975,g)*st*.16;}
+      float lm=dot(c,vec3(.299,.587,.114));c=mix(vec3(lm),c,u_sat)*mix(u_sh,u_hi,smoothstep(.08,.75,lm)); // the theme's grade: cooler or warmer shadows and lights
       c=c/(1.+max(c-.85,0.)*.6); // roll the bright end off instead of clipping it
       vec2 q=(v_u-vec2(.5,.45))*vec2(u_vg.x,1.);float v=smoothstep(.4,u_vg.y,length(q))*.66; // vignette (u_vg = aspect, outer radius)
       gl_FragColor=vec4(mix(c,vec3(.02,.012,.04),v),1.);}`]};
@@ -4935,7 +4956,7 @@ function glInit(){
     const c=document.createElement('canvas');c.id='glc';c.width=cv.width;c.height=cv.height;
     const gl=c.getContext('webgl2',{alpha:false,antialias:false,depth:false,stencil:false,powerPreference:'high-performance'})||c.getContext('webgl',{alpha:false,antialias:false,depth:false,stencil:false});
     if(!gl)throw new Error('no webgl');
-    const P={light:glLink(gl,glMake(gl,GLSH.light),['u_s','u_t']),bright:glLink(gl,glMake(gl,GLSH.bright),['u_sc','u_map','u_px']),blur:glLink(gl,glMake(gl,GLSH.blur),['u_t0','u_d']),final:glLink(gl,glMake(gl,GLSH.final),['u_sc','u_map','u_bl','u_d','u_vg'])};
+    const P={light:glLink(gl,glMake(gl,GLSH.light),['u_s','u_t']),bright:glLink(gl,glMake(gl,GLSH.bright),['u_sc','u_map','u_px']),blur:glLink(gl,glMake(gl,GLSH.blur),['u_t0','u_d']),final:glLink(gl,glMake(gl,GLSH.final),['u_sc','u_map','u_bl','u_mk','u_d','u_vg','u_px','u_mp','u_t','u_sat','u_fx','u_sh','u_hi'])};
     // (attribute slots are fixed so one buffer layout serves every program)
     for(const k of ['bright','blur','final'])gl.bindAttribLocation(P[k].p,0,'a_p');
     const lp=P.light.p;gl.bindAttribLocation(lp,0,'a_k');gl.bindAttribLocation(lp,1,'a_c');gl.bindAttribLocation(lp,2,'a_o');gl.bindAttribLocation(lp,3,'a_col');
@@ -4946,7 +4967,8 @@ function glInit(){
     const sc=document.createElement('canvas');sc.width=cv.width;sc.height=cv.height;
     c.addEventListener('webglcontextlost',e=>{e.preventDefault();glKill('context lost');});
     cv.parentNode.insertBefore(c,cv);
-    Object.assign(GLP,{gl,cv:c,P,tri,lb,sceneC:sc,sceneG:sc.getContext('2d'),tex:glTex(gl,1,1),sw:0,sh:0,fb:null,on:true});
+    const mk=document.createElement('canvas');
+    Object.assign(GLP,{gl,cv:c,P,tri,lb,sceneC:sc,sceneG:sc.getContext('2d'),tex:glTex(gl,1,1),mkC:mk,mkG:mk.getContext('2d'),mtex:null,mkHad:true,sw:0,sh:0,fb:null,on:true});
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);gl.disable(gl.DEPTH_TEST);glSize();
     return true;
   }catch(e){GLP.dead=true;GLP.why=String(e&&e.message||e);GLP.on=false;return false;}
@@ -4961,6 +4983,62 @@ function glSize(){
   const lw=Math.ceil(w/4),lh=Math.ceil(h/4);
   gl.bindTexture(gl.TEXTURE_2D,GLP.tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,GLP.sceneC);GLP.texOk=true;
   GLP.fb={map:glFbo(gl,lw,lh),br:glFbo(gl,lw,lh),bl:glFbo(gl,lw,lh)};
+  GLP.mkC.width=lw;GLP.mkC.height=lh;if(GLP.mtex)gl.deleteTexture(GLP.mtex);GLP.mtex=glTex(gl,lw,lh);GLP.mkHad=true;
+}
+// ---- the effect mask: one small 2D canvas (the light map's size) read by the composite. r = shadows, g = heat, b = storm ----
+const GLFX={shadow:true,heat:true,storm:true,grade:true}; // each effect behind a constant: false turns it off in code
+// per theme grade: tint of the shadows and of the lights, and saturation (kept subtle: the 2D grade still runs under it)
+const GLGRADE={dungeon:{sh:[.93,.98,1.07],hi:[1.04,1.01,.96],sat:.96},palace:{sh:[1.04,.99,.93],hi:[1.07,1.02,.92],sat:1.1},tile:{sh:[.95,.98,1.06],hi:[1.04,1.02,.95],sat:1.05},
+  forge:{sh:[1.07,.94,.9],hi:[1.1,.99,.9],sat:1.1},crypt:{sh:[.9,1.06,1.0],hi:[.97,1.06,.99],sat:.92}};
+const GLNEUT=[1,1,1],GLSTRONG={torch:1,fire:1,door:1,win:1}; // lights that throw a shadow
+const GLCH=[],GLBODY=[[0,-50,20,20],[0,-37,34,30],[0,-21,32,30],[0,-8,28,26]];let stormStrip=null;
+// the soft shadow of one figure on the back wall: cast away from the nearest strong lights (up to two), longer the farther
+// sideways it stands from the lamp; a few soft blobs for head, chest, hips and legs, which is all a blurred shadow needs
+function glShadow(g,x,y,sc,lights,spr){
+  let b1=null,b2=null,d1=1e9,d2=1e9;const cy=y-26;
+  for(const q of lights){if(!GLSTRONG[q.kind]||q.r<84)continue;const d=Math.hypot(q.x-x,q.y-cy);if(d>=q.r*1.5)continue;
+    if(d<d1){b2=b1;d2=d1;b1=q;d1=d;}else if(d<d2){b2=q;d2=d;}}
+  let n=0;
+  for(let i=0;i<2;i++){const q=i?b2:b1,d=i?d2:d1;if(!q)break;
+    const k=1-d/(q.r*1.5),a=Math.min(.85,k*1.4*Math.min(1,q.a)*(i?.7:1));if(a<.05)continue;
+    const dx=x-q.x,ox=clamp(dx*.6+(dx>=0?8:-8),-44,44),oy=clamp((cy-q.y)*.25,-4,12),wd=1.15+Math.abs(ox)/50;
+    g.globalAlpha=a;
+    for(const [bx,by,w,h] of GLBODY){const W=w*wd,H=h*sc;g.drawImage(spr,x+ox+bx*wd-W/2,y+oy+by*sc-H/2,W,H);}
+    n++;}
+  return n;
+}
+function glMask(lights,VZ,camD,camDY){
+  const {gl,mkC,mkG:g}=GLP,lw=mkC.width,lh=mkC.height,t=gameTime,cx=camD/VZ,cy=camDY/VZ,vw=cv.width/VZ,vh=cv.height/VZ;
+  g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='source-over';g.globalAlpha=1;g.fillStyle='#000';g.fillRect(0,0,lw,lh);
+  g.setTransform(VZ/4,0,0,VZ/4,-camD/4,-camDY/4);g.globalCompositeOperation='lighter';
+  let any=0,sh=0;
+  if(GLFX.shadow&&P){
+    const red=lightSprite('255,0,0');GLCH.length=0;
+    if(P.state!=='dead'&&P.state!=='dying'&&P.state!=='exit'&&!(P.y>L.rows*TH))GLCH.push(P);
+    for(const e of G)if(e.alive&&!e.gone&&e.x>cx-50&&e.x<cx+vw+50)GLCH.push(e);
+    for(const e of GLCH){const low=e.state==='crouch'||e.state==='slide'||e.state==='lowStrike';sh+=glShadow(g,e.x,e.y+(e.yo||0),low?.62:1,lights,red);}
+    if(sh){ // carve the figures themselves out, and the solid blocks and slabs in front of the wall: the shadow falls on the back wall only
+      const cyan=lightSprite('0,255,255');g.globalCompositeOperation='multiply';g.globalAlpha=.85;
+      for(const e of GLCH)g.drawImage(cyan,e.x-16,e.y-60,32,60);
+      g.globalAlpha=1;g.fillStyle='#0ff';
+      const c0=Math.max(0,Math.floor(cx/TW)-1),c1=Math.min(L.cols-1,Math.ceil((cx+vw)/TW)),r0=Math.max(0,Math.floor(cy/TH)-1),r1=Math.min(L.rows-1,Math.ceil((cy+vh)/TH));
+      for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++){const b=B(L,c,r);if(b===WALL)g.fillRect(c*TW,r*TH,TW,TH);else if(b===FLOOR){const ys=SURF(r);g.fillRect(c*TW,ys-DY,TW+DX,DY+9);}}
+      g.globalCompositeOperation='lighter';any=1;}}
+  if(GLFX.heat){
+    const green=lightSprite('0,255,0'),forge=L.theme.style==='forge';
+    for(const o of L.dyn){const f=o.f;if(f.t!=='vent')continue;const X=o.c*TW;if(X<cx-60||X>cx+vw+60)continue;
+      const ph=cyc(f,t),a=ph>=.7?Math.min(1,(ph-.7)/.05):ph<.12?.5*(1-ph/.12):0; // hot while it burns, and a moment after
+      if(a>.01){g.globalAlpha=a;g.drawImage(green,X+16-30,SURF(o.r)-100,60,110);any=1;}}
+    if(forge)for(const q of lights){if(q.kind!=='torch'||q.r<100)continue;g.globalAlpha=.5;g.drawImage(green,q.x-14,q.y-70,28,70);any=1;}
+    g.globalAlpha=1;}
+  const ch=L.ext.chase;
+  if(GLFX.storm&&ch&&ch.on&&(ch.fade||0)<1&&P){ // everything behind the front is hazy; ahead of it the haze thins out over a few tiles
+    if(!stormStrip){stormStrip=document.createElement('canvas');stormStrip.width=64;stormStrip.height=1;const sg=stormStrip.getContext('2d'),gr=sg.createLinearGradient(0,0,64,0);gr.addColorStop(0,'#00f');gr.addColorStop(1,'#000');sg.fillStyle=gr;sg.fillRect(0,0,64,1);}
+    g.globalAlpha=1-(ch.fade||0);g.fillStyle='#00f';g.fillRect(cx-4,cy-4,Math.max(0,ch.wx-cx+4),vh+8);g.drawImage(stormStrip,ch.wx,cy-4,170,vh+8);g.globalAlpha=1;any=1;}
+  g.globalCompositeOperation='source-over';g.globalAlpha=1;
+  gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,GLP.mtex);
+  if(any||GLP.mkHad)gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,mkC);
+  GLP.mkHad=!!any;
 }
 // light kinds that flicker in the shader (how much): a flame wavers fastest, a flask pulses a little
 const GLFLICK={torch:0.6,fire:1,door:0.5,item:0.35};
@@ -4969,6 +5047,7 @@ function glFrame(lights,VZ,camD,camDY,th){
   glSize();
   // 1. upload the 2D frame (once)
   gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,GLP.tex);gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,GLP.sceneC);
+  glMask(lights,VZ,camD,camDY);
   // 2. light map: ambient, then every light added as a quad with its own falloff and flicker
   let n=0;const B=GLLIGHTS;
   for(const q of lights){if(n>=GLMAXL)break;
@@ -4991,7 +5070,9 @@ function glFrame(lights,VZ,camD,camDY,th){
   gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.br.f);gl.viewport(0,0,lw,lh);gl.useProgram(P.bright.p);bind(0,GLP.tex);bind(1,GLP.fb.map.t);
   gl.uniform1i(P.bright.u.u_sc,0);gl.uniform1i(P.bright.u.u_map,1);gl.uniform2f(P.bright.u.u_px,1.5/w,1.5/h);gl.drawArrays(gl.TRIANGLES,0,3);
   gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.bl.f);gl.useProgram(P.blur.p);bind(0,GLP.fb.br.t);gl.uniform1i(P.blur.u.u_t0,0);gl.uniform2f(P.blur.u.u_d,1.6/lw,0);gl.drawArrays(gl.TRIANGLES,0,3);
-  gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);gl.useProgram(P.final.p);bind(0,GLP.tex);bind(1,GLP.fb.map.t);bind(2,GLP.fb.bl.t);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);gl.useProgram(P.final.p);bind(0,GLP.tex);bind(1,GLP.fb.map.t);bind(2,GLP.fb.bl.t);bind(3,GLP.mtex);
+  {const U=P.final.u,gr=GLGRADE[th.style]||GLGRADE.dungeon,on=GLFX.grade&&GFX().grade;gl.uniform1i(U.u_mk,3);gl.uniform2f(U.u_px,1/w,1/h);gl.uniform2f(U.u_mp,1/lw,1/lh);gl.uniform1f(U.u_t,t%1000);
+    gl.uniform4f(U.u_fx,GLFX.shadow?1:0,GLFX.heat?1:0,GLFX.storm?1:0,0);gl.uniform1f(U.u_sat,on?gr.sat:1);gl.uniform3fv(U.u_sh,on?gr.sh:GLNEUT);gl.uniform3fv(U.u_hi,on?gr.hi:GLNEUT);}
   gl.uniform1i(P.final.u.u_sc,0);gl.uniform1i(P.final.u.u_map,1);gl.uniform1i(P.final.u.u_bl,2);gl.uniform2f(P.final.u.u_d,0,1.6/lh);gl.uniform2f(P.final.u.u_vg,viewW/ROOM_H,0.62*Math.max(viewW,ROOM_W)/ROOM_H);
   gl.drawArrays(gl.TRIANGLES,0,3);
   bind(0,GLP.tex);
