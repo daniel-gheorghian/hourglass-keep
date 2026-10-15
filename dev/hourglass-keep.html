@@ -145,7 +145,7 @@ body.portrait #rotate{display:flex}
           <dt>Tiptoe</dt><dd>Hold <kbd>Grab</kbd> and tap a direction. Stops at edges and walks over spikes safely.</dd>
           <dt>Jump</dt><dd><kbd>Jump</kbd> from a standstill clears one tile. From a run it clears two, and on a three-tile gap you catch the far ledge.</dd>
           <dt>Climb</dt><dd>Up under an opening to pull yourself onto the ledge. Down at an edge to hang, down again to let go.</dd>
-          <dt>Catch</dt><dd>Hold <kbd>Grab</kbd> while falling to catch a ledge. Two-floor drops hurt unless you hang first, and a hard landing leaves you unsteady for a moment. Hold <kbd>Grab</kbd> as you fall past a long banner to slide down it.</dd>
+          <dt>Catch</dt><dd>Hold <kbd>Grab</kbd> while falling to catch a ledge. Two-floor drops hurt unless you hang first, and a hard landing leaves you unsteady for a moment. Hold <kbd>Grab</kbd> as you fall past a long tapestry to slide down it.</dd>
           <dt>Walls</dt><dd>Run at a wall two floors high and press <kbd>Jump</kbd> to run up it and catch the top. In the air against a wall, <kbd>Jump</kbd> kicks off it: bounce between close walls to climb a shaft.</dd>
           <dt>Swing</dt><dd>Jump to catch a bar over a wide pit, then <kbd>Jump</kbd> again as you swing forward to fly across.</dd>
           <dt>Blocks</dt><dd>Hold <kbd>Grab</kbd> and press toward a loose block to push it, away to pull it. A block holds a plate down for good, and you can climb over it.</dd>
@@ -249,6 +249,13 @@ const THEMES=[
  {name:'Ember Forge',style:'forge',mortar:'#1a0a0b',brick:'#381819',brick2:'#2e1415',wall:'#74352a',wallA:'#7f3c30',wallB:'#6a3026',hi:'#9d5640',lo:'#461c16',top:'#d09169',front:'#6d3a28',trim:'#b5674a',sky:'#2a0f12',guard:'#2b2b33',guard2:'#5a1f1a',glow:'255,125,60'},
  {name:'Jade Crypt',style:'crypt',mortar:'#081411',brick:'#18302a',brick2:'#11241f',wall:'#2e6253',wallA:'#346b5b',wallB:'#295a4c',hi:'#4b8b76',lo:'#1a3b32',top:'#bdcda7',front:'#4f6b54',trim:'#9fbf9c',sky:'#071a1a',guard:'#5f2c6e',guard2:'#1f3832',glow:'190,255,210'},
 ];
+
+// Persian hangings, a palette per theme: g ground, a main motif and border, b second colour, c light.
+// Cistern: coarse madder-and-ochre wool kilim; Halls: crimson silk with gold; Lapis: ivory with tilework colours;
+// Forge: soot-black wool with ember orange; Crypt: funereal aubergine with turquoise glaze colours.
+const TAP={dungeon:{g:'#6a3a30',a:'#d4a652',b:'#6c7f96',c:'#d8c9a0'},palace:{g:'#7a2230',a:'#d8b04a',b:'#2f7a72',c:'#efe0b8'},
+  tile:{g:'#cfc296',a:'#23468f',b:'#b04a2c',c:'#d8b04a'},forge:{g:'#2b1b1a',a:'#d9702f',b:'#8f2a1a',c:'#f0b060'},crypt:{g:'#3d2547',a:'#22b0a0',b:'#9fbf9c',c:'#e8f2e0'}};
+for(const t of THEMES){t.cloth=TAP[t.style].g;t.cloth2=TAP[t.style].a;}
 
 const ROMAN=['','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
 function themeName(n){const i=Math.floor((n-1)/4),t=THEMES[i%THEMES.length],k=Math.floor(i/THEMES.length);return k?t.name+' '+(ROMAN[k]||String(k+1)):t.name;}
@@ -2965,7 +2972,7 @@ const HINTS={
   wallrun:'Run at a wall and press Jump to run up it. You can reach a ledge two floors up and catch it.',
   walljump:'Kick off walls: press Jump each time you touch one. Bounce between close walls to climb a shaft.',
   swing:'A swing bar. Press Jump as you swing forward to fly off it; too early or late and you fall short. Down lets go.',
-  banner:'A long banner hangs down this shaft. Hold Grab as you fall to slide down it safely.',
+  banner:'A long tapestry hangs down this shaft. Hold Grab as you fall to slide down it safely.',
   shaft:'A narrow shaft with a ledge at the top. Jump into a wall, then kick from wall to wall with Jump.',
   saw:'A saw blade runs along the floor. Jump it as it comes at you.',
   darts:'Darts fly from that wall at chest height. Crouch and crawl under them, or time your run.',
@@ -3475,6 +3482,10 @@ function backCell(g,X,Y,gc,gr,th){
     fillBricks(g,Q,[th.brick,th.brick2],th);
   }
   if(st==='tile'&&fl)tilePanel(g,X,Y,th);
+  if(st==='crypt'&&fl)for(const [by,bh] of [[Y+3,6],[Y+TH-15,4]]){ // glazed turquoise brick bands, a pale tile every few bricks
+    for(let i=0;i<4;i++){const hh=hash2(gc*4+i,gr*5+by|0);if(Wc>=2&&hh%3===0)continue;g.fillStyle=(i+gc)%2?'#1c8d83':'#27b3a3';g.globalAlpha=0.78-0.1*Wc;g.fillRect(X+i*8+0.4,by,7.2,bh);
+      if(hh%5===0){g.fillStyle='#e5f3e8';g.globalAlpha=0.5;g.fillRect(X+i*8+2.4,by+bh/2-1,3,2);}}g.globalAlpha=1;
+    g.fillStyle='rgba(0,0,0,.35)';g.fillRect(X,by+bh,TW,0.8);}
   if(st==='palace'&&fl){
     if(low){g.fillStyle=th.brick2;g.fillRect(X,Y+14,TW,7);
     g.strokeStyle=th.trim;g.globalAlpha=0.5;g.lineWidth=0.7;
@@ -3558,11 +3569,11 @@ function settleLights(){const add=[];
       if(L.torches.concat(add).some(o=>!o.broken&&o.r===q.r&&Math.abs(o.c-q.c)<4))continue;
       add.push(q);break;}}
   L.torches.push(...add);}
-function planHangings(){const out=[];if(L.theme.style!=='palace')return out;
+function planHangings(){const out=[];const mod={dungeon:9,palace:5,tile:6,forge:8,crypt:7}[L.theme.style]||6;
   const lit=new Set(L.torches.filter(t=>!t.broken).map(t=>t.r*L.cols+t.c)),win=new Set(L.windows.map(w=>w.r*L.cols+w.c));
   for(let r=2;r<L.rows;r++)for(let c=1;c<L.cols-1;c++){
     if(D0(c,r)===WALL||!solidBelowD(c,r))continue;
-    const h=hash2(c*7+3,r*11+5);if(h%5!==0||lit.has(r*L.cols+c))continue;
+    const h=hash2(c*7+3,r*11+5);if(h%mod!==0||lit.has(r*L.cols+c))continue;
     let cr=r-1;while(cr>0&&D0(c,cr)!==WALL&&r-cr<5)cr--; // the ceiling over this stretch of floor
     if(D0(c,cr)!==WALL||r-cr<2)continue;
     const top=(cr+1)*TH+5,bot=Math.min(SURF(r)-80,top+112);if(bot-top<30)continue;
@@ -3571,37 +3582,70 @@ function planHangings(){const out=[];if(L.theme.style!=='palace')return out;
     if(clash||L.door&&L.door.r===r&&Math.abs(L.door.c-c)<=2||L.start&&L.start.r===r&&Math.abs((L.start.door===undefined?1:L.start.door)-c)<=1)continue;
     const x=c*TW+16,mid=(top+bot)/2;
     const state=inBreach(x,top+4,true)||inBreach(x,mid,true)||inBreach(x,bot-2,true)?4:wearLevel(x,mid); // 4: gone with the wall
-    out.push({c,r,x,top,bot,state,seed:h});}
+    out.push({c,r,x,top,bot,state,seed:h,k:(h>>>5)%6});}
   return out;}
+// the woven cloth of a tapestry or the shaft runner: six designs, each a motif repeated every 32 px down a strip, between
+// border stripes (kilim hooked diamond, carpet medallion, suzani roundel, tiraz band, boteh, mihrab prayer niche).
+// Fills the rectangle x0,y0,w,h; py is where the repeat starts, so a runner built of tiles stays in step.
+function tapCloth(g,th,k,x0,y0,w,h,py){const T=TAP[th.style]||TAP.palace,cx=x0+w/2,fx=x0+3.6,fw=w-7.2;
+  g.save();g.beginPath();g.rect(x0,y0,w,h);g.clip();
+  g.fillStyle=T.g;g.fillRect(x0,y0,w,h);
+  g.fillStyle=T.a;g.fillRect(x0+0.8,y0,1.4,h);g.fillRect(x0+w-2.2,y0,1.4,h); // border stripes
+  g.fillStyle=T.b;g.fillRect(x0+2.8,y0,0.8,h);g.fillRect(x0+w-3.6,y0,0.8,h);
+  g.beginPath();g.rect(fx,y0,fw,h);g.clip();
+  for(let y=py+Math.floor((y0-py)/32)*32;y<y0+h;y+=32){const cy=y+16,odd=Math.floor((y-py)/32)%2;
+    if(k===0){ // kilim: hooked diamond
+      g.fillStyle=T.a;g.beginPath();g.moveTo(cx,cy-11);g.lineTo(cx+6.4,cy);g.lineTo(cx,cy+11);g.lineTo(cx-6.4,cy);g.closePath();g.fill();
+      g.fillStyle=T.c;g.beginPath();g.moveTo(cx,cy-6);g.lineTo(cx+3.4,cy);g.lineTo(cx,cy+6);g.lineTo(cx-3.4,cy);g.closePath();g.fill();
+      g.fillStyle=T.b;g.fillRect(cx-1,cy-1,2,2);g.fillStyle=T.a;g.fillRect(cx-fw/2,cy-1,2.4,2);g.fillRect(cx+fw/2-2.4,cy-1,2.4,2);
+      g.fillStyle=T.b;g.fillRect(cx-2,y+0.5,4,1.6);g.fillRect(cx-2,y+29.9,4,1.6);}
+    else if(k===1){ // carpet medallion: a lobed star with corner spandrels
+      star8(g,cx,cy,8.2,4.6,T.a);star8(g,cx,cy,4.8,2.6,T.c);g.fillStyle=T.b;g.beginPath();g.arc(cx,cy,1.4,0,6.2832);g.fill();
+      g.fillStyle=T.b;for(const sx of [-1,1]){g.beginPath();g.moveTo(cx+sx*fw/2,y);g.lineTo(cx+sx*(fw/2-4),y);g.lineTo(cx+sx*fw/2,y+4);g.closePath();g.fill();g.beginPath();g.moveTo(cx+sx*fw/2,y+32);g.lineTo(cx+sx*(fw/2-4),y+32);g.lineTo(cx+sx*fw/2,y+28);g.closePath();g.fill();}}
+    else if(k===2){ // suzani: an embroidered roundel ringed with petals
+      g.fillStyle=T.a;g.beginPath();g.arc(cx,cy,3.4,0,6.2832);g.fill();g.fillStyle=T.c;g.beginPath();g.arc(cx,cy,1.6,0,6.2832);g.fill();
+      g.fillStyle=T.b;for(let i=0;i<8;i++){const an=i*Math.PI/4;g.beginPath();g.arc(cx+Math.cos(an)*5.1,cy+Math.sin(an)*5.1,1.2,0,6.2832);g.fill();}
+      g.strokeStyle=T.a;g.lineWidth=0.8;g.beginPath();g.moveTo(cx,cy+6.5);g.lineTo(cx,y+32);g.moveTo(cx,cy-6.5);g.lineTo(cx,y);g.stroke();
+      g.fillStyle=T.c;g.fillRect(cx-0.8,y+3,1.6,1.6);g.fillRect(cx-0.8,y+27.4,1.6,1.6);}
+    else if(k===3){ // tiraz: a woven inscription band, stepped blocks like Kufic script
+      for(const by of [y+3,y+22]){g.fillStyle=T.a;g.fillRect(fx,by+5,fw,2);g.fillStyle=T.c;for(let i=0;i<fw;i+=3)if(((i/3)|0)%3!==2)g.fillRect(fx+i,by+(((i/3)|0)%2?0:2),1.8,5);}
+      star8(g,cx,y+16,3.8,1.9,T.b);g.fillStyle=T.c;g.fillRect(cx-0.7,y+15.3,1.4,1.4);}
+    else if(k===4){ // boteh: the leaning teardrop, flipped on alternate repeats
+      g.save();g.translate(cx,cy);if(odd)g.scale(-1,1);
+      g.fillStyle=T.a;g.beginPath();g.moveTo(-2.4,10);g.bezierCurveTo(-8,4,-4.6,-7,1.6,-11);g.bezierCurveTo(1,-5,6.4,-2,4.4,4);g.bezierCurveTo(3.4,9,-0.6,11,-2.4,10);g.closePath();g.fill();
+      g.fillStyle=T.b;g.beginPath();g.ellipse(0.2,2.4,2.2,3.8,-0.3,0,6.2832);g.fill();g.fillStyle=T.c;g.fillRect(-0.4,1.4,1.4,1.4);g.restore();}
+    else{ // mihrab: nested prayer niches, a lamp hung in the arch
+      for(const [sc,col,lw] of [[1,T.a,1.5],[0.62,T.c,0.9]]){g.strokeStyle=col;g.lineWidth=lw;g.beginPath();g.moveTo(cx-5.6*sc,cy+13);g.lineTo(cx-5.6*sc,cy-1);g.quadraticCurveTo(cx-5.6*sc,cy-8*sc,cx,cy-12*sc);g.quadraticCurveTo(cx+5.6*sc,cy-8*sc,cx+5.6*sc,cy-1);g.lineTo(cx+5.6*sc,cy+13);g.stroke();}
+      g.fillStyle=T.b;g.fillRect(cx-0.4,cy-7,0.8,4);g.beginPath();g.arc(cx,cy-2,1.5,0,6.2832);g.fill();}}
+  g.restore();}
 // a tapestry on the back wall: intact, faded, torn, or down (only its rod left, askew)
-function drawHanging(g,hg,ox,oy,th){const x=hg.x+ox,top=hg.top+oy,bot=hg.bot+oy,rq=mulberry32(hg.seed),w=13,len=bot-top;
+function drawHanging(g,hg,ox,oy,th){const x=hg.x+ox,top=hg.top+oy,bot=hg.bot+oy,rq=mulberry32(hg.seed),w=18,len=bot-top,T=TAP[th.style]||TAP.palace;
   if(hg.state===4)return;
-  const rod=(a)=>{g.save();g.translate(x,top);g.rotate(a);g.fillStyle='#0b0812';g.fillRect(-9.5,-1.6,19,3);g.fillStyle=th.trim;g.fillRect(-9,-1.2,18,1.6);g.fillRect(-10,-2.2,2,3.4);g.fillRect(8,-2.2,2,3.4);g.restore();
-    g.fillStyle='#0b0812';g.fillRect(x-7.5,top-4,1.2,3);g.fillRect(x+6.3,top-4,1.2,3);};
+  const bar=()=>{g.fillStyle='#0b0812';g.fillRect(-12.5,-1.6,25,3);g.fillStyle=th.trim;g.fillRect(-12,-1.2,24,1.6);g.fillRect(-13,-2.2,2,3.4);g.fillRect(11,-2.2,2,3.4);};
+  const rod=(a)=>{g.save();g.translate(x,top);g.rotate(a);bar();g.restore();
+    g.fillStyle='#0b0812';g.fillRect(x-9.5,top-4,1.2,3);g.fillRect(x+8.3,top-4,1.2,3);};
   if(hg.state===3){ // down: the rod hangs from one hook, a rag of cloth still caught on it
-    const s=rq()<0.5?-1:1,a=s*(0.55+0.3*rq());g.save();g.translate(x-s*8,top);g.rotate(a);g.translate(s*8,0);
-    g.fillStyle='#0b0812';g.fillRect(-9.5,-1.6,19,3);g.fillStyle=th.trim;g.fillRect(-9,-1.2,18,1.6);
-    g.fillStyle=th.cloth;g.globalAlpha=0.9;g.beginPath();g.moveTo(-3,1.4);g.lineTo(3,1.4);g.lineTo(2,6+rq()*5);g.lineTo(0,4);g.lineTo(-1.5,8+rq()*6);g.closePath();g.fill();g.globalAlpha=1;g.restore();
-    g.fillStyle='#0b0812';g.fillRect(x-s*8-0.6,top-4,1.2,3);return;}
-  // the cloth: a long panel with a gold border and a star, a pointed foot with a fringe; torn ones lose their lower part
+    const s=rq()<0.5?-1:1,a=s*(0.55+0.3*rq());g.save();g.translate(x-s*11,top);g.rotate(a);g.translate(s*11,0);bar();
+    g.fillStyle=T.g;g.globalAlpha=0.9;g.beginPath();g.moveTo(-4,1.4);g.lineTo(4,1.4);g.lineTo(3,6+rq()*5);g.lineTo(0,4);g.lineTo(-2,8+rq()*6);g.closePath();g.fill();g.globalAlpha=1;g.restore();
+    g.fillStyle='#0b0812';g.fillRect(x-s*11-0.6,top-4,1.2,3);return;}
+  // the cloth: a long woven panel between border stripes, a straight fringed foot; torn ones lose their lower part
   const torn=hg.state===2,cut=torn?len*(0.5+0.3*rq()):len,yb=top+cut,pts=[[x-w/2,top+1],[x+w/2,top+1],[x+w/2,yb]];
   if(torn){const n=5;for(let i=1;i<n;i++)pts.push([x+w/2-w*i/n,yb-(rq()*0.55+0.1)*Math.min(9,cut*0.2)*(i%2?1:0.35)]);pts.push([x-w/2,yb-rq()*6]);}
-  else pts.push([x,yb+6],[x-w/2,yb]);
+  else pts.push([x-w/2,yb]);
   const cloth=new Path2D();pts.forEach(([px,py],i)=>i?cloth.lineTo(px,py):cloth.moveTo(px,py));cloth.closePath();
   g.save();g.translate(0.8,0.8);g.fillStyle='rgba(0,0,0,.45)';g.fill(cloth);g.restore();
-  g.fillStyle=th.cloth;g.fill(cloth);
   g.save();g.clip(cloth);
-  g.strokeStyle=th.cloth2;g.lineWidth=0.9;g.beginPath();g.moveTo(x-w/2+2,top+3);g.lineTo(x-w/2+2,top+len-2);g.moveTo(x+w/2-2,top+3);g.lineTo(x+w/2-2,top+len-2);g.moveTo(x-w/2+2,top+4);g.lineTo(x+w/2-2,top+4);g.stroke();
-  for(let k=0;k<Math.max(1,Math.floor(len/40));k++){const sy=top+14+k*38;if(sy<yb-6)star8(g,x,sy,3.4,1.7,th.cloth2);}
+  tapCloth(g,th,hg.k|0,x-w/2,top,w,len+8,top+2);
   g.fillStyle='rgba(255,255,255,.07)';g.fillRect(x-w/2,top,2.4,len); // folds catching the light
   g.fillStyle='rgba(0,0,0,.18)';g.fillRect(x+1.6,top,1.2,len);g.fillRect(x+w/2-3,top,3,len);
   if(hg.state>=1){g.fillStyle='rgba(30,20,10,'+(0.12+0.08*hg.state)+')';g.fillRect(x-w/2,top,w,len+8);} // faded, dusty
+  g.strokeStyle='#0b0812';g.lineWidth=1.4;g.stroke(cloth); // a dark edge, so it parts from the wall
   if(torn){ // a slash and a hole
     g.fillStyle='rgba(8,5,10,.85)';const sx=x-3+rq()*6,sy=top+cut*(0.25+0.3*rq());g.beginPath();g.moveTo(sx,sy);g.lineTo(sx+3.5,sy+7);g.lineTo(sx+2.6,sy+8);g.lineTo(sx-0.4,sy+1.2);g.closePath();g.fill();
     g.beginPath();g.ellipse(x-2+rq()*4,top+cut*(0.6+0.15*rq()),1.4,2,0,0,6.2832);g.fill();}
   g.restore();
-  if(!torn){g.fillStyle=th.cloth2;for(let i=0;i<5;i++){const fx=x-w/2+1.5+i*(w-3)/4,fy=yb+6*(1-Math.abs(fx-x)/(w/2));g.fillRect(fx-0.4,fy-0.5,0.8,2.6);}}
-  else{g.strokeStyle=th.cloth;g.lineWidth=1;g.beginPath();const tx=x-w/2+2+rq()*(w-4);g.moveTo(tx,yb-2);g.quadraticCurveTo(tx+1.5,yb+6,tx-0.5,yb+9+rq()*6);g.stroke();} // a loose strand
+  if(!torn){g.fillStyle=T.a;for(let i=0;i<7;i++){const fx=x-w/2+1+i*(w-2)/6;g.fillRect(fx-0.4,yb,0.8,3+(i%2));}}
+  else{g.strokeStyle=T.g;g.lineWidth=1;g.beginPath();const tx=x-w/2+2+rq()*(w-4);g.moveTo(tx,yb-2);g.quadraticCurveTo(tx+1.5,yb+6,tx-0.5,yb+9+rq()*6);g.stroke();} // a loose strand
   rod(0);}
 function drawHangings(g,rx,ry,th){if(!L.hangings||!L.hangings.length)return;const ox=-rx*ROOM_W,oy=-ry*ROOM_H;
   for(const hg of L.hangings){if(hg.x+16<rx*ROOM_W-8||hg.x-16>(rx+1)*ROOM_W+8||hg.bot+12<ry*ROOM_H||hg.top-8>(ry+1)*ROOM_H)continue;drawHanging(g,hg,ox,oy,th);}}
@@ -3657,6 +3701,12 @@ function niche(g,x,y,th){
   const w=11,top=y-12,bot=y+9;
   const p=()=>{g.beginPath();g.moveTo(x-w/2,bot);g.lineTo(x-w/2,top+6);g.quadraticCurveTo(x-w/2,top,x,top-3);g.quadraticCurveTo(x+w/2,top,x+w/2,top+6);g.lineTo(x+w/2,bot);g.closePath();};
   p();g.fillStyle='rgba(0,0,0,.45)';g.fill();g.strokeStyle=th.trim;g.globalAlpha=0.55;g.lineWidth=0.9;g.stroke();g.globalAlpha=1;
+  // a muqarnas head over it: two stepped tiers of little pointed niches, and a turquoise glazed course above
+  g.save();g.beginPath();g.rect(x-w/2-4,top-12,w+8,12);g.clip();
+  const tier=(n,yy,wd,off)=>{for(let i=0;i<n;i++){const ax=x-w/2-off+(i+0.5)*wd;g.beginPath();g.moveTo(ax-wd/2,yy+4);g.lineTo(ax-wd/2,yy+2.2);g.quadraticCurveTo(ax-wd/2,yy+0.6,ax,yy-0.8);g.quadraticCurveTo(ax+wd/2,yy+0.6,ax+wd/2,yy+2.2);g.lineTo(ax+wd/2,yy+4);g.closePath();g.fillStyle='rgba(0,0,0,.5)';g.fill();g.strokeStyle=th.trim;g.globalAlpha=0.7;g.lineWidth=0.6;g.stroke();g.globalAlpha=1;}};
+  tier(3,top-5.6,w/2.5,0.9);tier(4,top-9.2,w/3,-0.6+w/3/2-0.4);
+  g.restore();
+  g.fillStyle='#1f9e90';g.globalAlpha=0.8;g.fillRect(x-w/2-1.4,top-11.6,w+2.8,1.8);g.fillStyle='rgba(235,248,235,.7)';for(let i=0;i<5;i++)g.fillRect(x-w/2-1+i*2.9,top-11.6,0.9,1.8);g.globalAlpha=1;
   g.fillStyle=th.top;g.fillRect(x-w/2-1,bot,w+2,1.6);
 }
 function cornice(g,X,Y,th,gc,gr){
@@ -3918,13 +3968,11 @@ function drawLight(ctx,t,th){
   fire(ctx,x+4.6,ly-1.6,0.8,seed,GHOST);embers(ctx,x+4.6,ly-10,3,seed,'#c8ffe4',20);
 }
 // a hanging banner, one tile of it; where a slide has split it, the two halves part along a ragged cut and sway
-function drawBannerTile(ctx,X,Y,f,th){const x0=X+7,w=18,y0=f.top?Y+9:Y,y1=f.bot?Y+TH-16:Y+TH,cl=th.cloth||th.guard,c2=th.cloth2||th.trim,bn=f.bn;
-  if(f.top){ctx.fillStyle='#0b0812';ctx.fillRect(X+3,Y+5,26,4);ctx.fillStyle=th.trim;ctx.fillRect(X+4,Y+5.6,24,2.4);}
+function drawBannerTile(ctx,X,Y,f,th){const x0=X+7,w=18,y0=f.top?Y+9:Y,y1=f.bot?Y+TH-16:Y+TH,cl=th.cloth||th.guard,c2=th.cloth2||th.trim,bn=f.bn,kk=hash2(X*3+1,7)%6;
+  if(f.top){ctx.fillStyle='#0b0812';ctx.fillRect(X+3,Y+5,26,4);ctx.fillStyle=th.trim;ctx.fillRect(X+4,Y+5.6,24,2.4);ctx.fillStyle='#0b0812';ctx.fillRect(X+1.6,Y+4,2.4,6.4);ctx.fillRect(X+28,Y+4,2.4,6.4);ctx.fillStyle=th.trim;ctx.fillRect(X+2,Y+4.4,1.6,5.6);ctx.fillRect(X+28.4,Y+4.4,1.6,5.6);}
   const thru=bn&&bn.a>=0&&bn.b>=bn.bot-0.5,ta=bn&&bn.a>=0?Math.max(y0,bn.a):1e9,tb=bn&&bn.a>=0?Math.min(f.bot&&thru?y1+6:y1,bn.b):-1e9;
-  const whole=()=>{ctx.fillStyle='#0b0812';ctx.fillRect(x0-1,y0,w+2,y1-y0+(f.bot?1:0));ctx.fillStyle=cl;ctx.fillRect(x0,y0,w,y1-y0);
-    ctx.fillStyle=c2;ctx.fillRect(x0+2,y0,1.6,y1-y0);ctx.fillRect(x0+w-3.6,y0,1.6,y1-y0);
-    for(let yy=y0+10;yy<y1-6;yy+=22){ctx.beginPath();ctx.moveTo(x0+w/2,yy);ctx.lineTo(x0+w/2+5,yy+6);ctx.lineTo(x0+w/2,yy+12);ctx.lineTo(x0+w/2-5,yy+6);ctx.closePath();ctx.fill();}
-    if(f.bot){ctx.fillStyle=c2;for(let i=0;i<5;i++)ctx.fillRect(x0+1+i*3.8,y1,1.4,4);}};
+  const whole=()=>{ctx.fillStyle='#0b0812';ctx.fillRect(x0-1,y0,w+2,y1-y0+(f.bot?1:0));tapCloth(ctx,th,kk,x0,y0,w,y1-y0,Y);ctx.fillStyle='rgba(0,0,0,.2)';ctx.fillRect(x0+w-3,y0,3,y1-y0);ctx.fillStyle='rgba(255,255,255,.07)';ctx.fillRect(x0,y0,2.2,y1-y0);ctx.fillStyle='rgba(255,236,200,.35)';ctx.fillRect(x0,y0,0.9,y1-y0);ctx.fillRect(x0+w-0.9,y0,0.9,y1-y0); // pale selvedges, so the runner parts from the wall in the dark
+    if(f.bot){ctx.fillStyle=c2;for(let i=0;i<7;i++)ctx.fillRect(x0+0.6+i*2.7,y1,1.2,4+(i%2));}};
   if(!(tb>ta+0.5)){whole();return;}
   // the cloth above and below the cut as it was
   ctx.save();ctx.beginPath();ctx.rect(X-4,Y-4,TW+8,ta-(Y-4));if(!thru)ctx.rect(X-4,tb,TW+8,Y+TH+8-tb);ctx.clip();whole();ctx.restore();
@@ -3940,7 +3988,7 @@ function drawBannerTile(ctx,X,Y,f,th){const x0=X+7,w=18,y0=f.top?Y+9:Y,y1=f.bot?
     const shape=pad=>{ctx.beginPath();ctx.moveTo(outer(ta)-s*pad,ta);for(const q of pts)ctx.lineTo(q[0]+s*pad,q[1]);ctx.lineTo(outer(yEnd)-s*pad,yEnd);ctx.closePath();};
     shape(-0.9);ctx.fillStyle='#0b0812';ctx.fill();
     shape(0);ctx.fillStyle=cl;ctx.fill();
-    ctx.save();shape(0);ctx.clip();ctx.fillStyle=c2;ctx.fillRect(s<0?x0+2+dx(ta)*0.6:x0+w-3.6+dx(ta)*0.6,ta,1.6,yEnd-ta);
+    ctx.save();shape(0);ctx.clip();tapCloth(ctx,th,kk,x0+dx(ta)*0.6,ta,w,yEnd-ta,Y);
     ctx.fillStyle='rgba(0,0,0,.22)';ctx.fillRect(Math.min(xm,xm+s*8),ta,8,yEnd-ta);ctx.restore(); // the cut edge curls into shadow
     ctx.strokeStyle=c2;ctx.lineWidth=0.6;ctx.globalAlpha=0.8;ctx.beginPath();
     for(let i=0;i<pts.length;i+=3){const q=pts[i];ctx.moveTo(q[0],q[1]);ctx.lineTo(q[0]-s*(1.2+(i%4)*0.5),q[1]+2.2);}ctx.stroke();ctx.globalAlpha=1;
@@ -3968,13 +4016,73 @@ function drawHourglass(ctx,cp){
   ctx.beginPath();ctx.moveTo(x-4,ys-7.2);ctx.lineTo(x+4,ys-7.2);ctx.lineTo(x+2*k+0.5,ys-7.2-3*k-0.6);ctx.lineTo(x-2*k-0.5,ys-7.2-3*k-0.6);ctx.closePath();ctx.fill();
   if(cp.on){ctx.fillRect(x-0.4,ys-13.5,0.8,6);ctx.save();ctx.globalCompositeOperation='lighter';const gr=ctx.createRadialGradient(x,ys-13,1,x,ys-13,22);gr.addColorStop(0,'rgba(232,196,127,.35)');gr.addColorStop(1,'rgba(232,196,127,0)');ctx.fillStyle=gr;ctx.fillRect(x-24,ys-36,48,48);ctx.restore();}
 }
+// ---- doors: each theme's own (a Persian pishtaq doorway: a pointed arch in a rectangular frame, spandrels over the springing) ----
+// the arch head as a path: round for the Cistern, pointed for the rest; with yb given it is the whole opening down to the floor
+function doorHead(g,x0,x1,y0,kind,yb){const cx=(x0+x1)/2,sp=y0+(kind==='round'?(x1-x0)/2:11);
+  if(yb!==null){g.beginPath();g.moveTo(x0,yb);g.lineTo(x0,sp);}else g.moveTo(x0,sp);
+  if(kind==='round')g.arc(cx,sp,(x1-x0)/2,Math.PI,0);else{g.quadraticCurveTo(x0,y0+4,cx,y0);g.quadraticCurveTo(x1,y0+4,x1,sp);}
+  if(yb!==null){g.lineTo(x1,yb);g.closePath();}return sp;}
+function doorLeaf(g,th,lx,ly,w,h){const st=th.style;
+  const body=(c,c2)=>{g.fillStyle=c;g.fillRect(lx,ly,w,h);g.fillStyle=c2;for(let i=1;i<4;i++)g.fillRect(lx+i*6,ly,1,h);};
+  if(st==='dungeon'){body('#4d3a2a','#33261b'); // oak planks with iron straps and rivets
+    for(const yy of [14,h-16]){g.fillStyle='#1b1d24';g.fillRect(lx,ly+yy,w,3.4);g.fillStyle='#4a4f5e';g.fillRect(lx,ly+yy,w,0.7);}
+    g.fillStyle='#7d8498';for(let i=0;i<4;i++){g.fillRect(lx+2.6+i*6,ly+15.2,1.2,1.2);g.fillRect(lx+2.6+i*6,ly+h-14.8,1.2,1.2);}
+    g.fillStyle='#1b1d24';g.fillRect(lx+w/2-3,ly+h*0.5-1.6,6,3.2);g.fillStyle='#7d8498';g.fillRect(lx+w/2-3,ly+h*0.5-1.6,6,0.7);}
+  else if(st==='palace'){body('#6e4222','#4a2b15'); // walnut with a gold star and brass studs
+    star8(g,lx+w/2,ly+h*0.38,6.4,3.2,'#d8b04a');g.fillStyle='#6e4222';g.beginPath();g.arc(lx+w/2,ly+h*0.38,1.9,0,6.2832);g.fill();
+    g.fillStyle='#d8b04a';for(let i=0;i<4;i++){g.fillRect(lx+3+i*6,ly+h-16,1.4,1.4);g.fillRect(lx+3+i*6,ly+7,1.4,1.4);}
+    g.fillRect(lx+1.4,ly+h-12.4,w-2.8,0.8);}
+  else if(st==='tile'){body('#1f3c82','#162c63'); // lapis lacquer with a gold girih star and a turquoise border
+    g.strokeStyle='#2d9fc4';g.lineWidth=1.2;g.strokeRect(lx+1.6,ly+2,w-3.2,h-4);
+    star8(g,lx+w/2,ly+h*0.42,7.4,3.9,'#d8b04a');star8(g,lx+w/2,ly+h*0.42,4.1,2.4,'#1f3c82');star8(g,lx+w/2,ly+h*0.42,2.4,1.1,'#2d9fc4');
+    g.fillStyle='#d8b04a';for(const d of [0.2,0.68,0.8])g.fillRect(lx+w/2-1,ly+h*d,2,2);}
+  else if(st==='forge'){body('#2a2224','#171011'); // riveted blackened iron plates, the seams still glowing
+    g.fillStyle='rgba(255,120,40,.7)';g.fillRect(lx+w/2-0.4,ly,0.9,h);g.fillRect(lx,ly+h*0.34,w,0.8);g.fillRect(lx,ly+h*0.7,w,0.8);
+    g.fillStyle='#5a4a44';for(const d of [0.1,0.5,0.88]){g.fillRect(lx+2.4,ly+h*d,1.3,1.3);g.fillRect(lx+w-3.7,ly+h*d,1.3,1.3);g.fillRect(lx+w/2-3.6,ly+h*d,1.3,1.3);g.fillRect(lx+w/2+2.3,ly+h*d,1.3,1.3);}
+    g.fillStyle='#8a3a1c';g.fillRect(lx+w/2-2.6,ly+h*0.5-1.4,5.2,2.8);}
+  else{body('#3d6f5c','#2a5244'); // verdigris bronze with a pale star medallion and turquoise glaze bands
+    g.fillStyle='#22a898';g.fillRect(lx,ly+3,w,2.4);g.fillRect(lx,ly+h-14,w,2.4);g.fillStyle='rgba(240,250,240,.5)';for(let i=0;i<5;i++){g.fillRect(lx+1+i*4.8,ly+3,1.4,2.4);g.fillRect(lx+1+i*4.8,ly+h-14,1.4,2.4);}
+    star8(g,lx+w/2,ly+h*0.46,6.4,3.4,'#cfe6d6');star8(g,lx+w/2,ly+h*0.46,3.4,1.8,'#17372f');}
+  g.fillStyle='rgba(0,0,0,.35)';g.fillRect(lx,ly+h-2,w,2);}
+// the frame round the arched opening: spandrels, the ring of the arch, and the theme's ornament
+function doorArch(g,th,x0,x1,y0,ctop,yb,kind,sp){const st=th.style,cx=(x0+x1)/2,w=x1-x0;
+  const head=()=>{g.moveTo(x0,sp);if(kind==='round')g.arc(cx,sp,w/2,Math.PI,0);else{g.quadraticCurveTo(x0,y0+4,cx,y0);g.quadraticCurveTo(x1,y0+4,x1,sp);}};
+  const span=()=>{g.beginPath();g.rect(x0-0.5,y0-1,w+1,sp-y0+2);head();g.lineTo(x1,sp+1);g.lineTo(x0,sp+1);g.closePath();};
+  // spandrels: the wall's own corners between the arch and the square frame
+  span();g.fillStyle=st==='crypt'?'#1b4a40':st==='forge'?'#2a1a18':st==='dungeon'?th.wallB:th.wall;g.fill('evenodd');
+  g.save();span();g.clip('evenodd');
+  if(st==='tile'){for(const sx of [x0+3.4,x1-3.4])star8(g,sx,y0+3.8,3.2,1.7,th.tileA);}
+  if(st==='palace'){g.fillStyle=th.inlay;for(const sx of [x0+2.6,x1-2.6]){g.beginPath();g.moveTo(sx,y0+1.6);g.lineTo(sx+2,y0+4);g.lineTo(sx,y0+6.4);g.lineTo(sx-2,y0+4);g.closePath();g.fill();}}
+  if(st==='crypt'){for(const sx of [x0+3.4,x1-3.4]){g.fillStyle='#22a898';g.fillRect(sx-2,y0+2,4,4);g.fillStyle='rgba(240,250,240,.6)';g.fillRect(sx-0.6,y0+3.4,1.2,1.2);}}
+  if(st==='forge'){g.fillStyle='#5a4a44';for(const sx of [x0+3,x1-3])g.fillRect(sx-0.7,y0+3,1.4,1.4);}
+  g.restore();
+  // the ring of the arch
+  g.beginPath();head();g.lineJoin='round';
+  if(st==='dungeon'){g.strokeStyle=th.hi;g.lineWidth=2.6;g.stroke();g.setLineDash([2.4,2.4]);g.strokeStyle=th.lo;g.stroke();g.setLineDash([]);} // voussoirs
+  else if(st==='palace'){g.strokeStyle='#0b0812';g.lineWidth=2.4;g.stroke();g.strokeStyle=th.trim;g.lineWidth=1.3;g.stroke();}
+  else if(st==='tile'){g.strokeStyle=th.tileD;g.lineWidth=3.2;g.stroke();g.strokeStyle=th.tileA;g.lineWidth=1.8;g.stroke();g.strokeStyle=th.tileC;g.lineWidth=0.7;g.stroke();}
+  else if(st==='forge'){g.strokeStyle='#120b08';g.lineWidth=3;g.stroke();g.strokeStyle='#4a3a34';g.lineWidth=1.4;g.stroke();}
+  else{g.strokeStyle='#0b0812';g.lineWidth=2.8;g.stroke();g.strokeStyle='#22a898';g.lineWidth=1.8;g.stroke();g.strokeStyle='rgba(240,250,240,.55)';g.lineWidth=0.6;g.setLineDash([1.4,2.6]);g.stroke();g.setLineDash([]);}
+  if(st==='tile'){ // lobed: little cusps scalloped along the intrados
+    g.fillStyle=th.tileC;for(let i=1;i<7;i++){const u=i/7,t=u<0.5?u*2:(u-0.5)*2,m=1-t,px=u<0.5?m*m*x0+2*m*t*x0+t*t*cx:m*m*cx+2*m*t*x1+t*t*x1,py=u<0.5?m*m*sp+2*m*t*(y0+4)+t*t*y0:m*m*y0+2*m*t*(y0+4)+t*t*sp;
+      g.beginPath();g.arc(px,py+1.5,1.3,0,6.2832);g.fill();}}
+  if(st==='crypt'){ // a muqarnas hood in the head: two stepped tiers of little pointed niches
+    g.save();g.beginPath();g.moveTo(x0,sp+7);g.lineTo(x0,sp);g.quadraticCurveTo(x0,y0+4,cx,y0);g.quadraticCurveTo(x1,y0+4,x1,sp);g.lineTo(x1,sp+7);g.closePath();g.clip();
+    const row=(n,y,wd,hh,off)=>{for(let i=0;i<n;i++){const ax=x0+off+(i+0.5)*wd;g.beginPath();g.moveTo(ax-wd/2,y+hh);g.lineTo(ax-wd/2,y+hh*0.45);g.quadraticCurveTo(ax-wd/2,y+1,ax,y-0.4);g.quadraticCurveTo(ax+wd/2,y+1,ax+wd/2,y+hh*0.45);g.lineTo(ax+wd/2,y+hh);g.closePath();g.fillStyle='rgba(4,14,11,.82)';g.fill();g.strokeStyle=th.trim;g.lineWidth=0.7;g.globalAlpha=0.9;g.stroke();g.globalAlpha=1;}};
+    row(4,y0+0.6,w/4,6,0);row(3,y0+5.6,w/4,6,w/8);g.restore();}
+  // the rectangular frame (alfiz) round the arch, and each theme's band along the lintel and posts
+  if(st==='palace'||st==='tile'){g.strokeStyle=st==='tile'?th.tileC:th.trim;g.lineWidth=0.8;g.globalAlpha=0.85;g.strokeRect(x0-5.4,ctop+1.6,w+10.8,yb-ctop-1.6);g.globalAlpha=1;}
+  if(st==='crypt'){g.fillStyle='#22a898';g.fillRect(x0-6,ctop+1.2,w+12,2.6);g.fillStyle='rgba(240,250,240,.55)';for(let i=0;i<8;i++)g.fillRect(x0-5+i*3.5,ctop+1.2,1.3,2.6);g.fillStyle='#22a898';g.fillRect(x0-3.4,y0+8,1.5,yb-y0-8);g.fillRect(x1+1.9,y0+8,1.5,yb-y0-8);}
+  if(st==='forge'){g.fillStyle='#5a4a44';for(let i=0;i<4;i++)g.fillRect(x0-4.6+i*w/3.2,ctop+2.6,1.4,1.4);g.fillStyle='rgba(255,120,40,.55)';g.fillRect(x0-6,y0-0.6,w+12,0.8);}
+  if(st==='dungeon'){g.fillStyle=th.lo;for(let i=0;i<4;i++)g.fillRect(x0-6+i*(w+12)/4,ctop+1.2,1,y0-ctop-2);}
+}
 function drawDoor(ctx,x,r,open,isExit){
   // a doorway cut into the back wall: it stands on the floor's back edge, and because depth recedes up and to the
   // right you see its left jamb and its threshold; the exit opens onto stairs climbing up and back into the light
   const c=Math.floor(x/TW),Yc=r*TH,ctop=Yc+Math.max(ceilOff(c,r),ceilOff(c+1,r));
-  const th=L.theme,yb=SURF(r)-HY,xc=x+HX,w=24,y0=ctop+6,h=yb-y0,x0=xc-w/2,x1=x0+w,RD=0.45,rdx=DX*RD,rdy=DY*RD,lit=isExit&&open>0;
+  const th=L.theme,st=th.style,yb=SURF(r)-HY,xc=x+HX,w=24,y0=ctop+6,h=yb-y0,x0=xc-w/2,x1=x0+w,RD=0.45,rdx=DX*RD,rdy=DY*RD,lit=isExit&&open>0,kind=st==='dungeon'?'round':'point',sp=doorHead(ctx,x0,x1,y0,kind,null);
   ctx.save();ctx.beginPath();ctx.rect(x0-40,ctop,w+80,yb-ctop+20);ctx.clip(); // nothing of the doorway shows above the ceiling's front edge
-  ctx.save();ctx.beginPath();ctx.rect(x0,y0,w,h);ctx.clip();
+  ctx.save();doorHead(ctx,x0,x1,y0,kind,yb);ctx.clip(); // the opening has an arched head
   if(lit){const gr=ctx.createLinearGradient(0,y0-6,0,yb);gr.addColorStop(0,'#fff0c8');gr.addColorStop(0.55,'#f6c46e');gr.addColorStop(1,'#b8552e');ctx.fillStyle=gr;ctx.fillRect(x0,y0,w,h);
     const N=8,RS=6.2,SX=DX*0.22,SY=DY*0.22;
     for(let k=N-1;k>=0;k--){const fx=x0+rdx+k*SX,bot=yb-rdy-k*SY-k*RS,top=bot-RS,a=k/(N-1);
@@ -3989,10 +4097,7 @@ function drawDoor(ctx,x,r,open,isExit){
   }else{ctx.fillStyle='#07050b';ctx.fillRect(x0,y0,w,h);}
   // the door leaf sits at the back of the doorway and slides up into the lintel
   const lx=x0+rdx,ly=y0-rdy-open*(h+4);
-  if(ly<yb){ctx.fillStyle='#6a4426';ctx.fillRect(lx,ly,w,h);
-    ctx.fillStyle='#4e311b';for(let i=1;i<4;i++)ctx.fillRect(lx+i*6,ly,1,h);
-    ctx.fillStyle='#d8b04a';for(let i=0;i<4;i++){ctx.fillRect(lx+3+i*6,ly+12,1.4,1.4);ctx.fillRect(lx+3+i*6,ly+h-12,1.4,1.4);}
-    ctx.fillStyle='#2b1c10';ctx.fillRect(lx,ly+h-2,w,2);}
+  if(ly<yb)doorLeaf(ctx,th,lx,ly,w,h);
   // left jamb (inside face) and threshold, nearer than the leaf
   ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x0+rdx,y0-rdy);ctx.lineTo(x0+rdx,yb-rdy);ctx.lineTo(x0,yb);ctx.closePath();
   ctx.fillStyle=th.lo;ctx.fill();ctx.fillStyle=lit?'rgba(255,200,120,.18)':'rgba(0,0,0,.35)';ctx.fill();ctx.fillStyle=dither(ctx);ctx.fill();
@@ -4005,6 +4110,7 @@ function drawDoor(ctx,x,r,open,isExit){
   ctx.fillStyle=th.hi;ctx.fillRect(x0-5,y0,1,h);ctx.fillRect(x1,y0,1,h);
   ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(x0-1,y0,1,h);
   ctx.fillStyle=th.wall;ctx.fillRect(x0-6,ctop,w+12,y0-ctop);ctx.fillStyle=th.top;ctx.fillRect(x0-6,y0-1.4,w+12,1.4);ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(x0-6,ctop,w+12,1.2);
+  doorArch(ctx,th,x0,x1,y0,ctop,yb,kind,sp);
   if(isExit){ctx.fillStyle='#d8b04a';ctx.beginPath();ctx.arc(xc,(ctop+y0)/2,1.8,0,Math.PI*2);ctx.fill();}
   ctx.restore();
 }
