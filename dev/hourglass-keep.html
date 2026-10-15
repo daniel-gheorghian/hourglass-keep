@@ -1617,7 +1617,7 @@ function buildLevel(n,seed,test,legacy,att){
     for(let k=0;k<L.items.length;k++){const it=L.items[k];if(it.alc){it.type='life';secretDone=true;break;}}}
   // thin out flasks: the gold flask always stays; every other flask keeps FLASK_GAP tiles of route from any kept one (alcoves before floor flasks)
   {const FLASK_GAP=Math.round(35*PKW),kept=[],rank=it=>it.type==='life'?0:(it.type==='big'||it.fork)?1:it.alc?2:3;
-    for(const it of L.items.slice().sort((a,b)=>rank(a)-rank(b)||a.ord-b.ord))if(kept.every(k=>Math.abs(k.ord-it.ord)>=FLASK_GAP))kept.push(it);
+    for(const it of L.items.slice().sort((a,b)=>rank(a)-rank(b)||a.ord-b.ord))if(it.fork||kept.every(k=>Math.abs(k.ord-it.ord)>=FLASK_GAP))kept.push(it); // a grating's flask is what its gate guards: it always stays
     L.items=L.items.filter(it=>kept.includes(it));}
   // open a hall over everything the prince moves through: one row of headroom above every floor, gap and shaft top.
   // Gates and blades keep their lintel; the entrance and exit keep a wall to sit in.

@@ -237,6 +237,7 @@ const TW=32, TH=64, RW=10, RH=3, ROOM_W=TW*RW, ROOM_H=TH*RH, HUD=20, VW=ROOM_W, 
 const EMPTY=0, FLOOR=1, WALL=2;
 const SURF=r=>(r+1)*TH-4;
 const GRAV=700, RUN=100, BW=6, HANG=57, STEP=1/60;
+const LIFT_V=64, CHAIN_V=44, CHAIN_TOL=14; // lifts, px/s: the counterweight lift's platform, the chain-loop lift's chain; and how far (px) a slab may be from the landing's level to be stepped on or off
 const clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t;
 const ease=t=>t<.5?2*t*t:1-((-2*t+2)**2)/2;
 const approach=(v,t,d)=>v<t?Math.min(t,v+d):Math.max(t,v-d);
@@ -256,7 +257,7 @@ function themeName(n){const i=Math.floor((n-1)/4),t=THEMES[i%THEMES.length],k=Ma
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=9;
-const APP_VERSION='39'; // set by the build; shown on the title and pause screens
+const APP_VERSION='40'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(s.gen!==GEN){s.gen=GEN;s.cp=-1;s.resume=null;s.floorTime=0;}
@@ -279,7 +280,7 @@ function solidBelow(L,c,r){const b=B(L,c,r);if(b===FLOOR)return true;if(b===WALL
 // A run never lies directly on top of another: the band between is left for the side passages.
 // Many candidate plans are walked and the best one kept, scored on its proportions (neither a tower nor a strip),
 // on going down about three times in five, and on room for side passages.
-const ROUTE_SLACK=1.05;
+const ROUTE_SLACK=1.06;
 // ---- loops ----
 // Unexplored lays a level around a loop: two arcs between the same two places, the short one barred by a lock whose key
 // lies on the long one ("the player takes path A to the goal, only to discover a locked door", then goes round by B
@@ -299,7 +300,7 @@ function routeWalk(n,R,budget){
   const runs=[],turns=[];
   for(let guard=0;guard<80;guard++){
     const want=lo+Math.floor(R()*(hi-lo+1)),rooms=[[x,y]];
-    let cap=first?RW-4:prevRev?5:RW-6; // the first room holds the entrance, or the foot of the turn that led here
+    let cap=first?RW-4:prevRev?(n>=3?1:5):RW-6; // the first room holds the entrance, or the foot of the turn that led here
     while(rooms.length<want&&cap<left+8){const nx=x+dir;if(!freeRun(nx,y))break;occ.set(K(nx,y),1);x=nx;rooms.push([x,y]);cap+=RW;}
     const last=cap>=left+8;
     if(!last&&rooms.length<2)return null;
@@ -307,18 +308,21 @@ function routeWalk(n,R,budget){
     runs.push({rooms,y,dir,cap:last?left:cap});left-=cap;first=false;
     if(last)break;
     // the turn takes the room column just past the run's end
-    const opts=[],cx=x+dir;
-    const tryAdd=(w,down,k,rev)=>{if(w<=0)return;const cells=[];for(let i=0;i<k;i++)cells.push([cx,y+(down?i:-i)]);const ly=y+(down?k:-k);
-      if(cells.some(([a,b])=>occ.has(K(a,b)))||!freeRun(cx,ly))return;
+    // (from floor 3 a turn is a chamber of two room columns, cx and cx2, the next run starting in the second)
+    const opts=[],cx=x+dir,cx2=n>=3?cx+dir:cx;
+    const tryAdd=(w,down,k,rev)=>{if(w<=0)return;const cells=[];for(let i=0;i<k;i++){cells.push([cx,y+(down?i:-i)]);if(cx2!==cx)cells.push([cx2,y+(down?i:-i)]);}const ly=y+(down?k:-k);
+      if(cells.some(([a,b])=>occ.has(K(a,b)))||!freeRun(cx2,ly)||(cx2!==cx&&occ.has(K(cx,ly))))return;
+      if(cx2!==cx&&rev&&!freeRun(cx,ly))return;
       if(rev&&!freeRun(cx-dir,ly))return; // a switchback heads straight back underneath
-      opts.push([w,down,k,rev,cells,ly]);};
+      opts.push([w,down,k,rev,cells,ly,cx2]);};
     if(n<=2){tryAdd(revs?0:0.6,true,2,true);tryAdd(1,true,1,false);}
     else{tryAdd(0.30,true,1,false);tryAdd(0.10,true,2,false);tryAdd(0.25,true,2,true);tryAdd(0.25,false,1,false);tryAdd(0.10,false,2,false);}
     if(!opts.length)return null;
     let t=R()*opts.reduce((a,o)=>a+o[0],0),o=opts[0];for(const q of opts){t-=q[0];if(t<=0){o=q;break;}}
-    const [,down,k,rev,cells,ly]=o;
+    const [,down,k,rev,cells,ly,cxN]=o;
     for(const [a,b] of cells)occ.set(K(a,b),2);
-    occ.set(K(cx,ly),1);turns.push({down,k,rev});revs+=rev?1:0;prevRev=rev;x=cx;y=ly;if(rev)dir=-dir;
+    if(cxN!==cx&&!rev)occ.set(K(cx,ly),2); // (the foot of the chamber, left of the next run's first room)
+    occ.set(K(cxN,ly),1);turns.push({down,k,rev,w:cxN!==cx?2:1});revs+=rev?1:0;prevRev=rev;x=cxN;y=ly;if(rev)dir=-dir;
   }
   if(left>0)return null;
   return {runs,turns,occ,revs};
@@ -338,7 +342,10 @@ function routePlan(n,seed,budget,needChase,att){
     // a switchback whose two runs overlap by four rooms or more can hold a loop (see LOOPS)
     let loopOK=0;if(n>=LOOP_MIN)for(let t=0;t<w.turns.length;t++){if(!w.turns[t].rev||t===chaseRun||t+1===chaseRun)continue;
       let ov=0;for(const [a] of w.runs[t].rooms)if(w.runs[t+1].rooms.some(([a2])=>a2===a))ov++;if(ov>=4)loopOK=1;}
-    const score=-Math.abs(Math.log(aspect/3))*3-(n>2?Math.abs(dn-0.6)*4:0)+Math.min(side,40)*0.03+loopOK*0.6;
+    // (a turn's chamber ends at a varying place in its second column, so the runs come out a little longer or shorter than
+    // their rooms say: the last run keeps rooms in hand to make up for it, and a plan that has them is preferred)
+    const lr=w.runs[w.runs.length-1],spare=lr.rooms.length-Math.ceil((lr.cap+8)/RW);
+    const score=-Math.abs(Math.log(aspect/3))*3-(n>2?Math.abs(dn-0.6)*4:0)+Math.min(side,40)*0.03+loopOK*0.6+(n>=3?Math.min(spare,8)*0.4-(spare<4?2:0):0);
     if(!best||score>best.score)best={score,w,x0,y0,W,H,chaseRun};
   }
   if(!best)return null;
@@ -349,14 +356,49 @@ function routePlan(n,seed,budget,needChase,att){
 // the fallback when no plan fits: today's single strip, one run heading right
 function stripPlan(budget){const k=Math.ceil((budget+12)/RW)+1,rooms=[];for(let i=0;i<k;i++)rooms.push(i);return {W:k,H:1,chaseRun:0,turns:[],runs:[{dir:1,band:0,cap:budget,rooms}]};}
 // ================= generator =================
+const FEAT_FLAT=1.6; // how much plain floor the featured obstacle's extra weight takes out of the menu (1 = its whole extra weight)
+const FLAT_K=3; // weight of plain floor in the run's menu (v39 had 1)
+const CH_PLAIN=0.6; // chance a chamber's landings are all plain floor
+const FILL_PLAIN=0.85,LAND_PLAIN=0.7; // chance a stretch of side-passage corridor / a turn landing is left plain
 const PADK=1.46, padK=n=>n<=5?1.52:PADK, MOVES=new Set(['flat','up','down','drop2']);
+// ---- oatmeal spice: a few big choices per floor (Boris the Brave, "oatmeal spice"; Emily Short's "bowls of oatmeal") ----
+// Menus drawn independently at every spot average out to the same mix on every floor. So a floor also carries three discrete
+// choices that tilt its menus hard - one family of vertical moves, one family of puzzles, one obstacle - and now and then a
+// rare flag that turns the whole floor over. All drawn from the seed's own walk (floor by floor, so a floor never repeats the
+// family of the one before it), a pure function of (n,seed). Floors 1 and 2 stay as they were.
+const MOVE_FAM={plain:{m:['down','drop2','up'],n:3},collapse:{m:['collapse'],n:3},jumps:{m:['jumpdown','jumpup'],n:4},banners:{m:['banner3','banner4','shaft2','shaft3'],n:4},
+  lifts:{m:['lift2d','lift3d','lift2u','lift3u','chn2d','chn3d','chn2u','chn3u'],n:3}};
+const PUZ_FAM={slab:4,side:4,alcove:4,timed:6,double:7}, PUZ_OF={P2G1:'slab',P3G1:'slab',P1G1:'side',P5G1:'alcove',double:'double'}; // (the remote plates: P4 timed, P5 alcove, P1 side)
+const OBS_FAM={spikes:3,loose:3,chomp:4,guard:3,saw:5,tunnel:3};
+const FEAT_FLAGS=[['tower',3],['rotten',4],['barracks',4],['longway',6],['maze',4]]; // lift tower, rotten floors, barracks, the long way, gate maze
+const FLAG_P=0.12; // the chance a floor is flagged (never two in a row: about one floor in nine)
+const FLAG_TEXT={tower:'Counterweights and chains, everywhere.',rotten:'The floors here are rotten.',barracks:'The garrison is out in force.',longway:'Here the quick way is dear.',maze:'The gates here are thick.'};
+function featFor(n,seed){
+  const ov=typeof window!=='undefined'&&window.__FEAT||null;
+  // (in play every floor has its own seed, so the walk is run on the game's seed: then neighbouring floors really differ)
+  let base=seed|0;try{if(S&&S.seed!==undefined&&levelSeed(n)===seed)base=S.seed|0;}catch(e){}
+  const R=mulberry32(hash2(base,5557));
+  let prevFlag=false,pv={move:null,puzzle:null,obstacle:null},F={move:null,puzzle:null,obstacle:null,flag:null};
+  const pickOf=(tab,m,x,not)=>{const k=Object.keys(tab).filter(q=>(typeof tab[q]==='number'?tab[q]:tab[q].n)<=m),o=k.length>1?k.filter(q=>q!==not):k;return o.length?o[Math.floor(x*o.length)]:null;};
+  for(let m=1;m<=n;m++){
+    const roll=R(),pk=R(),x1=R(),x2=R(),x3=R();
+    F={move:m>=3?pickOf(MOVE_FAM,m,x1,pv.move):null,puzzle:m>=4?pickOf(PUZ_FAM,m,x2,pv.puzzle):null,obstacle:m>=4?pickOf(OBS_FAM,m,x3,pv.obstacle):null,flag:null};
+    const on=m>=4&&!prevFlag&&roll<FLAG_P;prevFlag=on;
+    if(on){const fl=FEAT_FLAGS.filter(q=>q[1]<=m);F.flag=fl[Math.floor(pk*fl.length)][0];}
+    if(m===n&&ov&&ov.flag)F.flag=ov.flag;
+    const f=F.flag;if(f==='tower')F.move='lifts';else if(f==='rotten'){F.move='collapse';F.obstacle='loose';}else if(f==='barracks')F.obstacle='guard';
+    if(m===n&&ov)for(const k of ['move','puzzle','obstacle'])if(ov[k]!==undefined)F[k]=ov[k];
+    pv={move:F.move,puzzle:F.puzzle,obstacle:F.obstacle};}
+  return F;}
 function genLevel(n,seed,test,legacy){
   for(let att=0;att<8;att++){const L=buildLevel(n,seed,test,legacy,att);if(L){L.att=att;return L;}}
   return buildLevel(n,seed,test,legacy,-1);
 }
 function buildLevel(n,seed,test,legacy,att){
-  const rng=mulberry32(seed), ri=(a,b)=>a+Math.floor(rng()*(b-a+1)), ch=p=>rng()<p;
-  const d=Math.min(1,(n-1)/24);
+  let rngX=null; // while a side passage's corridor is filled, the floor's main stream is left alone (see fillCorridor)
+  const rng0=mulberry32(seed), rng=()=>(rngX||rng0)(), ri=(a,b)=>a+Math.floor(rng()*(b-a+1)), ch=p=>rng()<p;
+  const d=Math.min(1,(n-1)/24), FT=legacy?{move:null,puzzle:null,obstacle:null,flag:null}:featFor(n,seed);let FL=FT.flag;
+  if(att<0&&FL==='longway'){FT.flag=FL=null;} // the last resort layout has no forks: a floor that could not be given one is not a longway floor (its card says nothing)
   // A floor with a sandstorm chase is built four rooms longer, so the chase adds to the floor instead of eating into it.
   // The chase roll is the 4th draw of the floor's stream (the first three never depend on the width), so peek at it first.
   const peek=mulberry32(seed);peek();peek();peek();const chaseFloor=n>=6&&peek()<0.65;
@@ -371,8 +413,8 @@ function buildLevel(n,seed,test,legacy,att){
   if(!plan)return null;
   // band b's floor lies on row 6+3b: headroom and galleries above the top band, pits and cellars below the bottom one
   const cols=(plan.W+2)*RW, rows=6+3*(plan.H-1)+7, roomsW=cols/RW, roomsH=Math.ceil(rows/RH), bandRow=b=>6+3*b;
-  const L={n,seed,d,cols,rows,roomsW,roomsH,chaseFloor,base:new Uint8Array(cols*rows).fill(WALL),feat:new Array(cols*rows).fill(null),
-    items:[],guards:[],snakeSpecs:[],torches:[],windows:[],cps:[],path:[],debris:[],dyn:[],rubble:new Set(),segs:[],plan,routeT,
+  const L={n,seed,d,feature:FT,runMv:{},cols,rows,roomsW,roomsH,chaseFloor,base:new Uint8Array(cols*rows).fill(WALL),feat:new Array(cols*rows).fill(null),
+    items:[],guards:[],snakeSpecs:[],torches:[],windows:[],cps:[],path:[],debris:[],dyn:[],rubble:new Set(),segs:[],puzzles:[],lifts:[],plan,routeT,
     theme:THEMES[Math.floor((n-1)/4)%THEMES.length],door:null,start:null,cpIndex:-1,test:!!test,ext:{darts:[],blocks:[]}};
   // Runs heading left are built exactly as runs heading right, in a mirrored column space (MX - c), as Spelunky mirrors
   // its rooms; everything a run writes goes through these, and what holds pixel positions is mirrored after the run.
@@ -385,25 +427,32 @@ function buildLevel(n,seed,test,legacy,att){
   const feat=(c,r,f)=>{newFeats.push(f);const q=r*cols+PC(c);if(jr)jr.push(q,L.feat[q],1);return (L.feat[q]=f);};
   const fe=(c,r)=>{const p=PC(c);return (p<0||p>=cols||r<0||r>=rows)?null:L.feat[r*cols+p];};
   const bot=L.path;
-  let r=0, c=0, run=3;
+  let r=0, c=0, run=3, calm=false; // calm: obstacles laid in a side passage's corridor (no timers, no pits, no captain)
   ri(1,9);ri(1,3);ri(1,9); // the stream's first three draws (the fourth is the sandstorm roll peeked above)
   // progress along the route, in tiles: what guards, checkpoints and the rest are spaced by
   let progBase=0,cEntry=0;const prog=()=>progBase+(c-cEntry);
-  const guardsWanted=1+Math.floor((roomsN+chaseRooms)*(0.14+0.16*d)), style=L.theme.style;
+  const guardsWanted=1+Math.floor((roomsN+chaseRooms)*(0.14+0.16*d)*(FL==='barracks'?1.8:1)), style=L.theme.style;
   const guardGap=Math.max(6,Math.floor(1.06*(routeT-6)/Math.max(1,guardsWanted)));
   const lifeFloor=n%3===0;
+  // the floor's featured obstacle weighs heavily in every obstacle menu; a barracks floor has fewer of the other traps
+  const OB=k=>FT.obstacle===k?(k==='saw'?10:k==='guard'?6:5):1, TK=FL==='barracks'?0.75:1;
+  // the featured vertical family: the in-run steps become collapses / jumps / plain steps more or less often (v is a hash 0-99:
+  // below cT a down step is a collapsing ledge, up to jT a jump down; jU is the chance an up step is a jump)
+  const mix=m=>{L.runMv[m]=(L.runMv[m]||0)+1;return true;};
+  const [cT,jT,jU]=FT.move==='collapse'?[FL==='rotten'?65:50,FL==='rotten'?72:58,18]:FT.move==='jumps'?[4,78,70]:FT.move==='plain'?[6,12,8]:[22,40,35];
   const CP_GAP=Math.round(45*PKW), alcoves=[{at:0.22,type:'heal'},{at:0.6,type:'heal'}];
   // breathing room after a trap, from its own stream: two or three tiles of plain floor, and every few traps a longer rest
-  const prng=mulberry32(hash2(seed,4421));let sinceRest=0,restAt=3+Math.floor(prng()*3);
+  const prng0=mulberry32(hash2(seed,4421)),prng=()=>(rngX||prng0)();let sinceRest=0,restAt=3+Math.floor(prng()*3);
   function breathe(){let k=2+(prng()<0.4?1:0);if(++sinceRest>=restAt){k+=3+Math.floor(prng()*3);sinceRest=0;restAt=3+Math.floor(prng()*3);}
     const r0=run;while(k>0&&!flat(k))k--;run=r0;} // the trap mix stays as it was: padding doesn't count as run-up
   let chaseWanted=n>=6&&ch(0.65);rng();
   let secretAt=lifeFloor?Math.floor(routeT*(0.25+0.3*rng())):-1, secretDone=!lifeFloor;
   let lastGuard=-2, nextCp=CP_GAP, xDone=false, lastTorch=-9, extraG=0;
   const keepWall=new Set(); // cells the open-hall pass must leave solid (the far wall of a kick shaft)
+  let gateSlot=null; // while a turn is built for a plate's remote gate: {kind:'G2'|'G3'|'G4',g,last,done}
   const ghp=Math.min(5,2+Math.floor((n-1)/5));
   // guard skill: 0 recruit, 1 soldier, 2 veteran. Drawn from its own stream so the floor layout is unchanged.
-  const trng=mulberry32(hash2(seed,9137)),tierOf=()=>{if(n<=2)return 0;const x=trng(),a=Math.max(0.12,0.62-0.8*d),v=Math.min(0.4,0.04+0.55*d);return x<a?0:x<1-v?1:2;},gHp=t=>ghp;
+  const trng=mulberry32(hash2(seed,9137)),tierOf=()=>{if(n<=2)return 0;const x=(calm?crng:trng)(),a=Math.max(0.12,0.62-0.8*d),v=Math.min(0.4,0.04+0.55*d);return x<a?0:x<1-v?1:2;},gHp=t=>ghp;
 
   function flat(k){for(let i=1;i<=k;i++)if(!W(c+i,r))return false;for(let i=1;i<=k;i++)set(c+i,r,FLOOR);c+=k;run+=k;bot.push({a:'walk',c});return true;}
   function pitOk(cc,depth){depth=Math.min(depth,rows-1-r);for(let k=0;k<=depth;k++){if(r+k<rows&&!W(cc,r+k))return false;}return true;}
@@ -471,7 +520,7 @@ function buildLevel(n,seed,test,legacy,att){
     c+=len;run=1;return true;
   }
   function gate(){
-    const m=ri(2,5), withGap=n>=6&&m>=3&&ch(0.45), closer=!withGap&&n>=4&&m>=3&&ch(0.45);
+    const m=ri(2,5), withGap=!calm&&n>=6&&m>=3&&ch(0.45), closer=!withGap&&n>=4&&m>=3&&ch(0.45);
     const len=m+3;
     for(let i=1;i<=len;i++)if(!W(c+i,r))return false;
     if(withGap&&!pitOk(c+3,1))return false;
@@ -484,7 +533,7 @@ function buildLevel(n,seed,test,legacy,att){
     // thin margin on top: you have to go at once.
     // (measured: a running jump over the pit is quicker than the plain run, so a jump earns no extra time; jumping a
     // closer costs a moment to line up.) Slack over the fastest run: 1.15 on the first floors down to 1.03.
-    const timed=hash2((seed|0)+c*7,r*31+n)%100<25+20*d,need=(m*TW+16+BW)/RUN+(closer?0.2:withGap?-0.1:0.05),slack=lerp(1.15,1.03,clamp(0.6*d+0.4*rng(),0,1));
+    const timed=!calm&&hash2((seed|0)+c*7,r*31+n)%100<25+20*d,need=(m*TW+16+BW)/RUN+(closer?0.2:withGap?-0.1:0.05),slack=lerp(1.15,1.03,clamp(0.6*d+0.4*rng(),0,1));
     const g={t:"gate",open:0,tm:0,dur:timed?Math.ceil(need*slack*10)/10:0,latch:!timed};
     feat(c+m+2,r,g);
     feat(c+1,r,{t:'plate',g,press:-9,latch:!timed,near:true});
@@ -496,8 +545,8 @@ function buildLevel(n,seed,test,legacy,att){
     c+=len;run=1;return true;
   }
   // ---- side passages: a mini level in a gallery above the corridor or a cellar below it, walked out to a plate and back ----
-  function planBranch(gal,want,chain,amb){
-    const kinds=[style==='palace'&&ch(0.6)?'bridge':'loose'];let fighters=0;
+  function planBranch(gal,want,chain,amb,only){
+    const kinds=[only||(style==='palace'&&ch(0.6)?'bridge':'loose')];let fighters=0;
     while(kinds.length<want){
       const o=[],A=(w,k)=>{if(w>0)o.push([w,k]);};
       A(0.7,'flat');A(1.2,'spikes');A(1.2,'gap1');A(n>=5?1:0,'gap2');A(0.9,'loose');A(0.9,'tunnel');A(n>=6?0.8:0,'chomp');
@@ -527,10 +576,10 @@ function buildLevel(n,seed,test,legacy,att){
     const zoneOff=amb?x:-1;x+=amb?7:(chain?2:0);
     for(const p of parts){x+=2+(prng()<0.35?1:0);p.off=x;x+=p.w;} // a little floor between the obstacles of a passage too
     x+=2;
-    return {gal,kinds,parts,chain,amb,chainOff,zoneOff,bw:x,tall:kinds.some(k=>k==='stones'||k==='pend')};
+    return {gal,kinds,parts,chain,amb,chainOff,zoneOff,bw:x,tall:kinds.some(k=>k==='stones'||k==='pend'),dy:undefined};
   }
   function carveBranch(pl,x0,g,where,timed,reward){
-    const gal=pl.gal,b=gal?r-2:r+2,bend=x0+pl.bw-1;
+    const gal=pl.gal,b=pl.dy!==undefined?r+pl.dy:gal?r-2:r+2,bend=x0+pl.bw-1;
     for(let xx=x0;xx<=bend;xx++)set(xx,b,FLOOR);
     const below=(xx,spk)=>{if(!gal){set(xx,b+1,FLOOR);if(spk)feat(xx,b+1,{t:'spikes',fixed:true,ext:1});}};
     const hole=xx=>{set(xx,b,EMPTY);below(xx,true);};
@@ -586,31 +635,74 @@ function buildLevel(n,seed,test,legacy,att){
     return {outs,backs,plate,bend,x0,b};
   }
   // rough time for a careful player to follow a plan (used to size gate timers)
-  function estPath(acts,cur){let t=0;const mv=c2=>{t+=Math.abs(c2-cur)*0.34;cur=c2;};
+  // careful: the pace a timer is sized on. A race (P4: press the plate, run for the gate) is walks, drops and slides, where the bot
+  // needs more than the plain table below says, so there every action takes what the bot measured (floors 6 to 27) and a little over,
+  // and even the tightest factor of timerK (0.84) stays beatable. (The plain table also feeds the worth-a-life and fork choices.)
+  function estPath(acts,cur,careful){let t=0;const mv=c2=>{t+=Math.abs(c2-cur)*(careful?0.55:0.34);cur=c2;};
     for(const a of acts){
-      if(a.a==='walk'){mv(a.c);t+=0.2;continue;}
+      if(a.a==='walk'){mv(a.c);t+=careful?0.4:0.2;continue;}
       if(a.from!==undefined)mv(a.from);
       const dd=a.to!==undefined?Math.abs(a.to-a.from):0;
-      t+=({runover:dd*0.32+0.4,sjump:1.0,rjump:1.7,rjumpg:2.8,tiptoe:dd*0.8+0.5,crawl:dd*0.8+1.3,timed:dd*0.32+2.6,climb:1.3,hangdrop:1.8,drop:0.9})[a.a]||0;
+      t+=({runover:dd*0.32+0.4,sjump:careful?1.2:1.0,rjump:careful?2.8:1.7,rjumpg:careful?4.0:2.8,tiptoe:dd*0.8+0.5,crawl:dd*0.8+1.3,timed:dd*0.32+2.6,climb:1.3,hangdrop:1.8,drop:careful?1.45:0.9,slide:careful?4.0:2.2,walljump:1.6+0.9*(a.k||2),wallrun:2.2,collapse:careful?2.2:1.5,jgrab:careful?4.2:3.0,lift:a.chn?(careful?3.8:3.5)+(a.k*64+32)/CHAIN_V:careful?1.5+1.1*a.k:1.2+a.k})[a.a]||0;
       if(a.to!==undefined)cur=a.to;}
     return t;}
   const timerK=()=>0.84+0.14*rng()+0.1*(1-d); // timer over the estimated route back (a careful pace): 0.84 (tight) .. 1.08
   function rectOk(c0,c1,r0,r1){for(let xx=c0;xx<=c1;xx++)for(let rr=r0;rr<=r1;rr++)if(!W(xx,rr))return false;return true;}
-  function detourGate(galPref,fewer=0){
+  // The corridor beside a side passage carries ordinary obstacles like the rest of the run (a bare stretch would give the
+  // branch away). They are laid before the corridor floor goes in, from c up to column cEnd, in the order the bot walks
+  // them (all before the passage's mouth). Nothing that digs (pits, loose floor) as a cellar may lie beneath; nothing tall
+  // (stones, pendulum) where a gallery lies above, i.e. from column tallLim on. Its own random stream, so the passage is unchanged.
+  const crng=mulberry32(hash2(seed,7703));
+  const plrng=mulberry32(hash2(seed,9301)); // which landings stay plain
+  function fillCorridor(cEnd,tallLim,pl,x0){
+    // a gallery's holes and loose planks must keep their drop: beneath them nothing may stand that has a lintel (a gate,
+    // chomper or low roof would turn the gap into a dent) or that hurts (a fall would land on it); a guard may
+    const ban=new Set(),hole=(x,w)=>{for(let i=-1;i<=w;i++)ban.add(x+i);};
+    if(pl&&pl.gal){for(const p of pl.parts){const s0=x0+p.off;
+      if(p.k==='gap1')hole(s0+1,1);else if(p.k==='gap2'||p.k==='skel')hole(s0+3,2);else if(p.k==='loose'||p.k==='bridge')hole(s0+3,p.m);}
+      if(pl.chain)hole(x0+pl.chainOff,5);}
+    if(pl&&pl.ban)for(const x of pl.ban)ban.add(x);
+    const hits=(a,b)=>{for(let i=a;i<=b;i++)if(ban.has(i))return true;return false;};
+    const sv={c,run,vHi,lg:lastGuard,sr:sinceRest,ra:restAt};vHi=Math.min(vHi,cEnd);calm=true;rngX=crng;sinceRest=-99; // (no long rests in here)
+    let guardIn=false,tries=0;
+    flat(1+Math.floor(crng()*2));
+    while(c<cEnd&&tries++<60){
+      if(crng()<FILL_PLAIN){if(!flat(1+Math.floor(crng()*3)))break;continue;} // a stretch left as plain floor (v39 had a bare corridor; a full one gives the branch away, a thin one keeps the traps near v39)
+      const o=[],A=(w,k,f,sp)=>{if(w>0&&(sp<0||!hits(c,c+sp)))o.push([w,k,f]);},tall=c+7<tallLim;
+      if(n>=2)A(1.2*OB('spikes'),'spikes',()=>spikes(n>=6&&crng()<0.4?2:1),3);
+      if(n>=4)A(0.9*OB('chomp'),'chomp',chomp,n>=10?5:3);
+      if(n>=3)A(0.9*OB('tunnel'),'tunnel',tunnel,7);
+      if(n>=3)A(0.8*TK,'gate',gate,8);
+      if(n>=3&&!guardIn)A(0.7*OB('guard'),'guard',guard,-1);
+      if(n>=5)A(0.5*OB('saw'),'saw',sawSeg,5);
+      if(style==='dungeon'&&n>=2&&tall)A(0.9,'stones',stones,6);
+      if(style==='tile'&&tall)A(0.9,'pend',pendulum,6);
+      if(style==='forge')A(0.9,'vents',vents,6);
+      let done=false;
+      while(o.length&&!done){let tot=0;for(const q of o)tot+=q[0];let x=crng()*tot,i=0;for(;i<o.length-1;i++){x-=o[i][0];if(x<=0)break;}
+        const [,kd,f]=o.splice(i,1)[0],c0=c,gN=L.guards.length;
+        if(f()){L.segs.push({k:kd,c0,c1:c,r0:r,r1:r,corr:1});if(L.guards.length>gN){guardIn=true;extraG+=L.guards.length-gN;}breathe();done=true;}}
+      if(!done&&!flat(1))break;
+    }
+    c=sv.c;run=sv.run;vHi=sv.vHi;lastGuard=sv.lg;sinceRest=sv.sr;restAt=sv.ra;calm=false;rngX=null;
+  }
+  function detourGate(galPref,fewer=0,ext){
     const gal=galPref===undefined?r>=3&&(r>rows-4||ch(0.5)):galPref&&r>=3;
     if(!gal&&r>rows-4)return false;
-    const timed=n>=6&&ch(0.35);
+    const timed=!ext&&n>=6&&ch(0.35);
     const pl=planBranch(gal,Math.max(1,2+Math.floor(d*3)+(ch(0.5)?1:0)-fewer),ch(0.6),!timed&&n>=5&&ch(0.5));
-    const x0=c+2,bend=x0+pl.bw-1,e=gal?bend+2:bend,gc=gal?e+3:e+4,len=(gal?e+4:e+5)-c;
+    const x0=c+2,bend=x0+pl.bw-1,e=gal?bend+2:bend,gc=gal?e+3:e+4,len=(ext?(gal?e+2:e+3):(gal?e+4:e+5))-c;
     if(c+len>vHi)return false;
     if(!rectOk(c+1,c+len,gal?r-3:r,gal?r:r+3))return false;
     if(gal&&pl.tall&&!rectOk(c+1,c+len,r-4,r-4))return false;
+    fillCorridor(e-3,gal?x0-1:1e9,pl,x0);
     for(let xx=c+1;xx<=c+len;xx++)set(xx,r,FLOOR);
     if(gal){set(e,r-1,EMPTY);set(e-1,r-1,FLOOR);set(e-1,r-2,EMPTY);}
     else{set(e,r,EMPTY);set(e+1,r,EMPTY);set(e,r+1,EMPTY);set(e+1,r+1,FLOOR);}
-    const g={t:'gate',open:0,tm:0,dur:0,latch:!timed,far:true};feat(gc,r,g);
-    const br=carveBranch(pl,x0,g,gal?'below':'above',timed,false);
-    let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&raw(xx,r)===FLOOR&&!fe(xx,r)&&ch(0.45)){L.torches.push({c:xx,r});lt=xx;}
+    const g=ext?ext.g:{t:'gate',open:0,tm:0,dur:0,latch:!timed,far:true};if(!ext)feat(gc,r,g);
+    const br=carveBranch(pl,x0,g,ext?'further on':gal?'below':'above',timed,false);if(ext){ext.pc=x0;ext.r=br.b;}
+    // (the torches' draws are made as if the corridor were still bare, so the fill leaves the stream as it was)
+    let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&(gal||(xx!==e&&xx!==e+1))&&xx!==gc&&ch(0.45)){if(raw(xx,r)===FLOOR&&!fe(xx,r))L.torches.push({c:xx,r});lt=xx;}
     const exit=gal?[{a:'walk',c:e-2},{a:'hangdrop',from:e-2},{a:'drop',from:e-1},{a:'walk',c:c+len}]:[{a:'walk',c:e},{a:'climb',from:e},{a:'climb',from:e+1},{a:'walk',c:c+len}];
     if(timed)g.dur=Math.round((estPath([...br.backs,...exit],x0)*timerK()+0.3)*10)/10;
     if(gal)bot.push({a:'walk',c:e},{a:'climb',from:e,dir:-1},{a:'climb',from:e-1,dir:-1},...br.outs,...br.backs,...exit);
@@ -629,6 +721,7 @@ function buildLevel(n,seed,test,legacy,att){
     if(c+len>vHi||x0c<c+2||x0g<c+2)return false;
     if(!rectOk(c+1,c+len,r-3,r+3))return false;
     if(pg.tall&&!rectOk(c+1,c+len,r-4,r-4))return false;
+    fillCorridor(ec-3,x0g-1,pg,x0g);
     for(let xx=c+1;xx<=c+len;xx++)set(xx,r,FLOOR);
     set(ec,r,EMPTY);set(ec+1,r,EMPTY);set(ec,r+1,EMPTY);set(ec+1,r+1,FLOOR); // cellar mouth
     set(eg,r-1,EMPTY);set(eg-1,r-1,FLOOR);set(eg-1,r-2,EMPTY); // gallery step
@@ -642,8 +735,76 @@ function buildLevel(n,seed,test,legacy,att){
     if(tg){bot.push(...celIn,...celOut,...galSeq);G2.dur=Math.round((estPath([...brG.backs,{a:'walk',c:eg-2},{a:'hangdrop',from:eg-2},{a:'drop',from:eg-1},{a:'walk',c:g2c+1}],x0g)*timerK()+0.3)*10)/10;}
     else{bot.push({a:'walk',c:ec-1},{a:'rjump',from:ec-1,to:ec+2},...galSeq,...celInR,...celOut);G2.dur=Math.round((estPath([...brC.backs,{a:'walk',c:ec},{a:'climb',from:ec},{a:'climb',from:ec+1},{a:'walk',c:g2c+1}],x0c)*timerK()+0.3)*10)/10;}
     bot.push({a:'walk',c:c+len});
-    let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&raw(xx,r)===FLOOR&&!fe(xx,r)&&ch(0.45)){L.torches.push({c:xx,r});lt=xx;}
+    let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&xx!==ec&&xx!==ec+1&&xx!==g1c&&xx!==g2c&&ch(0.45)){if(raw(xx,r)===FLOOR&&!fe(xx,r))L.torches.push({c:xx,r});lt=xx;}
     L.detours=(L.detours||[]);L.detours.push({double:true,tg,c,len,ec,eg,g1c,g2c,r,dur:G2.dur,kindsG:pg.kinds.slice(),kindsC:pc.kinds.slice()});
+    c+=len;run=2;return true;
+  }
+
+  // ---- puzzles of the plate-opens-a-gate kind in other shapes (see the menu at puzzlePick) ----
+  // The puzzles' own random stream, so the floor's other draws are left alone.
+  const krng=mulberry32(hash2(seed,7919));
+  const zrng=mulberry32(hash2(seed,8209)),zr=()=>zrng(),zi=(a,b)=>a+Math.floor(zr()*(b-a+1));
+  // A fill of ordinary obstacles for a stretch of corridor that a puzzle leaves between its parts; the bot's actions for it
+  // are taken out and returned (the puzzle puts them where the bot reaches that stretch).
+  function fillAside(c0,cEnd,pl){
+    const sv={c,run},n0=bot.length;c=c0;run=2;fillCorridor(cEnd,0,pl,0);const acts=bot.splice(n0);c=sv.c;run=sv.run;return acts;}
+  // Slab puzzles (Prince of Persia levels 4, 5, 9, 11). In the gallery one storey above the corridor a loose tile hangs over
+  // a plate of the corridor below. Run over the tile, it falls behind you, and the slab on the plate holds it down for good.
+  //  p2: the plate itself opens a gate far along the corridor; the gate drops too fast to outrun (it stays open only while the
+  //      plate is held), so the slab is the one way to get through.
+  //  p3: an ordinary latched plate and its gate, but four closing plates lie in front of the gate (too wide to jump, measured:
+  //      a running jump carries about 3.1 tiles); the slab on one of them jams the lot.
+  function slabGate(kind){
+    const p3=kind==='p3';
+    if(r<3)return false;
+    const e=c+6+zi(0,5);let lc,gc,pl=0,nookEnd,jumpTo;
+    if(p3){gc=e+9+zi(0,3);lc=gc-3;pl=e+3+zi(0,gc-9-e);nookEnd=gc-1;}
+    else{lc=e+3+zi(0,2);gc=lc+10+zi(0,3);nookEnd=lc+2;}
+    const len=gc+1-c;
+    if(c+len>vHi)return false;
+    if(!rectOk(c+1,c+len,r-3,r))return false;
+    fillCorridor(e-3,1e9,null,0);
+    const post=p3?[]:fillAside(lc+1,gc-4,{gal:true,parts:[],ban:[lc-1,lc+1]});
+    for(let xx=c+1;xx<=c+len;xx++)set(xx,r,FLOOR);
+    set(e,r-1,EMPTY);set(e+1,r-1,FLOOR);set(e+1,r-2,EMPTY); // the stair up into the gallery
+    for(let xx=e+2;xx<=nookEnd;xx++)set(xx,r-2,FLOOR);
+    const lf={t:'loose',s:0,tm:0};feat(lc,r-2,lf);
+    if(p3){
+      const g={t:'gate',open:0,tm:0,dur:0,latch:true};feat(gc,r,g);
+      feat(pl,r,{t:'plate',g,press:-9,latch:true,near:true});
+      const cl={t:'closer',g,press:-9,jam:0,slabF:lf};for(let q=1;q<=4;q++)feat(gc-q,r,cl);
+    }else{
+      const g={t:'gate',open:0,tm:0,dur:0.2,latch:false,blockGate:true,slab:true,far:true};feat(gc,r,g);
+      feat(lc,r,{t:'plate',g,press:-9,latch:false,jam:0,slabF:lf});
+    }
+    bot.push({a:'walk',c:e},{a:'climb',from:e},{a:'climb',from:e+1},{a:'runover',from:e+2,to:nookEnd},{a:'sjump',from:lc+1,to:lc-1,dir:-1},
+      {a:'walk',c:e+2},{a:'hangdrop',from:e+2,dir:-1},{a:'drop',from:e+1,dir:-1},...post,{a:'walk',c:gc+1});
+    let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&xx!==gc&&zr()<0.45){if(raw(xx,r)===FLOOR&&!fe(xx,r))L.torches.push({c:xx,r});lt=xx;}
+    L.detours=(L.detours||[]);L.detours.push({puz:p3?'P3G1':'P2G1',c,len,e,lc,gc,pl:p3?pl:lc,r});
+    c+=len;run=2;return true;
+  }
+
+  // A plate in a small alcove one storey off the corridor: a ledge over it reached by one climb, or a nook under it reached by
+  // dropping through a one-tile hole in its floor (and climbed out of at the hole's far side). A few tiles long, with a single
+  // obstacle in it: the cheap shape of "a plate opens a gate", next to the long gallery and cellar branches.
+  function alcovePlate(up,ext){
+    if(up&&r<3)return false;
+    if(!up&&r>rows-5)return false;
+    const menu=['spikes','gap1','loose'];if(n>=6)menu.push('chomp');if(n>=5)menu.push('tunnel');
+    const only=menu[Math.floor(zr()*menu.length)];
+    const pl=planBranch(up,1,false,false,only);pl.dy=up?-1:1;
+    const x0=c+2,bend=x0+pl.bw-1,e=up?bend+1:bend,gc=e+3,len=(ext?e+2:e+4)-c;
+    if(c+len>vHi)return false;
+    if(!rectOk(c+1,c+len,up?r-2:r,up?r:r+3))return false;
+    fillCorridor(e-3,up?x0-1:1e9,pl,x0);
+    for(let xx=c+1;xx<=c+len;xx++)set(xx,r,FLOOR);
+    if(up)set(e,r-1,EMPTY);else set(e,r,EMPTY);
+    const g=ext?ext.g:{t:'gate',open:0,tm:0,dur:0,latch:true,far:true};if(!ext)feat(gc,r,g);
+    const br=carveBranch(pl,x0,g,ext?'further on':up?'below':'above',false,false);if(ext){ext.pc=x0;ext.r=br.b;}
+    let lt=-9;for(let xx=c+2;xx<c+len;xx++)if(xx-lt>=8&&(up||xx!==e)&&xx!==gc&&zr()<0.45){if(raw(xx,r)===FLOOR&&!fe(xx,r))L.torches.push({c:xx,r});lt=xx;}
+    if(up)bot.push({a:'walk',c:e},{a:'climb',from:e,dir:-1},...br.outs,...br.backs,{a:'walk',c:e-1},{a:'drop',from:e-1},{a:'walk',c:c+len});
+    else bot.push({a:'walk',c:e-1},{a:'drop',from:e-1},...br.outs,...br.backs,{a:'walk',c:e},{a:'climb',from:e},{a:'walk',c:c+len});
+    L.detours=(L.detours||[]);L.detours.push({puz:'P5G1',up,c,len,x0,bend,e,gc,r,only});
     c+=len;run=2;return true;
   }
   // ---- vertical moves ----
@@ -663,6 +824,7 @@ function buildLevel(n,seed,test,legacy,att){
     for(let i=0;i<=k;i++)if(!W(c+2,r-i))return false;
     set(c+1,r,FLOOR);for(let i=1;i<=k;i++){set(c+1,r-i,EMPTY);keepWall.add((r-i)*cols+PC(c));}
     set(c+2,r-k,FLOOR);set(c+3,r-k,FLOOR);
+    if(gateSlot&&gateSlot.kind==='G2'&&gateSlot.last&&!gateSlot.done){feat(c+3,r-k,gateSlot.g);gateSlot.done=true;} // a gate on the landing ledge
     feat(c+1,r,{t:'shaftfoot'});
     bot.push({a:'walljump',from:c+1,k});
     c+=3;r-=k;run=1;return true;
@@ -676,6 +838,7 @@ function buildLevel(n,seed,test,legacy,att){
     const bn={top:r*TH+9,bot:(r+k-1)*TH+TH-16,a:-1,b:-1,t:-9};
     for(let i=0;i<k;i++){set(c+1,r+i,EMPTY);feat(c+1,r+i,{t:'banner',top:i===0,bot:i===k-1,bn});}
     for(let i=1;i<=3;i++)set(c+i,r+k,FLOOR);
+    if(gateSlot&&gateSlot.kind==='G3'&&!gateSlot.done){feat(c+2,r+k,gateSlot.g);gateSlot.done=true;} // a gate on the floor at the foot of the slide
     bot.push({a:'slide',from:c,to:c+3});
     c+=3;r+=k;run=2;return true;
   }
@@ -690,6 +853,128 @@ function buildLevel(n,seed,test,legacy,att){
     bot.push({a:'swing',from:c,to:c+5});
     c+=7;run=3;return true;
   }
+  // ---- three more ways to change storey (used in the turns' chambers, and now and then in a run for a plain step) ----
+  // Prince of Persia drops you through loose floors (level 1) and asks you to grab ledges in mid-jump; Flashback has you
+  // jump, grab, climb and drop. Each of these is atomic: it checks every cell first and writes nothing when it does not fit.
+  function collapseSeg(){ // a loose ledge that gives way under him: one storey (64px, safe) onto the landing under it
+    if(r+1>rows-2||r+1>rMax||!W(c+1,r)||!W(c+1,r+1)||!W(c+2,r+1))return false;
+    set(c+1,r,FLOOR);feat(c+1,r,{t:'loose',s:0,tm:0,drop:true});set(c+1,r+1,FLOOR);set(c+2,r+1,FLOOR);
+    bot.push({a:'collapse',from:c,to:c+1});
+    c+=2;r+=1;run=2;return true;
+  }
+  function jumpDownSeg(){ // a jump over a pit of one or two tiles onto a ledge one storey lower (a fall of 64px: it does not hurt)
+    const g=vrng()<0.5?1:2,lead=Math.max(0,(g===2?3:1)-run),c0=c+lead;
+    if(r+2>rows-2||r+1>rMax)return false;
+    for(let i=1;i<=g;i++)for(let j=0;j<=2;j++)if(!W(c0+i,r+j))return false;
+    for(let i=1;i<=3;i++)if(!W(c0+g+i,r+1))return false;
+    if(lead&&!flat(lead))return false;
+    for(let i=1;i<=g;i++){set(c+i,r,EMPTY);pit(c+i,2);}
+    for(let i=1;i<=3;i++)set(c+g+i,r+1,FLOOR);
+    for(let i=1;i<=3;i++)resv[r*cols+PC(c+g+i)]=1; // (no ledge may be built at the height he jumps from, over the landing: his hands would catch it in the air)
+    bot.push(g===1?{a:'sjump',from:c,to:c+2,jd:1}:{a:'rjump',from:c,to:c+3,jd:1});
+    c+=g+3;r+=1;run=3;return true;
+  }
+  function jumpUpSeg(){ // a running jump across a shallow pit that catches the edge of a ledge one storey higher (hold Grab in the air)
+    const g=vrng()<0.4?2:1,lead=Math.max(0,3-run),c0=c+lead;
+    if(r<3||r-1<rMin||r+1>rows-2)return false;
+    for(let i=1;i<=g;i++)if(!W(c0+i,r)||!W(c0+i,r+1))return false;
+    for(let i=1;i<=3;i++)if(!W(c0+g+i,r-1))return false;
+    if(raw(c0+g+1,r)!==WALL||!(raw(c0+g+1,r-2)===EMPTY||W(c0+g+1,r-2)))return false;
+    if(lead&&!flat(lead))return false;
+    for(let i=1;i<=g;i++){set(c+i,r,EMPTY);set(c+i,r+1,FLOOR);} // (a miss drops a storey onto plain floor, and he climbs out and tries again)
+    feat(c+1,r,{t:'jgrab'});
+    for(let i=1;i<=3;i++){set(c+g+i,r-1,FLOOR);resv[r*cols+PC(c+g+i)]=1;} // (the wall under the ledge stops a short jump; no later cellar may dig it out)
+    bot.push({a:'jgrab',from:c,to:c+g+1});
+    c+=g+3;r-=1;run=3;return true;
+  }
+  // ---- lifts (Flashback: "jump, grab onto ledges, climb, use elevators, and drop") ----
+  // Two kinds, both in the chambers, both stored in map columns at once (PC) so finishRun has nothing to turn round.
+  // 1. The counterweight lift (floor 3 on): a platform in a one-tile shaft k storeys deep, laid out like the kick shaft (up) or
+  //    the banner shaft (down). A pressure plate on each landing beside the shaft calls the platform to that landing; on it,
+  //    Up or Down held rides it. A grating shuts a mouth while the platform is away, so nobody walks into an empty shaft.
+  //    It rests at the end he arrives at.
+  // 2. The chain-loop lift (floor 8 on, a paternoster): a shaft two tiles wide with an endless chain round it and slabs fixed to
+  //    the chain; one side rises, the other sinks, and it never stops. He steps on at his landing as a slab passes and off at
+  //    the other. An empty shaft is an ordinary fall.
+  const lfrng=mulberry32(hash2(seed,6389)); // (its own stream: where the chain-loop's slabs start)
+  function liftSeg(k,down){
+    if(down){if(r+k>rows-2||r+k>rMax||run<1)return false;}
+    else if(r-k<1||r-k<rMin)return false;
+    if(raw(c,r)!==FLOOR||fe(c,r))return false; // (the call plate sits on the landing tile beside the shaft)
+    let rT,rB;
+    if(down){
+      for(let i=0;i<k;i++)if(!W(c+1,r+i)||!W(c+2,r+i))return false;
+      for(let i=1;i<k;i++)if(!W(c,r+i))return false;
+      for(let i=1;i<=3;i++)if(!W(c+i,r+k))return false;
+      for(let i=0;i<k;i++)set(c+1,r+i,EMPTY);
+      for(let i=1;i<=3;i++)set(c+i,r+k,FLOOR);
+      for(let i=0;i<k;i++)keepWall.add((r+i)*cols+PC(c+2));
+      for(let i=1;i<k;i++)keepWall.add((r+i)*cols+PC(c));
+      rT=r;rB=r+k;
+    }else{
+      if(!W(c+1,r)||!W(c+3,r-k))return false;
+      for(let i=1;i<=k;i++)if(!W(c+1,r-i)||!W(c,r-i))return false;
+      for(let i=0;i<=k;i++)if(!W(c+2,r-i))return false;
+      set(c+1,r,FLOOR);for(let i=1;i<=k;i++){set(c+1,r-i,EMPTY);keepWall.add((r-i)*cols+PC(c));}
+      set(c+2,r-k,FLOOR);set(c+3,r-k,FLOOR);
+      rT=r-k;rB=r;
+    }
+    const sT=down?-1:1,sB=down?1:-1,side=s=>PC(c+1+s)-PC(c+1); // (which side of the shaft, in map columns, a landing lies)
+    const f={t:'lift',k,sc:PC(c+1),ca:PC(c+1),cb:PC(c+1),rT,rB,yT:SURF(rT),yB:SURF(rB),sT:side(sT),sB:side(sB),tgt:null,arr:0,gT:down?1:0,gB:down?0:1,mv:0,snd:0};
+    f.y=down?f.yT:f.yB; // (it rests at the end he arrives at)
+    feat(c+1,rB,f);L.lifts.push(f);
+    feat(c,r,{t:'lplate',lf:f,e:down?0:1,press:-9});            // the call plates: on the landing he comes by,
+    feat(c+2,down?rB:rT,{t:'lplate',lf:f,e:down?1:0,press:-9}); // and on the one he leaves by
+    bot.push({a:'lift',from:c,to:c+3,k,up:!down});
+    c+=3;r=down?r+k:r-k;run=down?2:1;return true;
+  }
+  function chainSeg(k,down){
+    if(down){if(r+k>rows-2||r+k>rMax||run<1)return false;}
+    else if(r-k<1||r-k<rMin)return false;
+    let rT,rB;
+    if(down){
+      for(let i=0;i<=k;i++)if(!W(c+1,r+i)||!W(c+2,r+i))return false;
+      for(let i=0;i<k;i++)if(!W(c+3,r+i))return false;
+      for(let i=1;i<k;i++)if(!W(c,r+i))return false;
+      if(!W(c+3,r+k)||!W(c+4,r+k))return false;
+      for(let i=0;i<k;i++){set(c+1,r+i,EMPTY);set(c+2,r+i,EMPTY);}
+      for(let i=1;i<=4;i++)set(c+i,r+k,FLOOR);
+      for(let i=0;i<k;i++)keepWall.add((r+i)*cols+PC(c+3));
+      for(let i=1;i<k;i++)keepWall.add((r+i)*cols+PC(c));
+      rT=r;rB=r+k;
+    }else{
+      for(let i=0;i<=k;i++)if(!W(c+1,r-i)||!W(c+2,r-i)||!W(c+3,r-i))return false;
+      for(let i=1;i<=k;i++)if(!W(c,r-i))return false;
+      if(!W(c+4,r-k))return false;
+      set(c+1,r,FLOOR);set(c+2,r,FLOOR);
+      for(let i=1;i<=k;i++){set(c+1,r-i,EMPTY);set(c+2,r-i,EMPTY);keepWall.add((r-i)*cols+PC(c));}
+      for(let i=0;i<k;i++)keepWall.add((r-i)*cols+PC(c+3));
+      set(c+3,r-k,FLOOR);set(c+4,r-k,FLOOR);
+      rT=r-k;rB=r;
+    }
+    const c0=PC(c+1),c1=PC(c+2),dx=c1-c0,yT=SURF(rT),yB=SURF(rB),H=yB-yT,per=2*H+64,n=Math.round(per/100);
+    const f={t:'chain',k,c0,c1,dx,ca:Math.min(c0,c1),cb:Math.max(c0,c1),sc:Math.min(c0,c1),rT,rB,yT,yB,entryRow:down?rT:rB,exitRow:down?rB:rT,entryY:down?yT:yB,exitY:down?yB:yT,
+      per,n,pitch:per/n,off:Math.round(lfrng()*per*10)/10};
+    feat(c+1,rB,f);L.lifts.push(f);
+    bot.push({a:'lift',from:c,to:c+4,k,up:!down,chn:true});
+    c+=4;r=down?r+k:r-k;run=2;return true;
+  }
+  // The damaging shortcut (Prince of Persia levels 5 and 7: "climb down at the expense of one life bullet"): a one-tile hole in
+  // a landing with plain floor two storeys under it, which runs on to the foot of the chamber. Jump the hole and take the
+  // chamber the long way, or drop in (128px: it hurts, and he is past the rest). The bot always jumps; a test drops.
+  let hd=null;
+  function hurtGapSeg(){
+    if(r+2>rows-2||!W(c+1,r)||!W(c+1,r+1)||!W(c+1,r+2)||!W(c+2,r)||!W(c+3,r))return false;
+    set(c+1,r,EMPTY);set(c+1,r+1,EMPTY);set(c+1,r+2,FLOOR);feat(c+1,r,{t:'hurtdrop'});set(c+2,r,FLOOR);set(c+3,r,FLOOR);
+    hd={at:bot.length,c,r,t:c+1,sg:L.segs.length};
+    bot.push({a:'sjump',from:c,to:c+2,hd:1});
+    c+=3;run=2;return true;
+  }
+  function hurtCorridor(nextRow){ // the floor under the hole runs along to the chamber's own foot
+    let x=hd.t+1;while(x<=vHi&&raw(x,nextRow)!==FLOOR){if(!W(x,nextRow))return false;x++;}
+    if(x>vHi||fe(x,nextRow))return false; // (it must meet the plain floor of the chamber's foot, not the bottom of a pit)
+    for(let xx=hd.t+1;xx<x;xx++)set(xx,nextRow,FLOOR);
+    return true;}
   // ---- traps and puzzles ----
   function sawSeg(){ // a saw blade running back and forth along a slot in the floor: jump it as it comes
     const k=n>=12&&ch(0.5)?3:2;
@@ -755,6 +1040,7 @@ function buildLevel(n,seed,test,legacy,att){
     if(c+len>vHi)return false;
     if(!rectOk(c+1,c+len,gal?r-3:r,gal?r:r+3))return false;
     if(gal&&pl.tall&&!rectOk(c+1,c+len,r-4,r-4))return false;
+    fillCorridor(e-3,gal?x0-1:1e9,pl,x0);
     for(let xx=c+1;xx<=c+len;xx++)set(xx,r,FLOOR);
     if(gal){set(e,r-1,EMPTY);set(e-1,r-1,FLOOR);set(e-1,r-2,EMPTY);}
     else{set(e,r,EMPTY);set(e+1,r,EMPTY);set(e,r+1,EMPTY);set(e+1,r+1,FLOOR);}
@@ -764,16 +1050,16 @@ function buildLevel(n,seed,test,legacy,att){
     const outs=br.outs.slice();outs.push({a:'drink'});
     if(gal)bot.push({a:'walk',c:e},{a:'climb',from:e,dir:-1},{a:'climb',from:e-1,dir:-1},...outs,...br.backs,...exit);
     else bot.push({a:'walk',c:e-1},{a:'hangdrop',from:e-1},...outs,...br.backs,...exit);
-    L.detours=(L.detours||[]);L.detours.push({secret:true,gal,c,len,x0,kinds:pl.kinds.slice()});
+    L.detours=(L.detours||[]);L.detours.push({secret:true,gal,c,len,x0,r,kinds:pl.kinds.slice()});
     c+=len;run=2;return true;
   }
   function guard(){
     const off=(c+1)%RW;
-    if(off>3){if(!flat(RW-off))return false;}
+    if(off>3){if(calm&&RW-off>2)return false;if(!flat(RW-off))return false;} // (in a corridor fill, not at the price of a long bare run-up)
     for(let i=1;i<=7;i++)if(!W(c+i,r))return false;
     for(let i=1;i<=7;i++)set(c+i,r,FLOOR);
-    const cap=n%5===0&&L.guards.length-extraG===guardsWanted-1,tier=cap?2:tierOf();
-    L.guards.push({x:(c+6)*TW+16,r,lo:(c+1)*TW+10,hi:(c+7)*TW+22,hp:cap?ghp+2:gHp(tier),cap,tier,reinf:(!cap&&n>=6&&ch(Math.min(0.55,0.12+0.5*d)))?1:0});
+    const cap=!calm&&n%5===0&&L.guards.length-extraG===guardsWanted-1,tier=cap?2:tierOf();
+    L.guards.push({x:(c+6)*TW+16,r,lo:(c+1)*TW+10,hi:(c+7)*TW+22,hp:cap?ghp+2:gHp(tier),cap,tier,reinf:(!cap&&!calm&&n>=6&&ch(Math.min(0.55,0.12+0.5*d)))?1:0}); // (a guard on a landing or in a corridor calls no reinforcements: they would drop in on a gate race a few tiles on)
     bot.push({a:'walk',c:c+7});
     c+=7;run+=7;lastGuard=prog();return true;
   }
@@ -856,21 +1142,130 @@ function buildLevel(n,seed,test,legacy,att){
     u3:[['up','up','up'],['shaft3'],['wallrun','up'],['shaft2','up']],
     u6:[['shaft3','shaft3'],['up','up','up','up','up','up'],['shaft3','up','up','up'],['wallrun','up','wallrun','up']]};
   const PRIM={drop2:()=>drop2(),down:()=>down(),up:()=>up(),banner3:()=>n>=4&&bannerSeg(3),banner4:()=>n>=4&&bannerSeg(4),
-    shaft2:()=>n>=5&&shaftSeg(2),shaft3:()=>n>=5&&shaftSeg(3),wallrun:()=>n>=3&&wallRunSeg()};
-  const LAND={drop2:-1,down:-1,up:0,banner3:-2,banner4:-2,shaft2:-1,shaft3:-1,wallrun:-1}; // where he stands after it, from c
-  function buildTurn(t,nextRow){
-    const key=(t.down?'d':'u')+(3*t.k),kits=(t.rev&&KITS[key+'r']?KITS[key+'r']:KITS[key]).slice();
-    for(let i=kits.length-1;i>0;i--){const j=Math.floor(rng()*(i+1)),q=kits[i];kits[i]=kits[j];kits[j]=q;}
-    const keep=[rMin,rMax];rMin=-1e9;rMax=1e9;let res=null;
-    for(const kit of kits){
-      const sv={kw:new Set(keepWall),path:bot.length,nf:newFeats.length,tc:touched.length,sg:L.segs.length,c,r,run};jr=[];
-      let ok=true,lastM=null;
-      for(const m of kit){run=3;const t0=c,r0=r;if(!PRIM[m]()){ok=false;break;}lastM=m;L.segs.push({k:'turn-'+m,c0:t0,c1:c,r0,r1:r});}
-      if(ok&&r===nextRow){res={land:c+LAND[lastM],kit};jr=null;break;}
-      for(let i=jr.length-3;i>=0;i-=3){if(jr[i+2])L.feat[jr[i]]=jr[i+1];else L.base[jr[i]]=jr[i+1];}jr=null;keepWall.clear();for(const k of sv.kw)keepWall.add(k);
-      bot.length=sv.path;newFeats.length=sv.nf;touched.length=sv.tc;L.segs.length=sv.sg;c=sv.c;r=sv.r;run=sv.run;
+    shaft2:()=>n>=5&&shaftSeg(2),shaft3:()=>n>=5&&shaftSeg(3),wallrun:()=>n>=3&&wallRunSeg(),gslot:()=>gateSlotSeg(),
+    collapse:()=>n>=3&&collapseSeg(),jumpdown:()=>n>=4&&jumpDownSeg(),jumpup:()=>n>=4&&jumpUpSeg(),hgap:()=>hurtGapSeg(),
+    lift2d:()=>liftSeg(2,true),lift3d:()=>liftSeg(3,true),lift2u:()=>liftSeg(2,false),lift3u:()=>liftSeg(3,false),
+    chn2d:()=>n>=8&&chainSeg(2,true),chn3d:()=>n>=8&&chainSeg(3,true),chn2u:()=>n>=8&&chainSeg(2,false),chn3u:()=>n>=8&&chainSeg(3,false)};
+  const NEWMV=new Set(['collapse','jumpdown','jumpup']); // (these look at the real run-up behind him: the bot's running jumps start from it)
+  const LAND={drop2:-1,down:-1,up:0,banner3:-2,banner4:-2,shaft2:-1,shaft3:-1,wallrun:-1,collapse:-1,jumpdown:-2,jumpup:-2,lift2d:-2,lift3d:-2,chn2d:-2,chn3d:-2,lift2u:-1,lift3u:-1,chn2u:-2,chn3u:-2}; // where he stands after it, from c
+  // The moves a chamber is made of: rows covered (+ down, - up), width in tiles, the first floor it appears on, and its weight
+  // among the moves that go the same way. A lift (a move that carries him k storeys inside one column) is one more line here
+  // and one more PRIM entry: the kit grammar and the chamber's landings take it from there.
+  const LW=[0.09,0.065,0.035,0.025]; // weights of the lifts among the moves that go the same way: counterweight lift over two storeys, over three, chain-loop lift over two, over three
+  const MV={down:{dr:1,w:2,n:1,wt:0.7},drop2:{dr:2,w:2,n:1,wt:0.7},banner3:{dr:3,w:3,n:4,wt:1.5},banner4:{dr:4,w:3,n:4,wt:1},collapse:{dr:1,w:2,n:3,wt:1.6},jumpdown:{dr:1,w:5,n:4,wt:2.2},
+    up:{dr:-1,w:1,n:1,wt:0.7},wallrun:{dr:-2,w:5,n:3,wt:1.8},shaft2:{dr:-2,w:3,n:5,wt:1.6},shaft3:{dr:-3,w:3,n:5,wt:1.3},jumpup:{dr:-1,w:6,n:4,wt:2.4},
+    lift2d:{dr:2,w:3,n:3,wt:LW[0]},lift3d:{dr:3,w:3,n:3,wt:LW[1]},lift2u:{dr:-2,w:3,n:3,wt:LW[0]},lift3u:{dr:-3,w:3,n:3,wt:LW[1]},
+    chn2d:{dr:2,w:4,n:8,wt:LW[2]},chn3d:{dr:3,w:4,n:8,wt:LW[3]},chn2u:{dr:-2,w:4,n:8,wt:LW[2]},chn3u:{dr:-3,w:4,n:8,wt:LW[3]}};
+  const CYC=new Set(['chn2d','chn3d','chn2u','chn3u']); // (a chain-loop lift is never in a turn that holds a timed gate: its wait cannot be sized)
+  // G4: three tiles of floor between two moves of a turn, a gate on the middle one
+  function gateSlotSeg(){
+    if(!W(c+1,r)||!W(c+2,r)||!W(c+3,r))return false;
+    for(let i=1;i<=3;i++)set(c+i,r,FLOOR);
+    feat(c+2,r,gateSlot.g);gateSlot.done=true;
+    bot.push({a:'walk',c:c+3});c+=3;run=3;return true;}
+  // Where a plate's gate may stand in a turn (the compatibility table; a pair not listed is never chosen):
+  //   G2 top of a kick shaft:   the kit ends with a shaft, and the turn carries on the same way (a switchback would send him
+  //                             back from the ledge, away from a gate at its far end)
+  //   G3 foot of a banner slide: the kit holds a banner that isn't its last move, or the turn carries on the same way
+  //   G4 between two moves:     any kit of two or more moves (the floor between them is laid for it)
+  const slotOk=(kit,rev,k)=>{const last=kit[kit.length-1];
+    if(k==='G2')return !rev&&(last==='shaft2'||last==='shaft3');
+    if(k==='G3'){const i=kit.findIndex(m=>m==='banner3'||m==='banner4');return i>=0&&(i<kit.length-1||!rev);}
+    if(k==='G4')return kit.length>=2;return false;};
+  function turnKinds(t){const key=(t.down?'d':'u')+(3*t.k),ks=(t.rev&&KITS[key+'r']?KITS[key+'r']:KITS[key]);
+    return ['G2','G3','G4'].filter(k=>ks.some(kit=>slotOk(kit,t.rev,k)));}
+  // ---- chambers: a turn of two room columns, its moves spread along them with a landing between each pair ----
+  // Spelunky builds a descent as a drop room and a landing room; here every landing between two moves carries one obstacle
+  // (or a guard) from the ordinary menu and then a few plain tiles. The kit is a random sequence of moves whose rows add up
+  // to the turn's (the old fixed KITS stay as the fallback), drawn from the turn-kit stream.
+  const vrng=mulberry32(hash2(seed,6007)); // the chambers' own stream: which obstacle a landing gets, how wide a pit is
+  function randKits(t,cnt){
+    const fam=new Set(FT.move?MOVE_FAM[FT.move].m:[]),SH=FL==='tower'?0.92:FL==='rotten'?0.75:0.55;
+    const D=3*t.k,out=[],seen=new Set(),pool=Object.keys(MV).filter(m=>MV[m].n<=n&&(MV[m].dr>0)===t.down);
+    for(let a=0;a<cnt*8&&out.length<cnt;a++){
+      let rem=D;const kit=[];
+      while(rem>0&&kit.length<5){const o=pool.filter(m=>Math.abs(MV[m].dr)<=rem);
+        // the featured family is weighed up until it holds SH of the draw (when the family has a move that fits here at all)
+        let fs=0,os=0;for(const m of o)(fam.has(m)?(fs+=MV[m].wt):(os+=MV[m].wt));const fk=fs>0&&os>0?Math.max(1,SH*os/((1-SH)*fs)):1,W2=m=>MV[m].wt*(fam.has(m)?fk:1);
+        let tot=0;for(const m of o)tot+=W2(m);let x=krng()*tot,m=o[0];
+        for(const q of o){x-=W2(q);if(x<=0){m=q;break;}}kit.push(m);rem-=Math.abs(MV[m].dr);}
+      if(rem||(t.rev&&(Math.abs(MV[kit[kit.length-1]].dr)<2||/^(lift|chn)/.test(kit[kit.length-1]))))continue; // a switchback's last move is a drop of two or more, and not a lift (the way back runs through its foot)
+      const key=kit.join();if(seen.has(key))continue;seen.add(key);out.push(kit);}
+    return out;}
+  // a snapshot of everything a piece of the chamber writes, and the way back to it (the journal jr holds the cell writes)
+  const snap=()=>({lf:L.lifts.length,kw:new Set(keepWall),jl:jr.length,path:bot.length,nf:newFeats.length,tc:touched.length,sg:L.segs.length,c,r,run,gd:L.guards.length,sn:L.snakeSpecs.length,xg:extraG,lg:lastGuard,sr:sinceRest,ra:restAt});
+  function restore(sv){
+    for(let i=jr.length-3;i>=sv.jl;i-=3){if(jr[i+2])L.feat[jr[i]]=jr[i+1];else L.base[jr[i]]=jr[i+1];}jr.length=sv.jl;
+    keepWall.clear();for(const k of sv.kw)keepWall.add(k);L.lifts.length=sv.lf;
+    bot.length=sv.path;newFeats.length=sv.nf;touched.length=sv.tc;L.segs.length=sv.sg;c=sv.c;r=sv.r;run=sv.run;
+    L.guards.length=sv.gd;L.snakeSpecs.length=sv.sn;extraG=sv.xg;lastGuard=sv.lg;sinceRest=sv.sr;restAt=sv.ra;}
+  // one obstacle on the landing (flat tiles, the obstacle, then at least two plain tiles after it); false when nothing fits before cEnd
+  function landingObstacle(cEnd,noDig,only,rs,noGuard){
+    rs=rs||vrng;const sv={vHi,lg:lastGuard,sr:sinceRest,ra:restAt,rx:rngX,cm:calm};
+    vHi=Math.min(vHi,cEnd);calm=true;rngX=rs;sinceRest=-99;
+    const o=[],A=(w,k,f)=>{if(w>0)o.push([w,k,f]);};
+    A(1.2*OB('spikes'),'spikes',()=>spikes(n>=6&&rs()<0.4?2:1));
+    if(!noDig){A(1.0,'gap1',()=>gap(1));A(0.9*OB('loose'),'loose',()=>loose(1));}
+    if(n>=4)A(0.9*OB('chomp'),'chomp',chomp);
+    A(0.9*OB('tunnel'),'tunnel',tunnel);if(!noGuard)A(0.8*OB('guard')*(FL==='barracks'?1.5:1),'guard',guard);
+    if(n>=5)A(0.5*OB('saw'),'saw',sawSeg);
+    if(style==='dungeon')A(0.9,'stones',stones);if(style==='tile')A(0.9,'pend',pendulum);if(style==='forge')A(0.9,'vents',vents);
+    if(style==='palace'&&!noDig)A(0.9,'bridge',bridge);
+    let done=false;flat(1); // (a plain tile to run up from)
+    while(o.length&&!done){let tot=0;for(const q of o)tot+=q[0];let x=rs()*tot,i=0;for(;i<o.length-1;i++){x-=o[i][0];if(x<=0)break;}
+      const [,kd,f]=o.splice(i,1)[0],c0=c,r0=r,gN=L.guards.length,s0=snap();
+      if(f()){const c1=c;L.segs.push({k:kd,c0,c1,r0,r1:r,corr:2});if(L.guards.length>gN)extraG+=L.guards.length-gN;breathe();
+        if(c-c1>=2)done=true;else restore(s0);}else restore(s0);}
+    vHi=sv.vHi;lastGuard=sv.lg;sinceRest=sv.sr;restAt=sv.ra;rngX=sv.rx;calm=sv.cm;
+    return done;}
+  // need: {g, kinds:[..]} (a gate to stand in this turn), or null. Returns res.slot = the kind used, res.botEnd = the length of
+  // the bot's path once past the gate.
+  function buildTurn(t,nextRow,need){
+    const key=(t.down?'d':'u')+(3*t.k),old=(t.rev&&KITS[key+'r']?KITS[key+'r']:KITS[key]).slice(),chamber=(t.w||1)>1;
+    let sk=null;
+    if(need){const ok=need.kinds.filter(k=>old.some(kit=>slotOk(kit,t.rev,k)));if(!ok.length)return null;const pool=ok.concat(ok.includes('G2')?['G2','G2']:[]);sk=pool[Math.floor(zr()*pool.length)]; // (the shaft's ledge is the rarest slot: it is drawn three times as often when a kit has it)
     }
-    rMin=keep[0];rMax=keep[1];return res;
+    const fit=ks=>sk?ks.filter(kit=>slotOk(kit,t.rev,sk)&&!kit.some(m=>CYC.has(m))):ks;
+    const shuf=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(krng()*(i+1)),q=a[i];a[i]=a[j];a[j]=q;}return a;} // (its own stream: which kit a turn gets does not move with the obstacles and puzzles drawn before it)
+    // the attempts in order: fresh kits with landings, the old kits with landings, the old kits bare (what a turn used to be)
+    const tries=[];
+    // (the floor's featured family goes first: the kits that hold most of it are tried before the rest)
+    const fm=FT.move?new Set(MOVE_FAM[FT.move].m):null,fsc=kit=>fm?-kit.filter(m=>fm.has(m)).length/kit.length:0,byFam=ks=>fm?ks.map((k,i)=>[fsc(k),i,k]).sort((a,b)=>a[0]-b[0]||a[1]-b[1]).map(q=>q[2]):ks;
+    if(chamber){for(const kit of byFam(fit(randKits(t,fm?16:8))))tries.push([kit,true]);}
+    for(const kit of byFam(shuf(fit(old.slice()))))tries.push([kit,chamber]);
+    if(chamber)for(const kit of fit(old))tries.push([kit,false]);
+    const keep=[rMin,rMax];rMin=-1e9;rMax=1e9;let res=null;
+    const chPlain=plrng()<CH_PLAIN; // a chamber with no obstacle on its landings at all (the moves are the challenge)
+    const hdRoll=chamber&&!t.rev&&t.down&&!sk&&n>=5&&vrng()<0.5; // now and then a chamber carries the damaging shortcut (floor 5 on); the roll is generous because most kits give no placement that is worth a life (see below)
+    const plainCh=chPlain&&!hdRoll;
+    for(let [kit,ob] of tries){
+      if(sk==='G4'){kit=kit.slice();kit.splice(1+Math.floor(zr()*(kit.length-1)),0,'gslot');}
+      let hasHd=false;
+      if(hdRoll&&ob){ // after a landing from which exactly two storeys and at least two moves remain
+        for(let i=0;i<kit.length-2&&!hasHd;i++){let rem=0;for(let j=i+1;j<kit.length;j++)rem+=MV[kit[j]].dr;if(rem===2){kit=kit.slice();kit.splice(i+1,0,'hgap');hasHd=true;}}}
+      jr=[];const sv=snap();
+      gateSlot=sk?{kind:sk,g:need.g,last:false,done:false}:null;
+      let ok=true,lastM=null,botEnd=-1,nOb=0,skipped=0;
+      for(let mi=0;mi<kit.length;mi++){const m=kit[mi];if(!NEWMV.has(m))run=3;const t0=c,r0=r;if(gateSlot)gateSlot.last=mi===kit.length-1;if(!PRIM[m]()){ok=false;break;}
+        if(m!=='gslot'&&m!=='hgap')lastM=m;L.segs.push({k:'turn-'+m,c0:t0,c1:c,r0,r1:r});if(gateSlot&&gateSlot.done&&botEnd<0)botEnd=bot.length;
+        // a landing: one obstacle, with room kept for the moves still to come (none before a gate: its timer is sized on the walk to it)
+        const lastMove=mi===kit.length-1;
+        if(ob&&m!=='gslot'&&m!=='hgap'&&(!lastMove||(!t.rev&&!nOb))&&(!sk||gateSlot.done)){
+          let reserve=1;for(let j=mi+1;j<kit.length;j++)reserve+=kit[j]==='gslot'?3:kit[j]==='hgap'?4:(MV[kit[j]].w+(kit[j]==='jumpdown'||kit[j]==='jumpup'?0:1));
+          if(plainCh||(plrng()<LAND_PLAIN&&nOb+skipped<kit.length-1)){skipped++;const k=Math.max(0,Math.min(3,vHi-reserve-c));if(k)flat(k);} // a plain landing (trap density; the run-up for the next move stays); a chamber keeps at least one obstacle unless it is plain throughout
+          else if(landingObstacle(vHi-reserve,t.rev&&r+2>nextRow-2))nOb++;}
+      }
+      // a switchback returns along the floor under the chamber: nothing may stand just above it, or in the way of it
+      if(ok&&t.rev){const lnd=c+LAND[lastM];for(const q of touched){const rr=Math.floor(q/cols);if(rr>=nextRow-1&&L.base[q]!==WALL&&PC(q%cols)<lnd){ok=false;break;}}}
+      if(ok&&ob&&!nOb&&!plainCh)ok=false;
+      if(ok&&hasHd&&!(r===nextRow&&hurtCorridor(nextRow)))ok=false;
+      // worth a life: the drop must pass at least one landing's obstacle or guard, save a quarter of the chamber's time and ten tiles' walk
+      if(ok&&hasHd){const tL=estPath(bot.slice(hd.at+1),hd.c+2)+6*L.segs.slice(hd.sg).filter(q=>q.k==='guard').length,tS=Math.abs(c-hd.t)*0.34+1,tC=estPath(bot.slice(sv.path),sv.c),sk2=L.segs.slice(hd.sg).some(q=>!/^turn-/.test(q.k));
+        if(!(sk2&&tL-tS>=0.25*tC&&(tL-tS)/0.34>=10))ok=false;}
+      if(ok&&r===nextRow&&(!sk||gateSlot.done)){res={land:c+LAND[lastM],kit,slot:sk,botEnd,ob:nOb};if(hasHd)(L.hurtdrops=L.hurtdrops||[]).push({jump:hd.at,next:bot.length,r:hd.r,floor:n});jr=null;gateSlot=null;break;}
+      restore(sv);jr=null;
+    }
+    gateSlot=null;rMin=keep[0];rMax=keep[1];return res;
   }
   // what a run leaves to the generator's lists is in its own column space: put it back on the map
   const PXx=x=>(MX+1)*TW-x;
@@ -882,6 +1277,8 @@ function buildLevel(n,seed,test,legacy,att){
     for(let i=m.det;i<(L.detours||[]).length;i++){const dd=L.detours[i];dd.c0=Math.min(PC(dd.c),PC(dd.c+dd.len));dd.c1=Math.max(PC(dd.c),PC(dd.c+dd.len));}
     if(L.secret&&!L.secret.fixed){L.secret.c=PC(L.secret.c);L.secret.fixed=true;}
     for(let i=m.segs;i<L.segs.length;i++){const q=L.segs[i];q.c0=PC(q.c0);q.c1=PC(q.c1);q.dir=MX<0?1:-1;}
+    if(MX>=0)for(const lp of forkMirror)for(const a of lp.sc){if(a.c!==undefined)a.c=PC(a.c);if(a.from!==undefined)a.from=PC(a.from);if(a.to!==undefined)a.to=PC(a.to);a.dir=-(a.dir||1);}
+    forkMirror.length=0;
     if(MX<0)return;
     for(let i=m.items;i<L.items.length;i++){const it=L.items[i];it.c=PC(it.c);it.x=PXx(it.x);}
     for(let i=m.guards;i<L.guards.length;i++){const g=L.guards[i],lo=g.lo;g.x=PXx(g.x);g.lo=PXx(g.hi);g.hi=PXx(lo);g.face=1;g.pit=-(g.pit||1);}
@@ -902,62 +1299,205 @@ function buildLevel(n,seed,test,legacy,att){
   function keepClear(list){for(const idx of list){const p=idx%cols,rr=(idx-p)/cols;
     for(let dy=-2;dy<=0;dy++)for(let dx=-1;dx<=1;dx++){const q=(rr+dy)*cols+p+dx;if(rr+dy>=0&&rr+dy<rows&&p+dx>=0&&p+dx<cols&&L.base[q]===WALL)resv[q]=1;}}}
   const sideTry=(f,g0)=>{for(let fw=0;fw<=2;fw++)if(f(g0,fw)||f(!g0,fw))return true;return false;};
-  // ---- loops (see LOOPS): which switchbacks carry one, and where its hole opens (world column H; the ladder takes
-  // columns H and O=H+dir, walled in by H-dir and H+2dir) ----
-  const loopAt=new Map();L.loops=[];
+  // ---- forks (see FORKS): which switchbacks carry one, which of four kinds, and where its hole opens (world column H; the
+  // shortcut chamber lies under the upper run from H on, in the band between the runs, and ends on the lower run at Xl) ----
+  const FZ=24; // how far (tiles) the shortcut chamber may reach along the run from its hole
+  const forkAt=new Map();L.forks=[];const forkMirror=[];let cpHold=false; // cpHold: no checkpoint between a fork's plate and its gate
+  const frng=mulberry32(hash2(seed,6451)); // the forks' own stream: which kind, which kit, the guard's skill and the landings' obstacles
   if(att>=0&&!legacy&&n>=LOOP_MIN){
-    const lrng=mulberry32(hash2(seed,6151));let want=lrng()<0.85?1:0;if(n>=14&&lrng()<0.5)want++;
+    const lrng=mulberry32(hash2(seed,6151));let want=lrng()<0.85?1:0;if(n>=14&&lrng()<0.5)want++;if(FL==='longway')want=Math.max(want,1);
     const cand=[];for(let t=0;t<plan.turns.length;t++){if(!plan.turns[t].rev||t===plan.chaseRun||t+1===plan.chaseRun)continue;
       const up=plan.runs[t],lo=plan.runs[t+1],ov=up.rooms.filter(x=>lo.rooms.includes(x)).length;if(ov<3)continue;
       const dir=up.dir,F=x=>x*dir,uL=roomLo(Math.min(...up.rooms)),uH=roomHi(Math.max(...up.rooms)),lL=roomLo(Math.min(...lo.rooms)),lH=roomHi(Math.max(...lo.rooms));
       const uEnd=dir>0?uH-1:uL+1,uStart=dir>0?uL:uH,lFar=dir>0?lL+1:lH-1;
-      // at least 20 tiles of the upper run after the hole (the long way, and room for the plate), 14 before it, and the
-      // lower run carrying on 14 tiles past it (the ladder's foot, the gate, and floor beyond)
-      const fmin=Math.max(F(uStart+dir*14),F(lFar+dir*14)),fmax=F(uEnd-dir*20);if(fmin>fmax)continue;
-      const f=clamp(F(uEnd)-Math.max(20,Math.round(0.45*ov*RW)),fmin,fmax),H=f*dir;
-      cand.push({t,dir,H,O:H+dir,rUp:bandRow(up.band),rLow:bandRow(lo.band),ok:false,plated:false,footed:false,
+      // at least 26 tiles of the upper run after the hole (the long way, the chamber and room for the plate), 14 before it, and
+      // the lower run carrying on 14 tiles past it
+      const fmin=Math.max(F(uStart+dir*14),F(lFar+dir*14)),fmax=F(uEnd)-26;if(fmin>fmax)continue;
+      const f=clamp(F(uEnd)-Math.max(30,Math.round(0.45*ov*RW)),fmin,fmax),H=f*dir;
+      cand.push({t,dir,H,O:H,rUp:bandRow(up.band),rLow:bandRow(lo.band),ok:false,plated:false,footed:false,v:0,grate:false,
         G:{t:'gate',open:0,tm:0,dur:0,latch:true,pair:LOOP_PAIR,far:true,loop:true}});}
     for(let i=cand.length-1;i>0;i--){const j=Math.floor(lrng()*(i+1)),q=cand[i];cand[i]=cand[j];cand[j]=q;}
-    for(const lp of cand){if(loopAt.size>=want)break;if(loopAt.has(lp.t-1)||loopAt.has(lp.t+1))continue;loopAt.set(lp.t,lp);}
+    for(const lp of cand){if(forkAt.size>=want)break;if(forkAt.has(lp.t-1)||forkAt.has(lp.t+1))continue;forkAt.set(lp.t,lp);}
+    // the kind: 1 guard against traps (PoP1 level 2), 2 a damaging descent (PoP1 levels 5 and 7), 3 a long easy way against a short
+    // dense one (Unexplored), 4 a one-way hole (and now and then a grating over it, with a flask below for whoever goes the long way)
+    for(const lp of forkAt.values()){
+      const w=FL==='longway'?(n<10?[0,0,0,1]:[0,0,0.5,0.5]):n<10?[0.35,0.25,0,0.40]:n<18?[0.30,0.20,0.25,0.25]:[0.25,0.20,0.35,0.20];let x=frng(),v=1;for(let i=0;i<4;i++){x-=w[i];if(x<=0){v=i+1;break;}}
+      lp.v=v;lp.grate=v===4&&frng()<(FL==='longway'?0.7:0.2);lp.order=({1:[1,2,4],2:[2,4],3:[3,1,2,4],4:[4,2]})[v];}
   }
-  // the ladder's cells, kept from everything else until the ladder is cut (world columns, rows between the runs)
-  const loopZone=(lp,fn)=>{for(let rr=lp.rUp+1;rr<lp.rLow;rr++)for(const x of [lp.H-lp.dir,lp.H,lp.O,lp.O+lp.dir])fn(rr*cols+x,x,rr);};
-  let loopFail=false,loopUsed=0; // loopUsed: route tiles the loops' pieces took; the last run is built that much longer
-  // the hole and the ladder, from the upper run (its own column space: the hole at PC(H), the ladder's other column next)
-  function loopTop(lp){
+  // the chamber's cells, kept from everything else until it is cut (world columns, the rows between the runs)
+  const forkZone=(lp,fn)=>{for(let rr=lp.rUp+1;rr<lp.rLow;rr++)for(let k=-1;k<=FZ;k++){const x=lp.H+lp.dir*k;if(x>=1&&x<cols-1)fn(rr*cols+x,x,rr);}};
+  let xHold=false; // true while a fork's long way is being laid: the door's plate may not lie on a stretch the shortcut skips
+  let loopFail=false,loopUsed=0; // loopUsed: route tiles the forks' pieces took; the last run is built that much longer
+  // The shortcut is a short chamber of the turns' own moves, cut under the run from its hole to the lower run. Its kit: the
+  // moves whose drops add up to the storeys left; the first starts at the hole (a step, a hanging drop or a banner), the last
+  // drops two storeys or more so nothing stands just above the lower run's floor.
+  function forkKits(v,D){
+    const dmg=v===2||v===4,out=[],seen=new Set(),first=['down','drop2','banner3','banner4'].filter(m=>MV[m].n<=n);
+    const pool=Object.keys(MV).filter(m=>MV[m].dr>0&&MV[m].n<=n&&/^(down|drop2|banner[34]|collapse|jumpdown)$/.test(m)&&(v!==4||m==='down'||m==='drop2'));
+    for(let a=0;a<60&&out.length<10;a++){
+      let rem=D-(dmg?2:0);const kit=[];
+      while(rem>0&&kit.length<6){let o=pool.filter(m=>MV[m].dr<=rem&&(kit.length||dmg||first.includes(m)));if(!o.length)break;let tot=0;for(const m of o)tot+=MV[m].wt;let x=frng()*tot,m=o[0];
+        for(const q of o){x-=MV[q].wt;if(x<=0){m=q;break;}}kit.push(m);rem-=MV[m].dr;}
+      if(rem||!kit.length||MV[kit[kit.length-1]].dr<2)continue;
+      if(dmg)kit.unshift('drop2');
+      if((v===1&&kit.length<2)||(v===3&&kit.length<3))continue;
+      const key=kit.join();if(seen.has(key))continue;seen.add(key);out.push(kit);}
+    return out;}
+  // a guard alone on a landing: the fight is the toll of this way (his own stream; not counted against the floor's guards)
+  function forkGuard(){
+    const off=(c+1)%RW;if(off>3&&RW-off<=3&&!flat(RW-off))return false;
+    for(let i=1;i<=7;i++)if(!W(c+i,r))return false;
+    for(let i=1;i<=7;i++)set(c+i,r,FLOOR);
+    const x=frng(),tier=n<=8?(x<0.6?0:1):n<=16?(x<0.2?0:x<0.85?1:2):(x<0.1?1:2);
+    L.guards.push({x:(c+6)*TW+16,r,lo:(c+1)*TW+10,hi:(c+7)*TW+22,hp:gHp(tier),cap:false,tier,reinf:0});extraG++;
+    bot.push({a:'walk',c:c+7});c+=7;run+=7;return true;}
+  // does a damaging shortcut save enough? (Prince of Persia asks a life for a real saving) At least 25% of the way round by the
+  // time a careful player takes, at least 10 tiles of it, by the plan; and at the foot, that it passes an obstacle or guard.
+  function forkWorth(sc,hm,cEnd,vFar){
+    const tilesLong=(vFar-hm)+12+(vFar-cEnd),tilesShort=cEnd-hm,tLong=tilesLong*0.34+4,tShort=estPath(sc,hm-1)+1;
+    return tilesLong-tilesShort>=10&&tLong-tShort>=0.25*tLong;}
+  // the chamber under the run; true when one of the kits fits (otherwise everything it wrote is taken back)
+  function forkChamber(lp,v,hm,vFar){
+    const rUp=lp.rUp,rLow=lp.rLow,D=rLow-rUp,lim=Math.min(hm+FZ,vFar-6),dmg=v===2||v===4;
+    if(r!==rUp||!W(hm-1,rUp)||!W(hm,rUp)||!W(hm+1,rUp))return false;
+    const keep=[rMin,rMax,vHi,run];
+    for(const kit of forkKits(v,D)){
+      jr=[];const s0=snap(),sb=bot.length;let ok=true,lastM=null,gi=-1,nOb=0,gOk=false;
+      rMin=-1e9;rMax=1e9;vHi=lim;
+      set(hm-1,rUp,FLOOR);c=hm-1;r=rUp;run=3;
+      if(v===1)gi=Math.floor(frng()*(kit.length-1));
+      for(let mi=0;mi<kit.length&&ok;mi++){const m=kit[mi],t0=c,r0=r;
+        if(!NEWMV.has(m))run=3;
+        if(!PRIM[m]()){ok=false;break;}
+        if(mi===0){ // the hole: the run goes on past it on firm floor
+          if(!W(hm+1,rUp)){ok=false;break;}
+          set(hm+1,rUp,FLOOR);
+          if(dmg)feat(hm,rUp,{t:'hurtdrop',fork:v});else{const ef=fe(hm,rUp);if(ef)ef.fork=v;else feat(hm,rUp,{t:'loophole',fork:v});}}
+        lastM=m;L.segs.push({k:'fork-'+m,c0:t0,c1:c,r0,r1:r});
+        if(mi<kit.length-1){
+          let reserve=1;for(let j=mi+1;j<kit.length;j++)reserve+=MV[kit[j]].w+(kit[j]==='jumpdown'||kit[j]==='jumpup'?0:1);
+          if(v===1&&mi===gi){const gN=L.segs.length;if(vHi-reserve>=c+12&&forkGuard()&&flat(3)){gOk=true;L.segs.push({k:'fork-guard',c0:c-7,c1:c,r0:r,r1:r});}else ok=false;}
+          else if(v===3){const g0=L.segs.length;if(landingObstacle(lim-reserve,r+2>rLow-2,null,frng,true)){nOb++;for(let q=g0;q<L.segs.length;q++)L.segs[q].k='fork-'+L.segs[q].k;}}
+        }
+      }
+      if(ok&&r===rLow&&(v!==1||gOk)&&(v!==3||nOb>=2)){
+        const lnd=c+LAND[lastM];
+        for(let i=s0.tc;i<touched.length&&ok;i++){const q=touched[i],rr=Math.floor(q/cols);if(rr>=rLow-1&&L.base[q]!==WALL&&PC(q%cols)<lnd)ok=false;}
+        const sc=bot.slice(sb);
+        if(ok&&dmg&&!forkWorth(sc,hm,c,vFar))ok=false;
+        if(ok){bot.length=sb;lp.sc=sc;lp.Xl=PC(c);lp.O=lp.Xl;lp.kit=kit.slice();lp.gs=s0.gd;lp.ge=L.guards.length;lp.sgHole=L.segs.length;forkMirror.push(lp);
+          bot.push({a:'sjump',from:hm-1,to:hm+1,fork:1});lp.holeIdx=bot.length-1;jr=null;rMin=keep[0];rMax=keep[1];vHi=keep[2];r=rUp;return true;}
+      }
+      restore(s0);jr=null;
+    }
+    rMin=keep[0];rMax=keep[1];vHi=keep[2];run=keep[3];return false;}
+  // the grating: a floor tile with bars over a shaft that falls straight to the lower run (no way down; a window)
+  function forkGrate(lp,hm){
+    const rUp=lp.rUp;if(!W(hm-1,rUp)||!W(hm,rUp)||!W(hm+1,rUp))return false;
+    for(let rr=rUp+1;rr<lp.rLow;rr++)if(!W(hm,rr))return false;
+    for(let i=-1;i<=1;i++)set(hm+i,rUp,FLOOR);feat(hm,rUp,{t:'grate',fork:4});
+    for(let rr=rUp+1;rr<lp.rLow;rr++)set(hm,rr,EMPTY);
+    bot.push({a:'walk',c:hm+1});lp.Xl=PC(hm);lp.O=lp.Xl;lp.sc=[];lp.holeIdx=-1;lp.gs=lp.ge=L.guards.length;lp.sgHole=L.segs.length;return true;}
+  // the hole (or grating) in the upper run's floor and the chamber under it (the run's own column space: the hole at hm)
+  function forkTop(lp,vFar){
     const hm=PC(lp.H);if(c>hm-2)return false;
     if(r!==lp.rUp){if(c>hm-4||!down())return false;}
     if(r!==lp.rUp||c>hm-2)return false;
     if(c<hm-2&&!flat(hm-2-c))return false;
-    loopZone(lp,q=>{resv[q]=0;});
-    let ok=W(hm-1,r)&&W(hm,r)&&W(hm+1,r);loopZone(lp,(q,x,rr)=>{if(ok&&!W(PC(x),rr))ok=false;});
-    if(!ok){loopZone(lp,q=>{resv[q]=1;});return false;}
-    set(hm-1,r,FLOOR);set(hm,r,EMPTY);set(hm+1,r,FLOOR);feat(hm,r,{t:'loophole'});
-    for(let j=1;j<lp.rLow-lp.rUp;j++){const a=j%2?hm:hm+1;set(a,r+j,FLOOR);set(j%2?hm+1:hm,r+j,EMPTY);}
-    loopZone(lp,(q,x)=>{if(x===lp.H-lp.dir||x===lp.O+lp.dir)resv[q]=1;}); // the ladder's walls stay walls
-    bot.push({a:'sjump',from:hm-1,to:hm+1});
-    c=hm+1;run=1;lp.ok=true;return true;}
-  // the plate, near the end of the upper run, on the walked line
+    forkZone(lp,q=>{resv[q]=0;});
+    let done=false;
+    if(lp.grate)done=forkGrate(lp,hm);
+    else for(const v of lp.order){if(forkChamber(lp,v,hm,vFar)){lp.v=v;done=true;break;}}
+    if(!done){forkZone(lp,q=>{resv[q]=1;});return false;}
+    forkZone(lp,q=>{if(L.base[q]===WALL)resv[q]=1;}); // the rock around the chamber stays rock
+    lp.p0=prog();c=hm+1;run=1;lp.ok=true;xHold=true;
+    if(lp.v===1&&n>=4&&pend.length<3)pend.push(puzzlePick()); // the long way against a guard: with a puzzle on it
+    return true;}
+  // the plate of the grating's gate, near the end of the upper run, on the walked line
   function loopPlate(lp){
     for(let k=0;k<10&&!lp.plated;k++){
       if(W(c+1,r)&&W(c+2,r)&&W(c+3,r)){for(let i=1;i<=3;i++)set(c+i,r,FLOOR);
         feat(c+2,r,{t:'plate',g:lp.G,press:-9,latch:true,where:'far below',pair:LOOP_PAIR,loop:true});lp.plate={c:PC(c+2),r};
-        bot.push({a:'walk',c:c+3});c+=3;run+=3;lp.plated=true;break;}
+        bot.push({a:'walk',c:c+3});c+=3;run+=3;lp.plated=true;cpHold=true;break;}
       if(!flat(1))break;}
     return lp.plated;}
-  // the foot of the ladder on the lower run, and the gate just past it (the lower run's space: the ladder at La, La+1)
-  function loopFoot(lp){
+  // the foot on the lower run: plain floor where the chamber lands (or, under a grating, the gate and the flask), the run
+  // carrying on (the lower run's space: the chamber's last landing at La)
+  function forkFoot(lp){
     const La=PC(lp.O);if(c>La-4)return false;
     if(r!==lp.rLow){if(r!==lp.rLow-1||c>La-6||!down())return false;}
     if(r!==lp.rLow||c>La-2)return false;
-    for(let xx=c+1;xx<=La+6;xx++)if(!W(xx,r))return false;
-    for(let xx=c+1;xx<=La+6;xx++)set(xx,r,FLOOR);
-    feat(La+4,r,lp.G);lp.gate={c:PC(La+4),r};
-    bot.push({a:'walk',c:La+6});c=La+6;run=3;lp.footed=true;
-    L.loops.push({t:lp.t,H:lp.H,O:lp.O,dir:lp.dir,rUp:lp.rUp,rLow:lp.rLow,gate:lp.gate,plate:lp.plate});
+    for(let xx=c+1;xx<=La+6;xx++)if(raw(xx,r)===WALL)resv[r*cols+PC(xx)]=0; // (the halo kept clear round the chamber's landing is the lower run's own floor)
+    for(let xx=c+1;xx<=La+6;xx++)if(!W(xx,r)&&!(raw(xx,r)===FLOOR&&!fe(xx,r)))return false;
+    if(lp.v===2||lp.v===4){ // a damaging shortcut must pass something on the long way
+      let sk=0;for(let q=lp.sgHole;q<L.segs.length;q++){const k=L.segs[q].k;if(!/^(turn-|fork-)/.test(k)&&!MOVES.has(k))sk++;}
+      if(!sk&&!lp.grate)return false;}
+    for(let xx=c+1;xx<=La+6;xx++)if(W(xx,r))set(xx,r,FLOOR);
+    if(lp.grate){feat(La-3,r,lp.G);lp.gate={c:PC(La-3),r};
+      L.items.push({c:La+1,r,x:(La+1)*TW+16,type:L.bigFlask?'heal':'big',taken:false,fork:true});if(!L.bigFlask)L.bigFlask=true;}
+    bot.push({a:'walk',c:La+6});c=La+6;run=3;lp.footed=true;cpHold=false;xHold=false;lp.footIdx=bot.length;
+    const sc=lp.sc||[],tilesLong=prog()-lp.p0,tilesShort=Math.abs(lp.Xl-lp.H)+1;
+    L.forks.push({t:lp.t,v:lp.v,grate:lp.grate,dir:lp.dir,H:lp.H,Xl:lp.Xl,O:lp.O,rUp:lp.rUp,rLow:lp.rLow,hp:(lp.v===2||lp.v===4)&&!lp.grate?1:0,sc,holeIdx:lp.holeIdx,footIdx:lp.footIdx,
+      guards:[lp.gs,lp.ge],kit:lp.kit,gate:lp.gate,plate:lp.plate,tilesLong,tilesShort,
+      tLong:Math.round(estPath(bot.slice(lp.holeIdx+1,lp.footIdx),PC(lp.H)+1)*10)/10,tShort:Math.round(estPath(sc,PC(lp.H)-1)*10)/10});
     return true;}
-  const runs=plan.runs;let entryP=-1,prevKit=null,pendDet=0,pendDbl=0;L.runsInfo=[];
-  for(const lp of loopAt.values())loopZone(lp,q=>{resv[q]=1;});
+  // ---- the puzzle menu: where the plate is (P1..P5) and where its gate stands (G1..), chosen separately ----
+  // A pair is a name like 'P2G1'. Weights are per roll of the puzzle option (about the old 0.22 detour + 0.08 double); a
+  // floor's puzzles are drawn from their own stream, and one that doesn't fit is tried again at the next clear stretch.
+  //   P1 branch plate (gallery above / cellar below, walked out and back)   P2 slab over the plate (gate too quick to outrun)
+  //   P3 slab jams the closers before a gate                                P5 plate in a one-storey alcove
+  //   double: two branch plates, one gate timed
+  let puzzleSeg='puzzle',puzzleNm='';const PZ_W=0.75; // (the roll of the puzzle option: with the pending retries this holds a floor to about the number of gate puzzles it had)
+  const MENU=[['P1G1',0.056,4],['P5G1',0.03,4],['P2G1',0.03,4],['P3G1',0.022,5],['double',0.05,7]];
+  function puzzlePick(){
+    if(typeof window!=='undefined'&&window.__PZ&&MENU.some(m=>m[0]===window.__PZ))return window.__PZ;
+    const o=MENU.filter(m=>n>=m[2]);let fs=0,os=0;for(const m of o)(PUZ_OF[m[0]]===FT.puzzle?(fs+=m[1]):(os+=m[1]));
+    const fk=fs>0&&os>0?Math.max(1,0.55*os/(0.45*fs)):1,w=m=>m[1]*(PUZ_OF[m[0]]===FT.puzzle?fk:1); // (the featured family holds 55% of the draw)
+    let tot=0;for(const m of o)tot+=w(m);let x=zr()*tot;for(const m of o){x-=w(m);if(x<=0)return m[0];}return o[0][0];}
+  // lay the puzzle; returns the segment kind for the metrics (or false when it did not fit)
+  function puzzleTry(nm){let sg=false;
+    switch(nm){
+      case'P1G1':sg=sideTry(detourGate,zr()<0.5)?'detour':false;break;
+      case'double':sg=doubleGate()?'double':false;break;
+      case'P5G1':sg=alcovePlate(zr()<0.5)?'puzzle':false;break;
+      case'P2G1':sg=slabGate('p2')?'puzzle':false;break;
+      case'P3G1':sg=slabGate('p3')?'puzzle':false;break;
+    }
+    if(sg)L.puzzles.push({puz:nm});return sg;}
+  // ---- plates whose gate stands in the next turn (planned for a whole run, before it is built) ----
+  // P4: a plate on the corridor near the end of a run, a clear dash to the end, and a gate one turn later (a timed gate:
+  // press the plate and run, as in Prince of Persia level 3). The run is built up to the plate (a stop, like a loop's
+  // pieces), then held to plain floor; the turn is built with a slot for the gate (see slotOk); if no kit has the room the
+  // plate goes back to plain floor.
+  const REM=[['P4',0.4,6],['P5',0.3,4],['P1',0.3,5]];
+  function remoteRoll(k){
+    if(att<0||legacy||k>=runs.length-1||k===plan.chaseRun||forkAt.has(k)||forkAt.has(k-1))return null;
+    const forced=typeof window!=='undefined'&&window.__PZ;
+    const o=REM.filter(m=>n>=m[2]&&(!forced||forced===m[0]));if(!o.length)return null;
+    // (a floor whose featured puzzle is a remote plate lays one on a run far more often, and only of that family)
+    const rf={P4:'timed',P5:'alcove',P1:'side'},fo=o.filter(m=>rf[m[0]]===FT.puzzle);
+    if(!forced&&zr()>=(fo.length?(FT.puzzle==='timed'?0.34:0.12):0.03))return null;
+    const oo=fo.length&&!forced?fo:o;
+    let tot=0;for(const m of oo)tot+=m[1];let x=zr()*tot,nm=oo[0][0];for(const m of oo){x-=m[1];if(x<=0){nm=m[0];break;}}
+    return {nm,g:null,placed:false};}
+  // how many tiles before the end of a run its plate's stop lies (the alcove or branch is built from there)
+  const remAt=nm=>nm==='P4'?zi(8,13):nm==='P5'?24+zi(0,6):44+zi(0,8);
+  function remotePlate(rm){
+    flat(2);rm.c0=c; // (plain floor before the plate, as after any trap)
+    if(rm.nm!=='P4'){ // a latched plate in an alcove or a branch; its gate stands in the turn
+      rm.g={t:'gate',open:0,tm:0,dur:0,latch:true,far:true,fix:true};rm.botIdx=bot.length;
+      rm.placed=rm.nm==='P5'?alcovePlate(zr()<0.5,rm):sideTry((gp,fw)=>detourGate(gp,fw,rm),zr()<0.5);return rm.placed;}
+    for(let q=0;q<10;q++){
+      if(W(c+1,r)&&W(c+2,r)&&W(c+3,r)){
+        for(let i=1;i<=3;i++)set(c+i,r,FLOOR);
+        const g={t:'gate',open:0,tm:0,dur:0.2,latch:false,far:true,fix:true,race:true};
+        feat(c+2,r,{t:'plate',g,press:-9,latch:false,where:'ahead',fwd:true});
+        rm.g=g;rm.pc=c+2;rm.r=r;rm.botIdx=bot.length;
+        bot.push({a:'walk',c:c+3});c+=3;run+=3;rm.placed=true;return true;}
+      if(!flat(1))break;}
+    return false;}
+  const runs=plan.runs;let entryP=-1,prevKit=null,planBase=0;const pend=[];L.runsInfo=[];
+  for(const lp of forkAt.values())forkZone(lp,q=>{resv[q]=1;});
   for(let k=0;k<runs.length;k++){
     const rn=runs[k],dir=rn.dir,R0=bandRow(rn.band),first=k===0,last=k===runs.length-1,endRoom=rn.rooms[rn.rooms.length-1];
     if(first)entryP=dir>0?roomLo(rn.rooms[0])+1:roomHi(rn.rooms[0])-1;
@@ -970,60 +1510,69 @@ function buildLevel(n,seed,test,legacy,att){
       L.start={x:entryP*TW+16,r,face:dir,door:PC(c-1)};c+=1;cEntry=c-2;
       {const kk=n<=2?ri(4,5):ri(1,3);flat(kk);}
     }
-    let target=R0,iter=0;const vHiRun=last?vFar-14:vFar-3; // room to settle before the turn; the last run ends on open floor before the door
+    let target=R0,iter=0;let vHiRun=last?vFar-14:vFar-3; // room to settle before the turn; the last run ends on open floor before the door
     // a loop's pieces come at set places: the run is built up to each (vHi held short of it), then the piece goes in
-    const stops=[],upL=loopAt.get(k),loL=loopAt.get(k-1);
-    if(upL){stops.push({at:PC(upL.H)-5,fn:()=>loopTop(upL),k:'loop-top'});stops.push({at:vFar-12,fn:()=>!upL.ok||loopPlate(upL),k:'loop-plate'});}
-    if(loL&&loL.ok)stops.push({at:PC(loL.O)-6,fn:()=>loopFoot(loL),k:'loop-foot'});
+    const stops=[],upL=forkAt.get(k),loL=forkAt.get(k-1);
+    if(upL){stops.push({at:PC(upL.H)-5,fn:()=>forkTop(upL,vFar),k:'fork-top'});if(upL.grate)stops.push({at:vFar-12,fn:()=>!upL.ok||loopPlate(upL),k:'fork-plate'});}
+    if(loL&&loL.ok)stops.push({at:PC(loL.O)-6,fn:()=>forkFoot(loL),k:'fork-foot'});
+    const rem=remoteRoll(k);if(rem)stops.push({at:vFar-3-remAt(rem.nm),fn:()=>remotePlate(rem),k:'rem-plate'});
     stops.sort((a,b)=>a.at-b.at);
     // (the last run has rooms in hand: it stops once the route is as long as planned and the floor has at least nine
     // tenths of the traps a floor this long used to hold, so a floor whose side passages took much of its length
     // doesn't come out short)
-    const trapsNow=()=>{let t=0;for(const q of L.segs)if(!MOVES.has(q.k)&&!q.k.startsWith('turn-')&&!q.k.startsWith('loop-'))t++;return t;};
-    const lastStop0=progBase+(rn.cap+(first?2:0)),trapTarget=Math.floor(routeT*(n<=5?0.095:n<=8?0.085:0.08));
+    // (the corridor fill doesn't count: the route must not end sooner for it)
+    const trapsNow=()=>{let t=0;for(const q of L.segs)if(!q.corr&&!MOVES.has(q.k)&&!q.k.startsWith('turn-')&&!q.k.startsWith('fork-')&&q.k!=='puzzle'&&q.k!=='rem-plate')t++;return t;};
+    const LAST_EXTRA=38; // (the puzzle menu changes which turns and obstacles a floor draws; the last run is held a little long so no floor comes out shorter than before)
+    const lastStop0=Math.max(progBase,planBase)+(rn.cap+(first?2:0)),trapTarget=Math.floor(routeT*(n<=5?0.095:n<=8?0.085:0.08));
     for(;;){const st=stops.length?stops[0]:null;vHi=st?Math.min(vHiRun,st.at):vHiRun;
     while(c<vHi&&iter++<5000){
-      if(last&&prog()>=lastStop0+loopUsed&&trapsNow()>=trapTarget)break;
+      if(last&&prog()>=lastStop0+loopUsed+LAST_EXTRA&&trapsNow()>=trapTarget)break;
       if(chaseWanted&&!L.ext.chase&&k===plan.chaseRun&&MX<0&&vHi-c>=60&&c-cEntry>=6){
-        if(raw(c,r)===FLOOR&&!fe(c,r)&&!L.cps.some(q=>prog()-q.ord<12)){L.cps.push({c,r,x:c*TW+16,on:false,ord:prog()});nextCp=prog()+CP_GAP;}
+        if(!cpHold&&raw(c,r)===FLOOR&&!fe(c,r)&&!L.cps.some(q=>prog()-q.ord<12)){L.cps.push({c,r,x:c*TW+16,on:false,ord:prog()});nextCp=prog()+CP_GAP;}
         {const c0=c,r0=r;if(chaseSeg()){L.segs.push({k:'chase',c0,c1:c,r0,r1:r});breathe();continue;}}}
       if(!secretDone&&prog()>=secretAt&&prog()<routeT*0.9&&c-cEntry>=8){const c0=c,r0=r,g0=ch(0.5);if(sideTry(secretPassage,g0)){secretDone=true;L.segs.push({k:'secret',c0,c1:c,r0,r1:r});breathe();continue;}}
-      if(!xDone&&prog()>routeT*0.82&&W(c+1,r)&&W(c+2,r)){
+      if(!xDone&&!xHold&&prog()>routeT*0.82&&W(c+1,r)&&W(c+2,r)){
         set(c+1,r,FLOOR);set(c+2,r,FLOOR);feat(c+1,r,{t:'xplate',press:-9});
         bot.push({a:'walk',c:c+2});c+=2;run+=2;xDone=true;continue;
       }
       if(L.guards.length-extraG<guardsWanted&&prog()-lastGuard>=guardGap&&c+12<vHi){const c0=c,r0=r,sk=style==='crypt'&&ch(0.5);if(sk?skeleton():guard()){L.segs.push({k:sk?'skel':'guard',c0,c1:c,r0,r1:r});flat(1);breathe();continue;}}
-      if(pendDet>0&&c-cEntry>=8&&vHi-c>=30){const c0=c,r0=r,g0=ch(0.5);if(sideTry(detourGate,g0)){pendDet--;L.segs.push({k:'detour',c0,c1:c,r0,r1:r});breathe();continue;}}
-      if(pendDbl>0&&c-cEntry>=8&&vHi-c>=30){const c0=c,r0=r;if(doubleGate()){pendDbl--;L.segs.push({k:'double',c0,c1:c,r0,r1:r});breathe();continue;}}
-      if(prog()>=nextCp&&c<vHi-12&&raw(c,r)===FLOOR&&!fe(c,r)&&!L.items.some(it=>it.c===c&&it.r===r)){L.cps.push({c,r,x:c*TW+16,on:false,ord:prog()});nextCp=Math.max(nextCp+CP_GAP,prog()+CP_GAP*0.7);}
+      if(pend.length&&c-cEntry>=8&&vHi-c>=30){const c0=c,r0=r,nm=pend[0],sg=puzzleTry(nm);if(sg){pend.shift();L.segs.push({k:sg,puz:nm,c0,c1:c,r0,r1:r});breathe();continue;}}
+      if(!cpHold&&prog()>=nextCp&&c<vHi-12&&raw(c,r)===FLOOR&&!fe(c,r)&&!L.items.some(it=>it.c===c&&it.r===r)){L.cps.push({c,r,x:c*TW+16,on:false,ord:prog()});nextCp=Math.max(nextCp+CP_GAP,prog()+CP_GAP*0.7);}
       if(r===target||ch(0.08))target=ri(rMin,rMax);
       const opts=[];const add=(w,f,kd)=>{if(w>0)opts.push([w,f,kd]);};
-      add(run<2?4:1.4,()=>flat(ri(1,3)),'flat');
+      const easy=!!(upL&&upL.ok&&upL.v===3&&c>PC(upL.H)); // the long way of a dense fork is the easy one: more plain floor, no puzzles
+      add((n>=3?FLAT_K:1)*(run<2?4:1.4)*(easy?2.5:1)*(FL==='barracks'?1.3:1),()=>flat(ri(1,3)),'flat');
       add(n<=2?2.2:1.5,()=>gap(1),'gap1');
       if(n>=2)add(1.3,()=>gap(2),'gap2');
       if(n>=4)add(0.9,()=>gap(3),'gap3');
-      add(r>target?3:0.5,up,'up');
-      add(r<target?3:0.5,down,'down');
-      if(n>=2)add(1.1,()=>spikes(n>=6&&ch(0.4)?2:1),'spikes');
-      if(n>=3)add(1.0,()=>loose(n>=5&&ch(0.45)?2:1),'loose');
-      if(n>=4)add(0.9,chomp,'chomp');
-      if(n>=3)add(0.75,gate,'gate');
-      if(n>=4)add(0.22,()=>{if(c-cEntry<8||vHi-c<30){pendDet=Math.min(2,pendDet+1);return false;}if(sideTry(detourGate,ch(0.5)))return true;pendDet=Math.min(2,pendDet+1);return false;},'detour');
-      if(n>=7)add(0.08,()=>{if(c-cEntry<8||vHi-c<30||!doubleGate()){pendDbl=1;return false;}return true;},'double');
+      // a plain step is now and then a collapsing ledge or a jump instead (decided by a hash of the spot, so the generator's
+      // streams and the frequency of steps are left as they were)
+      add(r>target?3:0.5,()=>{if(n>=4&&hash2((seed|0)+c*11,r*37+n)%100<jU&&jumpUpSeg())return mix('jumpup');if(up())return mix('up');return false;},'up'); // (mix: the floor's tally of steps, for tests)
+      add(r<target?3:0.5,()=>{const v=hash2((seed|0)+c*13,r*41+n)%100;if(n>=3&&v<cT&&collapseSeg())return mix('collapse');if(n>=4&&v>=cT&&v<jT&&jumpDownSeg())return mix('jumpdown');if(down())return mix('down');return false;},'down');
+      if(n>=2)add(1.1*OB('spikes')*TK,()=>spikes(n>=6&&ch(0.4)?2:1),'spikes');
+      if(n>=3)add(1.0*OB('loose')*TK,()=>loose(n>=5&&ch(0.45)?2:1),'loose');
+      if(n>=4)add(0.9*OB('chomp')*TK,chomp,'chomp');
+      if(n>=3)add(0.75*TK,gate,'gate');
+      if(n>=4&&!(typeof window!=='undefined'&&REM.some(m=>m[0]===window.__PZ)))add((n>=7?0.30:0.22)*PZ_W*(easy?0:1)*(FT.puzzle==='timed'?0.5:1)*(FL==='maze'?3.5:1),()=>{const nm=puzzlePick();if(c-cEntry>=8&&vHi-c>=30){const sg=puzzleTry(nm);if(sg){puzzleSeg=sg;puzzleNm=nm;
+          if(FL==='maze')for(let q=zi(1,2);q>0&&pend.length<3;q--)pend.push(puzzlePick()); // a gate maze: the next gate is laid at the next clear stretch, back to back
+          return true;}}
+        if(pend.length<3)pend.push(nm);return false;},'puzzle');
       if(n>=6)add(0.3,swingSeg,'swing');
-      if(n>=5)add(0.1,sawSeg,'saw');
+      if(n>=5)add(0.1*OB('saw'),sawSeg,'saw');
       if(n>=6&&r===rMax)add(0.12,dartSeg,'darts');
       if(n>=7)add(0.065,blockSeg,'block');
-      if(n>=3)add(0.45,tunnel,'tunnel');
+      if(n>=3)add(0.45*OB('tunnel'),tunnel,'tunnel');
       if(style==='dungeon'&&n>=2)add(0.9,stones,'stones');
       if(style==='palace')add(0.9,bridge,'bridge');
       if(style==='tile')add(0.85,pendulum,'pend');
       if(style==='forge')add(0.9,vents,'vents');
+      // the featured obstacle's extra weight comes out of the plain floor, so a floor does not hold more traps for it
+      if(FT.obstacle){const ob=OB(FT.obstacle);for(const o of opts)if(o[2]===FT.obstacle)opts[0][0]+=FEAT_FLAT*o[0]*(1-1/ob);}
       let tot=0;for(const o of opts)tot+=o[0];
       let x=rng()*tot,chosen=opts[0][1],kind=opts[0][2];
       for(const o of opts){x-=o[0];if(x<=0){chosen=o[1];kind=o[2];break;}}
       const before=c,rBefore=r;
-      if(chosen()){L.segs.push({k:kind,c0:before,c1:c,r0:rBefore,r1:r});if(!MOVES.has(kind))breathe();}
+      if(chosen()){L.segs.push(kind==='puzzle'?{k:puzzleSeg,puz:puzzleNm,c0:before,c1:c,r0:rBefore,r1:r}:{k:kind,c0:before,c1:c,r0:rBefore,r1:r});if(!MOVES.has(kind))breathe();}
       else{if(!flat(1))break;}
       if(c!==before&&raw(c,r)===FLOOR&&!fe(c,r)){
         if(ch(0.07))L.items.push({c,r,x:c*TW+16,type:(n>=8&&ch(0.2))?'poison':'heal',taken:false});
@@ -1033,18 +1582,19 @@ function buildLevel(n,seed,test,legacy,att){
     }
     if(!st)break;
     stops.shift();vHi=vHiRun;{const c0=c,r0=r;
-      if(st.fn()){if(c!==c0){L.segs.push({k:st.k,c0,c1:c,r0,r1:r});if(st.k!=='loop-plate')breathe();loopUsed+=c-c0;}}
-      else if(st.k==='loop-foot'||st.k==='loop-plate')loopFail=true;}
+      if(st.fn()){if(c!==c0){L.segs.push({k:st.k,c0:st.k==='rem-plate'&&rem.c0!==undefined?rem.c0:c0,c1:c,r0,r1:r});if(st.k==='rem-plate')vHiRun=Math.min(vHiRun,c);else{if(st.k!=='fork-plate')breathe();loopUsed+=c-c0;}}}
+      else if(st.k==='fork-foot'||st.k==='fork-plate')loopFail=true;}
     }
-    if(upL&&upL.ok&&!upL.plated)loopFail=true; // a gate with no plate: start the floor again
+    if(upL&&upL.ok&&upL.grate&&!upL.plated)loopFail=true; // a gate with no plate: start the floor again
     if(loopFail)return null;
+    if(last&&c<vHiRun-20&&prog()<lastStop0+loopUsed+LAST_EXTRA)return null; // the last run boxed in (a reserved cell ahead) with room to spare: lay the floor out again, so no floor comes out short
     vHi=vFar;
     if(r<R0)down(); // back onto the band's floor
     // and on to the end of the run's last room: the turn has the next room column to itself
     if(!last){let kk=0;while(c+kk<vFar&&W(c+kk+1,r))kk++;if(kk)flat(kk);}
     const runEnd=c,runCells=touched;
     if(last){
-      for(let kk=0;kk<12&&c<vFar-1&&W(c+1,r);kk++){set(c+1,r,FLOOR);c++;}
+      for(let kk=0;kk<16&&c<vFar-1&&W(c+1,r);kk++){set(c+1,r,FLOOR);c++;}
       bot.push({a:'walk',c:c-1});
       L.door={c:PC(c-1),r,x:PC(c-1)*TW+16,open:xDone?0:1,opening:!xDone};
       bot.push({a:'door'});
@@ -1053,24 +1603,32 @@ function buildLevel(n,seed,test,legacy,att){
     L.runsInfo.push({dir,band:rn.band,row:R0,c0:entryP,c1:PC(runEnd)});
     let next=null;
     if(!last){
-      const t=plan.turns[k],nextRow=bandRow(runs[k+1].band),tcol=endRoom+dir;
+      const t=plan.turns[k],nextRow=bandRow(runs[k+1].band),tcol=endRoom+dir*(t.w||1);
       vHi=PC(dir>0?roomHi(tcol)-1:roomLo(tcol)+1);vLo=c-2;touched=[];
-      next=buildTurn(t,nextRow);
+      if(rem&&rem.placed){
+        next=buildTurn(t,nextRow,{g:rem.g,kinds:turnKinds(t)});
+        if(next&&rem.nm!=='P4'){const pz=rem.nm+'G'+next.slot.slice(1);rem.g.puz=pz;L.puzzles.push({puz:pz});}
+        else if(next){const pz='P4'+next.slot;rem.g.est=estPath(bot.slice(rem.botIdx,next.botEnd),rem.pc,true); // (like every gate: the estimate at a careful pace, times timerK)
+        rem.g.dur=Math.round((rem.g.est*timerK()+0.3)*10)/10;rem.g.puz=pz;L.puzzles.push({puz:pz});}
+        else if(rem.nm!=='P4')return null; // no room for its gate in this turn: the branch would be a dead-end room with no plate, so lay the floor out again
+        else{L.feat[rem.r*cols+PC(rem.pc)]=null;next=buildTurn(t,nextRow);} // (a timed corridor plate with no room for its gate is plain floor)
+      }else next=buildTurn(t,nextRow);
       if(!next)return null;
       next.cells=touched;
       entryP=t.rev?PC(next.land):PC(c);
     }
     finishRun(m);
-    progBase+=runEnd-cEntry;
+    progBase+=runEnd-cEntry;planBase+=rn.cap+(first?2:0); // (planBase: the route as planned; a run that came out shorter than its room count says is made up in the last one)
     MX=-1;keepClear(runCells);if(prevKit)keepClear(prevKit.cells);
     prevKit=next;
   }
   MX=-1;vLo=-1e9;vHi=1e9;rMin=0;rMax=1e9;touched=null;
+  if(FL==='longway'&&att>=0&&!L.forks.length)return null; // a longway floor always holds a fork: lay it out again
   if(!secretDone){ // no room for a hidden passage: fall back to a gold flask in an alcove near the end
     for(let k=0;k<L.items.length;k++){const it=L.items[k];if(it.alc){it.type='life';secretDone=true;break;}}}
   // thin out flasks: the gold flask always stays; every other flask keeps FLASK_GAP tiles of route from any kept one (alcoves before floor flasks)
-  {const FLASK_GAP=Math.round(35*PKW),kept=[],rank=it=>it.type==='life'?0:it.type==='big'?1:it.alc?2:3;
-    for(const it of L.items.slice().sort((a,b)=>rank(a)-rank(b)||a.ord-b.ord))if(kept.every(k=>Math.abs(k.ord-it.ord)>=FLASK_GAP))kept.push(it);
+  {const FLASK_GAP=Math.round(35*PKW),kept=[],rank=it=>it.type==='life'?0:(it.type==='big'||it.fork)?1:it.alc?2:3;
+    for(const it of L.items.slice().sort((a,b)=>rank(a)-rank(b)||a.ord-b.ord))if(it.fork||kept.every(k=>Math.abs(k.ord-it.ord)>=FLASK_GAP))kept.push(it); // a grating's flask is what its gate guards: it always stays
     L.items=L.items.filter(it=>kept.includes(it));}
   // open a hall over everything the prince moves through: one row of headroom above every floor, gap and shaft top.
   // Gates and blades keep their lintel; the entrance and exit keep a wall to sit in.
@@ -1084,12 +1642,13 @@ function buildLevel(n,seed,test,legacy,att){
       hol.push(cc,rr-1);}
     for(let i=0;i<hol.length;i+=2){set(hol[i],hol[i+1],EMPTY);if(ch(0.16))L.windows.push({c:hol[i],r:hol[i+1]});}}
   L.base0=L.base.slice(); // the terrain as built: wall decoration follows it, so it doesn't vanish when a tile falls
+  for(const f of L.lifts)if(f.t==='lift'&&f.y===f.yT)L.base[f.rT*cols+f.sc]=FLOOR; // (a platform resting at the top is the floor there; base0 keeps the open shaft)
   for(const bl of L.ext.blocks){bl.under=raw(bl.c,bl.r);set(bl.c,bl.r,WALL);}
   for(let rr=0;rr<rows;rr++)for(let cc=0;cc<cols;cc++){const f=fe(cc,rr);if(f)L.dyn.push({c:cc,r:rr,f});}
   // fewer timed side-passage gates: about two in five of them are let stay open once their plate is found (decided by a
   // hash, so the layout itself does not change)
   for(const o of L.dyn){const g=o.f;if(g.t!=='gate'||!g.far||g.latch||g.pair!==undefined||!(g.dur>0))continue;
-    if(hash2((seed|0)+o.c*5,o.r*17+n)%100<62){g.latch=true;g.dur=0;for(const q of L.dyn)if(q.f.t==='plate'&&q.f.g===g)q.f.latch=true;
+    if(!g.slab&&!g.fix&&hash2((seed|0)+o.c*5,o.r*17+n)%100<62){g.latch=true;g.dur=0;for(const q of L.dyn)if(q.f.t==='plate'&&q.f.g===g)q.f.latch=true;
       for(const dd of L.detours||[])if(dd.timed&&dd.r===o.r&&o.c>=dd.c0&&o.c<=dd.c1){dd.timed=false;dd.dur=0;}}}
   rebuildBlocks(L);
   settleLevel(L);
@@ -1587,11 +2146,13 @@ function makeGuard(gd,i){const d=L.d,cap=gd.cap,sk=!!gd.skel,tr=cap?CAPT:TIERS[g
 function makeSnake(sp){return {x:sp.x,r:sp.r,y:SURF(sp.r),lo:sp.lo,hi:sp.hi,dir:sp.dir||-1,state:'slither',t:0,ph:Math.random()*6,alive:true,gone:false,cool:0,lunge:0,hitDone:false};}
 
 function startLevel(n,cpIdx){
-  quiet=false;L=genLevel(n,levelSeed(n),false,n===S.legacyFloor);REW.length=0;rw=null;if(cpIdx<0)S.sands=SANDS;
+  quiet=false;L=genLevel(n,levelSeed(n),false,n===S.legacyFloor);REW.length=0;rw=null;if(cpIdx<0){S.sands=SANDS;S.cpPlates=[];}
   G=L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];
   P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;
   if((S.lifeTaken||[]).includes(n))for(const it of L.items)if(it.type==='life')it.taken=true;
   if(cpIdx>=0&&L.cps[cpIdx]){const cp=L.cps[cpIdx];for(let i=0;i<=cpIdx;i++)L.cps[i].on=true;L.cpIndex=cpIdx;P.x=cp.x;P.y=SURF(cp.r);P.fallY=P.y;const before=(sp,x)=>sp&&sp.ord!==undefined&&cp.ord!==undefined?sp.ord<cp.ord:x<cp.x;
+    // plates pressed before the checkpoint stay pressed: the floor is rebuilt, so press them again and leave their gates open
+    const pd=new Set(S.cpPlates||[]);for(const o of L.dyn){const k=o.c+','+o.r;if(o.f.t==='plate'&&(o.f.latch||o.f.slabF)&&pd.has(k)){if(o.f.slabF)jamRestore(o);o.f.g.tm=Infinity;o.f.g.open=1;o.f.told=1;}else if(o.f.t==='closer'&&o.f.slabF&&pd.has(k))jamRestore(o);}
     G.forEach((g,i)=>{if(before(L.guards[i],g.x)){g.alive=false;g.gone=true;}});SN.forEach((sn,i)=>{if(before(L.snakeSpecs[i],sn.hi)){sn.alive=false;sn.gone=true;}});}
   FX.length=0;STORMG.length=0;clearRooms();hitStop=0;banner=null;
   levelTime=S.floorTime||0;
@@ -1628,6 +2189,7 @@ function stepRewind(){rw.acc+=1.6;while(rw.acc>=1&&rw.idx>rw.target){rw.acc-=1;r
 const STABLE=['stand','run','stop','garde','advance','retreat','land','crouch','step','turn','parry','strike','blocked'];
 function snapshotResume(){
   if(!L||!P||mode!=='play'||!STABLE.includes(P.state)||!supported())return;
+  if(L.lifts.some(f=>P.x>f.ca*TW-20&&P.x<(f.cb+1)*TW+20&&P.y>=f.yT-1&&P.y<=f.yB+1))return; // (the platform is back at its first end when the floor is rebuilt)
   const idx=(arr,fn)=>arr.map((v,i)=>fn(v)?i:-1).filter(i=>i>=0);
   S.resume={n:L.n,x:Math.round(P.x*10)/10,y:P.y,face:P.face,hp:P.hp,
     dead:idx(G,g=>!g.alive&&!g.gone),takenAt:L.items.filter(it=>it.taken).map(it=>it.c+','+it.r),
@@ -1639,6 +2201,7 @@ function applyResume(R){
   if(!R||!L||R.n!==L.n)return false;
   for(const i of R.fallen||[]){const o=L.dyn[i];if(o&&o.f.t==='loose'){o.f.s=2;L.base[o.r*L.cols+o.c]=EMPTY;}}
   for(const k of R.rubble||[])L.rubble.add(k);
+  for(const o of L.dyn)if(o.f.slabF&&o.f.slabF.s===2&&!o.f.jam)jamRestore(o); // a slab that had fallen on a plate or closer still lies on it
   const tk=new Set(R.takenAt||[]);for(const it of L.items)if(tk.has(it.c+','+it.r))it.taken=true;
   for(const i of R.dead||[]){const g=G[i];if(g&&!g.gone){g.alive=false;g.gone=true;g.state='dying';lerpPose(g.pose,PS.dead,1,g.pose);}}
   (R.cps||[]).forEach((on,i)=>{if(on&&L.cps[i])L.cps[i].on=true;});
@@ -1680,6 +2243,11 @@ function clampMove(x0,x1,y,self,crawl){
     const gx=gc*TW+16, front0=x0+dir*BW, front1=lim+dir*BW;
     if((gx-front0)*dir>=-0.5&&(front1-gx)*dir>0){const v=gx-dir*BW;if((v-lim)*dir<0)lim=v;}
   }
+  // a ridden lift's grating shuts its mouth while the platform is away from that landing
+  for(const f of L.lifts){if(f.t!=='lift')continue;
+    for(let e=0;e<2;e++){if((e?f.rB:f.rT)!==row||(e?f.gB:f.gT)>=0.5)continue;
+      const gx=liftGx(f,e?f.sB:f.sT),front0=x0+dir*BW,front1=lim+dir*BW;
+      if((gx-front0)*dir>=-0.5&&(front1-gx)*dir>0){const v=gx-dir*BW;if((v-lim)*dir<0)lim=v;}}}
   // bodies
   const bodies=[];if(self!==P&&P&&P.state!=='dead')bodies.push(P);for(const g of G)if(g!==self&&g.alive)bodies.push(g);
   for(const b of bodies){const dy=Math.abs(b.y-y);if(dy>12&&!(self===P&&dy<52&&b.state!=='fall'))continue;const d0=(b.x-x0)*dir;if(d0<=0)continue;const v=b.x-dir*18;if((v-lim)*dir<0)lim=v;}
@@ -1739,7 +2307,8 @@ function tryUp(){
 }
 function edgeBelow(){
   const r=pRow(),c=pCol();if(r+1>=L.rows)return null;
-  for(const s of [P.face,-P.face]){const hc=c+s;if(B(L,hc,r)!==EMPTY||B(L,hc,r+1)===WALL)continue;const xe=s>0?(c+1)*TW:c*TW;if(Math.abs(P.x-xe)>26)continue;return {s,xe,c,r};}
+  for(const s of [P.face,-P.face]){const hc=c+s;if(B(L,hc,r)!==EMPTY||B(L,hc,r+1)===WALL)continue;{const hf=F(L,hc,r);if(hf&&hf.t==='hurtdrop')continue;} // (a broken lip: nothing to hang from)
+    const xe=s>0?(c+1)*TW:c*TW;if(Math.abs(P.x-xe)>26)continue;return {s,xe,c,r};}
   return null;
 }
 function tryDown(){
@@ -1788,16 +2357,27 @@ function atDoor(){const d=L.door;return d&&d.r===pRow()&&Math.abs(P.x-d.x)<16;}
 function hurt(n,cause){if(P.state==='dead')return;P.hp-=n;P.flash=0.3;Snd.play('hurt');try{navigator.vibrate&&navigator.vibrate(40);}catch(e){}if(P.hp<=0){P.hp=0;die(cause);}}
 function die(cause){if(P.state==='dead')return;deathAt=gameTime;S.resume=null;writeSave();setState('dead');P.cause=cause;P.vx=0;P.vy=0;P.hp=0;P.sword=false;P.yo=0;mode='dead';deadT=0;Snd.play('die');if(cause==='blade'||cause==='spikes'||cause==='sword')sparks(P.x,P.y-24,8,'#d94a3a');}
 const PAIRN=['amber','teal','violet'],PAIRC=['#e0a43a','#45b8b0','#a77ee6'];
-function gateMsg(f){const nm=f.pair!==undefined?'The '+PAIRN[f.pair]+' gate':'A gate';
+function gateMsg(f){if(f.fwd)return 'Somewhere ahead a gate grinds open, but its sand is running. Run for it!';const nm=f.pair!==undefined?'The '+PAIRN[f.pair]+' gate':'A gate';
   if(f.latch)return f.where?nm+' grinds open '+f.where+' and stays open.':'Somewhere on this floor, a gate grinds open and stays open.';
   return nm+' grinds open '+f.where+', but its sand is running. Get back before it shuts.';}
 // a passage's crumbling chain and ambush wake the first time its plate (or prize) is reached
+// the latching plates pressed so far on this floor (their gates stand open for good), as "c,r" keys
+function pressedPlates(){return L.dyn.filter(o=>(o.f.t==='plate'&&o.f.latch&&o.f.g.tm===Infinity)||(o.f.t==='closer'&&o.f.jam)).map(o=>o.c+','+o.r);}
+// A loose slab that lands on a plate presses it for good (the rubble stays on it); one that lands on a closing plate
+// jams it, and it no longer slams its gate (Prince of Persia levels 4, 5, 9 and 11).
+function jamAt(c,r){const f=F(L,c,r);if(!f||f.jam||(f.t!=='plate'&&f.t!=='closer'))return;f.jam=1;f.press=gameTime;
+  if(f.t==='plate'){f.latch=true;f.g.latch=true;f.near=true;pressPlate(f);msg('The slab lands on the plate and holds it down. A gate grinds open and stays open.',3.6);}
+  else msg('The slab jams the closing plate. It will not spring now.',3.4);}
+// (a floor rebuilt after a checkpoint: a jam made before it is made again, the slab already fallen)
+function jamRestore(o){const f=o.f;if(!f.slabF)return;f.jam=1;f.press=-9;if(f.t==='plate'){f.latch=true;f.g.latch=true;}
+  const sl=L.dyn.find(q=>q.f===f.slabF);if(sl){sl.f.s=2;L.base[sl.r*L.cols+sl.c]=EMPTY;}L.rubble.add(o.r*L.cols+o.c);}
 function pressPlate(f){if(f.g.tm<=0&&f.g.open<0.05)Snd.play('gate');f.press=gameTime;
   if(f.latch){if(f.g.tm!==Infinity){f.g.tm=Infinity;Snd.play('door');if(!f.chain&&!f.near)msg(gateMsg(f),3.4);}}
   else{if(f.where&&!f.told){f.told=1;if(!f.chain)msg(gateMsg(f),3.8);}f.g.tm=f.g.dur;f.g.slam=false;}
   armPassage(f);}
 // ---- movable blocks: solid cells that remember the floor beneath them ----
-function rebuildBlocks(LL){LL=LL||L;LL.blockAt=new Map();LL.blockUnder=new Map();for(const b of LL.ext.blocks){LL.blockAt.set(b.r*LL.cols+b.c,b);LL.blockUnder.set(b.r*LL.cols+b.c,b.under);if(b.mv)LL.blockUnder.set(b.r*LL.cols+b.mv.to,b.under2);}}
+function rebuildBlocks(LL){LL=LL||L;LL.blockAt=new Map();LL.blockUnder=new Map();for(const b of LL.ext.blocks){LL.blockAt.set(b.r*LL.cols+b.c,b);LL.blockUnder.set(b.r*LL.cols+b.c,b.under);if(b.mv)LL.blockUnder.set(b.r*LL.cols+b.mv.to,b.under2);}
+  for(const f of LL.lifts||[])if(f.t==='lift')LL.blockUnder.set(f.rT*LL.cols+f.sc,EMPTY);} // (a lift's top mouth is drawn as the open shaft; the platform is drawn on top)
 function blockAtCell(c,r){return L.blockAt?L.blockAt.get(r*L.cols+c)||null:null;}
 function tryMoveBlock(bl,dir,kind){const r=bl.r,nc=bl.c+dir;
   if(nc<bl.lo||nc>bl.hi||B(L,nc,r)===WALL)return false;
@@ -1819,10 +2399,11 @@ function standOn(){
     if(f.t==='loose')triggerLoose(f);
     else if(f.t==='plate')pressPlate(f);
     else if(f.t==='trigger')armPassage(f);
-    else if(f.t==='closer'){f.press=gameTime;if(f.g.tm>0||f.g.open>0.05){f.g.tm=0;f.g.slam=true;Snd.play('gate');shake(0.9);hint('closer');}}
+    else if(f.t==='lplate'){f.press=gameTime;const lf=f.lf,y=f.e?lf.yB:lf.yT;if(!liftDocked(lf,!f.e)&&lf.tgt!==y&&!(P.state==='lift'&&P.lift===lf)){lf.tgt=y;Snd.play('gate');hint('lift');}}
+    else if(f.t==='closer'&&!f.jam){f.press=gameTime;if(f.g.tm>0||f.g.open>0.05){f.g.tm=0;f.g.slam=true;Snd.play('gate');shake(0.9);hint('closer');}}
     else if(f.t==='xplate'){f.press=gameTime;if(!L.door.opening&&L.door.open<1){L.door.opening=true;msg('A heavy door grinds open somewhere on this floor.',3.4);Snd.play('door');}}
   }
-  for(let i=0;i<L.cps.length;i++){const cp=L.cps[i];if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<14){cp.on=true;L.cpIndex=i;S.cp=i;S.floorTime=levelTime;const fill=(S.sands|0)<SANDS;S.sands=SANDS;writeSave();msg(fill?'The hourglass turns and your glass fills. If you fall, you rise here.':'The hourglass turns. If you fall, you rise here.',3.2);Snd.play('cp');sparks(cp.x,SURF(cp.r)-22,10,'#e8c47f');}}
+  for(let i=0;i<L.cps.length;i++){const cp=L.cps[i];if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<14){cp.on=true;L.cpIndex=i;S.cp=i;S.floorTime=levelTime;S.cpPlates=pressedPlates();const fill=(S.sands|0)<SANDS;S.sands=SANDS;writeSave();msg(fill?'The hourglass turns and your glass fills. If you fall, you rise here.':'The hourglass turns. If you fall, you rise here.',3.2);Snd.play('cp');sparks(cp.x,SURF(cp.r)-22,10,'#e8c47f');}}
 }
 function tryGrab(py){
   const hp=py-HANG,hn=P.y-HANG;
@@ -1886,6 +2467,8 @@ function stStand(ix){
   const wob=P.stumble>0;
   if(took('j')){if(wob)return;return tryJump();}
   if(wob&&took('u'))return;
+  // a lift: on its platform, Up or Down held rides it
+  {const lf=liftUnder();if(lf&&!wob&&((I.u&&!I.d&&lf.y>lf.yT+0.01)||(I.d&&!I.u&&lf.y<lf.yB-0.01))){P.lift=lf;setState('lift');return;}}
   if(took('u')){if(atDoor()){if(L.door.open>=0.95){setState('exit');P.sword=false;return;}msg('Sealed. A floor plate somewhere opens this door.',3);return;}return tryUp();}
   if(took('d'))return tryDown();
   if(I.d)return setState('crouch');
@@ -2052,6 +2635,14 @@ function updatePlayer(dt){
         if(c>0.15){P.vx=P.face*(120+80*c);P.vy=-(130+90*c);}else{P.vx=P.face*45*c;P.vy=-20;}Snd.play('jump');P.lastBar=P.bar;P.barOff=gameTime;P.bar=null;break;}
       if(took('d')){setState('air');P.fallY=P.y;P.vx=0;P.vy=0;P.autoGrab=false;P.jumpKind=null;P.lastBar=P.bar;P.barOff=gameTime;P.bar=null;}break;}
     case'air':stAir(dt);break;
+    // riding a lift: carried at the platform's height; an end of the shaft hands him back (a cycling lift: while it rests)
+    case'lift':{const f=P.lift;P.vx=0;
+      if(f.t==='chain'){ // carried on a slab; he blends onto it over the first moments, and steps off at a landing as a slab passes its level
+        const q=chainPos(f,P.slab,gameTime),k=Math.min(1,(gameTime-P.bt)/0.15);P.x=lerp(P.bx,q.x,k);P.y=lerp(P.by,q.y,k);P.fallY=P.y;
+        if(k>=1)for(let e=0;e<2;e++){const l=chainLanding(f,e);if(ix===-l.ds&&chainWin(f,e,gameTime)===P.slab){P.face=-l.ds;P.y=l.y;P.fallY=P.y;P.sx=P.x;P.tx=l.col*TW+16;P.lift=null;setState('step');break;}}
+        break;}
+      P.y=f.y;P.fallY=P.y;
+      if(f.arr){f.arr=0;setState('stand');standOn();}break;}
     case'land':if(P.t>=P.landDur)setState('stand');break;
     case'landHurt':if(P.t>=0.6)setState('stand');break;
     case'hang':{const lg=P.ledge;if(!solidBelow(L,lg.c,lg.r)){startFall(0);break;}
@@ -2132,7 +2723,7 @@ function updatePlayer(dt){
 
 // ================= guards =================
 // floor a guard can stand and fight on: solid, and nothing on it that bites, gives way or shuts
-function guardOk(c,r){if(c<1||c>=L.cols-1||B(L,c,r)===WALL||!solidBelow(L,c,r)||blockAtCell(c,r))return false;const f=F(L,c,r);return !f||f.t==='plate'||f.t==='trigger'||f.t==='xplate';}
+function guardOk(c,r){if(c<1||c>=L.cols-1||B(L,c,r)===WALL||!solidBelow(L,c,r)||blockAtCell(c,r)||L.lifts.some(f=>c>=f.ca-1&&c<=f.cb+1&&r>=f.rT&&r<=f.rB))return false;const f=F(L,c,r);return !f||f.t==='plate'||f.t==='trigger'||f.t==='xplate';}
 // the clear stretch of floor around cell c on row r (a dozen tiles each way at most)
 function clearRun(c,r){let a=c,b=c;while(a-c>-12&&guardOk(a-1,r))a--;while(b-c<12&&guardOk(b+1,r))b++;return [a,b];}
 // where a guard dropping in lands: on the clear floor `side` of the prince, two to four tiles off, so the way on goes through it
@@ -2221,6 +2812,55 @@ const SPK=[[25,0.78,10,3],[7,0.66,16,-1.9],[19,0.48,21,0.6],[12.5,0.26,11,-0.8]]
 const CH_UP=[[4,8,0.4],[3.5,5,0],[4.5,11,-0.6],[3.5,4,0.3],[4,9,0.5],[4.5,6,-0.3],[4,10,0.2]];
 const CH_LO=[[2,5,-0.4],[4,9,0.3],[4,5,0],[4.5,10,-0.5],[3.5,4,0.2],[4,8,0.4],[4,6,-0.2],[2,4,0.3]];
 function chompK(f){const p=(((gameTime+f.off)%f.per)+f.per)%f.per/f.per;if(p<0.07)return p/0.07;if(p<0.15)return 1;if(p<0.3)return 1-(p-0.15)/0.15;return 0;}
+// ================= lifts =================
+// 1. The counterweight lift ('lift'): a platform in a one-tile shaft, f.y its walking surface (world y), f.yT / f.yB the surface
+// at the top and bottom landing. While it rests at the top landing its mouth cell is floor in L.base (so everything that walks
+// treats it as floor); anywhere else that cell is open. In flight he is carried: the 'lift' state sets his y from the
+// platform's (the step is a fixed 1/60 s, so nothing depends on the frame rate). Standing on it, Up or Down held moves it at
+// LIFT_V; reaching an end hands him back to 'stand'. A pressure plate on each landing beside the shaft (a 'lplate') sends it to
+// that landing. A grating (f.gT / f.gB, 1 = open) shuts each mouth while the platform is away.
+// 2. The chain-loop lift ('chain', a paternoster): a shaft two tiles wide; an endless chain runs up the entry column, across
+// the top, down the exit column and back across the bottom, carrying n slabs at an even pitch. A slab's place is a function of
+// the game clock alone (so a rewind needs nothing extra). He steps on at a landing, holding toward the shaft, while a slab is
+// within CHAIN_TOL of that landing's level and just passing it; once on, he is carried round and steps off at either landing
+// by holding away from the shaft as a slab passes its level. The way he goes round is always entry -> exit: up the entry
+// column, over the top, down the exit column.
+const liftGx=(f,s)=>s<0?f.sc*TW+1:(f.sc+1)*TW-1; // where the grating's plane stands, from the landing side
+const liftDocked=(f,top)=>Math.abs(f.y-(top?f.yT:f.yB))<0.01;
+// the lift whose platform he stands on, or null
+function liftUnder(){for(const f of L.lifts)if(f.t==='lift'&&Math.abs(P.x-(f.sc*TW+16))<17&&Math.abs(P.y-f.y)<2.5)return f;return null;}
+function updateLift(f,dt){
+  const old=f.y,riding=P.state==='lift'&&P.lift===f;
+  if(riding){
+    const d=(I.d?1:0)-(I.u?1:0);f.tgt=null;
+    if(d){f.y=clamp(f.y+d*LIFT_V*dt,f.yT,f.yB);if(f.y===f.yT||f.y===f.yB)f.arr=1;}
+  }else if(f.tgt!==null){ // called
+    const dd=f.tgt-f.y,st=Math.min(Math.abs(dd),LIFT_V*dt);f.y+=Math.sign(dd)*st;if(Math.abs(f.tgt-f.y)<0.01){f.y=f.tgt;f.tgt=null;}
+  }
+  if(f.y!==old){if(Math.abs(f.y-f.yT)<0.01)f.y=f.yT;else if(Math.abs(f.y-f.yB)<0.01)f.y=f.yB;}
+  // the chain rattles while it moves and the platform thuds home
+  if(f.y!==old){f.mv=1;f.snd-=dt;if(f.snd<=0&&tileVisible(f.sc,f.rT+1)){Snd.play('gate');f.snd=0.42;}}
+  else if(f.mv){f.mv=0;f.snd=0;if(tileVisible(f.sc,f.rT+1))Snd.play('thud');}
+  const q=f.rT*L.cols+f.sc,want=liftDocked(f,true)?FLOOR:EMPTY;if(L.base[q]!==want)L.base[q]=want;
+  f.gT=approach(f.gT,liftDocked(f,true)?1:0,3*dt);f.gB=approach(f.gB,liftDocked(f,false)?1:0,3*dt);
+}
+// the chain-loop lift: where slab i is at clock time T
+function chainPos(f,i,T){const H=f.yB-f.yT,per=f.per,s=(((CHAIN_V*T+f.off+i*f.pitch)%per)+per)%per,xE=f.c0*TW+16,xX=f.c1*TW+16,dx=f.dx;
+  if(s<H)return {x:xE,y:f.yB-s};if(s<H+32)return {x:xE+dx*(s-H),y:f.yT};if(s<2*H+32)return {x:xX,y:f.yT+(s-H-32)};return {x:xX-dx*(s-2*H-32),y:f.yB};}
+// a landing (e: 0 entry, 1 exit): its level, the x of the shaft's edge beside it, which way the shaft lies from it, and its column
+function chainLanding(f,e){const dx=f.dx;return e?{y:f.exitY,bx:dx>0?(f.c1+1)*TW:f.c1*TW,ds:-dx,col:f.c1+dx}:{y:f.entryY,bx:dx>0?f.c0*TW:(f.c0+1)*TW,ds:dx,col:f.c0-dx};}
+// the slab passing landing e at time T (level within CHAIN_TOL, its near edge just at the shaft's edge), or -1
+function chainWin(f,e,T){const l=chainLanding(f,e);
+  for(let i=0;i<f.n;i++){const q=chainPos(f,i,T);if(Math.abs(q.y-l.y)>CHAIN_TOL)continue;const m=(q.x-l.ds*16-l.bx)*l.ds;if(m>=-12&&m<=10)return i;}return -1;}
+function updateChain(f,dt){
+  if(tileVisible(f.ca,f.rT+1)||tileVisible(f.cb,f.rB)){f.snd=(f.snd||0)-dt;if(f.snd<=0){Snd.play('rip');f.snd=0.55;}} // a soft rattle near it
+  if(!['stand','run','stop','step'].includes(P.state))return;
+  const ix=(I.r?1:0)-(I.l?1:0),r=pRow();
+  for(let e=0;e<2;e++){const l=chainLanding(f,e);if(r!==(e?f.exitRow:f.entryRow)||ix!==l.ds||P.face!==l.ds)continue;
+    const m=(P.x-l.bx)*l.ds;if(m<-14||m>3)continue;
+    const i=chainWin(f,e,gameTime);if(i<0)continue;
+    P.lift=f;P.slab=i;P.bx=P.x;P.by=P.y;P.bt=gameTime;P.vx=0;setState('lift');return;}
+}
 function updateFeatures(dt){
   const pr=pRow(),alive=P.state!=='dead';
   for(const o of L.dyn){const f=o.f;
@@ -2248,6 +2888,8 @@ function updateFeatures(dt){
       }break;
       case'gate':{const was=f.open;if(f.tm>0){f.tm-=dt;f.open=Math.min(1,f.open+dt*3);}else{f.open=Math.max(0,f.open-dt*(f.slam?4:f.dur>0?2.6:0.85));if(f.open<=0)f.slam=false;}
         if(was>=0.5&&f.open<0.5&&tileVisible(o.c,o.r))Snd.play('gate');}break;
+      case'lift':updateLift(f,dt);break;
+      case'chain':updateChain(f,dt);break;
       case'chomp':{const k=chompK(f);
         if(k>0&&f.last===0&&tileVisible(o.c,o.r))Snd.play('chomp');f.last=k;
         if(k>0.55&&alive&&pr===o.r&&Math.abs(P.x-(o.c*TW+16))<14&&!['hang','climb','climbDown','exit'].includes(P.state)){f.blood=1;die('blade');}}break;
@@ -2271,7 +2913,7 @@ function updateFeatures(dt){
     d.vy=Math.min(d.vy+GRAV*dt,480);const py=d.y;d.y+=d.vy*dt;
     if(!d.hitP&&alive&&Math.abs(P.x-d.x)<11&&d.y>P.y-48&&d.y-8<P.y&&!['air'].includes(P.state)&&py<P.y-20){d.hitP=true;hurt(1,'crush');if(P.state!=='dead'&&!['hang','climb'].includes(P.state)){setState('landHurt');}}
     let landed=false;
-    for(let r=Math.floor((py+4)/TH);r<=Math.floor((d.y+4)/TH)-1;r++){const ys=SURF(r);if(py<ys&&d.y>=ys&&solidBelow(L,d.c,r)){landed=true;if(B(L,d.c,r)===FLOOR)L.rubble.add(r*L.cols+d.c);invalidateCell(d.c,r);dust(d.x,ys,6);if(tileVisible(d.c,r)){Snd.play('crash');shake(1.4);}break;}}
+    for(let r=Math.floor((py+4)/TH);r<=Math.floor((d.y+4)/TH)-1;r++){const ys=SURF(r);if(py<ys&&d.y>=ys&&solidBelow(L,d.c,r)){landed=true;if(B(L,d.c,r)===FLOOR){L.rubble.add(r*L.cols+d.c);if(d.kind==='slab')jamAt(d.c,r);}invalidateCell(d.c,r);dust(d.x,ys,6);if(tileVisible(d.c,r)){Snd.play('crash');shake(1.4);}break;}}
     if(landed||d.y>L.rows*TH+120)L.debris.splice(i,1);
   }
 }
@@ -2321,8 +2963,19 @@ const HINTS={
   block:'A loose block. Hold Grab and press toward it to push, away to pull. Its weight holds a plate down for good, and you can climb over it.',
   chase:'A sandstorm. Keep running and jump everything in your way; the arch at the far end stops it.',
   secret:'Something glints up there. Side passages without gates hide gold flasks.',
-  shortcut:'A hole in the floor with ledges below it: a quick way down. Drop in, or jump it and go the long way round.',
-  loopgate:'A violet gate. It opens from the violet plate, which lies on the long way round. The ledges beside it climb back up to where you dropped in.',
+  fork1:'Two ways on. Drop through the hole and fight a guard, or jump it and take the long way with its traps.',
+  fork3:'Two ways on. The hole is short but crowded with traps; the long way round is quieter.',
+  fork4:'A grating over a deep shaft. There is no way through. Crouch on it and hold Down to look: something waits below, behind a violet gate.',
+  loopgate:'A violet gate. It opens from the violet plate, which lies on the long way round.',
+  slabplate:'A loose slab hangs in the gallery over this plate. Run across it up there and it falls and holds the plate down.',
+  slabgate:'This gate shuts the moment the plate is let go. Something heavy must hold the plate down: look for a loose slab above it.',
+  slabcloser:'A closing plate too wide to jump. A loose slab hangs in the gallery above it: let it fall and the plate is jammed.',
+  racegate:'The hourglass on this gate means it will not stay open. Its plate lies back the way you came: press it, then run for the gate.',
+  collapse:'This ledge will not hold. Stand on it and let it drop you to the floor below.',
+  jgrab:'A ledge a floor up across a pit. Run, jump, and hold Grab in the air to catch its edge; then press up to climb.',
+  hurtdrop:'A long drop. It will hurt, or take the way round.',
+  lift:'Step on the plate to call the lift. Hold up or down to ride.',
+  chain:'Step on as a slab passes.',
   double:'Two marked gates. Each answers to the plate of its colour, one above and one below. The one with the hourglass will not stay open.',
 };
 function hint(id){if(S.hints[id])return;S.hints[id]=1;writeSave();if(!hintQ.includes(id))hintQ.push(id);}
@@ -2334,19 +2987,23 @@ function checkHints(){
     let c=pCol();
     for(let i=1;i<=2;i++){const nc=c+P.face*i;const f=F(L,nc,r);
       if(B(L,nc,r)===WALL)break;
-      if(f&&f.t==='loophole'){hint('shortcut');break;}
+      if(f&&f.fork&&HINTS['fork'+f.fork]&&f.t!=='hurtdrop'){hint('fork'+f.fork);break;}
+      if(f&&f.t==='jgrab'){hint('jgrab');break;}
+      if(f&&f.t==='hurtdrop'){hint('hurtdrop');break;}
       if(!solidBelow(L,nc,r)){let w=0;for(let k=0;k<4;k++){if(!solidBelow(L,nc+P.face*k,r)&&B(L,nc+P.face*k,r)!==WALL)w++;else break;}
         if(w>=3){let bar=false;for(let k=0;k<4;k++){const ff=F(L,nc+P.face*k,r);if(ff&&ff.t==='bar')bar=true;}hint(bar?'swing':'wide');}else if(edgeBelow()&&B(L,nc,r+1)!==WALL&&solidBelow(L,nc,r+1))hint('drop');else hint('gap');break;}
-      if(f){if(f.t==='spikes')hint('spikes');else if(f.t==='loose')hint(f.plank?'bridge':'loose');else if(f.t==='plate')hint('plate');else if(f.t==='chomp')hint('chomp');else if(f.t==='low')hint('crawl');else if(f.t==='closer')hint('closer');else if(f.t==='vent')hint('vent');else if(f.t==='pend')hint('pend');break;}
+      if(f){if(f.t==='spikes')hint('spikes');else if(f.t==='loose')hint(f.plank?'bridge':f.drop?'collapse':'loose');else if(f.t==='plate')hint('plate');else if(f.t==='chomp')hint('chomp');else if(f.t==='low')hint('crawl');else if(f.t==='closer')hint(f.slabF?'slabcloser':'closer');else if(f.t==='vent')hint('vent');else if(f.t==='pend')hint('pend');break;}
     }
     if(canClimbUp())hint('climb');
+    for(const f of L.lifts)if((f.rT===r||f.rB===r)&&Math.abs(f.sc*TW+16-P.x)<110)hint(f.t==='chain'?'chain':'lift');
     {const f0=F(L,pCol(),r),f1=F(L,pCol()+P.face,r);if((f0&&f0.t==='shaftfoot')||(f1&&f1.t==='shaftfoot'))hint('shaft');const fb=F(L,pCol()+P.face,r);if(fb&&fb.t==='banner')hint('banner');}
     {const nc=pCol()+P.face;if(B(L,nc,r)===WALL&&B(L,nc,r-1)===WALL&&B(L,pCol(),r-1)!==WALL&&B(L,pCol(),r-2)===EMPTY&&solidBelow(L,nc,r-2))hint('wallrun');}
     const e=edgeBelow();if(e&&solidBelow(L,e.c+e.s,e.r+2)&&!solidBelow(L,e.c+e.s,e.r+1))hint('drop');
     for(const it of L.items)if(!it.taken&&it.r===r&&Math.abs(it.x-P.x)<40)hint('potion');
     for(const cp of L.cps)if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<70)hint('cp');
     for(const sn of SN)if(sn.alive&&sn.r===r&&Math.abs(sn.x-P.x)<110){hint('snake');if(lowAt(sn.x,sn.r)||lowAt(sn.x-20,sn.r)||lowAt(sn.x+20,sn.r))hint('poke');}
-    for(const o of L.dyn)if(o.f.t==='gate'&&o.f.far&&o.f.open<0.5&&o.r===r&&Math.abs(o.c*TW+16-P.x)<110){hint(o.f.loop?'loopgate':o.f.pair!==undefined?'double':o.f.latch?'latch':'sandgate');}
+    for(const o of L.dyn)if(o.f.t==='gate'&&o.f.far&&o.f.open<0.5&&o.r===r&&Math.abs(o.c*TW+16-P.x)<110){hint(o.f.loop?'loopgate':o.f.pair!==undefined?'double':o.f.slab?'slabgate':o.f.race?'racegate':o.f.latch?'latch':'sandgate');}
+    for(const o of L.dyn)if(o.f.slabF&&!o.f.jam&&o.r===r&&Math.abs(o.c*TW+16-P.x)<150)hint(o.f.t==='closer'?'slabcloser':'slabplate');
     for(const o of L.dyn)if(o.f.t==='pend'&&o.r===r&&Math.abs(o.c*TW+16-P.x)<110)hint('pend');
     for(const o of L.dyn){if(o.r!==r)continue;const dx=Math.abs(o.c*TW+16-P.x);if(o.f.t==='saw'&&dx<120)hint('saw');if(o.f.t==='darter'&&dx<200)hint('darts');}
     for(const bl of L.ext.blocks)if(bl.r===r&&Math.abs(bl.c*TW+16-P.x)<90)hint('block');
@@ -2360,6 +3017,14 @@ function checkHints(){
 const cam={rx:0,ry:0,x:0,y:0,gy:0,snap:true};
 const FRAME=0.66;
 let viewW=ROOM_W;const hud={l:6,r:ROOM_W-6,t:3,over:false};
+// the grating he is crouching on (or beside) and what lies below it: the floor's level and the middle of the flask and its gate,
+// or null when he is not at one or the flask has been drunk
+function gratePeek(){
+  const r=pRow();
+  for(const o of L.dyn){if(o.f.t!=='grate'||o.r!==r||Math.abs(P.x-(o.c*TW+16))>40)continue;
+    const fk=L.forks.find(q=>q.grate&&q.rUp===r),it=fk&&L.items.find(i=>i.fork&&!i.taken);if(!it)continue;
+    return {y:SURF(it.r),x:fk.gate?(it.x+fk.gate.c*TW+16)/2:it.x};}
+  return null;}
 function updateCamera(dt){
   if(!P||!L)return;
   const foe=P.foe&&P.foe.alive?P.foe:null;
@@ -2373,12 +3038,17 @@ function updateCamera(dt){
   else if(st==='crouch'&&P.peekT>0.4)gy=P.y+56;
   else if(st==='dead')gy=cam.gy;
   if(cam.snap||!dt)gy=st==='dead'?cam.gy||P.y:P.y;
-  cam.gy=gy;
+  // crouching over a grating looks down the shaft: the view drops to the lower run, framing the flask and its violet gate (the
+  // prince leaves the picture while he looks; letting go brings the view back)
+  const pk=st==='crouch'&&P.peekT>0.4&&!cam.snap?gratePeek():null;
+  if(pk){gy=pk.y;t=clamp(pk.x-viewW/2,-viewW*0.15,L.cols*TW-viewW*0.85);cam.pk=1;}
+  else if(cam.pk>0)cam.pk=Math.max(0,cam.pk-dt*1.1);
+  cam.gy=pk?cam.gy:gy;
   let ty=gy-ROOM_H*FRAME;
   const maxY=L.rows*TH-ROOM_H;
-  if(cam.snap||!dt){cam.x=t;cam.y=ty;cam.snap=false;}
-  else{cam.x+=(t-cam.x)*(1-Math.exp(-dt*3.2));cam.y+=(ty-cam.y)*(1-Math.exp(-dt*5));}
-  if(st!=='dead'){cam.y=Math.max(cam.y,P.y-ROOM_H+6);cam.y=Math.min(cam.y,P.y-56);}
+  if(cam.snap||!dt){cam.x=t;cam.y=ty;cam.snap=false;cam.pk=0;}
+  else{cam.x+=(t-cam.x)*(1-Math.exp(-dt*(pk?5:3.2)));cam.y+=(ty-cam.y)*(1-Math.exp(-dt*(pk?3:5)));}
+  if(st!=='dead'&&!(cam.pk>0)){cam.y=Math.max(cam.y,P.y-ROOM_H+6);cam.y=Math.min(cam.y,P.y-56);}
   cam.y=clamp(cam.y,0,Math.max(0,maxY));
   cam.rx=Math.floor((cam.x+viewW/2)/ROOM_W);cam.ry=Math.floor((cam.y+ROOM_H/2)/ROOM_H);
 }
@@ -2423,12 +3093,13 @@ function update(dt){
 function levelComplete(){
   mode='card';
   const n=L.n,ft=levelTime,fd=S.floorDeaths||0;
-  S.time+=ft;S.level=n+1;S.cp=-1;S.floorTime=0;S.floorDeaths=0;S.resume=null;S.legacyFloor=0;writeSave();
+  S.time+=ft;S.level=n+1;S.cp=-1;S.floorTime=0;S.floorDeaths=0;S.resume=null;S.legacyFloor=0;S.cpPlates=[];writeSave();
   Snd.play('clear');
   $('cEyebrow').textContent='Floor '+n+' cleared';
   $('cTitle').textContent=themeName(n);
   $('cTime').textContent=fmt(ft);$('cDeaths').textContent=String(fd);$('cLives').textContent=String(S.maxHp);
-  $('cNext').textContent='Next: Floor '+(n+1)+', '+themeName(n+1)+'.';
+  {const fl=featFor(n+1,levelSeed(n+1)).flag; // (only a rare flag is named; the ordinary featured families are left for the player to find)
+  $('cNext').textContent='Next: Floor '+(n+1)+', '+themeName(n+1)+'.'+(fl?' '+FLAG_TEXT[fl]:'');}
   show('card');
 }
 
@@ -2503,14 +3174,34 @@ function drawRoomStatic(g,rx,ry,stage){
   // 4. floors: walking surface, front lip and open ends
   each((gc,gr,X,Y)=>{
     if(B(L,gc,gr)===WALL||!solidBelow(L,gc,gr))return;
-    const f=F(L,gc,gr);if(f&&((f.t==='loose'&&f.s<2)||f.t==='plate'||f.t==='xplate'||f.t==='closer'))return;
+    const f=F(L,gc,gr);if(f&&((f.t==='loose'&&f.s<2)||f.t==='plate'||f.t==='xplate'||f.t==='lplate'||f.t==='closer'||f.t==='grate'))return;
     const lo=B(L,gc-1,gr)!==WALL&&!solidBelow(L,gc-1,gr),ro=B(L,gc+1,gr)!==WALL&&!solidBelow(L,gc+1,gr);
     const ys=Y+TH-4;slab(g,X,ys,th,lo,ro,gc,gr,B(L,gc+1,gr)===WALL);
     if(f&&f.t==='spikes'){g.fillStyle='rgba(7,5,11,.8)';const m=gc%2?-1:1;for(const [bx,d] of SPK){const q=onFloor(X+16+m*(bx-16),d,ys);g.beginPath();g.ellipse(q.x,q.y,2.2,0.9,0,0,Math.PI*2);g.fill();}}
     if(L.rubble.has(gr*L.cols+gc)){const rnd=mulberry32(hash2(gc,gr+77));for(let i=0;i<6;i++){g.fillStyle=i%2?th.front:th.lo;const q=onFloor(X+4+rnd()*24,0.2+rnd()*0.6,ys),w=2+rnd()*4;g.fillRect(q.x,q.y-1,w,1.6+rnd()*1.2);}}
   });
+  // the damaging drop (a hole two storeys deep with no grip on its lip): ragged, bitten edges on both sides, a darker shaft
+  // and a pile of the fallen stone on the floor it lands on. Drawn from the tile type, so every such drop looks the same.
+  each((gc,gr,X,Y)=>{
+    const f0=F(L,gc,gr),fu=F(L,gc,gr-1),fu2=F(L,gc,gr-2);
+    if((fu&&fu.t==='hurtdrop')||(fu2&&fu2.t==='hurtdrop')){ // the shaft: the two empty cells
+      const hh=fu&&fu.t==='hurtdrop'?TH:TH-18,sg=g.createLinearGradient(0,Y,0,Y+hh);sg.addColorStop(0,'rgba(4,3,8,.5)');sg.addColorStop(1,'rgba(4,3,8,.68)');g.fillStyle=sg;g.fillRect(X-HX,Y,TW+DX,hh);}
+    if(fu2&&fu2.t==='hurtdrop'&&B(L,gc,gr)!==WALL){drawHeap(g,{c:gc,r:gr},X,Y+TH-4,th,true);}
+    if(B(L,gc,gr)===WALL||!solidBelow(L,gc,gr))return;
+    const fr2=F(L,gc+1,gr),fl2=F(L,gc-1,gr),rh=fr2&&fr2.t==='hurtdrop',lh=fl2&&fl2.t==='hurtdrop';
+    if(!rh&&!lh)return;
+    const ys=Y+TH-4,fx=X-HX,ft=ys+HY,rnd=mulberry32(hash2(gc*5+1,gr*7+3));
+    g.fillStyle='rgba(4,3,8,.92)';
+    // bites out of the lip and the surface at the broken end: jagged triangles of different sizes
+    for(let i=0;i<5;i++){const w=3+rnd()*5,hgt=2+rnd()*4,yy=ft+rnd()*5,ex=rh?fx+TW:fx; // (right end / left end)
+      const dir=rh?-1:1;g.beginPath();g.moveTo(ex,yy);g.lineTo(ex+dir*w,yy+hgt*0.4);g.lineTo(ex+dir*w*0.3,yy+hgt);g.lineTo(ex,yy+hgt*0.7);g.closePath();g.fill();}
+    for(let i=0;i<4;i++){const q=onFloor((rh?X+TW-2:X+2)-(rh?1:-1)*rnd()*9,0.1+rnd()*0.85,ys),w=2+rnd()*4;
+      g.beginPath();g.moveTo(q.x,q.y);g.lineTo(q.x+(rh?w:-w),q.y+1.6);g.lineTo(q.x+(rh?w*0.4:-w*0.4),q.y-1.5);g.closePath();g.fill();}
+    g.strokeStyle='rgba(255,255,255,.14)';g.lineWidth=0.7;g.beginPath();const ex2=rh?fx+TW-6:fx+6;g.moveTo(ex2,ft);g.lineTo(ex2+(rh?2:-2),ft+3);g.lineTo(ex2+(rh?-1:1),ft+FHH);g.stroke();
+  });
   drawBreachRubble(g,rx,ry,th);drawFallen(g,rx,ry,th);
 }
+const FHH=5;
 // ---- breaches: where a stretch of the keep has partly fallen, holes have opened right through its back wall ----
 // Modelled on how brick and block walls actually fail rather than drawn as shapes: the masonry over a gap stays up by
 // arching, so what comes down is the stepped, roughly 45-degree triangle above it and the hole's top is a corbelled
@@ -3549,6 +4240,17 @@ function drawPlank(ctx,X,ys,sh){
   ctx.restore();
 }
 // a flat piece set into a floor's walking surface (plates), raised by lift
+// the slab that fell on a plate: broken chunks lying on it, one tilted, with chips round about
+function drawHeap(ctx,o,X,ys,th,force){if(!force&&!L.rubble.has(o.r*L.cols+o.c))return;const rnd=mulberry32(hash2(o.c,o.r+91));
+  ctx.fillStyle='rgba(0,0,0,.35)';{const q=onFloor(X+16,0.5,ys);ctx.beginPath();ctx.ellipse(q.x,q.y+1,15,4.2,0,0,6.2832);ctx.fill();}
+  const chunk=(x0,x1,d0,d1,h0,h1,col,side)=>{const a=onFloor(x0,d0,ys),b=onFloor(x1,d0,ys),c2=onFloor(x1,d1,ys),d=onFloor(x0,d1,ys);
+    ctx.lineWidth=0.9;ctx.strokeStyle='#0b0812';
+    ctx.fillStyle=side;ctx.beginPath();ctx.moveTo(d.x,d.y-h0);ctx.lineTo(c2.x,c2.y-h1);ctx.lineTo(c2.x,c2.y);ctx.lineTo(d.x,d.y);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(a.x,a.y-h0);ctx.lineTo(b.x,b.y-h1);ctx.lineTo(c2.x,c2.y-h1);ctx.lineTo(d.x,d.y-h0);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.strokeStyle='rgba(0,0,0,.55)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo((a.x+b.x)/2,(a.y+b.y)/2-(h0+h1)/2);ctx.lineTo((c2.x+d.x)/2+1,(c2.y+d.y)/2-(h0+h1)/2);ctx.stroke();};
+  const wb=th.wallB||th.front;
+  chunk(X+3,X+17,0.12,0.6,5,9,th.hi||th.top,wb);chunk(X+16,X+29,0.3,0.78,7,3,th.top,wb);chunk(X+8,X+21,0.62,0.95,3,5,th.hi||th.top,wb);
+  for(let i=0;i<8;i++){const q=onFloor(X+1+rnd()*30,0.05+rnd()*0.9,ys);ctx.fillStyle=i%2?wb:th.hi||th.top;ctx.strokeStyle='#0b0812';ctx.lineWidth=0.5;const w=1.6+rnd()*2.6,h=1.2+rnd()*1.6;ctx.fillRect(q.x,q.y-h,w,h);ctx.strokeRect(q.x,q.y-h,w,h);}}
 function floorQuad(ctx,x0,x1,d0,d1,ys,lift){const a=onFloor(x0,d0,ys),b=onFloor(x1,d0,ys),c=onFloor(x1,d1,ys),d=onFloor(x0,d1,ys);
   ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(b.x,b.y+lift);ctx.lineTo(a.x,a.y+lift);ctx.closePath();ctx.fillStyle='#0b0812';ctx.fill();
   ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(c.x,c.y);ctx.lineTo(d.x,d.y);ctx.closePath();}
@@ -3596,7 +4298,7 @@ function drawGate(ctx,f,X,Y,ys,half){
     ctx.fillStyle='#b8bdc8';ctx.beginPath();ctx.moveTo(x-0.9,bot-0.5);ctx.lineTo(x,bot+1.9);ctx.lineTo(x+0.9,bot-0.5);ctx.fill();}
   ceilShade(ctx,pl);ctx.restore();}
   // a timed gate has its hourglass set into the wall above it, in a carved roundel centred on that wall's face
-  if(!half&&!f.latch&&f.dur>0){const st=L.theme.style;gateRoundel(ctx,X+16-HX,pl.top-(st==='dungeon'||st==='forge'?12:16),f.tm>0&&f.tm<Infinity?f.tm/f.dur:1,f.tm>0&&f.tm<Infinity);}
+  if(!half&&!f.latch&&f.dur>0&&!f.slab){const st=L.theme.style;gateRoundel(ctx,X+16-HX,pl.top-(st==='dungeon'||st==='forge'?12:16),f.tm>0&&f.tm<Infinity?f.tm/f.dur:1,f.tm>0&&f.tm<Infinity);}
   // a marked gate wears its colour on the wall above it (the cross bar alone is lost in the ceiling's shadow); beside
   // the hourglass when it has one
   if(!half&&f.pair!==undefined){const tm=!f.latch&&f.dur>0,st=L.theme.style;pairPlaque(ctx,X+16-HX+(tm?15:0),pl.top-(tm?(st==='dungeon'||st==='forge'?12:16):10),PAIRC[f.pair]);}
@@ -3689,7 +4391,72 @@ function drawBlock(ctx,bl,th){const k=bl.mv?ease(Math.min(1,bl.mv.t/bl.mv.dur)):
     ctx.fillStyle=th.hi;ctx.fillRect(bx+1.2,by+1.2,TW-2.4,2.2);ctx.fillStyle=th.lo;ctx.fillRect(bx+1.2,by+TH-4,TW-2.4,2.8);
     ctx.strokeStyle='rgba(0,0,0,.45)';ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(bx+6,by+20);ctx.lineTo(bx+12,by+26);ctx.lineTo(bx+10,by+34);ctx.moveTo(bx+22,by+42);ctx.lineTo(bx+26,by+50);ctx.stroke();
     ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(bx+TW/2-5,by+TH/2-2,10,4);}
-const CUT_AT_WALL=new Set(['plate','xplate','closer','loose','spikes']);
+const CUT_AT_WALL=new Set(['plate','xplate','lplate','closer','loose','spikes']);
+// ---- the lifts, one draw function per kind (the look is easy to swap). Both use the bronze and iron of the gates and the floor
+// slab the ledges are made of ----
+function liftVisible(f,x0,x1,y0,y1){return (f.cb+1)*TW+80>x0&&f.ca*TW-80<x1&&f.rB*TH+TH+10>y0&&f.rT*TH-40<y1;}
+function drawLift(ctx,f,half){if(f.t==='chain')drawLiftChain(ctx,f,half);else drawLiftCounterweight(ctx,f,half);}
+function liftChainLine(ctx,x0,y0,x1,y1){ctx.strokeStyle='#0b0812';ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
+  ctx.strokeStyle='#9aa0ad';ctx.lineWidth=1.4;ctx.setLineDash([2.2,1.6]);ctx.stroke();ctx.setLineDash([]);}
+function liftWheel(ctx,cx,cy,rad,teeth,spin){ // a bronze wheel (a pulley: no teeth; a gear: teeth)
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(spin);ctx.beginPath();
+  if(teeth){for(let i=0;i<teeth*2;i++){const a=i/(teeth*2)*6.2832,rr=i%2?rad-2.6:rad;ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}ctx.closePath();}else ctx.arc(0,0,rad,0,6.2832);
+  ctx.fillStyle='#0b0812';ctx.fill();ctx.lineWidth=1;ctx.strokeStyle='#0b0812';ctx.stroke();
+  ctx.beginPath();ctx.arc(0,0,rad-1.8,0,6.2832);ctx.fillStyle='#b98a4a';ctx.fill();ctx.fillStyle='#e0b878';ctx.beginPath();ctx.arc(-0.8,-0.8,rad-3.4,Math.PI*0.9,Math.PI*1.7);ctx.lineTo(0,0);ctx.fill();
+  ctx.strokeStyle='#0b0812';ctx.lineWidth=1.2;ctx.beginPath();for(let i=0;i<4;i++){const a=i*1.5708;ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*(rad-2.4),Math.sin(a)*(rad-2.4));}ctx.stroke();
+  ctx.fillStyle='#0b0812';ctx.beginPath();ctx.arc(0,0,1.8,0,6.2832);ctx.fill();ctx.restore();}
+// the shaft's back wall a shade darker, with a vertical guide groove down each side
+function liftShaftBack(ctx,x,w,y0,y1){const g=ctx.createLinearGradient(0,y0,0,y1);g.addColorStop(0,'rgba(5,3,10,.42)');g.addColorStop(1,'rgba(5,3,10,.22)');ctx.fillStyle=g;ctx.fillRect(x,y0,w,y1-y0);
+  for(const gx of [x+2.5,x+w-2.5]){ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(gx-1,y0,2,y1-y0);ctx.fillStyle='rgba(255,255,255,.12)';ctx.fillRect(gx+1,y0,0.7,y1-y0);}}
+// 1. the counterweight lift: a beam over the shaft with a bronze pulley, two chains to the slab, and a third chain over to a stone
+// counterweight in the wall beside the shaft that always stands at the other height from the slab
+function drawLiftCounterweight(ctx,f,half){
+  const th=L.theme,X=f.sc*TW,top=f.rT*TH,ys=f.y,bot=SURF(f.rB);
+  for(let e=0;e<2;e++){const rr=e?f.rB:f.rT,xg=liftGx(f,e?f.sB:f.sT);
+    drawGate(ctx,{open:e?f.gB:f.gT,latch:true,dur:0},xg-16,rr*TH,SURF(rr),half?1:0);}
+  if(half)return;
+  liftShaftBack(ctx,X,TW,top,bot);
+  const ws=-f.sT,wcx=X+16+ws*TW,fr=clamp((ys-f.yT)/(f.yB-f.yT),0,1),wb=(f.rB*TH-6)-fr*((f.rB*TH-6)-(top+40)); // (the weight's bottom: low when the slab is high)
+  // the beam, over the shaft and on across the wall to the counterweight's column
+  const bx0=Math.min(X-3,wcx-13),bx1=Math.max(X+TW+3,wcx+13);
+  ctx.fillStyle='#0b0812';ctx.fillRect(bx0,top+1,bx1-bx0,8);ctx.fillStyle='#6a4a2a';ctx.fillRect(bx0+1,top+2,bx1-bx0-2,6);ctx.fillStyle='#8a6a3a';ctx.fillRect(bx0+1,top+2,bx1-bx0-2,1.5);
+  liftChainLine(ctx,X+16,top+14,wcx,top+14);liftChainLine(ctx,wcx,top+14,wcx,wb-24);
+  liftChainLine(ctx,X+6,top+14,X+6,ys+HY-1);liftChainLine(ctx,X+TW-6,top+14,X+TW-6,ys+HY-1);
+  liftWheel(ctx,X+16,top+14,7.5,0,-(ys*0.05));liftWheel(ctx,wcx,top+14,4.2,0,(ys*0.05));
+  // the slab: the same floor tile as the ledges, in iron brackets where the chains hold it
+  slab(ctx,X,ys,th,true,true);
+  for(const bx of [X+3,X+TW-7]){ctx.fillStyle='#0b0812';ctx.fillRect(bx-HX+1,ys+HY-1.5,6,5);ctx.fillStyle='#b98a4a';ctx.fillRect(bx-HX+2,ys+HY-0.5,4,3);}
+  // the counterweight: a stone block hung from its chain
+  const w=18,h=24,x=wcx-w/2,y=wb-h;
+  ctx.fillStyle='#0b0812';ctx.fillRect(x-1.5,y-1.5,w+3,h+3);ctx.fillStyle=th.wallB;ctx.fillRect(x,y,w,h);ctx.fillStyle=th.wallA;ctx.fillRect(x+2,y+2,w-4,h-4);ctx.fillStyle=th.hi;ctx.fillRect(x,y,w,1.6);ctx.fillStyle=th.lo;ctx.fillRect(x,y+h-2.4,w,2.4);
+  ctx.strokeStyle='rgba(0,0,0,.45)';ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(x+3,y+h*0.45);ctx.lineTo(x+w-3,y+h*0.45);ctx.stroke();
+  ctx.fillStyle='#0b0812';ctx.beginPath();ctx.arc(wcx,y-2,3.2,0,6.2832);ctx.fill();ctx.fillStyle='#b98a4a';ctx.beginPath();ctx.arc(wcx,y-2,1.8,0,6.2832);ctx.fill();
+}
+// 2. the chain-loop lift: a bronze gear at the top and the bottom, an endless chain round them, and slabs fixed to the chain
+function drawLiftChain(ctx,f,half){
+  if(half)return;
+  const th=L.theme,xE=f.c0*TW+16,xX=f.c1*TW+16,xm=(xE+xX)/2,X0=f.ca*TW,top=f.rT*TH;
+  liftShaftBack(ctx,X0,2*TW,top,f.yB);
+  // the chain: a heavy link chain up the entry column, over the top, down the exit column and back along the bottom. Its links
+  // are laid along the same path the slabs ride (chainPos with a made-up slab), alternate flat and edge-on, and travel with
+  // the chain, so the eye sees at once which strand climbs and which falls. Brass chevrons on the two upright strands point
+  // the way they go (up on the entry side, down on the exit side). A small sprocket sits in each corner of the loop, drawn
+  // behind everyone, so no wheel fills the space he stands in.
+  const per=f.per,H=f.yB-f.yT,V=CHAIN_V*gameTime,nl=Math.round(per/6),sp=per/nl,at=s=>chainPos(f,0,(s-f.off)/CHAIN_V);
+  const vert=s=>{s=((s%per)+per)%per;return s<H||(s>=H+32&&s<2*H+32);};
+  for(let k=0;k<nl;k++){const s=V+k*sp,q=at(s),v=vert(s),e=k%2,w=v?(e?4.6:2.4):(e?7.4:5),h=v?(e?7.4:5):(e?4.6:2.4);
+    ctx.fillStyle='#0b0812';ctx.fillRect(q.x-w/2-0.6,q.y+3-h/2-0.6,w+1.2,h+1.2);
+    ctx.fillStyle=e?'#8a909e':'#c4c9d4';ctx.fillRect(q.x-w/2,q.y+3-h/2,w,h);
+    if(e){ctx.fillStyle='#1b1626';if(v)ctx.fillRect(q.x-0.8,q.y+3-h/2+1.6,1.6,h-3.2);else ctx.fillRect(q.x-w/2+1.6,q.y+3-0.8,w-3.2,1.6);}}
+  const nc=Math.max(2,Math.round(per/56)),sc=per/nc;
+  for(let k=0;k<nc;k++){const s=V+k*sc;if(!vert(s))continue;const q=at(s),d=((s%per)+per)%per<H?-1:1;ctx.save();ctx.translate(q.x,q.y+3);
+    ctx.beginPath();ctx.moveTo(-6,-d*2.5);ctx.lineTo(0,d*3.5);ctx.lineTo(6,-d*2.5);ctx.lineJoin='miter';
+    ctx.strokeStyle='#0b0812';ctx.lineWidth=5;ctx.stroke();ctx.strokeStyle='#f0c878';ctx.lineWidth=2.4;ctx.stroke();ctx.restore();}
+  for(const yy of [f.yT,f.yB])for(const xx of [xE,xX])liftWheel(ctx,xx,yy+3,7.5,8,CHAIN_V*gameTime/6*f.dx);
+  for(let i=0;i<f.n;i++){const q=chainPos(f,i,gameTime);
+    ctx.fillStyle='#0b0812';ctx.fillRect(q.x-3,q.y+HY,6,6);ctx.fillStyle='#b98a4a';ctx.fillRect(q.x-2,q.y+HY+0.5,4,4);
+    slab(ctx,q.x-16,q.y,th,true,true);}
+}
 function drawDynamic(ctx,x0,x1,y0,y1){
   const th=L.theme,c0=Math.floor(x0/TW)-1,c1=Math.floor(x1/TW)+1,r0=Math.floor(y0/TH)-1,r1=Math.floor(y1/TH)+1;
   const inRoom=(c,r)=>c>=c0&&c<=c1&&r>=r0&&r<=r1;
@@ -3697,6 +4464,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
   {const sd=L.start.door===undefined?1:L.start.door;if(inRoom(sd,L.start.r))drawDoor(ctx,sd*TW+16,L.start.r,0,false);}
   if(inRoom(L.door.c,L.door.r))drawDoor(ctx,L.door.x,L.door.r,L.door.open,true);
   for(const cp of L.cps)if(inRoom(cp.c,cp.r))drawHourglass(ctx,cp);
+  for(const lf of L.lifts)if(liftVisible(lf,x0,x1,y0,y1))drawLift(ctx,lf,0);
   for(const o of L.dyn){if(!inRoom(o.c,o.r))continue;const f=o.f,X=o.c*TW,Y=o.r*TH,ys=SURF(o.r);
     // a tile's top runs back and to the right of it; against a wall on that side its back corner is behind the wall's
     // face (the plain floor stops there too), so these are cut at the face
@@ -3726,13 +4494,13 @@ function drawDynamic(ctx,x0,x1,y0,y1){
         ctx.fillStyle='rgba(0,0,0,.6)';for(const ex of [fx,fx+TW]){ctx.beginPath();ctx.moveTo(ex-0.8,ft+5);ctx.lineTo(ex-0.8,ft);ctx.lineTo(ex-0.8+DX,ys-HY);ctx.lineTo(ex+0.8+DX,ys-HY);ctx.lineTo(ex+0.8,ft);ctx.lineTo(ex+0.8,ft+5);ctx.closePath();ctx.fill();}
         ctx.strokeStyle='rgba(0,0,0,.62)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(X+7,ys-3);ctx.lineTo(X+10,ys+1);ctx.lineTo(X+15,ys-1);ctx.lineTo(X+14,ys+3);ctx.moveTo(X+21,ys-3);ctx.lineTo(X+22,ys+3.5);ctx.moveTo(X+15,ys-1);ctx.lineTo(X+19,ys-2.5);ctx.stroke();
         ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(fx+11,ft);ctx.lineTo(fx+12,ft+2.5);ctx.lineTo(fx+10.5,ft+5);ctx.moveTo(fx+24,ft);ctx.lineTo(fx+23,ft+5);ctx.stroke();ctx.restore();}break;
-      case'closer':{dynSlab(ctx,o.c,o.r,X,ys,th);const dn=gameTime-f.press<0.12,lift=dn?1:2.4;
+      case'closer':{dynSlab(ctx,o.c,o.r,X,ys,th);const dn=f.jam||gameTime-f.press<0.12,lift=dn?1:2.4;
         ctx.save();ctx.translate(0,-lift);floorQuad(ctx,X+1,X+31,0.03,0.97,ys,lift);ctx.fillStyle='#8f2f2a';ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=0.7;ctx.stroke();
-        ctx.strokeStyle='#0b0812';ctx.lineWidth=1.1;ctx.beginPath();for(let i=0;i<3;i++){const a=onFloor(X+9+i*7,0.25,ys),b=onFloor(X+9+i*7,0.75,ys);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}ctx.stroke();ctx.restore();break;}
-      case'plate':case'xplate':{dynSlab(ctx,o.c,o.r,X,ys,th);const dn=gameTime-f.press<0.12,lift=dn?1:2.4;
-        ctx.save();ctx.translate(0,-lift);floorQuad(ctx,X+1,X+31,0.03,0.97,ys,lift);ctx.fillStyle=f.t==='xplate'?'#d8b04a':f.pair!==undefined?PAIRC[f.pair]:th.top;ctx.fill();
+        ctx.strokeStyle='#0b0812';ctx.lineWidth=1.1;ctx.beginPath();for(let i=0;i<3;i++){const a=onFloor(X+9+i*7,0.25,ys),b=onFloor(X+9+i*7,0.75,ys);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}ctx.stroke();ctx.restore();if(f.jam)drawHeap(ctx,o,X,ys,th);break;}
+      case'plate':case'xplate':case'lplate':{dynSlab(ctx,o.c,o.r,X,ys,th);const dn=f.jam||gameTime-f.press<0.12,lift=dn?1:2.4;
+        ctx.save();ctx.translate(0,-lift);floorQuad(ctx,X+1,X+31,0.03,0.97,ys,lift);ctx.fillStyle=f.t==='xplate'?'#d8b04a':f.t==='lplate'?'#b98a4a':f.pair!==undefined?PAIRC[f.pair]:th.top;ctx.fill();
         ctx.fillStyle='rgba(255,255,255,.18)';ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=0.7;ctx.stroke();
-        if(f.t==='xplate'){const q=onFloor(X+16,0.5,ys);ctx.fillStyle='#0b0812';ctx.beginPath();ctx.ellipse(q.x,q.y,1.6,0.9,0,0,Math.PI*2);ctx.fill();}ctx.restore();break;}
+        if(f.t==='xplate'){const q=onFloor(X+16,0.5,ys);ctx.fillStyle='#0b0812';ctx.beginPath();ctx.ellipse(q.x,q.y,1.6,0.9,0,0,Math.PI*2);ctx.fill();}ctx.restore();if(f.jam)drawHeap(ctx,o,X,ys,th);break;}
       case'spikes':{const e=f.ext;if(e<=0.02)break;const m=o.c%2?-1:1;
         // a few thin needles of uneven height and lean, rooted at slightly different depths of the floor
         for(const [bx,d,hh,ln] of SPK){const q=onFloor(X+16+m*(bx-16),d,ys),x=q.x,b=q.y,tx=x+m*ln*e,tip=b-hh*e;
@@ -3741,6 +4509,15 @@ function drawDynamic(ctx,x0,x1,y0,y1){
           ctx.fillStyle='#8d94a2';ctx.beginPath();ctx.moveTo(x+0.15,b);ctx.lineTo(tx,tip);ctx.lineTo(x+1.3,b);ctx.fill();}
         break;}
       case'gate':drawGate(ctx,f,X,Y,ys,0);break;
+      case'grate':{ // an iron grating over a shaft: you see the dark below through the bars
+        floorQuad(ctx,X,X+TW,0,1,ys,0);ctx.fillStyle='#04030a';ctx.fill();
+        ctx.strokeStyle='#0b0812';ctx.lineWidth=2.4;ctx.beginPath();for(let i=0;i<6;i++){const a=onFloor(X+3+i*5.2,0.04,ys),b=onFloor(X+3+i*5.2,0.96,ys);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}ctx.stroke();
+        ctx.strokeStyle='#8f95a3';ctx.lineWidth=1.1;ctx.stroke();
+        ctx.strokeStyle='#0b0812';ctx.lineWidth=2;for(const d of [0.04,0.5,0.96]){const a=onFloor(X,d,ys),b=onFloor(X+TW,d,ys);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.strokeStyle='#6d7280';ctx.lineWidth=0.9;ctx.stroke();ctx.strokeStyle='#0b0812';ctx.lineWidth=2;}
+        // a glint far down between the bars while the flask below is still there (crouch on the grating to look down at it)
+        if(L.items.some(i=>i.fork&&!i.taken)){const k=(Math.sin(gameTime*2.4)+1)/2,q=onFloor(X+16,0.5,ys);ctx.fillStyle='rgba(255,120,100,'+(0.25+0.6*k)+')';
+          ctx.fillRect(q.x-0.7,q.y-3.2*k-1,1.4,6.4*k+2);ctx.fillRect(q.x-3.2*k-1,q.y-0.7,6.4*k+2,1.4);}
+        break;}
       case'chomp':drawJaws(ctx,o,f,X,Y,ys,0);break;
     }
     if(cut)ctx.restore();
@@ -3768,6 +4545,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
   if(GFX().fx){drawTrails(ctx);drawRings(ctx);}
   // the near half of gates and jaws crosses in front of anyone walking the corridor
   for(const o of L.dyn){if(!inRoom(o.c,o.r))continue;const X=o.c*TW,Y=o.r*TH,ys=SURF(o.r);if(o.f.t==='gate')drawGate(ctx,o.f,X,Y,ys,1);else if(o.f.t==='chomp')drawJaws(ctx,o,o.f,X,Y,ys,1);}
+  for(const lf of L.lifts)if(liftVisible(lf,x0,x1,y0,y1))drawLift(ctx,lf,1);
   if(!GFX().light)drawEmissive(ctx,x0,x1,y0,y1);
 }
 // things that give off their own light: drawn after the lighting pass so it never dims them
@@ -3815,6 +4593,8 @@ function gatherLights(x0,x1,y0,y1){
     // traps keep a faint glint of their own so the dark never hides them
     else if(f.t==='spikes'||f.t==='chomp'||f.t==='darter'||f.t==='closer'||(f.t==='loose'&&f.s<2))add(X+16,ys-8,30,'225,222,240',0.2,'trap');
     else if(f.t==='saw')add(sawX(f,t),ys-10,38,'225,222,240',0.28,'trap');
+    else if(f.t==='lift')add(X+16,f.y-14,40,'225,215,190',0.3,'trap');
+    else if(f.t==='chain')add(X+16+f.dx*16,(f.yT+f.yB)/2,60,'225,215,190',0.25,'trap');
     else if(f.t==='pend'){const q=pendTip(o,f);add(q.x,q.y,36,'225,222,240',0.28,'trap');}}
   {const ch=L.ext.chase;if(ch&&ch.on&&(ch.fade||0)<1&&P)add(ch.wx-10,P.y-30,170,'235,170,95',0.75,'fire');}
   return out;
@@ -4317,7 +5097,7 @@ $('bGfxT').onclick=()=>{gfxReturn='title';syncGfx();show('gfx');};
 $('bGfxP').onclick=()=>{gfxReturn='pause';syncGfx();show('gfx');};
 $('bGfxClose').onclick=()=>show(gfxReturn);
 $('bResume').onclick=resume;
-$('bRestart').onclick=()=>{hideAll();S.cp=-1;S.resume=null;S.floorTime=levelTime;startLevel(L.n,-1);wake(true);};
+$('bRestart').onclick=()=>{hideAll();S.cp=-1;S.cpPlates=[];S.resume=null;S.floorTime=levelTime;startLevel(L.n,-1);wake(true);};
 $('bQuit').onclick=goTitle;
 $('bNext').onclick=nextFloor;
 $('bCardMenu').onclick=goTitle;
@@ -4393,13 +5173,13 @@ addEventListener('orientationchange',()=>setTimeout(layout,120));
 if(window.claude&&window.claude.hot&&window.claude.hot.snapshot){try{window.claude.hot.snapshot(()=>({save:S}));}catch(e){}}
 
 // test hooks
-window.__HK={genLevel,setKey,took,
+window.__HK={genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
   load(n,seed,test){clearInput();quiet=!!test;L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;mode="play";intro=0;FX.length=0;STORMG.length=0;clearRooms();cam.snap=true;updateCamera(0);return L;},
   loadMap(spec){return spec;},
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
   get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,plantPose,legIK,mk,drawDynamic,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
-  get S(){return S;},get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName};
+  get S(){return S;},get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V};
 
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 })();
