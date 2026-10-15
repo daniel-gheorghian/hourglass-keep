@@ -5,7 +5,7 @@
 #   -j N                       number of Chromium processes (default: physical cores; more only slows a laptop down)
 # The bot and render runs are split one floor per job (each job its own Chromium), so the whole suite takes about
 # as long as its slowest single test instead of the sum of all of them. Prints one line per test and exits 1 on a failure.
-import os, re, subprocess, sys, time
+import os, re, signal, subprocess, sys, time
 from concurrent.futures import ThreadPoolExecutor
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -64,9 +64,20 @@ RANK = {'featbot fight': 0, 'run2 fight': 1, 'rendersmoke': 2, 'rendersmoke torc
 def floor_of(a): return max([int(x) for x in a[1:] if x.isdigit()] or [0])
 J.sort(key=lambda j: (RANK.get(j[0], 7), -floor_of(j[1])))
 
+# each job runs in its own process group, so stopping the suite (Ctrl-C, kill) also stops its tests and their Chromiums
+LIVE = set()
+def stop_all(*_):
+    for pr in list(LIVE):
+        try: os.killpg(pr.pid, signal.SIGTERM)
+        except Exception: pass
+    os._exit(130)
+signal.signal(signal.SIGTERM, stop_all); signal.signal(signal.SIGINT, stop_all)
+
 def go(j):
     g, a, chk = j; t = time.time()
-    p = subprocess.run([PY] + a, cwd=HERE, capture_output=True, text=True)
+    pr = subprocess.Popen([PY] + a, cwd=HERE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
+    LIVE.add(pr); so, se = pr.communicate(); LIVE.discard(pr)
+    p = subprocess.CompletedProcess(pr.args, pr.returncode, so, se)
     out = p.stdout + p.stderr
     ok, s = chk(out) if p.returncode == 0 else (False, out.strip().splitlines()[-1][:160] if out.strip() else 'exit %d' % p.returncode)
     return g, a, ok, s, time.time() - t, out

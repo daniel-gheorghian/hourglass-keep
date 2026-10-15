@@ -8,7 +8,7 @@ with sync_playwright() as p:
     pg.on('pageerror',lambda e:errs.append(str(e)))
     pg.goto('file:///Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'); pg.wait_for_timeout(300); pg.add_script_tag(path='bot.js')
     pg.evaluate("window.__HKfreeze=true;document.querySelectorAll('.screen').forEach(e=>e.hidden=true);document.getElementById('app').classList.add('overlay')")
-    if torch: pg.evaluate("__HK.S.set.lightMode='torch'")
+    pg.evaluate("m=>{__HK.S.set.lightMode=m}",'torch' if torch else 'classic')  # Torchlight is the default: the plain run checks Classic
     res=[];tot=0;t0=time.time()
     for n in range(lo,hi+1):
         r=pg.evaluate('''([n,torch])=>{let k=0,ms=0,cnt=0,blank=0,off=0,chk=0;
