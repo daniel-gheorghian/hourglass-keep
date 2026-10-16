@@ -29,7 +29,7 @@ they load `bot.js` by a relative path and write their output next to themselves.
 
 ## Build
 
-From the repo root, with N the release number (current release v58, next v59):
+From the repo root, with N the release number (current release v59, next v60):
 
 ```
 python3 dev/tools/build.py dev/hourglass-keep.html index.html sw.js N
@@ -155,6 +155,8 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   (in-scatter: fades in at the opening, out over the floor, soft edges, shown against the dark only, motes inside it), never a flat
   sheet; the floor patch and the opening's rim are its brightest parts and the only parts that bloom. Forge and crypt windows are lit
   from inside: a glow at the window, no shaft. Classic draws the same shapes from sprites (`ryBeams2D`). Check with `beamshot.py`.
+  A figure in a beam (v59, owner: hard white stripes) gets only a weak, capped cool light on the side toward it (`RY_FIG`, `RY_FIGC`,
+  feathered by the figures' mask); figures never bloom from the beam and the floor patch, pane and rim are not drawn on them.
 - A dart shooter firing left sits on a wall's hidden left face: no head is drawn and its darts come from behind the front face.
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized from `estPath()` at a careful pace, times 0.84 to 1.08.
