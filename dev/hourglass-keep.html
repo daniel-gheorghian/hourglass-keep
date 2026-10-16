@@ -2170,6 +2170,7 @@ const Snd={ctx:null,master:null,nb:null,
       case'rip':N(0.07,{vol:0.055,f:2300+Math.random()*900,type:'bandpass',q:1.6});break;
       case'push':N(0.45,{vol:0.1,f:240,type:'bandpass',q:2,att:0.05});break;
       case'saw':N(0.16,{vol:0.05,f:3400,type:'bandpass',q:6});break;
+      case'tick':T(1700,0.035,{vol:0.03,type:'square'});break;
       case'dart':N(0.09,{vol:0.07,f:2800,type:'bandpass',to:1400,q:3});break;
       case'storm':N(2.2,{vol:0.16,f:260,att:0.4,to:120});T(48,1.8,{vol:0.07,type:'sine',att:0.4});break;
       case'swing':N(0.2,{vol:0.05,f:700,type:'bandpass',q:4});break;
@@ -2212,7 +2213,7 @@ function startLevel(n,cpIdx){
     // plates pressed before the checkpoint stay pressed: the floor is rebuilt, so press them again and leave their gates open
     const pd=new Set(S.cpPlates||[]);for(const o of L.dyn){const k=o.c+','+o.r;if(o.f.t==='plate'&&(o.f.latch||o.f.slabF)&&pd.has(k)){if(o.f.slabF)jamRestore(o);o.f.g.tm=Infinity;o.f.g.open=1;o.f.told=1;}else if(o.f.t==='closer'&&o.f.slabF&&pd.has(k))jamRestore(o);}
     G.forEach((g,i)=>{if(before(L.guards[i],g.x)){g.alive=false;g.gone=true;}});SN.forEach((sn,i)=>{if(before(L.snakeSpecs[i],sn.hi)){sn.alive=false;sn.gone=true;}});}
-  FX.length=0;STORMG.length=0;clearRooms();hitStop=0;banner=null;
+  FX.length=0;clearSpent();STORMG.length=0;clearRooms();hitStop=0;banner=null;
   levelTime=S.floorTime||0;
   mode='play';intro=cpIdx>=0?0:2.6;
   S.started=true;S.level=n;writeSave();
@@ -2239,7 +2240,7 @@ function canRewind(){return (S.sands|0)>0&&REW.length>0;}
 function startRewind(){let ti=0;
   for(let i=REW.length-1;i>=0;i--){const sn=REW[i];if(sn.t<=deathAt-4.5&&REW_STATES.includes(sn.P.state)&&!sn.P.dead){ti=i;break;}}
   S.sands=(S.sands|0)-1;S.floorDeaths=(S.floorDeaths||0)+1;S.deaths++;writeSave();
-  rw={idx:REW.length-1,target:ti,acc:0};rwBeg=performance.now()/1000;mode='rewind';banner=null;flashFx=null;FX.length=0;hitStop=0;Snd.play('rewind');}
+  rw={idx:REW.length-1,target:ti,acc:0};rwBeg=performance.now()/1000;mode='rewind';banner=null;flashFx=null;FX.length=0;clearSpent();hitStop=0;Snd.play('rewind');}
 function stepRewind(){rw.acc+=1.6;while(rw.acc>=1&&rw.idx>rw.target){rw.acc-=1;rw.idx--;}
   applySnap(REW[rw.idx]);
   if(rw.idx<=rw.target){REW.length=rw.target+1;rw=null;rwEnd=performance.now()/1000;mode='play';clearInput();P.inv=1.2;P.stumble=0;deadT=0;
@@ -2980,8 +2981,12 @@ function updateFeatures(dt){
         if(alive&&pr===o.r&&P.inv<=0&&!['crouch','poke','hang','climb','climbDown','exit'].includes(P.state)&&Math.abs(b.x-P.x)<11&&b.y>P.y-50&&b.y<P.y+4)trapHit('pend',Math.sign(P.x-b.x)||-P.face);
         break;}
       case'saw':{const sx=sawX(f,gameTime);if(tileVisible(o.c,o.r)&&Math.floor(gameTime*4)!==Math.floor((gameTime-dt)*4))Snd.play('saw');
+        if(tileVisible(Math.floor(sx/TW),o.r)&&Math.floor(gameTime*8)!==Math.floor((gameTime-dt)*8))sawSparks(sx,SURF(o.r)); // sparks where the blade grinds its slot
         if(alive&&pr===o.r&&P.inv<=0&&Math.abs(P.x-sx)<12&&P.y>SURF(o.r)-11&&!['hang','climb','climbDown','exit'].includes(P.state))trapHit('saw',Math.sign(P.x-sx)||-P.face);break;}
-      case'darter':{const ph=cyc(f,gameTime);if(ph<f.lastPh){L.ext.darts.push({x:f.x,y:f.y,r:o.r,x0:f.x0,dir:f.dir||-1});if(tileVisible(o.c,o.r))Snd.play('dart');}f.lastPh=ph;break;}
+      case'darter':{const ph=cyc(f,gameTime),ts=1-0.35/f.per,vis=tileVisible(o.c,o.r);
+        if(ph<f.lastPh){L.ext.darts.push({x:f.x,y:f.y,r:o.r,x0:f.x0,dir:f.dir||-1});if(vis){Snd.play('dart');puff(f.x+(f.dir||-1)*3,f.y,f.dir||-1);}}
+        else if(vis&&f.lastPh<ts&&ph>=ts)Snd.play('tick'); // a faint click as the face begins to glow
+        f.lastPh=ph;break;}
       case'vent':{const ph=cyc(f,gameTime),on=ph>=0.75;
         if(on&&!f.last&&tileVisible(o.c,o.r))Snd.play('fire');f.last=on;
         if(on&&alive&&pr===o.r&&Math.abs(P.x-(o.c*TW+16))<13&&!['hang','climb','climbDown','exit'].includes(P.state))trapHit('fire',Math.sign(P.x-(o.c*TW+16))||-P.face);
@@ -3002,7 +3007,7 @@ function updateFeatures(dt){
   }
   for(let i=L.ext.darts.length-1;i>=0;i--){const d=L.ext.darts[i],dd=d.dir||-1;d.x+=dd*190*dt;
     if(alive&&pr===d.r&&P.inv<=0&&Math.abs(P.x-d.x)<7&&d.y>P.y-50&&d.y<P.y-6&&!['crouch','poke','hang','climb','climbDown','jumpUp','exit'].includes(P.state)){trapHit('dart',dd);L.ext.darts.splice(i,1);continue;}
-    if((d.x-d.x0)*dd>0){if(tileVisible(Math.floor(d.x/TW),d.r))dust(d.x,d.y+3,3);L.ext.darts.splice(i,1);}}
+    if((d.x-d.x0)*dd>0){if(tileVisible(Math.floor(d.x/TW),d.r))spendDart(d);L.ext.darts.splice(i,1);}}
   updateBlocks(dt);
   {const chs=L.ext.chase;if(chs){
     if(!chs.on&&alive&&mode==='play'&&P.x>(chs.c0+1)*TW&&P.x<(chs.c0+4)*TW&&P.face>0&&pr>=chs.rTop&&pr<=chs.rBot){chs.on=true;chs.t=0;chs.wx=Math.min(P.x-4*TW,(chs.c0-1)*TW);msg('The sand stirs behind you. Run!',3);Snd.play('storm');hint('chase');}
@@ -3026,7 +3031,7 @@ function updateFeatures(dt){
 // ================= fx =================
 function sparks(x,y,n,col){for(let i=0;i<n;i++)FX.push({x,y,vx:(Math.random()-0.5)*170,vy:-Math.random()*130,g:420,life:0.25+Math.random()*0.2,t:0,col,sz:1.2});}
 function dust(x,y,n){for(let i=0;i<n;i++)FX.push({x:x+(Math.random()-0.5)*10,y:y-1,vx:(Math.random()-0.5)*50,vy:-Math.random()*25,g:30,life:0.4+Math.random()*0.3,t:0,col:'rgba(210,200,180,.55)',sz:1.6});}
-function updateFX(dt){for(let i=FX.length-1;i>=0;i--){const p=FX[i];p.t+=dt;p.vy+=p.g*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.t>=p.life)FX.splice(i,1);}}
+function updateFX(dt){for(let i=FX.length-1;i>=0;i--){const p=FX[i];p.t+=dt;p.vy+=p.g*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.t>=p.life)FX.splice(i,1);}updateSpent(dt);}
 
 // ================= hints =================
 const HINTS={
@@ -4458,17 +4463,141 @@ function drawSnake(ctx,sn){
   if(!dead&&(sn.state!=='slither'||(sn.ph%0.9)<0.18)){ctx.strokeStyle='#d9483a';ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(h[0]+4.4,h[1]+0.4);ctx.lineTo(h[0]+7.4,h[1]+0.2);ctx.lineTo(h[0]+8.4,h[1]-0.8);ctx.moveTo(h[0]+7.4,h[1]+0.2);ctx.lineTo(h[0]+8.4,h[1]+1.2);ctx.stroke();}
   ctx.restore();
 }
+// ================= forged metal (the saw, the jaws, gates, chains, the pendulum, the darts) =================
+// One table per theme says which metal each fitting is made of; MKIND gives each metal a ramp [dark, mid, light, glint]
+// (mid-tones on purpose: the Torchlight metal shader that follows needs headroom above the painted body), and the theme's
+// tint nudges the ramp toward its light. metalPal(role) -> the ramp for the current floor's theme, built once and cached.
+const MKIND={steel:['#565e70','#8d95a6','#aab2c1','#dde2ec'],iron:['#33373f','#5e6370','#7f8492','#b3b8c4'],bronze:['#5e421e','#a67a3c','#c9a054','#eed59a'],
+  gold:['#7a5c18','#c9a23e','#e0be5c','#fbebb0'],blackened:['#17141a','#34303a','#4e4955','#7d7885']};
+const METAL={
+  dungeon:{saw:'steel',jaw:'steel',gate:'steel',pend:'steel',chain:'steel',hub:'bronze',tint:[0.95,1,1.08]},   // the Cistern: cool, damp steel
+  palace:{saw:'steel',jaw:'steel',gate:'steel',pend:'steel',chain:'steel',hub:'bronze',tint:[1.05,1,0.92]},    // Sandstone: warm, polished
+  tile:{saw:'steel',jaw:'steel',gate:'steel',pend:'steel',chain:'steel',hub:'gold',tint:[0.97,1,1.06]},        // Lapis: cool steel, gold fittings
+  forge:{saw:'iron',jaw:'iron',gate:'iron',pend:'iron',chain:'blackened',hub:'bronze',tint:[1.12,0.95,0.84]},  // the Forge: soot-dark iron, rust-warm
+  crypt:{saw:'steel',jaw:'steel',gate:'steel',pend:'steel',chain:'steel',hub:'bronze',tint:[0.88,1.07,1.0]}};   // the Jade Crypt: green-cast steel and verdigris bronze
+// The painted white highlight strokes (the two diagonal streaks on the jaws, the saw's fixed sheen wedges). The metal shader
+// unit sets this false in Torchlight, where lamp-driven highlights replace them; Classic keeps them.
+let METAL_PAINT_HI=true;
+const MPAL={};
+function tintHex(c,t){const n=parseInt(c.slice(1),16),f=(v,k)=>Math.max(0,Math.min(255,Math.round(v*k)));return '#'+((1<<24)|(f(n>>16,t[0])<<16)|(f((n>>8)&255,t[1])<<8)|f(n&255,t[2])).toString(16).slice(1);}
+function mixHex(a,b,t){const x=parseInt(a.slice(1),16),y=parseInt(b.slice(1),16),f=(s)=>Math.round(((x>>s)&255)*(1-t)+((y>>s)&255)*t);return '#'+((1<<24)|(f(16)<<16)|(f(8)<<8)|f(0)).toString(16).slice(1);}
+function metalPal(role){const st=L.theme.style,k=st+role;let p=MPAL[k];if(!p){const m=METAL[st]||METAL.dungeon;p=MPAL[k]=MKIND[m[role]].map(c=>tintHex(c,m.tint));}return p;}
+// ---- shared geometry: the draw code and the shader's metal mask read the same numbers (each fills a reused object, nothing is allocated)
+// Gate: the plane, the open height (drop, below the ceiling line), the x of its NB bars and the offsets of its cross bars.
+const GATE_G={pl:null,NB:5,drop:0,xs:[0,0,0,0,0],nc:0,co:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]};
+function gateGeom(X,Y,ys,f){const pl=plane(X,Y,ys,Math.floor(X/TW),Math.floor(Y/TH)),g=GATE_G,len=(ys+HY)-(Y+pl.co)-1,drop=len*(1-f.open);
+  g.pl=pl;g.drop=drop;g.nc=0;if(drop<2)return null;
+  for(let i=0;i<g.NB;i++)g.xs[i]=pl.L0+(i+0.5)*pl.W/g.NB;
+  for(let off=DY+4;off<drop-3&&g.nc<16;off+=11)g.co[g.nc++]=off;
+  return g;}
+// Pendulum: pivot, arm length, swing angle, blade centre. pendBlade() is the blade's outline in the blade's own frame
+// (translate to x,y, rotate -th); the arm is a line from (px,py+2) to (x,y), 2.6 px wide.
+const PEND_G={px:0,py:0,Lp:0,th:0,x:0,y:0};
+function pendGeom(o,f){const g=PEND_G;g.px=o.c*TW+16;g.py=ceilingY(o.c,o.r);g.Lp=SURF(o.r)-40-g.py;g.th=f.amp*Math.sin(6.2832*(gameTime+f.off)/f.per);g.x=g.px+g.Lp*Math.sin(g.th);g.y=g.py+g.Lp*Math.cos(g.th);return g;}
+function pendBlade(ctx){ctx.beginPath();ctx.moveTo(-15,-1);ctx.quadraticCurveTo(0,13,15,-1);ctx.quadraticCurveTo(0,5,-15,-1);ctx.closePath();}
+// Saw: blade centre, radius, spin angle and the slot it runs in. sawPath() is the hooked-tooth outline (angle 0, centred on 0,0).
+const SAW_R=14,SAW_RI=10.8,SAW_N=12,SAW_Q=4,SAW_G={sx:0,cy:0,R:SAW_R,rot:0,sx0:0,sw:0,ys:0};
+function sawGeom(f,t,ys){const g=SAW_G;g.sx=sawX(f,t);g.cy=ys+2;g.rot=t*14;g.sx0=f.x0-14;g.sw=f.x1-f.x0+28;g.ys=ys;return g;}
+function sawPath(g,R,Ri){const st=6.2832/SAW_N,P=(a,r)=>[Math.cos(a)*r,Math.sin(a)*r];g.beginPath();
+  for(let i=0;i<SAW_N;i++){const a=i*st;if(!i)g.moveTo(...P(a,Ri));        // each tooth: a hollow ramp up to the tip, then an almost radial drop (a hooked, ratchet tooth)
+    const c=P(a+st*0.6,Ri-0.3),t=P(a+st*0.93,R);g.quadraticCurveTo(c[0],c[1],t[0],t[1]);g.lineTo(...P(a+st,Ri));}
+  g.closePath();}
+// the saw's cached sprites per theme: the blade (rotates), its teeth alone (the faint ghosts at speed), the fixed sheen
+const SAWSPR={};
+function sawSprites(){const st=L.theme.style;let s=SAWSPR[st];if(s)return s;
+  const pal=metalPal('saw'),hub=metalPal('hub'),Q=SAW_Q,S=36,mk=()=>{const c=document.createElement('canvas');c.width=c.height=S*Q;const g=c.getContext('2d');g.scale(Q,Q);g.translate(S/2,S/2);return [c,g];};
+  const [bc,g]=mk(),[rc,rg]=mk(),[sc,sg]=mk(),T=6.2832;
+  sawPath(g,SAW_R,SAW_RI);const gr=g.createRadialGradient(0,0,0,0,0,SAW_R);
+  gr.addColorStop(0,pal[1]);gr.addColorStop(0.3,pal[1]);gr.addColorStop(0.62,pal[2]);gr.addColorStop(0.86,mixHex(pal[2],pal[3],0.3));gr.addColorStop(1,pal[1]);
+  g.fillStyle=gr;g.fill();
+  g.save();g.clip();                                                             // hammer marks: short dark arcs at two radii, and a dark ring where the teeth begin
+  g.strokeStyle='rgba(40,46,60,.34)';g.lineWidth=0.6;const rq=mulberry32(77);
+  for(const r of [5.6,8.6])for(let k=0;k<3;k++){const a=rq()*T;g.beginPath();g.arc(0,0,r+(rq()-0.5)*0.5,a,a+1.1+rq()*0.9);g.stroke();}
+  g.strokeStyle=pal[0];g.lineWidth=0.7;g.beginPath();g.arc(0,0,SAW_RI+0.2,0,T);g.stroke();
+  for(let i=0;i<4;i++){const a=i*T/4+0.4,x=Math.cos(a)*7.3,y=Math.sin(a)*7.3;                 // four lightening holes, each with a pale lower rim
+    g.fillStyle='rgba(222,228,240,.5)';g.beginPath();g.arc(x+0.25,y+0.35,1.85,0,T);g.fill();g.fillStyle='#0b0812';g.beginPath();g.arc(x,y,1.7,0,T);g.fill();}
+  g.restore();
+  sawPath(g,SAW_R,SAW_RI);g.strokeStyle='#0b0812';g.lineWidth=1.1;g.stroke();
+  g.fillStyle='#0b0812';g.beginPath();g.arc(0,0,4.1,0,T);g.fill();                          // the hub: a bronze (or gold) disc, lit from the upper left, four rivets
+  const hg=g.createRadialGradient(-1,-1.2,0.3,0,0,3.6);hg.addColorStop(0,hub[3]);hg.addColorStop(0.45,hub[2]);hg.addColorStop(1,hub[1]);g.fillStyle=hg;g.beginPath();g.arc(0,0,3.5,0,T);g.fill();
+  g.fillStyle=hub[0];for(let i=0;i<4;i++){g.beginPath();g.arc(Math.cos(i*T/4+0.8)*2.3,Math.sin(i*T/4+0.8)*2.3,0.42,0,T);g.fill();}
+  g.fillStyle='#0b0812';g.beginPath();g.arc(0,0,0.8,0,T);g.fill();
+  sawPath(rg,SAW_R,SAW_RI);rg.fillStyle=pal[2];rg.fill();                                  // the teeth alone, for the ghosts
+  const wedge=(a0,a1,al)=>{const w=sg.createRadialGradient(0,0,4,0,0,13.5);w.addColorStop(0,'rgba(255,255,255,0)');w.addColorStop(1,'rgba(255,255,255,'+al+')');
+    sg.fillStyle=w;sg.beginPath();sg.moveTo(0,0);sg.lineTo(Math.cos(a0)*13.6,Math.sin(a0)*13.6);sg.lineTo(Math.cos(a1)*13.6,Math.sin(a1)*13.6);sg.closePath();sg.fill();};
+  wedge(-0.91,-0.77,0.5);wedge(2.27,2.41,0.2);                                              // the fixed sheen: two wedges that stay put while the teeth and holes sweep through them
+  return SAWSPR[st]={body:bc,ring:rc,sheen:sc};}
+// sparks where the blade grinds the slot: one from each lip, now and then a third, thrown up and outward (the existing particle list)
+function sawSparks(sx,ys){const cols=['#ffd890','#ffb860','#fff0c0'];
+  for(let i=0;i<2;i++){const d=i?-1:1;FX.push({x:sx+d*12.2,y:ys-1.6,vx:d*(26+Math.random()*90),vy:-(28+Math.random()*95),g:420,life:0.3+Math.random()*0.28,t:0,col:cols[(Math.random()*3)|0],sz:1.4});}
+  if(Math.random()<0.4){const d=Math.random()<0.5?-1:1;FX.push({x:sx+d*11.6,y:ys-1.6,vx:d*(10+Math.random()*60),vy:-(50+Math.random()*80),g:420,life:0.25+Math.random()*0.25,t:0,col:'#fff0c0',sz:1.2});}}
+// a small puff of dust where a dart leaves its mouth
+function puff(x,y,dir){for(let i=0;i<4;i++)FX.push({x:x+dir*Math.random()*2,y:y+(Math.random()-0.5)*4,vx:dir*(25+Math.random()*55),vy:(Math.random()-0.5)*14,g:-6,life:0.32+Math.random()*0.22,t:0,col:'rgba(226,216,196,.55)',sz:1.8});}
+// ---- darts: one dart drawn in its own frame (forward is +x), a cached streak, and the spent ones that drop and fade
+let DARTSTREAK=null;
+function dartStreak(){if(DARTSTREAK)return DARTSTREAK;const c=document.createElement('canvas');c.width=64;c.height=12;const g=c.getContext('2d'),gr=g.createLinearGradient(0,0,64,0);
+  gr.addColorStop(0,'rgba(255,226,160,0)');gr.addColorStop(1,'rgba(255,226,160,.42)');g.fillStyle=gr;g.fillRect(0,0,64,12);return DARTSTREAK=c;}
+function drawDart(ctx,x,y,dd,ang,al,streak){
+  ctx.save();ctx.translate(x,y);ctx.scale(dd,1);ctx.rotate(ang);if(al<1)ctx.globalAlpha=al;
+  if(streak){ctx.save();ctx.globalCompositeOperation='lighter';ctx.drawImage(dartStreak(),-31,-1.5,18,3);ctx.restore();}
+  ctx.lineCap='round';ctx.strokeStyle='#0b0812';ctx.lineWidth=2.3;ctx.beginPath();ctx.moveTo(-13,0);ctx.lineTo(0.8,0);ctx.stroke();       // the reed shaft in a dark outline
+  ctx.strokeStyle='#d9c8a0';ctx.lineWidth=1.3;ctx.beginPath();ctx.moveTo(-13,-0.1);ctx.lineTo(0.8,-0.1);ctx.stroke();
+  ctx.strokeStyle='#8a7552';ctx.lineWidth=0.5;ctx.beginPath();ctx.moveTo(-13,0.55);ctx.lineTo(0.8,0.55);ctx.stroke();
+  ctx.strokeStyle='#7a3b32';ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(-9.6,-0.9);ctx.lineTo(-9.6,0.9);ctx.stroke();                         // the thread wound on under the tuft
+  ctx.strokeStyle='rgba(240,234,216,.92)';ctx.lineWidth=0.9;ctx.beginPath();                                                          // the thistledown tuft
+  ctx.moveTo(-9.2,0);ctx.lineTo(-14.2,-2.1);ctx.moveTo(-9.2,0);ctx.lineTo(-14.9,0);ctx.moveTo(-9.2,0);ctx.lineTo(-14.2,2.1);ctx.stroke();
+  ctx.fillStyle='rgba(240,234,216,.85)';ctx.beginPath();ctx.ellipse(-11.2,0,2.4,1.5,0,0,6.2832);ctx.fill();
+  ctx.fillStyle='#0b0812';ctx.beginPath();ctx.moveTo(0,-2.3);ctx.lineTo(5.2,0);ctx.lineTo(0,2.3);ctx.closePath();ctx.fill();                  // the dark iron head
+  ctx.fillStyle='#34333d';ctx.beginPath();ctx.moveTo(0.5,-1.5);ctx.lineTo(4.3,0);ctx.lineTo(0.5,1.4);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#c9ced8';ctx.lineWidth=0.5;ctx.beginPath();ctx.moveTo(0.7,-1.3);ctx.lineTo(4.2,-0.1);ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,'+(0.55+0.4*Math.sin(gameTime*20+x*0.3))+')';ctx.fillRect(2.2,-0.9,1,0.8);                          // a glint on the head
+  ctx.restore();}
+// spent darts: a dart that reaches the end of its run has no wall to hit; it tips, drops to the floor, lies a moment and fades.
+// Purely cosmetic: a fixed pool of six (never saved, never in the rewind snapshots), emptied whenever the floor or the clock is reset.
+const SPENT=[];for(let i=0;i<6;i++)SPENT.push({on:false,x:0,y:0,vx:0,vy:0,ang:0,dd:-1,gy:0,t:0});
+function spendDart(d){let s=null,w=-1;for(const q of SPENT){if(!q.on){s=q;break;}if(q.t>w){w=q.t;s=q;}}
+  s.on=true;s.x=d.x;s.y=d.y;s.vx=(d.dir||-1)*55;s.vy=0;s.ang=0;s.dd=d.dir||-1;s.gy=SURF(d.r)-1.4;s.t=0;}
+function updateSpent(dt){for(const s of SPENT){if(!s.on)continue;s.t+=dt;
+  if(s.gy){s.vy+=520*dt;s.x+=s.vx*dt;s.y+=s.vy*dt;s.ang=Math.min(0.85,s.ang+3.2*dt);if(s.y>=s.gy){s.y=s.gy;s.gy=0;s.vx=0;s.vy=0;s.ang=0.07;s.t=0;}}
+  else if(s.t>1.6)s.on=false;}}
+function clearSpent(){for(const s of SPENT)s.on=false;}
+// the shooter: a face carved in the wall's own stone, the dart leaving its open mouth. In the last 0.35 s before a shot the eyes and
+// mouth glow and the face shivers a little (the shot itself is not moved: this only tells of it).
+function drawShooter(ctx,f){
+  const th=L.theme,dir=f.dir||-1,cx=(f.dir>0?f.x+4:f.x)-3.2,cy=f.y,ws=1-0.35/f.per,ph=cyc(f,gameTime),tell=ph>ws?(ph-ws)/(1-ws):0,T=6.2832;
+  ctx.save();if(tell>0)ctx.translate(Math.sin(gameTime*95)*0.45*tell,0);
+  ctx.fillStyle='#0b0812';ctx.fillRect(cx-5.6,cy-7.6,11.2,15.2);
+  ctx.fillStyle=th.wallA;ctx.fillRect(cx-4.8,cy-6.8,9.6,13.6);
+  ctx.fillStyle=th.hi;ctx.fillRect(cx-4.8,cy-6.8,9.6,1);ctx.fillRect(cx-4.8,cy-6.8,1,13.6);
+  ctx.fillStyle=th.lo;ctx.fillRect(cx-4.8,cy+5.6,9.6,1.2);ctx.fillRect(cx+3.8,cy-6.8,1,13.6);
+  const eyes=()=>{ctx.beginPath();for(const m of [-1,1]){ctx.moveTo(cx+m*3.7,cy-4.1);ctx.lineTo(cx+m*1.0,cy-3.0);ctx.lineTo(cx+m*1.2,cy-2.2);ctx.lineTo(cx+m*3.4,cy-2.9);ctx.closePath();}ctx.fill();};
+  ctx.strokeStyle=th.lo;ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(cx-4.2,cy-5.4);ctx.lineTo(cx-0.4,cy-4.3);ctx.moveTo(cx+4.2,cy-5.4);ctx.lineTo(cx+0.4,cy-4.3);ctx.stroke(); // brow ridges
+  ctx.strokeStyle=th.hi;ctx.lineWidth=0.5;ctx.beginPath();ctx.moveTo(cx-4.2,cy-5.9);ctx.lineTo(cx-0.8,cy-4.9);ctx.moveTo(cx+4.2,cy-5.9);ctx.lineTo(cx+0.8,cy-4.9);ctx.stroke();
+  ctx.fillStyle='#0b0812';eyes();
+  ctx.strokeStyle=th.lo;ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(cx,cy-3.4);ctx.lineTo(cx-0.2,cy-1.8);ctx.moveTo(cx-4,cy+0.8);ctx.lineTo(cx-3.6,cy+3.4);ctx.moveTo(cx+4,cy+0.8);ctx.lineTo(cx+3.6,cy+3.4);ctx.moveTo(cx-2.6,cy+4.4);ctx.lineTo(cx+2.6,cy+4.4);ctx.stroke(); // nose, cheeks, chin
+  const mx=cx+dir*0.5;ctx.fillStyle='#0b0812';ctx.beginPath();ctx.ellipse(mx,cy,3,2.5,0,0,T);ctx.fill();                                    // the mouth
+  ctx.fillStyle=mixHex(th.hi,'#ffffff',0.35);ctx.beginPath();ctx.moveTo(mx-2.2,cy-1.9);ctx.lineTo(mx-1.2,cy-1.9);ctx.lineTo(mx-1.7,cy-0.2);ctx.moveTo(mx+1.2,cy-1.9);ctx.lineTo(mx+2.2,cy-1.9);ctx.lineTo(mx+1.7,cy-0.2);ctx.moveTo(mx-0.5,cy+2.1);ctx.lineTo(mx+0.5,cy+2.1);ctx.lineTo(mx,cy+0.8);ctx.fill();
+  ctx.strokeStyle=th.lo;ctx.lineWidth=0.6;ctx.beginPath();ctx.ellipse(mx,cy,3.2,2.7,0,Math.PI*1.1,Math.PI*1.9);ctx.stroke();
+  if(tell>0){ctx.globalCompositeOperation='lighter';ctx.fillStyle='rgba(255,170,80,'+(0.9*tell)+')';eyes();
+    ctx.fillStyle='rgba(255,150,60,'+(0.16*tell)+')';ctx.beginPath();ctx.arc(mx,cy,7,0,T);ctx.fill();
+    ctx.fillStyle='rgba(255,160,70,'+(0.6*tell)+')';ctx.beginPath();ctx.ellipse(mx,cy,2.3,1.8,0,0,T);ctx.fill();
+    ctx.fillStyle='rgba(255,230,170,'+(0.85*tell)+')';ctx.beginPath();ctx.ellipse(mx,cy,1.2,0.9,0,0,T);ctx.fill();}
+  ctx.restore();}
 function drawPend(ctx,o,f){
-  const b=pendTip(o,f),th=L.theme;
+  const b=pendGeom(o,f),th=L.theme,pal=metalPal('pend');
   ctx.fillStyle='#0b0812';ctx.fillRect(b.px-4,b.py,8,4);ctx.fillStyle='#d8b04a';ctx.fillRect(b.px-3,b.py,6,2.6);
   for(let k=2;k>=1;k--){const t2=f.amp*Math.sin(6.2832*(gameTime-k*0.035+f.off)/f.per),gx2=b.px+b.Lp*Math.sin(t2),gy2=b.py+b.Lp*Math.cos(t2);
-    ctx.save();ctx.globalAlpha=0.12*k;ctx.translate(gx2,gy2);ctx.rotate(-t2);ctx.fillStyle='#dfe6f2';ctx.beginPath();ctx.moveTo(-11,-1);ctx.quadraticCurveTo(0,10,11,-1);ctx.quadraticCurveTo(0,4,-11,-1);ctx.fill();ctx.restore();}
+    ctx.save();ctx.globalAlpha=0.12*k;ctx.translate(gx2,gy2);ctx.rotate(-t2);ctx.fillStyle=pal[3];ctx.beginPath();ctx.moveTo(-11,-1);ctx.quadraticCurveTo(0,10,11,-1);ctx.quadraticCurveTo(0,4,-11,-1);ctx.fill();ctx.restore();}
   ctx.strokeStyle='#0b0812';ctx.lineWidth=4.4;ctx.beginPath();ctx.moveTo(b.px,b.py+2);ctx.lineTo(b.x,b.y);ctx.stroke(); // a 3 px steel arm in a dark outline, so it stays apart from the gold colonnettes
-  ctx.strokeStyle='#aeb6c6';ctx.lineWidth=2.6;ctx.stroke();
+  ctx.strokeStyle=pal[1];ctx.lineWidth=2.6;ctx.stroke();                  // the arm is bevelled: a dark body, a lighter core, a thin lit edge on the left
+  for(let k=0;k<2;k++){ctx.strokeStyle=k?pal[3]:pal[2];ctx.lineWidth=k?0.6:1.5;const dx=-0.45-0.4*k;ctx.beginPath();ctx.moveTo(b.px+dx,b.py+2);ctx.lineTo(b.x+dx,b.y);ctx.stroke();}
   ctx.strokeStyle='#0b0812';ctx.lineWidth=2;ctx.setLineDash([2,2.2]);ctx.beginPath();ctx.moveTo(b.px,b.py+3);ctx.lineTo(b.px+(b.x-b.px)*0.22,b.py+3+(b.y-b.py)*0.22);ctx.stroke();ctx.setLineDash([]); // dark chain links near the pivot
   ctx.save();ctx.translate(b.x,b.y);ctx.rotate(-b.th);
-  ctx.beginPath();ctx.moveTo(-15,-1);ctx.quadraticCurveTo(0,13,15,-1);ctx.quadraticCurveTo(0,5,-15,-1);ctx.closePath();
-  ctx.fillStyle='#e3e8f1';ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=1.4;ctx.stroke();
+  pendBlade(ctx);ctx.fillStyle=pal[2];ctx.fill();
+  ctx.save();ctx.clip();                                                    // bevel: the cutting (lower) edge dark, the upper edge lit
+  ctx.strokeStyle=pal[1];ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-15,-1);ctx.quadraticCurveTo(0,13,15,-1);ctx.stroke();
+  ctx.strokeStyle=pal[3];ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-15,-1);ctx.quadraticCurveTo(0,5,15,-1);ctx.stroke();ctx.restore();
+  pendBlade(ctx);ctx.strokeStyle='#0b0812';ctx.lineWidth=1.4;ctx.stroke();
   ctx.fillStyle='#d8b04a';ctx.beginPath();ctx.arc(0,0,3,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=0.9;ctx.stroke();
   ctx.restore();
 }
@@ -4724,19 +4853,20 @@ function slots(ctx,pl){ctx.strokeStyle='#0b0812';ctx.lineWidth=2.4;ctx.beginPath
   ctx.fillStyle='rgba(6,4,10,.75)';ctx.fillRect(pl.L0-3,pl.top,pl.W+6,2.2);
   const g=ctx.createLinearGradient(0,pl.top,0,pl.top+10);g.addColorStop(0,'rgba(6,4,10,.35)');g.addColorStop(1,'rgba(6,4,10,0)');ctx.fillStyle=g;ctx.fillRect(pl.L0-7,pl.top+2,pl.W+14,10);}
 function drawGate(ctx,f,X,Y,ys,half){
-  const pl=plane(X,Y,ys,Math.floor(X/TW),Math.floor(Y/TH)),gx2=X+16,NB=5,len=(ys+HY)-(Y+pl.co)-1,drop=len*(1-f.open);
+  const gg=gateGeom(X,Y,ys,f),pl=GATE_G.pl,pal=metalPal('gate');
   if(!half)slots(ctx,pl);
-  if(drop>=2){
+  if(gg){const drop=gg.drop;
   ctx.save();planeClip(ctx,pl,X,half);
-  const bx=i=>pl.L0+(i+0.5)*pl.W/NB;
-  // cross bars, parallel to the gate's slant; the first one below the ceiling carries the pair colour
-  for(let off=DY+4,k=0;off<drop-3;off+=11,k++){const col=k===0&&f.pair!==undefined?PAIRC[f.pair]:null;
+  // cross bars, parallel to the gate's slant; the first one below the ceiling carries the pair colour. Bevelled: a pale line along the top edge
+  for(let k=0;k<gg.nc;k++){const off=gg.co[k],col=k===0&&f.pair!==undefined?PAIRC[f.pair]:null;
     ctx.strokeStyle='#0b0812';ctx.lineWidth=col?3.6:2.4;ctx.beginPath();ctx.moveTo(pl.L0+1,pl.ce(pl.L0+1)+off);ctx.lineTo(pl.R0-1,pl.ce(pl.R0-1)+off);ctx.stroke();
-    ctx.strokeStyle=col||'#6b707c';ctx.lineWidth=col?2.2:1.2;ctx.stroke();}
-  for(let i=0;i<NB;i++){const x=bx(i),top=pl.ce(x)-3,bot=pl.ce(x)+drop;
-    ctx.fillStyle='#0b0812';ctx.fillRect(x-1.4,top,2.8,bot-top);ctx.fillStyle=i%3===0?'#a9afbc':'#8f95a3';ctx.fillRect(x-0.75,top,1.5,bot-top);
+    ctx.strokeStyle=col||pal[0];ctx.lineWidth=col?2.2:1.2;ctx.stroke();
+    if(!col){ctx.strokeStyle=pal[2];ctx.lineWidth=0.4;ctx.beginPath();ctx.moveTo(pl.L0+1,pl.ce(pl.L0+1)+off-0.45);ctx.lineTo(pl.R0-1,pl.ce(pl.R0-1)+off-0.45);ctx.stroke();}}
+  for(let i=0;i<gg.NB;i++){const x=gg.xs[i],top=pl.ce(x)-3,bot=pl.ce(x)+drop;   // each bar: a lit left edge, a body, a dark right edge
+    ctx.fillStyle='#0b0812';ctx.fillRect(x-1.4,top,2.8,bot-top);ctx.fillStyle=i%3===0?pal[2]:pal[1];ctx.fillRect(x-0.75,top,1.5,bot-top);
+    ctx.fillStyle=pal[3];ctx.fillRect(x-0.75,top,0.5,bot-top);ctx.fillStyle=pal[0];ctx.fillRect(x+0.3,top,0.45,bot-top);
     ctx.fillStyle='#0b0812';ctx.beginPath();ctx.moveTo(x-1.6,bot-0.5);ctx.lineTo(x,bot+3);ctx.lineTo(x+1.6,bot-0.5);ctx.fill();
-    ctx.fillStyle='#b8bdc8';ctx.beginPath();ctx.moveTo(x-0.9,bot-0.5);ctx.lineTo(x,bot+1.9);ctx.lineTo(x+0.9,bot-0.5);ctx.fill();}
+    ctx.fillStyle=pal[2];ctx.beginPath();ctx.moveTo(x-0.9,bot-0.5);ctx.lineTo(x,bot+1.9);ctx.lineTo(x+0.9,bot-0.5);ctx.fill();}
   ceilShade(ctx,pl);ctx.restore();}
   // a timed gate has its hourglass set into the wall above it, in a carved roundel centred on that wall's face
   if(!half&&!f.latch&&f.dur>0&&!f.slab){const st=L.theme.style;gateRoundel(ctx,X+16-HX,pl.top-(st==='dungeon'||st==='forge'?12:16),f.tm>0&&f.tm<Infinity?f.tm/f.dur:1,f.tm>0&&f.tm<Infinity);}
@@ -4750,7 +4880,7 @@ function pairPlaque(ctx,x,y,col){ctx.save();ctx.translate(x,y);const D=(k,dx,dy)
   ctx.fillStyle=col;D(4.4,0,0);ctx.fill();ctx.fillStyle='rgba(255,255,255,.38)';ctx.beginPath();ctx.moveTo(0,-4.4);ctx.lineTo(4.4,0);ctx.lineTo(1.4,0);ctx.lineTo(-1.6,-2.6);ctx.closePath();ctx.fill();
   ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.moveTo(-4.4,0);ctx.lineTo(0,4.4);ctx.lineTo(0.6,1.8);ctx.closePath();ctx.fill();ctx.restore();}
 function drawJaws(ctx,o,f,X,Y,ys,half){
-  const k=chompK(f),pl=plane(X,Y,ys,o.c,o.r),sh=o.c%7,sc=0.8;
+  const k=chompK(f),pl=plane(X,Y,ys,o.c,o.r),sh=o.c%7,sc=0.8,pal=metalPal('jaw');
   // measured from the ceiling's underside: open, the upper teeth just clear the ceiling's front edge
   const upOff=lerp(pl.co?2:7,31-pl.co,k),loOff=lerp(3,21,k);
   if(!half)slots(ctx,pl);
@@ -4761,12 +4891,12 @@ function drawJaws(ctx,o,f,X,Y,ys,half){
     for(let i=0;i<T.length&&x<pl.R0-0.5;i++){const [w,h,ln]=T[(i+sh)%T.length],xa=x,xb=pl.R0-x-w*sc<2?pl.R0:x+w*sc,xm=(xa+xb)/2+ln*0.6;
       pth.lineTo(xm,base(xm)+dir*h);pth.lineTo(xb,base(xb));x=xb;}
     pth.lineTo(pl.R0,base(pl.R0));pth.lineTo(pl.R0,anchor(pl.R0));pth.closePath();
-    ctx.fillStyle='#b3b9c5';ctx.fill(pth);
+    ctx.fillStyle=pal[2];ctx.fill(pth);
     ctx.save();ctx.clip(pth);
     const b0=base(pl.L0);
-    ctx.strokeStyle='#eef1f6';ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(pl.L0-2,b0-dir*14);ctx.lineTo(pl.L0+10,b0+dir*2-6);ctx.stroke();
-    ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(pl.L0+2,b0-dir*14);ctx.lineTo(pl.L0+14,b0+dir*2-8);ctx.stroke();
-    ctx.fillStyle='#7f8695';ctx.fillRect(pl.R0-3,Y-20,3,TH+30);
+    if(METAL_PAINT_HI){ctx.strokeStyle='#eef1f6';ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(pl.L0-2,b0-dir*14);ctx.lineTo(pl.L0+10,b0+dir*2-6);ctx.stroke();
+      ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(pl.L0+2,b0-dir*14);ctx.lineTo(pl.L0+14,b0+dir*2-8);ctx.stroke();}
+    ctx.fillStyle=pal[1];ctx.fillRect(pl.R0-3,Y-20,3,TH+30);
     ctx.restore();
     ctx.strokeStyle='#0b0812';ctx.lineWidth=1;ctx.stroke(pth);
     if(f.blood){ctx.fillStyle='rgba(150,14,18,.95)';x=pl.L0;
@@ -4843,7 +4973,8 @@ const CUT_AT_WALL=new Set(['plate','xplate','lplate','closer','loose','spikes'])
 function liftVisible(f,x0,x1,y0,y1){return (f.cb+1)*TW+80>x0&&f.ca*TW-80<x1&&f.rB*TH+TH+10>y0&&f.rT*TH-40<y1;}
 function drawLift(ctx,f,half){if(f.t==='chain')drawLiftChain(ctx,f,half);else drawLiftCounterweight(ctx,f,half);}
 function liftChainLine(ctx,x0,y0,x1,y1){ctx.strokeStyle='#0b0812';ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
-  ctx.strokeStyle='#9aa0ad';ctx.lineWidth=1.4;ctx.setLineDash([2.2,1.6]);ctx.stroke();ctx.setLineDash([]);}
+  const pal=metalPal('chain');ctx.strokeStyle=pal[1];ctx.lineWidth=1.4;ctx.setLineDash([2.2,1.6]);ctx.stroke();      // links: a body, and a thin lit edge up and to the left
+  ctx.strokeStyle=pal[3];ctx.lineWidth=0.5;ctx.beginPath();ctx.moveTo(x0-0.45,y0-0.45);ctx.lineTo(x1-0.45,y1-0.45);ctx.stroke();ctx.setLineDash([]);}
 function liftWheel(ctx,cx,cy,rad,teeth,spin){ // a bronze wheel (a pulley: no teeth; a gear: teeth)
   ctx.save();ctx.translate(cx,cy);ctx.rotate(spin);ctx.beginPath();
   if(teeth){for(let i=0;i<teeth*2;i++){const a=i/(teeth*2)*6.2832,rr=i%2?rad-2.6:rad;ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}ctx.closePath();}else ctx.arc(0,0,rad,0,6.2832);
@@ -4889,11 +5020,11 @@ function drawLiftChain(ctx,f,half){
   // the chain, so the eye sees at once which strand climbs and which falls. Brass chevrons on the two upright strands point
   // the way they go (up on the entry side, down on the exit side). A small sprocket sits in each corner of the loop, drawn
   // behind everyone, so no wheel fills the space he stands in.
-  const per=f.per,H=f.yB-f.yT,V=CHAIN_V*gameTime,nl=Math.round(per/6),sp=per/nl,at=s=>chainPos(f,0,(s-f.off)/CHAIN_V);
+  const cp=metalPal('chain'),per=f.per,H=f.yB-f.yT,V=CHAIN_V*gameTime,nl=Math.round(per/6),sp=per/nl,at=s=>chainPos(f,0,(s-f.off)/CHAIN_V);
   const vert=s=>{s=((s%per)+per)%per;return s<H||(s>=H+32&&s<2*H+32);};
   for(let k=0;k<nl;k++){const s=V+k*sp,q=at(s),v=vert(s),e=k%2,w=v?(e?4.6:2.4):(e?7.4:5),h=v?(e?7.4:5):(e?4.6:2.4);
     ctx.fillStyle='#0b0812';ctx.fillRect(q.x-w/2-0.6,q.y+3-h/2-0.6,w+1.2,h+1.2);
-    ctx.fillStyle=e?'#8a909e':'#c4c9d4';ctx.fillRect(q.x-w/2,q.y+3-h/2,w,h);
+    ctx.fillStyle=e?cp[1]:cp[2];ctx.fillRect(q.x-w/2,q.y+3-h/2,w,h);ctx.fillStyle=cp[3];ctx.fillRect(q.x-w/2,q.y+3-h/2,w,0.7);ctx.fillRect(q.x-w/2,q.y+3-h/2,0.7,h); // (a lit top and left edge)
     if(e){ctx.fillStyle='#1b1626';if(v)ctx.fillRect(q.x-0.8,q.y+3-h/2+1.6,1.6,h-3.2);else ctx.fillRect(q.x-w/2+1.6,q.y+3-0.8,w-3.2,1.6);}}
   const nc=Math.max(2,Math.round(per/56)),sc=per/nc;
   for(let k=0;k<nc;k++){const s=V+k*sc;if(!vert(s))continue;const q=at(s),d=((s%per)+per)%per<H?-1:1;ctx.save();ctx.translate(q.x,q.y+3);
@@ -4928,15 +5059,18 @@ function drawDynamic(ctx,x0,x1,y0,y1){
         break;}
       case'sanctum':{const ch=L.ext.chase,glow=ch&&ch.done?0.25:0.6+0.25*Math.sin(gameTime*3);ctx.strokeStyle='rgba(255,226,160,'+glow+')';ctx.lineWidth=2;
         ctx.beginPath();ctx.moveTo(X+4,ys-2);ctx.lineTo(X+4,Y+10);ctx.quadraticCurveTo(X+16,Y-6,X+28,Y+10);ctx.lineTo(X+28,ys-2);ctx.stroke();break;}
-      case'saw':{const sx=sawX(f,gameTime),cy=ys+2,sw=f.x1-f.x0+28;
+      case'saw':{const sg=sawGeom(f,gameTime,ys),sx=sg.sx,cy=sg.cy,sw=sg.sw,rim=metalPal('saw'),spr=sawSprites(),hs=18;
         // the slot it runs in: a metal rim, a dark groove, and the blade sunk into it (cut off at the groove's middle, a dark lip drawn over its foot)
-        ctx.fillStyle='#8a90a0';ctx.fillRect(f.x0-14,ys-2.6,sw,1);ctx.fillStyle='#07050b';ctx.fillRect(f.x0-14,ys-1.6,sw,3.4);
-        ctx.save();ctx.beginPath();ctx.rect(sx-16,cy-18,32,18-2.6);ctx.clip();ctx.translate(sx,cy);ctx.rotate(gameTime*14);
-        ctx.beginPath();for(let i=0;i<12;i++){const a=i/12*6.2832;ctx.lineTo(Math.cos(a)*14,Math.sin(a)*14);ctx.lineTo(Math.cos(a+0.26)*10.5,Math.sin(a+0.26)*10.5);}ctx.closePath();
-        ctx.fillStyle='#c9ced8';ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=1.1;ctx.stroke();ctx.fillStyle='#7d8391';ctx.beginPath();ctx.arc(0,0,3.2,0,6.2832);ctx.fill();ctx.restore();
-        ctx.fillStyle='#07050b';ctx.fillRect(sx-15,ys-0.6,30,1.6);ctx.fillStyle='#8a90a0';ctx.fillRect(sx-15,ys-2.6,3,1);ctx.fillRect(sx+12,ys-2.6,3,1);break;}
-      case'darter':{const fx=f.dir>0?f.x+4:f.x;ctx.fillStyle='#0b0812';ctx.fillRect(fx-6,f.y-6,8,12);ctx.fillStyle='#b88a44';ctx.fillRect(fx-5,f.y-5,6,10);ctx.fillStyle='#e8c070';ctx.fillRect(fx-5,f.y-5,6,1.5);ctx.fillRect(fx-5,f.y-5,1.2,10); // a bronze face with a glint on its rim and a dark muzzle
-        ctx.fillStyle='#0b0812';ctx.fillRect(fx-4,f.y-1.5,4,3);ctx.strokeStyle='#fff0c0';ctx.lineWidth=0.8;ctx.strokeRect(fx-5.4,f.y-5.4,6.8,10.8);break;}
+        ctx.fillStyle=rim[1];ctx.fillRect(sg.sx0,ys-2.6,sw,1);ctx.fillStyle='#07050b';ctx.fillRect(sg.sx0,ys-1.6,sw,3.4);
+        // the blade is a cached sprite (hooked teeth, a shaded body, holes, a bronze hub); at speed the teeth leave two faint ghosts, fewer at the ends of the run where it slows
+        const mb=0.4+0.6*Math.abs(Math.sin(6.2832*cyc(f,gameTime)));
+        ctx.save();ctx.beginPath();ctx.rect(sx-16,cy-18,32,18-2.6);ctx.clip();ctx.translate(sx,cy);ctx.rotate(sg.rot-0.22);
+        ctx.globalAlpha=0.16*mb;ctx.drawImage(spr.ring,-hs,-hs,2*hs,2*hs);ctx.rotate(0.11);ctx.globalAlpha=0.3*mb;ctx.drawImage(spr.ring,-hs,-hs,2*hs,2*hs);
+        ctx.rotate(0.11);ctx.globalAlpha=1;ctx.drawImage(spr.body,-hs,-hs,2*hs,2*hs);
+        if(METAL_PAINT_HI){ctx.rotate(-sg.rot);ctx.drawImage(spr.sheen,-hs,-hs,2*hs,2*hs);}ctx.restore();
+        ctx.fillStyle='#07050b';ctx.fillRect(sx-15,ys-0.6,30,1.6);ctx.fillStyle=rim[1];ctx.fillRect(sx-15,ys-2.6,3,1);ctx.fillRect(sx+12,ys-2.6,3,1);
+        ctx.fillStyle=rim[3];ctx.fillRect(sx-14,ys-2.6,1.4,0.7);ctx.fillRect(sx+12.6,ys-2.6,1.4,0.7);break;}
+      case'darter':drawShooter(ctx,f);break;
       case'banner':drawBannerTile(ctx,X,Y,f,th);break;
       case'bar':{const bx=f.x,by=f.y,cy=ceilingY(o.c,o.r);ctx.strokeStyle='#0b0812';ctx.lineWidth=3.6; // two continuous chains (dark outline, pale links), a thick bar with end caps and a rope-wrapped grip
         ctx.beginPath();ctx.moveTo(bx-10,by);ctx.lineTo(bx-10,cy);ctx.moveTo(bx+10,by);ctx.lineTo(bx+10,cy);ctx.stroke();
@@ -4985,11 +5119,8 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     if(cut)ctx.restore();
   }
   for(const bl of L.ext.blocks){if(inRoom(bl.c,bl.r))drawBlock(ctx,bl,th);}
-  for(const d of L.ext.darts){if(d.x<x0-10||d.x>x1+10)continue;const t=-(d.dir||-1)*10;ctx.strokeStyle='#0b0812';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(d.x+t,d.y);ctx.stroke();
-    ctx.strokeStyle='#d8d2c0';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(d.x+t,d.y);ctx.stroke();ctx.fillStyle='#b5403a';ctx.fillRect(d.x+t*0.8-1.5,d.y-1.6,3,3.2);
-    const dd=d.dir||-1;ctx.fillStyle='#0b0812';ctx.beginPath();ctx.moveTo(d.x+dd*4.2,d.y);ctx.lineTo(d.x-dd*1.8,d.y-3.4);ctx.lineTo(d.x-dd*1.8,d.y+3.4);ctx.fill(); // a 6 px bright head
-    ctx.fillStyle='#fff6d8';ctx.beginPath();ctx.moveTo(d.x+dd*3.4,d.y);ctx.lineTo(d.x-dd*1.2,d.y-2.4);ctx.lineTo(d.x-dd*1.2,d.y+2.4);ctx.fill();
-    ctx.save();ctx.globalCompositeOperation='lighter';ctx.strokeStyle='rgba(255,226,160,.45)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(d.x+t*1.6,d.y);ctx.stroke();ctx.restore();}
+  for(const d of L.ext.darts){if(d.x<x0-10||d.x>x1+10)continue;drawDart(ctx,d.x,d.y,d.dir||-1,0,1,true);}
+  for(const q of SPENT){if(q.on&&q.x>x0-10&&q.x<x1+10)drawDart(ctx,q.x,q.y,q.dd,q.ang,q.gy||q.t<1.2?1:Math.max(0,1-(q.t-1.2)/0.4),false);}
   for(const it of L.items){if(!it.hidden||it.taken||!inRoom(it.c,it.r))continue; // the secret's cue sits on the hidden flask itself: a few slow four-point stars
     const sx=it.x,sy=SURF(it.r)-16;
     for(let i=0;i<3;i++){const a=gameTime*1.1+i*2.1,k=(Math.sin(a)+1)/2,px=sx+Math.cos(i*2.1+gameTime*0.3)*9,py=sy+Math.sin(i*1.3+gameTime*0.4)*7,R=1.5+3.6*k;

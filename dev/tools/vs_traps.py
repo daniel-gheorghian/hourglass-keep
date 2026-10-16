@@ -53,6 +53,9 @@ def run(rig):
                   clipf="V.box(s.x-70,(s.r+1)*64-190,s.x+170,(s.r+1)*64+12)", inv=True)
     for k, (n, sd) in enumerate(((7, 9600), (14, 9633))):
         S('T-darts-%d' % (k + 1), n, sd, D('darter', None, 4), 'Dart trap (wall darter at chest height).', 'traps', 'trap-ceil', tries=80)
+    rig.statestrip('TS-darts-tell', 7, 9600, D('darter', None, 4), 'Dart shooter warning: 0.6 / 0.3 / 0.15 / 0.03 s before a shot.', 'traps', 'trap-ceil', tries=80,
+                   clipf="(()=>{const f=V.dynAt(s).f;return V.box(f.x-40,f.y-26,f.x+40,f.y+26)})()",
+                   states=[('-%.2fs' % t, 'const f=V.dynAt(s).f;f.off=f.per-%s-__HK.gameTime' % t) for t in (0.6, 0.3, 0.15, 0.03)])
     rig.timestrip('TS-darts', 7, 9600, D('darter', None, 4), 'Dart trap firing: darts cross the corridor.', 'traps', 'trap-ceil', tries=80,
                   clipf="V.box(s.x-60,(s.r+1)*64-120,s.x+260,(s.r+1)*64+12)")
     for k, (n, sd) in enumerate(((5, 9700), (8, 9733), ([14, 15, 16, 13, 18, 19, 20], 9766))):
