@@ -4209,7 +4209,7 @@ function floorStand(ctx,x,top,base,col,hi){
   ctx.fillStyle=hi;ctx.fillRect(x-0.4,top,0.8,(base-2-top)*0.7);
   ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(x,base+0.8,7,1.4,0,0,Math.PI*2);ctx.fill();}
 // the pitch torch's flame: the flipbook flame, a tongue now and then, cooling sparks and two thin wisps of smoke above it
-function torchFlame(ctx,x,y,seed){flame(ctx,FIRE,x,y,12.1,seed,1,true);embers(ctx,x,y-10,5,seed,FIRE,26);
+function torchFlame(ctx,x,y,seed){if(PF.off.flame)return;flame(ctx,FIRE,x,y,12.1,seed,1,true);embers(ctx,x,y-10,5,seed,FIRE,26);
   ctx.fillStyle='#1e181c';for(let i=0;i<2;i++){const u=(gameTime*0.5+i*0.5+seed*0.1)%1;ctx.globalAlpha=0.16*Math.sin(u*Math.PI);ctx.beginPath();ctx.arc(x+Math.sin(u*5+i*2+seed)*2,y-19-u*18,1.4+u*2.2,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;}
 const warmLamp=t=>L.theme.style==='crypt'&&(t.c*7+t.r*13)%10<3;
 function drawLight(ctx,t,th){
@@ -4750,7 +4750,7 @@ function ventState(ph){const v=VST;v.on=true;v.ig=-1;v.al=1;v.cool=0;v.w=1;
 // flame beside it for volume; licks, embers, a halo and the ignition flash and sparks (those two not in calm)
 function ventPass(ctx,fi,row,al){const a=fi|0,f=fi-a,b=(a+1)%FLN;ctx.globalAlpha=al;ctx.drawImage(FLV.c,a*FVW,row*FVH,FVW,FVH,-12,-45.12,24,48);
   if(f>.03){ctx.globalAlpha=al*f;ctx.drawImage(FLV.c,b*FVW,row*FVH,FVW,FVH,-12,-45.12,24,48);}}
-function drawVentFlame(ctx,x,ys,st,seed){
+function drawVentFlame(ctx,x,ys,st,seed){if(PF.off.flame)return;
   const t=gameTime,calm=S.set.calm,H=st.h*(1+(st.k>.9?.06*Math.sin(t*41+seed)*(calm?.3:1):0)),s=40/(FLV.vf*48),sx=s*st.w*(.35+.65*Math.min(1,H)),sy=s*H,fi=(t*(calm?12:24)+seed*3.7)%FLN,al=st.al;
   ctx.save();ctx.globalCompositeOperation='lighter';
   ctx.globalAlpha=.4*st.k*al;ctx.drawImage(lightSprite('255,150,70'),x-46,ys-66,92,92);
@@ -5774,6 +5774,29 @@ const renderXf={VZ:1,camD:0,camDY:0}; // the last frame's world-to-canvas transf
 // They share one small mask (glMask): red = shadow, green = heat, blue = storm, drawn in 2D at the light map's resolution.
 // If WebGL is missing, the context is lost or a frame throws, the game goes back to Classic by itself; so does a
 // frame time that stays above ~22 ms while the shader is on.
+// ?prof: a profile taken on the device itself. Each stage of a frame is timed (the GL stages after gl.finish, so their times are
+// true, though the frame runs a little slower than it would), and every few seconds one effect is left out to show what it
+// costs; the table is drawn over the HUD. Torchlight does not fall back to Classic meanwhile. Nothing is stored.
+const PF={on:/[?&]prof\b/.test(location.search),t:0,gl:null,a:{},fa:{},fn:0,rs:0,iv:0,n:0,t0:0,ix:0,res:{},stg:null,off:{},sv:null,
+  steps:[['all','all on'],['metal','metal'],['shafts','sky beams'],['flame','flames'],['sand','sand'],['relief','relief'],['shadow','shadows'],['mist','mist/sheen/caust.'],['heat','heat'],['grade','grade']],
+  s(){if(this.on){this.t=performance.now();this.a={};this.gl=null;}},
+  p(k){if(!this.on)return;if(this.gl)this.gl.finish();const t=performance.now();this.a[k]=(this.a[k]||0)+t-this.t;this.t=t;}};
+function pfApply(){const k=PF.steps[PF.ix][0];if(!PF.sv)PF.sv={...GLFX};Object.assign(GLFX,PF.sv);PF.off={};
+  if(k==='metal')GLFX.metal=false;else if(k==='shafts')GLFX.shafts=false;else if(k==='relief')GLFX.relief=false;else if(k==='shadow')GLFX.shadow=false;
+  else if(k==='heat')GLFX.heat=false;else if(k==='grade')GLFX.grade=false;else if(k==='mist')GLFX.mist=GLFX.sheen=GLFX.caustics=false;else if(k!=='all')PF.off[k]=true;}
+// one drawn frame: ms of work (update + render, GL finished) and the time since the last frame; a step lasts 3 s (the first half second not counted)
+function pfFrame(work,iv){const now=performance.now();if(!PF.t0){PF.t0=now;pfApply();}const el=now-PF.t0;
+  if(el>500){PF.fn++;PF.rs+=work;PF.iv+=iv;for(const k in PF.a)PF.fa[k]=(PF.fa[k]||0)+PF.a[k];}
+  if(el>=3000){const k=PF.steps[PF.ix][0],o=PF.res[k]||(PF.res[k]={w:0,iv:0,n:0});if(PF.fn){o.w+=PF.rs/PF.fn;o.iv+=PF.iv/PF.fn;o.n++;
+      if(k==='all'){PF.stg={};for(const q in PF.fa)PF.stg[q]=PF.fa[q]/PF.fn;}}
+    PF.fn=PF.rs=PF.iv=0;PF.fa={};PF.ix=(PF.ix+1)%PF.steps.length;PF.t0=now;pfApply();}}
+function pfDraw(ctx,sh){const fx=(v,d=1)=>v.toFixed(d),R=PF.res,b=R.all&&R.all.w/R.all.n;ctx.save();ctx.textAlign='left';ctx.textBaseline='top';ctx.font='600 6px monospace';
+  const x=hud.l+2,y=hud.t+30,lh=7,rows=[(sh?'TORCH ':'CLASSIC ')+cv.width+'x'+cv.height+'  now: '+PF.steps[PF.ix][1]+(PF.ix?' off':'')+'  ('+(PF.ix+1)+'/'+PF.steps.length+')',
+    'off              work ms   diff  frame ms'];
+  for(const [k,nm] of PF.steps){const o=R[k];if(!o)continue;const w=o.w/o.n;rows.push((k==='all'?'(none)':nm).padEnd(17)+fx(w).padStart(7)+(k==='all'||!b?'':((w-b>=0?'+':'')+fx(w-b)).padStart(7))+fx(o.iv/o.n).padStart(9).padStart(k==='all'||!b?16:9));}
+  const st=PF.stg?Object.entries(PF.stg).filter(e=>e[1]>=0.05).map(e=>e[0]+' '+fx(e[1])):[];
+  for(let i=0;i<st.length;i+=4)rows.push((i?'':'stages (all on): ')+st.slice(i,i+4).join('  '));
+  ctx.fillStyle='rgba(0,0,0,.72)';ctx.fillRect(x-2,y-2,206,rows.length*lh+3);ctx.fillStyle='#9fffd2';rows.forEach((r,i)=>ctx.fillText(r,x,y+i*lh));ctx.restore();}
 const GLP={on:false,dead:false,gl:null,cv:null,sceneC:null,sceneG:null,sw:0,sh:0,note:'',ms:0,lastR:0,fps:/[?&]fps\b/.test(location.search),why:'',sum:0,n:0,wsum:0,wn:0,skip:true,used:false};
 const GLV=`attribute vec2 a_p;varying vec2 v_u;void main(){v_u=a_p*0.5+0.5;gl_Position=vec4(a_p,0.,1.);}`;
 // ================= S3-A: feel (rewind look, hit and last-life feedback, sand dissolve) =================
@@ -5892,7 +5915,7 @@ function sandHeapDraw(ctx,h){const g=Math.min(1,h.t/DISS.dur),e=Math.pow(g,1.4),
   ctx.fillStyle=SAND_COL[4];ctx.beginPath();ctx.moveTo(x-hw*0.55,y-ht*0.4*sl);ctx.lineTo(x-hw*0.3,y-ht*0.78*sl);ctx.lineTo(x-hw*0.05,y-ht*0.9*sl);ctx.lineTo(x-hw*0.1,y-ht*0.45*sl);ctx.closePath();ctx.fill(); // lit side
   const n=Math.round(10+hw*0.6);for(let i=0;i<n;i++){const u=(i*0.618034+0.13)%1,v=(i*0.381966+0.27)%1,px=x+(u*2-1)*hw*(1-v*0.8),py=y-v*ht*sl*0.9;ctx.fillStyle=SAND_COL[i%5];ctx.fillRect(Math.floor(px),Math.floor(py),1,1);}
   ctx.globalAlpha=1;}
-function sandDraw(ctx){
+function sandDraw(ctx){if(PF.off.sand)return;
   for(const h of SAND_HP)if(h.on)sandHeapDraw(ctx,h);
   for(let k=0;k<5;k++){let on=false;for(let o=0;o<sandP.length;o+=SAND_S){if(sandP[o+6]<=0||sandP[o+7]!==k)continue;if(!on){ctx.fillStyle=SAND_COL[k];on=true;}const z=sandP[o+8];ctx.fillRect(Math.round(sandP[o]-z/2),Math.round(sandP[o+1]-z/2),z,z);}}
   ctx.fillStyle='rgb(196,174,132)';for(let o=0;o<sandP.length;o+=SAND_S){if(sandP[o+6]<=0||sandP[o+7]!==5)continue;const f=sandP[o+5]/sandP[o+6];ctx.globalAlpha=0.3*(1-f);const z=sandP[o+8]*(1+f);ctx.fillRect(sandP[o]-z/2,sandP[o+1]-z/2,z,z);}
@@ -6365,8 +6388,8 @@ function glFrame(lights,VZ,camD,camDY,th){
   glSize();
   // 1. upload the 2D frame (once)
   gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,GLP.tex);gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,GLP.sceneC);
-  glMask(lights,VZ,camD,camDY);
-  glMetal(lights,VZ,camD,camDY); // (unit MS) the metal mask, when metal is in view
+  PF.p('upload');glMask(lights,VZ,camD,camDY);PF.p('mask');
+  glMetal(lights,VZ,camD,camDY);PF.p('metal'); // (unit MS) the metal mask, when metal is in view
   // 2. light map: ambient, then every light added as a quad with its own falloff and flicker
   let n=0;const B=GLLIGHTS;
   for(const q of lights){if(n>=GLMAXL)break;
@@ -6383,15 +6406,15 @@ function glFrame(lights,VZ,camD,camDY,th){
     gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,4,gl.FLOAT,false,S4,24);gl.enableVertexAttribArray(3);gl.vertexAttribPointer(3,3,gl.FLOAT,false,S4,40);
     gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE);gl.drawArrays(gl.TRIANGLES,0,n*6);gl.disable(gl.BLEND);
     gl.disableVertexAttribArray(1);gl.disableVertexAttribArray(2);gl.disableVertexAttribArray(3);}
-  glRelief(lights,VZ,camD,camDY); // (unit B) the relief factor, at half resolution, into its own buffer
-  const cfx=glAtmo(VZ,camD,camDY,th,lw,lh); // shafts, caustics, mist, sheen (each skipped when not on screen)
+  PF.p('lmap');glRelief(lights,VZ,camD,camDY);PF.p('relief'); // (unit B) the relief factor, at half resolution, into its own buffer
+  const cfx=glAtmo(VZ,camD,camDY,th,lw,lh);PF.p('atmo'); // shafts, caustics, mist, sheen (each skipped when not on screen)
   // 3. full-screen passes: bright-pass, blur, composite
   gl.bindBuffer(gl.ARRAY_BUFFER,GLP.tri);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
   const bind=(unit,tex)=>{gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,tex);};
   gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.br.f);gl.viewport(0,0,lw,lh);bind(0,GLP.tex);bind(1,GLP.fb.map.t);
   msPasses(m=>{gl.useProgram(P.bright.p);gl.uniform1i(P.bright.u.u_sc,0);gl.uniform1i(P.bright.u.u_map,1);gl.uniform2f(P.bright.u.u_px,1.5/w,1.5/h);if(m)glMetalU(MS.ub);gl.drawArrays(gl.TRIANGLES,0,3);},lh,4); // (unit MS: the metal program only over the metal)
   gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.bl.f);gl.useProgram(P.blur.p);bind(0,GLP.fb.br.t);gl.uniform1i(P.blur.u.u_t0,0);gl.uniform2f(P.blur.u.u_d,1.6/lw,0);gl.drawArrays(gl.TRIANGLES,0,3);
-  gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);bind(0,GLP.tex);bind(1,GLP.fb.map.t);bind(2,GLP.fb.bl.t);bind(3,GLP.mtex);
+  PF.p('bloom');gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);bind(0,GLP.tex);bind(1,GLP.fb.map.t);bind(2,GLP.fb.bl.t);bind(3,GLP.mtex);
   msPasses(m=>{gl.useProgram(P.final.p);
   {const U=P.final.u,gr=gradeOf(th.style),on=GLFX.grade&&GFX().grade;gl.uniform1i(U.u_mk,3);gl.uniform2f(U.u_px,1/w,1/h);gl.uniform2f(U.u_mp,1/lw,1/lh);gl.uniform1f(U.u_t,t%1000);
     gl.uniform4f(U.u_fx,GLFX.shadow?1:0,GLFX.heat?1:0,GLFX.storm?1:0,0);gl.uniform1f(U.u_sat,on?gr.sat:1);gl.uniform3fv(U.u_sh,on?gr.sh:GLNEUT);gl.uniform3fv(U.u_hi,on?gr.hi:GLNEUT);glAtmoU(U,cfx);}
@@ -6584,12 +6607,12 @@ function glTime(ms){
   GLP.wsum+=ms;GLP.wn++;
   if(GLP.wsum>=2000){const avg=GLP.wsum/GLP.wn;GLP.wsum=0;GLP.wn=0;
     if(GLP.skip)GLP.skip=false; // the first window after switching on holds the shader compile
-    else if(S.set.lightMode==='torch'&&GLP.used&&!window.__HKnoauto&&avg>22){S.set.lightMode='classic';syncLightMode();
+    else if(S.set.lightMode==='torch'&&GLP.used&&!window.__HKnoauto&&!PF.on&&avg>22){S.set.lightMode='classic';syncLightMode();
       if(!S.set.slowNote){S.set.slowNote=true;msg('Torchlight was too slow here, so lighting is back to Classic.',4.5);}writeSave();}}
 }
 function syncLightMode(){const b=document.getElementById('gShader');if(!b)return;const m=S.set.lightMode==='torch';b.setAttribute('aria-pressed',String(m));
   b.firstChild.nodeValue='Lighting: '+(m?'Torchlight':'Classic');b.querySelector('small').textContent=GLP.dead?'Not available on this device':m?'Lamps flicker and bloom, light falls off in the dark':'The lighting this game shipped with';}
-function render(){
+function render(){PF.s();
   const sh=shaderOn();hkFxUpdate(); // S3-A
   if(sh){if(!GLP.used){GLP.skip=true;GLP.wsum=GLP.wn=0;}GLP.cv.style.display='';glSize();}else if(GLP.cv&&GLP.cv.style.display!=='none')GLP.cv.style.display='none';
   GLP.used=sh;GLOWK=sh?0.5:1;
@@ -6605,23 +6628,23 @@ function render(){
   renderXf.VZ=VZ;renderXf.camD=camD;renderXf.camDY=camDY;
   const rx0=Math.floor(cx/ROOM_W),rx1=Math.floor((cx+vw)/ROOM_W),ry0=Math.floor(cy/ROOM_H),ry1=Math.floor((cy+vh-0.01)/ROOM_H);
   if(gf.bg)drawBackdrop(ctx,cx,cy,vw,vh,VZ,camD,camDY);
-  ctx.setTransform(1,0,0,1,0,0);
+  PF.p('bg');ctx.setTransform(1,0,0,1,0,0);
   for(let ry=ry0;ry<=ry1;ry++){const ya=Math.round(ry*ROOM_H*VZ)-camDY,yb=Math.round((ry+1)*ROOM_H*VZ)-camDY;
     for(let rx=rx0;rx<=rx1;rx++){const xa=Math.round(rx*ROOM_W*VZ)-camD,xb=Math.round((rx+1)*ROOM_W*VZ)-camD;ctx.drawImage(roomCanvas(rx,ry),xa,ya,xb-xa,yb-ya);}}
   ctx.setTransform(VZ,0,0,VZ,-camD,-camDY);
-  frameLights=(gf.light||gf.hero||gf.atmo)?gatherLights(cx-40,cx+vw+40,cy-40,cy+vh+40):[];
+  PF.p('rooms');frameLights=(gf.light||gf.hero||gf.atmo)?gatherLights(cx-40,cx+vw+40,cy-40,cy+vh+40):[];
   ctx.save();ctx.beginPath();ctx.rect(cx,cy,vw,vh);ctx.clip();
-  drawDynamic(ctx,cx,cx+vw,cy,cy+vh);
+  PF.p('lights');drawDynamic(ctx,cx,cx+vw,cy,cy+vh);PF.p('dyn');
   if(gf.atmo)ambientLit(ctx,cx,cx+vw,cy,cy+vh);
   if(sh){if(gf.grade)lightPass(ctx,frameLights,VZ,camD,camDY,true); // (the shader adds the lights and the bloom)
     if(gf.light&&!GLFX.shafts)ryBeams2D(ctx,RY_2D*1.9);} // the beams as in Classic (unless the shader casts them)
   else{if(gf.light||gf.grade)lightPass(ctx,frameLights,VZ,camD,camDY);
   if(gf.light)bloomPass(ctx,frameLights);}
-  if(gf.atmo){atmoPass(ctx,frameLights,cx,cx+vw,cy,cy+vh);ambientGlow(ctx,cx,cx+vw,cy,cy+vh);}
+  PF.p('light2d');if(gf.atmo){atmoPass(ctx,frameLights,cx,cx+vw,cy,cy+vh);ambientGlow(ctx,cx,cx+vw,cy,cy+vh);}
   if(gf.light)drawEmissive(ctx,cx,cx+vw,cy,cy+vh);
   ctx.restore();
   ctx.setTransform(VS,0,0,VS,0,0);
-  if(gf.atmo)hazePass(ctx);
+  if(gf.atmo)hazePass(ctx);PF.p('atmo2d');if(sh)PF.gl=GLP.gl;
   if(sh){try{glFrame(frameLights,VZ,camD,camDY,L.theme);}catch(e){glKill(String(e&&e.message||e));return render();}
     ctx=gx;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);ctx.setTransform(VS,0,0,VS,0,0);} // from here on only what the shader must not darken: flashes, HUD, text
   else{if(!vignette){vignette=ctx.createRadialGradient(viewW/2,ROOM_H/2,ROOM_H*0.45,viewW/2,ROOM_H/2,Math.max(viewW,ROOM_W)*0.66);vignette.addColorStop(0,'rgba(5,3,10,0)');vignette.addColorStop(1,'rgba(5,3,10,.5)');
@@ -6629,10 +6652,11 @@ function render(){
   ctx.fillStyle=gf.grade?vignette2:vignette;ctx.fillRect(0,0,viewW,ROOM_H);lowEdge2D(ctx);} // S3-A: last life, Classic
   if(flashFx){ctx.globalAlpha=Math.max(0,flashFx.a*(1-flashFx.t/flashFx.dur));if(flashFx.edge){const px=P?clamp(P.x-cam.x,40,viewW-40):viewW/2,py=P?clamp(P.y-cam.y-30,40,ROOM_H-40):ROOM_H/2,gr=ctx.createRadialGradient(px,py,26,px,py,Math.max(viewW,ROOM_H)*0.62);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,flashFx.col);ctx.fillStyle=gr;}else ctx.fillStyle=flashFx.col;ctx.fillRect(0,0,viewW,ROOM_H);ctx.globalAlpha=1;}
   if(HK.rw>0.003)rewind2D(ctx,sh); // S3-A: the sands turn back (Classic: the whole look; both: sand streaks)
-  if(!document.body.classList.contains('panelOpen'))drawHUD(ctx);
+  PF.p('final');PF.gl=null;if(!document.body.classList.contains('panelOpen'))drawHUD(ctx);
   drawOverlayText(ctx);
   if(GLP.fps){ctx.textAlign='left';ctx.textBaseline='top';ctx.font='600 7px monospace';ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(hud.l-1,ROOM_H-17,92,12);ctx.fillStyle='#9fffd2';
     ctx.fillText((sh?'TORCH ':'CLASSIC ')+GLP.ms.toFixed(1)+' ms  '+(GLP.ms>0?Math.round(1000/GLP.ms):0)+' fps',hud.l+1,ROOM_H-15);}
+  if(PF.on){PF.p('hud');pfDraw(ctx,sh);}
 }
 function fmt(s){s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),sec=s%60;return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(sec).padStart(2,'0');}
 function heart(ctx,x,y,full,fill,line){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+7,y);ctx.lineTo(x+3.5,y+9);ctx.closePath();ctx.fillStyle=full?fill:'rgba(10,8,20,.45)';ctx.fill();ctx.strokeStyle=line;ctx.lineWidth=0.8;ctx.stroke();}
@@ -6913,8 +6937,8 @@ function loop(ts){
   if(window.__HKfreeze){last=0;return;}
   const dt=last?Math.min(0.1,(ts-last)/1000):0;last=ts;
   updateGrabLabel(ts);
-  if(mode==='play'||mode==='dead'||mode==='rewind'){acc+=dt;let n=0;while(acc>=STEP&&n<6){acc-=STEP;n++;snapPrev();if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}if(n>=6)acc=0;
-    frame++;if(S.set.saver&&(frame&1))return;{const iv=(ts-GLP.lastR)/(S.set.saver?2:1);if(GLP.lastR&&iv<250)glTime(iv);GLP.lastR=ts;}const b0=roomBuilds;renderAt(acc/STEP);idleFrames=0;drawBuilds+=roomBuilds-b0;if(roomBuilds===b0)roomWork();}
+  if(mode==='play'||mode==='dead'||mode==='rewind'){acc+=dt;let n=0;const u0=PF.on?performance.now():0;while(acc>=STEP&&n<6){acc-=STEP;n++;snapPrev();if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}if(n>=6)acc=0;if(PF.on)PF.upd=performance.now()-u0;
+    frame++;if(S.set.saver&&(frame&1))return;{const iv=(ts-GLP.lastR)/(S.set.saver?2:1);if(GLP.lastR&&iv<250){glTime(iv);if(PF.on)PF.iv0=iv;}GLP.lastR=ts;}const b0=roomBuilds,r0=PF.on?performance.now():0;renderAt(acc/STEP);if(PF.on){PF.a.update=PF.upd;pfFrame(PF.upd+performance.now()-r0,PF.iv0||0);}idleFrames=0;drawBuilds+=roomBuilds-b0;if(roomBuilds===b0)roomWork();}
   else{acc=0;GLP.lastR=0;if(++idleFrames%20===0)render();}
 }
 
