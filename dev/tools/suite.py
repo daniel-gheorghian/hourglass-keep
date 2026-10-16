@@ -46,6 +46,7 @@ if mode != 'quick':
 def fork_check(out):
     m = re.search(r'forks ok (\d+) / (\d+)', out)
     return (bool(m) and m[1] == m[2], (int(m[1]), int(m[2]), 0) if m else None)
+J += [('guardscan', ['guardscan.py', str(n), str(n + 4), '4'], tail_check(r'guardscan OK')) for n in range(1, 36, 5)] # guards and snakes keep to their own budgets and meaningful spots
 J += [('forktest', ['forktest.py', str(n), str(n), '2'], fork_check) for n in range(6, 28)]
 def feat_check(out):
     m = re.search(r'TOTAL passed (\d+) / (\d+) with damage (\d+)', out)

@@ -6,7 +6,7 @@ from playwright.sync_api import sync_playwright
 ns=int(sys.argv[1]) if len(sys.argv)>1 else 2
 fight=len(sys.argv)>2 and sys.argv[2]=='fight'
 FL=[('tower',3),('rotten',4),('barracks',4),('longway',6),('maze',4)]
-FAM=[('move',v,3) for v in ['plain','collapse','jumps','banners','lifts']]+[('puzzle',v,4) for v in ['slab','side','alcove','timed','double']]+[('obstacle',v,4) for v in ['spikes','loose','chomp','guard','saw','tunnel']]
+FAM=[('move',v,3) for v in ['plain','collapse','jumps','banners','lifts']]+[('puzzle',v,4) for v in ['slab','side','alcove','timed','double']]+[('obstacle',v,4) for v in ['spikes','loose','chomp','saw','tunnel']]
 FLOORS=[4,6,9,13,18,24,27]
 ONLY=len(sys.argv)>3 and sys.argv[3]=='flags' # (just the flags, on the deep floors)
 if ONLY: FLOORS=[9,18,24,25,27]; FAM=[]

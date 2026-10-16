@@ -12,8 +12,8 @@ lo,hi=(int(sys.argv[3]),int(sys.argv[4])) if len(sys.argv)>4 else (3,27)
 JS=r'''([lo,hi,ns])=>{
   const MF={plain:['down','drop2','up'],collapse:['collapse'],jumps:['jumpdown','jumpup'],banners:['banner3','banner4','shaft2','shaft3'],lifts:['lift2d','lift3d','lift2u','lift3u','chn2d','chn3d','chn2u','chn3u']};
   const PF=n=>n.startsWith('P2')||n.startsWith('P3')?'slab':n.startsWith('P1')?'side':n.startsWith('P5')?'alcove':n.startsWith('P4')?'timed':n==='double'?'double':'other';
-  const OBS=['spikes','loose','chomp','guard','saw','tunnel'];
-  const MOV=new Set(['flat','up','down','drop2']);const isTrap=q=>!MOV.has(q.k)&&!/^(turn-|loop-|fork-)/.test(q.k);
+  const OBS=['spikes','loose','chomp','saw','tunnel'];
+  const MOV=new Set(['flat','up','down','drop2']);const isTrap=q=>!MOV.has(q.k)&&!/^(turn-|loop-|fork-)/.test(q.k)&&q.k!=='guard'&&q.k!=='skel';
   const out=[];
   for(let n=lo;n<=hi;n++)for(let s=0;s<ns;s++){const seed=800000+n*131+s*17,L=__HK.genLevel(n,seed,true);
     const mv={},pz={},ob={},rm=L.runMv||{};
@@ -21,7 +21,7 @@ JS=r'''([lo,hi,ns])=>{
       const k=q.k.replace(/^fork-/,'');if(OBS.includes(k))ob[k]=(ob[k]||0)+1;}
     for(const p of L.puzzles){const k=PF(p.puz);pz[k]=(pz[k]||0)+1;}
     const route=(()=>{let r=0;for(const ri of L.runsInfo)r+=Math.abs(ri.c1-ri.c0);const lr=L.runsInfo[L.runsInfo.length-1];return r+Math.abs(L.door.c-lr.c1);})();
-    out.push({n,s,feat:L.feature||null,mv,rm,pz,ob,traps:L.segs.filter(isTrap).length,guards:L.guards.length,route,forks:L.forks.length});}
+    out.push({n,s,feat:L.feature||null,mv,rm,pz,ob,traps:L.segs.filter(isTrap).length,guards:L.guards.length,snakes:L.snakeSpecs.length,route,forks:L.forks.length});}
   return {out,MF};}'''
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page(); errs=[]; pg.on('pageerror',lambda e:errs.append(str(e))); pg.goto('file://'+f); pg.wait_for_timeout(300)
@@ -34,7 +34,7 @@ def mvfam(mv):
     for m,c in mv.items(): t[fam_of.get(m,'other')]=t.get(fam_of.get(m,'other'),0)+c
     return t
 DOWNM={'down','drop2','banner3','banner4','collapse','jumpdown','lift2d','lift3d','chn2d','chn3d'}
-OBSF=['spikes','loose','chomp','guard','saw','tunnel']
+OBSF=['spikes','loose','chomp','saw','tunnel']
 def vec(x):
     keys=['plain','collapse','jumps','banners','lifts','other']
     a=mvfam(x['mv']); ta=sum(a.values()) or 1
@@ -52,7 +52,7 @@ def sameness(xs):
             tot+=sum(abs(a-b) for a,b in zip(v[i],v[j]))/3;k+=1
     return tot/max(1,k)
 print('file',f.split('/')[-1],' floors',len(fl))
-print('band   floors  traps  guards  route  forks | dom(move) dom(puz) dom(obs) | featured share: move mean/min  puzzle mean/min  obstacle mean/min | flags | sameness')
+print('band   floors  traps  guards snakes  route  forks | dom(move) dom(puz) dom(obs) | featured share: move mean/min  puzzle mean/min  obstacle mean/min | flags | sameness')
 for bn in ['3-5','6-11','12-19','20-27']:
     xs=bands.get(bn,[]); 
     if not xs: continue
@@ -80,7 +80,7 @@ for bn in ['3-5','6-11','12-19','20-27']:
             if t>=4: sh['obstacle'].append(x['ob'].get(ft['obstacle'],0)/t)
     def ms(v): return '%.2f/%.2f(n=%d)'%(S.mean(v),min(v),len(v)) if v else '-'
     nf=sum(1 for x in xs if x['feat'] and x['feat']['flag'])
-    print('%-6s %5d %6.1f %6.1f %6.1f %5.2f | %.2f %.2f %.2f | %s %s %s | %.3f | %.3f'%(bn,len(xs),S.mean(x['traps'] for x in xs),S.mean(x['guards'] for x in xs),S.mean(x['route'] for x in xs),S.mean(x['forks'] for x in xs),
+    print('%-6s %5d %6.1f %6.1f %6.1f %6.1f %5.2f | %.2f %.2f %.2f | %s %s %s | %.3f | %.3f'%(bn,len(xs),S.mean(x['traps'] for x in xs),S.mean(x['guards'] for x in xs),S.mean(x['snakes'] for x in xs),S.mean(x['route'] for x in xs),S.mean(x['forks'] for x in xs),
         S.mean(dm),S.mean(dp) if dp else 0,S.mean(do) if do else 0,ms(sh['move']),ms(sh['puzzle']),ms(sh['obstacle']),nf/len(xs),sameness(xs)))
 # featured-family frequency and flags
 if fl[0]['feat']:
