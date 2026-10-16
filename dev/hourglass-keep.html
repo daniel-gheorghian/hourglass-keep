@@ -5280,7 +5280,8 @@ function drawActor(ctx,e,x,y,face,pose,pal,o){
   if(solid&&!AIRY.includes(e.state)){ctx.save();ctx.fillStyle='rgba(0,0,0,.42)';ctx.beginPath();ctx.ellipse(x,y+0.6,11,2.4,0,0,Math.PI*2);ctx.fill();ctx.restore();}
   const kl=keyLight(x,y);
   if(GFX().hd){figDraw(ctx,x,y,face,pose,pal,Object.assign({},o,{lt:{dir:kl.dir,col:L&&L.theme.style==='forge'?softCol(kl.col,0.4):kl.col,k:kl.lamp?kl.k:kl.k*0.4}}));return;} // (forge light mixed toward white so it does not wash the outline red)
-  if(solid){ctx.save();ctx.globalAlpha=0.5+0.5*kl.k;figDraw(ctx,x+kl.dir*1.3,y-0.5,face,pose,pal,Object.assign({},o,{mono:'rgb('+kl.col+')',flash:0,smear:0}));ctx.restore();}
+  if(solid&&e===P){ctx.save();ctx.globalAlpha=0.5+0.5*kl.k; // (the prince only: on guards it read as an outline; their rank colours carry them, owner 2026-10-16)
+figDraw(ctx,x+kl.dir*1.3,y-0.5,face,pose,pal,Object.assign({},o,{mono:'rgb('+kl.col+')',flash:0,smear:0}));ctx.restore();}
   figDraw(ctx,x,y,face,pose,pal,o);
 }
 // the pose as drawn: the simulated pose plus breathing at rest and a sway after sudden stops (looks only)
