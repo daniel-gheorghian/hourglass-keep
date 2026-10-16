@@ -43,6 +43,8 @@ body{font-family:var(--f-body);overflow:hidden;overscroll-behavior:none;-webkit-
 .btn.on{transform:scale(.93)}
 #bJump.on{background:rgba(228,104,59,.45)}
 #bGrab.on{background:rgba(232,196,127,.38)}
+#bGrab{font-size:calc(var(--gfs,13px)*var(--lk,1))}
+#bGrab.dim{background:rgba(232,196,127,.07);border-color:rgba(232,196,127,.45);color:rgba(232,196,127,.5)} /* nothing for Grab to do here: still there, dimmed */
 #app.overlay #pad,#app.overlay .btn{opacity:.6;transition:opacity .2s}
 #app.overlay.ctlThin #pad,#app.overlay.ctlThin .btn{opacity:.22}
 body.panelOpen #pad,body.panelOpen .btn,body.panelOpen #bPause{visibility:hidden}
@@ -107,7 +109,7 @@ body.portrait #rotate{display:flex}
       <div class="ar l"><svg viewBox="0 0 20 20"><path d="M14 3l-8 7 8 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       <div class="ar r"><svg viewBox="0 0 20 20"><path d="M6 3l8 7-8 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
     </div>
-    <div id="bGrab" class="ctl btn" aria-hidden="true">Grab</div>
+    <div id="bGrab" class="ctl btn dim" aria-hidden="true">Grab</div>
     <div id="bJump" class="ctl btn" aria-hidden="true">Jump</div>
     <button id="bPause" class="ctl" type="button" aria-label="Pause"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="5" y="4" width="3.4" height="12" rx="1" fill="currentColor"/><rect x="11.6" y="4" width="3.4" height="12" rx="1" fill="currentColor"/></svg></button>
 
@@ -2411,11 +2413,13 @@ function stCrouch(dt,ix){
     if(Math.abs(nx-P.x)>0.01){P.x=nx;const ph0=P.ph;P.ph+=CRAWL*dt/26;P.crawling=true;if(!S.learned.crawl)learn('crawl');if(Math.floor(ph0*2)!==Math.floor(P.ph*2))Snd.play('step');}
   }
 }
-function tryDrink(){for(const it of L.items){if(it.taken||it.r!==pRow())continue;if(Math.abs(it.x-P.x)<14){
+// the flask a drink would reach (no side effects: the Grab button's label asks it too)
+function findFlask(){const r=pRow();for(const it of L.items){if(it.taken||it.r!==r)continue;if(Math.abs(it.x-P.x)<14)return it;}return null;}
+function tryDrink(){const it=findFlask();if(it){
   // he steps to where his front hand lands on the flask (about 19 px ahead of the hip), but never onto a gap or into a wall
   let tx=it.x-P.face*19.6;const ok=x=>solidBelow(L,Math.floor((x-BW)/TW),pRow())&&solidBelow(L,Math.floor((x+BW)/TW),pRow());
   for(let i=0;i<12&&!ok(tx);i++)tx+=Math.sign(P.x-tx)*2;if(!ok(tx))tx=P.x;
-  P.drinkIt=it;P.dkG=P.dkS=P.dkFx=P.dkRel=false;P.sx=P.x;P.tx=clampMove(P.x,tx,P.y,P);setState('drink');return true;}}return false;}
+  P.drinkIt=it;P.dkG=P.dkS=P.dkFx=P.dkRel=false;P.sx=P.x;P.tx=clampMove(P.x,tx,P.y,P);setState('drink');return true;}return false;}
 // the flask in his front hand: where it is, and the bits of the frame (tilt, liquid left)
 function handFlask(){const s=skel(GFX().hd?livePose(P,P.pose):P.pose);return {x:P.x+(P.rdx||0)+P.face*s.hF[0],y:P.y+(P.rdy||0)-s.hipH+(P.yo||0)+s.hF[1]};}
 const flaskR=type=>type==='big'?5.4:type==='life'?4.2:3.2;
@@ -2457,11 +2461,15 @@ function pressPlate(f){if(f.g.tm<=0&&f.g.open<0.05)Snd.play('gate');f.press=game
 function rebuildBlocks(LL){LL=LL||L;LL.blockAt=new Map();LL.blockUnder=new Map();for(const b of LL.ext.blocks){LL.blockAt.set(b.r*LL.cols+b.c,b);LL.blockUnder.set(b.r*LL.cols+b.c,b.under);if(b.mv)LL.blockUnder.set(b.r*LL.cols+b.mv.to,b.under2);}
   for(const f of LL.lifts||[])if(f.t==='lift')LL.blockUnder.set(f.rT*LL.cols+f.sc,EMPTY);} // (a lift's top mouth is drawn as the open shaft; the platform is drawn on top)
 function blockAtCell(c,r){return L.blockAt?L.blockAt.get(r*L.cols+c)||null:null;}
-function tryMoveBlock(bl,dir,kind){const r=bl.r,nc=bl.c+dir;
+// would this block move (no side effects; the Grab button's label asks it too)
+function blockCanMove(bl,dir,kind){const r=bl.r,nc=bl.c+dir;
   if(nc<bl.lo||nc>bl.hi||B(L,nc,r)===WALL)return false;
   const f=F(L,nc,r);if(f&&f.t!=='plate')return false;
   if(G.some(g=>g.alive&&Math.abs(g.x-(nc*TW+16))<26&&Math.abs(g.y-SURF(r))<8))return false;
   if(kind==='pull'){const bc=pCol()-P.face;if(B(L,bc,r)===WALL||!solidBelow(L,bc,r))return false;const bf=F(L,bc,r);if(bf&&['spikes','loose','chomp','saw','low'].includes(bf.t))return false;}
+  return true;}
+function tryMoveBlock(bl,dir,kind){const r=bl.r,nc=bl.c+dir;
+  if(!blockCanMove(bl,dir,kind))return false;
   bl.mv={from:bl.c,to:nc,t:0,dur:0.55};bl.under2=B(L,nc,r);L.base[r*L.cols+nc]=WALL;rebuildBlocks();invalidateCell(bl.c,r);invalidateCell(nc,r);
   P.sx=P.x;P.tx=P.x+(kind==='push'?P.face:-P.face)*TW;setState(kind);Snd.play('push');hint('block');return true;}
 function updateBlocks(dt){for(const bl of L.ext.blocks){
@@ -2486,25 +2494,33 @@ function standOn(){
 }
 // a jump that ends hanging on a ledge: across a pit (gap, wide) or a storey up with Grab held (jgrab)
 function learnGrab(ys){const jk=P.jumpKind;if(jk!=='run'&&jk!=='stand')return;const dx=Math.abs(P.x-P.jx);if(dx>=40)learn('gap');if(jk==='run'&&ys<P.jy-40)learn('jgrab');else if(jk==='run'&&dx>=80)learn('wide');}
-function tryGrab(py){
-  const hp=py-HANG,hn=P.y-HANG;
+// the ledge the hands would catch while they travel from height py-HANG to ny-HANG (no side effects; fills LG). any: Grab held,
+// so the facing and fall-height checks are waived. The Grab button's label asks it over a wider span than one frame.
+const LG={c:0,r:0,s:0,xe:0,ys:0,hx:0,face:0};
+function findLedge(py,any,ny){
+  const hp=py-HANG,hn=ny-HANG;
   for(let r=Math.floor((hp+4)/TH)-1;r<=Math.floor((hn+4)/TH)-1;r++){
     const ys=SURF(r);if(!(hp<=ys&&hn>=ys))continue;
     const c=pCol();
-    for(const lc of [c-1,c,c+1]){
+    for(let k=-1;k<2;k++){const lc=c+k;
       if(B(L,lc,r)===WALL||!solidBelow(L,lc,r))continue;
-      for(const s of [-1,1]){
+      for(let s=-1;s<2;s+=2){
         const hc=lc+s;if(B(L,hc,r)!==EMPTY||B(L,hc,r+1)===WALL)continue;
         const xe=s>0?(lc+1)*TW:lc*TW,hx=xe+s*7;
         if(Math.abs(P.x-hx)>12)continue;
-        const face=-s;if(!I.g&&(face!==P.face||(ys<P.fallY-2&&!['wall','kick','slip'].includes(P.jumpKind))))continue;
-        learnGrab(ys);P.x=hx;P.y=ys+HANG;P.face=face;P.vx=0;P.vy=0;P.ledge={c:lc,r,s,xe,ys};P.jumpKind=null;setState('hang');Snd.play('grab');
-        const lf=F(L,lc,r);if(lf&&lf.t==='loose')triggerLoose(lf);
-        return true;
+        const face=-s,jk=P.jumpKind;if(!any&&(face!==P.face||(ys<P.fallY-2&&jk!=='wall'&&jk!=='kick'&&jk!=='slip')))continue;
+        LG.c=lc;LG.r=r;LG.s=s;LG.xe=xe;LG.ys=ys;LG.hx=hx;LG.face=face;return LG;
       }
     }
   }
-  return false;
+  return null;
+}
+function tryGrab(py){
+  const g=findLedge(py,!!I.g,P.y);if(!g)return false;
+  const lc=g.c,r=g.r,s=g.s,xe=g.xe,ys=g.ys,hx=g.hx,face=g.face;
+  learnGrab(ys);P.x=hx;P.y=ys+HANG;P.face=face;P.vx=0;P.vy=0;P.ledge={c:lc,r,s,xe,ys};P.jumpKind=null;setState('hang');Snd.play('grab');
+  const lf=F(L,lc,r);if(lf&&lf.t==='loose')triggerLoose(lf);
+  return true;
 }
 function landingSurface(py,ny){
   const r0=Math.floor((py+4)/TH)-1,r1=Math.floor((ny+4)/TH)-1;
@@ -6050,7 +6066,7 @@ function drawOverlayText(ctx){
     const cause={fall:'The fall was too far',spikes:'Impaled on the spikes',sword:'Cut down',blade:'Caught by the blade',crush:'Crushed by falling stone',poison:'Poisoned',snake:'Bitten by a snake',fire:'Burned',pend:'Struck by the pendulum',saw:'Cut by the saw',dart:'Struck by a dart',sand:'Swallowed by the sand'}[P.cause]||'You fell';
     ctx.fillStyle='#e4683b';ctx.font='24px Lalezar, Georgia, serif';ctx.fillText(cause,viewW/2,ROOM_H/2-10);
     ctx.fillStyle='#f2e9d8';ctx.font='600 8.5px Vazirmatn, system-ui, sans-serif';
-    if(canRewind()){if(deadT>0.7){ctx.fillStyle='#e8c47f';ctx.fillText('Grab: turn back the sands ('+S.sands+' left)',viewW/2,ROOM_H/2+13);ctx.fillStyle='#f2e9d8';ctx.fillText(L.cpIndex>=0?'Jump: rise at the hourglass':'Jump: rise at the floor gate',viewW/2,ROOM_H/2+26);}}
+    if(canRewind()){if(deadT>0.7){ctx.fillStyle='#e8c47f';ctx.fillText('Rewind: turn back the sands ('+S.sands+' left)',viewW/2,ROOM_H/2+13);ctx.fillStyle='#f2e9d8';ctx.fillText(L.cpIndex>=0?'Jump: rise at the hourglass':'Jump: rise at the floor gate',viewW/2,ROOM_H/2+26);}}
     else ctx.fillText(deadT>0.9?(L.cpIndex>=0?'Tap Jump to rise at the hourglass':'Tap Jump to rise at the floor gate'):'',viewW/2,ROOM_H/2+14);
     if(P.cause==='spikes'){ctx.fillStyle='#e8c47f';ctx.fillText('Spikes spare a careful step: hold Grab and tap toward them.',viewW/2,ROOM_H/2+(canRewind()?42:30));}
     ctx.globalAlpha=1;}
@@ -6080,7 +6096,7 @@ function layout(){
   const jS=Math.round(padSz*0.5),gS=Math.round(padSz*0.44);
   pad.style.width=pad.style.height=padSz+'px';
   bJump.style.width=bJump.style.height=jS+'px';bGrab.style.width=bGrab.style.height=gS+'px';
-  bJump.style.fontSize=bGrab.style.fontSize=Math.round(padSz*0.08)+'px';
+  bJump.style.fontSize=Math.round(padSz*0.08)+'px';bGrab.style.setProperty('--gfs',Math.round(padSz*0.08)+'px');glFit();
   const bottom=portrait?Math.max(18,(H-(ct-iT+ch)-padSz)/2):12;
   const side=portrait?18:14;
   const L1=S.set.lefty;
@@ -6114,6 +6130,58 @@ function bindBtn(el,k){let id=null;
   el.addEventListener('pointerdown',e=>{e.preventDefault();Snd.unlock();try{el.setPointerCapture(e.pointerId);}catch(_){}id=e.pointerId;setKey('touch',k,true);el.classList.add('on');});
   for(const t of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(t,e=>{if(e.pointerId!==id)return;id=null;setKey('touch',k,false);el.classList.remove('on');});}
 bindBtn(bJump,'j');bindBtn(bGrab,'g');
+// ---- the Grab button names what Grab would do right now ----
+// grabLabel() is a pure guess that follows the game's own checks in their own order (it changes nothing, makes no sound, calls no
+// hint). The game still decides; a wrong word is only a cosmetic slip, nothing reads the label.
+function grabLabel(){
+  if(mode==='dead')return canRewind()?(deadT>0.7?'Rewind':'Grab'):(deadT>0.9?'Rise':'Grab'); // the same gates as the death screen (3209)
+  if(mode!=='play'||!P)return 'Grab';
+  const ix=(I.r?1:0)-(I.l?1:0);
+  switch(P.state){
+    case'stand':{
+      if(snakeNear(44))return 'Strike';
+      if(!ix&&findFlask())return 'Drink'; // every flask, poison too
+      const bl=blockAtCell(pCol()+P.face,pRow());
+      if(bl&&!bl.mv&&P.stumble<=0&&Math.abs((P.face>0?(pCol()+P.face)*TW:(pCol()+P.face+1)*TW)-P.x)<=26){
+        if(ix===-P.face)return blockCanMove(bl,-P.face,'pull')?'Pull':'Grab'; // pad held away: a pull (a refused pull still eats the press)
+        if(blockCanMove(bl,P.face,'push'))return 'Push';}
+      {const f=F(L,pCol(),pRow());if(hazardEdge(64)!==null||(f&&f.t==='spikes'))return 'Step';} // spikes (under him or ahead) or an edge ahead: Grab + a tap toward it is a careful step
+      return 'Grab';}
+    case'crouch':
+      if(P.lowSword)return 'Thrust';
+      if(underLow())return 'Grab'; // no room to draw in a tunnel: the press only says so
+      if(snakeNear(44))return 'Strike';
+      if(findFlask())return 'Drink';
+      return 'Draw';
+    case'garde':case'advance':case'retreat':case'strike':case'parry':case'blocked':
+      return P.foe&&P.foe.alive&&P.stumble<=0?'Strike':'Grab';
+    case'lowStrike':case'poke':return 'Grab';
+    case'slide':return 'Slide';
+    case'air':{
+      if(barNear())return 'Swing';
+      if(P.vy>0&&bannerAt())return 'Slide';
+      // a ledge the hands will pass in the next moment: down the fall ahead (0.45 s), or after the top of a jump
+      const top=P.vy<0?P.vy*P.vy/(2*GRAV):0;
+      if(findLedge(P.y-top,true,P.y+Math.max(0,P.vy)*0.45+10))return 'Hang';
+      return 'Grab';}
+  }
+  return 'Grab';
+}
+// shown label, candidate, when the candidate first appeared (ms of the frame clock)
+let glShown='Grab',glCand='Grab',glSince=0;
+// shrink the font until the word fits inside the round button (letter-spacing counts)
+function glFit(){bGrab.style.removeProperty('--lk');
+  const w=bGrab.clientWidth;if(!w)return;
+  const rg=document.createRange();rg.selectNodeContents(bGrab);const tw=rg.getBoundingClientRect().width,lim=w*0.8;
+  if(tw>lim)bGrab.style.setProperty('--lk',Math.max(0.5,Math.floor(lim/tw*100)/100));}
+function glSet(t){glShown=t;bGrab.textContent=t;bGrab.classList.toggle('dim',t==='Grab');glFit();}
+// A new word shows after ~0.15 s of agreeing predictions, the plain word after 0.3 s; Rewind, Rise and Strike switch at once
+function updateGrabLabel(ts){
+  const want=grabLabel();
+  if(want!==glCand){glCand=want;glSince=ts;}
+  if(want===glShown)return;
+  if(want==='Rewind'||want==='Rise'||want==='Strike'||ts-glSince>=(want==='Grab'?300:150))glSet(want);
+}
 cv.addEventListener('pointerdown',()=>{Snd.unlock();if(mode==='dead'&&deadT>0.9&&!canRewind())respawn();});
 {let pp=null;
   bPause.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();Snd.unlock();pp=e.pointerId;try{bPause.setPointerCapture(e.pointerId);}catch(_){}});
@@ -6230,6 +6298,7 @@ function loop(ts){
   requestAnimationFrame(loop);
   if(window.__HKfreeze){last=0;return;}
   const dt=last?Math.min(0.1,(ts-last)/1000):0;last=ts;
+  updateGrabLabel(ts);
   if(mode==='play'||mode==='dead'||mode==='rewind'){acc+=dt;let n=0;while(acc>=STEP&&n<6){acc-=STEP;n++;snapPrev();if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}if(n>=6)acc=0;
     frame++;if(S.set.saver&&(frame&1))return;{const iv=(ts-GLP.lastR)/(S.set.saver?2:1);if(GLP.lastR&&iv<250)glTime(iv);GLP.lastR=ts;}const b0=roomBuilds;renderAt(acc/STEP);idleFrames=0;drawBuilds+=roomBuilds-b0;if(roomBuilds===b0)roomWork();}
   else{acc=0;GLP.lastR=0;if(++idleFrames%20===0)render();}
@@ -6260,6 +6329,7 @@ window.__HK={tapCloth,THEMES,progOf,themeName,hint,learn,HINTS,HINT_MOVE,get ban
 Object.assign(window.__HK,{hurt,HK,DISS,GLFX,setClock:f=>{performance.now=f;}}); // S3-A (tests)
 Object.assign(window.__HK,{GLFX,GLREL,clearRooms,bgCache,bgLayers,solidBelow:(c,r)=>solidBelow(L,c,r),roomCanvas}); // (unit B's switches and caches, for its tests)
 
+Object.assign(window.__HK,{hazardEdge,grabLabel,updateGrabLabel,glFit,glSet,get I(){return I;},get glShown(){return glShown;},blockCanMove,findFlask,findLedge}); // (the Grab button's label, for its test)
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 })();
 </script>
