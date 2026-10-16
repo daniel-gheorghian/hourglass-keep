@@ -5235,9 +5235,9 @@ function drawGate(ctx,f,X,Y,ys,half){
   ceilShade(ctx,pl);ctx.restore();}
   // a timed gate has its hourglass set into the wall above it, in a carved roundel centred on that wall's face
   if(!half&&!f.latch&&f.dur>0&&!f.slab){const st=L.theme.style;gateRoundel(ctx,X+16-HX,pl.top-(st==='dungeon'||st==='forge'?12:16),f.tm>0&&f.tm<Infinity?f.tm/f.dur:1,f.tm>0&&f.tm<Infinity);}
-  // a marked gate wears its colour on the wall above it (the cross bar alone is lost in the ceiling's shadow); beside
-  // the hourglass when it has one
-  if(!half&&f.pair!==undefined){const tm=!f.latch&&f.dur>0,st=L.theme.style;pairPlaque(ctx,X+16-HX+(tm?15:0),pl.top-(tm?(st==='dungeon'||st==='forge'?12:16):10),PAIRC[f.pair]);}
+  // a marked gate wears its colour on the wall above it (the cross bar alone is lost in the ceiling's shadow); over
+  // the hourglass, on the same centre line, when it has one
+  if(!half&&f.pair!==undefined){const tm=!f.latch&&f.dur>0&&!f.slab,st=L.theme.style;pairPlaque(ctx,X+16-HX,pl.top-(tm?(st==='dungeon'||st==='forge'?12:16)+19:10),PAIRC[f.pair]);}
 }
 // a small enamelled lozenge in a dark setting
 function pairPlaque(ctx,x,y,col){ctx.save();ctx.translate(x,y);const D=(k,dx,dy)=>{ctx.beginPath();ctx.moveTo(dx,dy-k);ctx.lineTo(dx+k,dy);ctx.lineTo(dx,dy+k);ctx.lineTo(dx-k,dy);ctx.closePath();};
