@@ -693,7 +693,7 @@ function buildLevel(n,seed,test,legacy,att){
       if(a.a==='walk'){mv(a.c);t+=careful?0.4:0.2;continue;}
       if(a.from!==undefined)mv(a.from);
       const dd=a.to!==undefined?Math.abs(a.to-a.from):0;
-      t+=({runover:dd*0.32+0.4,sjump:careful?1.2:1.0,rjump:careful?2.8:1.7,rjumpg:careful?4.0:2.8,tiptoe:dd*0.8+0.5,crawl:dd*0.8+1.3,timed:dd*0.32+2.6,climb:1.3,drink:DR_T,hangdrop:1.8,drop:careful?1.45:0.9,slide:careful?4.0:2.2,walljump:1.6+0.9*(a.k||2),wallrun:2.2,collapse:careful?2.2:1.5,jgrab:careful?4.2:3.0,lift:a.chn?(careful?3.8:3.5)+(a.k*64+32)/CHAIN_V:careful?1.5+1.1*a.k:1.2+a.k})[a.a]||0;
+      t+=({runover:dd*0.32+0.4,sjump:careful?1.2:1.0,rjump:careful?2.8:1.7,rjumpg:careful?4.0:2.8,tiptoe:dd*0.8+0.5,crawl:dd*0.8+1.3,timed:dd*0.32+2.6,climb:1.3,drink:DR_T,hangdrop:1.8,drop:careful?1.45:0.9,slide:careful?4.0:2.2,walljump:1.6+0.9*(a.k||2),wallrun:2.2,collapse:careful?2.2:1.5,jgrab:careful?4.2:3.0,swing:careful?2.4:1.6,lift:a.chn?(careful?3.8:3.5)+(a.k*64+32)/CHAIN_V:careful?1.5+1.1*a.k:1.2+a.k})[a.a]||0;
       if(a.to!==undefined)cur=a.to;}
     return t;}
   const timerK=()=>0.84+0.14*rng()+0.1*(1-d); // timer over the estimated route back (a careful pace): 0.84 (tight) .. 1.08
@@ -2684,7 +2684,7 @@ function stAir(dt){
   if(P.vy<0&&(P.jumpKind==='run'||P.jumpKind==='stand')){const hh=P.lowJump?HEAD_LOW:HEAD_UP,rt=Math.floor((P.y-hh)/TH);
     if(rt!==Math.floor((py-hh)/TH)&&B(L,pCol(),rt)===WALL){P.y=(rt+1)*TH+hh;P.vy=0;}}
   // a swing bar within reach of the hands
-  if(P.autoGrab||I.g){const b=barNear();if(b){P.bar=b;P.sw0=gameTime;P.vx=0;P.vy=0;setState('swing');Snd.play('grab');hint('swing');return;}}
+  if(P.autoGrab||I.g){const b=barNear();if(b){swingCatch(b);Snd.play('grab');hint('swing');return;}}
   if(P.vy>0){
     if((P.autoGrab||I.g)&&tryGrab(py))return;
     if(I.g&&bannerAt()){P.vy=Math.min(P.vy,140);P.vx=0;P.x=pCol()*TW+16;setState('slide');Snd.play('slide');return;}
@@ -2696,9 +2696,43 @@ function stAir(dt){
 function wallTouch(){for(const sd of [1,-1]){const fx=Math.floor((P.x+sd*(BW+1.5))/TW);if(fx===pCol())continue;
   if(B(L,fx,rowOf(P.y-40))===WALL||B(L,fx,rowOf(P.y-12))===WALL)return sd;}return 0;}
 function bannerAt(){const f=F(L,pCol(),rowOf(P.y-30));return !!(f&&f.t==='banner');}
-const SW_A=0.95,SW_W=2*Math.PI/1.15;
+// ---- the swing bar is a trapeze: the bar hangs on its chains from the ceiling (a pendulum of its own) and he swings under it.
+// His swing is a damped pendulum (angle P.swTh, positive = forward of the bar; speed P.swOm), not a clock: left alone it dies down
+// to a still hang in about 4 s (SW_TAU, plus a little friction SW_FR); holding left or right pushes toward that side (SW_K), so
+// pushing in step with the swing, alternating as it turns, pumps it up (seated pumping: a fixed gain per half swing, it works from
+// rest), while holding one way only leans him (Donkey Kong Country's vines, Uncharted's ropes, Tarzan). The catch keeps SW_ETA of
+// his speed along the swing, so a running catch clears the pit at once and a standing one needs a few pumps. Jump lets go with a
+// throw that grows with his speed (normalised to the old fixed swing); from SW_CLEAR the throw clears the pit, and the grip creaks
+// and the bar glints to say so. The bar's chains (angle f.ps, speed f.pw, kept on the feature so a rewind restores them) are pulled
+// after him (SW_KAP) and swing free, dying down, after he lets go.
+const SW_A=0.95,SW_W=2*Math.PI/1.15,SW_TAU=2.2,SW_FR=0.8,SW_K=4.5,SW_MAX=1.0,SW_ETA=0.7,SW_CLEAR=0.55,SW_KAP=0.45;
 function barNear(){const hx=P.x,hy=P.y-HANG;for(const o of L.dyn){const f=o.f;if(f.t!=='bar'||(f===P.lastBar&&gameTime-P.barOff<0.5))continue;if(Math.abs(hx-f.x)<15&&Math.abs(hy-f.y)<20)return f;}return null;}
-function swingPos(){const t=gameTime-P.sw0,th=SW_A*Math.sin(SW_W*t),b=P.bar;return {th,c:Math.cos(SW_W*t),hx:b.x+P.face*34*Math.sin(th),hy:b.y+34*Math.cos(th)};}
+// the bar's pivot height (the ceiling over it) and where the bar hangs now
+function barPv(f){if(f.pv===undefined){const o=L.dyn.find(q=>q.f===f);f.pv=o?ceilingY(o.c,o.r):f.y-44;}return f.pv;}
+const BARP={x:0,y:0};
+function barPos(f){const pv=barPv(f),lc=f.y-pv,a=f.ps||0;BARP.x=f.x+lc*Math.sin(a);BARP.y=pv+lc*Math.cos(a);return BARP;}
+// the swing's amplitude from its energy
+function swAmp(th,om){const e=0.5*om*om/(SW_W*SW_W)+1-Math.cos(th);return e>=2?Math.PI:Math.acos(1-e);}
+function swingCatch(b){const bp=barPos(b),fc=P.face,th=Math.asin(clamp((P.x-bp.x)*fc/34,-0.9,0.9));
+  P.swTh=th;P.swOm=SW_ETA*(P.vx*fc*Math.cos(th)-P.vy*Math.sin(th))/34;P.swRdy=swAmp(P.swTh,P.swOm)>=SW_CLEAR;P.swPump=0;
+  P.bar=b;P.sw0=gameTime;P.vx=0;P.vy=0;setState('swing');swingPlace();}
+function swingPlace(){const bp=barPos(P.bar);P.x=bp.x+P.face*34*Math.sin(P.swTh);P.y=bp.y+34*Math.cos(P.swTh)+24.5;}
+function swingStep(dt,ix){const f=P.bar,fc=P.face,hd=ix*fc;let th=P.swTh,om=P.swOm;
+  let a=-SW_W*SW_W*Math.sin(th)-2/SW_TAU*om+SW_K*hd;
+  if(Math.abs(om)>1e-3)a-=SW_FR*Math.sign(om);else if(!hd&&Math.abs(SW_W*SW_W*Math.sin(th))<SW_FR){a=0;om=0;}
+  om+=a*dt;th+=om*dt;
+  if(!hd&&Math.abs(th)<0.02&&Math.abs(om)<0.1){th*=0.9;om=0;}
+  const A=swAmp(th,om);if(A>SW_MAX&&Math.abs(th)<SW_MAX){const e=1-Math.cos(SW_MAX)-(1-Math.cos(th));om=Math.sign(om)*SW_W*Math.sqrt(Math.max(0,2*e));}
+  if(Math.sign(om)!==Math.sign(P.swOm)&&P.swOm!==0&&swAmp(th,om)>0.1)Snd.play('swing'); // the creak of the turn
+  P.swPump=hd&&hd*om>0?1:0;P.swTh=th;P.swOm=om;
+  const rdy=swAmp(th,om)>=SW_CLEAR;if(rdy&&!P.swRdy){Snd.play('creak');P.swGl=gameTime;}P.swRdy=rdy;
+  // the chains, pulled after him (a stiff, damped spring toward a share of his angle)
+  const wc=2*SW_W,ps=f.ps||0;let pw=f.pw||0;pw+=(wc*wc*(SW_KAP*th*fc-ps)-2*0.6*wc*pw)*dt;f.pw=pw;f.ps=ps+pw*dt;
+  swingPlace();}
+// a bar nobody holds swings free on its chains and dies down
+function barStep(f,dt){if(P.bar===f&&P.state==='swing')return;const ps=f.ps||0,pw=f.pw||0;if(!ps&&!pw)return;
+  const lc=f.y-barPv(f),w2=GRAV/lc;let w=pw+(-w2*Math.sin(ps)-2/1.1*pw)*dt;const a=ps+w*dt;
+  if(Math.abs(a)<0.004&&Math.abs(w)<0.02){f.ps=0;f.pw=0;}else{f.ps=a;f.pw=w;}}
 // his body through the swing, not a stiff pendulum: the gymnast's long hang swing (the tap swing). At the back end his legs hang a
 // little under him (the swing itself reaches 54 degrees); on the way down he arches (chest leading, heels behind) and 10 to 45
 // degrees before the bottom the hips open further and then whip shut (the beat), so the legs lead through the bottom and up the
@@ -2706,14 +2740,16 @@ function swingPos(){const t=gameTime-P.sw0,th=SW_A*Math.sin(SW_W*t),b=P.bar;retu
 // swing's phase (radians of SW_W*t): hip, knee, lean, head; the legs a little apart, the arms solved each frame to reach the bar.
 const SWK=[[0,.3,.28,.08,.15],[.85,.6,.5,.12,.25],[1.571,.66,.6,.14,.28],[2.3,.36,.36,.05,.1],[3.14,-.02,.25,-.01,-.04],
   [4.05,0,.5,-.02,-.12],[4.712,.04,.6,-.02,-.15],[5.55,-.28,.55,-.07,-.16],[5.98,-.05,.3,.02,0],[6.2832,.3,.28,.08,.15]];
-const SWP=mk({air:1}),BAR_RK=0.9; // BAR_RK: how far the hung bar is drawn pulled toward him (px at full swing; drawBar)
-function swingPose(t,th){const p=SWP,ph=((SW_W*t)%6.2832+6.2832)%6.2832;let i=0;while(i<SWK.length-2&&SWK[i+1][0]<=ph)i++;
-  const a=SWK[i],b=SWK[i+1],u=ease((ph-a[0])/(b[0]-a[0])),L1=(k)=>a[k]+(b[k]-a[k])*u,h=L1(1),k=L1(2);
-  p.hF=h+0.08;p.kF=k*0.8;p.hB=h-0.1;p.kB=k+0.12;p.lean=L1(3);p.head=L1(4);p.rot=-th;p.sw=0.25;
+const SWP=mk({air:1});
+// (the phase is read off the swing's state: atan2 of the angle and the speed over SW_W; at a low amplitude the shape fades toward a
+// plain hang, and while he pumps the beat and the hollow go deeper)
+function swingPose(th,om,pump){const p=SWP,ph=(Math.atan2(th,om/SW_W)+6.2832)%6.2832,A=swAmp(th,om),k0=Math.min(1,A/0.25)*(1+0.3*(pump||0));let i=0;while(i<SWK.length-2&&SWK[i+1][0]<=ph)i++;
+  const a=SWK[i],b=SWK[i+1],u=ease((ph-a[0])/(b[0]-a[0])),L1=(k)=>a[k]+(b[k]-a[k])*u,h=L1(1)*k0+0.04*(1-Math.min(1,k0)),k=L1(2)*Math.min(1,k0)+0.16*(1-Math.min(1,k0));
+  p.hF=h+0.08;p.kF=k*0.8;p.hB=h-0.1;p.kB=k+0.12;p.lean=L1(3)*k0;p.head=L1(4)*k0+0.15*(1-Math.min(1,k0));p.rot=-th;p.sw=0.25;
   // the swing holds his hip 34 px from the bar and straight arms reach 32.5: the figure is drawn a little higher (hy) and the arms
   // are solved for where the bar (pulled toward him) then lies in his own turned frame, so the hands stay on its grip
   const c=Math.cos(th),sn=Math.sin(th),lift=1.8/Math.max(0.55,c);p.hy=24.5+lift;
-  const wx=-34*sn+BAR_RK*sn,wy=-34*c+lift,tx=wx*c-wy*sn,ty=wx*sn+wy*c;
+  const wx=-34*sn,wy=-34*c+lift,tx=wx*c-wy*sn,ty=wx*sn+wy*c;
   const sx=LEN.to*Math.sin(p.lean),sy=-LEN.to*Math.cos(p.lean),dx=tx-sx,dy=ty-sy,D=Math.hypot(dx,dy),R=LEN.ua+LEN.fa;let a0=Math.atan2(dx,dy);if(a0<0)a0+=6.2832; // (overhead is near pi: kept on one side of the wrap, as the pose is blended)
   if(D>=R){p.aF=a0;p.eF=0;}else{const be=Math.acos(clamp((LEN.ua*LEN.ua+D*D-LEN.fa*LEN.fa)/(2*LEN.ua*D),-1,1)),ga=Math.acos(clamp((LEN.ua*LEN.ua+LEN.fa*LEN.fa-D*D)/(2*LEN.ua*LEN.fa),-1,1));p.aF=a0+be;p.eF=-(Math.PI-ga);}
   p.aB=p.aF-0.04;p.eB=p.eF;return p;}
@@ -2794,10 +2830,9 @@ function updatePlayer(dt){
       if(Math.floor(P.t*2.5)!==Math.floor((P.t-dt)*2.5))Snd.play('slide');if(Math.random()<0.45)FX.push({x:P.x+P.face*3,y:P.y-56,vx:(Math.random()-0.5)*24,vy:-30+Math.random()*12,g:50,life:0.35,t:0,col:'rgba(230,210,170,.55)',sz:1.1});
       const h=landingSurface(py,P.y);if(h){land(h);break;}
       if(!I.g||!bannerAt()){setState('air');P.vx=0;P.jumpKind=null;P.autoGrab=false;}break;}
-    case'swing':{const sp=swingPos();P.x=sp.hx;P.y=sp.hy+24.5;P.swTh=sp.th;
-      if(Math.floor(((gameTime-P.sw0)*SW_W)/Math.PI)!==Math.floor(((gameTime-P.sw0-dt)*SW_W)/Math.PI))Snd.play('swing');
-      if(took('j')){learn('swing');const c=sp.c;setState('air');P.fallY=P.y;P.autoGrab=true;P.jumpKind='swing';
-        if(c>0.15){P.vx=P.face*(120+80*c);P.vy=-(130+90*c);}else{P.vx=P.face*45*c;P.vy=-20;}Snd.play('jump');P.lastBar=P.bar;P.barOff=gameTime;P.bar=null;break;}
+    case'swing':{swingStep(dt,ix);
+      if(took('j')){learn('swing');const c=P.swOm/(SW_A*SW_W);setState('air');P.fallY=P.y;P.autoGrab=true;P.jumpKind='swing';
+        if(c>0.15){P.vx=P.face*(40+165*c);P.vy=-(60+165*c);}else{P.vx=P.face*45*c;P.vy=-20;}Snd.play('jump');P.lastBar=P.bar;P.barOff=gameTime;P.bar=null;break;}
       if(took('d')){setState('air');P.fallY=P.y;P.vx=0;P.vy=0;P.autoGrab=false;P.jumpKind=null;P.lastBar=P.bar;P.barOff=gameTime;P.bar=null;}break;}
     case'air':stAir(dt);break;
     // riding a lift: carried at the platform's height; an end of the shaft hands him back (a cycling lift: while it rests)
@@ -2862,7 +2897,7 @@ function updatePlayer(dt){
       let fy=null;for(let r=rowOf(P.y-1);r<L.rows&&fy===null;r++)if(solidBelow(L,pCol(),r))fy=SURF(r);
       const k=fy===null?0:clamp(1-(fy-P.y)/52,0,1);if(k>0){tgt.hF=lerp(tgt.hF,1.0,k);tgt.kF=lerp(tgt.kF,1.75,k);tgt.hB=lerp(tgt.hB,0.75,k);tgt.kB=lerp(tgt.kB,1.55,k);tgt.head+=0.15*k;}
       tgt.sw=P.face>0?0.46:Math.PI-0.46;rate=P.t<0.1?50:36;break;}
-    case'swing':tgt=swingPose(gameTime-P.sw0,P.swTh||0);rate=90;break;
+    case'swing':tgt=swingPose(P.swTh||0,P.swOm||0,P.swPump);rate=90;break;
     case'air':
       if(P.plant){tgt=plantPose();rate=45;break;}
       if(P.jumpKind==='kick'){tgt=kickPose();rate=36;break;}
@@ -3035,6 +3070,7 @@ function updateFeatures(dt){
   const pr=pRow(),alive=P.state!=='dead';
   for(const o of L.dyn){const f=o.f;
     switch(f.t){
+      case'bar':barStep(f,dt);break;
       case'loose':if(f.s===1){f.tm+=dt;if(f.tm>=(f.plank?0.42:0.5)){f.s=2;L.base[o.r*L.cols+o.c]=EMPTY;L.debris.push({x:o.c*TW+16,y:SURF(o.r),vy:0,c:o.c,hitP:false,kind:f.plank?'plank':'slab'});Snd.play(f.plank?'creak':'crumble');invalidateCell(o.c,o.r);}}break;
       case'stone':
         if(f.s===0){if(alive&&pr===o.r&&Math.abs(P.x-(o.c*TW+16))<22&&!['hang','climb','climbDown'].includes(P.state)){f.s=1;f.tm=0;Snd.play('creak');hint('stone');}}
@@ -3132,7 +3168,7 @@ const HINTS={
   sandgate:'The hourglass on this gate means it will not stay open. Its plate is out of sight; find it, then race back before the sand runs out.',
   wallrun:'Run at a wall and press Jump to run up it. You can reach a ledge two floors up and catch it.',
   walljump:'Kick off walls: press Jump each time you touch one. Bounce between close walls to climb a shaft.',
-  swing:'A swing bar. Press Jump as you swing forward to fly off it; too early or late and you fall short. Down lets go.',
+  swing:'A swing bar. Push left and right in time with the swing to build it up (it creaks when it will carry you), then Jump as you swing forward. Down lets go.',
   banner:'A long tapestry hangs down this shaft. Hold Grab as you fall to slide down it safely.',
   shaft:'A narrow shaft with a ledge at the top. Jump into a wall, then kick from wall to wall with Jump.',
   saw:'A saw blade runs along the floor. Jump it as it comes at you.',
@@ -4777,7 +4813,7 @@ function drawShooter(ctx,f){
 // chains like the lifts', one at each end, from the ceiling straight above. While he swings it is pulled a little toward him (drawn only).
 function drawBar(ctx,o,f){
   const K='#0b0812',bp=metalPal('gate'),hp=metalPal('hub'),cp=metalPal('chain'),ty=ceilingY(o.c,o.r),U=16;
-  const on=P&&P.state==='swing'&&P.bar===f,bx=f.x+(on?BAR_RK*Math.sin(P.swTh||0)*P.face:0),by=f.y;
+  f.pv=ty;const bq=barPos(f),bx=bq.x,by=bq.y,on=P&&P.state==='swing'&&P.bar===f;
   const at=(u)=>[bx+u*DX/(2*U),by-u*DY/(2*U)]; // u from -16 (front end) to 16 (back end)
   const chain=(u)=>{const [x1,y1]=at(u),x0=f.x+u*DX/(2*U),yt=ty-u*DY/(2*U),n=Math.max(2,Math.round((y1-3.5-yt)/5.2)),sp=(y1-3.5-yt)/n;
     ctx.fillStyle=K;ctx.fillRect(x0-3.6,yt-0.5,7.2,2.8);ctx.fillStyle=hp[1];ctx.fillRect(x0-3,yt,6,1.7);ctx.fillStyle=hp[3];ctx.fillRect(x0-3,yt,6,0.5); // ceiling plate
@@ -4797,7 +4833,10 @@ function drawBar(ctx,o,f){
   ctx.restore();
   {const [x,y]=at(-U);ctx.fillStyle=K;ctx.beginPath();ctx.ellipse(x,y,1.9,3,0,0,6.2832);ctx.fill();ctx.fillStyle=hp[2];ctx.beginPath();ctx.ellipse(x,y,1.2,2.3,0,0,6.2832);ctx.fill(); // the near end, seen end on
     ctx.fillStyle=hp[0];ctx.beginPath();ctx.arc(x,y,0.6,0,6.2832);ctx.fill();}
-  chain(-13);}                                                                                              // the near chain, in front of it
+  chain(-13);                                                                                               // the near chain, in front of it
+  if(on&&P.swRdy){const k=clamp((gameTime-(P.swGl||0))/0.45,0,1),u=lerp(-U,U,k);if(k<1){const [x,y]=at(u);  // ready: a glint runs along the pole
+    ctx.save();ctx.globalCompositeOperation='lighter';const gg=ctx.createRadialGradient(x,y-1,0,x,y-1,6);gg.addColorStop(0,'rgba(255,240,200,.9)');gg.addColorStop(1,'rgba(255,240,200,0)');
+    ctx.fillStyle=gg;ctx.fillRect(x-6,y-7,12,12);ctx.restore();}}}
 function drawPend(ctx,o,f){
   const b=pendGeom(o,f),th=L.theme,pal=metalPal('pend');
   ctx.fillStyle='#0b0812';ctx.fillRect(b.px-4,b.py,8,4);ctx.fillStyle='#d8b04a';ctx.fillRect(b.px-3,b.py,6,2.6);
@@ -6305,9 +6344,9 @@ function drawMetalMask(VZ,camD,camDY){
         g.save();g.translate(b.x,b.y);g.rotate(-b.th);pendBlade(g);g.fillStyle=msCol(pid,MS_ANY);g.fill();g.restore();
         msDisc(g,b.x,b.y,3,MKID.gold);g.fillStyle=msCol(MKID.gold,MS_ANY);g.fillRect(b.px-3,b.py,6,2.6);
         msBox(Math.min(b.px,b.x)-18,b.py,Math.max(b.px,b.x)+18,b.y+16);break;}
-      case'bar':{const bx=f.x,by=f.y,ty=ceilingY(o.c,o.r),ch=msKind('chain'),ex=13*DX/32,ey=13*DY/32;msLine(g,bx-ex,by+ey-3,bx-ex,ty+ey,3.4,ch);msLine(g,bx+ex,by-ey-3,bx+ex,ty-ey,3.4,ch);
+      case'bar':{const ty=ceilingY(o.c,o.r);f.pv=ty;const bq=barPos(f),bx=bq.x,by=bq.y,ch=msKind('chain'),ex=13*DX/32,ey=13*DY/32;msLine(g,bx-ex,by+ey-3,f.x-ex,ty+ey,3.4,ch);msLine(g,bx+ex,by-ey-3,f.x+ex,ty-ey,3.4,ch);
         msLine(g,bx-DX/2,by+DY/2,bx+DX/2,by-DY/2,4.2,msKind('gate'));g.fillStyle=msCol(msKind('hub'),MS_ANY);g.fillRect(bx-DX/2-1.5,by+DY/2-2.6,3,5.2);
-        msBox(bx-18,ty,bx+18,by+6);break;}
+        msBox(Math.min(bx,f.x)-18,ty,Math.max(bx,f.x)+18,by+6);break;}
       case'grate':{g.strokeStyle=msCol(gid,MS_ANY);g.lineWidth=2;g.beginPath();
         for(let i=0;i<6;i++){const a=onFloor(X+3+i*5.2,0.04,ys),b=onFloor(X+3+i*5.2,0.96,ys);g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);}
         for(const d of [0.04,0.5,0.96]){const a=onFloor(X,d,ys),b=onFloor(X+TW,d,ys);g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);}g.stroke();msBox(X-8,ys-12,X+TW+8,ys+12);break;}
@@ -7347,7 +7386,7 @@ window.__HK={tapCloth,THEMES,progOf,themeName,hint,learn,HINTS,HINT_MOVE,get ban
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
   get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,ryOps,ryShape,ryProfile,skyBeam,RY,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,plantPose,legIK,mk,drawDynamic,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
-  get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V};
+  get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V};
 Object.assign(window.__HK,{guardBudget,snakeBudget}); // (the fighters' budgets, for guardscan.py)
 Object.assign(window.__HK,{hurt,HK,DISS,sandP,SAND_HP,GLFX,setClock:f=>{performance.now=f;}}); // S3-A (tests)
 Object.assign(window.__HK,{FLM,FLV,ventState,cyc}); // FL (flames: the sheets and the vent's look, for tests)

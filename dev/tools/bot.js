@@ -32,7 +32,7 @@ function* botGen(n, seed, opts) {
   const path = opts.path || L.path;
   // a test may start the prince anywhere (opts.at: column, row, facing) and end on a condition of its own (opts.done)
   if (opts.at) { const P0 = H.P; P0.x = opts.at.c * 32 + 16; P0.y = (opts.at.r + 1) * 64 - 4; P0.fallY = P0.y; P0.face = opts.at.face || 1; P0.state = 'stand'; }
-  let f1 = 0, i = 0, ph = 0, f0 = 0, frames = 0, r0 = 0, hurtCount = 0, lastHp = H.P.hp, fights = 0;
+  let f1 = 0, i = 0, ph = 0, f0 = 0, frames = 0, r0 = 0, hurtCount = 0, lastHp = H.P.hp, fights = 0, swGo = false;
   const maxPer = 60 * 90;
   const P = () => H.P;
   const row = () => Math.floor((P().y - 1) / 64);
@@ -239,9 +239,15 @@ function* botGen(n, seed, opts) {
         else if (ph === 1) { set('g', false); set(fwd, true); if (p.state === 'run' && (p.x - (cx(ins.from) - 44 * dir)) * dir >= 0) { press('j'); ph = 2; } }
         else if (ph === 2) { if (p.state === 'air') set(fwd, false); if (p.state === 'swing') ph = 3; else if (p.state === 'stand') return fail(ins, 'missed the bar'); }
         else if (ph === 3) {
-          const t = H.gameTime - p.sw0, c = Math.cos(H.SW_W * t);
-          if (p.state === 'swing' && c > 0.8 && t > 0.05) press('j');
-          if (p.state !== 'swing') ph = 4;
+          // the swing is a damped pendulum: pump (hold the way he is moving) until it is big enough, then let go moving forward
+          // while still low on the front swing
+          if (p.state === 'swing') {
+            const th = p.swTh, om = p.swOm, W = H.SW_W, e = 0.5 * om * om / (W * W) + 1 - Math.cos(th), A = Math.acos(Math.max(-1, 1 - e));
+            if (A < 0.6) swGo = false;
+            if (A < 0.8 && !swGo) { set(fwd, om >= 0); set(back, om < 0); }
+            else { swGo = true; set(fwd, false); set(back, false); if (om > 0 && th >= 0.15 && th <= 0.3) press('j'); }
+          }
+          if (p.state !== 'swing') { set(fwd, false); set(back, false); swGo = false; ph = 4; }
         }
         else if (ph === 4) { if (p.state === 'hang') set('u', true); if (p.state === 'stand') { if (past(ins.to, dir)) next(); else return fail(ins, 'swing short'); } }
         break;

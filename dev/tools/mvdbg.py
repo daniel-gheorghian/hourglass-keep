@@ -22,7 +22,7 @@ with sync_playwright() as p:
       for(let f=0;f<400;f++){
         if(kind==='wallrun'){if(ph===1&&P.state==='run'&&P.x>=c*32+16-34){press('j');ph=2;}if(ph===2&&P.state!=='run')set('r',false);if(P.state==='hang')set('u',true);}
         if(kind==='swing'){if(ph===1&&P.state==='run'&&P.x>=c*32+16-44){press('j');ph=2;}if(ph===2&&P.state==='air')set('r',false);if(ph===2&&P.state==='swing'){ph=3;t0=H.gameTime;}
-          if(ph===3){const t=H.gameTime-P.sw0;if(P.state==='swing'&&Math.cos(H.SW_W*t)>0.8&&t>0.05)press('j');if(P.state!=='swing')ph=4;}if(ph===4&&P.state==='hang')set('u',true);}
+          if(ph===3){if(P.state==='swing'){const A=H.swAmp(P.swTh,P.swOm),f=P.face>0?'r':'l',b=P.face>0?'l':'r';if(A<0.8){set(f,P.swOm>=0);set(b,P.swOm<0);}else{set(f,false);set(b,false);if(P.swOm>0&&P.swTh>=0.15&&P.swTh<=0.3)press('j');}}if(P.state!=='swing')ph=4;}if(ph===4&&P.state==='hang')set('u',true);}
         H.tick(1);if(pulse){set(pulse,false);pulse=null;}
         if(f%4===0)out.push(P.state+' x'+Math.round(P.x-c*32)+' y'+Math.round(P.y-((r+1)*64-4))+' vy'+Math.round(P.vy));
         if(P.state==='dead')break;}

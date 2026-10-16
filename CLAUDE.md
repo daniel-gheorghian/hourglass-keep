@@ -145,6 +145,11 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   Moonlight fell to 0.26), and each sky opening adds a soft bounce light where its beam meets the floor (`gatherLights`, Torchlight only).
   The fire vent burns over its whole grate (`VJETS`: a jet per slot, back and front rows, merging into one sheet); its timing and
   hit test are unchanged.
+- The swing bar is a trapeze (v57, owner): his swing is a damped pendulum (`P.swTh`, `P.swOm`; `swingStep`) that dies down to a still
+  hang in about 4 s (`SW_TAU`, `SW_FR`); holding left or right pushes that way (`SW_K`), so alternating in step pumps it up (to `SW_MAX`) and
+  holding one way only leans him; the catch keeps `SW_ETA` of his speed (a running catch clears at once); Jump's throw grows with his speed,
+  and from `SW_CLEAR` it carries him over (the grip creaks, the bar glints). The chains swing too (`f.ps`, `f.pw` on the feature, so a rewind
+  restores them). The bot pumps to 0.8 and lets go moving forward at 0.15 to 0.3 rad. Check with `swingtest.py`.
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized from `estPath()` at a careful pace, times 0.84 to 1.08.
 - Pose angles are measured from straight down; positive means forward.
