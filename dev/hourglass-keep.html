@@ -2699,6 +2699,20 @@ function bannerAt(){const f=F(L,pCol(),rowOf(P.y-30));return !!(f&&f.t==='banner
 const SW_A=0.95,SW_W=2*Math.PI/1.15;
 function barNear(){const hx=P.x,hy=P.y-HANG;for(const o of L.dyn){const f=o.f;if(f.t!=='bar'||(f===P.lastBar&&gameTime-P.barOff<0.5))continue;if(Math.abs(hx-f.x)<15&&Math.abs(hy-f.y)<20)return f;}return null;}
 function swingPos(){const t=gameTime-P.sw0,th=SW_A*Math.sin(SW_W*t),b=P.bar;return {th,c:Math.cos(SW_W*t),hx:b.x+P.face*34*Math.sin(th),hy:b.y+34*Math.cos(th)};}
+// his body through the swing, not a stiff pendulum: the gymnast's long hang swing (the tap swing). At the back end the body is
+// arched (chest leading, heels behind); 10 to 45 degrees before the bottom the hips open further and then whip shut (the beat), so
+// the legs lead through the bottom and up the front swing in a hollow, toes reaching for the far side; falling back, the hips open
+// and he passes the bottom straight and rises behind in the arch again. Keys by the swing's phase (radians of SW_W*t): hip, knee,
+// lean, head; the legs a little apart, the arms solved each frame to reach the bar (34 px above the hip in the swing's frame).
+const SWK=[[0,.35,.2,.12,.18],[.85,.72,.42,.18,.28],[1.571,.8,.5,.2,.3],[2.3,.42,.3,.08,.12],[3.14,-.04,.14,-.02,-.05],
+  [4.05,-.2,.4,-.1,-.2],[4.712,-.26,.5,-.13,-.24],[5.55,-.4,.42,-.17,-.22],[5.98,-.08,.24,.02,0],[6.2832,.35,.2,.12,.18]];
+const SWP=mk({air:1});
+function swingPose(t,th){const p=SWP,ph=((SW_W*t)%6.2832+6.2832)%6.2832;let i=0;while(i<SWK.length-2&&SWK[i+1][0]<=ph)i++;
+  const a=SWK[i],b=SWK[i+1],u=ease((ph-a[0])/(b[0]-a[0])),L1=(k)=>a[k]+(b[k]-a[k])*u,h=L1(1),k=L1(2);
+  p.hF=h+0.08;p.kF=k*0.8;p.hB=h-0.1;p.kB=k+0.12;p.lean=L1(3);p.head=L1(4);p.rot=-th;p.sw=0.25;p.hy=24.5;
+  const sx=LEN.to*Math.sin(p.lean),sy=-LEN.to*Math.cos(p.lean),dx=-sx,dy=-33.5-sy,D=Math.hypot(dx,dy),a0=Math.atan2(dx,dy),R=LEN.ua+LEN.fa;
+  if(D>=R){p.aF=a0;p.eF=0;}else{const be=Math.acos(clamp((LEN.ua*LEN.ua+D*D-LEN.fa*LEN.fa)/(2*LEN.ua*D),-1,1)),ga=Math.acos(clamp((LEN.ua*LEN.ua+LEN.fa*LEN.fa-D*D)/(2*LEN.ua*LEN.fa),-1,1));p.aF=a0+be;p.eF=-(Math.PI-ga);}
+  p.aB=p.aF-0.04;p.eB=p.eF;return p;}
 function startWallRun(){const wc=pCol()+P.face;P.x=P.face>0?wc*TW-BW-1:(wc+1)*TW+BW+1;P.vx=0;P.vy=-WR_V;P.fallY=P.y;P.autoGrab=true;P.jumpKind='wall';P.wrY0=P.y;P.wrPose=mk(P.pose);setState('wallrun');P.ph=0.25;Snd.play('jump');hint('wallrun');}
 // distance to a wall face straight ahead on this floor (only across solid floor), or null
 function wallAhead(){const row=pRow();let c=pCol();for(let i=0;i<3;i++){const nc=c+P.face;if(B(L,nc,row)===WALL)return {d:P.face>0?nc*TW-P.x:P.x-(nc+1)*TW,wc:nc};if(!solidBelow(L,nc,row))return null;const f=F(L,nc,row);if(f&&(f.t==='gate'&&f.open<0.5))return null;c=nc;}return null;}
@@ -2844,7 +2858,7 @@ function updatePlayer(dt){
       let fy=null;for(let r=rowOf(P.y-1);r<L.rows&&fy===null;r++)if(solidBelow(L,pCol(),r))fy=SURF(r);
       const k=fy===null?0:clamp(1-(fy-P.y)/52,0,1);if(k>0){tgt.hF=lerp(tgt.hF,1.0,k);tgt.kF=lerp(tgt.kF,1.75,k);tgt.hB=lerp(tgt.hB,0.75,k);tgt.kB=lerp(tgt.kB,1.55,k);tgt.head+=0.15*k;}
       tgt.sw=P.face>0?0.46:Math.PI-0.46;rate=P.t<0.1?50:36;break;}
-    case'swing':{tgt=lerpPose(PS.hang,PS.reach,0.4,mk({}));const th=P.swTh||0;tgt.rot=-th;tgt.hF=0.15-0.6*th;tgt.kF=0.3+0.5*Math.max(0,-th);tgt.hB=-0.1-0.4*th;tgt.kB=0.3;rate=60;break;}
+    case'swing':tgt=swingPose(gameTime-P.sw0,P.swTh||0);rate=90;break;
     case'air':
       if(P.plant){tgt=plantPose();rate=45;break;}
       if(P.jumpKind==='kick'){tgt=kickPose();rate=36;break;}
@@ -3030,7 +3044,7 @@ function updateFeatures(dt){
         if(tileVisible(Math.floor(sx/TW),o.r)&&Math.floor(gameTime*8)!==Math.floor((gameTime-dt)*8))sawSparks(sx,SURF(o.r)); // sparks where the blade grinds its slot
         if(alive&&pr===o.r&&P.inv<=0&&Math.abs(P.x-sx)<12&&P.y>SURF(o.r)-11&&!['hang','climb','climbDown','exit'].includes(P.state))trapHit('saw',Math.sign(P.x-sx)||-P.face);break;}
       case'darter':{const ph=cyc(f,gameTime),ts=1-0.35/f.per,vis=tileVisible(o.c,o.r);
-        if(ph<f.lastPh){L.ext.darts.push({x:f.x,y:f.y,r:o.r,x0:f.x0,dir:f.dir||-1});if(vis){Snd.play('dart');puff(f.x+(f.dir||-1)*3,f.y,f.dir||-1);}}
+        if(ph<f.lastPh){const mx=spoutMouth(f);L.ext.darts.push({x:f.x,y:f.y,r:o.r,x0:f.x0,dir:f.dir||-1,mx});if(vis){Snd.play('dart');puff(mx,f.y,f.dir||-1);}}
         else if(vis&&f.lastPh<ts&&ph>=ts)Snd.play('tick'); // a faint click as the face begins to glow
         f.lastPh=ph;break;}
       case'vent':{const ph=cyc(f,gameTime),on=ph>=0.75;
@@ -4371,8 +4385,10 @@ const HG_MAT={ // cap, cap shade, post, accent
   crypt:['#5f9c86','#2a5244','#3d6f5c','#cfe6d6']};      // Jade: verdigris bronze, pale jade
 function hgBulbs(ctx,w,h){ctx.beginPath();ctx.moveTo(-w,-h);ctx.quadraticCurveTo(-w*1.15,-h*0.28,-0.9,0);ctx.quadraticCurveTo(-w*1.15,h*0.28,-w,h);
   ctx.lineTo(w,h);ctx.quadraticCurveTo(w*1.15,h*0.28,0.9,0);ctx.quadraticCurveTo(w*1.15,-h*0.28,w,-h);ctx.closePath();}
+// the carved fittings' stone per theme (the hourglass pedestal, the dart spout): light, body, shade
+const FIT_STONE={palace:['#c69a64','#a8794c','#5f432a'],tile:['#b9ae92','#9a8f74','#5a5240'],forge:['#3a2c2a','#2a2224','#171011'],crypt:['#5f9c86','#3d6f5c','#1a3b32'],dungeon:['#6c7590','#535c74','#2b3041']};
 function drawHgPedestal(ctx,th,st,x,fl,h,wear){const q=mulberry32(h),K='#0b0812';
-  const stone=st==='palace'?['#c69a64','#a8794c','#5f432a']:st==='tile'?['#b9ae92','#9a8f74','#5a5240']:st==='forge'?['#3a2c2a','#2a2224','#171011']:st==='crypt'?['#5f9c86','#3d6f5c','#1a3b32']:['#6c7590','#535c74','#2b3041'];
+  const stone=FIT_STONE[st]||FIT_STONE.dungeon;
   const box=(x0,y0,w,hh,c)=>{ctx.fillStyle=K;ctx.fillRect(x0-0.6,y0-0.6,w+1.2,hh+1.2);ctx.fillStyle=c;ctx.fillRect(x0,y0,w,hh);};
   // base, shaft, top slab
   box(x-8,fl-3.4,16,3.4,stone[1]);box(x-5.5,fl-9,11,5.6,stone[1]);box(x-7,fl-11,14,2.2,stone[0]);
@@ -4698,28 +4714,82 @@ function updateSpent(dt){for(const s of SPENT){if(!s.on)continue;s.t+=dt;
   if(s.gy){s.vy+=520*dt;s.x+=s.vx*dt;s.y+=s.vy*dt;s.ang=Math.min(0.85,s.ang+3.2*dt);if(s.y>=s.gy){s.y=s.gy;s.gy=0;s.vx=0;s.vy=0;s.ang=0.07;s.t=0;}}
   else if(s.t>1.6)s.on=false;}}
 function clearSpent(){sandClear();for(const s of SPENT)s.on=false;}
-// the shooter: a face carved in the wall's own stone, the dart leaving its open mouth. In the last 0.35 s before a shot the eyes and
-// mouth glow and the face shivers a little (the shot itself is not moved: this only tells of it).
+// the shooter: a carved beast's head that juts from the wall at the darts' height, a spout like a gargoyle's, the dart leaving its
+// open jaws. It stands on the actors' line, so it is drawn in profile (the view of a head sticking out of a wall from the side) on
+// whichever side the darts fly, over the wall's side face or past its front corner, in the theme's own material and ornament (as
+// the hourglass pedestal) and chipped as much as the wall around it. In the last 0.35 s before a shot the eye and jaws glow and the
+// head shivers a little (the shot itself is not moved: this only tells of it). SPOUT_L: how far the jaws stand out of the wall.
+const SPOUT_L=12.5;
+function spoutMouth(f){const dir=f.dir||-1;return f.x-2*dir+dir*SPOUT_L;}
 function drawShooter(ctx,f){
-  const th=L.theme,dir=f.dir||-1,cx=(f.dir>0?f.x+4:f.x)-3.2,cy=f.y,ws=1-0.35/f.per,ph=cyc(f,gameTime),tell=ph>ws?(ph-ws)/(1-ws):0,T=6.2832;
+  const th=L.theme,st=th.style,dir=f.dir||-1,xb=f.x-2*dir,cy=f.y,ws=1-0.35/f.per,ph=cyc(f,gameTime),tell=ph>ws?(ph-ws)/(1-ws):0,T=6.2832,K='#0b0812';
+  const S=FIT_STONE[st]||FIT_STONE.dungeon,M=HG_MAT[st]||HG_MAT.palace,wear=wearLevel(xb,cy),q=mulberry32(hash2(Math.round(xb)*7+3,Math.round(cy)*13+5));
   ctx.save();if(tell>0)ctx.translate(Math.sin(gameTime*95)*0.45*tell,0);
-  ctx.fillStyle='#0b0812';ctx.fillRect(cx-5.6,cy-7.6,11.2,15.2);
-  ctx.fillStyle=th.wallA;ctx.fillRect(cx-4.8,cy-6.8,9.6,13.6);
-  ctx.fillStyle=th.hi;ctx.fillRect(cx-4.8,cy-6.8,9.6,1);ctx.fillRect(cx-4.8,cy-6.8,1,13.6);
-  ctx.fillStyle=th.lo;ctx.fillRect(cx-4.8,cy+5.6,9.6,1.2);ctx.fillRect(cx+3.8,cy-6.8,1,13.6);
-  const eyes=()=>{ctx.beginPath();for(const m of [-1,1]){ctx.moveTo(cx+m*3.7,cy-4.1);ctx.lineTo(cx+m*1.0,cy-3.0);ctx.lineTo(cx+m*1.2,cy-2.2);ctx.lineTo(cx+m*3.4,cy-2.9);ctx.closePath();}ctx.fill();};
-  ctx.strokeStyle=th.lo;ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(cx-4.2,cy-5.4);ctx.lineTo(cx-0.4,cy-4.3);ctx.moveTo(cx+4.2,cy-5.4);ctx.lineTo(cx+0.4,cy-4.3);ctx.stroke(); // brow ridges
-  ctx.strokeStyle=th.hi;ctx.lineWidth=0.5;ctx.beginPath();ctx.moveTo(cx-4.2,cy-5.9);ctx.lineTo(cx-0.8,cy-4.9);ctx.moveTo(cx+4.2,cy-5.9);ctx.lineTo(cx+0.8,cy-4.9);ctx.stroke();
-  ctx.fillStyle='#0b0812';eyes();
-  ctx.strokeStyle=th.lo;ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(cx,cy-3.4);ctx.lineTo(cx-0.2,cy-1.8);ctx.moveTo(cx-4,cy+0.8);ctx.lineTo(cx-3.6,cy+3.4);ctx.moveTo(cx+4,cy+0.8);ctx.lineTo(cx+3.6,cy+3.4);ctx.moveTo(cx-2.6,cy+4.4);ctx.lineTo(cx+2.6,cy+4.4);ctx.stroke(); // nose, cheeks, chin
-  const mx=cx+dir*0.5;ctx.fillStyle='#0b0812';ctx.beginPath();ctx.ellipse(mx,cy,3,2.5,0,0,T);ctx.fill();                                    // the mouth
-  ctx.fillStyle=mixHex(th.hi,'#ffffff',0.35);ctx.beginPath();ctx.moveTo(mx-2.2,cy-1.9);ctx.lineTo(mx-1.2,cy-1.9);ctx.lineTo(mx-1.7,cy-0.2);ctx.moveTo(mx+1.2,cy-1.9);ctx.lineTo(mx+2.2,cy-1.9);ctx.lineTo(mx+1.7,cy-0.2);ctx.moveTo(mx-0.5,cy+2.1);ctx.lineTo(mx+0.5,cy+2.1);ctx.lineTo(mx,cy+0.8);ctx.fill();
-  ctx.strokeStyle=th.lo;ctx.lineWidth=0.6;ctx.beginPath();ctx.ellipse(mx,cy,3.2,2.7,0,Math.PI*1.1,Math.PI*1.9);ctx.stroke();
-  if(tell>0){ctx.globalCompositeOperation='lighter';ctx.fillStyle='rgba(255,170,80,'+(0.9*tell)+')';eyes();
-    ctx.fillStyle='rgba(255,150,60,'+(0.16*tell)+')';ctx.beginPath();ctx.arc(mx,cy,7,0,T);ctx.fill();
-    ctx.fillStyle='rgba(255,160,70,'+(0.6*tell)+')';ctx.beginPath();ctx.ellipse(mx,cy,2.3,1.8,0,0,T);ctx.fill();
-    ctx.fillStyle='rgba(255,230,170,'+(0.85*tell)+')';ctx.beginPath();ctx.ellipse(mx,cy,1.2,0.9,0,0,T);ctx.fill();}
+  // the top of the head, seen going back into the wall (the keep is seen from a little above)
+  ctx.fillStyle=K;ctx.beginPath();ctx.moveTo(xb,cy-9.6);ctx.lineTo(xb+dir*6.4,cy-10);ctx.lineTo(xb+dir*6.4+3.2,cy-11.8);ctx.lineTo(xb+3.2,cy-11.4);ctx.closePath();ctx.fill();
+  ctx.fillStyle=S[0];ctx.beginPath();ctx.moveTo(xb+dir*0.4,cy-9.9);ctx.lineTo(xb+dir*6,cy-10.2);ctx.lineTo(xb+dir*6+2.6,cy-11.4);ctx.lineTo(xb+2.6+dir*0.4,cy-11.1);ctx.closePath();ctx.fill();
+  ctx.translate(xb,cy);ctx.scale(dir,1);                                                                  // from here forward is +x
+  const head=()=>{ctx.beginPath();ctx.moveTo(0,-9.6);ctx.lineTo(5,-10);ctx.quadraticCurveTo(8,-9.4,8.6,-6.2);ctx.lineTo(8.1,-4.8);ctx.quadraticCurveTo(10.8,-4.6,12.6,-3.2);
+    ctx.quadraticCurveTo(13.6,-2.4,13.2,-1.1);ctx.lineTo(9.4,-0.9);ctx.lineTo(9.4,0.9);ctx.lineTo(12.6,1.3);ctx.quadraticCurveTo(12.6,3.2,10.6,3.6);
+    ctx.quadraticCurveTo(7.4,4.4,6,6);ctx.lineTo(4.6,8.2);ctx.lineTo(0,8.4);ctx.closePath();};
+  head();ctx.lineWidth=1.8;ctx.strokeStyle=K;ctx.stroke();
+  const g=ctx.createLinearGradient(0,-10,0,8.4);g.addColorStop(0,S[0]);g.addColorStop(0.45,S[1]);g.addColorStop(1,S[2]);ctx.fillStyle=g;ctx.fill();
+  ctx.save();head();ctx.clip();
+  ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.moveTo(4,4.2);ctx.quadraticCurveTo(8,3.4,12.6,1.3);ctx.lineTo(13,9);ctx.lineTo(4,9);ctx.closePath();ctx.fill(); // shade under the jaw
+  ctx.strokeStyle=S[2];ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(3.4,-9.4);ctx.quadraticCurveTo(1.8,-1,3.6,8);ctx.stroke();            // the mane's edge
+  for(let k=0;k<3;k++){ctx.beginPath();ctx.moveTo(3.6,-6+k*4.2);ctx.quadraticCurveTo(5,-5+k*4.2,5.4,-3.4+k*4.2);ctx.stroke();}         // its locks
+  ctx.strokeStyle='rgba(255,255,255,.22)';ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(5,-9.6);ctx.quadraticCurveTo(7.8,-9,8.3,-6.4);ctx.moveTo(8.6,-4.4);ctx.quadraticCurveTo(11,-4.2,12.6,-2.9);ctx.stroke(); // lit brow and snout
+  // the theme's ornament: a collar where the head leaves the wall, and a touch on the brow
+  if(st==='dungeon'){ctx.fillStyle=M[1];ctx.fillRect(0,-10,2.4,19);ctx.fillStyle=M[3];for(const yy of [-6.5,-1,4.5])ctx.fillRect(0.7,yy,1,1);}                 // an iron band, rivets
+  else if(st==='palace'){ctx.fillStyle=M[0];ctx.fillRect(0,-10,2,19);ctx.fillStyle=M[3];ctx.fillRect(0.4,-3.2,1.2,6);}                                    // a gilt collar, a carnelian inlay
+  else if(st==='tile'){ctx.fillStyle=M[1];ctx.fillRect(0,-10,2.8,19);ctx.fillStyle=M[3];ctx.fillRect(2.8,-10,0.6,19);star8(ctx,1.4,-0.2,1.3,0.6,M[0]);}  // a lapis glaze band, gold star, turquoise edge
+  else if(st==='forge'){ctx.fillStyle='rgba(255,122,50,.7)';ctx.fillRect(2,-10,0.6,19);ctx.fillStyle='#5a4a44';for(const yy of [-6,4])ctx.fillRect(0.6,yy,0.9,0.9);} // a glowing seam, rivets
+  else{ctx.fillStyle='#22a898';ctx.fillRect(0,-10,2,19);ctx.fillStyle='rgba(240,250,240,.6)';for(let k=0;k<4;k++)ctx.fillRect(0.6,-7.5+k*4.4,0.8,0.8);}         // a turquoise glaze band
+  // wear, by the wall's patch there: chips off the brow, the snout or the jaw, and a crack when damaged
+  if(wear>0){const spots=[[6.8,-9.6],[12.8,-2.6],[11.6,3.4],[5.4,7.2],[8.6,-6]];
+    for(let k=0;k<(wear===1?1:wear===2?2:4);k++){const [sx,sy]=spots[Math.floor(q()*spots.length)],a=1.3+q()*1.3;ctx.fillStyle=K;ctx.beginPath();ctx.moveTo(sx-a,sy-a*0.6);ctx.lineTo(sx+a*0.8,sy-a*0.4);ctx.lineTo(sx+a*0.2,sy+a*0.9);ctx.closePath();ctx.fill();}
+    if(wear>=2){ctx.strokeStyle='rgba(0,0,0,.6)';ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(6+q()*2,-9.8);ctx.lineTo(5.6+q()*2,-6);ctx.lineTo(7+q()*2,-3);ctx.stroke();}}
+  ctx.restore();
+  ctx.fillStyle=K;ctx.beginPath();ctx.moveTo(13.4,-1.3);ctx.lineTo(9,-0.9);ctx.lineTo(9,0.9);ctx.lineTo(12.9,1.5);ctx.closePath();ctx.fill();               // the open jaws
+  ctx.fillStyle=mixHex(S[0],'#ffffff',0.45);ctx.beginPath();ctx.moveTo(11.6,-1);ctx.lineTo(12.4,-1);ctx.lineTo(12,0.2);ctx.closePath();ctx.moveTo(10.4,1.1);ctx.lineTo(11.2,1.2);ctx.lineTo(10.8,0.1);ctx.closePath();ctx.fill(); // fangs
+  const eye=()=>{ctx.beginPath();ctx.moveTo(6.2,-5.6);ctx.lineTo(8,-5);ctx.lineTo(6.6,-4.5);ctx.closePath();};
+  ctx.fillStyle=K;eye();ctx.fill();
+  if(st==='forge'||tell>0){ctx.save();ctx.globalCompositeOperation='lighter';
+    if(st==='forge'){ctx.fillStyle='rgba(255,110,40,'+(0.35+0.6*tell)+')';eye();ctx.fill();}
+    if(tell>0){ctx.fillStyle='rgba(255,170,80,'+(0.9*tell)+')';eye();ctx.fill();
+      ctx.fillStyle='rgba(255,150,60,'+(0.16*tell)+')';ctx.beginPath();ctx.arc(SPOUT_L,0,7,0,T);ctx.fill();
+      ctx.fillStyle='rgba(255,160,70,'+(0.6*tell)+')';ctx.beginPath();ctx.ellipse(11.2,0,2.4,1,0,0,T);ctx.fill();
+      ctx.fillStyle='rgba(255,230,170,'+(0.85*tell)+')';ctx.beginPath();ctx.ellipse(11.6,0,1.1,0.5,0,0,T);ctx.fill();}
+    ctx.restore();}
   ctx.restore();}
+// the swing bar: a forged pole across his way, so it runs front to back (the depth axis: drawn up and to the right, like the vent's
+// grate bars) and he grips its middle on the actors' line and swings in the picture's plane, as on a gymnast's high bar. It is in
+// the theme's own metal (the gates' metal; its end ferrules and the ceiling plates in the fittings' metal: steel and bronze, iron
+// in the Forge, gold on Lapis), its middle wrapped in leather worn dark and shiny where hands have held it, and hangs on two link
+// chains like the lifts', one at each end, from the ceiling straight above. While he swings it rocks a little against him (drawn only).
+function drawBar(ctx,o,f){
+  const K='#0b0812',bp=metalPal('gate'),hp=metalPal('hub'),cp=metalPal('chain'),ty=ceilingY(o.c,o.r),U=16;
+  const on=P&&P.state==='swing'&&P.bar===f,bx=f.x-(on?1.2*(P.swTh||0)*P.face:0),by=f.y;
+  const at=(u)=>[bx+u*DX/(2*U),by-u*DY/(2*U)]; // u from -16 (front end) to 16 (back end)
+  const chain=(u)=>{const [x1,y1]=at(u),x0=f.x+u*DX/(2*U),yt=ty-u*DY/(2*U),n=Math.max(2,Math.round((y1-3.5-yt)/5.2)),sp=(y1-3.5-yt)/n;
+    ctx.fillStyle=K;ctx.fillRect(x0-3.6,yt-0.5,7.2,2.8);ctx.fillStyle=hp[1];ctx.fillRect(x0-3,yt,6,1.7);ctx.fillStyle=hp[3];ctx.fillRect(x0-3,yt,6,0.5); // ceiling plate
+    for(let k=0;k<n;k++){const x=lerp(x0,x1,(k+0.5)/n),y=yt+2+k*sp+sp/2,e=k%2,w=e?2:3.8,h=sp+1.6;
+      ctx.fillStyle=K;ctx.fillRect(x-w/2-0.6,y-h/2-0.6,w+1.2,h+1.2);ctx.fillStyle=e?cp[1]:cp[2];ctx.fillRect(x-w/2,y-h/2,w,h);
+      ctx.fillStyle=cp[3];ctx.fillRect(x-w/2,y-h/2,0.6,h);if(!e){ctx.fillStyle='#1b1626';ctx.fillRect(x-0.6,y-h/2+1.4,1.2,h-2.8);}}
+    ctx.strokeStyle=K;ctx.lineWidth=2.4;ctx.beginPath();ctx.arc(x1,y1-1.4,2.3,Math.PI*0.9,Math.PI*2.1);ctx.stroke();ctx.strokeStyle=hp[2];ctx.lineWidth=1;ctx.stroke();};
+  chain(13);                                                                                                // the far chain, behind the pole
+  ctx.save();ctx.translate(bx,by);ctx.transform(DX/(2*U),-DY/(2*U),0,1,0,0);                               // the pole in its own frame: x along it, y up and down
+  ctx.fillStyle=K;ctx.fillRect(-U-0.8,-2.9,2*U+1.6,5.8);
+  const g=ctx.createLinearGradient(0,-2.2,0,2.2);g.addColorStop(0,bp[3]);g.addColorStop(0.3,bp[2]);g.addColorStop(0.75,bp[1]);g.addColorStop(1,bp[0]);
+  ctx.fillStyle=g;ctx.fillRect(-U,-2.1,2*U,4.2);
+  for(const u of [-U,U-3]){ctx.fillStyle=K;ctx.fillRect(u-0.4,-3.1,3.8,6.2);ctx.fillStyle=hp[2];ctx.fillRect(u+0.2,-2.5,2.6,5);ctx.fillStyle=hp[3];ctx.fillRect(u+0.2,-2.5,2.6,0.7);} // ferrules
+  ctx.fillStyle='#2a1a12';ctx.fillRect(-6.5,-2.3,13,4.6);                                                   // the leather grip, its wraps and the shine of wear
+  ctx.strokeStyle='#130b08';ctx.lineWidth=0.7;ctx.beginPath();for(let i=-6;i<=5;i+=2.4){ctx.moveTo(i,-2.3);ctx.lineTo(i+1.2,2.3);}ctx.stroke();
+  ctx.fillStyle='rgba(214,170,120,.35)';ctx.fillRect(-6.5,-1.6,13,0.8);
+  ctx.restore();
+  {const [x,y]=at(-U);ctx.fillStyle=K;ctx.beginPath();ctx.ellipse(x,y,1.9,3,0,0,6.2832);ctx.fill();ctx.fillStyle=hp[2];ctx.beginPath();ctx.ellipse(x,y,1.2,2.3,0,0,6.2832);ctx.fill(); // the near end, seen end on
+    ctx.fillStyle=hp[0];ctx.beginPath();ctx.arc(x,y,0.6,0,6.2832);ctx.fill();}
+  chain(-13);}                                                                                              // the near chain, in front of it
 function drawPend(ctx,o,f){
   const b=pendGeom(o,f),th=L.theme,pal=metalPal('pend');
   ctx.fillStyle='#0b0812';ctx.fillRect(b.px-4,b.py,8,4);ctx.fillStyle='#d8b04a';ctx.fillRect(b.px-3,b.py,6,2.6);
@@ -5321,14 +5391,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
         ctx.fillStyle=rim[3];ctx.fillRect(sx-14,ys-2.6,1.4,0.7);ctx.fillRect(sx+12.6,ys-2.6,1.4,0.7);break;}
       case'darter':drawShooter(ctx,f);break;
       case'banner':drawBannerTile(ctx,X,Y,f,th);break;
-      case'bar':{const bx=f.x,by=f.y,cy=ceilingY(o.c,o.r);ctx.strokeStyle='#0b0812';ctx.lineWidth=3.6; // two continuous chains (dark outline, pale links), a thick bar with end caps and a rope-wrapped grip
-        ctx.beginPath();ctx.moveTo(bx-10,by);ctx.lineTo(bx-10,cy);ctx.moveTo(bx+10,by);ctx.lineTo(bx+10,cy);ctx.stroke();
-        ctx.strokeStyle='#c4cad8';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(bx-10,by);ctx.lineTo(bx-10,cy);ctx.moveTo(bx+10,by);ctx.lineTo(bx+10,cy);ctx.stroke();
-        ctx.strokeStyle='#4a5060';ctx.lineWidth=2;ctx.setLineDash([1.4,2.2]);ctx.beginPath();ctx.moveTo(bx-10,by);ctx.lineTo(bx-10,cy);ctx.moveTo(bx+10,by);ctx.lineTo(bx+10,cy);ctx.stroke();ctx.setLineDash([]);
-        ctx.fillStyle='#0b0812';ctx.fillRect(bx-16,by-4,32,8);ctx.fillStyle='#b98a4a';ctx.fillRect(bx-15,by-3,30,6);ctx.fillStyle='#f0cc88';ctx.fillRect(bx-15,by-3,30,1.6);
-        ctx.fillStyle='#0b0812';ctx.fillRect(bx-17,by-5,3.4,10);ctx.fillRect(bx+13.6,by-5,3.4,10);ctx.fillStyle='#d8b04a';ctx.fillRect(bx-16.2,by-4.2,1.8,8.4);ctx.fillRect(bx+14.4,by-4.2,1.8,8.4);
-        ctx.strokeStyle='#5a3a1e';ctx.lineWidth=1.1;ctx.beginPath();for(let i=-6;i<=6;i+=3){ctx.moveTo(bx+i,by-3);ctx.lineTo(bx+i+2,by+3);}ctx.stroke();
-        break;}
+      case'bar':drawBar(ctx,o,f);break;
       case'pend':drawPend(ctx,o,f);break;
       case'vent':drawVentBase(ctx,o,f);break;
       case'loose':if(f.s<2&&f.plank){drawPlank(ctx,X,ys,f.s===1?(Math.random()-0.5)*1.6:0);break;}if(f.s<2){const sh=f.s===1&&f.tm>-0.7?(Math.random()-0.5)*1.6:0;ctx.save();ctx.translate(0,sh+0.8);dynSlab(ctx,o.c,o.r,X,ys,th);
@@ -5368,7 +5431,9 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     if(cut)ctx.restore();
   }
   for(const bl of L.ext.blocks){if(inRoom(bl.c,bl.r))drawBlock(ctx,bl,th);}
-  for(const d of L.ext.darts){if(d.x<x0-10||d.x>x1+10)continue;drawDart(ctx,d.x,d.y,d.dir||-1,0,1,true);}
+  for(const d of L.ext.darts){if(d.x<x0-10||d.x>x1+10)continue;const dd=d.dir||-1; // (only the part that has left the spout's jaws)
+    if(d.mx!==undefined){if((d.x+dd*5-d.mx)*dd<=0)continue;ctx.save();ctx.beginPath();ctx.rect(dd>0?d.mx-0.5:d.mx-80.5,d.y-12,81,24);ctx.clip();}
+    drawDart(ctx,d.x,d.y,dd,0,1,true);if(d.mx!==undefined)ctx.restore();}
   for(const q of SPENT){if(q.on&&q.x>x0-10&&q.x<x1+10)drawDart(ctx,q.x,q.y,q.dd,q.ang,q.gy||q.t<1.2?1:Math.max(0,1-(q.t-1.2)/0.4),false);}
   for(const it of L.items){if(!it.hidden||it.taken||!inRoom(it.c,it.r))continue; // the secret's cue sits on the hidden flask itself: a few slow four-point stars
     const sx=it.x,sy=SURF(it.r)-16;
@@ -6232,8 +6297,8 @@ function drawMetalMask(VZ,camD,camDY){
         g.save();g.translate(b.x,b.y);g.rotate(-b.th);pendBlade(g);g.fillStyle=msCol(pid,MS_ANY);g.fill();g.restore();
         msDisc(g,b.x,b.y,3,MKID.gold);g.fillStyle=msCol(MKID.gold,MS_ANY);g.fillRect(b.px-3,b.py,6,2.6);
         msBox(Math.min(b.px,b.x)-18,b.py,Math.max(b.px,b.x)+18,b.y+16);break;}
-      case'bar':{const bx=f.x,by=f.y,ty=ceilingY(o.c,o.r),ch=msKind('chain');msLine(g,bx-10,by,bx-10,ty,2.6,ch);msLine(g,bx+10,by,bx+10,ty,2.6,ch);
-        g.fillStyle=msCol(MKID.bronze,MS_ACROSS);g.fillRect(bx-15,by-3,30,6);g.fillStyle=msCol(MKID.gold,MS_ANY);g.fillRect(bx-16.4,by-4.4,2.2,8.8);g.fillRect(bx+14.2,by-4.4,2.2,8.8);
+      case'bar':{const bx=f.x,by=f.y,ty=ceilingY(o.c,o.r),ch=msKind('chain'),ex=13*DX/32,ey=13*DY/32;msLine(g,bx-ex,by+ey-3,bx-ex,ty+ey,3.4,ch);msLine(g,bx+ex,by-ey-3,bx+ex,ty-ey,3.4,ch);
+        msLine(g,bx-DX/2,by+DY/2,bx+DX/2,by-DY/2,4.2,msKind('gate'));g.fillStyle=msCol(msKind('hub'),MS_ANY);g.fillRect(bx-DX/2-1.5,by+DY/2-2.6,3,5.2);
         msBox(bx-18,ty,bx+18,by+6);break;}
       case'grate':{g.strokeStyle=msCol(gid,MS_ANY);g.lineWidth=2;g.beginPath();
         for(let i=0;i<6;i++){const a=onFloor(X+3+i*5.2,0.04,ys),b=onFloor(X+3+i*5.2,0.96,ys);g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);}
@@ -6546,7 +6611,7 @@ function glReliefUse(){const R=GLREL,gl=GLP.gl;if(R.gl!==gl||!R.ul)return;gl.uni
 const GLAMBT={dungeon:0.78,tile:0.8,crypt:0.9,palace:0.62,forge:0.6};
 // the ambient never under AMB_MIN of full on its brightest channel (owner, v56: the Forge by Moonlight fell to .26 while the other
 // themes sit at .40 to .48; dark but readable, the Level Design Book's 'make it feel dark, not be dark'). Only the low ones rise.
-const AMB_MIN=0.4;
+const AMB_MIN=0.45;
 function glAmbK(st,lk){const am=lk.amb.split(',');return Math.max(GLAMBT[st]||0.55,AMB_MIN*255/Math.max(+am[0],+am[1],+am[2]));}
 const GLFLICK={torch:0.6,fire:1,door:0.5,item:0.35};
 // ---- what reaches WebGL each frame (owner, v51: Torchlight fell back to Classic on the phone at 40 fps) ----
