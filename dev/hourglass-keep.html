@@ -4982,6 +4982,17 @@ function drawGlass(ctx,x,y,frac,cap,dim){ctx.save();ctx.translate(x,y);
 // the storm's top row, where nobody stands. Classic composes the dust at half resolution in two small canvases (colour, cut by
 // a mask), from tiles baked once per theme and time of day (one a frame); Torchlight draws the same layout in a shader
 // (glStorm). Both keep the blown grains and pebbles in 2D. stormfair.py checks the line in both modes.
+// The owner (after v59): "the surface of the storm is static, shouldn't it rumble too?" It slid as one painted sheet. A dust wall is
+// the head of a density current: Kelvin-Helmholtz billows form on its front, climb it, roll back over the head and break up,
+// merging and swelling as they go (Britter and Simpson 1978, J. Fluid Mech.; sodar of gust fronts over Tehran; the AMS
+// glossary's "knobby" dust wall); deep in the body it only churns. So the surface boils, its light moving with the lumps: Torchlight
+// carries its live noise along a flow (up the front, forward over the head, slower inside; STB) as a flow map in two phases
+// half a period apart (Vlachos, "Water flow in Portal 2", SIGGRAPH 2010), blended keeping their contrast (Heitz and Neyret
+// 2018), and its domain warp moves in time (Quilez); the slope light is worked out per pixel, so lit tops and shaded
+// undersides travel and change with the lumps. Classic has no per-pixel work: each surface is baked as STB.nf frames whose
+// warp walks a loop (3D noise sliced in time, made periodic) and crossfades from one to the next, and two more layers of the
+// billows, each faded in toward the front or the head, climb the front and roll forward over the head. Calm halves it all.
+// Fairness is untouched: the front's alpha does not depend on the boil.
 const SANDC={palace:{lit:[238,198,132],base:[98,74,46]},     // Sandstone Halls: ochre
   tile:{lit:[232,206,152],base:[90,78,60]},                     // Lapis Gallery: the pale gold sand of its floors
   forge:{lit:[228,152,104],base:[94,56,38]},                    // Ember Forge: rust
@@ -5005,15 +5016,22 @@ function stVN(x,y,px,py,s){const xi=Math.floor(x),yi=Math.floor(y);let u=x-xi,v=
   return h00+(h10-h00)*u+(h01-h00)*v+(h00-h10-h01+h11)*u*v;}
 function stFbm(x,y,px,py,oct,s){let f=0,a=0.5,n=0;for(let o=0;o<oct;o++){f+=a*stVN(x,y,px,py,s+o*17);n+=a;x*=2;y*=2;px*=2;py*=2;a*=0.5;}return f/n;}
 function stBil(x,y,px,py,oct,s){let f=0,a=0.5,n=0;for(let o=0;o<oct;o++){f+=a*Math.abs(2*stVN(x,y,px,py,s+o*17)-1);n+=a;x*=2;y*=2;px*=2;py*=2;a*=0.5;}return f/n;} // (billow noise)
-const ST={tex:{},T:null,env:null,envKey:'',envPat:null,cc:null,cg:null,mc:null,mg:null,bz:new Float32Array(256)};
+const ST={tex:{},T:null,env:null,envKey:'',envPat:null,cc:null,cg:null,mc:null,mg:null,lc:null,lg:null,bz:new Float32Array(256)};
+// the boil: STB.nf baked frames per surface, looping (the warp's lookup walks a circle of radius STB.a, in lattice cells), STB.ft s
+// from one to the next; billows climb the front at STB.rise px/s within STB.fw px of it and roll forward over the head at STB.roll
+// px/s (relative to the front); Torchlight's flow restarts every STB.per s, in two phases half a period apart. Halved when calm.
+const STB={nf:6,a:0.4,ft:0.6,rise:26,roll:22,fw:150,per:1.6};
 function stCanvas(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c;}
 // one tile or sprite, baked once per theme and time of day. A texel is 2 world px.
-function stBake(kind){const col=stormCol(),sb=skyBeam(),L0=col.lit,B0=col.base;
-  if(kind==='body'||kind==='mid'){ // the dust's surface: a domain-warped height field, lit from where the sky light comes from
-    const N=128,P=kind==='body'?4:6,sd=kind==='body'?11:29,c=stCanvas(N,N),g=c.getContext('2d'),im=g.createImageData(N,N),D=im.data,h=new Float32Array(N*N);
-    for(let j=0;j<N;j++)for(let i=0;i<N;i++){const X=i/N*P,Y=j/N*P,qx=stFbm(X,Y,P,P,3,sd+1),qy=stFbm(X+2.7,Y+1.3,P,P,3,sd+2);const wx=X+0.9*qx,wy=Y+0.9*qy;h[j*N+i]=0.45*stFbm(wx,wy,P,P,4,sd)+0.55*stBil(wx,wy,P,P,4,sd+5);} // (billows: rounded lumps with creases between them)
+function stBake(kind,fr=0){const col=stormCol(),sb=skyBeam(),L0=col.lit,B0=col.base;
+  if(kind==='body'||kind==='mid'){ // the dust's surface: a domain-warped height field, lit from where the sky light comes from;
+    // frame fr of STB.nf: the warp's own lookup walks a circle of radius STB.a (so the frames loop), the lumps swell and fold
+    const N=128,P=kind==='body'?4:6,sd=kind==='body'?11:29,c=stCanvas(N,N),g=c.getContext('2d'),im=g.createImageData(N,N),D=im.data,h=new Float32Array(N*N),
+      th=fr/STB.nf*Math.PI*2,ca=STB.a*Math.cos(th),sa=STB.a*Math.sin(th);
+    for(let j=0;j<N;j++)for(let i=0;i<N;i++){const X=i/N*P,Y=j/N*P,qx=stFbm(X+ca,Y+sa,P,P,3,sd+1),qy=stFbm(X+2.7-sa,Y+1.3+ca,P,P,3,sd+2);const wx=X+0.9*qx,wy=Y+0.9*qy;h[j*N+i]=0.45*stFbm(wx,wy,P,P,4,sd)+0.55*stBil(wx,wy,P,P,4,sd+5);} // (billows: rounded lumps with creases between them)
     for(let j=0;j<N;j++)for(let i=0;i<N;i++){const o=j*N+i,v=h[o],gx=h[j*N+(i+1)%N]-h[j*N+(i+N-1)%N],gy=h[((j+1)%N)*N+i]-h[((j+N-1)%N)*N+i];
-      let l=clamp(0.5-4.5*(gx*sb.dx+gy*sb.dy)+0.8*(v-0.5),0,1);l=kind==='body'?0.2+0.75*l:0.3+0.7*l; // (the deep body never quite as lit as the billows in front of it)
+      let l=clamp(0.5-5.2*(gx*sb.dx+gy*sb.dy)+0.92*(v-0.5),0,1); // (a little more contrast than one still frame needs: the crossfade between frames softens it)
+      l=kind==='body'?0.2+0.75*l:0.3+0.7*l; // (the deep body never quite as lit as the billows in front of it)
       D[o*4]=B0[0]+(L0[0]-B0[0])*l;D[o*4+1]=B0[1]+(L0[1]-B0[1])*l;D[o*4+2]=B0[2]+(L0[2]-B0[2])*l;D[o*4+3]=kind==='body'?255:255*stS(0.42,0.68,v);}
     g.putImageData(im,0,0);return c;}
   if(kind==='edge'){ // the front's alpha, 64 texels from 112 px behind it to 16 px ahead; tiles vertically (it rolls upward)
@@ -5043,7 +5061,8 @@ function stBakeEnv(ch){const top=ch.rTop*TH,bot=(ch.rBot+1)*TH,YT=top-120,Hs=Mat
   g.putImageData(im,0,0);return c;}
 // everything baked? (one piece a frame, so a floor's first storm never stalls a frame; done before the storm wakes)
 function stormReady(ch){const key=L.theme.style+(L.prog?L.prog.tod:0);let T=ST.tex[key];if(!T)T=ST.tex[key]={};
-  for(const k of ['body','mid','edge','dis']){if(!T[k]){T[k]=stBake(k);return false;}}
+  for(const k of ['edge','dis']){if(!T[k]){T[k]=stBake(k);return false;}}
+  for(const k of ['body','mid']){const a=T[k]||(T[k]=[]);if(a.length<STB.nf){a.push(stBake(k,a.length));return false;}}
   if(!T.rim){T.rim=stBake('rim');T.lip=stBake('lip');T.veil=stBake('veil');}
   const ek=L.n+':'+(L.seed|0)+':'+ch.rTop+':'+ch.rBot;if(ST.envKey!==ek){ST.env=stBakeEnv(ch);ST.envKey=ek;ST.envPat=null;return false;}
   ST.T=T;return true;}
@@ -5053,9 +5072,9 @@ function stormLayer2D(ctx,ch,fx,a,x0,x1,y0,y1){
   if(!stormReady(ch)||a<=0.005)return;const T=ST.T,t=gameTime,tc=t*(S.set.calm?0.5:1),rT=ch.rTop,top=rT*TH,bot=(ch.rBot+1)*TH,YT=top-120,YB=bot+24,ka=Math.min(1,a*1.6);
   const X0=Math.floor((x0-4)/2)*2,X1=Math.min(x1+4,fx+80),Y0=Math.floor(Math.max(y0-4,YT)/8)*8,Y1=Math.min(y1+4,YB);
   if(X1>X0&&Y1>Y0){const w=Math.ceil((X1-X0)/2),h=Math.ceil((Y1-Y0)/2);
-    if(!ST.cc||ST.cc.width<w||ST.cc.height<h){const W=Math.max(w,ST.cc?ST.cc.width:0)+16,H=Math.max(h,ST.cc?ST.cc.height:0)+16;ST.cc=stCanvas(W,H);ST.mc=stCanvas(W,H);ST.cg=ST.cc.getContext('2d');ST.mg=ST.mc.getContext('2d');}
+    if(!ST.cc||ST.cc.width<w||ST.cc.height<h){const W=Math.max(w,ST.cc?ST.cc.width:0)+16,H=Math.max(h,ST.cc?ST.cc.height:0)+16;ST.cc=stCanvas(W,H);ST.mc=stCanvas(W,H);ST.lc=stCanvas(W,H);ST.cg=ST.cc.getContext('2d');ST.mg=ST.mc.getContext('2d');ST.lg=ST.lc.getContext('2d');}
     const m=ST.mg,c=ST.cg,nz=Math.min(256,Math.ceil((Y1-Y0)/8)),bz=ST.bz;
-    if(!T.pb){T.pb=c.createPattern(T.body,'repeat');T.pm=c.createPattern(T.mid,'repeat');T.pd=c.createPattern(T.dis,'repeat');}
+    if(!T.pb){T.pb=T.body.map(b=>c.createPattern(b,'repeat'));T.pm=T.mid.map(b=>c.createPattern(b,'repeat'));T.pd=c.createPattern(T.dis,'repeat');}
     if(!ST.envPat)ST.envPat=m.createPattern(ST.env,'repeat-x');
     for(let k=0;k<nz;k++)bz[k]=stBulge(Y0+k*8+4,t,rT);
     // the mask: solid behind the front, the front's soft edge in 8 px slices (its noise rolling upward), then the head and foot
@@ -5065,10 +5084,20 @@ function stormLayer2D(ctx,ch,fx,a,x0,x1,y0,y1){
       if(ex>0)m.fillRect(0,ty,ex+0.5,4);m.drawImage(T.edge,0,sy,64,4,ex,ty,64,4);}
     m.globalCompositeOperation='destination-in';{const eo=(fx*0.85+tc*8-X0)/2,yo=(YT-Y0)/2;m.setTransform(1,0,0,1,eo,yo);m.fillStyle=ST.envPat;m.fillRect(-eo,-yo,w,h);}
     m.setTransform(1,0,0,1,0,0);m.globalCompositeOperation='source-over';
-    // the colour: the deep body (drifting at 0.55 of the front's speed), nearer billows (0.8, rising), lamplight in the dust
+    // the colour: the deep body (drifting at 0.55 of the front's speed), nearer billows (0.8, rising), each a crossfade of two
+    // of its baked frames (the lumps swell and fold, their light with them); then billows climbing the front and rolling
+    // forward over the head (own layers, faded in toward the front and the head); lamplight in the dust
+    const nf=STB.nf,fq=(u,P,x,y,al,g,rx=0,ry=0,rw=w,rh=h)=>{const i=Math.floor(u),f=u-i,a=i%nf,b=(a+1)%nf;g.setTransform(1,0,0,1,x,y); // (frames a and b, f of the way, over the rectangle r)
+      g.globalAlpha=al*Math.cos(f*1.5708);g.fillStyle=P[a];g.fillRect(rx-x,ry-y,rw,rh);g.globalAlpha=al*Math.sin(f*1.5708);g.fillStyle=P[b];g.fillRect(rx-x,ry-y,rw,rh);};
     c.setTransform(1,0,0,1,0,0);c.globalCompositeOperation='source-over';c.globalAlpha=1;
-    {const ox=(fx*0.55+tc*6-X0)/2,oy=-Y0/2;c.setTransform(1,0,0,1,ox,oy);c.fillStyle=T.pb;c.fillRect(-ox,-oy,w,h);}
-    {const ox=(fx*0.8+tc*16-X0)/2,oy=-Y0/2-tc*4.5;c.setTransform(1,0,0,1,ox,oy);c.globalAlpha=0.85;c.fillStyle=T.pm;c.fillRect(-ox,-oy,w,h);}
+    {const ox=(fx*0.55+tc*6-X0)/2,oy=-Y0/2-tc*1.5,u=tc/STB.ft,i=Math.floor(u),f=u-i;c.setTransform(1,0,0,1,ox,oy);c.fillStyle=T.pb[i%nf];c.fillRect(-ox,-oy,w,h);c.globalAlpha=f;c.fillStyle=T.pb[(i+1)%nf];c.fillRect(-ox,-oy,w,h);}
+    fq(tc/STB.ft+1.5,T.pm,(fx*0.8+tc*16-X0)/2,-Y0/2-tc*STB.rise*0.2,0.85,c);
+    {const l=ST.lg,lay=(u,x,y,gr,al,rx,ry,rw,rh)=>{if(rw<1||rh<1)return;l.setTransform(1,0,0,1,0,0);l.globalCompositeOperation='source-over';l.clearRect(rx,ry,rw,rh);fq(u,T.pm,x,y,1,l,rx,ry,rw,rh);
+        l.setTransform(1,0,0,1,0,0);l.globalAlpha=1;l.globalCompositeOperation='destination-in';l.fillStyle=gr;l.fillRect(rx,ry,rw,rh);c.setTransform(1,0,0,1,0,0);c.globalAlpha=al;c.drawImage(ST.lc,rx,ry,rw,rh,rx,ry,rw,rh);};
+      const xf=(fx-X0)/2,x0f=Math.max(0,Math.floor(xf-STB.fw/2)),gf=l.createLinearGradient(xf-STB.fw/2,0,xf-20,0);gf.addColorStop(0,'rgba(0,0,0,0)');gf.addColorStop(1,'#000');
+      lay(tc/STB.ft+0.7,xf+tc*2,(-Y0-tc*STB.rise)/2,gf,0.6,x0f,0,w-x0f,h); // climbing the front
+      const yh=(top-Y0)/2,y1h=Math.min(h,Math.ceil(yh+30)),gh=l.createLinearGradient(0,yh-30,0,yh+30);gh.addColorStop(0,'#000');gh.addColorStop(1,'rgba(0,0,0,0)');
+      lay(tc/STB.ft+2.3,xf+tc*STB.roll/2,(-Y0-tc*STB.rise*0.3)/2+31,gh,0.6,0,0,w,y1h);} // rolling forward over the head
     c.setTransform(1,0,0,1,0,0);c.globalAlpha=1;c.globalCompositeOperation='lighter';
     for(const q of frameLights){if(q.kind!=='torch'&&q.kind!=='door'&&q.kind!=='item'&&q.kind!=='fire')continue;const r=q.r*0.5;if(q.x+r<X0||q.x-r>X1||q.y+r<Y0||q.y-r>Y1)continue;
       c.globalAlpha=Math.min(1,q.a)*0.2;c.drawImage(lightSprite(q.col),(q.x-r-X0)/2,(q.y-r-Y0)/2,r,r);}
@@ -7080,6 +7109,8 @@ function glAtmoU(U,f){const gl=GLP.gl;if(!U.u_cfx)return;gl.uniform1i(U.u_cs,6);
 // the dust (from the light map). The burst at the arch tears the head into streaks that rush past the prince and part round
 // him; the dissolve opens holes through the noise. It is drawn at the light map's size, only over the storm's rectangle of the
 // screen, after the composite (so the lighting does not darken the dust) and laid over the frame; nothing runs without a storm.
+// The surface boils (unit ST's head comment): the height field is read twice along the flow (two phases): about 16 noise reads more
+// per texel, at the light map's quarter size.
 GLFX.storm2=true;
 const GLST={ok:false,gl:null,p:null,c:null,fb:null,fw:0,fh:0,lf:new Float32Array(8),on:false};
 const GLSTSH=[GLV,`#ifdef GL_FRAGMENT_PRECISION_HIGH
@@ -7087,8 +7118,8 @@ const GLSTSH=[GLV,`#ifdef GL_FRAGMENT_PRECISION_HIGH
   #else
   precision mediump float;
   #endif
-  varying vec2 v_u;uniform vec4 u_cam,u_st,u_fx,u_bu;uniform vec2 u_res,u_L;uniform float u_t;uniform vec3 u_lit,u_base;uniform float u_lf[8];uniform sampler2D u_map;
-  // u_st: the body's front x, top, bottom, top row; u_fx: 1-fade, churn, warp, burst progress; u_bu: rushing front x, the prince (hole)
+  varying vec2 v_u;uniform vec4 u_cam,u_st,u_fx,u_bu,u_fl;uniform vec2 u_res,u_L;uniform float u_t;uniform vec3 u_lit,u_base;uniform float u_lf[8];uniform sampler2D u_map;
+  // u_st: the body's front x, top, bottom, top row; u_fx: 1-fade, churn, warp, burst progress; u_bu: rushing front x, the prince (hole); u_fl: the boil (STB: rise, roll, period, reach)
   float hs(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
   float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hs(i),hs(i+vec2(1.,0.)),f.x),mix(hs(i+vec2(0.,1.)),hs(i+vec2(1.,1.)),f.x),f.y);}
   float fb3(vec2 p){return .57*vn(p)+.29*vn(p*2.03+7.1)+.14*vn(p*4.01+3.3);}
@@ -7099,11 +7130,22 @@ const GLSTSH=[GLV,`#ifdef GL_FRAGMENT_PRECISION_HIGH
     vec2 w=(vec2(v_u.x*u_res.x,(1.-v_u.y)*u_res.y)+u_cam.xy)*u_cam.z;float t=u_t,tc=t*u_fx.y,fx=u_st.x,top=u_st.y,bot=u_st.z;
     float s=fx+bulge(w.y,t)-w.x; // depth behind the visible front
     float a=s>=-4.?.55+.45*smoothstep(-4.,60.,s):.55*exp((s+4.)/4.5)*smoothstep(-16.,-12.,s); // .55 at the kill line, opaque from 60 px in
-    vec2 p=vec2(w.x-fx*.55-tc*6.,w.y)/64.; // the deep body drifts at 0.55 of the front's speed
-    vec2 q=vec2(fb3(p+vec2(0.,tc*.05)),fb3(p+vec2(5.2,1.3)-vec2(tc*.04,0.)));
-    vec2 pw=p+.9*u_fx.z*q;float h=hf(pw),hx=hf(pw+vec2(.04,0.)),hy=hf(pw+vec2(0.,.04));
-    float lit=clamp(.5-(dot(vec2(hx-h,hy-h),u_L))*6.+.7*(h-.5),0.,1.)*.75+.2;
-    float m=fb3(vec2(w.x-fx*.8-tc*16.,w.y+tc*9.)/32.+.5*q),mb=smoothstep(.42,.68,m); // nearer billows, rising
+    vec2 p=vec2(w.x-fx*.55-tc*6.,w.y+tc*3.)/64.; // the deep body drifts at 0.55 of the front's speed, rising a little
+    vec2 q=vec2(fb3(p+vec2(tc*.07,tc*.16)),fb3(p+vec2(5.2,1.3)+vec2(-tc*.13,tc*.09))); // the warp itself moves: the lumps swell and fold (Quilez)
+    // the boil (flow map, Vlachos 2010): billows climb the front and roll forward over the head; the pattern is carried along that
+    // flow for u_fl.z s, in two phases half a period apart crossfaded, each restarting unseen at its zero weight (the restart
+    // staggered by a noise so the whole storm does not pulse at once); calmer deep in the body
+    float kf=1.-smoothstep(0.,u_fl.w,s),kh=1.-smoothstep(top-50.,top+60.,w.y);
+    vec2 fl=vec2(u_fl.y*kh*(.4+.6*kf),-u_fl.x*kf*(1.-.5*kh)-3.)/64.;
+    float h=0.,lit=0.,m=0.,po=vn(p*.6+3.1)*.7;
+    for(int i=0;i<2;i++){float ph=tc/u_fl.z+float(i)*.5+po,f=fract(ph),wt=1.-abs(2.*f-1.);
+      vec2 pp=p-fl*(f-.5)*u_fl.z+vec2(.37,.61)*floor(ph),pw=pp+.9*u_fx.z*q;
+      float h0=hf(pw),hx=hf(pw+vec2(.04,0.)),hy=hf(pw+vec2(0.,.04));
+      h+=wt*h0;lit+=wt*(clamp(.5-(dot(vec2(hx-h0,hy-h0),u_L))*6.+.7*(h0-.5),0.,1.)*.75+.2);
+      m+=wt*fb3(vec2(w.x-fx*.8-tc*16.,w.y+tc*9.)/32.-2.*fl*(f-.5)*u_fl.z+vec2(.53,.29)*floor(ph)+.5*q);}
+    {float w0=1.-abs(2.*fract(tc/u_fl.z+po)-1.),vr=inversesqrt(w0*w0+(1.-w0)*(1.-w0)); // (the blend keeps its contrast: variance-preserving, Heitz and Neyret 2018)
+      h=.5+(h-.5)*vr;lit=clamp(.55+(lit-.55)*vr,0.,1.);m=.5+(m-.5)*vr;}
+    float mb=smoothstep(.42,.68,m); // nearer billows, rising
     lit=mix(lit,clamp(.68+.9*(m-.55),0.,1.),mb*.7);
     a-=.42*smoothstep(10.,30.,s)*(1.-smoothstep(50.,72.,s))*smoothstep(.35,.7,h)*(1.-mb*.6); // thinner pockets a little way in
     float fe=fb3(vec2((w.x-fx*.85-tc*8.)/85.,w.y/60.)); // the ragged head and foot
@@ -7124,7 +7166,7 @@ const GLSTSH=[GLV,`#ifdef GL_FRAGMENT_PRECISION_HIGH
 const GLSTC=[GLV,`precision mediump float;varying vec2 v_u;uniform sampler2D u_s;uniform vec2 u_vg;
   void main(){vec4 c=texture2D(u_s,v_u);vec2 q=(v_u-vec2(.5,.45))*vec2(u_vg.x,1.);float v=smoothstep(.4,u_vg.y,length(q))*.66;gl_FragColor=vec4(c.rgb*(1.-v),c.a);}`]; // (the vignette, as the composite's)
 function glstInit(gl,P){try{const mk=(src,names)=>{const p=glMake(gl,src);gl.bindAttribLocation(p,0,'a_p');return glLink(gl,p,names);};
-    GLST.p=mk(GLSTSH,['u_cam','u_res','u_t','u_st','u_fx','u_bu','u_lit','u_base','u_L','u_lf','u_map']);GLST.c=mk(GLSTC,['u_s','u_vg']);
+    GLST.p=mk(GLSTSH,['u_fl','u_cam','u_res','u_t','u_st','u_fx','u_bu','u_lit','u_base','u_L','u_lf','u_map']);GLST.c=mk(GLSTC,['u_s','u_vg']);
     P.final.u.u_sd=gl.getUniformLocation(P.final.p,'u_sd');GLST.gl=gl;GLST.fb=null;GLST.ok=true;}catch(e){GLST.ok=false;GLST.why=String(e&&e.message||e);}}
 function glStormU(U){if(!U.u_sd||!L)return;const c=stormCol().lit;GLP.gl.uniform3f(U.u_sd,c[0]/255*0.85,c[1]/255*0.85,c[2]/255*0.85);} // (the composite's veil colour)
 let stStripC=null;
@@ -7142,7 +7184,7 @@ function glStorm(VZ,camD,camDY,w,h,lw,lh){
   gl.bindFramebuffer(gl.FRAMEBUFFER,GLST.fb.f);gl.viewport(0,0,lw,lh);gl.enable(gl.SCISSOR_TEST);gl.scissor(0,lh-sy1,sx1,sy1-sy0);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
   const U=GLST.p.u,col=stormCol(),sb=skyBeam();gl.useProgram(GLST.p.p);
   gl.uniform4f(U.u_cam,camD,camDY,1/VZ,VZ);gl.uniform2f(U.u_res,w,h);gl.uniform1f(U.u_t,gameTime%1000);
-  gl.uniform4f(U.u_st,fx,top,bot,ch.rTop);gl.uniform4f(U.u_fx,a,S.set.calm?0.5:1,S.set.calm?0.3:1,burst?Math.max(bu,1e-4):0);gl.uniform4f(U.u_bu,ch.wx,P?P.x:0,P?P.y-30:0,0);
+  gl.uniform4f(U.u_st,fx,top,bot,ch.rTop);gl.uniform4f(U.u_fx,a,S.set.calm?0.5:1,S.set.calm?0.3:1,burst?Math.max(bu,1e-4):0);gl.uniform4f(U.u_bu,ch.wx,P?P.x:0,P?P.y-30:0,0);gl.uniform4f(U.u_fl,STB.rise,STB.roll,STB.per,STB.fw);
   gl.uniform3f(U.u_lit,col.lit[0]/255,col.lit[1]/255,col.lit[2]/255);gl.uniform3f(U.u_base,col.base[0]/255,col.base[1]/255,col.base[2]/255);gl.uniform2f(U.u_L,sb.dx,sb.dy);
   const cc=Math.floor((fx+4)/TW);for(let i=0;i<8;i++){const r=ch.rTop+i;GLST.lf[i]=r<=ch.rBot&&(solidBelow(L,cc,r)||solidBelow(L,cc-1,r)||solidBelow(L,cc+1,r))?1:0;}gl.uniform1fv(U.u_lf,GLST.lf);
   gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,GLP.fb.map.t);gl.uniform1i(U.u_map,1);
