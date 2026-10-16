@@ -63,6 +63,7 @@ unit = ['forkscan.py', 'respawnplates.py', 'puzzlescan.py', 'slabresume.py', 'pr
 J += [('hinttest', ['hinttest.py', str(n), str(n)], tail_check()) for n in [1, 3, 6, 9, 10, 12, 16, 20, 24, 27, 32, 35]] # hints until learned: moves the bot uses are learned, their hints stop (floor 1 also checks the old-save migration)
 J += [('grablabel', ['grablabel.py', str(n), str(n)], tail_check()) for n in [1, 3, 6, 9, 12, 16, 20, 24, 27, 32]] # the Grab button's label: scenes, fit and screenshots on floor 1; on the others the bot's Grab presses must have been announced
 J += [(u[:-3], [u], tail_check()) for u in unit if os.path.exists(os.path.join(HERE, u))]
+J += [('stormfair', ['stormfair.py', str(n), str(n + 1)], tail_check()) for n in [6, 9, 13, 17, 21, 25]] # the sandstorm's front reads where it kills, Classic and Torchlight, every theme
 J += [('gratepeek', ['gratepeek.py', '6', '27', '6'], tail_check(r'tested [1-9]\d* bad 0 '))] # crouching on a grating shows the flask below
 # longest jobs first so the tail of the run isn't one slow floor
 RANK = {'featbot fight': 0, 'run2 fight': 1, 'rendersmoke': 2, 'puzzlescan': 3, 'primtest': 3, 'lifttest': 3, 'featbot': 3, 'metrics40': 4, 'featurescan': 4, 'forktest': 5, 'run2': 6}
