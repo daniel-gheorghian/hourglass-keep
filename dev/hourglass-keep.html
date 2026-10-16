@@ -5593,7 +5593,7 @@ function gatherLights(x0,x1,y0,y1){
     // traps keep a faint glint of their own so the dark never hides them
     else if(f.t==='stone'&&f.s<2)add(X+16,ceilingY(o.c,o.r)+8,34,'225,222,240',0.3,'trap');
     else if(f.t==='spikes'||f.t==='chomp'||f.t==='closer'||f.t==='plate'||f.t==='xplate'||f.t==='lplate'||(f.t==='loose'&&f.s<2))add(X+16,ys-8,30,'225,222,240',0.36,'trap');
-    else if(f.t==='darter')add(f.x+(f.dir>0?4:0),f.y,34,'255,214,150',0.5,'trap');
+    else if(f.t==='darter'&&f.dir>0)add(f.x+(f.dir>0?4:0),f.y,34,'255,214,150',0.5,'trap');
     else if(f.t==='shaftfoot')add(X+16,o.r*TH-20,40,'236,228,200',0.32,'trap');
     else if(f.t==='bar')add(f.x,f.y,34,'255,226,170',0.4,'trap');
     else if(f.t==='saw')add(sawX(f,t),ys-10,38,'225,222,240',0.28,'trap');
