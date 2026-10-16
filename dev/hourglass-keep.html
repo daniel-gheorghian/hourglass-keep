@@ -4725,13 +4725,17 @@ function drawShooter(ctx,f){
   const th=L.theme,st=th.style,dir=f.dir||-1,xb=f.x-2*dir,cy=f.y,ws=1-0.35/f.per,ph=cyc(f,gameTime),tell=ph>ws?(ph-ws)/(1-ws):0,T=6.2832,K='#0b0812';
   const S=FIT_STONE[st]||FIT_STONE.dungeon,M=HG_MAT[st]||HG_MAT.palace,wear=wearLevel(xb,cy),q=mulberry32(hash2(Math.round(xb)*7+3,Math.round(cy)*13+5));
   ctx.save();if(tell>0)ctx.translate(Math.sin(gameTime*95)*0.45*tell,0);
-  // the top of the head, seen going back into the wall (the keep is seen from a little above)
-  ctx.fillStyle=K;ctx.beginPath();ctx.moveTo(xb,cy-9.6);ctx.lineTo(xb+dir*6.4,cy-10);ctx.lineTo(xb+dir*6.4+3.2,cy-11.8);ctx.lineTo(xb+3.2,cy-11.4);ctx.closePath();ctx.fill();
-  ctx.fillStyle=S[0];ctx.beginPath();ctx.moveTo(xb+dir*0.4,cy-9.9);ctx.lineTo(xb+dir*6,cy-10.2);ctx.lineTo(xb+dir*6+2.6,cy-11.4);ctx.lineTo(xb+2.6+dir*0.4,cy-11.1);ctx.closePath();ctx.fill();
   ctx.translate(xb,cy);ctx.scale(dir,1);                                                                  // from here forward is +x
   const head=()=>{ctx.beginPath();ctx.moveTo(0,-9.6);ctx.lineTo(5,-10);ctx.quadraticCurveTo(8,-9.4,8.6,-6.2);ctx.lineTo(8.1,-4.8);ctx.quadraticCurveTo(10.8,-4.6,12.6,-3.2);
     ctx.quadraticCurveTo(13.6,-2.4,13.2,-1.1);ctx.lineTo(9.4,-0.9);ctx.lineTo(9.4,0.9);ctx.lineTo(12.6,1.3);ctx.quadraticCurveTo(12.6,3.2,10.6,3.6);
     ctx.quadraticCurveTo(7.4,4.4,6,6);ctx.lineTo(4.6,8.2);ctx.lineTo(0,8.4);ctx.closePath();};
+  ctx.save();ctx.translate(-0.6,2.6);head();ctx.fillStyle='rgba(0,0,0,.34)';ctx.fill();ctx.restore();        // its shadow on the wall just under it, so it stands out of the wall
+  // the top of the head, seen going back into the wall (the keep is seen from a little above): back is up and to the right on
+  // the screen whichever way it faces, so the sliver leans back over the skull (+x) or away from it (-x)
+  const bk=dir>0?1:-1;ctx.fillStyle=K;ctx.beginPath();ctx.moveTo(-0.2,-9.4);ctx.lineTo(5,-9.8);ctx.quadraticCurveTo(7.4,-9.4,8.2,-7.6);ctx.lineTo(8.2+2.6*bk,-8.9);
+  ctx.quadraticCurveTo(7.4+2.6*bk,-10.7,5+2.6*bk,-11.1);ctx.lineTo(-0.2+2.6*bk,-10.7);ctx.closePath();ctx.fill();
+  ctx.fillStyle=mixHex(S[0],'#ffffff',0.12);ctx.beginPath();ctx.moveTo(0.3,-9.7);ctx.lineTo(5,-10.1);ctx.quadraticCurveTo(7,-9.7,7.6,-8.2);ctx.lineTo(7.6+2*bk,-9.1);
+  ctx.quadraticCurveTo(6.8+2*bk,-10.6,5+2*bk,-10.8);ctx.lineTo(0.3+2*bk,-10.5);ctx.closePath();ctx.fill();
   head();ctx.lineWidth=1.8;ctx.strokeStyle=K;ctx.stroke();
   const g=ctx.createLinearGradient(0,-10,0,8.4);g.addColorStop(0,S[0]);g.addColorStop(0.45,S[1]);g.addColorStop(1,S[2]);ctx.fillStyle=g;ctx.fill();
   ctx.save();head();ctx.clip();
