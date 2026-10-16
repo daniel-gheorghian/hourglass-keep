@@ -2243,7 +2243,7 @@ function makeGuard(gd,i){const d=L.d,cap=gd.cap,sk=!!gd.skel,tr=cap?CAPT:TIERS[g
     pendingParry:null,pose:mk({}),cap,skel:sk,pit:gd.pit||1,reinf:gd.reinf||0,vy:0,fx:0,sx:0,tx:0,hitDone:false,flash:0,id:i};}
 function makeSnake(sp){return {x:sp.x,r:sp.r,y:SURF(sp.r),lo:sp.lo,hi:sp.hi,dir:sp.dir||-1,state:'slither',t:0,ph:Math.random()*6,alive:true,gone:false,cool:0,lunge:0,hitDone:false};}
 
-function startLevel(n,cpIdx){GLP.rs=1; // (each floor starts with the scene at full resolution: glTime scales it down if frames run slow)
+function startLevel(n,cpIdx){GLP.rs=1;GLP.pend=null;GLP.now=true; // (each floor starts with the scene at full resolution: glTime scales it down if frames run slow)
   quiet=false;if(hintFloor!==n){hintFloor=n;hintSeen={};}hintQ.length=0;L=genLevel(n,levelSeed(n),false,n===S.legacyFloor);REW.length=0;rw=null;if(cpIdx<0){S.sands=SANDS;S.cpPlates=[];}
   G=L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];
   P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;
@@ -5859,11 +5859,11 @@ const renderXf={VZ:1,camD:0,camDY:0}; // the last frame's world-to-canvas transf
 // true, though the frame runs a little slower than it would), and every few seconds one effect is left out to show what it
 // costs; the table is drawn over the HUD. Torchlight does not fall back to Classic meanwhile. Nothing is stored.
 const PF={on:/[?&]prof\b/.test(location.search),t:0,gl:null,a:{},fa:{},fn:0,ws:0,al:false,cur:'all',iv:0,n:0,t0:0,ix:0,res:{},stg:null,off:{},sv:null,
-  rs:0,img:false,last:0,steps:[['all','all on'],['metal','metal'],['shafts','sky beams'],['flame','flames'],['sand','sand'],['relief','relief'],['shadow','shadows'],['mist','mist/sheen'],['heat','heat'],['grade','grade'],['storm','sandstorm'],['img','texImage2D'],['rs75','scene .75'],['rs50','scene .5']],
+  rs:0,img:false,last:0,steps:[['all','all on'],['metal','metal'],['shafts','sky beams'],['flame','flames'],['sand','sand'],['relief','relief'],['shadow','shadows'],['mist','mist/sheen'],['heat','heat'],['grade','grade'],['storm','sandstorm'],['img','texImage2D'],['rs75','scene .75'],['rs50','scene .5'],['sync','no delay']],
   s(){if(this.on){this.t=performance.now();this.a={};this.gl=null;}},
   p(k){if(!this.on)return;if(this.gl)this.gl.finish();const t=performance.now();this.a[k]=(this.a[k]||0)+t-this.t;this.t=t;}};
-function pfApply(){const k=PF.cur=PF.al?'all':PF.steps[PF.ix][0];if(!PF.sv)PF.sv={...GLFX};Object.assign(GLFX,PF.sv);PF.off={};PF.rs=0;PF.img=false;
-  if(k==='img')PF.img=true;else if(k==='rs75')PF.rs=0.75;else if(k==='rs50')PF.rs=0.5;else
+function pfApply(){const k=PF.cur=PF.al?'all':PF.steps[PF.ix][0];if(!PF.sv)PF.sv={...GLFX};Object.assign(GLFX,PF.sv);PF.off={};PF.rs=0;PF.img=false;PF.sync=false;
+  if(k==='img')PF.img=true;else if(k==='sync')PF.sync=true;else if(k==='rs75')PF.rs=0.75;else if(k==='rs50')PF.rs=0.5;else
   if(k==='metal')GLFX.metal=false;else if(k==='shafts')GLFX.shafts=false;else if(k==='relief')GLFX.relief=false;else if(k==='shadow')GLFX.shadow=false;
   else if(k==='heat')GLFX.heat=false;else if(k==='grade')GLFX.grade=false;else if(k==='storm')GLFX.storm2=false;else if(k==='mist')GLFX.mist=GLFX.sheen=GLFX.caustics=false;else if(k!=='all')PF.off[k]=true;}
 // one drawn frame: ms of work (update + render, GL finished) and the time since the last frame; a step lasts 3 s (the first half second not counted)
@@ -5880,7 +5880,7 @@ function pfDraw(ctx,sh){const fx=(v,d=1)=>v.toFixed(d),R=PF.res,sg=v=>(v>=0?'+':
   const sl=PF.stg?Object.entries(PF.stg).filter(e=>e[1]>=0.05).map(e=>e[0]+' '+fx(e[1])):[];
   for(let i=0;i<sl.length;i+=4)rows.push((i?'':'stages (all on): ')+sl.slice(i,i+4).join('  '));
   ctx.fillStyle='rgba(0,0,0,.72)';ctx.fillRect(x-2,y-2,206,rows.length*lh+3);ctx.fillStyle='#9fffd2';rows.forEach((r,i)=>ctx.fillText(r,x,y+i*lh));ctx.restore();}
-const GLP={rs:1,tw:0,th:0,dC:null,dG:null,mkAny:false,on:false,dead:false,gl:null,cv:null,sceneC:null,sceneG:null,sw:0,sh:0,note:'',ms:0,lastR:0,fps:/[?&]fps\b/.test(location.search),why:'',sum:0,n:0,wsum:0,wn:0,skip:true,used:false};
+const GLP={pipe:true,pend:null,subd:false,rs:1,tw:0,th:0,dC:null,dG:null,mkAny:false,on:false,dead:false,gl:null,cv:null,sceneC:null,sceneG:null,sw:0,sh:0,note:'',ms:0,lastR:0,fps:/[?&]fps\b/.test(location.search),why:'',sum:0,n:0,wsum:0,wn:0,skip:true,used:false};
 const GLV=`attribute vec2 a_p;varying vec2 v_u;void main(){v_u=a_p*0.5+0.5;gl_Position=vec4(a_p,0.,1.);}`;
 // ================= S3-A: feel (rewind look, hit and last-life feedback, sand dissolve) =================
 // Three effects, each behind a constant (GLFX.rewind / GLFX.hit / GLFX.low here, DISS.on below). HK holds this frame's strengths,
@@ -6493,6 +6493,10 @@ function glcPre(VZ,camD,camDY,th){GLC.pns=0;GLC.ocAny=0;if(!GLC.on||!L)return;
 // metal; 2 px of black between them, and every read clamped inside its own part. Sizes are rounded up to 32 px so the canvas
 // and the texture are rarely remade.
 const GLA={c:null,g:null,w:0,h:0,had:true,kT:new Float32Array(4),kC:new Float32Array(4),oT:new Float32Array(4),oC:new Float32Array(4)};
+function glAtlasUp(){const gl=GLP.gl,A=GLA;if(!A.dirty||!A.c)return;A.dirty=false;const W=A.c.width,H=A.c.height;
+  gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,GLP.mtex);
+  if(A.w!==W||A.h!==H){gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,A.c);A.w=W;A.h=H;}
+  else gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,A.c);}
 function glAtlas(w,h,lw,lh){const gl=GLP.gl,A=GLA,ow=Math.ceil(w/8),oh=Math.ceil(h/8),mo=MS.on&&MS.c;
   const cb=MS.cb,bx=mo?Math.max(0,Math.floor(cb[0])):0,by=mo?Math.max(0,Math.floor(cb[1])):0,bw=mo?Math.max(1,Math.ceil(cb[2])-bx):0,bh=mo?Math.max(1,Math.ceil(cb[3])-by):0;
   const up=v=>Math.ceil(v/32)*32,W=up(Math.max(lw+2+ow,bw)),Y0=Math.max(lh,oh)+2,H=up(Y0+bh);
@@ -6503,23 +6507,34 @@ function glAtlas(w,h,lw,lh){const gl=GLP.gl,A=GLA,ow=Math.ceil(w/8),oh=Math.ceil
     if(GLP.mkAny)g.drawImage(GLP.mkC,0,0);
     if(GLC.ocAny)g.drawImage(GLC.ocC,lw+2,0);
     if(mo)g.drawImage(MS.c,bx,by,bw,bh,0,Y0,bw,bh);
-    gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,GLP.mtex);
-    if(A.w!==W||A.h!==H){gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,A.c);A.w=W;A.h=H;}
-    else gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,A.c);}
+    A.dirty=true;} // (copied by glAtlasUp, when the frame is sent to WebGL)
   A.had=!!any;
   // screen uv (GL: y up) -> atlas uv (the canvas's top row is the texture's top), and each part's clamp (half a texel in)
   const set=(T,C,x0,y0,pw,ph)=>{T[0]=pw/W;T[1]=ph/H;T[2]=x0/W;T[3]=1-(y0+ph)/H;C[0]=0.5/pw;C[1]=0.5/ph;C[2]=1-0.5/pw;C[3]=1-0.5/ph;};
   set(A.kT,A.kC,0,0,lw,lh);set(A.oT,A.oC,lw+2,0,ow,oh);
   if(mo){const U=MS.U;U[12]=w/(2*W);U[13]=h/(2*H);U[14]=(-MS.ox/2-bx)/W;U[15]=1-(h/2-MS.oy/2-by+Y0)/H;U[20]=1/W;U[21]=1/H;}}
+// One frame late (owner, v52). ?prof on the iPhone (v51) showed the scene copy costing as much at .75 of the size as at full:
+// the time is not the copy but the wait for the 2D frame itself. Safari draws a 2D canvas in its GPU process, after the
+// script has sent the commands, and alongside the next frame (so Classic does 1.2 ms of work and holds 60 fps); copying the
+// canvas into WebGL makes the script stop until all of it is drawn. So the 2D side of a Torchlight frame (the scene and the
+// three masks, glPrep) is drawn as before, but WebGL takes it at the start of the next frame (glSubmit), when Safari has long
+// finished it: the picture shows one frame (about 17 ms) after the game's state, the HUD on the 2D canvas keeps step. The
+// first frame after switching on and the first of each floor are sent at once; GLP.pipe=false (and ?prof's 'no delay' step) sends every frame at once.
+function glPrep(lights,VZ,camD,camDY,th){const w=cv.width,h=cv.height,lw=Math.ceil(w/4),lh=Math.ceil(h/4);
+  glMask(lights,VZ,camD,camDY);
+  glMetal(lights,VZ,camD,camDY); // (unit MS) the metal mask, when metal is in view
+  glcPre(VZ,camD,camDY,th); // the beams' sources and the figures in them
+  glAtlas(w,h,lw,lh); // the three masks, side by side in one canvas
+  GLP.pend={lights,VZ,camD,camDY,th,w,h};
+  if(!GLP.pipe||(PF.on&&PF.sync)||GLP.first||GLP.now){GLP.now=false;glSubmit();}}
+function glSubmit(){const p=GLP.pend;GLP.pend=null;if(!p||p.w!==cv.width||p.h!==cv.height||!L||p.th!==L.theme)return false;
+  glFrame(p.lights,p.VZ,p.camD,p.camDY,p.th);return true;}
 function glFrame(lights,VZ,camD,camDY,th){
   const {gl,P}=GLP,w=cv.width,h=cv.height,lw=Math.ceil(w/4),lh=Math.ceil(h/4),lk=lookOf(th.style),t=gameTime;
   glSize();
-  // 1. upload the 2D frame (once)
-  glScene(w,h);
-  PF.p('upload');glMask(lights,VZ,camD,camDY);
-  glMetal(lights,VZ,camD,camDY); // (unit MS) the metal mask, when metal is in view
-  glcPre(VZ,camD,camDY,th); // the beams' sources and the figures in them
-  glAtlas(w,h,lw,lh);PF.p('masks'); // the three masks, copied into WebGL as one
+  // 1. copy the 2D frame and the masks (drawn by glPrep)
+  glScene(w,h);PF.p('upload');
+  glAtlasUp();PF.p('masks');
   // 2. light map: ambient, then every light added as a quad with its own falloff and flicker
   let n=0;const B=GLLIGHTS;
   for(const q of lights){if(n>=GLMAXL)break;
@@ -6818,6 +6833,8 @@ function syncLightMode(){const b=document.getElementById('gShader');if(!b)return
   b.firstChild.nodeValue='Lighting: '+(m?'Torchlight':'Classic');b.querySelector('small').textContent=GLP.dead?'Not available on this device':m?'Lamps flicker and bloom, light falls off in the dark':'The lighting this game shipped with';}
 function render(){PF.s();
   const sh=shaderOn();hkFxUpdate(); // S3-A
+  GLP.subd=false;GLP.first=sh&&!GLP.used;if(!sh)GLP.pend=null;
+  else if(GLP.pend){PF.gl=GLP.gl;try{GLP.subd=glSubmit();}catch(e){glKill(String(e&&e.message||e));return render();}PF.p('gl');PF.gl=null;} // last frame's picture to WebGL (glPrep)
   if(sh){if(!GLP.used){GLP.skip=true;GLP.wsum=GLP.wn=0;}GLP.cv.style.display='';glSize();}else if(GLP.cv&&GLP.cv.style.display!=='none')GLP.cv.style.display='none';
   GLP.used=sh;GLOWK=sh?0.5:1;
   METAL_PAINT_HI=!(sh&&GLFX.metal&&MS.ok);MSF.n=0;MSF.rec=sh&&GLFX.metal&&MS.ok; // (unit MS) Torchlight's metal shader carries the highlights; note the figures' metal
@@ -6849,14 +6866,14 @@ function render(){PF.s();
   ctx.restore();
   ctx.setTransform(VS,0,0,VS,0,0);
   if(gf.atmo)hazePass(ctx);PF.p('atmo2d');if(sh)PF.gl=GLP.gl;
-  if(sh){try{glFrame(frameLights,VZ,camD,camDY,L.theme);}catch(e){glKill(String(e&&e.message||e));return render();}
+  if(sh){try{glPrep(frameLights,VZ,camD,camDY,L.theme);}catch(e){glKill(String(e&&e.message||e));return render();}
     ctx=gx;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);ctx.setTransform(VS,0,0,VS,0,0);} // from here on only what the shader must not darken: flashes, HUD, text
   else{if(!vignette){vignette=ctx.createRadialGradient(viewW/2,ROOM_H/2,ROOM_H*0.45,viewW/2,ROOM_H/2,Math.max(viewW,ROOM_W)*0.66);vignette.addColorStop(0,'rgba(5,3,10,0)');vignette.addColorStop(1,'rgba(5,3,10,.5)');
     vignette2=ctx.createRadialGradient(viewW/2,ROOM_H*0.55,ROOM_H*0.4,viewW/2,ROOM_H*0.55,Math.max(viewW,ROOM_W)*0.62);vignette2.addColorStop(0,'rgba(5,3,10,0)');vignette2.addColorStop(1,'rgba(5,3,10,.66)');}
   ctx.fillStyle=gf.grade?vignette2:vignette;ctx.fillRect(0,0,viewW,ROOM_H);lowEdge2D(ctx);} // S3-A: last life, Classic
   if(flashFx){ctx.globalAlpha=Math.max(0,flashFx.a*(1-flashFx.t/flashFx.dur));if(flashFx.edge){const px=P?clamp(P.x-cam.x,40,viewW-40):viewW/2,py=P?clamp(P.y-cam.y-30,40,ROOM_H-40):ROOM_H/2,gr=ctx.createRadialGradient(px,py,26,px,py,Math.max(viewW,ROOM_H)*0.62);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,flashFx.col);ctx.fillStyle=gr;}else ctx.fillStyle=flashFx.col;ctx.fillRect(0,0,viewW,ROOM_H);ctx.globalAlpha=1;}
   if(HK.rw>0.003)rewind2D(ctx,sh); // S3-A: the sands turn back (Classic: the whole look; both: sand streaks)
-  PF.p('final');PF.gl=null;if(!document.body.classList.contains('panelOpen'))drawHUD(ctx);
+  PF.p('prep');PF.gl=null;if(!document.body.classList.contains('panelOpen'))drawHUD(ctx);
   drawOverlayText(ctx);
   if(GLP.fps){ctx.textAlign='left';ctx.textBaseline='top';ctx.font='600 7px monospace';ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(hud.l-1,ROOM_H-17,92,12);ctx.fillStyle='#9fffd2';
     ctx.fillText((sh?'TORCH ':'CLASSIC ')+GLP.ms.toFixed(1)+' ms  '+(GLP.ms>0?Math.round(1000/GLP.ms):0)+' fps',hud.l+1,ROOM_H-15);}

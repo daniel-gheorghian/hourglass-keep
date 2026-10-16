@@ -19,14 +19,15 @@ with sync_playwright() as p:
             let s=0,s2=0,m=0;for(let i=0;i<px.length;i+=64){const v=px[i]+px[i+1]+px[i+2];s+=v;s2+=v*v;m++;}const mean=s/m,vr=s2/m-mean*mean;chk++;if(mean<3||vr<4)blank++;};
           // in 'both': Classic every 20th frame; Torchlight (software WebGL here, ~145 ms of CPU a frame) once each time the
           // view enters a new room and at least every 600 frames, each one read back. The shader is the same code every
-          // frame, so that covers every scene it draws at a small fraction of the cost.
+          // frame, so that covers every scene it draws at a small fraction of the cost. Two renders: Torchlight sends a frame
+          // to WebGL at the start of the next render (v52), so the second one draws the first's picture before it is read.
           let room='',lastT=-1e9;
           const r=runBot(n,31337+n,{fight:true,stop:H=>{++k;
             if(both){const c=H.cam,rm=Math.floor((c.x+H.viewW/2)/320)+','+Math.floor((c.y+96)/192);
-              if(rm!==room||k-lastT>=600){room=rm;lastT=k;H.S.set.lightMode='torch';H.render();look();H.S.set.lightMode='classic';}}
+              if(rm!==room||k-lastT>=600){room=rm;lastT=k;H.S.set.lightMode='torch';H.render();H.render();look();H.S.set.lightMode='classic';}}
             if(k%20===0){cnt++;
               const t=performance.now();H.render();const dt=performance.now()-t;ms+=dt;mcnt++;
-              if(torch&&!both&&cnt%4===1)look();}
+              if(torch&&!both&&cnt%4===1){H.render();look();}}
             return false;}});
           return {ok:r.ok&&(!torch||(blank===0&&off===0&&chk>0)),why:r.why||(torch&&(blank||off)?'blank '+blank+' off '+off:undefined),ms:ms/Math.max(1,mcnt),frames:r.frames};}''',[n,mode],'floor %d'%n)
         res.append((n,r['ok'],r.get('why'),round(r['ms'],2)))

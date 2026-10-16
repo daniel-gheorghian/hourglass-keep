@@ -2,6 +2,8 @@
 #  1. GLFX.metal off renders exactly the frame of a build whose shaders carry no metal code (HK_NOMS, forced by too few texture units)
 #  2. the sampler-limit fallback: under 8 texture units the metal code is left out, Torchlight still runs, one console note, no errors
 #  3. a view without metal draws no mask and uploads nothing; a view with a gate draws and uploads it, and changes the frame
+#  (frames are sent to WebGL at once, GLP.pipe=false: each check compares the picture of one exact state, not the game's
+#   one-frame-late picture of v52)
 #  4. "Softer flashes" (calm) freezes the glints and lowers the strength; the painted highlights come back with the shader off
 #  5. with --base FILE: GLFX.metal off is pixel-identical to FILE (the source before the unit) in the same scenes
 # Prints one line per check and ends with 'FAILURES n'.
@@ -28,7 +30,7 @@ SETUP = '''([n,s,t])=>{const H=__HK;window.__HKfreeze=true;window.__HKnoauto=tru
   const L=H.load(n,s,true);H.banner=null;let x=L.start.x,r=L.start.r;
   if(t){const o=L.dyn.find(o=>o.f.t===t);if(!o)return false;x=o.c*32-56;r=o.r;}
   const P=H.P;P.x=x;P.y=(r+1)*64-4;P.fallY=P.y;P.state='stand';P.inv=1e9;H.cam.snap=true;H.mode='play';
-  for(let k=0;k<40;k++){P.x=x;P.y=(r+1)*64-4;P.state='stand';P.inv=1e9;H.tick(1);}H.S.set.lightMode='torch';H.GLFX.metal=false;for(let k=0;k<12;k++)H.render();return true;}''' # (a dozen frames first: the relief pass copies the rooms in view one a frame)
+  for(let k=0;k<40;k++){P.x=x;P.y=(r+1)*64-4;P.state='stand';P.inv=1e9;H.tick(1);}H.GLP.pipe=false;H.S.set.lightMode='torch';H.GLFX.metal=false;for(let k=0;k<12;k++)H.render();return true;}''' # (a dozen frames first: the relief pass copies the rooms in view one a frame)
 FRAME = '''([m,calm])=>{const H=__HK;H.GLFX.metal=m;H.S.set.calm=!!calm;let a=7;const R=Math.random;Math.random=()=>{a=(a*16807)%2147483647;return a/2147483647;};
   try{H.render();}finally{Math.random=R;}return {used:H.GLP.used,on:H.MS.on,ups:H.MS.ups||0,ok:H.MS.ok,paint:H.msPaint()};}'''
 

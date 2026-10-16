@@ -4,6 +4,8 @@
 # up to the waist, the dust's alpha must first reach .55 within 6 px of the kill line, and nothing denser than .25 may lie
 # beyond wx+10 (the veil and grains ahead stay thin). Uses __HK.stormProbe (Classic: the 2D layer drawn alone; Torchlight:
 # the shader's own buffer). Prints one line per floor and ends with 'FAILURES n'.
+# Torchlight frames are sent to WebGL at once (GLP.pipe=false): the test moves the storm tens of px between single frames, and
+# the game's one-frame-late picture (v52) would show the frame before; in play the storm pass reads the storm where it is.
 import os, sys
 from playwright.sync_api import sync_playwright
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -14,7 +16,7 @@ hi = int(a[1]) if len(a) > 1 else 27
 nseeds = int(a[2]) if len(a) > 2 else 1
 FRAMES, TORCH_EVERY = 200, 5
 fails = 0
-SETUP = '''([n,s])=>{const H=__HK;window.__HKfreeze=true;window.__HKnoauto=true;document.querySelectorAll('.screen').forEach(e=>e.hidden=true);
+SETUP = '''([n,s])=>{const H=__HK;window.__HKfreeze=true;window.__HKnoauto=true;H.GLP.pipe=false;document.querySelectorAll('.screen').forEach(e=>e.hidden=true);
   for(const id in H.HINTS)H.S.hints[id]=1;for(const id of H.HINT_MOVE)H.S.learned[id]=1;
   const L=H.load(n,s,true);H.banner=null;const c=L.ext.chase;if(!c)return null;
   let sp=null;for(let cc=c.c0+6;cc<c.c1-4&&!sp;cc++)for(let r=c.rTop+1;r<c.rBot;r++)if(H.solidBelow(cc,r)&&H.solidBelow(cc-1,r)&&H.solidBelow(cc-2,r)&&H.solidBelow(cc-3,r)){sp={x:cc*32+16,r};break;}
