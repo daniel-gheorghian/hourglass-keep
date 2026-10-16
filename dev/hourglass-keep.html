@@ -2703,9 +2703,11 @@ function stAir(dt){
   }
   if(P.y>L.rows*TH+90)die('fall');
 }
-// is the prince pressed against a wall? returns the side (+1 right, -1 left) or 0
-function wallTouch(){for(const sd of [1,-1]){const fx=Math.floor((P.x+sd*(BW+1.5))/TW);if(fx===pCol())continue;
+// is the prince pressed against a wall? returns the side (+1 right, -1 left) or 0. A lift's shaft (either kind, every cell it
+// travels through) gives no hold: its walls are not for kicking (owner, v59), he slides down them as down any smooth wall
+function wallTouch(){if(inLiftShaft())return 0;for(const sd of [1,-1]){const fx=Math.floor((P.x+sd*(BW+1.5))/TW);if(fx===pCol())continue;
   if(B(L,fx,rowOf(P.y-40))===WALL||B(L,fx,rowOf(P.y-12))===WALL)return sd;}return 0;}
+function inLiftShaft(){const c=pCol(),ra=rowOf(P.y-40),rb=rowOf(P.y-12);for(const f of L.lifts)if(c>=f.ca&&c<=f.cb&&rb>=f.rT&&ra<=f.rB)return true;return false;}
 function bannerAt(){const f=F(L,pCol(),rowOf(P.y-30));return !!(f&&f.t==='banner');}
 // ---- the swing bar is a trapeze: the bar hangs on its chains from the ceiling (a pendulum of its own) and he swings under it.
 // His swing is a damped pendulum (angle P.swTh, positive = forward of the bar; speed P.swOm), not a clock: left alone it dies down
