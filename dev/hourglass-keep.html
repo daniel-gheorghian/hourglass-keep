@@ -1713,8 +1713,8 @@ function buildLevel(n,seed,test,legacy,att){
 }
 
 // ================= pose & figure =================
-const PK=['lean','head','aF','eF','aB','eB','hF','kF','hB','kB','air','hy','sw','rot'];
-const mk=o=>Object.assign({lean:0.02,head:0,aF:0.08,eF:0.15,aB:-0.06,eB:0.12,hF:0.04,kF:0.03,hB:-0.04,kB:0.03,air:0,hy:24,sw:0.25,rot:0},o);
+const PK=['lean','head','aF','eF','aB','eB','hF','kF','hB','kB','air','hy','sw','rot','kn'];
+const mk=o=>Object.assign({lean:0.02,head:0,aF:0.08,eF:0.15,aB:-0.06,eB:0.12,hF:0.04,kF:0.03,hB:-0.04,kB:0.03,air:0,hy:24,sw:0.25,rot:0,kn:0},o); // kn: 1 when he is down on his knees (footXf)
 const PS={
   stand:mk({}),
   crouch:mk({lean:0.45,hF:1.15,kF:2.0,hB:0.85,kB:1.8,aF:0.4,eF:0.5,aB:0.25,eB:0.5}),
@@ -1743,8 +1743,8 @@ Object.assign(PS,{
   jumpLowS:mk({lean:0.78,head:-0.5,hF:1.25,kF:1.9,hB:0.75,kB:1.9,aF:1.2,eF:0.35,aB:0.6,eB:0.45,air:1,hy:21}),
   // climbing onto a ledge: hands pressing down on the floor, then one knee set on it
   press:mk({lean:0.38,head:-0.1,hF:0.12,kF:0.25,hB:-0.05,kB:0.3,aF:0.55,eF:-0.35,aB:0.45,eB:-0.3,air:1,hy:22}),
-  kneelUp:mk({lean:0.48,head:-0.1,hF:1.4,kF:2.3,hB:-0.2,kB:0.3,aF:0.45,eF:-0.25,aB:0.35,eB:-0.2,air:1,hy:20}),
-  kneel:mk({lean:0.5,head:-0.05,hF:0.58,kF:2.16,hB:-0.75,kB:0.55,aF:0.35,eF:-0.2,aB:0.2,eB:-0.15,air:1,hy:20}),
+  kneelUp:mk({lean:0.48,head:-0.1,hF:1.4,kF:2.3,hB:-0.2,kB:0.3,aF:0.45,eF:-0.25,aB:0.35,eB:-0.2,air:1,hy:20,kn:1}),
+  kneel:mk({lean:0.5,head:-0.05,hF:0.58,kF:2.16,hB:-0.75,kB:0.55,aF:0.35,eF:-0.2,aB:0.2,eB:-0.15,air:1,hy:20,kn:1}),
   // kicking up a shaft (see KICK_VX): the push, the push leg stretched back to the wall he leaves, the other knee driven
   // up and the arms swinging toward the next wall; the tuck, both knees up; the reach, the leading foot out for the wall
   kickPush:mk({lean:0.3,head:-0.3,hF:1.4,kF:1.9,hB:-1.25,kB:0.15,aF:1.35,eF:0.35,aB:-0.7,eB:0.45,air:1,hy:25}),
@@ -1839,7 +1839,7 @@ function drinkFrame(t){let i=1;while(i<DK.length-1&&t>DK[i][0])i++;
   const a=DK[i-1],b=DK[i],u=clamp((t-a[0])/(b[0]-a[0]),0,1),e=u*0.5+ease(u)*0.5;
   lerpPose(a[1],b[1],e,dkOut.p);dkOut.tilt=lerp(a[2],b[2],e);dkOut.fill=lerp(a[3],b[3],u);return dkOut;}
 function crawlPose(ph){const a=ph*6.2832,s=Math.sin(a);
-  return mk({lean:1.36,head:-0.95,hF:0.28+0.22*s,kF:1.78+0.1*s,hB:0.1-0.22*s,kB:1.66-0.1*s,aF:0.06-0.28*s,eF:-0.25,aB:-0.02+0.28*s,eB:-0.2});}
+  return mk({lean:1.36,head:-0.95,hF:0.28+0.22*s,kF:1.78+0.1*s,hB:0.1-0.22*s,kB:1.66-0.1*s,aF:0.06-0.28*s,eF:-0.25,aB:-0.02+0.28*s,eB:-0.2,kn:1});}
 function RP(ph,amp=1){return GFX().hd?runPoseHD(ph,amp):runPose(ph,amp);}
 function runPose(ph,amp=1){const a=ph*6.2832,s=Math.sin(a),c=Math.cos(a);
   return mk({lean:0.2*amp,hF:0.62*s*amp,hB:-0.62*s*amp,kF:0.15+1.1*Math.max(0,c)*amp,kB:0.15+1.1*Math.max(0,-c)*amp,aF:-0.55*s*amp,aB:0.55*s*amp,eF:0.7,eB:0.7});}
@@ -1857,6 +1857,17 @@ function skel(p){
   const low=Math.max(fF[1],fB[1]);
   return {kF,fF,kB,fB,sh,hd,eF,hF,eB,hB,hipH:lerp(low,p.hy,p.air)};
 }
+// A foot is drawn flat and pointing forward, which is right while he stands on it. Kneeling or crawling, the shin lies on the
+// floor trailing back from the knee and the foot lies behind it, instep down and toes pointing back. So where the shin trails
+// back near level (from 57 degrees past straight down), the knee is low and that foot is on the floor (the lowest one, give or
+// take 2 px), in a pose that has him on his knees (kn: crawling, the end of a climb), the foot turns over to point back; a leg
+// kicked back or tucked in a run or a jump is left alone. Returns a map from the foot's own frame (x toward the toe, y down) to the figure's.
+function footXf(p,s,f,kn,h,k){const r=k-h,low=Math.max(s.fF[1],s.fB[1]);
+  const w=(p.kn||0)*sstep((r-1)/0.3)*(1-sstep((r-1.75)/0.15))*sstep((kn[1]-6)/3)*(1-sstep((low-f[1]-2)/4));
+  if(w<0.01)return (dx,dy)=>[f[0]+dx,f[1]+dy];
+  // it turns about the shin, through facing us (drawn short), not through pointing down into the floor
+  const c=Math.cos(w*Math.PI),q=c<0?Math.min(-0.35,c):Math.max(0.35,c);
+  return (dx,dy)=>[f[0]+dx*q,f[1]+dy];}
 // ===== HD figure: shaped, shaded body parts on the same skeleton; cloth that trails the motion =====
 function shadeHex(h,k){const n=parseInt(h.slice(1),16),r=n>>16,g=(n>>8)&255,b=n&255,f=c=>Math.max(0,Math.min(255,Math.round(k<0?c*(1+k):c+(255-c)*k)));return '#'+((1<<24)|(f(r)<<16)|(f(g)<<8)|f(b)).toString(16).slice(1);}
 // a tapered tube through points, with a width at each point; returns a Path2D
@@ -1919,16 +1930,16 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
   {const w0=at(0.16),wa=[w0[0]-nx*4,w0[1]-ny*4];const st=trail(wa,2,2.6,wind,t+0.3,0.5,1.7);tcel(ctx,st,[2.2,1.8,1.2],D('sash',-0.2),shadeHex(D('sash',-0.2),-0.25),O);}
   const arm=(sh,e,h,base,shade)=>{tcel(ctx,[sh,e,h],[3.5,2.9,2.2],base,shade,O);
     const hp=new Path2D();hp.ellipse(h[0],h[1],1.35,1.2,0,0,Math.PI*2);if(O.mono){ctx.fillStyle=O.mono;ctx.fill(hp);}else{ctx.strokeStyle=O.out;ctx.lineWidth=1.1;ctx.stroke(hp);ctx.fillStyle=base;ctx.fill(hp);}};
-  const leg=(f,k,base,shade,cuff,boot)=>{
+  const leg=(f,k,base,shade,cuff,boot,X)=>{
     const mid=[k[0]+(f[0]-k[0])*0.55-0.6,k[1]+(f[1]-k[1])*0.55],ank=[k[0]+(f[0]-k[0])*0.9,k[1]+(f[1]-k[1])*0.9];
     tcel(ctx,[[0,0],k,mid,ank],[8.2,6.8,6.2,3.6],base,shade,O);
     // cuff band and the slipper with its curled toe
     if(!O.mono){ctx.strokeStyle=cuff;ctx.lineWidth=1.3;const dx=f[0]-k[0],dy=f[1]-k[1],d=Math.hypot(dx,dy)||1;ctx.beginPath();ctx.moveTo(ank[0]-dy/d*1.9,ank[1]+dx/d*1.9);ctx.lineTo(ank[0]+dy/d*1.9,ank[1]-dx/d*1.9);ctx.stroke();}
-    const sp=new Path2D();sp.moveTo(f[0]-2.2,f[1]+0.6);sp.quadraticCurveTo(f[0]-2.4,f[1]-2.2,f[0]+0.2,f[1]-2.0);sp.quadraticCurveTo(f[0]+3.4,f[1]-1.4,f[0]+5.6,f[1]-0.2);
-    sp.quadraticCurveTo(f[0]+7.2,f[1]-0.6,f[0]+7.0,f[1]-2.2);sp.quadraticCurveTo(f[0]+7.8,f[1]+0.4,f[0]+5.2,f[1]+1.0);sp.lineTo(f[0]-1.4,f[1]+1.0);sp.closePath();
-    celAt(ctx,sp,boot,shadeHex(boot,-0.35),O,f[0]+2.6,f[1]-0.4);};
+    const sp=new Path2D(),M=(dx,dy)=>sp.moveTo(...X(dx,dy)),Ln=(dx,dy)=>sp.lineTo(...X(dx,dy)),Q=(a,b,c,d)=>sp.quadraticCurveTo(...X(a,b),...X(c,d)); // (in the foot's own frame: footXf)
+    M(-2.2,0.6);Q(-2.4,-2.2,0.2,-2.0);Q(3.4,-1.4,5.6,-0.2);Q(7.2,-0.6,7.0,-2.2);Q(7.8,0.4,5.2,1.0);Ln(-1.4,1.0);sp.closePath();
+    celAt(ctx,sp,boot,shadeHex(boot,-0.35),O,...X(2.6,-0.4));};
   arm(s.sh,s.eB,s.hB,D('skin',-0.18),shadeHex(D('skin',-0.18),-0.22));
-  leg(s.fB,s.kB,D('pants',-0.12),shadeHex(D('pants',-0.12),-0.18),shadeHex(C('pants'),-0.45),shadeHex(C('boot'),-0.2));
+  leg(s.fB,s.kB,D('pants',-0.12),shadeHex(D('pants',-0.12),-0.18),shadeHex(C('pants'),-0.45),shadeHex(C('boot'),-0.2),footXf(p,s,s.fB,s.kB,p.hB,p.kB));
   // sheathed sword at the hip when not drawn
   if(!o.sword&&o.hasSword&&!O.mono){ctx.save();const hp=at(0.12);ctx.translate(hp[0]-nx*1,hp[1]-ny*1);ctx.rotate(lean+1.95);
     const sc=new Path2D();sc.moveTo(0,-1.3);sc.quadraticCurveTo(7,-2.2,13,0.2);sc.lineTo(12.6,1.5);sc.quadraticCurveTo(7,0.2,0,1.3);sc.closePath();celAt(ctx,sc,o.pale?'#a98255':'#6b4a2a','#4a321c',O,6.5,0);
@@ -1974,7 +1985,7 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
     const r=LEN.hd,ex=hd[0]+hnx*r*0.48+hx*r*0.12,ey=hd[1]+hny*r*0.48+hy*r*0.12;ctx.fillStyle='#120c18';ctx.beginPath();ctx.ellipse(ex,ey,0.62,0.85,ha,0,Math.PI*2);ctx.fill();
     ctx.strokeStyle=shadeHex(C(pal.helm?'skin':'hair'),-0.3);ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(ex-hnx*0.9+hx*1.4,ey-hny*0.9+hy*1.4);ctx.lineTo(ex+hnx*1.1+hx*1.2,ey+hny*1.1+hy*1.2);ctx.stroke();}
   // --- front layer: leg, sword, arm ---
-  leg(s.fF,s.kF,C('pants'),D('pants'),shadeHex(C('pants'),-0.42),C('boot'));
+  leg(s.fF,s.kF,C('pants'),D('pants'),shadeHex(C('pants'),-0.42),C('boot'),footXf(p,s,s.fF,s.kF,p.hF,p.kF));
   if(o.sword&&o.smear&&!O.mono){const h=s.hF;for(const [f,al] of [[1,0.16],[0.5,0.3]]){const a=p.sw+o.smear*f,dx=Math.cos(a),dy=-Math.sin(a);ctx.globalAlpha=al*(o.alpha===undefined?1:o.alpha);
     ctx.fillStyle='#e8eef8';ctx.beginPath();ctx.moveTo(h[0],h[1]);ctx.lineTo(h[0]+Math.cos(p.sw)*18,h[1]-Math.sin(p.sw)*18);ctx.lineTo(h[0]+dx*18,h[1]+dy*18);ctx.closePath();ctx.fill();}ctx.globalAlpha=o.alpha===undefined?1:o.alpha;}
   if(o.sword){const h=s.hF,a=p.sw,dx=Math.cos(a),dy=-Math.sin(a),nx2=-dy,ny2=dx,L2=o.swLen||18;
@@ -2027,7 +2038,7 @@ function drawSkeletonHD(ctx,x,y,face,p,pal,o){
   // back arm and leg, dimmer
   bone(s.sh,s.eB,2.2,true);bone(s.eB,s.hB,1.9,true);
   bone([0,0],s.kB,2.8,true);bone(s.kB,s.fB,2.4,true);
-  {const f=s.fB;tcel(ctx,[[f[0]-1,f[1]],[f[0]+4.5,f[1]+0.3]],[2.4,1.4],BONE.shade,BONE.dark,O);}
+  {const X=footXf(p,s,s.fB,s.kB,p.hB,p.kB);tcel(ctx,[X(-1,0),X(4.5,0.3)],[2.4,1.4],BONE.shade,BONE.dark,O);}
   // pelvis
   {const pv=new Path2D();pv.moveTo(-nx*4.2-tx*1,-ny*4.2-ty*1);pv.quadraticCurveTo(-tx*4,-ty*4,nx*4.4-tx*1,ny*4.4-ty*1);pv.lineTo(nx*2.4+tx*2.6,ny*2.4+ty*2.6);pv.quadraticCurveTo(tx*1,ty*1,-nx*2.2+tx*2.6,-ny*2.2+ty*2.6);pv.closePath();
     celAt(ctx,pv,BONE.base,BONE.shade,O,0,0);
@@ -2058,7 +2069,7 @@ function drawSkeletonHD(ctx,x,y,face,p,pal,o){
       ctx.strokeStyle='#120c18';ctx.lineWidth=0.5;ctx.beginPath();for(let i=0;i<3;i++){const q=[hd[0]+hnx*r*(0.35+i*0.22)-hx*r*0.5,hd[1]+hny*r*(0.35+i*0.22)-hy*r*0.5];ctx.moveTo(q[0],q[1]);ctx.lineTo(q[0]-hx*1.1,q[1]-hy*1.1);}ctx.stroke();}}
   // front leg, blade, front arm
   bone([0,0],s.kF,2.8);bone(s.kF,s.fF,2.4);
-  {const f=s.fF;tcel(ctx,[[f[0]-1,f[1]],[f[0]+4.8,f[1]+0.3]],[2.4,1.4],BONE.base,BONE.shade,O);}
+  {const X=footXf(p,s,s.fF,s.kF,p.hF,p.kF);tcel(ctx,[X(-1,0),X(4.8,0.3)],[2.4,1.4],BONE.base,BONE.shade,O);}
   if(o.sword){const h=s.hF,a=p.sw,dx=Math.cos(a),dy=-Math.sin(a),nx2=-dy,ny2=dx,L2=17;
     const bl=new Path2D();bl.moveTo(h[0]+nx2*0.8,h[1]+ny2*0.8);bl.lineTo(h[0]+dx*L2+nx2*1.6,h[1]+dy*L2+ny2*1.6);bl.lineTo(h[0]+dx*(L2+1.2),h[1]+dy*(L2+1.2));bl.lineTo(h[0]+dx*L2*0.55-nx2*0.9,h[1]+dy*L2*0.55-ny2*0.9);bl.lineTo(h[0]-nx2*0.8,h[1]-ny2*0.8);bl.closePath();
     if(O.mono){ctx.fillStyle=O.mono;ctx.fill(bl);}else{msFig(ctx,MKID.iron,bl);ctx.strokeStyle=O.out;ctx.lineWidth=1.1;ctx.stroke(bl);ctx.fillStyle='#9a9384';ctx.fill(bl);
@@ -2096,14 +2107,14 @@ function drawFigure(ctx,x,y,face,p,pal,o){
   const wm=pal.bones?0.55:1;
   const limb=(a,b,c,col,w)=>{w*=wm;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.lineTo(c[0],c[1]);ctx.strokeStyle=OUT;ctx.lineWidth=w+1.7;ctx.stroke();ctx.strokeStyle=col;ctx.lineWidth=w;ctx.stroke();
     if(pal.bones){ctx.fillStyle=col;for(const q of [b]){ctx.beginPath();ctx.arc(q[0],q[1],1.3,0,Math.PI*2);ctx.fill();}}};
-  const foot=(f,col)=>{ctx.beginPath();ctx.moveTo(f[0]-0.8,f[1]);ctx.lineTo(f[0]+3.2,f[1]+0.2);ctx.strokeStyle=OUT;ctx.lineWidth=4.2;ctx.stroke();ctx.strokeStyle=col;ctx.lineWidth=2.6;ctx.stroke();};
+  const foot=(X,col)=>{ctx.beginPath();ctx.moveTo(...X(-0.8,0));ctx.lineTo(...X(3.2,0.2));ctx.strokeStyle=OUT;ctx.lineWidth=4.2;ctx.stroke();ctx.strokeStyle=col;ctx.lineWidth=2.6;ctx.stroke();};
   const sw=(hand,ang,len)=>{const dx=Math.cos(ang),dy=-Math.sin(ang);
     ctx.beginPath();ctx.moveTo(hand[0],hand[1]);ctx.lineTo(hand[0]+dx*len,hand[1]+dy*len);ctx.strokeStyle=OUT;ctx.lineWidth=3.2;ctx.stroke();ctx.strokeStyle=o.mono||'#e9edf6';ctx.lineWidth=1.6;ctx.stroke();
     if(!o.mono)msFig(ctx,MKID.steel,null,hand[0],hand[1],hand[0]+dx*len,hand[1]+dy*len,2.6);
     ctx.beginPath();ctx.moveTo(hand[0]-dy*2.8,hand[1]+dx*2.8);ctx.lineTo(hand[0]+dy*2.8,hand[1]-dx*2.8);ctx.strokeStyle=o.mono||'#d8b04a';ctx.lineWidth=1.8;ctx.stroke();};
   // back limbs
   limb(s.sh,s.eB,s.hB,pal.skinD,2.5);
-  limb([0,0],s.kB,s.fB,pal.pantsD,3.4);foot(s.fB,pal.boot);
+  limb([0,0],s.kB,s.fB,pal.pantsD,3.4);foot(footXf(p,s,s.fB,s.kB,p.hB,p.kB),pal.boot);
   if(!o.sword&&o.hasSword){ctx.beginPath();ctx.moveTo(-1,1);ctx.lineTo(-11,8);ctx.strokeStyle=OUT;ctx.lineWidth=3.4;ctx.stroke();ctx.strokeStyle=o.mono||'#6b4a2a';ctx.lineWidth=2;ctx.stroke();}
   // scarf
   const tx=Math.sin(p.lean),ty=-Math.cos(p.lean),nx=-ty,ny=tx;
@@ -2138,7 +2149,7 @@ function drawFigure(ctx,x,y,face,p,pal,o){
   else{ctx.beginPath();ctx.arc(hd[0],hd[1],LEN.hd+0.7,Math.PI*0.55,Math.PI*1.78);ctx.lineTo(hd[0],hd[1]);ctx.closePath();ctx.fillStyle=pal.hair;ctx.fill();}
   if(!pal.bones){ctx.fillStyle=OUT;ctx.fillRect(hd[0]+1.8,hd[1]-1,1.2,1.4);}
   // front limbs
-  limb([0,0],s.kF,s.fF,pal.pants,3.4);foot(s.fF,pal.boot);
+  limb([0,0],s.kF,s.fF,pal.pants,3.4);foot(footXf(p,s,s.fF,s.kF,p.hF,p.kF),pal.boot);
   if(o.sword)sw(s.hF,p.sw,o.swLen||17);
   limb(s.sh,s.eF,s.hF,pal.skin,2.5);
   ctx.restore();
