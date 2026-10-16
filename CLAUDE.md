@@ -141,7 +141,7 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   passes. A new mask goes into the atlas and is drawn in `glPrep`, never copied on its own; any other canvas copied into WebGL is
   drawn in one frame and copied in a later one (the relief's rooms: `glRelStage`, then `glRelUpload`). Tests that compare the picture of one
   exact state set `GLP.pipe=false` (frames sent at once). `?prof` on the device shows each stage and each effect's cost.
-- Torchlight's ambient light never drops under `AMB_MIN` (0.4 of full on its brightest channel, `glAmbK`; owner, v56: the Forge by
+- Torchlight's ambient light never drops under `AMB_MIN` (0.45 of full on its brightest channel, `glAmbK`; owner, v56 and v57: the Forge by
   Moonlight fell to 0.26), and each sky opening adds a soft bounce light where its beam meets the floor (`gatherLights`, Torchlight only).
   The fire vent burns over its whole grate (`VJETS`: a jet per slot, back and front rows, merging into one sheet); its timing and
   hit test are unchanged.
