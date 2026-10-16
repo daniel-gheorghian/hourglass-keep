@@ -3038,7 +3038,10 @@ function updateFeatures(dt){
     if((d.x-d.x0)*dd>0){if(tileVisible(Math.floor(d.x/TW),d.r))spendDart(d);L.ext.darts.splice(i,1);}}
   updateBlocks(dt);
   {const chs=L.ext.chase;if(chs){
-    if(!chs.on&&alive&&mode==='play'&&P.x>(chs.c0+1)*TW&&P.x<(chs.c0+4)*TW&&P.face>0&&pr>=chs.rTop&&pr<=chs.rBot){chs.on=true;chs.t=0;chs.wx=Math.min(P.x-4*TW,(chs.c0-1)*TW);msg('The sand stirs behind you. Run!',3);Snd.play('storm');hint('chase');}
+    // it wakes as he crosses the line at c0+1 heading right, not when he lands past it: a route can pass this row the other way
+    // first (dropping in off a ledge, which turns him to face right) and the storm would rise behind a prince who must go back
+    const lx=chs.lx;chs.lx=P.x;
+    if(!chs.on&&alive&&mode==='play'&&lx!==undefined&&lx<=(chs.c0+1)*TW&&P.x>(chs.c0+1)*TW&&P.x<(chs.c0+4)*TW&&P.face>0&&pr>=chs.rTop&&pr<=chs.rBot){chs.on=true;chs.t=0;chs.wx=Math.min(P.x-4*TW,(chs.c0-1)*TW);msg('The sand stirs behind you. Run!',3);Snd.play('storm');hint('chase');}
     if(chs.on&&!chs.done){chs.t+=dt;if(alive){const near=clamp(1-(P.x-chs.wx)/150,0,1);if(near>0)shake(0.35+0.9*near);}const lead=P.x-chs.wx,keep=190-30*L.d;if(chs.t>0.7)chs.wx+=(chs.v+Math.max(0,lead-keep)*1.3)*dt; // it hangs on your heels: run ahead and it surges
       if(alive&&P.x<chs.wx+4&&pr>=chs.rTop&&pr<=chs.rBot){flashScreen('#c08a40',0.5,0.4);die('sand');}
       // it ends the moment he is through the arch: the storm makes one last rush after him and breaks up round him
