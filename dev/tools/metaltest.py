@@ -21,7 +21,7 @@ def ok(name, cond, info=''):
 
 
 # scenes: (floor, seed, js finding a spot near a dyn feature of this type, or None for anywhere)
-SCENES = [(4, 9801, 'gate'), (8, 9501, 'saw'), (4, 9000, 'chomp'), (10, 9300, 'pend'), (9, 10814, None)]
+SCENES = [(4, 9801, 'gate'), (8, 9501, 'saw'), (4, 9000, 'chomp'), (10, 9300, 'pend'), (9, 10815, None)]  # (a start with no metal in view; re-pick if layouts change)
 SETUP = '''([n,s,t])=>{const H=__HK;window.__HKfreeze=true;window.__HKnoauto=true;document.querySelectorAll('.screen').forEach(e=>e.hidden=true);
   for(const id in H.HINTS)H.S.hints[id]=1;for(const id of H.HINT_MOVE)H.S.learned[id]=1;
   let a=s;Math.random=()=>{a=(a*16807)%2147483647;return a/2147483647;};
