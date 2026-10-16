@@ -9,7 +9,16 @@ window.runBot = function (n, seed, opts) {
   Math.random = () => { a = (a + 0x6D2B79F5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   try { return runBot0(n, seed, opts); } finally { Math.random = mr; }
 };
+// The bot as a generator: it yields before each game tick and goes on after it. runBot drives it with H.tick (tests);
+// the game's ?bench mode drives it from the real frame loop, one step per game tick (window.botGen).
 function runBot0(n, seed, opts) {
+  const H = window.__HK, g = botGen(n, seed, opts);
+  let r = g.next();
+  while (!r.done) { H.tick(1); r = g.next(); }
+  return r.value;
+}
+window.botGen = botGen;
+function* botGen(n, seed, opts) {
   const H = window.__HK;
   const L = H.load(n, seed, !opts.fight);
   const TW = 32, cx = c => c * TW + 16;
@@ -70,7 +79,7 @@ function runBot0(n, seed, opts) {
     return true;
   }
   const next = () => { i++; ph = 0; f0 = frames; allOff(); };
-  const step = () => { H.tick(1); if (pulse) { H.setKey('kb', pulse, false); held[pulse] = false; pulse = null; } frames++; };
+  const post = () => { if (pulse) { H.setKey('kb', pulse, false); held[pulse] = false; pulse = null; } frames++; };
   const fail = (ins, why) => ({ ok: false, n, seed, i, ins, why, x: P().x, col: col(), row: row(), trace: trace.slice(-10) });
   while (frames < 60 * 3000) {
     if (opts.stop && opts.stop(H)) return { ok: 'stopped', frames };
@@ -87,7 +96,7 @@ function runBot0(n, seed, opts) {
     if (sn && ['stand', 'crouch'].includes(p.state) && !(p.state === 'crouch' && ph >= 3 && ins.a === 'crawl')) {
       allOff(); const d = sn.x - p.x;
       if (Math.sign(d) !== p.face && Math.abs(d) > 3) press(d > 0 ? 'r' : 'l'); else press('g');
-      step(); continue;
+      yield 0; post(); continue;
     }
     // sword fights
     if (p.foe && p.foe.alive && ['garde', 'advance', 'retreat', 'strike', 'parry', 'blocked', 'hurt'].includes(p.state)) {
@@ -99,7 +108,7 @@ function runBot0(n, seed, opts) {
         else if (Math.abs(g.x - p.x) > 34) press(g.x > p.x ? 'r' : 'l');
         else if (g.state !== 'strike' && (window.botRnd || Math.random)() < (g.skel ? 0.16 : 0.08)) press('g');
       }
-      step(); continue;
+      yield 0; post(); continue;
     }
     if (ph === 0) trace.push(ins.a + '@' + (ins.from ?? ins.c) + (ins.dir < 0 ? '<' : ''));
     const dir = ins.dir || 1, fwd = dk(dir), back = dk(-dir);
@@ -320,7 +329,7 @@ function runBot0(n, seed, opts) {
         else if (ph === 1) { press('u'); ph = 2; }
         break;
     }
-    step();
+    yield 0; post();
   }
   return { ok: false, n, seed, why: 'global timeout', i };
 };

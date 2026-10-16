@@ -302,7 +302,7 @@ const skyOf=th=>todSkyCol(th.sky,L&&L.prog?L.prog.tod:0);
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=9;
-const APP_VERSION='52'; // set by the build; shown on the title and pause screens
+const APP_VERSION='53'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},learned:prev?prev.learned:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(!s.learned){s.learned={};if(s.level>2){s.learned.gap=s.learned.climb=s.learned.drop=1;}if(s.maxHp>3)s.learned.potion=1;} // an old save: whoever got past floor 2 can run, jump, climb and let go; the rest of the moves come back as hints until done
@@ -310,7 +310,7 @@ function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if
     if(!s.chaseLen){s.chaseLen=1;if(s.started&&(s.cp>=0||s.resume||s.floorTime>0))s.legacyFloor=s.level;}return s;}}catch(e){}return null;}
 let S=loadSave()||newSave();
 if(S.set.lightDef!==1){S.set.lightDef=1;S.set.lightMode='torch';} // Torchlight is the default from v42, once, also for saves that stored Classic only because it was the default
-function writeSave(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function writeSave(){if(BENCH.run)return;try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 
 // ================= level access =================
 function B(L,c,r){if(c<0||c>=L.cols||r<0)return WALL;if(r>=L.rows)return EMPTY;return L.base[r*L.cols+c];}
@@ -2254,7 +2254,7 @@ function makeGuard(gd,i){const d=L.d,cap=gd.cap,sk=!!gd.skel,tr=cap?CAPT:TIERS[g
     pendingParry:null,pose:mk({}),cap,skel:sk,pit:gd.pit||1,reinf:gd.reinf||0,vy:0,fx:0,sx:0,tx:0,hitDone:false,flash:0,id:i};}
 function makeSnake(sp){return {x:sp.x,r:sp.r,y:SURF(sp.r),lo:sp.lo,hi:sp.hi,dir:sp.dir||-1,state:'slither',t:0,ph:Math.random()*6,alive:true,gone:false,cool:0,lunge:0,hitDone:false};}
 
-function startLevel(n,cpIdx){GLP.rs=1;GLP.pend=null;GLP.now=true; // (each floor starts with the scene at full resolution: glTime scales it down if frames run slow)
+function startLevel(n,cpIdx){GLP.pend=null;GLP.now=true; // (each floor starts with the scene at full resolution: glTime scales it down if frames run slow)
   quiet=false;if(hintFloor!==n){hintFloor=n;hintSeen={};}hintQ.length=0;L=genLevel(n,levelSeed(n),false,n===S.legacyFloor);REW.length=0;rw=null;if(cpIdx<0){S.sands=SANDS;S.cpPlates=[];}
   G=L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];
   P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;
@@ -5869,10 +5869,52 @@ const renderXf={VZ:1,camD:0,camDY:0}; // the last frame's world-to-canvas transf
 // ?prof: a profile taken on the device itself. Each stage of a frame is timed (the GL stages after gl.finish, so their times are
 // true, though the frame runs a little slower than it would), and every few seconds one effect is left out to show what it
 // costs; the table is drawn over the HUD. Torchlight does not fall back to Classic meanwhile. Nothing is stored.
-const PF={on:/[?&]prof\b/.test(location.search),t:0,gl:null,a:{},fa:{},fn:0,ws:0,al:false,cur:'all',iv:0,n:0,t0:0,ix:0,res:{},stg:null,off:{},sv:null,
+const PF={upd:0,iv0:0,on:/[?&]prof\b/.test(location.search),t:0,gl:null,a:{},fa:{},fn:0,ws:0,al:false,cur:'all',iv:0,n:0,t0:0,ix:0,res:{},stg:null,off:{},sv:null,
   rs:0,img:false,last:0,steps:[['all','all on'],['metal','metal'],['shafts','sky beams'],['flame','flames'],['sand','sand'],['relief','relief'],['shadow','shadows'],['mist','mist/sheen'],['heat','heat'],['grade','grade'],['storm','sandstorm'],['img','texImage2D'],['rs75','scene .75'],['rs50','scene .5'],['sync','no delay']],
   s(){if(this.on){this.t=performance.now();this.a={};this.gl=null;}},
   p(k){if(!this.on)return;if(this.gl)this.gl.finish();const t=performance.now();this.a[k]=(this.a[k]||0)+t-this.t;this.t=t;}};
+// ?bench (owner, v53): the same test on the phone every time, without anyone driving it. The test bot (dev/tools/bot.js,
+// fetched for the run) plays six floors live, through the game's own loop and input, 20 s each, fixed seeds, one per theme
+// (1 Dungeon, 5 Sandstone, 10 Lapis, 14 Forge with a storm, 17 Crypt, 22 Dungeon at night with a storm), the prince unhurt.
+// Torchlight at full size with no fall back (?bench=75: at .75; ?bench=auto: the game's own scaling and fall back; ?bench=classic).
+// Per floor: frame times (mean, 95th percentile, worst, share over 20 ms, the worst 2 s average, which is what the fall back
+// judges), script time, rooms built, relief copies. The save is left as it was. The result is a table with a Copy button.
+const BENCH={on:/[?&]bench\b/.test(location.search),arg:(location.search.match(/[?&]bench=(\w+)/)||[])[1]||'',floors:[1,5,10,14,17,22],secs:20,
+  i:-1,g:null,run:false,t0:0,iv:[],wk:[],iv0:0,rb:0,ru:0,out:[],save:null,fb:null,done:null};
+function benchBoot(){const tries=['dev/tools/bot.js','tools/bot.js'],load=i=>{if(i>=tries.length){msg('Benchmark: the test bot could not be loaded (it needs a connection).',6);return;}
+  const t=document.createElement('script');t.src=tries[i]+'?v='+APP_VERSION;t.onload=()=>setTimeout(benchStart,600);t.onerror=()=>{t.remove();load(i+1);};document.head.appendChild(t);};load(0);}
+function benchStart(){if(!window.botGen)return;BENCH.save=JSON.stringify(S);BENCH.run=true;BENCH.out=[];
+  for(const id in HINTS)S.hints[id]=1;for(const id of HINT_MOVE)S.learned[id]=1;
+  S.set.lightMode=BENCH.arg==='classic'?'classic':'torch';window.__HKnoauto=BENCH.arg!=='auto';hideAll();benchFloor(0);}
+function benchFloor(i){BENCH.i=i;const n=BENCH.floors[i];GLP.rs=BENCH.arg==='75'?0.75:1;GLP.inSession=true;
+  BENCH.g=window.botGen(n,9000+n,{fight:true});BENCH.iv=[];BENCH.wk=[];BENCH.rb=roomBuilds;BENCH.ru=GLREL.ups||0;BENCH.fb=null;BENCH.done=null;BENCH.t0=0;
+  if(BENCH.arg==='auto')S.set.lightMode='torch';BENCH.step();}
+BENCH.step=function(){if(!BENCH.g)return;if(P)P.inv=1e9;const r=BENCH.g.next();if(r.done){BENCH.done=r.value;BENCH.g=null;}};
+function benchFrame(iv,wk){if(!BENCH.t0){BENCH.t0=performance.now();return;}BENCH.iv.push(iv);BENCH.wk.push(wk);
+  if(BENCH.fb===null&&S.set.lightMode!=='torch'&&BENCH.arg!=='classic')BENCH.fb=(performance.now()-BENCH.t0)/1000;}
+function benchCheck(){if(!BENCH.run||BENCH.i<0)return;const el=BENCH.t0?(performance.now()-BENCH.t0)/1000:0;
+  if(el<BENCH.secs&&(BENCH.g||!BENCH.t0)&&mode!=='card'&&mode!=='dead')return;
+  const iv=BENCH.iv,n=iv.length,srt=Float64Array.from(iv).sort(),sum=iv.reduce((a,b)=>a+b,0),q=k=>n?srt[Math.min(n-1,Math.floor(k*n))]:0;
+  let w2=0;for(let a=0,b=0,acc=0;b<n;b++){acc+=iv[b];while(acc-iv[a]>=2000&&a<b){acc-=iv[a];a++;}if(acc>=2000)w2=Math.max(w2,acc/(b-a+1));}
+  const L0=L;BENCH.out.push({n:BENCH.floors[BENCH.i],th:L0?L0.theme.style:'',s:el,fps:n?1000*n/sum:0,mean:n?sum/n:0,p95:q(0.95),max:n?srt[n-1]:0,
+    slow:n?iv.filter(v=>v>20).length/n:0,w2,wk:BENCH.wk.length?BENCH.wk.reduce((a,b)=>a+b,0)/BENCH.wk.length:0,rb:roomBuilds-BENCH.rb,ru:(GLREL.ups||0)-BENCH.ru,
+    sc:GLP.rs,fb:BENCH.fb,bot:BENCH.done?(BENCH.done.ok===true?'done':String(BENCH.done.why||BENCH.done.ok)):''});
+  BENCH.g=null;if(BENCH.i+1<BENCH.floors.length)benchFloor(BENCH.i+1);else benchEnd();}
+function benchEnd(){BENCH.run=false;BENCH.i=-1;S=JSON.parse(BENCH.save);window.__HKnoauto=false;mode='title';previewTitle();show('title');
+  const f=(v,d=1,w=5)=>v.toFixed(d).padStart(w),gl=GLP.gl,ri=gl&&gl.getExtension('WEBGL_debug_renderer_info');
+  const rows=['Hourglass Keep v'+APP_VERSION+' bench: '+(BENCH.arg||'torch, full size, no fall back'),
+    navigator.userAgent.replace(/^Mozilla\/5\.0 /,'').slice(0,110),'canvas '+cv.width+'x'+cv.height+'  dpr '+(window.devicePixelRatio||1)+(ri?'  '+gl.getParameter(ri.UNMASKED_RENDERER_WEBGL):''),
+    'fl theme      s   fps  mean   p95   max >20ms  w2s  work rooms relf scale'+(BENCH.arg==='auto'?'  off@':'')];
+  let T={s:0,fr:0,sum:0,slow:0,w2:0,wk:0,rb:0,ru:0};
+  for(const o of BENCH.out){const fr=o.mean?o.s*1000/o.mean:0;T.s+=o.s;T.fr+=fr;T.sum+=o.mean*fr;T.slow+=o.slow*fr;T.w2=Math.max(T.w2,o.w2);T.wk+=o.wk*fr;T.rb+=o.rb;T.ru+=o.ru;
+    rows.push(String(o.n).padStart(2)+' '+o.th.padEnd(8)+f(o.s,0,4)+f(o.fps,1,6)+f(o.mean)+f(o.p95,1,6)+f(o.max,0,6)+(Math.round(o.slow*100)+'%').padStart(6)+f(o.w2)+f(o.wk)+String(o.rb).padStart(6)+String(o.ru).padStart(5)+f(o.sc,2,6)+(BENCH.arg==='auto'?(o.fb===null?'    -':f(o.fb,0,5)+'s'):'')+(o.bot&&o.bot!=='done'?'  bot: '+o.bot:''));}
+  if(T.fr)rows.push('all '+' '.repeat(10)+f(T.s,0,2)+f(1000*T.fr/T.sum,1,6)+f(T.sum/T.fr)+' '.repeat(12)+(Math.round(T.slow/T.fr*100)+'%').padStart(6)+f(T.w2)+f(T.wk/T.fr)+String(T.rb).padStart(6)+String(T.ru).padStart(5));
+  const txt=rows.join('\n');window.__BENCH_RESULT=txt;console.log(txt);
+  const d=document.createElement('div');d.id='benchOut';d.style.cssText='position:fixed;inset:8px;z-index:99;background:rgba(8,6,14,.94);color:#9fffd2;font:10px/1.35 monospace;padding:10px;overflow:auto;border-radius:8px';
+  const pre=document.createElement('pre');pre.textContent=txt;pre.style.cssText='margin:0 0 8px;white-space:pre;user-select:text;-webkit-user-select:text';
+  const btn=(t,fn)=>{const b=document.createElement('button');b.textContent=t;b.style.cssText='margin-right:8px;padding:6px 12px;font:600 12px system-ui';b.onclick=fn;d.appendChild(b);};
+  d.appendChild(pre);btn('Copy',()=>{try{navigator.clipboard.writeText(txt);msg('Copied.',2);}catch(e){}});btn('Run again',()=>location.reload());btn('Close',()=>{d.remove();});
+  document.body.appendChild(d);}
 function pfApply(){const k=PF.cur=PF.al?'all':PF.steps[PF.ix][0];if(!PF.sv)PF.sv={...GLFX};Object.assign(GLFX,PF.sv);PF.off={};PF.rs=0;PF.img=false;PF.sync=false;
   if(k==='img')PF.img=true;else if(k==='sync')PF.sync=true;else if(k==='rs75')PF.rs=0.75;else if(k==='rs50')PF.rs=0.5;else
   if(k==='metal')GLFX.metal=false;else if(k==='shafts')GLFX.shafts=false;else if(k==='relief')GLFX.relief=false;else if(k==='shadow')GLFX.shadow=false;
@@ -6409,7 +6451,7 @@ function glMask(lights,VZ,camD,camDY){
 // (ambient only) there is no direction, so no relief. Things drawn over the walls that would carry the wall's pattern (the
 // prince, guards, flames, traps, items, falling stone) are rubbed back to neutral with soft ellipses.
 Object.assign(GLFX,{relief:true,ao:true,bgblur:true}); // unit B's switches: relief (Torchlight), corner shading and distance blur (both modes)
-const GLREL={n:0,gl:null,rp:null,xp:null,buf:null,fb:null,fw:0,fh:0,tex:new Map(),list:[],on:0,V:new Float32Array(64*24),sc:null,sg:null,ul:null,uk:null},GLREL_MAX=10,GLREL_K=0.6;
+const GLREL={n:0,gl:null,rp:null,xp:null,buf:null,fb:null,fw:0,fh:0,tex:new Map(),list:[],on:0,V:new Float32Array(64*24),sc:null,sg:null,ul:null,uk:null},GLREL_MAX=16,GLREL_K=0.6;
 const GLRV=`attribute vec2 a_p;attribute vec2 a_t;varying vec2 v_t,v_s;void main(){v_t=a_t;v_s=a_p*.5+.5;gl_Position=vec4(a_p,0.,1.);}`;
 const GLRS={room:[GLRV,`precision mediump float;varying vec2 v_t,v_s;uniform sampler2D u_rm,u_map;uniform vec2 u_tx,u_lo;uniform float u_k;
     float H(vec2 o){vec4 c=texture2D(u_rm,v_t+o*u_tx);return dot(c.rgb,vec3(.3,.59,.11))*c.a;} // height: the stone's brightness (an opening is a deep hole)
@@ -6421,20 +6463,26 @@ const GLRS={room:[GLRV,`precision mediump float;varying vec2 v_t,v_s;uniform sam
       float f=dot(n,gl/max(m,1e-4))*smoothstep(.003,.04,m)*a;
       gl_FragColor=vec4(.5+.5*f,0.,0.,1.);}`],
   ex:[GLRV,`precision mediump float;varying vec2 v_t;void main(){gl_FragColor=vec4(.5,0.,0.,1.-smoothstep(.4,1.,length(v_t)));}`]};
-function glRelInit(gl){const R=GLREL;R.gl=gl;R.tex.clear();R.fb=null;R.fw=R.fh=0;
+function glRelInit(gl){const R=GLREL;R.gl=gl;R.tex.clear();R.want=null;R.stg=null;R.fb=null;R.fw=R.fh=0;
   const mk=(src,names)=>{const p=glMake(gl,src);gl.bindAttribLocation(p,0,'a_p');gl.bindAttribLocation(p,1,'a_t');return glLink(gl,p,names);};
   R.rp=mk(GLRS.room,['u_rm','u_map','u_tx','u_lo','u_k']);R.xp=mk(GLRS.ex,[]);
   R.buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,R.buf);gl.bufferData(gl.ARRAY_BUFFER,R.V.byteLength,gl.DYNAMIC_DRAW);
   R.ul=gl.getUniformLocation(GLP.P.final.p,'u_rl');R.uk=gl.getUniformLocation(GLP.P.final.p,'u_rk');}
 // one room image, at half size, into its texture (reusing the oldest one once the pool is full)
-function glRelUpload(gl,key,c){const R=GLREL;let e=R.tex.get(key);R.tex.delete(key);
-  if(!e&&R.tex.size>=GLREL_MAX){const k0=R.tex.keys().next().value;e=R.tex.get(k0);R.tex.delete(k0);}
-  if(!e)e={id:0,t:glTex(gl,1,1),w:1,h:1};if(!c._rid)c._rid=++GLREL.n; // (the copy remembers its room image by a number, not by holding on to it)
+// (v53) a room's copy is made in two steps a frame apart, so WebGL never waits for Safari to draw it: glRelief asks for a room
+// (R.want), glRelStage shrinks it on the 2D side during glPrep, and the next glRelief copies the finished picture. Until then the
+// room has no relief (it is lit flat), as before while a room waited its turn.
+function glRelStage(){const R=GLREL,q=R.want;R.want=null;if(!q)return;const c=q.c;if(!c._rid)c._rid=++GLREL.n; // (the copy remembers its room image by a number, not by holding on to it)
   const w=Math.max(1,Math.ceil(c.width/2)),h=Math.max(1,Math.ceil(c.height/2));
   if(!R.sc){R.sc=document.createElement('canvas');R.sg=R.sc.getContext('2d');}
   if(R.sc.width!==w||R.sc.height!==h){R.sc.width=w;R.sc.height=h;}else R.sg.clearRect(0,0,w,h);
-  R.sg.imageSmoothingEnabled=true;R.sg.drawImage(c,0,0,w,h);
-  gl.bindTexture(gl.TEXTURE_2D,e.t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,R.sc);e.id=c._rid;e.w=w;e.h=h;R.tex.set(key,e);return e;}
+  R.sg.imageSmoothingEnabled=true;R.sg.drawImage(c,0,0,w,h);R.stg={key:q.key,id:c._rid,w,h};}
+function glRelUpload(gl,key,c){const R=GLREL,s=R.stg;
+  if(!s||s.key!==key||s.id!==c._rid){if(!R.want)R.want={key,c};return null;} // not drawn yet: ask for it
+  R.stg=null;R.ups=(R.ups||0)+1;let e=R.tex.get(key);R.tex.delete(key);
+  if(!e&&R.tex.size>=GLREL_MAX){const k0=R.tex.keys().next().value;e=R.tex.get(k0);R.tex.delete(k0);}
+  if(!e)e={id:0,t:glTex(gl,1,1),w:1,h:1};
+  gl.bindTexture(gl.TEXTURE_2D,e.t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,R.sc);e.id=s.id;e.w=s.w;e.h=s.h;R.tex.set(key,e);return e;}
 function glRelQuad(o,x0,y0,x1,y1,u0,v0,u1,v1){const V=GLREL.V,w=cv.width,h=cv.height,X0=x0/w*2-1,X1=x1/w*2-1,Y0=1-y0/h*2,Y1=1-y1/h*2;let i=o*24;
   i=glRelV(V,i,X0,Y0,u0,v0);i=glRelV(V,i,X1,Y0,u1,v0);i=glRelV(V,i,X1,Y1,u1,v1);i=glRelV(V,i,X0,Y0,u0,v0);i=glRelV(V,i,X1,Y1,u1,v1);glRelV(V,i,X0,Y1,u0,v1);}
 function glRelV(V,i,x,y,u,v){V[i]=x;V[i+1]=y;V[i+2]=u;V[i+3]=v;return i+4;}
@@ -6452,10 +6500,10 @@ function glRelief(lights,VZ,camD,camDY){
   const cx=camD/VZ,cy=camDY/VZ,vw=w/VZ,vh=h/VZ,rx0=Math.floor(cx/ROOM_W),rx1=Math.floor((cx+vw)/ROOM_W),ry0=Math.floor(cy/ROOM_H),ry1=Math.floor((cy+vh-0.01)/ROOM_H);
   let up=0,n=0;R.list.length=0;
   for(let ry=ry0;ry<=ry1;ry++)for(let rx=rx0;rx<=rx1;rx++){const key=rx+','+ry,c=roomCache.get(key);if(!c)continue;let e=R.tex.get(key);
-    if(!e||e.id!==c._rid){if(up)continue;e=glRelUpload(gl,key,c);up=1;}else{R.tex.delete(key);R.tex.set(key,e);}
+    if(!e||e.id!==c._rid){if(up)continue;e=glRelUpload(gl,key,c);up=1;if(!e)continue;}else{R.tex.delete(key);R.tex.set(key,e);}
     const xa=Math.round(rx*ROOM_W*VZ)-camD,xb=Math.round((rx+1)*ROOM_W*VZ)-camD,ya=Math.round(ry*ROOM_H*VZ)-camDY,yb=Math.round((ry+1)*ROOM_H*VZ)-camDY;
     glRelQuad(n,xa,ya,xb,yb,0,1,1,0);R.list.push(e);n++;}
-  if(!up)for(let ry=ry0-1;ry<=ry1+1&&!up;ry++)for(let rx=rx0-1;rx<=rx1+1;rx++){const key=rx+','+ry,c=roomCache.get(key);if(!c)continue;const e=R.tex.get(key);if(!e||e.id!==c._rid){glRelUpload(gl,key,c);up=1;break;}} // copy a neighbour ahead of time
+  if(!up&&R.tex.size<GLREL_MAX)for(let ry=ry0-1;ry<=ry1+1&&!up;ry++)for(let rx=rx0-1;rx<=rx1+1;rx++){const key=rx+','+ry,c=roomCache.get(key);if(!c)continue;const e=R.tex.get(key);if(!e||e.id!==c._rid){glRelUpload(gl,key,c);up=1;break;}} // copy a neighbour ahead of time, only into a free slot (v53: evicting for it made the rooms take turns, a copy every frame)
   const nr=n;
   if(P)n=glRelEx(n,P.x,P.y-30,22,40,VZ,camD,camDY);
   for(const e of G)if(!e.gone)n=glRelEx(n,e.x,e.y+(e.yo||0)-30,24,40,VZ,camD,camDY);
@@ -6486,11 +6534,12 @@ const GLFLICK={torch:0.6,fire:1,door:0.5,item:0.35};
 // scene, at a scale that drops when frames run slow (glScene, GLP.rs), and one for all three masks together (glAtlas).
 // The scene at GLP.rs of the screen's pixels: the 2D frame is drawn full size as before, shrunk on the 2D side (cheap), and the
 // smaller picture copied. The HUD and text are drawn after the shader on the full-size canvas, so they stay sharp.
-function glScene(w,h){const gl=GLP.gl,rs=PF.on&&PF.rs?PF.rs:GLP.rs;let src=GLP.sceneC;
-  if(rs<1){const dw=Math.max(1,Math.round(w*rs)),dh=Math.max(1,Math.round(h*rs));
-    if(!GLP.dC){GLP.dC=document.createElement('canvas');GLP.dG=GLP.dC.getContext('2d',{alpha:false});}
-    if(GLP.dC.width!==dw||GLP.dC.height!==dh){GLP.dC.width=dw;GLP.dC.height=dh;}
-    GLP.dG.drawImage(GLP.sceneC,0,0,dw,dh);src=GLP.dC;}
+function glShrink(w,h){const rs=PF.on&&PF.rs?PF.rs:GLP.rs;GLP.dOk=false;if(rs>=1)return; // (in glPrep: the 2D side)
+  const dw=Math.max(1,Math.round(w*rs)),dh=Math.max(1,Math.round(h*rs));
+  if(!GLP.dC){GLP.dC=document.createElement('canvas');GLP.dG=GLP.dC.getContext('2d',{alpha:false});}
+  if(GLP.dC.width!==dw||GLP.dC.height!==dh){GLP.dC.width=dw;GLP.dC.height=dh;}
+  GLP.dG.drawImage(GLP.sceneC,0,0,dw,dh);GLP.dOk=true;}
+function glScene(w,h){const gl=GLP.gl;let src=GLP.sceneC;if(GLP.dOk)src=GLP.dC;
   gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,GLP.tex);
   if(src.width!==GLP.tw||src.height!==GLP.th||PF.img){gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,src);GLP.tw=src.width;GLP.th=src.height;}
   else gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,src);}
@@ -6536,6 +6585,7 @@ function glPrep(lights,VZ,camD,camDY,th){const w=cv.width,h=cv.height,lw=Math.ce
   glMetal(lights,VZ,camD,camDY); // (unit MS) the metal mask, when metal is in view
   glcPre(VZ,camD,camDY,th); // the beams' sources and the figures in them
   glAtlas(w,h,lw,lh); // the three masks, side by side in one canvas
+  glShrink(w,h);glRelStage(); // the scene's smaller copy (when the scale is under 1), and a room's half-size copy for the relief
   GLP.pend={lights,VZ,camD,camDY,th,w,h};
   if(!GLP.pipe||(PF.on&&PF.sync)||GLP.first||GLP.now){GLP.now=false;glSubmit();}}
 function glSubmit(){const p=GLP.pend;GLP.pend=null;if(!p||p.w!==cv.width||p.h!==cv.height||!L||p.th!==L.theme)return false;
@@ -6837,14 +6887,14 @@ function glTime(ms){
   if(GLP.wsum>=2000){const avg=GLP.wsum/GLP.wn;GLP.wsum=0;GLP.wn=0;
     if(GLP.skip)GLP.skip=false; // the first window after switching on holds the shader compile
     else if(S.set.lightMode==='torch'&&GLP.used&&!window.__HKnoauto&&!PF.on&&avg>18.5&&GLP.rs>0.5)GLP.rs=GLP.rs>0.8?0.75:0.5; // below about 54 fps: a smaller scene copy first
-    else if(S.set.lightMode==='torch'&&GLP.used&&!window.__HKnoauto&&!PF.on&&avg>22){S.set.lightMode='classic';syncLightMode();
+    else if(S.set.lightMode==='torch'&&GLP.used&&!window.__HKnoauto&&!PF.on&&avg>22){S.set.lightMode='classic';GLP.inSession=false;syncLightMode();
       if(!S.set.slowNote){S.set.slowNote=true;msg('Torchlight was too slow here, so lighting is back to Classic.',4.5);}writeSave();}}
 }
 function syncLightMode(){const b=document.getElementById('gShader');if(!b)return;const m=S.set.lightMode==='torch';b.setAttribute('aria-pressed',String(m));
   b.firstChild.nodeValue='Lighting: '+(m?'Torchlight':'Classic');b.querySelector('small').textContent=GLP.dead?'Not available on this device':m?'Lamps flicker and bloom, light falls off in the dark':'The lighting this game shipped with';}
 function render(){PF.s();
   const sh=shaderOn();hkFxUpdate(); // S3-A
-  GLP.subd=false;GLP.first=sh&&!GLP.used;if(!sh)GLP.pend=null;
+  GLP.subd=false;GLP.first=sh&&!GLP.used;if(!sh)GLP.pend=null;if(GLP.first&&!GLP.inSession){GLP.rs=1;GLP.inSession=true;}if(!sh&&S.set.lightMode!=='torch')GLP.inSession=false; // (the scale found is kept while Torchlight stays on)
   else if(GLP.pend){PF.gl=GLP.gl;try{GLP.subd=glSubmit();}catch(e){glKill(String(e&&e.message||e));return render();}PF.p('gl');PF.gl=null;} // last frame's picture to WebGL (glPrep)
   if(sh){if(!GLP.used){GLP.skip=true;GLP.wsum=GLP.wn=0;}GLP.cv.style.display='';glSize();}else if(GLP.cv&&GLP.cv.style.display!=='none')GLP.cv.style.display='none';
   GLP.used=sh;GLOWK=sh?0.5:1;
@@ -7167,11 +7217,12 @@ let last=0,acc=0,frame=0,idleFrames=0,drawnCamX=0;
 function loop(ts){
   requestAnimationFrame(loop);
   if(window.__HKfreeze){last=0;return;}
+  if(BENCH.run)benchCheck();
   const dt=last?Math.min(0.1,(ts-last)/1000):0;last=ts;
   updateGrabLabel(ts);
-  if(mode==='play'||mode==='dead'||mode==='rewind'){acc+=dt;let n=0;const u0=PF.on?performance.now():0;while(acc>=STEP&&n<6){acc-=STEP;n++;snapPrev();if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}if(n>=6)acc=0;if(PF.on)PF.upd=performance.now()-u0;
+  if(mode==='play'||mode==='dead'||mode==='rewind'){acc+=dt;let n=0;const u0=PF.on||BENCH.g?performance.now():0;while(acc>=STEP&&n<6){acc-=STEP;n++;if(BENCH.g)BENCH.step();snapPrev();if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}if(n>=6)acc=0;if(PF.on||BENCH.g)PF.upd=performance.now()-u0;
     Snd.rumble(stormNear()); // (unit ST)
-    frame++;if(S.set.saver&&(frame&1))return;{const iv=(ts-GLP.lastR)/(S.set.saver?2:1);if(GLP.lastR&&iv<250){glTime(iv);if(PF.on)PF.iv0=iv;}GLP.lastR=ts;}const b0=roomBuilds,r0=PF.on?performance.now():0;renderAt(acc/STEP);if(PF.on){PF.a.update=PF.upd;pfFrame(PF.upd+performance.now()-r0,PF.iv0||0);}idleFrames=0;drawBuilds+=roomBuilds-b0;if(roomBuilds===b0)roomWork();}
+    frame++;if(S.set.saver&&(frame&1))return;{const iv=(ts-GLP.lastR)/(S.set.saver?2:1);if(GLP.lastR&&iv<250){glTime(iv);PF.iv0=iv;}GLP.lastR=ts;}const b0=roomBuilds,mz=PF.on||BENCH.run,r0=mz?performance.now():0;renderAt(acc/STEP);if(PF.on){PF.a.update=PF.upd;pfFrame(PF.upd+performance.now()-r0,PF.iv0||0);}if(BENCH.run)benchFrame(PF.iv0||0,PF.upd+performance.now()-r0);idleFrames=0;drawBuilds+=roomBuilds-b0;if(roomBuilds===b0)roomWork();}
   else{acc=0;GLP.lastR=0;Snd.rumble(0);if(++idleFrames%20===0)render();}
 }
 
@@ -7181,7 +7232,7 @@ function start(data){
   document.querySelectorAll('.verTag').forEach(e=>{e.textContent='Version '+APP_VERSION;});
   if(data&&data.save&&data.save.v===1)S=data.save;
   previewTitle();refreshTitle();syncToggles();show('title');
-  layout();
+  layout();if(BENCH.on)benchBoot();
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{clearRooms();render();});
   requestAnimationFrame(loop);
 }

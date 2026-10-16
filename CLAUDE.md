@@ -29,7 +29,7 @@ they load `bot.js` by a relative path and write their output next to themselves.
 
 ## Build
 
-From the repo root, with N the release number (current release v52, next v53):
+From the repo root, with N the release number (current release v53, next v54):
 
 ```
 python3 dev/tools/build.py dev/hourglass-keep.html index.html sw.js N
@@ -68,6 +68,11 @@ service worker's cache to `hourglass-keep-vN`, which is what makes installed cop
 | `p4bot.py lo hi [seeds]` | the bot plays floors forced to timed remote plates (P4, run for a gate in the next turn); the timers carry no extra factor | every run passes, 0 damage |
 | `orphanscan.py`, `mazescan.py` | no gate side passage is left without its plate (floors 1 to 27, 20 seeds); maze floors hold at least 1.5 times the gate puzzles of ordinary floors of the band, longway floors always a fork | 0 orphans, ratio >= 1.5, forks >= 1 |
 | `featurescan.py [file]`, `featbot.py` | a floor's featured families hold their share of their category (mean and minimum), flags come about one floor in nine, floors differ more than before (sameness); the bot plays floors forced to every flag and family (`window.__FEAT`) | shares near or over 40%, 0 damage |
+
+Speed: `?bench` in the game's URL (on the phone too) makes the bot (`bot.js`, fetched for the run; `botGen` steps it from the
+game's own frame loop) play six fixed floors live, 20 s each, and shows a table of frame times with a Copy button; the save is
+left untouched. `?bench=75`, `?bench=auto` (the game's own scaling and fall back), `?bench=classic`. `bench.py [arg]` runs the
+same on this Mac's GPU (Chrome's costs differ from Safari's: compare Mac runs with Mac runs). `?prof` times each stage in place.
 
 Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chambershot.py` and `liftshot.py` do the same for chambers and lifts.
 
@@ -132,7 +137,8 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   with `?prof`), not the shader passes. So a Torchlight frame is sent one frame late: `glPrep` draws the scene's masks on the 2D side
   and `glSubmit`, at the start of the next `render()`, copies the scene (`glScene`, at `GLP.rs` of full size: 1, .75 or .5, stepped
   down by `glTime` when frames run slow, reset each floor) and one atlas holding every mask (`glAtlas`/`glAtlasUp`) and runs the
-  passes. A new mask goes into the atlas and is drawn in `glPrep`, never copied on its own. Tests that compare the picture of one
+  passes. A new mask goes into the atlas and is drawn in `glPrep`, never copied on its own; any other canvas copied into WebGL is
+  drawn in one frame and copied in a later one (the relief's rooms: `glRelStage`, then `glRelUpload`). Tests that compare the picture of one
   exact state set `GLP.pipe=false` (frames sent at once). `?prof` on the device shows each stage and each effect's cost.
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized from `estPath()` at a careful pace, times 0.84 to 1.08.
