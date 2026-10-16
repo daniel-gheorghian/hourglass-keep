@@ -2699,18 +2699,22 @@ function bannerAt(){const f=F(L,pCol(),rowOf(P.y-30));return !!(f&&f.t==='banner
 const SW_A=0.95,SW_W=2*Math.PI/1.15;
 function barNear(){const hx=P.x,hy=P.y-HANG;for(const o of L.dyn){const f=o.f;if(f.t!=='bar'||(f===P.lastBar&&gameTime-P.barOff<0.5))continue;if(Math.abs(hx-f.x)<15&&Math.abs(hy-f.y)<20)return f;}return null;}
 function swingPos(){const t=gameTime-P.sw0,th=SW_A*Math.sin(SW_W*t),b=P.bar;return {th,c:Math.cos(SW_W*t),hx:b.x+P.face*34*Math.sin(th),hy:b.y+34*Math.cos(th)};}
-// his body through the swing, not a stiff pendulum: the gymnast's long hang swing (the tap swing). At the back end the body is
-// arched (chest leading, heels behind); 10 to 45 degrees before the bottom the hips open further and then whip shut (the beat), so
-// the legs lead through the bottom and up the front swing in a hollow, toes reaching for the far side; falling back, the hips open
-// and he passes the bottom straight and rises behind in the arch again. Keys by the swing's phase (radians of SW_W*t): hip, knee,
-// lean, head; the legs a little apart, the arms solved each frame to reach the bar (34 px above the hip in the swing's frame).
-const SWK=[[0,.35,.2,.12,.18],[.85,.72,.42,.18,.28],[1.571,.8,.5,.2,.3],[2.3,.42,.3,.08,.12],[3.14,-.04,.14,-.02,-.05],
-  [4.05,-.2,.4,-.1,-.2],[4.712,-.26,.5,-.13,-.24],[5.55,-.4,.42,-.17,-.22],[5.98,-.08,.24,.02,0],[6.2832,.35,.2,.12,.18]];
-const SWP=mk({air:1});
+// his body through the swing, not a stiff pendulum: the gymnast's long hang swing (the tap swing). At the back end his legs hang a
+// little under him (the swing itself reaches 54 degrees); on the way down he arches (chest leading, heels behind) and 10 to 45
+// degrees before the bottom the hips open further and then whip shut (the beat), so the legs lead through the bottom and up the
+// front swing in a hollow, toes reaching for the far side; falling back, the hips open and he passes the bottom straight. Keys by the
+// swing's phase (radians of SW_W*t): hip, knee, lean, head; the legs a little apart, the arms solved each frame to reach the bar.
+const SWK=[[0,.3,.28,.08,.15],[.85,.6,.5,.12,.25],[1.571,.66,.6,.14,.28],[2.3,.36,.36,.05,.1],[3.14,-.02,.25,-.01,-.04],
+  [4.05,0,.5,-.02,-.12],[4.712,.04,.6,-.02,-.15],[5.55,-.28,.55,-.07,-.16],[5.98,-.05,.3,.02,0],[6.2832,.3,.28,.08,.15]];
+const SWP=mk({air:1}),BAR_RK=0.9; // BAR_RK: how far the hung bar is drawn pulled toward him (px at full swing; drawBar)
 function swingPose(t,th){const p=SWP,ph=((SW_W*t)%6.2832+6.2832)%6.2832;let i=0;while(i<SWK.length-2&&SWK[i+1][0]<=ph)i++;
   const a=SWK[i],b=SWK[i+1],u=ease((ph-a[0])/(b[0]-a[0])),L1=(k)=>a[k]+(b[k]-a[k])*u,h=L1(1),k=L1(2);
-  p.hF=h+0.08;p.kF=k*0.8;p.hB=h-0.1;p.kB=k+0.12;p.lean=L1(3);p.head=L1(4);p.rot=-th;p.sw=0.25;p.hy=24.5;
-  const sx=LEN.to*Math.sin(p.lean),sy=-LEN.to*Math.cos(p.lean),dx=-sx,dy=-33.5-sy,D=Math.hypot(dx,dy),a0=Math.atan2(dx,dy),R=LEN.ua+LEN.fa;
+  p.hF=h+0.08;p.kF=k*0.8;p.hB=h-0.1;p.kB=k+0.12;p.lean=L1(3);p.head=L1(4);p.rot=-th;p.sw=0.25;
+  // the swing holds his hip 34 px from the bar and straight arms reach 32.5: the figure is drawn a little higher (hy) and the arms
+  // are solved for where the bar (pulled toward him) then lies in his own turned frame, so the hands stay on its grip
+  const c=Math.cos(th),sn=Math.sin(th),lift=1.8/Math.max(0.55,c);p.hy=24.5+lift;
+  const wx=-34*sn+BAR_RK*sn,wy=-34*c+lift,tx=wx*c-wy*sn,ty=wx*sn+wy*c;
+  const sx=LEN.to*Math.sin(p.lean),sy=-LEN.to*Math.cos(p.lean),dx=tx-sx,dy=ty-sy,D=Math.hypot(dx,dy),R=LEN.ua+LEN.fa;let a0=Math.atan2(dx,dy);if(a0<0)a0+=6.2832; // (overhead is near pi: kept on one side of the wrap, as the pose is blended)
   if(D>=R){p.aF=a0;p.eF=0;}else{const be=Math.acos(clamp((LEN.ua*LEN.ua+D*D-LEN.fa*LEN.fa)/(2*LEN.ua*D),-1,1)),ga=Math.acos(clamp((LEN.ua*LEN.ua+LEN.fa*LEN.fa-D*D)/(2*LEN.ua*LEN.fa),-1,1));p.aF=a0+be;p.eF=-(Math.PI-ga);}
   p.aB=p.aF-0.04;p.eB=p.eF;return p;}
 function startWallRun(){const wc=pCol()+P.face;P.x=P.face>0?wc*TW-BW-1:(wc+1)*TW+BW+1;P.vx=0;P.vy=-WR_V;P.fallY=P.y;P.autoGrab=true;P.jumpKind='wall';P.wrY0=P.y;P.wrPose=mk(P.pose);setState('wallrun');P.ph=0.25;Snd.play('jump');hint('wallrun');}
@@ -4766,10 +4770,10 @@ function drawShooter(ctx,f){
 // grate bars) and he grips its middle on the actors' line and swings in the picture's plane, as on a gymnast's high bar. It is in
 // the theme's own metal (the gates' metal; its end ferrules and the ceiling plates in the fittings' metal: steel and bronze, iron
 // in the Forge, gold on Lapis), its middle wrapped in leather worn dark and shiny where hands have held it, and hangs on two link
-// chains like the lifts', one at each end, from the ceiling straight above. While he swings it rocks a little against him (drawn only).
+// chains like the lifts', one at each end, from the ceiling straight above. While he swings it is pulled a little toward him (drawn only).
 function drawBar(ctx,o,f){
   const K='#0b0812',bp=metalPal('gate'),hp=metalPal('hub'),cp=metalPal('chain'),ty=ceilingY(o.c,o.r),U=16;
-  const on=P&&P.state==='swing'&&P.bar===f,bx=f.x-(on?1.2*(P.swTh||0)*P.face:0),by=f.y;
+  const on=P&&P.state==='swing'&&P.bar===f,bx=f.x+(on?BAR_RK*Math.sin(P.swTh||0)*P.face:0),by=f.y;
   const at=(u)=>[bx+u*DX/(2*U),by-u*DY/(2*U)]; // u from -16 (front end) to 16 (back end)
   const chain=(u)=>{const [x1,y1]=at(u),x0=f.x+u*DX/(2*U),yt=ty-u*DY/(2*U),n=Math.max(2,Math.round((y1-3.5-yt)/5.2)),sp=(y1-3.5-yt)/n;
     ctx.fillStyle=K;ctx.fillRect(x0-3.6,yt-0.5,7.2,2.8);ctx.fillStyle=hp[1];ctx.fillRect(x0-3,yt,6,1.7);ctx.fillStyle=hp[3];ctx.fillRect(x0-3,yt,6,0.5); // ceiling plate
