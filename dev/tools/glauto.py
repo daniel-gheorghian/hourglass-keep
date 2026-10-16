@@ -1,5 +1,5 @@
 # two slow 2 s windows in a row (a single one is a burst) and the shader first copies a smaller scene (scale 1 -> .75 -> .5, one 2 s window each), then drops back to
-# Classic (once past the compile window), with a notice once; the scale found is kept for the session (a new floor keeps it) and starts at full size when Torchlight is switched on again
+# Classic (once past the compile window), with a notice once, for three floors (then Torchlight is tried again); the scale found is kept for the session (a new floor keeps it) and starts at full size when Torchlight is switched on again
 from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page(viewport={'width':844,'height':390}); errs=[]
@@ -10,6 +10,6 @@ with sync_playwright() as p:
       for(let i=0;i<50;i++)H.glTime(40);o.rsOne=H.GLP.rs;                                   // one slow window: a burst, nothing changes
       for(let i=0;i<60;i++)H.glTime(40);o.rsSlow=H.GLP.rs;o.stillTorch=H.S.set.lightMode;  // two in a row: a smaller scene, still Torchlight
       for(let i=0;i<400;i++)H.glTime(40);o.slow=H.S.set.lightMode;o.rsLow=H.GLP.rs;        // 16 s at 40 ms: down to .5, then off
-      H.startLevel(2,-1);o.rsNew=H.GLP.rs;
+      o.retry=H.S.set.torchRetry-(H.S.level|0);H.startLevel(2,-1);o.rsNew=H.GLP.rs;o.early=H.S.set.lightMode;H.startLevel((H.S.level|0)+3,-1);o.back=H.S.set.lightMode;H.S.set.lightMode='classic';
       H.render();o.shaderOn=H.shaderOn();o.glHidden=H.GLP.cv.style.display;H.S.set.lightMode='torch';H.render();o.rsOn=H.GLP.rs;return o;}''')
-    print(r,errs, 'FAILURES',0 if r=={'fastStill':'torch','rsFast':1,'rsOne':1,'rsSlow':0.75,'stillTorch':'torch','slow':'classic','rsLow':0.5,'rsNew':0.5,'rsOn':1,'shaderOn':False,'glHidden':'none'} and not errs else 1); b.close()
+    print(r,errs, 'FAILURES',0 if r=={'fastStill':'torch','rsFast':1,'rsOne':1,'rsSlow':0.75,'stillTorch':'torch','slow':'classic','rsLow':0.5,'retry':3,'rsNew':0.5,'early':'classic','back':'torch','rsOn':1,'shaderOn':False,'glHidden':'none'} and not errs else 1); b.close()

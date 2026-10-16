@@ -302,7 +302,7 @@ const skyOf=th=>todSkyCol(th.sky,L&&L.prog?L.prog.tod:0);
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=9;
-const APP_VERSION='54'; // set by the build; shown on the title and pause screens
+const APP_VERSION='55'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},learned:prev?prev.learned:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(!s.learned){s.learned={};if(s.level>2){s.learned.gap=s.learned.climb=s.learned.drop=1;}if(s.maxHp>3)s.learned.potion=1;} // an old save: whoever got past floor 2 can run, jump, climb and let go; the rest of the moves come back as hints until done
@@ -2254,7 +2254,8 @@ function makeGuard(gd,i){const d=L.d,cap=gd.cap,sk=!!gd.skel,tr=cap?CAPT:TIERS[g
     pendingParry:null,pose:mk({}),cap,skel:sk,pit:gd.pit||1,reinf:gd.reinf||0,vy:0,fx:0,sx:0,tx:0,hitDone:false,flash:0,id:i};}
 function makeSnake(sp){return {x:sp.x,r:sp.r,y:SURF(sp.r),lo:sp.lo,hi:sp.hi,dir:sp.dir||-1,state:'slither',t:0,ph:Math.random()*6,alive:true,gone:false,cool:0,lunge:0,hitDone:false};}
 
-function startLevel(n,cpIdx){GLP.pend=null;GLP.now=true;GLP.quiet=performance.now()+3000; // (each floor starts with the scene at full resolution: glTime scales it down if frames run slow)
+function startLevel(n,cpIdx){GLP.pend=null;GLP.now=true;GLP.quiet=performance.now()+3000;
+  if(S.set.torchRetry&&n>=S.set.torchRetry){delete S.set.torchRetry;if(S.set.lightMode==='classic'&&!GLP.dead){S.set.lightMode='torch';GLP.inSession=false;syncLightMode();writeSave();}} // (each floor starts with the scene at full resolution: glTime scales it down if frames run slow)
   quiet=false;if(hintFloor!==n){hintFloor=n;hintSeen={};}hintQ.length=0;L=genLevel(n,levelSeed(n),false,n===S.legacyFloor);REW.length=0;rw=null;if(cpIdx<0){S.sands=SANDS;S.cpPlates=[];}
   G=L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];
   P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;
@@ -6901,9 +6902,10 @@ function glTime(ms){
     if(GLP.skip)GLP.skip=false; // the first window after switching on holds the shader compile
     else if(quiet||GLP.slowN<2){}
     else if(S.set.lightMode==='torch'&&GLP.used&&!window.__HKnoauto&&!PF.on&&avg>18.5&&GLP.rs>0.5){GLP.rs=GLP.rs>0.8?0.75:0.5;GLP.slowN=0;} // below about 54 fps: a smaller scene copy first
-    else if(S.set.lightMode==='torch'&&GLP.used&&!window.__HKnoauto&&!PF.on&&avg>22){S.set.lightMode='classic';GLP.inSession=false;syncLightMode();
-      if(!S.set.slowNote){S.set.slowNote=true;msg('Torchlight was too slow here, so lighting is back to Classic.',4.5);}writeSave();}}
+    else if(S.set.lightMode==='torch'&&GLP.used&&!window.__HKnoauto&&!PF.on&&avg>22){S.set.lightMode='classic';GLP.inSession=false;S.set.torchRetry=(S.level|0)+TORCH_RETRY;syncLightMode(); // (owner, v55: Torchlight is tried again a few floors on)
+      if(!S.set.slowNote){S.set.slowNote=true;msg('Torchlight was too slow here, so lighting is back to Classic for a few floors.',4.5);}writeSave();}}
 }
+const TORCH_RETRY=3; // floors of Classic after Torchlight gave up, before it is tried again (a choice made in Graphics stays)
 function syncLightMode(){const b=document.getElementById('gShader');if(!b)return;const m=S.set.lightMode==='torch';b.setAttribute('aria-pressed',String(m));
   b.firstChild.nodeValue='Lighting: '+(m?'Torchlight':'Classic');b.querySelector('small').textContent=GLP.dead?'Not available on this device':m?'Lamps flicker and bloom, light falls off in the dark':'The lighting this game shipped with';}
 function render(){PF.s();
@@ -7155,7 +7157,7 @@ function refreshTitle(){
 }
 const GFXB={gLight:'light',gAtmo:'atmo',gGrade:'grade',gHero:'hero',gFx:'fx',gHd:'hd',gBg:'bg'};
 function syncGfx(){const g=GFX();syncLightMode();for(const id in GFXB)$(id).setAttribute('aria-pressed',String(!!g[GFXB[id]]));}
-$('gShader').onclick=()=>{if(S.set.lightMode==='torch')S.set.lightMode='classic';else{S.set.lightMode='torch';if(!glInit()){S.set.lightMode='classic';}}writeSave();syncLightMode();render();};
+$('gShader').onclick=()=>{delete S.set.torchRetry;if(S.set.lightMode==='torch')S.set.lightMode='classic';else{S.set.lightMode='torch';if(!glInit()){S.set.lightMode='classic';}}writeSave();syncLightMode();render();};
 for(const id in GFXB)$(id).onclick=()=>{const g=GFX(),k=GFXB[id];g[k]=!g[k];if(k==='fx'){shakeA=0;zoom=1;}if(k==='bg')clearRooms();writeSave();syncGfx();render();};
 function syncToggles(){$('tSound').setAttribute('aria-pressed',String(S.set.sound));$('tSaver').setAttribute('aria-pressed',String(S.set.saver));$('tLefty').setAttribute('aria-pressed',String(S.set.lefty));$('tCalm').setAttribute('aria-pressed',String(!!S.set.calm));}
 function pause(){if(mode!=='play')return;snapshotResume();mode='paused';clearInput();S.floorTime=levelTime;writeSave();
