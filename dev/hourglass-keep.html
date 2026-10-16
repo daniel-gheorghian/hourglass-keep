@@ -5568,10 +5568,11 @@ function gatherLights(x0,x1,y0,y1){
   if(GFX().bg){const art=BGART[th.style]||BGART.dungeon,td=L.prog?L.prog.tod:0,gk='glow'+td,sc=art[gk]||(art[gk]=(()=>{const q=todSky(art.sky,td)[2],m=q[0]==='#'?hexRGB(q):q.match(/\d+/g).map(Number);return m.map(v=>Math.min(255,Math.round(v)+60)).join(',');})());;
     const sb=skyBeam(),bo=shaderOn(),own=th.style==='forge'||th.style==='crypt';
     for(const o of openingsIn(x0,x1,y0,y1)){add(o[0]+o[2]/2,o[1]+o[3]*0.55,o[3]*0.62,sc,0.55,'sky');
-      // (Torchlight, owner v56) bounce: where the opening's beam meets the floor of its storey, a wide soft glow in the beam's colour,
-      // so the floor beside a beam rises out of the dark instead of a lit patch cut out of black (a fill light, the film convention)
-      if(bo){const w=o[4]&&own,fy=SURF(Math.floor((o[1]+o[3]-1)/TH)),lx=o[0]+o[2]/2+sb.dx/sb.dy*(fy-o[1]-o[3]*0.5);
-        add(lx,fy-18,Math.max(90,o[2]*0.9+50),w?lk.win:sb.col,0.8*(w?RY_OWN:sb.k),'sky');}}}
+      // (Torchlight) bounce: a small soft glow where the beam from the opening's middle lands on the floor of its storey (v58: the
+      // landing found in the room's depth, skyBeam; the v56 glow was wide and lit the wall round it), so the floor round the lit
+      // footprint rises out of the dark a little instead of a patch cut out of black (a fill light, the film convention)
+      if(bo){const w=o[4]&&own,fy=SURF(Math.floor((o[1]+o[3]-1)/TH)),cy=o[1]+o[3]*0.5,h=Math.max(0,Math.min(fy-4-cy,1/sb.q)),d=sb.per*h;
+        add(o[0]+o[2]/2+sb.dx*d,cy+sb.dy*d-4,Math.max(34,o[2]*0.6+22),w?lk.win:sb.col,0.55*(w?RY_OWN:sb.k),'sky');}}}
   if(P&&!(P.state==='dead'&&P.y>L.rows*TH))add(P.x,P.y-26,84,'205,195,225',0.42,'fill');
   for(const g of G)if(g.alive&&!g.gone)add(g.x,g.y-26,56,'205,195,225',0.22,'fill');
   for(const sn of SN)if(sn.alive&&!sn.gone)add(sn.x,sn.y-4,34,'200,230,170',0.25,'fill');
@@ -5625,13 +5626,20 @@ function bloomPass(ctx,lights){
 // the points of the crypt's star leave dark streaks down the beam. Profiles are made once per floor, the first time an opening
 // is seen; Torchlight reads them in the shader (glcSources, GLCSH.s), Classic draws a sprite made from the same profile
 // (ryBeams2D), so both modes show the same beams.
-const SKYB=[ // per time of day (progOf: 0 dusk, 1 night, 2 dawn): where the light comes from (degrees from straight down, + from the right), strength, colour, beam length
-  {a:-48,k:0.7,col:[255,172,112],ln:70},  // dusk: the low sun in the west (on the left: the dawn sun rises on the right of the backdrop), warm, long slanting beams
-  {a:21,k:0.6,col:[160,186,255],ln:62},   // night: the moon (on the right, where the backdrop draws it), higher, cool and dimmer
-  {a:48,k:0.78,col:[255,206,152],ln:70}]; // dawn: the low sun in the east, just under the skyline where the backdrop draws it
-const SKYBC=[],RY_OWN=0.85,RY_2D=0.3; // (RY_2D: a Classic beam's strength where it leaves the opening; RY_OWN: the forge's and the crypt's windows shine with their own light, a little softer than the sky's)
-function skyBeam(){const td=L&&L.prog?L.prog.tod:0;let b=SKYBC[td];if(b)return b;const s=SKYB[td]||SKYB[0],r=s.a*Math.PI/180;
-  return SKYBC[td]={dx:-Math.sin(r),dy:Math.cos(r),k:s.k,ln:s.ln,col:s.col.join(',')};}
+const SKYB=[ // per time of day (progOf: 0 dusk, 1 night, 2 dawn): where the light comes from (degrees from straight down on the screen, + from the right), strength, colour, beam length,
+  // and q, how far toward the viewer it travels for each px it falls (in the room's depth: 1 is the whole floor, back wall to front edge)
+  {a:-48,k:0.7,col:[255,172,112],ln:70,q:0.0082},  // dusk: the low sun in the west (on the left: the dawn sun rises on the right of the backdrop), warm, long slanting beams
+  {a:21,k:0.6,col:[160,186,255],ln:62,q:0.0072},   // night: the moon (on the right, where the backdrop draws it), higher, cool and dimmer
+  {a:48,k:0.78,col:[255,206,152],ln:70,q:0.0082}]; // dawn: the low sun in the east, just under the skyline where the backdrop draws it
+const SKYBC=[],RY_OWN=0.85,RY_2D=0.3,RY_AIR=1.0,RY_FLOOR=1.0,RY_FIG=1.0; // (RY_2D: a Classic beam's strength where it leaves the opening; RY_OWN: the forge's and the crypt's windows shine with their own light, a little softer than the sky's)
+// The light is a direction in the room's 3D (owner, v58: the beams read as paint on the wall): the sky is behind the back wall,
+// so light through an opening there travels down, sideways and toward the viewer, across the room's depth (q per px fallen),
+// and lands on the floor's top face in front of the wall. On the screen (oblique: depth d moves a point by DX*(d-.5) across and
+// DY*(.5-d) down) one step of fall moves it (sx-DX*q, 1+DY*q); sx is chosen so that the screen angle stays a. dx, dy: that screen
+// direction, unit; lq: screen px along it for the light to cross the room's whole depth (wall to front edge).
+function skyBeam(){const td=L&&L.prog?L.prog.tod:0;let b=SKYBC[td];if(b)return b;const s=SKYB[td]||SKYB[0],r=s.a*Math.PI/180,q=s.q;
+  const vx=Math.tan(r)*(1+DY*q),vy=1+DY*q,n=Math.hypot(vx,vy),sx=-vx+DX*q; // (+a is light from the right, so it moves left)
+  return SKYBC[td]={dx:-vx/n,dy:vy/n,k:s.k,ln:s.ln,col:s.col.join(','),q,sx,lq:n/q,per:n};} // (per: screen px along the beam per px fallen)
 // the openings of the floor that let the sky in, with their shapes (one list per floor and background setting): every window
 // that is drawn (not where an open arch stands, nor one a breach has taken away: the breach casts its own beam), each run of
 // open arches side by side as one shape (the piers leave the gaps between the beams), every breach right through the wall
@@ -6454,7 +6462,7 @@ const GLSH={
       l*=1.-sh*.85*u_fx.x; // a shadow takes the light away and a little of the ambient
       vec3 c=s*l*(1.-sh*.4*u_fx.x);
       c=msApply(c,uv,s,mcv,sh*u_fx.x); // unit MS: metal lit by the lamps
-      if(u_cfx.x>.5){vec3 a=texture2D(u_cs,v_u).rgb*2.;c+=s*a*1.5+a*.3;} // shafts and caustics: light on what they touch, and a little glow in the air
+      if(u_cfx.x>.5){vec4 q=texture2D(u_cs,v_u);vec3 a=q.rgb*2.;c+=s*a*(1.-q.a)*1.5+a*q.a*clamp(1.15-1.8*dot(c,vec3(.3,.5,.2)),.2,1.);} // shafts and caustics: light on what they touch (a floor, a figure), and the haze in the air (its share in a), seen against the dark, hardly against what is lit
       if(u_cfx.y>.5){vec4 m=texture2D(u_cm,v_u);c=c*(1.-m.a)+m.rgb;} // floor mist and wet sheen
       vec3 b=texture2D(u_bl,v_u).rgb*.4+(texture2D(u_bl,v_u+u_d).rgb+texture2D(u_bl,v_u-u_d).rgb)*.24+(texture2D(u_bl,v_u+u_d*2.2).rgb+texture2D(u_bl,v_u-u_d*2.2).rgb)*.06;
       c+=b*.6; // bloom
@@ -6780,7 +6788,8 @@ function glFrame(lights,VZ,camD,camDY,th){
 // ---- atmosphere (unit S3-C): light shafts, floor mist, water caustics, wet-floor sheen. Torchlight only. ----
 // Two extra quarter-resolution passes between the light map and the composite, each skipped when nothing of it is on screen:
 //  S (glcS): light that falls on things: shafts from windows, open arches and breaches, and the caustics around the Cistern's
-//    arches. The composite adds it as light on the scene and, a little, as a glow in the air.
+//    arches. Its alpha is the share that is haze in the air: the composite adds the rest as light on the scene (the floor where a
+//    beam lands, a figure in it, a window's pane, the caustics) and the haze as light of its own, faded where the scene is lit.
 //  M (glcM): what lies in the air or on the floor's skin: low mist on the floors and the sheen of wet flagstones; the composite
 //    veils the scene by its alpha and adds its colour.
 // Both read one tiny texture of the level's tiles (glcTiles: r wall, g floor, b near water, a open arch; one texel per tile,
@@ -6792,6 +6801,12 @@ function glFrame(lights,VZ,camD,camDY,th){
 // two piers, a breach) and a pixel is in its beam when it lies inside the rectangle swept along the light's direction; that
 // test is exact and costs nothing, so the march (12 steps, jittered) only runs inside beams, to find what stands between
 // the pixel and the opening: walls, the floor slab and the figures. The piers between arches make the gaps between beams.
+// (v58, owner: 'the moonlight looks painted, not part of the room') The light has depth (skyBeam): it comes through the back
+// wall toward the viewer, so it lights no wall; the air it crosses glows by how much of the eye's ray through the pixel lies in
+// the beam (fading in from the opening, thinning as it leaves the room's depth, thin just over the floor, with haze drifting
+// down it and soft edges that widen with distance), only against the dark (the light map here and the lit scene in the
+// composite); the floor's top face is lit where the beam lands (the opening's shape thrown along the light onto it) and a
+// figure standing in it on the side toward the light. The march tests wall blocks where they stand at the light's depth.
 Object.assign(GLFX,{shafts:true,mist:true,caustics:true,sheen:true});
 const GLC={on:false,lv:null,tk:0,key:'',tm:null,td:null,tw:0,th:0,ocC:null,ocG:null,oct:null,ocHad:false,ow:0,oh:0,fs:null,fm:null,fw:0,fh:0,max:4096};
 // (unit RY) each source is an opening in view: where its profile starts (ryProfile), which row of the profile texture holds it,
@@ -6812,35 +6827,52 @@ const GLCHEAD=`#ifdef GL_FRAGMENT_PRECISION_HIGH
   `;
 const GLCSH={
   // S: shafts and caustics -> rgb light
-  s:[GLV,GLCHEAD+`uniform vec4 u_src[${GLCMAX}],u_scol[${GLCMAX}];uniform float u_ns,u_ln;uniform vec2 u_dir,u_rys;uniform sampler2D u_oc,u_ry;uniform vec4 u_ocT,u_ocC;vec2 ocUV(vec2 u){return clamp(u,u_ocC.xy,u_ocC.zw)*u_ocT.xy+u_ocT.zw;}/* (the figures' part of the mask atlas) */uniform vec4 u_cau;uniform vec3 u_sky;
+  s:[GLV,GLCHEAD+`uniform vec4 u_src[${GLCMAX}],u_scol[${GLCMAX}];uniform float u_ns,u_ln;uniform vec2 u_dir,u_rys;uniform sampler2D u_oc,u_ry;uniform vec4 u_ocT,u_ocC,u_bq;uniform float u_sk;vec2 ocUV(vec2 u){return clamp(u,u_ocC.xy,u_ocC.zw)*u_ocT.xy+u_ocT.zw;}/* (the figures' part of the mask atlas) */uniform vec4 u_cau;uniform vec3 u_sky;
     float vor(vec2 p,float t){vec2 i=floor(p),f=fract(p);float d1=8.,d2=8.; // distance to the second-nearest minus the nearest moving point: bright ridges along the cell edges
       for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){vec2 g=vec2(float(x),float(y)),h=vec2(h21(i+g),h21(i+g+17.3)),r=g+.5+.42*sin(t+6.283*h)-f;float d=dot(r,r);if(d<d1){d2=d1;d1=d;}else if(d<d2)d2=d;}
       float e=1.-smoothstep(0.,.5,sqrt(d2)-sqrt(d1));return e*e;}
-    void main(){vec2 w=wpos(v_u);vec3 o=vec3(0.);
-      if(u_ns>0.){vec2 nn=vec2(u_dir.y,-u_dir.x);float sw=0.,tm=0.;vec3 acc=vec3(0.);
+    void main(){vec2 w=wpos(v_u);vec3 o=vec3(0.),oa=vec3(0.);
+      if(u_ns>0.){vec2 nn=vec2(u_dir.y,-u_dir.x);float lq=u_bq.x,sw=0.,tm=0.;vec3 aS=vec3(0.),aA=vec3(0.); // (v58) aS: light on what it touches (the floor where it lands, a figure in it, a window's pane); aA: light in the air
+        float fy=floor(w.y/64.)*64.+60.,by=w.y-fy+4.,fb=(by>=0.&&by<=8.&&tile(w).g>.5)?1.:0.; // on a floor's top face: by 0 at its back edge (by the wall), 8 at its front
+        bool fig=texture2D(u_oc,ocUV(v_u)).r>.4;vec2 du=vec2(-u_dir.x,u_dir.y)*u_cam.w/u_res; // (a figure here; du: up the beam, in screen uv per world px)
         for(int i=0;i<${GLCMAX};i++){if(float(i)>=u_ns)break;vec4 r=u_src[i],cl=u_scol[i]; // (unit RY) the opening's own shape, from its profile
-          vec2 q=w-r.xy;float tx=dot(q,nn)/r.w*u_rys.x,s=dot(q,u_dir),sr=abs(cl.w);if(tx<0.||tx>=1.||s<-1.||s>sr+u_ln*3.2)continue; // across the beam: which line along the light the pixel is on
+          vec2 q=w-r.xy;float tx=dot(q,nn)/r.w*u_rys.x,s=dot(q,u_dir),sr=abs(cl.w);if(tx<0.||tx>=1.||s<-1.||s>sr+lq+2.)continue; // across the beam: which line along the light the pixel is on
           float ty=(r.z+.5)*u_rys.y;vec4 p=texture2D(u_ry,vec2(tx,ty));if(p.a<.5)continue;
-          float tc=s-p.b*sr; // along it: tc, the distance down the beam from where the light leaves the opening
-          if(s<p.g*sr-1.||tc>u_ln*3.2)continue;
-          float sp=(.6+max(tc,0.)*.045)/r.w*u_rys.x,c=(texture2D(u_ry,vec2(tx-sp,ty)).r+2.*p.r+texture2D(u_ry,vec2(tx+sp,ty)).r)*.25; // bars and lattices shade their lines; the penumbra widens with distance
-          float m=c*smoothstep(p.g*sr-1.,p.g*sr+1.,s)*(tc<0.?(cl.w>0.?1.6:smoothstep(-1.5,1.5,tc)):exp(-tc/u_ln)); // (a window's pane glows, cl.w > 0; an opening's sky is left alone)
-          if(m<.003)continue;acc+=cl.rgb*m;sw+=m;tm+=max(tc,0.)*m;}
-        if(sw>0.){tm=tm/sw;float T=1.,ys=floor((w.y-65.)/64.)*64.+60.; // a floor between the pixel and the opening: found exactly where the line crosses each floor level, so a thin slab is never stepped over
+          float si=p.g*sr,so=p.b*sr,tc=s-so; // where the line enters and leaves the opening (s: along the light; tc: past the opening)
+          if(s<si-1.||tc>lq)continue;
+          float sp=(2.2+max(tc,0.)*.07)/r.w*u_rys.x,c=(texture2D(u_ry,vec2(tx-2.*sp,ty)).r+2.*texture2D(u_ry,vec2(tx-sp,ty)).r+3.*p.r+2.*texture2D(u_ry,vec2(tx+sp,ty)).r+texture2D(u_ry,vec2(tx+2.*sp,ty)).r)/9.; // bars and lattices shade their lines; a penumbra that widens down the beam
+          // the air: the eye's ray through this pixel crosses the room's whole depth, and the light at depth d left the wall
+          // lq*(1-d) up the line; the part of [s-lq, s] inside the opening is how much of the ray is lit: the shaft grows out
+          // of the opening and thins away as it leaves the room's depth toward the viewer (taken over the opening's own length
+          // along the light, so a window's shaft is not lost beside an arch's)
+          float lo=max(s-lq,si),hi=min(fig?s-.5*lq:s,so),ov=max(hi-lo,0.),ma=c*ov/max(.8*sr,12.)*exp(-max(tc,0.)/(u_ln*1.6))*smoothstep(si,si+.7*(so-si)+10.,s);
+          float ms=0.,ts=(s-(lo+hi)*.5)*ma; // (over a figure, only the half of the room in front of it)
+          if(fb>0.){float dl=by*.125*lq,sg=s-dl,f=smoothstep(si-1.5,si+1.5,sg)*smoothstep(so+1.5,so-1.5,sg)*c*exp(-dl/(u_ln*3.))*u_bq.w; // where it lands: the floor at depth 1-by/8 is lit from dl up the line
+            ms+=f;ts+=dl*f;}
+          if(fig){float fl=max(s-.75*lq,si),fh=min(s-.25*lq,so),f=c*max(fh-fl,0.)/max(1.,min(.5*lq,so-si))*u_bq.z; // a figure (its body from .25 to .75 of the depth) in the light
+            ms+=f;ts+=(s-(fl+fh)*.5)*f;}
+          if(cl.w>0.&&tc<0.)ms+=1.6*c*smoothstep(si-1.,si+1.,s); // (a window's pane glows; an opening's sky is left alone)
+          if(ma+ms<.003)continue;aS+=cl.rgb*ms;aA+=cl.rgb*ma;sw+=ma+ms;tm+=ts;}
+        if(sw>0.){tm=max(tm/sw,0.);float T=1.,ys=floor((w.y-65.)/64.)*64.+60.; // a floor between the pixel and the opening: found exactly where the line crosses each floor level, so a thin slab is never stepped over
           for(int k=0;k<4;k++){float y=ys-64.*float(k),t=(w.y-y)/u_dir.y;if(t>tm)break;if(tile(vec2(w.x-u_dir.x*t,y-1.)).g>.5){T=0.;break;}}
           float st=(tm-4.)/12.,n0=fract(52.983*fract(dot(gl_FragCoord.xy,vec2(.06711,.00584)))); // jittered, so twelve steps leave no bands
-          vec2 du=vec2(-u_dir.x,u_dir.y)*u_cam.w/u_res;bool inside=texture2D(u_oc,ocUV(v_u)).r>.4; // (a figure in the beam is lit; it shades what lies behind it; the march stops at the opening)
-          if(T>0.&&st>0.)for(int j=0;j<12;j++){float ts=4.+(float(j)+n0)*st;vec2 q=w-u_dir*ts;vec4 tl=tile(q);
+          bool inside=fig; // (a figure in the beam is lit; it shades what lies behind it; the march stops at the opening)
+          if(T>0.&&st>0.)for(int j=0;j<12;j++){float ts=4.+(float(j)+n0)*st;vec2 q=w-u_dir*ts;float d=1.-(tm-ts)/lq; // the light's depth at this step
+            float wl=tile(q-vec2((d-.5)*16.,0.)).r; // (a wall block at that depth: its front face is drawn half a step to the left)
             float ch=texture2D(u_oc,ocUV(v_u+du*ts)).r;if(inside){if(ch>.4)ch=0.;else inside=false;}
-            T*=1.-max(tl.r,ch*.85);if(T<.02)break;} // walls, and the figures
-          o=acc*T*(.8+.4*vn(w*vec2(.07,.022)+vec2(u_t*.3,-u_t*.7)))*(1.-.75*inArch(w));}} // dust drifting in the light
+            T*=1.-max(wl,ch*.9);if(T<.02)break;} // walls, and the figures
+          if(fig)aS*=.45+.9*(1.-step(.4,texture2D(u_oc,ocUV(v_u+du*5.)).r)); // (the side of a figure that faces the light)
+          float xb=dot(w,nn),sb=dot(w,u_dir),nz=.62*vn(vec2(xb*.07,sb*.02-u_t*.22))+.38*vn(vec2(xb*.19+5.3,sb*.05-u_t*.5)); // haze drifting slowly down the beam
+          vec3 lm=texture2D(u_map,v_u).rgb*1.5;float dk=1.-.9*smoothstep(u_bq.y*1.5+.05,u_bq.y*3.5+.2,dot(lm,vec3(.3,.5,.2))); // it shows against the dark, hardly at all where lamps light the stone (the sky's own soft glows round the openings are let through)
+          o=aS*T*(1.-.75*inArch(w));oa=aA*T*u_sk*(.45+1.1*nz)*dk*(tile(w).g>.5?.25+.75*smoothstep(0.,26.,-by):1.);}} // (and thins out just above a floor, where the footprint takes over)
       if(u_cau.x>0.){float px=texture2D(u_tm,w/vec2(32.,64.)/u_tsz).b; // water caustics thrown up from the cistern beyond the arches
         if(px>.02){vec2 p=w*vec2(.05,.085);float t=u_t*u_cau.y,c=min(vor(p,t),vor(p*1.37+vec2(7.1,3.3),-t*1.21)); // two layers at their own scale and speed, the lower of the two (Zucconi)
           o+=(u_sky*.55+texture2D(u_map,v_u).rgb*.9)*c*px*u_cau.x*(1.-inArch(w))*vec3(.8,1.,1.08);}
         vec4 ta=tile(w);vec2 f=w-floor(w/vec2(32.,64.))*vec2(32.,64.); // and the water itself, low in the arch: glints of the sky on its ripples
         if(ta.a>.25&&ta.a<.75&&f.x>3.4&&f.x<28.6&&f.y>24.&&f.y<42.){float t=u_t*u_cau.y,g=smoothstep(.68,.92,vn(vec2(w.x*.16-t*.5,floor(w.y*.8)*3.7+t*.2)));
           o+=u_sky*g*smoothstep(24.,40.,f.y)*u_cau.x*3.5;}}
-      gl_FragColor=vec4(o*.5,1.);}`], // (stored at half, so a bright pane keeps its colour in eight bits)
+      vec3 t=o+oa;float lt=dot(t,vec3(.3,.5,.2)),dz=(h21(gl_FragCoord.xy+fract(u_t*7.)*61.)-.5)/255.*step(.001,lt); // (dithered against banding)
+      gl_FragColor=vec4(t*.5+dz,lt>0.?dot(oa,vec3(.3,.5,.2))/lt:0.);}`], // (stored at half, so a bright pane keeps its colour in eight bits; a: how much of it is in the air)
   // M: mist and wet sheen -> rgb added, a veils
   m:[GLV,GLCHEAD+`uniform vec4 u_mist;uniform vec3 u_mcol;uniform sampler2D u_sc;
     void main(){vec2 w=wpos(v_u);vec4 tl=tile(w);float fy=w.y-floor(w.y/64.)*64.;vec4 o=vec4(0.);
@@ -6857,7 +6889,7 @@ const GLCSH={
       gl_FragColor=o;}`]};
 const glcRGB=col=>{let c=GLCOL.get(col);if(!c){c=col.split(',').map(Number);GLCOL.set(col,c);}return c;}; // (parsed once)
 function glcInit(gl,P){
-  const mk=src=>{const p=glMake(gl,src);gl.bindAttribLocation(p,0,'a_p');return glLink(gl,p,['u_cam','u_res','u_tsz','u_tm','u_map','u_t','u_src','u_scol','u_ns','u_dir','u_oc','u_cau','u_sky','u_mist','u_mcol','u_sc','u_ln','u_rys','u_ry','u_ocT','u_ocC']);};
+  const mk=src=>{const p=glMake(gl,src);gl.bindAttribLocation(p,0,'a_p');return glLink(gl,p,['u_cam','u_res','u_tsz','u_tm','u_map','u_t','u_src','u_scol','u_ns','u_dir','u_oc','u_cau','u_sky','u_mist','u_mcol','u_sc','u_ln','u_rys','u_ry','u_ocT','u_ocC','u_bq','u_sk']);};
   GLC.S=mk(GLCSH.s);GLC.M=mk(GLCSH.m);
   for(const n of ['u_cs','u_cm','u_cfx'])P.final.u[n]=gl.getUniformLocation(P.final.p,n);
   GLC.max=gl.getParameter(gl.MAX_TEXTURE_SIZE)||4096;GLC.tm=null;GLC.lv=null;GLC.oct=null;GLC.fs=null;GLC.ry=null;GLC.on=true;}
@@ -6891,7 +6923,7 @@ function glcTiles(gl){
 function glcSources(VZ,camD,camDY,sh,cau){
   const cx=camD/VZ,cy=camDY/VZ,vw=cv.width/VZ,vh=cv.height/VZ,x0=cx-12,x1=cx+vw+12,y0=cy-12,y1=cy+vh+12,mx=cx+vw/2,my=cy+vh/2;let n=0;GLCBB[0]=1e9;GLCBB[1]=1e9;GLCBB[2]=-1e9;GLCBB[3]=-1e9;GLC.arch=0;
   const box=(a,b,c,d)=>{GLCBB[0]=Math.min(GLCBB[0],(a*VZ-camD)/4);GLCBB[1]=Math.min(GLCBB[1],(b*VZ-camDY)/4);GLCBB[2]=Math.max(GLCBB[2],(c*VZ-camD)/4);GLCBB[3]=Math.max(GLCBB[3],(d*VZ-camDY)/4);};
-  const sb=skyBeam(),L3=sb.ln*3.2,ex=sb.dx*L3,ey=sb.dy*L3,cand=RY.cand;cand.length=0;
+  const sb=skyBeam(),L3=sb.lq+8,ex=sb.dx*L3,ey=sb.dy*L3,cand=RY.cand;cand.length=0;
   for(const o of ryOps()){
     if(cau&&o.kind==='arch'&&o.x1>x0-4*TW&&o.x0<x1+3*TW&&o.y1>y0-TH&&o.y0<y1+TH){GLC.arch=1;box(o.x-3*TW,o.y-TH,o.x1+4*TW,o.y+2*TH);} // (the water's light around the arches)
     if(sh&&!(o.x1+Math.max(0,ex)<x0||o.x0+Math.min(0,ex)>x1||o.y1+ey<y0||o.y0>y1)){o.d=Math.abs((o.x0+o.x1)/2-mx)+Math.abs((o.y0+o.y1)/2-my);cand.push(o);}}
@@ -6932,7 +6964,7 @@ function glAtmo(VZ,camD,camDY,th,lw,lh){
       gl.enable(gl.SCISSOR_TEST);gl.scissor(x0,lh-y1,Math.max(0,x1-x0),Math.max(0,y1-y0));} // only around the beams and the arches (GL's y runs up)
     gl.useProgram(GLC.S.p);com(U);gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,GLP.mtex);gl.uniform1i(U.u_oc,4);gl.uniform4fv(U.u_ocT,GLA.oT);gl.uniform4fv(U.u_ocC,GLA.oC);
     if(ns)glcRy(gl);else{gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,GLC.ry||GLC.tm);}const sb=skyBeam(); // (unit RY) the profiles on unit 2 (the composite binds its own there later)
-    gl.uniform4fv(U.u_src,GLCSRC);gl.uniform4fv(U.u_scol,GLCCOL);gl.uniform1f(U.u_ns,ns);gl.uniform2f(U.u_dir,sb.dx,sb.dy);gl.uniform1f(U.u_ln,sb.ln);gl.uniform1i(U.u_ry,2);gl.uniform2f(U.u_rys,1/RYW,1/(GLC.ryh||RYH0));
+    gl.uniform4fv(U.u_src,GLCSRC);gl.uniform4fv(U.u_scol,GLCCOL);gl.uniform1f(U.u_ns,ns);gl.uniform2f(U.u_dir,sb.dx,sb.dy);gl.uniform1f(U.u_ln,sb.ln);gl.uniform1i(U.u_ry,2);{const am=glcRGB(lk.amb),A=glAmbK(st,lk)*(am[0]*.3+am[1]*.5+am[2]*.2)/255;gl.uniform4f(U.u_bq,sb.lq,A,RY_FIG,RY_FLOOR);gl.uniform1f(U.u_sk,RY_AIR);}gl.uniform2f(U.u_rys,1/RYW,1/(GLC.ryh||RYH0));
     const sr=glcRGB((BGART[st]||BGART.dungeon)['glow'+tod]||lk.win);
     gl.uniform3f(U.u_sky,sr[0]/255,sr[1]/255,sr[2]/255);gl.uniform4f(U.u_cau,cs?0.3:0,S.set.calm?0.35:0.8,0,0);
     gl.drawArrays(gl.TRIANGLES,0,3);gl.disable(gl.SCISSOR_TEST);f|=1;}
