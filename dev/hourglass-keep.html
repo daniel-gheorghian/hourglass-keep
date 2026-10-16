@@ -2243,7 +2243,7 @@ function makeGuard(gd,i){const d=L.d,cap=gd.cap,sk=!!gd.skel,tr=cap?CAPT:TIERS[g
     pendingParry:null,pose:mk({}),cap,skel:sk,pit:gd.pit||1,reinf:gd.reinf||0,vy:0,fx:0,sx:0,tx:0,hitDone:false,flash:0,id:i};}
 function makeSnake(sp){return {x:sp.x,r:sp.r,y:SURF(sp.r),lo:sp.lo,hi:sp.hi,dir:sp.dir||-1,state:'slither',t:0,ph:Math.random()*6,alive:true,gone:false,cool:0,lunge:0,hitDone:false};}
 
-function startLevel(n,cpIdx){GLP.pend=null;GLP.now=true; // (each floor starts with the scene at full resolution: glTime scales it down if frames run slow)
+function startLevel(n,cpIdx){GLP.pend=null;GLP.now=true;GLP.quiet=performance.now()+3000; // (each floor starts with the scene at full resolution: glTime scales it down if frames run slow)
   quiet=false;if(hintFloor!==n){hintFloor=n;hintSeen={};}hintQ.length=0;L=genLevel(n,levelSeed(n),false,n===S.legacyFloor);REW.length=0;rw=null;if(cpIdx<0){S.sands=SANDS;S.cpPlates=[];}
   G=L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];
   P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;
@@ -2272,17 +2272,22 @@ function snapAll(){const p=cloneE(P);p.foe=P.foe?G.indexOf(P.foe):-1;p.drinkIt=P
 function applySnap(sn){gameTime=sn.t;
   L.flk=[];G=sn.G.map(cloneE);P=cloneE(sn.P);P.foe=sn.P.foe>=0?G[sn.P.foe]||null:null;P.drinkIt=sn.P.drinkIt>=0?L.items[sn.P.drinkIt]:null;
   SN=sn.SN.map(o=>Object.assign({},o));pendingGuards=sn.pg.map(q=>({at:q.at,src:q.src>=0?G[q.src]:null,spec:q.spec}));
-  L.dyn.forEach((o,i)=>Object.assign(o.f,sn.dyn[i]));L.base.set(sn.base);L.debris=sn.debris.map(d=>Object.assign({},d));L.rubble=new Set(sn.rubble);
+  L.dyn.forEach((o,i)=>Object.assign(o.f,sn.dyn[i]));
+  {const B0=L.base,C=L.cols,R1=new Set(sn.rubble); // (v53) only the rooms whose tiles or rubble change are drawn again, not every room each step
+    for(let i=0;i<B0.length;i++)if(B0[i]!==sn.base[i])invalidateCell(i%C,(i/C)|0);
+    for(const k of L.rubble)if(!R1.has(k))invalidateCell(k%C,(k/C)|0);for(const k of R1)if(!L.rubble.has(k))invalidateCell(k%C,(k/C)|0);
+    L.base.set(sn.base);L.rubble=R1;}
+  L.debris=sn.debris.map(d=>Object.assign({},d));
   L.items.forEach((it,i)=>{if(it.type!=='life'&&it.type!=='big')it.taken=sn.items[i];}); // a gold or large flask once drunk stays drunk
-  L.door.open=sn.door[0];L.door.opening=sn.door[1];L.ext=JSON.parse(sn.ext);rebuildBlocks();clearRooms();}
+  L.door.open=sn.door[0];L.door.opening=sn.door[1];L.ext=JSON.parse(sn.ext);rebuildBlocks();}
 function canRewind(){return (S.sands|0)>0&&REW.length>0;}
 function startRewind(){let ti=0;
   for(let i=REW.length-1;i>=0;i--){const sn=REW[i];if(sn.t<=deathAt-4.5&&REW_STATES.includes(sn.P.state)&&!sn.P.dead){ti=i;break;}}
   S.sands=(S.sands|0)-1;S.floorDeaths=(S.floorDeaths||0)+1;S.deaths++;writeSave();
-  rw={idx:REW.length-1,target:ti,acc:0};rwBeg=performance.now()/1000;mode='rewind';banner=null;flashFx=null;FX.length=0;clearSpent();hitStop=0;Snd.play('rewind');}
+  rw={idx:REW.length-1,target:ti,acc:0};GLP.quiet=performance.now()+3500;rwBeg=performance.now()/1000;mode='rewind';banner=null;flashFx=null;FX.length=0;clearSpent();hitStop=0;Snd.play('rewind');}
 function stepRewind(){rw.acc+=1.6;while(rw.acc>=1&&rw.idx>rw.target){rw.acc-=1;rw.idx--;}
   applySnap(REW[rw.idx]);
-  if(rw.idx<=rw.target){REW.length=rw.target+1;rw=null;rwEnd=performance.now()/1000;mode='play';clearInput();P.inv=1.2;P.stumble=0;deadT=0;
+  if(rw.idx<=rw.target){REW.length=rw.target+1;rw=null;rwEnd=performance.now()/1000;mode='play';GLP.quiet=performance.now()+3000;clearInput();P.inv=1.2;P.stumble=0;deadT=0;
     msg((S.sands>0?'The sands turn back. '+S.sands+(S.sands===1?' turn':' turns')+' of the glass left.':'The sands turn back. The glass is empty until the next hourglass.'),2.8);}}
 const STABLE=['stand','run','stop','garde','advance','retreat','land','crouch','step','turn','parry','strike','blocked'];
 function snapshotResume(){
@@ -6216,7 +6221,8 @@ function drawMetalMask(VZ,camD,camDY){
         for(const d of [0.04,0.5,0.96]){const a=onFloor(X,d,ys),b=onFloor(X+TW,d,ys);g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);}g.stroke();msBox(X-8,ys-12,X+TW+8,ys+12);break;}
     }}
   // cut out the figures that stand in front (only near metal), then lay in their own swords and helmets
-  const carve=(e,x,y,yo)=>{if(!msHit(x-28,y-80,x+28,y+8))return;try{figDraw(g,x,y,e.face||1,e.pose,e.skel||(e.pal&&e.pal.bones)?PAL_MSKB:PAL_MSK,{mono:'#000',hasSword:false,sword:false,yo,time:gameTime});}catch(err){}};
+  const carve=(e,x,y,yo)=>{if(!msHit(x-28,y-80,x+28,y+8)||!e.pose)return;const s=glSilhouette(e);if(!s)return; // (multiplied by the red silhouette: green and blue, the grain and the coverage, go to 0 where the figure stands)
+    g.globalCompositeOperation='multiply';g.drawImage(s,x-48,y+(yo||0)-80,96,96);g.globalCompositeOperation='source-over';};
   if(MS.nb){for(const e of G)if(!e.gone&&e.alive!==false&&e.x>x0-30&&e.x<x1+30)carve(e,e.x,e.y,0);
     if(P&&P.state!=='dead'&&!(P.y>L.rows*TH))carve(P,P.x+(P.rdx||0),P.y+(P.rdy||0),P.yo);}
   for(let i=0;i<MSF.n;i++){const r=MSF.R[i],m=r.m;g.setTransform(m.a/2,m.b/2,m.c/2,m.d/2,(m.e-MS.ox)/2,(m.f-MS.oy)/2);
@@ -6375,12 +6381,16 @@ const GLNEUT=[1,1,1],GLSTRONG={torch:1,fire:1,door:1,win:1}; // lights that thro
 const GLCH=[],GLBODY=[[0,-50,20,20],[0,-37,34,30],[0,-21,32,30],[0,-8,28,26]];let stormStrip=null;
 // the soft shadow of one figure on the back wall: cast away from the nearest strong lights (up to two), longer the farther
 // sideways it stands from the lamp; a few soft blobs for head, chest, hips and legs, which is all a blurred shadow needs
-let shSil=null;
-function glSilhouette(e){ // the figure itself, flat and solid, in the pose it is in: the shadow's shape
-  if(!shSil){shSil=document.createElement('canvas');shSil.width=96;shSil.height=96;}
-  const c=shSil.getContext('2d');c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,96,96);c.setTransform(1,0,0,1,0,0);
-  try{figDraw(c,48,80+(e.yo||0)*0,e.face||1,e.pose,e.skel?PAL_SKEL:PAL_HERO,{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});}catch(err){return null;}
-  return shSil;}
+
+// the figure itself, flat and solid red, in the pose it is in: the shadow's shape, what cuts the beams, what hides the metal
+// behind it. (v53) Drawn once per figure per frame, at twice the world's scale, into a canvas of its own (SIL, reused frame to
+// frame; SIL.m maps this frame's figures to them, cleared by glPrep): before, each of the three drew the figure again.
+const SIL={pool:[],m:new Map()};
+function glSilhouette(e){let c=SIL.m.get(e);if(c!==undefined)return c;
+  c=SIL.pool[SIL.m.size];if(!c){c=document.createElement('canvas');c.width=c.height=192;c._g=c.getContext('2d');SIL.pool.push(c);}
+  const g=c._g;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,192,192);g.setTransform(2,0,0,2,0,0);
+  try{figDraw(g,48,80,e.face||1,e.pose,e.skel?PAL_SKEL:PAL_HERO,{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});}catch(err){c=null;}
+  SIL.m.set(e,c);return c;}
 function glShadow(g,x,y,sc,lights,spr,e){
   const sil=e&&e.pose?glSilhouette(e):null;
   let b1=null,b2=null,d1=1e9,d2=1e9;const cy=y-26;
@@ -6569,7 +6579,7 @@ function glAtlas(w,h,lw,lh){const gl=GLP.gl,A=GLA,ow=Math.ceil(w/8),oh=Math.ceil
 // three masks, glPrep) is drawn as before, but WebGL takes it at the start of the next frame (glSubmit), when Safari has long
 // finished it: the picture shows one frame (about 17 ms) after the game's state, the HUD on the 2D canvas keeps step. The
 // first frame after switching on and the first of each floor are sent at once; GLP.pipe=false (and ?prof's 'no delay' step) sends every frame at once.
-function glPrep(lights,VZ,camD,camDY,th){const w=cv.width,h=cv.height,lw=Math.ceil(w/4),lh=Math.ceil(h/4);
+function glPrep(lights,VZ,camD,camDY,th){const w=cv.width,h=cv.height,lw=Math.ceil(w/4),lh=Math.ceil(h/4);SIL.m.clear();
   glMask(lights,VZ,camD,camDY);
   glMetal(lights,VZ,camD,camDY); // (unit MS) the metal mask, when metal is in view
   glcPre(VZ,camD,camDY,th); // the beams' sources and the figures in them
@@ -6874,8 +6884,12 @@ function glTime(ms){
   GLP.sum+=ms;GLP.n++;if(GLP.sum>=500){GLP.ms=GLP.sum/GLP.n;GLP.sum=0;GLP.n=0;}
   GLP.wsum+=ms;GLP.wn++;
   if(GLP.wsum>=2000){const avg=GLP.wsum/GLP.wn;GLP.wsum=0;GLP.wn=0;
+    // (v53) a window just after a floor starts, a respawn or a rewind (rooms drawn all at once) is not judged, and it takes two
+    // slow windows in a row to step down or to give up: a burst is not a slow phone
+    const quiet=performance.now()<GLP.quiet,slow=!quiet&&avg>18.5;GLP.slowN=slow?(GLP.slowN||0)+1:0;
     if(GLP.skip)GLP.skip=false; // the first window after switching on holds the shader compile
-    else if(S.set.lightMode==='torch'&&GLP.used&&!window.__HKnoauto&&!PF.on&&avg>18.5&&GLP.rs>0.5)GLP.rs=GLP.rs>0.8?0.75:0.5; // below about 54 fps: a smaller scene copy first
+    else if(quiet||GLP.slowN<2){}
+    else if(S.set.lightMode==='torch'&&GLP.used&&!window.__HKnoauto&&!PF.on&&avg>18.5&&GLP.rs>0.5){GLP.rs=GLP.rs>0.8?0.75:0.5;GLP.slowN=0;} // below about 54 fps: a smaller scene copy first
     else if(S.set.lightMode==='torch'&&GLP.used&&!window.__HKnoauto&&!PF.on&&avg>22){S.set.lightMode='classic';GLP.inSession=false;syncLightMode();
       if(!S.set.slowNote){S.set.slowNote=true;msg('Torchlight was too slow here, so lighting is back to Classic.',4.5);}writeSave();}}
 }
