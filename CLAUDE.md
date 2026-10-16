@@ -29,7 +29,7 @@ they load `bot.js` by a relative path and write their output next to themselves.
 
 ## Build
 
-From the repo root, with N the release number (current release v57, next v58):
+From the repo root, with N the release number (current release v58, next v59):
 
 ```
 python3 dev/tools/build.py dev/hourglass-keep.html index.html sw.js N
@@ -150,6 +150,12 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   holding one way only leans him; the catch keeps `SW_ETA` of his speed (a running catch clears at once); Jump's throw grows with his speed,
   and from `SW_CLEAR` it carries him over (the grip creaks, the bar glints). The chains swing too (`f.ps`, `f.pw` on the feature, so a rewind
   restores them). The bot pumps to 0.8 and lets go moving forward at 0.15 to 0.3 rad. Check with `swingtest.py`.
+- Sky beams (v58, owner: they looked painted): the moon's light has depth (`SKYB.q`): it comes through an opening in the back wall
+  toward the viewer and lands on the floor's top face in the opening's shape; the wall it comes through gets none. The shaft is haze
+  (in-scatter: fades in at the opening, out over the floor, soft edges, shown against the dark only, motes inside it), never a flat
+  sheet; the floor patch and the opening's rim are its brightest parts and the only parts that bloom. Forge and crypt windows are lit
+  from inside: a glow at the window, no shaft. Classic draws the same shapes from sprites (`ryBeams2D`). Check with `beamshot.py`.
+- A dart shooter firing left sits on a wall's hidden left face: no head is drawn and its darts come from behind the front face.
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized from `estPath()` at a careful pace, times 0.84 to 1.08.
 - Pose angles are measured from straight down; positive means forward.
