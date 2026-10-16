@@ -1,5 +1,5 @@
 // Offline cache for Hourglass Keep. Bump CACHE when shipping a new version.
-const CACHE = 'hourglass-keep-v55';
+const CACHE = 'hourglass-keep-v56';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));

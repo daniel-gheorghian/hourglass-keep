@@ -29,7 +29,7 @@ they load `bot.js` by a relative path and write their output next to themselves.
 
 ## Build
 
-From the repo root, with N the release number (current release v55, next v56):
+From the repo root, with N the release number (current release v56, next v57):
 
 ```
 python3 dev/tools/build.py dev/hourglass-keep.html index.html sw.js N
@@ -141,6 +141,10 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   passes. A new mask goes into the atlas and is drawn in `glPrep`, never copied on its own; any other canvas copied into WebGL is
   drawn in one frame and copied in a later one (the relief's rooms: `glRelStage`, then `glRelUpload`). Tests that compare the picture of one
   exact state set `GLP.pipe=false` (frames sent at once). `?prof` on the device shows each stage and each effect's cost.
+- Torchlight's ambient light never drops under `AMB_MIN` (0.4 of full on its brightest channel, `glAmbK`; owner, v56: the Forge by
+  Moonlight fell to 0.26), and each sky opening adds a soft bounce light where its beam meets the floor (`gatherLights`, Torchlight only).
+  The fire vent burns over its whole grate (`VJETS`: a jet per slot, back and front rows, merging into one sheet); its timing and
+  hit test are unchanged.
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized from `estPath()` at a careful pace, times 0.84 to 1.08.
 - Pose angles are measured from straight down; positive means forward.
