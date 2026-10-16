@@ -4770,9 +4770,13 @@ function clearSpent(){sandClear();for(const s of SPENT)s.on=false;}
 // whichever side the darts fly, over the wall's side face or past its front corner, in the theme's own material and ornament (as
 // the hourglass pedestal) and chipped as much as the wall around it. In the last 0.35 s before a shot the eye and jaws glow and the
 // head shivers a little (the shot itself is not moved: this only tells of it). SPOUT_L: how far the jaws stand out of the wall.
+// Only a shooter firing right (dir 1) is seen: it sits on its wall's right side face, which this view shows. One firing left sits
+// on its wall's left side face, which the wall's own front face hides (we look from the front right), so no head is drawn and its
+// darts come out from behind the front face's left edge (HX left of the cell boundary), its tick and hiss the only tell.
 const SPOUT_L=12.5;
-function spoutMouth(f){const dir=f.dir||-1;return f.x-2*dir+dir*SPOUT_L;}
+function spoutMouth(f){const dir=f.dir||-1,xb=f.x-2*dir;return dir>0?xb+SPOUT_L:xb-HX;}
 function drawShooter(ctx,f){
+  if((f.dir||-1)<0)return;                                                                                 // on a hidden side face
   const th=L.theme,st=th.style,dir=f.dir||-1,xb=f.x-2*dir,cy=f.y,ws=1-0.35/f.per,ph=cyc(f,gameTime),tell=ph>ws?(ph-ws)/(1-ws):0,T=6.2832,K='#0b0812';
   const S=FIT_STONE[st]||FIT_STONE.dungeon,M=HG_MAT[st]||HG_MAT.palace,wear=wearLevel(xb,cy),q=mulberry32(hash2(Math.round(xb)*7+3,Math.round(cy)*13+5));
   ctx.save();if(tell>0)ctx.translate(Math.sin(gameTime*95)*0.45*tell,0);
