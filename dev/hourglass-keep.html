@@ -4082,12 +4082,77 @@ function slab(g,X,ys,th,lo,ro,gc,gr,wr,plain){
   if(ro&&!wr){g.beginPath();g.moveTo(fr,ft);g.lineTo(fr+DX,ys-HY);g.lineTo(fr+DX,ys-HY+FH);g.lineTo(fr,ft+FH);g.closePath();g.fillStyle=th.lo;g.fill();g.fillStyle='rgba(0,0,0,.25)';g.fill();
     g.strokeStyle='rgba(0,0,0,.45)';g.lineWidth=0.8;g.stroke();}
 }
-const FIRE=['#e4683b','#f6c35b','#fff3cf'],FORGE=['#d4401c','#f5923a','#ffe7ad'],GHOST=['#2f9478','#8fe0bf','#f0fff7'];
-function tongue(ctx,x,y,w,h,sway,col){ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(x-w,y);ctx.quadraticCurveTo(x-w*1.15,y-h*0.55,x+sway,y-h);ctx.quadraticCurveTo(x+w*1.15,y-h*0.55,x+w,y);ctx.quadraticCurveTo(x,y+w*0.9,x-w,y);ctx.fill();}
-function fire(ctx,x,y,s,seed,pal){const t=gameTime,sw=(Math.sin(t*7.3+seed)*1.5+Math.sin(t*12.7+seed*2.1)*0.7)*s,hh=(1+0.15*Math.sin(t*11+seed*3)+0.08*Math.sin(t*23+seed))*s;
-  tongue(ctx,x,y,3.1*s,10*hh,sw,pal[0]);tongue(ctx,x+0.3*s,y,2.1*s,7*hh,sw*0.7,pal[1]);tongue(ctx,x,y,1.05*s,4*hh,sw*0.4,pal[2]);}
-function embers(ctx,x,y,n,seed,col,rise){const t=gameTime;ctx.fillStyle=col;
-  for(let i=0;i<n;i++){const ph=(t*0.65+i/n+seed*0.37)%1;ctx.globalAlpha=(1-ph)*0.9;ctx.fillRect(x+Math.sin(ph*8+i*2.3+seed)*2.6-0.5,y-ph*rise-0.5,1,1);}ctx.globalAlpha=1;}
+// ---- flames (unit FL): soft, noise-shaped flames from a flipbook built once at load; Classic and Torchlight draw the same sprites ----
+// The recipe is the usual stylised-fire one (a scrolling noise times a flame-shaped mask with a cut-off, Alan Zucconi's fire shader and the
+// Diablo 3 scrolling-texture set-up) run offline in JS: a lateral warp that is zero at the base (the root stays put, the tip wanders), a
+// teardrop mask, two noise octaves scrolling upward by whole lattice cells per loop (so the last frame flows into the first), and a colour
+// ramp from the intensity (cream core, yellow, orange, red, then transparent: never brown). The sheets are cross-faded when drawn.
+const FIRE=0,FORGE=1,GHOST=2;
+const FRAMP=[ // per palette: [intensity, r, g, b] stops
+  [[0,170,45,22],[.22,232,100,36],[.45,250,165,60],[.7,255,214,110],[1,255,246,205]],
+  [[0,190,50,20],[.22,240,110,30],[.45,255,170,50],[.7,255,214,100],[1,255,236,170]],
+  [[0,40,150,120],[.25,70,190,150],[.5,150,235,200],[.75,205,250,228],[1,235,255,245]]];
+const FLM=[null,null,null],FLV={c:null,vf:0,ms:0,bytes:0},FLN=16,FCW=40,FCH=64,FVW=72,FVH=144;
+function fh(a,b,s){let h=Math.imul(a,374761393)^Math.imul(b,668265263)^Math.imul(s,1274126177);h=Math.imul(h^(h>>>13),1274126177);return((h^(h>>>16))>>>0)/4294967296;}
+function fvn(x,y,ny,sd){const xi=Math.floor(x),yi=Math.floor(y),fx=x-xi,fy=y-yi,sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy),y0=((yi%ny)+ny)%ny,y1=(y0+1)%ny; // value noise, periodic in y (ny cells)
+  return (fh(xi,y0,sd)*(1-sx)+fh(xi+1,y0,sd)*sx)*(1-sy)+(fh(xi,y1,sd)*(1-sx)+fh(xi+1,y1,sd)*sx)*sy;}
+function sst(a,b,x){x=(x-a)/(b-a);x=x<0?0:x>1?1:x;return x*x*(3-2*x);}
+function flameI(u,v,ph,sd,warp){ // flame intensity at u (-1..1 across) and v (0 base .. 1 tip) in loop phase ph (0..1)
+  if(v<=0||v>=1)return 0;
+  const wu=u+warp*v*v*(fvn(u*1.7+3,v*2.1-ph*4,4,sd)-.5)*2,hw=.92*Math.pow(1-v,.75)*(.75+.25*sst(0,.18,v))*(v<.2?Math.sqrt(1-(1-v/.2)*(1-v/.2))+1e-3:1.001); // (a round root)
+  const n=.6*fvn(u*2+7,v*3-ph*4,4,sd+1)+.4*fvn(u*4+11,v*6-ph*8,8,sd+2);
+  return (1-Math.abs(wu)/hw)*Math.pow(1-v,.6)*(.2+1.5*n)*1.25-.2*v;}
+function flameLut(pi){const o=new Uint8Array(256*3),S=FRAMP[pi];for(let i=0;i<256;i++){const I=i/255;let k=1;while(k<S.length-1&&I>S[k][0])k++;const a=S[k-1],b=S[k],q=Math.max(0,Math.min(1,(I-a[0])/(b[0]-a[0])));for(let c=0;c<3;c++)o[i*3+c]=a[c+1]+(b[c+1]-a[c+1])*q;}return o;}
+// one sheet: nf frames in a row; row 0 the flame, row 1 either the white-hot core ('core') or a cooled copy for pilot and die-down ('cool')
+function flameSheet(pi,cw,ch,nf,second,warp,sd){
+  const lut=flameLut(pi),W=cw*nf,H=ch*2,img=new ImageData(W,H),d=img.data;let top=0;
+  for(let f=0;f<nf;f++){const ph=f/nf;
+    for(let y=0;y<ch;y++){const v=(1-(y+.5)/ch-.06)/.94;
+      for(let x=0;x<cw;x++){const u=(x+.5)/cw*2-1,I=flameI(u,v,ph,sd,warp)+(fh(x,y,f)-.5)*.02,o=((y*W)+f*cw+x)*4;
+        const a=sst(.05,.28,I);
+        let i=Math.max(0,Math.min(255,I*255|0));d[o]=lut[i*3];d[o+1]=lut[i*3+1];d[o+2]=lut[i*3+2];d[o+3]=a*255;
+        const o2=o+ch*W*4;
+        if(second==='core'){const k=sst(.55,.95,I);i=Math.max(0,Math.min(255,(I*255)|0));d[o2]=lut[i*3];d[o2+1]=lut[i*3+1];d[o2+2]=lut[i*3+2];d[o2+3]=k*255;}
+        else{const Ic=I*.62;i=Math.max(0,Math.min(255,(Ic*255)|0));d[o2]=lut[i*3];d[o2+1]=lut[i*3+1];d[o2+2]=lut[i*3+2];d[o2+3]=sst(.05,.28,Ic)*255;}}
+}
+    // the top of the body in this frame: the first row with a few solid pixels (a stray lick does not count)
+    let ty=ch;for(let y=0;y<ch&&ty===ch;y++){let c=0;for(let x=0;x<cw;x++)if(d[((y*W)+f*cw+x)*4+3]>110)c++;if(c>=Math.max(2,cw/16))ty=y;}
+    top+=(ch*.94-ty)/ch;}
+  const c=document.createElement('canvas');c.width=W;c.height=H;c.getContext('2d').putImageData(img,0,0);return {c,vf:top/nf};}
+function lickSheet(pi){ // three small detached tongues (12 x 24 px each), round at the bottom and pointed at the top
+  const lut=flameLut(pi),W=36,H=24,img=new ImageData(W,H),d=img.data;
+  for(let k=0;k<3;k++)for(let y=0;y<H;y++){const v=1-(y+.5)/H;for(let x=0;x<12;x++){const u=(x+.5)/6-1,wu=u+.35*v*(fvn(v*3+k*5,k+1,4,31+k)-.5)*2,hw=.88*Math.pow(1-v,.8)*Math.sqrt(Math.min(1,(v+.03)/.22)),I=Math.max(0,1-Math.abs(wu)/hw)*(1.05-.25*v)*1.15,o=(y*W+k*12+x)*4,i=Math.max(0,Math.min(255,I*255|0));
+    d[o]=lut[i*3];d[o+1]=lut[i*3+1];d[o+2]=lut[i*3+2];d[o+3]=sst(.04,.3,I)*255;}}
+  const c=document.createElement('canvas');c.width=W;c.height=H;c.getContext('2d').putImageData(img,0,0);return c;}
+function buildFlames(){const t0=performance.now();let by=0;
+  for(let p=0;p<3;p++){const s=flameSheet(p,FCW,FCH,FLN,'core',.9,11+p*3);FLM[p]={c:s.c,vf:s.vf,lick:lickSheet(p)};by+=s.c.width*s.c.height*4+36*24*4;}
+  const v=flameSheet(FORGE,FVW,FVH,FLN,'cool',1.1,41);FLV.c=v.c;FLV.vf=v.vf;by+=v.c.width*v.c.height*4;
+  FLV.ms=performance.now()-t0;FLV.bytes=by;}
+buildFlames();
+// the same noise drives the flame's height and the lamp's light, so the wall pulses with the flame (30% of it in calm)
+function flK(sd,t){return(0.06*Math.sin(t*13+sd)+0.04*Math.sin(t*7.3+sd*1.7))*(S.set.calm?0.3:1);}
+// one flame: its root at (x,y), tgt units tall (before the beat); seed picks the phase and the mirror; sl 1 is a torch, below 1 a steadier lamp;
+// lk true lets a tongue tear off the tip now and then
+function flame(ctx,pi,x,y,tgt,seed,sl,lk){
+  const A=FLM[pi];if(!A)return;
+  const t=gameTime,calm=S.set.calm,amp=(calm?0.3:1)*sl,k=flK(seed,t)*sl,hh=1+2.2*k,s=tgt/(A.vf*16),fi=(t*(calm?12:20)*sl+seed*3.7)%FLN,a=fi|0,f=fi-a,b=(a+1)%FLN,
+    sw=(Math.sin(t*7.3*sl+seed)*1.5+Math.sin(t*12.7*sl+seed*2.1)*0.7)*amp*s,fl=(Math.floor(seed*5)&1)?-1:1;
+  ctx.save();ctx.translate(x,y);ctx.transform(s*fl/Math.sqrt(hh),0,-sw/(16*A.vf),s*hh,0,0);
+  ctx.drawImage(A.c,a*FCW,0,FCW,FCH,-5,-15.04,10,16);
+  if(f>.03){ctx.globalAlpha=f;ctx.drawImage(A.c,b*FCW,0,FCW,FCH,-5,-15.04,10,16);}
+  ctx.globalCompositeOperation='lighter';ctx.globalAlpha=.5*(1-f);ctx.drawImage(A.c,a*FCW,FCH,FCW,FCH,-5,-15.04,10,16);
+  if(f>.03){ctx.globalAlpha=.5*f;ctx.drawImage(A.c,b*FCW,FCH,FCW,FCH,-5,-15.04,10,16);}
+  ctx.restore();
+  if(lk)lick(ctx,A,x+sw*0.8,y-tgt*hh*0.88,tgt/12,seed);}
+// a tongue torn off the tip: rises, slows, shrinks and cools; a pure function of time (no state to keep)
+function lick(ctx,A,x,y,s,seed){const T=0.5,tt=gameTime+seed*0.77,n=Math.floor(tt/T),age=tt-n*T,life=0.38;if(age>life)return;
+  const q=age/life,h=fh(n,seed*13|0,5),sc=s*(1-0.55*q),yy=y-12*s*(1-(1-q)*(1-q));
+  ctx.globalAlpha=(1-q)*0.9;ctx.drawImage(A.lick,((h*3)|0)*12,0,12,24,x+(h-.5)*3*s+Math.sin(q*5+seed)*0.8*s-1.5*sc,yy-6*sc,3*sc,6*sc);ctx.globalAlpha=1;}
+// sparks that cool as they rise (cream, yellow, orange, red), slowing down, each with its own speed and drift; half as many in calm
+const EMB=[['#fff1b8','#ffc25a','#f07a2c','#b8361c'],['#fff1c0','#ffcf62','#f58a2c','#c0401c'],['#e8fff4','#9fecc6','#4fb88f','#2a7a66']];
+function embers(ctx,x,y,n,seed,pi,rise){const t=gameTime,st=EMB[pi],sd=seed*3|0;if(S.set.calm)n=Math.ceil(n/2);
+  for(let i=0;i<n;i++){const ph=(t*(0.55+((i*5+sd)%3)*0.12)+i/n+seed*0.37)%1,sz=(i&1)?0.7:1;ctx.fillStyle=st[ph<.2?0:ph<.5?1:ph<.8?2:3];ctx.globalAlpha=(1-ph*ph)*0.9;
+    ctx.fillRect(x+Math.sin(ph*6+i*2.3+seed)*(1.6+(i%3)*0.6)-sz/2,y-rise*(1-(1-ph)*(1-ph))-sz/2,sz,sz);}ctx.globalAlpha=1;}
 // a lamp whose wall has been opened onto the background has nothing to hang on: it stands on the floor or hangs
 // from the arch's keystone instead
 function lampFree(t){return GFX().bg&&(inOpening(t.c,t.r)||inBreach(t.c*TW+16,SURF(t.r)-38));}
@@ -4099,12 +4164,15 @@ function floorStand(ctx,x,top,base,col,hi){
   ctx.strokeStyle=col;ctx.lineWidth=1;ctx.stroke();
   ctx.fillStyle=hi;ctx.fillRect(x-0.4,top,0.8,(base-2-top)*0.7);
   ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(x,base+0.8,7,1.4,0,0,Math.PI*2);ctx.fill();}
+// the pitch torch's flame: the flipbook flame, a tongue now and then, cooling sparks and two thin wisps of smoke above it
+function torchFlame(ctx,x,y,seed){flame(ctx,FIRE,x,y,12.1,seed,1,true);embers(ctx,x,y-10,5,seed,FIRE,26);
+  ctx.fillStyle='#1e181c';for(let i=0;i<2;i++){const u=(gameTime*0.5+i*0.5+seed*0.1)%1;ctx.globalAlpha=0.16*Math.sin(u*Math.PI);ctx.beginPath();ctx.arc(x+Math.sin(u*5+i*2+seed)*2,y-19-u*18,1.4+u*2.2,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;}
 const warmLamp=t=>L.theme.style==='crypt'&&(t.c*7+t.r*13)%10<3;
 function drawLight(ctx,t,th){
   const free=lampFree(t),base=SURF(t.r)-HY+1.5,key=(t.r-1)*TH+11;
   const x=t.c*TW+16,st=th.style,y=SURF(t.r)-38-(free&&(st==='palace'||st==='tile')?28:0),tm=gameTime,seed=(t.c*7+t.r*13)%10,f=Math.sin(tm*13+seed)*0.6+Math.sin(tm*7.3+seed*1.7)*0.4;
   const wl=warmLamp(t),gcl=wl?'255,188,100':th.glow; // (in the crypt some lamps burn amber: a second colour among the green)
-  const glow=(gx,gy,r,a)=>{ctx.save();ctx.globalCompositeOperation='lighter';const gr=ctx.createRadialGradient(gx,gy,1,gx,gy,r);gr.addColorStop(0,'rgba('+gcl+','+(a+f*0.04)*GLOWK+')');gr.addColorStop(1,'rgba('+gcl+',0)');ctx.fillStyle=gr;ctx.fillRect(gx-r,gy-r,r*2,r*2);ctx.restore();};
+  const gsp=lightSprite(gcl),glow=(gx,gy,r,a)=>{ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=Math.min(1,(a+f*0.04)*GLOWK*1.2);ctx.drawImage(gsp,gx-r,gy-r,2*r,2*r);ctx.restore();}; // (the cached glow sprite: nothing is made per frame)
   if(st==='dungeon'&&free){ // pitch torch set in a tall iron stand
     glow(x+2,y-8,42,0.32);
     floorStand(ctx,x+3.2,y+8,base-3.5,'#2a2d36','#4a4f5c'); // set back on the floor's far edge, its feet clear of the walkway
@@ -4112,7 +4180,7 @@ function drawLight(ctx,t,th){
     ctx.fillStyle='#3b404b';ctx.fillRect(x+0.8,y+3.4,4.8,1.2);
     ctx.strokeStyle='#0b0812';ctx.lineWidth=3.4;ctx.beginPath();ctx.moveTo(x+3.2,y+4);ctx.lineTo(x+3.1,y-4);ctx.stroke();ctx.strokeStyle='#5a3920';ctx.lineWidth=2;ctx.stroke();
     ctx.fillStyle='#21150c';ctx.beginPath();ctx.ellipse(x+3.1,y-5,2.4,2.8,0.15,0,Math.PI*2);ctx.fill();
-    fire(ctx,x+3.2,y-6,1.05,seed,FIRE);embers(ctx,x+3.2,y-15,3,seed,'#ffb35a',24);
+    torchFlame(ctx,x+3.2,y-6,seed);
     return;
   }
   if(st==='dungeon'){ // pitch torch in an iron wall bracket
@@ -4122,7 +4190,7 @@ function drawLight(ctx,t,th){
     ctx.strokeStyle='#0b0812';ctx.lineWidth=3.4;ctx.beginPath();ctx.moveTo(x+1.2,y+9);ctx.lineTo(x+3,y-4);ctx.stroke();
     ctx.strokeStyle='#5a3920';ctx.lineWidth=2;ctx.stroke();
     ctx.fillStyle='#21150c';ctx.beginPath();ctx.ellipse(x+3.1,y-5,2.4,2.8,0.15,0,Math.PI*2);ctx.fill();
-    fire(ctx,x+3.2,y-6,1.05,seed,FIRE);embers(ctx,x+3.2,y-15,3,seed,'#ffb35a',24);
+    torchFlame(ctx,x+3.2,y-6,seed);
     return;
   }
   if(st==='palace'){ // brass lantern on a curled wall bracket (or, in an open arch, on a chain from the keystone); pierced metal throws sparkles
@@ -4137,7 +4205,7 @@ function drawLight(ctx,t,th){
     ctx.strokeStyle='#2a2016';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(lx,y-10);ctx.lineTo(lx,ly-8);ctx.stroke();}
     ctx.fillStyle='#0b0812';ctx.beginPath();ctx.moveTo(lx-5,ly-3);ctx.quadraticCurveTo(lx-4,ly-9,lx,ly-9.5);ctx.quadraticCurveTo(lx+4,ly-9,lx+5,ly-3);ctx.lineTo(lx+4.2,ly+5);ctx.lineTo(lx,ly+8);ctx.lineTo(lx-4.2,ly+5);ctx.closePath();ctx.fill();
     ctx.fillStyle='rgba(255,186,92,'+(0.82+f*0.1)+')';ctx.fillRect(lx-3.3,ly-2.4,6.6,6.6);
-    fire(ctx,lx,ly+3.4,0.42,seed,FIRE);
+    flame(ctx,FIRE,lx,ly+3.6,5.2,seed,0.6,false); // (inside the glass: steadier, no tongue escapes)
     ctx.fillStyle='#b8902f';ctx.beginPath();ctx.moveTo(lx-5,ly-3);ctx.quadraticCurveTo(lx-4,ly-9,lx,ly-9.5);ctx.quadraticCurveTo(lx+4,ly-9,lx+5,ly-3);ctx.closePath();ctx.fill();
     ctx.beginPath();ctx.moveTo(lx-4.2,ly+5);ctx.lineTo(lx,ly+8);ctx.lineTo(lx+4.2,ly+5);ctx.closePath();ctx.fill();
     ctx.strokeStyle='#0b0812';ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(lx-1.1,ly-2.4);ctx.lineTo(lx-1.1,ly+4.2);ctx.moveTo(lx+1.1,ly-2.4);ctx.lineTo(lx+1.1,ly+4.2);ctx.stroke();
@@ -4164,10 +4232,10 @@ function drawLight(ctx,t,th){
     else{ctx.strokeStyle='#120b08';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(x,by+12);ctx.lineTo(x,by+3);ctx.moveTo(x-4,by+10);ctx.lineTo(x,by+6);ctx.stroke();
     ctx.fillStyle='#120b08';ctx.fillRect(x-1.6,by+10,3.2,4);}
     ctx.fillStyle='#ff7a2a';ctx.beginPath();ctx.ellipse(x,by-2.4,5.6,1.8,0,0,Math.PI*2);ctx.fill();
-    fire(ctx,x-2.4,by-2.6,1,seed,FORGE);fire(ctx,x+2.6,by-2.6,0.9,seed+1.7,FORGE);fire(ctx,x,by-2.8,1.3,seed+3.1,FORGE);
+    flame(ctx,FORGE,x-2.4,by-2.6,11.5,seed,1,true);flame(ctx,FORGE,x+2.6,by-2.6,10.4,seed+1.7,1,true);flame(ctx,FORGE,x,by-2.8,15,seed+3.1,1,true);
     ctx.strokeStyle='#120b08';ctx.lineWidth=1.3;ctx.beginPath();ctx.moveTo(x-6.4,by-3);ctx.lineTo(x-3.6,by+4);ctx.lineTo(x+3.6,by+4);ctx.lineTo(x+6.4,by-3);ctx.stroke();
     ctx.lineWidth=0.9;ctx.beginPath();for(let i=-1;i<=1;i++){ctx.moveTo(x+i*2.8,by-3);ctx.lineTo(x+i*1.7,by+4);}ctx.moveTo(x-6.4,by-3);ctx.lineTo(x+6.4,by-3);ctx.stroke();
-    embers(ctx,x,by-14,6,seed,'#ffd27a',36);
+    embers(ctx,x,by-17,8,seed,FORGE,36);
     return;
   }
   // crypt: oil lamp in its niche, burning a cold green flame
@@ -4180,7 +4248,7 @@ function drawLight(ctx,t,th){
   ctx.fillStyle='#5b5a3e';ctx.beginPath();ctx.ellipse(x,ly,3.6,1.6,0,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#7b7952';ctx.beginPath();ctx.ellipse(x-0.4,ly-0.5,2.6,0.8,0,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#5b5a3e';ctx.beginPath();ctx.moveTo(x+2.6,ly-0.8);ctx.lineTo(x+5,ly-1.8);ctx.lineTo(x+4.6,ly+0.2);ctx.closePath();ctx.fill();
-  fire(ctx,x+4.6,ly-1.6,0.8,seed,wl?FIRE:GHOST);embers(ctx,x+4.6,ly-10,3,seed,wl?'#ffd69a':'#c8ffe4',20);
+  flame(ctx,wl?FIRE:GHOST,x+4.6,ly-1.6,9.2,seed,0.75,true);embers(ctx,x+4.6,ly-11,3,seed,wl?FIRE:GHOST,20);
 }
 // a hanging banner, one tile of it; where a slide has split it, the two halves part along a ragged cut and sway
 function drawBannerTile(ctx,X,Y,f,th){const x0=X+2,w=28,y0=f.top?Y+9:Y,y1=f.bot?Y+TH-16:Y+TH,cl=th.cloth||th.guard,c2=th.cloth2||th.trim,bn=f.bn,kk=6; // (a runner 28 px wide, nearly the width of its shaft)
@@ -4611,21 +4679,51 @@ function drawPend(ctx,o,f){
 function drawVentBase(ctx,o,f){
   // a grate set into the middle of the floor's top face (front to back depth 0.12 to 0.88), drawn in the floor's own
   // perspective (sheared like the slab), so it reads as a hole in the walkway and not a slot along the back wall
-  const x=o.c*TW+16,ys=SURF(o.r),ph=cyc(f,gameTime),warm=ph>=0.6?Math.min(1,(ph-0.6)/0.15):0;
+  const x=o.c*TW+16,ys=SURF(o.r),ph=cyc(f,gameTime),warm=Math.max(ph>=0.6?Math.min(1,(ph-0.6)/0.15):0,ph<0.12?1-ph/0.12:0); // (the grate stays lit after the burst, through the danger tail too)
   const q=(dx,d)=>onFloor(x+dx,d,ys),quad=(a,b,d0,d1)=>{const p=[q(a,d0),q(b,d0),q(b,d1),q(a,d1)];ctx.beginPath();p.forEach((v,i)=>i?ctx.lineTo(v.x,v.y):ctx.moveTo(v.x,v.y));ctx.closePath();};
   quad(-11,11,0.08,0.92);ctx.fillStyle='#0b0812';ctx.fill();                                     // the frame's dark cut
   quad(-9.5,9.5,0.18,0.82);ctx.fillStyle='rgba(255,'+Math.round(110+90*warm)+',50,'+(0.18+0.7*warm)+')';ctx.fill(); // the glow down the shaft
   ctx.strokeStyle='#3a2219';ctx.lineWidth=1.3;ctx.beginPath();                                    // bars, running front to back
   for(let i=-2;i<=2;i++){const a=q(i*4,0.12),b=q(i*4,0.88);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}ctx.stroke();
   ctx.strokeStyle='rgba(255,220,180,.22)';ctx.lineWidth=0.7;ctx.beginPath();{const a=q(-11,0.08),b=q(11,0.08);ctx.moveTo(a.x,a.y+0.4);ctx.lineTo(b.x,b.y+0.4);}ctx.stroke(); // the lit front lip
-  if(warm>0&&ph<0.75){ctx.fillStyle='rgba(60,50,48,'+(0.35*warm)+')';for(let i=0;i<3;i++){const u=((gameTime*1.3+i/3)%1);ctx.beginPath();ctx.arc(x+Math.sin(u*7+i)*3,ys-2-u*16,1.6+u*2.6,0,Math.PI*2);ctx.fill();}}
+  if(warm>0&&ph<0.75){ctx.fillStyle='rgba(60,50,48,'+(0.35*warm*(ph<0.12?Math.min(1,ph/0.04):1))+')';for(let i=0;i<3;i++){const u=((gameTime*1.3+i/3)%1);ctx.beginPath();ctx.arc(x+Math.sin(u*7+i)*3,ys-2-u*16,1.6+u*2.6,0,Math.PI*2);ctx.fill();}}
 }
+// The vent's LOOK at cycle phase ph, kept apart from the drawing so a GLSL flame can take over drawVentFlame later. Only the look:
+// the cycle (cyc), the danger window (ph > 0.7 or < 0.03) and the hit test are untouched. What hurts is lit through the whole window:
+// a low pilot flame from .70, the whoomp at .75 (flash, sparks, the flame catching with a little overshoot), the roar to .96, the
+// die-down to 1.00 (red, shrinking) and a small red tail until .03. h: 1 is the full 40 units; k: light strength; cool: mix toward the
+// red row of the sheet; ig: 0..1 while it catches (else -1); al: fade of the last moment of the tail.
+const VST={on:false,h:0,w:1,k:0,cool:0,ig:-1,al:1};
+function ventState(ph){const v=VST;v.on=true;v.ig=-1;v.al=1;v.cool=0;v.w=1;
+  if(ph>=.96){const q=(ph-.96)/.04;v.h=1-.75*q;v.k=1-.7*q;v.cool=.6*q;v.w=1-.2*q;}
+  else if(ph>=.79){v.h=1+.1*Math.max(0,1-(ph-.79)/.05);v.k=1;}
+  else if(ph>=.75){const q=(ph-.75)/.04,e=1-(1-q)*(1-q);v.h=.28+.82*e;v.k=.45+.55*e;v.w=1.25;v.ig=q;}
+  else if(ph>=.7){const q=(ph-.7)/.05;v.h=.15+.13*q;v.k=.22+.23*q;v.cool=.5*(1-q);v.w=.9;}
+  else if(ph<.03){v.h=.25-.1*ph/.03;v.k=.3-.15*ph/.03;v.cool=.6+.25*ph/.03;v.al=ph>.024?(.03-ph)/.006:1;}
+  else{v.on=false;v.h=0;v.k=0;}
+  return v;}
+// the flame itself: a 16-frame sheet (two rows: hot and cooled), cross-faded, drawn from the grate (x, ys); a second, slimmer, mirrored
+// flame beside it for volume; licks, embers, a halo and the ignition flash and sparks (those two not in calm)
+function ventPass(ctx,fi,row,al){const a=fi|0,f=fi-a,b=(a+1)%FLN;ctx.globalAlpha=al;ctx.drawImage(FLV.c,a*FVW,row*FVH,FVW,FVH,-12,-45.12,24,48);
+  if(f>.03){ctx.globalAlpha=al*f;ctx.drawImage(FLV.c,b*FVW,row*FVH,FVW,FVH,-12,-45.12,24,48);}}
+function drawVentFlame(ctx,x,ys,st,seed){
+  const t=gameTime,calm=S.set.calm,H=st.h*(1+(st.k>.9?.06*Math.sin(t*41+seed)*(calm?.3:1):0)),s=40/(FLV.vf*48),sx=s*st.w*(.35+.65*Math.min(1,H)),sy=s*H,fi=(t*(calm?12:24)+seed*3.7)%FLN,al=st.al;
+  ctx.save();ctx.globalCompositeOperation='lighter';
+  ctx.globalAlpha=.4*st.k*al;ctx.drawImage(lightSprite('255,150,70'),x-46,ys-66,92,92);
+  if(st.ig>=0&&!calm){ctx.globalAlpha=.8*(1-st.ig);ctx.drawImage(lightSprite('255,238,190'),x-20,ys-28,40,40);}
+  ctx.restore();
+  ctx.save();ctx.translate(x,ys);
+  ctx.save();ctx.transform(sx,0,0,sy,0,0);
+  if(st.cool>.02){ventPass(ctx,fi,1,al);ventPass(ctx,fi,0,al*(1-st.cool));}else ventPass(ctx,fi,0,al);
+  ctx.restore();
+  if(H>.5){ctx.save();ctx.transform(-sx*.7,0,0,sy*.72,3,0);ventPass(ctx,(fi+7)%FLN,0,.6*al);ctx.restore();}
+  ctx.restore();ctx.globalAlpha=1;
+  if(H>.7){const A=FLM[FORGE];lick(ctx,A,x-1,ys-36*H,2.2,seed);lick(ctx,A,x+2,ys-34*H,2,seed+5.3);}
+  if(st.ig>=0&&!calm){const p=st.ig;ctx.fillStyle='#ffd27a';ctx.globalAlpha=1-p;for(let i=0;i<6;i++)ctx.fillRect(x+(i-2.5)*5*p,ys-6-(14+(i%3)*4)*p+10*p*p,1.2,1.2);ctx.globalAlpha=1;}
+  embers(ctx,x,ys-14*H,H>.5?9:3,seed,FORGE,34*Math.min(1,H+.3));}
 function drawVentFire(ctx,o,f){
-  const ph=cyc(f,gameTime);if(ph<0.75)return;
-  const x=o.c*TW+16,ys=SURF(o.r)+0.5,k=Math.min(1,(ph-0.75)/0.04)*Math.min(1,(1-ph)/0.05),seed=o.c%7; // rising from the grate's centre
-  ctx.save();ctx.globalCompositeOperation='lighter';const gr=ctx.createRadialGradient(x,ys-20,2,x,ys-20,46);gr.addColorStop(0,'rgba(255,140,60,'+(0.45*k)+')');gr.addColorStop(1,'rgba(255,140,60,0)');ctx.fillStyle=gr;ctx.fillRect(x-48,ys-68,96,72);ctx.restore();
-  fire(ctx,x-3,ys,2.1*k,seed,FORGE);fire(ctx,x+3,ys,1.8*k,seed+2.3,FORGE);fire(ctx,x,ys,2.6*k,seed+4.1,FORGE);
-  embers(ctx,x,ys-30*k,5,seed,'#ffd27a',30);
+  const ph=cyc(f,gameTime);if(!(ph>=0.7||ph<0.03))return;
+  drawVentFlame(ctx,o.c*TW+16,SURF(o.r)+0.5,ventState(ph),o.c%7);
 }
 // the cracked ceiling stone: a whole tile wide, a jagged black fissure through it, pale chips on its lower lip and a thread of
 // dust now and then. Where the ceiling is the top of the screen the HUD's dark band lies over it, so drawHUD draws it again on top.
@@ -5196,7 +5294,7 @@ function stripCanvas(key,stops){let c=spriteCache.get(key);if(c)return c;c=docum
 // every light that reaches the view this frame (world units); kind: torch, win, fill, item...
 function gatherLights(x0,x1,y0,y1){
   const th=L.theme,lk=lookOf(th.style),out=[],t=gameTime,add=(x,y,r,col,a,kind,bloom)=>{if(x+r>x0&&x-r<x1&&y+r>y0&&y-r<y1)out.push({x,y,r,col,a,kind,bloom});};
-  for(const tc of L.torches){if(tc.broken)continue;const sd=(tc.c*7+tc.r*13)%10,fl=0.92+0.06*Math.sin(t*13+sd)+0.04*Math.sin(t*7.3+sd*1.7),lo=th.style==='palace'&&lampFree(tc)?[0,0]:LAMP[th.style]||LAMP.dungeon,x=tc.c*TW+16+lo[0],y=SURF(tc.r)-38+lo[1]-((th.style==='palace'||th.style==='tile')&&lampFree(tc)?28:0);
+  for(const tc of L.torches){if(tc.broken)continue;const sd=(tc.c*7+tc.r*13)%10,fl=0.92+flK(sd,t),lo=th.style==='palace'&&lampFree(tc)?[0,0]:LAMP[th.style]||LAMP.dungeon,x=tc.c*TW+16+lo[0],y=SURF(tc.r)-38+lo[1]-((th.style==='palace'||th.style==='tile')&&lampFree(tc)?28:0);
     const gc=warmLamp(tc)?'255,188,100':th.glow;add(x,y,150*fl,gc,0.95,'torch',{r:26,a:0.42});add(x,y+22,70,gc,0.45*fl,'torch');}
   {const st=th.style,hw=st==='dungeon'?2.6:6,hh=st==='dungeon'?10.5:st==='forge'||st==='crypt'?6.5:13;
     const bgOn=GFX().bg;for(const w of L.windows){if(bgOn&&inOpening(w.c,w.r))continue; // that window isn't drawn: the arch is open there
@@ -5211,7 +5309,7 @@ function gatherLights(x0,x1,y0,y1){
     if(cp.on){const k=cp.onAt!==undefined?clamp((gameTime-cp.onAt)/0.7,0,1):1;add(cp.x,y,150*k,gc,0.95*k,'item',{r:26,a:0.42*k});}else add(cp.x,y,38,gc,0.42,'item');}
   if(L.door.open>0)add(L.door.x+HX,SURF(L.door.r)-26,120*Math.min(1,L.door.open),'255,196,120',0.9*Math.min(1,L.door.open),'door',{r:28,a:0.3*L.door.open});
   for(const o of L.dyn){const f=o.f,X=o.c*TW;if(X<x0-160||X>x1+160)continue;const ys=SURF(o.r);
-    if(f.t==='vent'){const ph=cyc(f,t);if(ph>=0.75)add(X+16,ys-24,110,'255,140,60',0.9*Math.min(1,(ph-0.75)/0.04)*Math.min(1,(1-ph)/0.05),'fire');}
+    if(f.t==='vent'){const ph=cyc(f,t);if(ph>=0.7||ph<0.03){const vs=ventState(ph);add(X+16,ys-24,110,'255,140,60',0.9*vs.k*vs.al,'fire',{r:30,a:0.4*vs.k*vs.al});}} // (lit through the whole danger window)
     else if(f.t==='gate'&&!f.latch&&f.dur>0&&f.tm>0&&f.tm<Infinity)add(X+16-HX,o.r*TH-12,34,'255,200,120',0.55,'item');
     // traps keep a faint glint of their own so the dark never hides them
     else if(f.t==='stone'&&f.s<2)add(X+16,ceilingY(o.c,o.r)+8,34,'225,222,240',0.3,'trap');
@@ -5252,7 +5350,7 @@ function bloomPass(ctx,lights){
 function winShaft(ctx,q,a){ctx.globalAlpha=1;const x0=q.x-q.hw,x1=q.x+q.hw,y0=q.y-q.hh,y1=q.y+q.hh,dx=-42,dy=112,gr=ctx.createLinearGradient(q.x,q.y,q.x+dx,q.y+dy);
   gr.addColorStop(0,'rgba('+q.col+','+a+')');gr.addColorStop(1,'rgba('+q.col+',0)');ctx.fillStyle=gr;
   ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y0);ctx.lineTo(x1,y1);ctx.lineTo(x1+dx,y1+dy);ctx.lineTo(x0+dx,y1+dy);ctx.lineTo(x0+dx,y0+dy);ctx.closePath();ctx.fill();}
-// atmosphere in the world: mist pooling on the floors, dust drifting in the light, extra embers over the flames
+// atmosphere in the world: mist pooling on the floors, dust drifting in the light
 function atmoPass(ctx,lights,x0,x1,y0,y1){
   const th=L.theme,lk=lookOf(th.style),t=gameTime;ctx.save();ctx.globalCompositeOperation='lighter';
   const mist=lightSprite(lk.mist);
@@ -5263,7 +5361,7 @@ function atmoPass(ctx,lights,x0,x1,y0,y1){
     for(let i=0;i<16;i++){const h=hash2(sd,i),u=((h%1000)/1000+t*(0.006+(h>>>12)%7*0.002))%1,v=(((h>>>10)%1000)/1000+t*(0.012+(h>>>16)%5*0.003))%1;
       const px=q.x+(u-0.5)*150+Math.sin(t*0.7+i)*4,py=q.y+50-v*130,d=Math.hypot(px-q.x,py-q.y)/(q.kind==='win'?90:120);if(d>1)continue;
       ctx.globalAlpha=(1-d)*(0.45+0.3*Math.sin(t*3+i*1.7));ctx.fillStyle=q.kind==='win'?'rgb('+q.col+')':'rgb(255,236,200)';ctx.fillRect(px,py,0.9,0.9);}
-    if(q.kind==='torch')for(let i=0;i<6;i++){const ph=(t*0.5+i/6+sd*0.13)%1;ctx.globalAlpha=(1-ph)*0.85;ctx.fillStyle='rgb(255,'+(150+i*12)+',70)';ctx.fillRect(q.x+Math.sin(ph*9+i*2.3)*5,q.y-6-ph*46,0.9,0.9);}}
+  } // (the torches' own sparks are drawn with the flames by embers(), cooling as they rise)
   ctx.restore();
 }
 function hazePass(ctx){const lk=lookOf(L.theme.style);
@@ -6052,11 +6150,11 @@ function glMask(lights,VZ,camD,camDY){
       for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++){const b=B(L,c,r);if(b===WALL)g.fillRect(c*TW,r*TH,TW,TH);else if(b===FLOOR){const ys=SURF(r);g.fillRect(c*TW,ys-DY,TW+DX,DY+9);}}
       g.globalCompositeOperation='lighter';any=1;}}
   if(GLFX.heat){
-    const green=lightSprite('0,255,0'),forge=L.theme.style==='forge';
+    const green=lightSprite('0,255,0'),forge=L.theme.style==='forge',hk=S.set.calm?0.3:1; // (calm: a third of the shimmer)
     for(const o of L.dyn){const f=o.f;if(f.t!=='vent')continue;const X=o.c*TW;if(X<cx-60||X>cx+vw+60)continue;
-      const ph=cyc(f,t),a=ph>=.7?Math.min(1,(ph-.7)/.05):ph<.12?.5*(1-ph/.12):0; // hot while it burns, and a moment after
+      const ph=cyc(f,t),a=(ph>=.7?Math.min(1,(ph-.7)/.05):ph<.12?.5*(1-ph/.12):0)*hk; // hot while it burns, and a moment after
       if(a>.01){g.globalAlpha=a;g.drawImage(green,X+16-30,SURF(o.r)-100,60,110);any=1;}}
-    if(forge)for(const q of lights){if(q.kind!=='torch'||q.r<100)continue;g.globalAlpha=.5;g.drawImage(green,q.x-14,q.y-70,28,70);any=1;}
+    for(const q of lights){if(q.kind!=='torch'||q.r<100)continue;g.globalAlpha=(forge?.5:L.theme.style==='tile'?0:.25)*hk;if(g.globalAlpha>0){g.drawImage(green,q.x-14,q.y-70,28,70);any=1;}} // every flame shimmers a little, the forge's most
     g.globalAlpha=1;}
   const ch=L.ext.chase;
   if(GLFX.storm&&ch&&ch.on&&(ch.fade||0)<1&&P){ // everything behind the front is hazy; ahead of it the haze thins out over a few tiles
@@ -6159,7 +6257,7 @@ function glFrame(lights,VZ,camD,camDY,th){
   let n=0;const B=GLLIGHTS;
   for(const q of lights){if(n>=GLMAXL)break;
     let col=GLCOL.get(q.col);if(!col){col=q.col.split(',').map(Number);GLCOL.set(q.col,col);}
-    const a=Math.min(1,q.a)*0.8/1.5/255,cx=q.x*VZ-camD,cy=q.y*VZ-camDY,r=q.r*VZ,fl=GLFLICK[q.kind]||0,ph=(q.x*0.37+q.y*0.11)%6.283;
+    const a=Math.min(1,q.a)*0.8/1.5/255,cx=q.x*VZ-camD,cy=q.y*VZ-camDY,r=q.r*VZ,fl=(GLFLICK[q.kind]||0)*(S.set.calm?0.3:1),ph=(q.x*0.37+q.y*0.11)%6.283;
     if(cx+r<0||cx-r>w||cy+r<0||cy-r>h)continue;
     for(let k=0;k<6;k++){const o=(n*6+k)*GLSTRIDE;B[o]=GLK[k][0];B[o+1]=GLK[k][1];B[o+2]=cx;B[o+3]=cy;B[o+4]=r;B[o+5]=0;B[o+6]=fl;B[o+7]=ph;B[o+8]=0;B[o+9]=0;B[o+10]=col[0]*a;B[o+11]=col[1]*a;B[o+12]=col[2]*a;}
     n++;}
@@ -6715,6 +6813,7 @@ window.__HK={tapCloth,THEMES,progOf,themeName,hint,learn,HINTS,HINT_MOVE,get ban
   levelCompleteHook:null,render,layout,startLevel,
   get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V};
 Object.assign(window.__HK,{hurt,HK,DISS,sandP,SAND_HP,GLFX,setClock:f=>{performance.now=f;}}); // S3-A (tests)
+Object.assign(window.__HK,{FLM,FLV,ventState,cyc}); // FL (flames: the sheets and the vent's look, for tests)
 Object.assign(window.__HK,{GLFX,GLREL,clearRooms,bgCache,bgLayers,solidBelow:(c,r)=>solidBelow(L,c,r),roomCanvas}); // (unit B's switches and caches, for its tests)
 Object.assign(window.__HK,{MS,MSF,GLMETAL_P,msPreset:k=>{if(k!==undefined)GLMETAL_K=k;return GLMETAL_K;},msPaint:()=>METAL_PAINT_HI}); // (unit MS, for its tests and pictures)
 
