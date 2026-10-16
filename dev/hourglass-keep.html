@@ -2056,10 +2056,10 @@ const PAL_HERO={skin:'#c98f60',skinD:'#a8734a',tunic:'#3b4aa6',tunicD:'#2c387e',
 // white, so no guard is blue or white). Each rank: a ramp of three shades of its hue (tunic light, tunic shadow, dark trousers),
 // shadows shifted toward the cool side and lights toward the warm, a split in value (light tunic over dark trousers, so some part
 // of him stands apart from walls both dark and light), and one or two accents from the complementary side (sash, trim, plume).
-// Escalation: recruits ochre and rust, soldiers teal and cream, veterans crimson and gold, captains violet, gold and a white plume.
+// Escalation: recruits ochre and rust, soldiers green and cream, veterans crimson and gold, captains violet, gold and a white plume.
 const GUARD_PAL={
   0:{skin:'#b4805a',skinD:'#8f6140',tunic:'#d9a032',tunicD:'#9c6c1c',pants:'#6e4720',pantsD:'#442a12',sash:'#8c3a18',trim:'#f3d98a',helm:'#b07a30',boot:'#24160b'}, // recruit: ochre, umber, rust
-  1:{skin:'#8c5c3c',skinD:'#6d4429',tunic:'#1fa392',tunicD:'#0f6a62',pants:'#17666a',pantsD:'#0d4044',sash:'#f0e2a8',trim:'#e8c860',helm:'#79b9b0',boot:'#1a120c'}, // soldier: teal, deep sea, cream
+  1:{skin:'#8c5c3c',skinD:'#6d4429',tunic:'#3fd03a',tunicD:'#1b8a3e',pants:'#17692f',pantsD:'#0b3d1e',sash:'#f4e9b0',trim:'#f0d060',helm:'#c4e08a',boot:'#1a120c'}, // soldier: vibrant green (light leans yellow, shadow leans teal), cream
   2:{skin:'#a67650',skinD:'#835836',tunic:'#ea3a52',tunicD:'#a31c34',pants:'#6c2038',pantsD:'#431224',sash:'#eec45a',trim:'#f4d878',helm:'#e0a090',plume:'#f6a53a',boot:'#1c120b'}, // veteran: crimson, wine, gold
   3:{skin:'#7e5036',skinD:'#613b26',tunic:'#b25cf0',tunicD:'#6c2eb0',pants:'#4a2a7c',pantsD:'#2c1650',sash:'#f0c040',trim:'#ffd76b',helm:'#e2b84a',plume:'#fbf6ea',boot:'#2a1a10'}}; // captain: violet, gold, white plume
 function guardPal(g){return GUARD_PAL[g.cap?3:Math.min(2,g.tier|0)];}
@@ -3053,7 +3053,7 @@ const HINTS={
   chomp:'Blades snap shut on a rhythm. Watch one cycle, then go.',
   fight:'Grab strikes. Press up to block as his blade rises, then strike back at once.',
   parried:'Parried. Guards block blows thrown in a rush, and the good ones strike straight back. Press up to block, then hit him while he reels.',
-  ranks:'Guards differ, and their dress shows it: ochre and rust, teal and cream, crimson and gold, violet with a white plume. The better ones parry a flurry of blows.',
+  ranks:'Guards differ, and their dress shows it: ochre and rust, green and cream, crimson and gold, violet with a white plume. The better ones parry a flurry of blows.',
   poke:'A snake in the tunnel. Crouch and press Grab before you crawl in to draw your blade low, then Grab thrusts. Or wait for it to come out.',
   potion:'A flask. Stand on it and press Grab to drink.',
   cp:'Touch the hourglass. If you fall after it, you start again from here.',
