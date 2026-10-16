@@ -29,7 +29,7 @@ they load `bot.js` by a relative path and write their output next to themselves.
 
 ## Build
 
-From the repo root, with N the release number (current release v50, next v51):
+From the repo root, with N the release number (current release v51, next v52):
 
 ```
 python3 dev/tools/build.py dev/hourglass-keep.html index.html sw.js N
@@ -128,6 +128,10 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   `fillCorridor`) and `FLAT_K` (weight of plain floor in the run's menu) set it; check with `metrics40.py`. A remote plate (P1, P5) whose gate
   finds no room in the turn makes `buildLevel` lay the floor out again, so no dead-end side room is left behind. Timed gates (P4 too)
   are `estPath()` times `timerK()`; `estPath` times a careful pace (`WALK_T` and the action table, measured against the bot) so that the tightest factor 0.84 is still beatable. A longway floor always holds a fork (else it is laid out again, and the last resort drops the flag).
+- Torchlight's cost on the iPhone is the copies from 2D canvases into WebGL (about 2 ms each plus about 10 ms per million pixels,
+  measured with `?prof`), not the shader passes. Each frame makes two: the scene (`glScene`, at `GLP.rs` of full size: 1, .75 or .5,
+  stepped down by `glTime` when frames run slow, reset each floor) and one atlas holding every mask (`glAtlas`). A new mask goes into
+  the atlas, never into a copy of its own. `?prof` on the device shows each stage and each effect's cost.
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized from `estPath()` at a careful pace, times 0.84 to 1.08.
 - Pose angles are measured from straight down; positive means forward.

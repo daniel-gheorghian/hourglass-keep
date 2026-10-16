@@ -2243,7 +2243,7 @@ function makeGuard(gd,i){const d=L.d,cap=gd.cap,sk=!!gd.skel,tr=cap?CAPT:TIERS[g
     pendingParry:null,pose:mk({}),cap,skel:sk,pit:gd.pit||1,reinf:gd.reinf||0,vy:0,fx:0,sx:0,tx:0,hitDone:false,flash:0,id:i};}
 function makeSnake(sp){return {x:sp.x,r:sp.r,y:SURF(sp.r),lo:sp.lo,hi:sp.hi,dir:sp.dir||-1,state:'slither',t:0,ph:Math.random()*6,alive:true,gone:false,cool:0,lunge:0,hitDone:false};}
 
-function startLevel(n,cpIdx){
+function startLevel(n,cpIdx){GLP.rs=1; // (each floor starts with the scene at full resolution: glTime scales it down if frames run slow)
   quiet=false;if(hintFloor!==n){hintFloor=n;hintSeen={};}hintQ.length=0;L=genLevel(n,levelSeed(n),false,n===S.legacyFloor);REW.length=0;rw=null;if(cpIdx<0){S.sands=SANDS;S.cpPlates=[];}
   G=L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];
   P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;
@@ -5858,27 +5858,29 @@ const renderXf={VZ:1,camD:0,camDY:0}; // the last frame's world-to-canvas transf
 // ?prof: a profile taken on the device itself. Each stage of a frame is timed (the GL stages after gl.finish, so their times are
 // true, though the frame runs a little slower than it would), and every few seconds one effect is left out to show what it
 // costs; the table is drawn over the HUD. Torchlight does not fall back to Classic meanwhile. Nothing is stored.
-const PF={on:/[?&]prof\b/.test(location.search),t:0,gl:null,a:{},fa:{},fn:0,rs:0,iv:0,n:0,t0:0,ix:0,res:{},stg:null,off:{},sv:null,
-  steps:[['all','all on'],['metal','metal'],['shafts','sky beams'],['flame','flames'],['sand','sand'],['relief','relief'],['shadow','shadows'],['mist','mist/sheen/caust.'],['heat','heat'],['grade','grade'],['storm','sandstorm']],
+const PF={on:/[?&]prof\b/.test(location.search),t:0,gl:null,a:{},fa:{},fn:0,ws:0,al:false,cur:'all',iv:0,n:0,t0:0,ix:0,res:{},stg:null,off:{},sv:null,
+  rs:0,img:false,last:0,steps:[['all','all on'],['metal','metal'],['shafts','sky beams'],['flame','flames'],['sand','sand'],['relief','relief'],['shadow','shadows'],['mist','mist/sheen'],['heat','heat'],['grade','grade'],['storm','sandstorm'],['img','texImage2D'],['rs75','scene .75'],['rs50','scene .5']],
   s(){if(this.on){this.t=performance.now();this.a={};this.gl=null;}},
   p(k){if(!this.on)return;if(this.gl)this.gl.finish();const t=performance.now();this.a[k]=(this.a[k]||0)+t-this.t;this.t=t;}};
-function pfApply(){const k=PF.steps[PF.ix][0];if(!PF.sv)PF.sv={...GLFX};Object.assign(GLFX,PF.sv);PF.off={};
+function pfApply(){const k=PF.cur=PF.al?'all':PF.steps[PF.ix][0];if(!PF.sv)PF.sv={...GLFX};Object.assign(GLFX,PF.sv);PF.off={};PF.rs=0;PF.img=false;
+  if(k==='img')PF.img=true;else if(k==='rs75')PF.rs=0.75;else if(k==='rs50')PF.rs=0.5;else
   if(k==='metal')GLFX.metal=false;else if(k==='shafts')GLFX.shafts=false;else if(k==='relief')GLFX.relief=false;else if(k==='shadow')GLFX.shadow=false;
   else if(k==='heat')GLFX.heat=false;else if(k==='grade')GLFX.grade=false;else if(k==='storm')GLFX.storm2=false;else if(k==='mist')GLFX.mist=GLFX.sheen=GLFX.caustics=false;else if(k!=='all')PF.off[k]=true;}
 // one drawn frame: ms of work (update + render, GL finished) and the time since the last frame; a step lasts 3 s (the first half second not counted)
 function pfFrame(work,iv){const now=performance.now();if(!PF.t0){PF.t0=now;pfApply();}const el=now-PF.t0;
-  if(el>500){PF.fn++;PF.rs+=work;PF.iv+=iv;for(const k in PF.a)PF.fa[k]=(PF.fa[k]||0)+PF.a[k];}
-  if(el>=3000){const k=PF.steps[PF.ix][0],o=PF.res[k]||(PF.res[k]={w:0,iv:0,n:0});if(PF.fn){o.w+=PF.rs/PF.fn;o.iv+=PF.iv/PF.fn;o.n++;
-      if(k==='all'){PF.stg={};for(const q in PF.fa)PF.stg[q]=PF.fa[q]/PF.fn;}}
-    PF.fn=PF.rs=PF.iv=0;PF.fa={};PF.ix=(PF.ix+1)%PF.steps.length;PF.t0=now;pfApply();}}
-function pfDraw(ctx,sh){const fx=(v,d=1)=>v.toFixed(d),R=PF.res,b=R.all&&R.all.w/R.all.n;ctx.save();ctx.textAlign='left';ctx.textBaseline='top';ctx.font='600 6px monospace';
-  const x=hud.l+2,y=hud.t+30,lh=7,rows=[(sh?'TORCH ':'CLASSIC ')+cv.width+'x'+cv.height+'  now: '+PF.steps[PF.ix][1]+(PF.ix?' off':'')+'  ('+(PF.ix+1)+'/'+PF.steps.length+')',
-    'off              work ms   diff  frame ms'];
-  for(const [k,nm] of PF.steps){const o=R[k];if(!o)continue;const w=o.w/o.n;rows.push((k==='all'?'(none)':nm).padEnd(17)+fx(w).padStart(7)+(k==='all'||!b?'':((w-b>=0?'+':'')+fx(w-b)).padStart(7))+fx(o.iv/o.n).padStart(9).padStart(k==='all'||!b?16:9));}
-  const st=PF.stg?Object.entries(PF.stg).filter(e=>e[1]>=0.05).map(e=>e[0]+' '+fx(e[1])):[];
-  for(let i=0;i<st.length;i+=4)rows.push((i?'':'stages (all on): ')+st.slice(i,i+4).join('  '));
+  if(el>500){PF.fn++;PF.ws+=work;PF.iv+=iv;for(const k in PF.a)PF.fa[k]=(PF.fa[k]||0)+PF.a[k];}
+  if(el>=3000){const k=PF.cur,o=PF.res[k]||(PF.res[k]={w:0,iv:0,n:0,d:0,di:0});if(PF.fn){const wk=PF.ws/PF.fn,iv=PF.iv/PF.fn;o.w+=wk;o.iv+=iv;o.n++;
+      if(k==='all'){PF.last=[wk,iv];PF.stg={};for(const q in PF.fa)PF.stg[q]=PF.fa[q]/PF.fn;}else if(PF.last){o.d+=wk-PF.last[0];o.di+=iv-PF.last[1];}}
+    PF.fn=PF.ws=PF.iv=0;PF.fa={};if(PF.al)PF.al=false;else{PF.ix=(PF.ix+1)%PF.steps.length;if(PF.ix===0)PF.ix=1;PF.al=true;}PF.t0=now;pfApply();}}
+function pfDraw(ctx,sh){const fx=(v,d=1)=>v.toFixed(d),R=PF.res,sg=v=>(v>=0?'+':'')+fx(v);ctx.save();ctx.textAlign='left';ctx.textBaseline='top';ctx.font='600 6px monospace';
+  const x=hud.l+2,y=hud.t+30,lh=7,st=PF.steps[PF.ix],rows=[(sh?'TORCH ':'CLASSIC ')+cv.width+'x'+cv.height+' scale '+fx(PF.rs||GLP.rs,2)+'  now: '+(PF.al?'all on':st[1]+(PF.ix<12?' off':''))+'  ('+PF.ix+'/'+(PF.steps.length-1)+')',
+    'off / test       work  diff   frame  diff'];
+  for(const [k,nm] of PF.steps){const o=R[k];if(!o||!o.n)continue;const w=o.w/o.n,iv=o.iv/o.n;
+    rows.push((k==='all'?'(none)':nm).padEnd(15)+fx(w).padStart(6)+(k==='all'?'      ':sg(o.d/o.n).padStart(6))+fx(iv).padStart(8)+(k==='all'?'':sg(o.di/o.n).padStart(6)));}
+  const sl=PF.stg?Object.entries(PF.stg).filter(e=>e[1]>=0.05).map(e=>e[0]+' '+fx(e[1])):[];
+  for(let i=0;i<sl.length;i+=4)rows.push((i?'':'stages (all on): ')+sl.slice(i,i+4).join('  '));
   ctx.fillStyle='rgba(0,0,0,.72)';ctx.fillRect(x-2,y-2,206,rows.length*lh+3);ctx.fillStyle='#9fffd2';rows.forEach((r,i)=>ctx.fillText(r,x,y+i*lh));ctx.restore();}
-const GLP={on:false,dead:false,gl:null,cv:null,sceneC:null,sceneG:null,sw:0,sh:0,note:'',ms:0,lastR:0,fps:/[?&]fps\b/.test(location.search),why:'',sum:0,n:0,wsum:0,wn:0,skip:true,used:false};
+const GLP={rs:1,tw:0,th:0,dC:null,dG:null,mkAny:false,on:false,dead:false,gl:null,cv:null,sceneC:null,sceneG:null,sw:0,sh:0,note:'',ms:0,lastR:0,fps:/[?&]fps\b/.test(location.search),why:'',sum:0,n:0,wsum:0,wn:0,skip:true,used:false};
 const GLV=`attribute vec2 a_p;varying vec2 v_u;void main(){v_u=a_p*0.5+0.5;gl_Position=vec4(a_p,0.,1.);}`;
 // ================= S3-A: feel (rewind look, hit and last-life feedback, sand dissolve) =================
 // Three effects, each behind a constant (GLFX.rewind / GLFX.hit / GLFX.low here, DISS.on below). HK holds this frame's strengths,
@@ -6199,27 +6201,25 @@ function msLamps(lights,VZ,camD,camDY,w,h){const ML=MS.ML,MC=MS.MC,bi=MS.bi,bs=M
     const f=1+fl*(0.05*Math.sin(t*17+ph)+0.04*Math.sin(t*29.3+ph*2.1)+0.03*Math.sin(t*43+ph*3.7));
     ML[o]=(q.x*VZ-camD)/w;ML[o+1]=1-(q.y*VZ-camDY)/h;ML[o+2]=q.r*1.7*VZ/h; /* (a highlight is the flame seen in the metal: it carries farther than the light the lamp throws on the wall) */ ML[o+3]=Math.min(1,q.a)*f*(q.kind==='win'?0.6:1);
     MC[i*3]=c[0]/255;MC[i*3+1]=c[1]/255;MC[i*3+2]=c[2]/255;}}
-// per frame (from glFrame): the mask and its upload (unit 5), only when metal is in view; the lamps; the uniforms' values
+// per frame (from glFrame): the mask (copied by glAtlas), only when metal is in view; the lamps; the uniforms' values
 function glMetal(lights,VZ,camD,camDY){
   MSF.rec=false;MS.on=0;msUse(false);
   if(!GLFX.metal||!MS.ok||!MS.V1||!L){MSF.n=0;return;}
   const any=drawMetalMask(VZ,camD,camDY);MSF.n=0;if(!any)return;
   const gl=GLP.gl,w=cv.width,h=cv.height,mw=MS.c.width,mh=MS.c.height;
-  gl.activeTexture(gl.TEXTURE5);
-  if(!MS.tex||MS.w!==mw||MS.h!==mh){if(MS.tex)gl.deleteTexture(MS.tex);MS.tex=glTex(gl,mw,mh);MS.w=mw;MS.h=mh;}
-  gl.bindTexture(gl.TEXTURE_2D,MS.tex);gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,MS.c);MS.ups=(MS.ups||0)+1;
+  MS.ups=(MS.ups||0)+1;
   msLamps(lights,VZ,camD,camDY,w,h);
   const p=GLMETAL_P[GLMETAL_K]||GLMETAL_P.satin,calm=!!S.set.calm,U=MS.U;
   U[0]=1;U[1]=w/h;U[2]=26*VZ/h;U[3]=gameTime%62.83;                                                     // u_mm
   U[4]=p.side;U[5]=p.spec*(calm?0.7:1);U[6]=GLFX.metalGlint?p.glint*(calm?0.5:1):0;U[7]=p.rim;          // u_mq
   U[8]=p.diff;U[9]=0;U[10]=p.P;U[11]=calm?1:0;                                                           // u_mq2
-  U[12]=w/(2*mw);U[13]=h/(2*mh);U[14]=-MS.ox/(2*mw);U[15]=1-h/(2*mh)+MS.oy/(2*mh);                      // u_mo
+  // u_mo (U[12..15]) and u_mtx (U[20..21]): set by glAtlas, which knows where the metal lands in the atlas
   U[16]=w/VZ;U[17]=h/VZ;U[18]=(camD/VZ)%160;U[19]=(camDY/VZ)%160; // (the glints' world cells repeat every 160 px: small numbers keep a half-float bright pass exact)
-  U[20]=1/mw;U[21]=1/mh;                             // u_mw, u_mtx
+
   MS.on=1;}
 // (with the bright-pass or the composite program in use) its metal uniforms, on frames that show metal
 function glMetalU(U){const gl=GLP.gl;if(!U||!MS.on)return;gl.uniform1i(U.u_mt,5);
-  const V=MS.U;gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,MS.tex);
+  const V=MS.U;gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,GLP.mtex);
   gl.uniform4f(U.u_mm,V[0],V[1],V[2],V[3]);gl.uniform4f(U.u_mq,V[4],V[5],V[6],V[7]);gl.uniform4f(U.u_mq2,V[8],V[9],V[10],V[11]);
   gl.uniform4f(U.u_mo,V[12],V[13],V[14],V[15]);gl.uniform4f(U.u_mw,V[16],V[17],V[18],V[19]);gl.uniform2f(U.u_mtx,V[20],V[21]);
   gl.uniform4fv(U.u_ml,MS.ML);gl.uniform3fv(U.u_mc,MS.MC);gl.uniform4fv(U.u_mf,MS.MF);gl.uniform4fv(U.u_msw,MS.SW);}
@@ -6244,13 +6244,14 @@ const GLSH={
     precision mediump float;
     #endif
     varying vec2 v_u;uniform sampler2D u_sc,u_map,u_bl,u_mk;uniform vec2 u_d,u_vg,u_px,u_mp;uniform float u_t,u_sat;uniform vec4 u_fx;uniform vec3 u_sh,u_hi;
+    uniform vec4 u_mkT,u_mkC;vec2 mkUV(vec2 u){return clamp(u,u_mkC.xy,u_mkC.zw)*u_mkT.xy+u_mkT.zw;} // (the effect mask's part of the mask atlas)
     ${GLSL_A}
     uniform sampler2D u_rl;uniform float u_rk; // relief lighting (unit B): the factor from glRelief, and its strength (0 = off)
     uniform sampler2D u_cs,u_cm;uniform vec2 u_cfx; // atmosphere (glAtmo): shafts and caustics, mist and sheen
     uniform vec3 u_sd; // unit ST: the storm's sand colour
     ${GLSL_M}
     void main(){
-      vec3 m=texture2D(u_mk,v_u).rgb; // mask: r shadow, g heat, b storm
+      vec3 m=texture2D(u_mk,mkUV(v_u)).rgb; // mask: r shadow, g heat, b storm
       vec2 uv=v_u;float hz=m.g*u_fx.y,st=m.b*u_fx.z;
       if(hz>.01){uv+=vec2(sin(v_u.y*260.+u_t*7.+v_u.x*50.)+.6*sin(v_u.y*110.-u_t*4.3),.7*sin(v_u.x*180.+u_t*5.))*hz*vec2(1.7,.9)*u_px;} // heat: the scene is read a little off, in rising ripples
       float e=st*u_fx.w; // the storm's veil: a slow wave through it (unit ST: over the whole veil, not a strip; u_fx.w is less when calm)
@@ -6258,7 +6259,7 @@ const GLSH={
       uv=hkWarp(uv); // S3-A
       vec3 s=hkScene(uv),l=texture2D(u_map,v_u).rgb*1.5;float mcv=msCov(uv); // (unit MS: how much of this pixel is metal; 0 with none on screen)
       l*=1.+(texture2D(u_rl,v_u).r-.5)*2.*u_rk*(1.-mcv); // relief: lamp light raking across the stone (not across metal in front of it)
-      float sh=(m.r*2.+texture2D(u_mk,v_u+vec2(u_mp.x,0.)).r+texture2D(u_mk,v_u-vec2(u_mp.x,0.)).r+texture2D(u_mk,v_u+vec2(0.,u_mp.y)).r+texture2D(u_mk,v_u-vec2(0.,u_mp.y)).r)/6.;
+      float sh=(m.r*2.+texture2D(u_mk,mkUV(v_u+vec2(u_mp.x,0.))).r+texture2D(u_mk,mkUV(v_u-vec2(u_mp.x,0.))).r+texture2D(u_mk,mkUV(v_u+vec2(0.,u_mp.y))).r+texture2D(u_mk,mkUV(v_u-vec2(0.,u_mp.y))).r)/6.;
       l=mix(l,max(l,vec3(.95,.7,.42)),st*.2); // the air in the storm's veil is a little lit by its dust (unit ST: glStorm draws the dust itself)
       l*=1.-sh*.85*u_fx.x; // a shadow takes the light away and a little of the ambient
       vec3 c=s*l*(1.-sh*.4*u_fx.x);
@@ -6287,7 +6288,7 @@ function glInit(){
     const c=document.createElement('canvas');c.id='glc';c.width=cv.width;c.height=cv.height;
     const gl=c.getContext('webgl2',{alpha:false,antialias:false,depth:false,stencil:false,powerPreference:'high-performance'})||c.getContext('webgl',{alpha:false,antialias:false,depth:false,stencil:false});
     if(!gl)throw new Error('no webgl');
-    const P={light:glLink(gl,glMake(gl,GLSH.light),['u_s','u_t']),bright:glLink(gl,glMake(gl,msPlain(GLSH.bright)),['u_sc','u_map','u_px']),blur:glLink(gl,glMake(gl,GLSH.blur),['u_t0','u_d']),final:glLink(gl,glMake(gl,msPlain(GLSH.final)),['u_sc','u_map','u_bl','u_mk','u_d','u_vg','u_px','u_mp','u_t','u_sat','u_fx','u_sh','u_hi'])};
+    const P={light:glLink(gl,glMake(gl,GLSH.light),['u_s','u_t']),bright:glLink(gl,glMake(gl,msPlain(GLSH.bright)),['u_sc','u_map','u_px']),blur:glLink(gl,glMake(gl,GLSH.blur),['u_t0','u_d']),final:glLink(gl,glMake(gl,msPlain(GLSH.final)),['u_sc','u_map','u_bl','u_mk','u_d','u_vg','u_px','u_mp','u_t','u_sat','u_fx','u_sh','u_hi','u_mkT','u_mkC'])};
     // (attribute slots are fixed so one buffer layout serves every program)
     for(const k of ['bright','blur','final'])gl.bindAttribLocation(P[k].p,0,'a_p');
     const lp=P.light.p;gl.bindAttribLocation(lp,0,'a_k');gl.bindAttribLocation(lp,1,'a_c');gl.bindAttribLocation(lp,2,'a_o');gl.bindAttribLocation(lp,3,'a_col');
@@ -6302,7 +6303,7 @@ function glInit(){
     c.addEventListener('webglcontextlost',e=>{e.preventDefault();glKill('context lost');});
     cv.parentNode.insertBefore(c,cv);
     const mk=document.createElement('canvas');
-    Object.assign(GLP,{gl,cv:c,P,tri,lb,sceneC:sc,sceneG:sc.getContext('2d'),tex:glTex(gl,1,1),mkC:mk,mkG:mk.getContext('2d'),mtex:null,mkHad:true,sw:0,sh:0,fb:null,on:true});
+    Object.assign(GLP,{gl,cv:c,P,tri,lb,sceneC:sc,sceneG:sc.getContext('2d'),tex:glTex(gl,1,1),mkC:mk,mkG:mk.getContext('2d'),mtex:null,sw:0,sh:0,fb:null,on:true});
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);gl.disable(gl.DEPTH_TEST);glSize();
     return true;
   }catch(e){GLP.dead=true;GLP.why=String(e&&e.message||e);GLP.on=false;return false;}
@@ -6317,7 +6318,7 @@ function glSize(){
   const lw=Math.ceil(w/4),lh=Math.ceil(h/4);
   gl.bindTexture(gl.TEXTURE_2D,GLP.tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,GLP.sceneC);GLP.texOk=true;
   GLP.fb={map:glFbo(gl,lw,lh),br:glFbo(gl,lw,lh),bl:glFbo(gl,lw,lh)};
-  GLP.mkC.width=lw;GLP.mkC.height=lh;if(GLP.mtex)gl.deleteTexture(GLP.mtex);GLP.mtex=glTex(gl,lw,lh);GLP.mkHad=true;
+  GLP.mkC.width=lw;GLP.mkC.height=lh;if(GLP.mtex)gl.deleteTexture(GLP.mtex);GLP.mtex=glTex(gl,1,1);GLA.w=GLA.h=0;GLA.had=true;GLP.tw=w;GLP.th=h;
 }
 // ---- the effect mask: one small 2D canvas (the light map's size) read by the composite. r = shadows, g = heat, b = storm ----
 const GLFX={shadow:true,heat:true,storm:true,grade:true};
@@ -6384,9 +6385,7 @@ function glMask(lights,VZ,camD,camDY){
     else{g.fillStyle='#00f';g.fillRect(cx-4,cy-4,Math.max(0,ch.wx-cx+4),vh+8);g.drawImage(stormStrip,ch.wx,cy-4,170,vh+8);}
     g.globalAlpha=1;any=1;}
   g.globalCompositeOperation='source-over';g.globalAlpha=1;
-  gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,GLP.mtex);
-  if(any||GLP.mkHad)gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,mkC);
-  GLP.mkHad=!!any;
+  GLP.mkAny=!!any; // (copied into WebGL with the other masks, in glAtlas)
 }
 // ---- relief lighting (S3 unit B, item 2; GLFX.relief): lamp light rakes across the joints, cracks and broken edges of the stone ----
 // Normal-mapped 2D (Sprite Lamp, Dead Cells' rendered normal maps) needs a height map of the surface. The walls are drawn in 2D,
@@ -6469,13 +6468,58 @@ function glReliefUse(){const R=GLREL,gl=GLP.gl;if(R.gl!==gl||!R.ul)return;gl.uni
 // how much of a theme's ambient colour the dark keeps in Torchlight: the cool themes sat near black between lamps, so they keep more
 const GLAMBT={dungeon:0.78,tile:0.8,crypt:0.9,palace:0.62,forge:0.6};
 const GLFLICK={torch:0.6,fire:1,door:0.5,item:0.35};
+// ---- what reaches WebGL each frame (owner, v51: Torchlight fell back to Classic on the phone at 40 fps) ----
+// ?prof on an iPhone showed where the time goes: copying a 2D canvas into WebGL costs about 2 ms per copy plus about 10 ms per
+// million pixels (the scene's copy 12 ms, the small effect mask's 2.5), while the shader passes and the effects cost little.
+// Safari keeps 2D canvases and WebGL apart and copies each frame across (WebKit bugs 234920, 267291). So: one copy for the
+// scene, at a scale that drops when frames run slow (glScene, GLP.rs), and one for all three masks together (glAtlas).
+// The scene at GLP.rs of the screen's pixels: the 2D frame is drawn full size as before, shrunk on the 2D side (cheap), and the
+// smaller picture copied. The HUD and text are drawn after the shader on the full-size canvas, so they stay sharp.
+function glScene(w,h){const gl=GLP.gl,rs=PF.on&&PF.rs?PF.rs:GLP.rs;let src=GLP.sceneC;
+  if(rs<1){const dw=Math.max(1,Math.round(w*rs)),dh=Math.max(1,Math.round(h*rs));
+    if(!GLP.dC){GLP.dC=document.createElement('canvas');GLP.dG=GLP.dC.getContext('2d',{alpha:false});}
+    if(GLP.dC.width!==dw||GLP.dC.height!==dh){GLP.dC.width=dw;GLP.dC.height=dh;}
+    GLP.dG.drawImage(GLP.sceneC,0,0,dw,dh);src=GLP.dC;}
+  gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,GLP.tex);
+  if(src.width!==GLP.tw||src.height!==GLP.th||PF.img){gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,src);GLP.tw=src.width;GLP.th=src.height;}
+  else gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,src);}
+// the beams' sources in view and the figures standing in them, found before the atlas is copied (glAtmo reads GLC.pns)
+function glcPre(VZ,camD,camDY,th){GLC.pns=0;GLC.ocAny=0;if(!GLC.on||!L)return;
+  const caus=GLFX.caustics&&th.style==='dungeon'&&GFX().bg;
+  GLC.pns=GLFX.shafts||caus?glcSources(VZ,camD,camDY,GLFX.shafts,caus):0;
+  if(GLC.pns){glcOcc(VZ,camD,camDY);GLC.ocAny=1;}}
+// the mask atlas (texture unit 3, and 4 and 5 where the beams and the metal read it): the effect mask (quarter resolution) at
+// the top left, the figures in the beams (eighth) beside it, and below them only the part of the metal mask (half) that holds
+// metal; 2 px of black between them, and every read clamped inside its own part. Sizes are rounded up to 32 px so the canvas
+// and the texture are rarely remade.
+const GLA={c:null,g:null,w:0,h:0,had:true,kT:new Float32Array(4),kC:new Float32Array(4),oT:new Float32Array(4),oC:new Float32Array(4)};
+function glAtlas(w,h,lw,lh){const gl=GLP.gl,A=GLA,ow=Math.ceil(w/8),oh=Math.ceil(h/8),mo=MS.on&&MS.c;
+  const cb=MS.cb,bx=mo?Math.max(0,Math.floor(cb[0])):0,by=mo?Math.max(0,Math.floor(cb[1])):0,bw=mo?Math.max(1,Math.ceil(cb[2])-bx):0,bh=mo?Math.max(1,Math.ceil(cb[3])-by):0;
+  const up=v=>Math.ceil(v/32)*32,W=up(Math.max(lw+2+ow,bw)),Y0=Math.max(lh,oh)+2,H=up(Y0+bh);
+  if(!A.c){A.c=document.createElement('canvas');A.g=A.c.getContext('2d',{alpha:false});}
+  if(A.c.width!==W||A.c.height!==H){A.c.width=W;A.c.height=H;}
+  const g=A.g,any=GLP.mkAny||GLC.ocAny||mo;
+  if(any||A.had){g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='source-over';g.fillStyle='#000';g.fillRect(0,0,W,H);
+    if(GLP.mkAny)g.drawImage(GLP.mkC,0,0);
+    if(GLC.ocAny)g.drawImage(GLC.ocC,lw+2,0);
+    if(mo)g.drawImage(MS.c,bx,by,bw,bh,0,Y0,bw,bh);
+    gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,GLP.mtex);
+    if(A.w!==W||A.h!==H){gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,A.c);A.w=W;A.h=H;}
+    else gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,A.c);}
+  A.had=!!any;
+  // screen uv (GL: y up) -> atlas uv (the canvas's top row is the texture's top), and each part's clamp (half a texel in)
+  const set=(T,C,x0,y0,pw,ph)=>{T[0]=pw/W;T[1]=ph/H;T[2]=x0/W;T[3]=1-(y0+ph)/H;C[0]=0.5/pw;C[1]=0.5/ph;C[2]=1-0.5/pw;C[3]=1-0.5/ph;};
+  set(A.kT,A.kC,0,0,lw,lh);set(A.oT,A.oC,lw+2,0,ow,oh);
+  if(mo){const U=MS.U;U[12]=w/(2*W);U[13]=h/(2*H);U[14]=(-MS.ox/2-bx)/W;U[15]=1-(h/2-MS.oy/2-by+Y0)/H;U[20]=1/W;U[21]=1/H;}}
 function glFrame(lights,VZ,camD,camDY,th){
   const {gl,P}=GLP,w=cv.width,h=cv.height,lw=Math.ceil(w/4),lh=Math.ceil(h/4),lk=lookOf(th.style),t=gameTime;
   glSize();
   // 1. upload the 2D frame (once)
-  gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,GLP.tex);gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,GLP.sceneC);
-  PF.p('upload');glMask(lights,VZ,camD,camDY);PF.p('mask');
-  glMetal(lights,VZ,camD,camDY);PF.p('metal'); // (unit MS) the metal mask, when metal is in view
+  glScene(w,h);
+  PF.p('upload');glMask(lights,VZ,camD,camDY);
+  glMetal(lights,VZ,camD,camDY); // (unit MS) the metal mask, when metal is in view
+  glcPre(VZ,camD,camDY,th); // the beams' sources and the figures in them
+  glAtlas(w,h,lw,lh);PF.p('masks'); // the three masks, copied into WebGL as one
   // 2. light map: ambient, then every light added as a quad with its own falloff and flicker
   let n=0;const B=GLLIGHTS;
   for(const q of lights){if(n>=GLMAXL)break;
@@ -6502,7 +6546,7 @@ function glFrame(lights,VZ,camD,camDY,th){
   gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.bl.f);gl.useProgram(P.blur.p);bind(0,GLP.fb.br.t);gl.uniform1i(P.blur.u.u_t0,0);gl.uniform2f(P.blur.u.u_d,1.6/lw,0);gl.drawArrays(gl.TRIANGLES,0,3);
   PF.p('bloom');gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);bind(0,GLP.tex);bind(1,GLP.fb.map.t);bind(2,GLP.fb.bl.t);bind(3,GLP.mtex);
   msPasses(m=>{gl.useProgram(P.final.p);
-  {const U=P.final.u,gr=gradeOf(th.style),on=GLFX.grade&&GFX().grade;gl.uniform1i(U.u_mk,3);gl.uniform2f(U.u_px,1/w,1/h);gl.uniform2f(U.u_mp,1/lw,1/lh);gl.uniform1f(U.u_t,t%1000);
+  {const U=P.final.u,gr=gradeOf(th.style),on=GLFX.grade&&GFX().grade;gl.uniform1i(U.u_mk,3);gl.uniform4fv(U.u_mkT,GLA.kT);gl.uniform4fv(U.u_mkC,GLA.kC);gl.uniform2f(U.u_px,1/w,1/h);gl.uniform2f(U.u_mp,1/lw,1/lh);gl.uniform1f(U.u_t,t%1000);
     gl.uniform4f(U.u_fx,GLFX.shadow?1:0,GLFX.heat?1:0,GLFX.storm?1:0,S.set.calm?0.3:1);gl.uniform1f(U.u_sat,on?gr.sat:1);gl.uniform3fv(U.u_sh,on?gr.sh:GLNEUT);gl.uniform3fv(U.u_hi,on?gr.hi:GLNEUT);glAtmoU(U,cfx);glStormU(U);}
   hkUniforms(P.final.u,VZ,camD,camDY,w,h); // S3-A
   glReliefUse(); // (unit B)
@@ -6547,7 +6591,7 @@ const GLCHEAD=`#ifdef GL_FRAGMENT_PRECISION_HIGH
   `;
 const GLCSH={
   // S: shafts and caustics -> rgb light
-  s:[GLV,GLCHEAD+`uniform vec4 u_src[${GLCMAX}],u_scol[${GLCMAX}];uniform float u_ns,u_ln;uniform vec2 u_dir,u_rys;uniform sampler2D u_oc,u_ry;uniform vec4 u_cau;uniform vec3 u_sky;
+  s:[GLV,GLCHEAD+`uniform vec4 u_src[${GLCMAX}],u_scol[${GLCMAX}];uniform float u_ns,u_ln;uniform vec2 u_dir,u_rys;uniform sampler2D u_oc,u_ry;uniform vec4 u_ocT,u_ocC;vec2 ocUV(vec2 u){return clamp(u,u_ocC.xy,u_ocC.zw)*u_ocT.xy+u_ocT.zw;}/* (the figures' part of the mask atlas) */uniform vec4 u_cau;uniform vec3 u_sky;
     float vor(vec2 p,float t){vec2 i=floor(p),f=fract(p);float d1=8.,d2=8.; // distance to the second-nearest minus the nearest moving point: bright ridges along the cell edges
       for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){vec2 g=vec2(float(x),float(y)),h=vec2(h21(i+g),h21(i+g+17.3)),r=g+.5+.42*sin(t+6.283*h)-f;float d=dot(r,r);if(d<d1){d2=d1;d1=d;}else if(d<d2)d2=d;}
       float e=1.-smoothstep(0.,.5,sqrt(d2)-sqrt(d1));return e*e;}
@@ -6564,9 +6608,9 @@ const GLCSH={
         if(sw>0.){tm=tm/sw;float T=1.,ys=floor((w.y-65.)/64.)*64.+60.; // a floor between the pixel and the opening: found exactly where the line crosses each floor level, so a thin slab is never stepped over
           for(int k=0;k<4;k++){float y=ys-64.*float(k),t=(w.y-y)/u_dir.y;if(t>tm)break;if(tile(vec2(w.x-u_dir.x*t,y-1.)).g>.5){T=0.;break;}}
           float st=(tm-4.)/12.,n0=fract(52.983*fract(dot(gl_FragCoord.xy,vec2(.06711,.00584)))); // jittered, so twelve steps leave no bands
-          vec2 du=vec2(-u_dir.x,u_dir.y)*u_cam.w/u_res;bool inside=texture2D(u_oc,v_u).r>.4; // (a figure in the beam is lit; it shades what lies behind it; the march stops at the opening)
+          vec2 du=vec2(-u_dir.x,u_dir.y)*u_cam.w/u_res;bool inside=texture2D(u_oc,ocUV(v_u)).r>.4; // (a figure in the beam is lit; it shades what lies behind it; the march stops at the opening)
           if(T>0.&&st>0.)for(int j=0;j<12;j++){float ts=4.+(float(j)+n0)*st;vec2 q=w-u_dir*ts;vec4 tl=tile(q);
-            float ch=texture2D(u_oc,v_u+du*ts).r;if(inside){if(ch>.4)ch=0.;else inside=false;}
+            float ch=texture2D(u_oc,ocUV(v_u+du*ts)).r;if(inside){if(ch>.4)ch=0.;else inside=false;}
             T*=1.-max(tl.r,ch*.85);if(T<.02)break;} // walls, and the figures
           o=acc*T*(.8+.4*vn(w*vec2(.07,.022)+vec2(u_t*.3,-u_t*.7)))*(1.-.75*inArch(w));}} // dust drifting in the light
       if(u_cau.x>0.){float px=texture2D(u_tm,w/vec2(32.,64.)/u_tsz).b; // water caustics thrown up from the cistern beyond the arches
@@ -6592,7 +6636,7 @@ const GLCSH={
       gl_FragColor=o;}`]};
 const glcRGB=col=>{let c=GLCOL.get(col);if(!c){c=col.split(',').map(Number);GLCOL.set(col,c);}return c;}; // (parsed once)
 function glcInit(gl,P){
-  const mk=src=>{const p=glMake(gl,src);gl.bindAttribLocation(p,0,'a_p');return glLink(gl,p,['u_cam','u_res','u_tsz','u_tm','u_map','u_t','u_src','u_scol','u_ns','u_dir','u_oc','u_cau','u_sky','u_mist','u_mcol','u_sc','u_ln','u_rys','u_ry']);};
+  const mk=src=>{const p=glMake(gl,src);gl.bindAttribLocation(p,0,'a_p');return glLink(gl,p,['u_cam','u_res','u_tsz','u_tm','u_map','u_t','u_src','u_scol','u_ns','u_dir','u_oc','u_cau','u_sky','u_mist','u_mcol','u_sc','u_ln','u_rys','u_ry','u_ocT','u_ocC']);};
   GLC.S=mk(GLCSH.s);GLC.M=mk(GLCSH.m);
   for(const n of ['u_cs','u_cm','u_cfx'])P.final.u[n]=gl.getUniformLocation(P.final.p,n);
   GLC.max=gl.getParameter(gl.MAX_TEXTURE_SIZE)||4096;GLC.tm=null;GLC.lv=null;GLC.oct=null;GLC.fs=null;GLC.ry=null;GLC.on=true;}
@@ -6638,7 +6682,7 @@ function glcSources(VZ,camD,camDY,sh,cau){
   return n;}
 const ryNear=(a,b)=>a.d-b.d;
 // the figures that stand in a beam, flat, at an eighth of the resolution: what the shafts are cut by
-function glcOcc(gl,VZ,camD,camDY){
+function glcOcc(VZ,camD,camDY){
   const w=Math.ceil(cv.width/8),h=Math.ceil(cv.height/8);
   if(!GLC.ocC){GLC.ocC=document.createElement('canvas');GLC.ocG=GLC.ocC.getContext('2d');}
   const g=GLC.ocG;let fresh=false;if(GLC.ow!==w||GLC.oh!==h){GLC.ocC.width=w;GLC.ocC.height=h;GLC.ow=w;GLC.oh=h;fresh=true;}
@@ -6647,17 +6691,13 @@ function glcOcc(gl,VZ,camD,camDY){
   const one=e=>{if(!near(e))return;const s=glSilhouette(e);if(s){g.drawImage(s,e.x-48,e.y+(e.yo||0)-80,96,96);any=1;}};
   if(P&&P.state!=='dead'&&P.state!=='exit'&&!(P.y>L.rows*TH))one(P);
   for(const e of G)if(e.alive&&!e.gone)one(e);
-  gl.activeTexture(gl.TEXTURE4);
-  if(fresh||!GLC.oct){if(GLC.oct)gl.deleteTexture(GLC.oct);GLC.oct=glTex(gl,w,h);GLC.ocHad=true;}
-  gl.bindTexture(gl.TEXTURE_2D,GLC.oct);
-  if(any||GLC.ocHad)gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,GLC.ocC);
-  GLC.ocHad=!!any;}
+  return any;} // (copied into WebGL with the other masks, in glAtlas)
 // runs both passes as needed; returns which the composite should read (bit 1: S, bit 2: M). Their targets sit on units 6 and 7.
 function glAtmo(VZ,camD,camDY,th,lw,lh){
   const {gl}=GLP;if(!GLC.on||!L)return 0;
   const st=th.style,gf=GFX(),tod=L.prog?L.prog.tod:0,lk=lookOf(st),wetT=st==='dungeon'||st==='crypt';
   const caus=GLFX.caustics&&st==='dungeon'&&gf.bg,mist=GLFX.mist&&gf.atmo&&(st==='crypt'||st==='dungeon'||(tod===1&&st!=='forge')),sheen=GLFX.sheen&&wetT;
-  const ns=GLFX.shafts||caus?glcSources(VZ,camD,camDY,GLFX.shafts,caus):0,cs=caus&&GLC.arch; // (caustics only where an open arch is in view)
+  const ns=GLC.pns,cs=caus&&GLC.arch; // (glcPre found the sources; caustics only where an open arch is in view)
   if(!ns&&!cs&&!mist&&!sheen)return 0;
   if(!glcTiles(gl))return 0;
   if(!GLC.fs||GLC.fw!==lw||GLC.fh!==lh){GLC.fs=glFbo(gl,lw,lh);GLC.fm=glFbo(gl,lw,lh);GLC.fw=lw;GLC.fh=lh;}
@@ -6666,11 +6706,10 @@ function glAtmo(VZ,camD,camDY,th,lw,lh){
   gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,GLC.tm);gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,GLP.fb.map.t);
   const com=U=>{gl.uniform4f(U.u_cam,camD,camDY,1/VZ,VZ);gl.uniform2f(U.u_res,w,h);gl.uniform2f(U.u_tsz,GLC.tw,GLC.th);gl.uniform1i(U.u_tm,5);gl.uniform1i(U.u_map,1);gl.uniform1f(U.u_t,t);};
   if(ns||cs){
-    if(ns)glcOcc(gl,VZ,camD,camDY);
     const U=GLC.S.u;gl.bindFramebuffer(gl.FRAMEBUFFER,GLC.fs.f);gl.viewport(0,0,lw,lh);gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);
     {const x0=Math.max(0,Math.floor(GLCBB[0])),x1=Math.min(lw,Math.ceil(GLCBB[2])),y0=Math.max(0,Math.floor(GLCBB[1])),y1=Math.min(lh,Math.ceil(GLCBB[3]));
       gl.enable(gl.SCISSOR_TEST);gl.scissor(x0,lh-y1,Math.max(0,x1-x0),Math.max(0,y1-y0));} // only around the beams and the arches (GL's y runs up)
-    gl.useProgram(GLC.S.p);com(U);gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,GLC.oct||GLC.tm);gl.uniform1i(U.u_oc,4);
+    gl.useProgram(GLC.S.p);com(U);gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,GLP.mtex);gl.uniform1i(U.u_oc,4);gl.uniform4fv(U.u_ocT,GLA.oT);gl.uniform4fv(U.u_ocC,GLA.oC);
     if(ns)glcRy(gl);else{gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,GLC.ry||GLC.tm);}const sb=skyBeam(); // (unit RY) the profiles on unit 2 (the composite binds its own there later)
     gl.uniform4fv(U.u_src,GLCSRC);gl.uniform4fv(U.u_scol,GLCCOL);gl.uniform1f(U.u_ns,ns);gl.uniform2f(U.u_dir,sb.dx,sb.dy);gl.uniform1f(U.u_ln,sb.ln);gl.uniform1i(U.u_ry,2);gl.uniform2f(U.u_rys,1/RYW,1/(GLC.ryh||RYH0));
     const sr=glcRGB((BGART[st]||BGART.dungeon)['glow'+tod]||lk.win);
@@ -6771,6 +6810,7 @@ function glTime(ms){
   GLP.wsum+=ms;GLP.wn++;
   if(GLP.wsum>=2000){const avg=GLP.wsum/GLP.wn;GLP.wsum=0;GLP.wn=0;
     if(GLP.skip)GLP.skip=false; // the first window after switching on holds the shader compile
+    else if(S.set.lightMode==='torch'&&GLP.used&&!window.__HKnoauto&&!PF.on&&avg>18.5&&GLP.rs>0.5)GLP.rs=GLP.rs>0.8?0.75:0.5; // below about 54 fps: a smaller scene copy first
     else if(S.set.lightMode==='torch'&&GLP.used&&!window.__HKnoauto&&!PF.on&&avg>22){S.set.lightMode='classic';syncLightMode();
       if(!S.set.slowNote){S.set.slowNote=true;msg('Torchlight was too slow here, so lighting is back to Classic.',4.5);}writeSave();}}
 }
