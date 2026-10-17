@@ -64,7 +64,7 @@ CARE = ('<p>The two "need care" themes chosen: <b>Shali at Siwa</b> (an abandone
 def img(fn, alt):
     return '<a href="%s/%s"><img loading="lazy" src="%s/%s" alt="%s"></a>' % (REL, fn, REL, fn, html.escape(alt))
 out = []
-out.append('''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Twelve Egyptian Themes</title>
+out.append('''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dawnward: themes, lamps, traps, name</title>
 <style>:root{--bg:#f6f2ea;--fg:#1f1a14;--mu:#6b6156;--card:#fffdf8;--ln:#e2d9c8;--ac:#8a3a1c}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15120f;--fg:#eee6d8;--mu:#a59a8b;--card:#1e1a16;--ln:#332c25;--ac:#e09a6a}}
 :root[data-theme="dark"]{--bg:#15120f;--fg:#eee6d8;--mu:#a59a8b;--card:#1e1a16;--ln:#332c25;--ac:#e09a6a}
@@ -74,8 +74,8 @@ a{color:var(--ac)}.card{background:var(--card);border:1px solid var(--ln);border
 .meta{color:var(--mu);font-size:13px}.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 img{width:100%;height:auto;display:block;border-radius:6px}figure{margin:0}figcaption{font-size:12px;color:var(--mu);margin-top:2px}
 nav a{display:inline-block;margin:2px 8px 2px 0;font-size:13px}table{border-collapse:collapse;font-size:13px}td,th{border-bottom:1px solid var(--ln);padding:4px 8px;text-align:left}
-@media (max-width:720px){.g2,.g4{grid-template-columns:1fr}}</style></head><body><main>
-<h1>Twelve themes: Egypt, Kush and the Sahara</h1>
+@media (max-width:720px){.g2,.g4{grid-template-columns:1fr}}.lamp img{image-rendering:auto}</style></head><body><main>
+<h1>Dawnward: twelve themes of Egypt, Kush and the Sahara</h1>
 <p class="meta">Branch <code>egypt</code>. Pictures from <code>egyptshot.py</code> and <code>egyptfx.py</code> (this Mac's Chromium; Torchlight and Classic), the page from <code>egyptpage.py</code>.</p>
 <div class="card"><p><b>How it is laid out.</b> Twelve themes of four floors each, so they turn every 48 floors. The time of day still turns every 20 floors
 (dusk 1-20, night 21-40, dawn 41-60: the night\'s three watches, sunrise at floor 60), so the seven new themes first appear by moonlight or at dawn, and every theme comes
@@ -90,7 +90,11 @@ five-pointed star of the tomb ceilings; the niches\' muqarnas became false doors
 the tiled halls\' rose petals became blue lotus petals. Not changed in this pass: the hourglass (checkpoint, HUD, rewind), the guards, the lamps\' shapes, the font.</p></div><nav>''')
 for t in shots['themes']:
     out.append('<a href="#t%d">%d. %s</a>' % (t['i'], t['i'] + 1, html.escape(t['name'])))
+import egyptround2
+R2, R2NAV = egyptround2.sections(D, REL, img)
+out.append(' · ' + ''.join('<a href="#%s"><b>%s</b></a>' % (k, l) for k, l in R2NAV))
 out.append('</nav>')
+out.extend(R2)
 for t in shots['themes']:
     N = NOTES[t['look']]
     fl = '%d-%d, %d-%d' % (4 * t['i'] + 1, 4 * t['i'] + 4, 4 * t['i'] + 49, 4 * t['i'] + 52)
@@ -119,6 +123,6 @@ for t in shots['themes']:
         if 'before_torch' in sh:
             out.append('<div class="g2" style="margin-top:8px">' + ''.join('<figure>%s<figcaption>v61 before (%s): %s, wide</figcaption></figure>' % (img(sh['before_' + m] + '_wide.jpg', m), html.escape(p.get('before_label', '')), m.title()) for m in ('torch', 'classic')) + '</div>')
     out.append('</section>')
-out.append('<div class="card"><h3>Follow-ups not in this pass</h3><ul><li>The hourglass to a water clock (Karnak clepsydra): checkpoint, the HUD\'s glass, the rewind\'s words, the gates\' timers.</li><li>New traps from the research: a granite blocking slab in grooves (closer and gate), Hawara\'s dropping roof block (a chopper variant), a floor of draining sand (a loose-floor variant), a sand-lowered lift, a gate serpent puzzle, the scales.</li><li>Lamps: the palace style\'s hanging lanterns and the tiled halls\' star lamp are still Islamic in shape.</li><li>The name (Hourglass Keep names the anachronism); the Persian font (Vazirmatn).</li></ul></div></main></body></html>')
+out.append('<div class="card"><h3>Follow-ups not in this pass</h3><ul><li>The hourglass to a water clock (Karnak clepsydra): checkpoint, the HUD\'s glass, the rewind\'s words, the gates\' timers.</li><li>New traps from the research: a granite blocking slab in grooves (closer and gate), Hawara\'s dropping roof block (a chopper variant), a floor of draining sand (a loose-floor variant), a sand-lowered lift, a gate serpent puzzle, the scales.</li><li>Second round, now proposals on this page: the lamps, the traps, the name and the font (switches EGP.lamps, EGP.traps, EGP.plug; the font not yet in the game).</li></ul></div></main></body></html>')
 open(os.path.join(HERE, 'egypt_themes.html') if D == os.path.join(HERE, 'egypt_themes') else os.path.join(os.path.dirname(D), 'egypt_themes.html'), 'w').write('\n'.join(out))
 print('written')
