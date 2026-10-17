@@ -5,7 +5,7 @@
 # as it is and once with the lifts and him left out (LIFT_DBG.off), and the two
 # pictures must agree inside every wall front and low ceiling round the shaft (the 9 px floor lip on top of a wall is left out:
 # a platform docked there shows its own). Torchlight is checked on its scene picture (what the shader lights) and on the metal
-# mask (what it shines). Prints one line per failing case, then ALL OK or FAILURES n. Run from dev/tools.
+# mask (what it shines): on the WebGL path (v62) the scene target and the metal's place in the masks' atlas, read back. Prints one line per failing case, then ALL OK or FAILURES n. Run from dev/tools.
 import os, sys
 from playwright.sync_api import sync_playwright
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -28,7 +28,17 @@ RUN = r'''([n,seed,i,pos,mode])=>{const H=__HK;window.__HKfreeze=true;for(const 
   for(let k=0;k<24;k++){H.tick(1);if(f.t==='lift')place();} // (his look offsets ease in)
   if(H.GLP)H.GLP.pipe=false;
   const tor=mode==='torch'&&H.shaderOn();
-  const grab=()=>{if(H.MS)H.MS.pv=false;H.render();H.render();const X=H.XF,src=tor?H.GLP.sceneC:[...document.querySelectorAll('canvas')].find(c=>c.getBoundingClientRect().width>0&&c!==H.GLP.cv);
+  if(tor&&H.GLP.gls){window.__HKnoauto=true;H.GLP.rs=1;}
+  // (v62) the WebGL path: the scene target's resolved texture, and the metal mask from its place in the masks' atlas (GLA.G)
+  const rdTex=(f,w,h)=>{const gl=H.GLP.gl,px=new Uint8Array(w*h*4);gl.bindFramebuffer(gl.FRAMEBUFFER,f);gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,px);gl.bindFramebuffer(gl.FRAMEBUFFER,null);return px;};
+  const grab=()=>{if(H.MS)H.MS.pv=false;H.render();H.render();const X=H.XF;
+    if(tor&&H.GLP.gls){const G=H.GLS,t=G.scene,w=t.w,h=t.h,raw=rdTex(t.rf,w,h),img=new Uint8Array(w*h*4);for(let y=0;y<h;y++)img.set(raw.subarray((h-1-y)*w*4,(h-y)*w*4),y*w*4);
+      const A=H.GLA.G,AT=G.atlT,mw=G.metal.w0||0,mh=G.metal.h0||0;let mk=null;
+      if(mw&&mh&&A&&AT&&AT.rf){mk=new Uint8Array(mw*mh*4);for(let o=3;o<mk.length;o+=4)mk[o]=255;
+        if(A.mo){const at=rdTex(AT.rf,AT.w,AT.h);for(let py=A.by;py<Math.min(mh,A.by+A.bh);py++){const ar=AT.h-1-(A.Y0+py-A.by);if(ar<0||ar>=AT.h)continue;
+          for(let px=A.bx;px<Math.min(mw,A.bx+A.bw);px++){const s=(ar*AT.w+px-A.bx)*4,d=(py*mw+px)*4;mk[d]=at[s];mk[d+1]=at[s+1];mk[d+2]=at[s+2];}}}}
+      return {img,w,h,VZ:X.VZ,camD:X.camD,camDY:X.camDY,mk,mw,mh,mox:0,moy:0};}
+    const src=tor?H.GLP.sceneC:[...document.querySelectorAll('canvas')].find(c=>c.getBoundingClientRect().width>0&&c!==H.GLP.cv);
     const g=src.getContext('2d'),img=g.getImageData(0,0,src.width,src.height).data;let mk=null,mw=0,mh=0;
     const MS=H.MS;if(tor&&MS&&MS.c){mw=MS.c.width;mh=MS.c.height;mk=MS.g.getImageData(0,0,mw,mh).data;}
     return {img,w:src.width,h:src.height,VZ:X.VZ,camD:X.camD,camDY:X.camDY,mk,mw,mh,mox:0,moy:0};};
