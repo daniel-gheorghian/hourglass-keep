@@ -5957,17 +5957,17 @@ function ryBeams2D(ctx,a){const sb=skyBeam(),VZ=renderXf.VZ,camD=renderXf.camD,c
   ctx.save();ctx.globalCompositeOperation='overlay';ctx.globalAlpha=Math.min(1,a*sb.k*3);
   if(fg.length){ctx.beginPath();ctx.rect(x0-1,y0-1,x1-x0+2,y1-y0+2);ctx.rect(ux0,uy0,ux1-ux0,uy1-uy0);ctx.clip('evenodd');}
   fp(ctx,true);ctx.restore();
-  if(fg.length){SIL.m.clear();if(!RYF.c){RYF.c=document.createElement('canvas');RYF.g=RYF.c.getContext('2d');}const g=RYF.g;
+  if(fg.length){SIL.m.clear();SIL.m2.clear();if(!RYF.c){RYF.c=document.createElement('canvas');RYF.g=RYF.c.getContext('2d');RYF.c._glv=1;} /* (_glv: redrawn every frame) */const g=RYF.g;
     if(RYF.c.width<w||RYF.c.height<h){RYF.c.width=Math.max(RYF.c.width,w);RYF.c.height=Math.max(RYF.c.height,h);}
     g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='source-over';g.globalAlpha=1;g.clearRect(0,0,w,h);
     g.save();g.beginPath();g.rect(0,0,w,h);g.clip();g.setTransform(VZ,0,0,VZ,-camD-X0,-camDY-Y0);g.globalCompositeOperation='lighter';
     for(let i=0;i<dr.length;i+=2)one(g,dr[i],dr[i+1]);
     g.globalCompositeOperation='destination-out';g.globalAlpha=RY_FIG2D; // (over a figure only the haze in front of it, and no more than that: it is added, so on a pale figure it would read as a band of light)
-    for(let k=0;k<fg.length;k+=5){const e=fg[k],sl=glSilhouette(e);if(sl)g.drawImage(sl,e.x-48,e.y+(e.yo||0)-80,96,96);}
+    for(let k=0;k<fg.length;k+=5){const e=fg[k],sl=glSilhouette(e,true);if(sl)g.drawImage(sl,e.x-48,e.y+(e.yo||0)-80,96,96);}
     g.restore();ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='lighter';ctx.globalAlpha=al;ctx.drawImage(RYF.c,0,0,w,h,X0,Y0,w,h);ctx.restore();
     g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='source-over';g.globalAlpha=1;g.clearRect(0,0,w,h); // the footprints under the figures
     g.save();g.beginPath();g.rect(0,0,w,h);g.clip();g.setTransform(VZ,0,0,VZ,-camD-X0,-camDY-Y0);fp(g,false);
-    g.globalCompositeOperation='destination-out';for(let k=0;k<fg.length;k+=5){const e=fg[k],sl=glSilhouette(e);if(sl)g.drawImage(sl,e.x-48,e.y+(e.yo||0)-80,96,96);}
+    g.globalCompositeOperation='destination-out';for(let k=0;k<fg.length;k+=5){const e=fg[k],sl=glSilhouette(e,true);if(sl)g.drawImage(sl,e.x-48,e.y+(e.yo||0)-80,96,96);}
     g.restore();ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='overlay';ctx.globalAlpha=Math.min(1,a*sb.k*3);ctx.drawImage(RYF.c,0,0,w,h,X0,Y0,w,h);
     ctx.globalCompositeOperation='lighter';ctx.globalAlpha=Math.min(1,a*sb.k*1.2);ctx.drawImage(RYF.c,0,0,w,h,X0,Y0,w,h);ctx.restore();}
   ryMotes2D(ctx,dr,sb,a);}
@@ -6360,6 +6360,7 @@ function pfDraw(ctx,sh){const fx=(v,d=1)=>v.toFixed(d),R=PF.res,sg=v=>(v>=0?'+':
     rows.push((k==='all'?'(none)':nm).padEnd(15)+fx(w).padStart(6)+(k==='all'?'      ':sg(o.d/o.n).padStart(6))+fx(iv).padStart(8)+(k==='all'?'':sg(o.di/o.n).padStart(6)));}
   const sl=PF.stg?Object.entries(PF.stg).filter(e=>e[1]>=0.05).map(e=>e[0]+' '+fx(e[1])):[];
   for(let i=0;i<sl.length;i+=4)rows.push((i?'':'stages (all on): ')+sl.slice(i,i+4).join('  '));
+  if(PF.err)rows.push('error: '+PF.err);
   if(GLP.gls){const t=GLS.stats;rows.push('webgl scene: '+t.verts+' vertices, '+t.draws+' draws, '+t.batches+' batches, '+t.uploads+' uploads');}
   ctx.fillStyle='rgba(0,0,0,.72)';ctx.fillRect(x-2,y-2,206,rows.length*lh+3);ctx.fillStyle='#9fffd2';rows.forEach((r,i)=>ctx.fillText(r,x,y+i*lh));ctx.restore();}
 // ================= unit WGL: the Torchlight scene drawn by WebGL2 (owner, v61: the same look, less work and heat) =================
@@ -6512,12 +6513,12 @@ function g2Sweep(){const gl=GLS.gl,live=new Set(roomCache.values());for(const [c
 // wait) and uploaded two frames later (texSubImage2D: the small canvas's read back is a quarter of the cost); one strip per frame,
 // on frames with no other room upload. Until the last strip is in, the room counts as not uploaded (a room needed now is uploaded
 // whole, as before).
-const G2UP={c:null,e:null,key:'',s:0,n:0,sh:0,at:0,st:null,sg:null};
+const G2UP={c:null,e:null,key:'',s:0,n:0,sh:0,at:0,stc:null};
 function g2Warm(){if(GLS.warmed===GLS.stamp)return;GLS.warmed=GLS.stamp;const U=G2UP,gl=GLS.gl;
   if(U.c){if(GLS.tex.get(U.c)!==U.e||!U.e.part||roomCache.get(U.key)!==U.c){U.c=null;return;} // (uploaded whole meanwhile, or let go)
     if(GLS.fr-U.at<2)return;
     const c=U.c,y=U.s*U.sh,h=Math.min(U.sh,c.height-y);gl.bindTexture(gl.TEXTURE_2D,U.e.t);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,true);
-    gl.texSubImage2D(gl.TEXTURE_2D,0,0,y,c.width,h,gl.RGBA,gl.UNSIGNED_BYTE,U.st);GLS.stats.uploads++;GLS.stats.up=(GLS.stats.up||0)+1;
+    gl.texSubImage2D(gl.TEXTURE_2D,0,0,y,c.width,h,gl.RGBA,gl.UNSIGNED_BYTE,U.stc[U.s]);GLS.stats.uploads++;GLS.stats.up=(GLS.stats.up||0)+1;
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
     if(++U.s<U.n){g2Stage();return;}
     gl.generateMipmap(gl.TEXTURE_2D);U.e.mip=true;U.e.part=false;U.e.st=GLS.stamp;U.c=null;return;}
@@ -6526,9 +6527,10 @@ function g2Warm(){if(GLS.warmed===GLS.stamp)return;GLS.warmed=GLS.stamp;const U=
     gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,c.width,c.height,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
     Object.assign(U,{c,e,key,s:0,n:Math.ceil(c.height/80),sh:0});U.sh=Math.ceil(c.height/U.n);g2Stage();return;}}
-function g2Stage(){const U=G2UP,c=U.c,y=U.s*U.sh,h=Math.min(U.sh,c.height-y);
-  if(!U.st){U.st=document.createElement('canvas');U.sg=U.st.getContext('2d');}if(U.st.width!==c.width||U.st.height!==U.sh){U.st.width=c.width;U.st.height=U.sh;}
-  const g=U.sg;g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='copy';g.drawImage(c,0,y,c.width,h,0,0,c.width,h);g.globalCompositeOperation='source-over';U.at=GLS.fr;}
+// (each strip has a staging canvas of its own, exactly its size: none is drawn over while its upload may still be reading it)
+function g2Stage(){const U=G2UP,c=U.c,y=U.s*U.sh,h=Math.min(U.sh,c.height-y);if(!U.stc)U.stc=[];
+  let st=U.stc[U.s];if(!st){st=U.stc[U.s]=document.createElement('canvas');st._g=st.getContext('2d');}if(st.width!==c.width||st.height!==h){st.width=c.width;st.height=h;}else st._g.clearRect(0,0,st.width,h);
+  const g=st._g;g.setTransform(1,0,0,1,0,0);g.drawImage(c,0,y,c.width,h,0,0,c.width,h);U.at=GLS.fr;}
 
 // ---- the ramp texture (gradient stops, 256 texels a row, unpremultiplied) and the gradients' parameters (two RGBA32F texels) ----
 // does this browser's 2D canvas mix a gradient's colours premultiplied or not? Chrome mixes both kinds unpremultiplied; Safari
@@ -6775,6 +6777,7 @@ function g2dash(c,n,closed,D,off){const out=[];let tot=0;for(const v of D)tot+=v
 
 // ---- replay: what was recorded is drawn (Torchlight's next frame, or at once with GLP.pipe off) ----
 const G2BL=[[1,0x303,1,0x303],[1,1,1,1],[0x306,0x303,1,0x303],[0,0x303,0,0x303],[0,0x302,0,0x302],[0x304,0x303,0,1],[1,0,1,0],[1,0x301,1,0x303],[0x305,1,0x305,1]]; // (premultiplied: src, dst factors for colour and alpha)
+const G2INV=/[?&]inv=1/.test(location.search); // (&inv=1: the old way, colour samples dropped too: to check the fix on the phone)
 function g2Replay(){const gl=GLS.gl,U=GLS.prog.u;if(!GLS.T.length)return;GLS.stamp++;GLS.stats.draws=0;GLS.stats.uploads=0;
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
   // gradient rows and parameters (from typed arrays: no canvas is copied)
@@ -6813,7 +6816,10 @@ function g2Replay(){const gl=GLS.gl,U=GLS.prog.u;if(!GLS.T.length)return;GLS.sta
         gl.drawElements(gl.TRIANGLES,o.n,gl.UNSIGNED_INT,o.first*4);GLS.stats.draws++;color(true);continue;}}
     // resolve the samples into the target's texture, then drop them (they are never stored to memory)
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER,t.fb);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,t.rf);gl.blitFramebuffer(0,0,t.w,t.h,0,0,t.w,t.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);
-    gl.invalidateFramebuffer(gl.READ_FRAMEBUFFER,[gl.COLOR_ATTACHMENT0,gl.DEPTH_STENCIL_ATTACHMENT]);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
+    // (v61b) only the depth and stencil samples are dropped now. Dropping the colour samples too let the iPhone (Apple's tile GPU,
+    // through ANGLE-Metal) skip the resolve of some tiles: squares of an older frame stayed in the scene texture, a blocky edge
+    // that shimmered as the view moved (owner's screenshot, floor 10)
+    gl.invalidateFramebuffer(gl.READ_FRAMEBUFFER,G2INV?[gl.COLOR_ATTACHMENT0,gl.DEPTH_STENCIL_ATTACHMENT]:[gl.DEPTH_STENCIL_ATTACHMENT]);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
   gl.bindSampler(0,null);gl.disable(gl.DEPTH_TEST);gl.disable(gl.STENCIL_TEST);gl.disable(gl.BLEND);gl.colorMask(true,true,true,true);gl.depthMask(true);gl.stencilMask(0xFF);gl.stencilOp(gl.KEEP,gl.KEEP,gl.KEEP);
   gl.bindVertexArray(null);gl.activeTexture(gl.TEXTURE0);
   GLS.stats.verts=GLS.nv;let nb=0;for(const t of TT)nb+=t.ops.length;GLS.stats.batches=nb;
@@ -7295,16 +7301,16 @@ const GLCH=[],GLBODY=[[0,-50,20,20],[0,-37,34,30],[0,-21,32,30],[0,-8,28,26]];le
 // the figure itself, flat and solid red, in the pose it is in: the shadow's shape, what cuts the beams, what hides the metal
 // behind it. (v53) Drawn once per figure per frame, at twice the world's scale, into a canvas of its own (SIL, reused frame to
 // frame; SIL.m maps this frame's figures to them, cleared by glPrep): before, each of the three drew the figure again.
-const SIL={pool:[],m:new Map(),v:[]};
-function glSilhouette(e){let c=SIL.m.get(e);if(c!==undefined)return c;
-  if(GLP.gls){const i=SIL.m.size;if(i>=12){SIL.m.set(e,null);return null;} // (unit WGL) a 192 px slot of one target (4 x 3), drawn by WebGL
+const SIL={pool:[],m:new Map(),m2:new Map(),v:[]};
+function glSilhouette(e,d2){const M=d2&&GLP.gls?SIL.m2:SIL.m;let c=M.get(e);if(c!==undefined)return c; // (d2: a 2D canvas even when WebGL draws the masks)
+  if(GLP.gls&&!d2){const i=SIL.m.size;if(i>=12){SIL.m.set(e,null);return null;} // (unit WGL) a 192 px slot of one target (4 x 3), drawn by WebGL
     const g=g2Mk('sil',768,576,[0,0,0,0]),x=(i&3)*192,y=(i>>2)*192;g.setTransform(1,0,0,1,0,0);g.save();g.beginPath();g.rect(x,y,192,192);g.clip();g.setTransform(2,0,0,2,x,y);
     try{figDraw(g,48,80,e.face||1,e.pose,e.skel?PAL_SKEL:PAL_HERO,{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});c=SIL.v[i]||(SIL.v[i]={isView:true,tgt:GLS.sil,x,y,width:192,height:192});}catch(err){c=null;}
     g.restore();SIL.m.set(e,c);return c;}
-  c=SIL.pool[SIL.m.size];if(!c){c=document.createElement('canvas');c.width=c.height=192;c._g=c.getContext('2d');SIL.pool.push(c);}
+  c=SIL.pool[M.size+(M===SIL.m2?6:0)];if(!c){c=document.createElement('canvas');c.width=c.height=192;c._g=c.getContext('2d');SIL.pool.push(c);}
   const g=c._g;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,192,192);g.setTransform(2,0,0,2,0,0);
   try{figDraw(g,48,80,e.face||1,e.pose,e.skel?PAL_SKEL:PAL_HERO,{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});}catch(err){c=null;}
-  SIL.m.set(e,c);return c;}
+  M.set(e,c);return c;}
 function glShadow(g,x,y,sc,lights,spr,e){
   const sil=e&&e.pose?glSilhouette(e):null;
   let b1=null,b2=null,d1=1e9,d2=1e9;const cy=y-26;
@@ -7512,7 +7518,7 @@ function glAtlas(w,h,lw,lh){const gl=GLP.gl,A=GLA,ow=Math.ceil(w/8),oh=Math.ceil
 // three masks, glPrep) is drawn as before, but WebGL takes it at the start of the next frame (glSubmit), when Safari has long
 // finished it: the picture shows one frame (about 17 ms) after the game's state, the HUD on the 2D canvas keeps step. The
 // first frame after switching on and the first of each floor are sent at once; GLP.pipe=false (and ?prof's 'no delay' step) sends every frame at once.
-function glPrep(lights,VZ,camD,camDY,th){const w=cv.width,h=cv.height,lw=Math.ceil(w/4),lh=Math.ceil(h/4);SIL.m.clear();
+function glPrep(lights,VZ,camD,camDY,th){const w=cv.width,h=cv.height,lw=Math.ceil(w/4),lh=Math.ceil(h/4);SIL.m.clear();SIL.m2.clear();
   glMask(lights,VZ,camD,camDY);
   glMetal(lights,VZ,camD,camDY); // (unit MS) the metal mask, when metal is in view
   glcPre(VZ,camD,camDY,th); // the beams' sources and the figures in them
@@ -8239,7 +8245,7 @@ function loop(ts){
   updateGrabLabel(ts);
   if(mode==='play'||mode==='dead'||mode==='rewind'){acc+=dt;let n=0;const u0=PF.on||BENCH.g?performance.now():0;while(acc>=STEP&&n<6){acc-=STEP;n++;if(BENCH.g)BENCH.step();snapPrev();if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}if(n>=6)acc=0;if(PF.on||BENCH.g)PF.upd=performance.now()-u0;
     Snd.rumble(stormNear()); // (unit ST)
-    frame++;if(S.set.saver&&(frame&1))return;{const iv=(ts-GLP.lastR)/(S.set.saver?2:1);if(GLP.lastR&&iv<250){glTime(iv);PF.iv0=iv;}GLP.lastR=ts;}const b0=roomBuilds,mz=PF.on||BENCH.run,r0=mz?performance.now():0;renderAt(acc/STEP);if(PF.on){PF.a.update=PF.upd;pfFrame(PF.upd+performance.now()-r0,PF.iv0||0);}if(BENCH.run)benchFrame(PF.iv0||0,PF.upd+performance.now()-r0);idleFrames=0;drawBuilds+=roomBuilds-b0;if(roomBuilds===b0)roomWork();}
+    frame++;if(S.set.saver&&(frame&1))return;{const iv=(ts-GLP.lastR)/(S.set.saver?2:1);if(GLP.lastR&&iv<250){glTime(iv);PF.iv0=iv;}GLP.lastR=ts;}const b0=roomBuilds,mz=PF.on||BENCH.run,r0=mz?performance.now():0;if(PF.on){try{renderAt(acc/STEP);}catch(e){PF.err=String(e&&e.message||e).slice(0,60)+' ('+PF.cur+')';console.log('prof step '+PF.cur+': '+(e&&e.stack||e));}}else renderAt(acc/STEP);if(PF.on){PF.a.update=PF.upd;pfFrame(PF.upd+performance.now()-r0,PF.iv0||0);}if(BENCH.run)benchFrame(PF.iv0||0,PF.upd+performance.now()-r0);idleFrames=0;drawBuilds+=roomBuilds-b0;if(roomBuilds===b0)roomWork();}
   else{acc=0;GLP.lastR=0;Snd.rumble(0);if(++idleFrames%20===0)render();}
 }
 
@@ -8270,7 +8276,7 @@ Object.assign(window.__HK,{hurt,HK,DISS,sandP,SAND_HP,GLFX,setClock:f=>{performa
 Object.assign(window.__HK,{FLM,FLV,ventState,cyc}); // FL (flames: the sheets and the vent's look, for tests)
 Object.assign(window.__HK,{GLFX,GLREL,clearRooms,bgCache,bgLayers,solidBelow:(c,r)=>solidBelow(L,c,r),roomCanvas}); // (unit B's switches and caches, for its tests)
 Object.assign(window.__HK,{GLS,G2D,g2Target,g2Begin,g2Replay,EC,g2col,HKPath,drawFigureHD,figDraw,paintBackdrop,bgLayers,BGART,lightSprite,drawLight,drawGate,drawJaws,drawDoor,drawHourglass,drawFlask,drawSnakeHD,drawLift}); // (unit WGL, for its parity tests)
-Object.assign(window.__HK,{GLA,PF,BENCH}); // (the mask atlas's layout, for wgl_maskcmp.py; ?prof and ?bench for wgl_prof.py)
+Object.assign(window.__HK,{GLA,PF,BENCH,G2UP,g2Warm,roomCache}); // (the mask atlas's layout, for wgl_maskcmp.py; ?prof and ?bench for wgl_prof.py)
 Object.assign(window.__HK,{MS,MSF,GLMETAL_P,msPreset:k=>{if(k!==undefined)GLMETAL_K=k;return GLMETAL_K;},msPaint:()=>METAL_PAINT_HI}); // (unit MS, for its tests and pictures)
 
 // (unit ST, for stormfair.py and the pictures) where the storm's front is at the feet, in either mode: for each storm row, at

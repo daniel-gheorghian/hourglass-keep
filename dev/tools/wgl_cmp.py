@@ -71,6 +71,9 @@ def grab(html):
     return out, errs
 
 S = [x for x in S if not ONLY or any(o in x[0] for o in ONLY[0].split(','))]
+if os.environ.get('SWEEP'):  # SWEEP=n:t0:t1:dt[:seed]: only states of floor n every dt ticks (seed default 9000+n, as ?bench)
+    q = [int(v) for v in os.environ['SWEEP'].split(':')]; sd = q[4] if len(q) > 4 else 9000 + q[0]
+    S = [('f%02d_s%d' % (q[0], t), q[0], sd, t, '') for t in range(q[1], q[2] + 1, q[3])]
 ra, ea = grab(A); rb, eb = grab(B)
 rows = []; crops = []
 for (name, *_r) in S:
