@@ -482,7 +482,7 @@ function buildLevel(n,seed,test,legacy,att){
   const set=(c,r,v)=>{const p=PC(c);if(p>=0&&p<cols&&r>=0&&r<rows){const q=r*cols+p;if(jr)jr.push(q,L.base[q],0);L.base[q]=v;if(touched)touched.push(q);}};
   const feat=(c,r,f)=>{newFeats.push(f);const q=r*cols+PC(c);if(jr)jr.push(q,L.feat[q],1);return (L.feat[q]=f);};
   const fe=(c,r)=>{const p=PC(c);return (p<0||p>=cols||r<0||r>=rows)?null:L.feat[r*cols+p];};
-  const bot=L.path;
+  const bot=L.path,sawAct=new Map();
   let r=0, c=0, run=3, calm=false; // calm: obstacles laid in a side passage's corridor (no timers, no pits, no captain)
   ri(1,9);ri(1,3);ri(1,9); // the stream's first three draws (the fourth is the sandstorm roll peeked above)
   // progress along the route, in tiles: what guards, checkpoints and the rest are spaced by
@@ -1041,8 +1041,8 @@ function buildLevel(n,seed,test,legacy,att){
     for(let i=1;i<=k+2;i++)if(!W(c+i,r))return false;
     for(let i=1;i<=k+2;i++)set(c+i,r,FLOOR);
     const per=2.7-0.6*d+rng()*0.5;
-    feat(c+2,r,{t:'saw',x0:(c+2)*TW+8,x1:(c+k+1)*TW+24,per,off:rng()*per});
-    bot.push({a:'saw',from:c+1,to:c+k+2});
+    const f=feat(c+2,r,{t:'saw',x0:(c+2)*TW+8,x1:(c+k+1)*TW+24,per,off:rng()*per}),a={a:'saw',from:c+1,to:c+k+2};
+    bot.push(a);sawAct.set(f,a); // (the bot's action for this blade, in case it has to become spikes: see the end of buildLevel)
     c+=k+2;run=1;return true;
   }
   function dartSeg(){ // a run toward a step whose riser shoots darts at chest height: crouch under them
@@ -1714,10 +1714,16 @@ function buildLevel(n,seed,test,legacy,att){
   for(const bl of L.ext.blocks){bl.under=raw(bl.c,bl.r);set(bl.c,bl.r,WALL);}
   for(let rr=0;rr<rows;rr++)for(let cc=0;cc<cols;cc++){const f=fe(cc,rr);if(f)L.dyn.push({c:cc,r:rr,f});}
   // A saw takes a full jump. Where a later run's floor ended up straight over its slot (a corridor one storey tall), he would
-  // take the low leap there, which cannot clear the blade: lay the floor out again (a few floors in a hundred; the others
-  // are left exactly as they were).
-  if(att>=0)for(const o of L.dyn){if(o.f.t!=='saw')continue;
-    for(let cc=Math.floor(o.f.x0/TW)-1;cc<=Math.floor(o.f.x1/TW)+1;cc++)if(o.r<1||L.base[(o.r-1)*cols+cc]!==EMPTY)return null;}
+  // take the low leap there, which cannot clear the blade: the saw becomes spikes over the same tiles, tiptoed across (no jump).
+  // The layout, the floor after it and the trap count stay as they were (a few floors in a hundred; the others are untouched).
+  for(let i=L.dyn.length-1;i>=0;i--){const o=L.dyn[i];if(o.f.t!=='saw')continue;
+    const a=Math.floor(o.f.x0/TW),b=Math.floor(o.f.x1/TW);let roof=o.r<1;
+    for(let cc=a-1;cc<=b+1&&!roof;cc++)if(L.base[(o.r-1)*cols+cc]!==EMPTY)roof=true;
+    if(!roof)continue;
+    L.dyn.splice(i,1);if(L.feat[o.r*cols+o.c]===o.f)L.feat[o.r*cols+o.c]=null;
+    for(let cc=a;cc<=b;cc++){const f={t:'spikes',fixed:false,ext:0,hold:0};L.feat[o.r*cols+cc]=f;L.dyn.push({c:cc,r:o.r,f});}
+    const act=sawAct.get(o.f);if(act)act.a='tiptoe'; // (the same object in L.path or a fork's short way)
+    for(const q of L.segs)if(q.k==='saw'&&q.r0===o.r&&Math.min(q.c0,q.c1)<=a&&Math.max(q.c0,q.c1)>=b)q.k='spikes';}
   // fewer timed side-passage gates: about two in five of them are let stay open once their plate is found (decided by a
   // hash, so the layout itself does not change)
   for(const o of L.dyn){const g=o.f;if(g.t!=='gate'||!g.far||g.latch||g.pair!==undefined||!(g.dur>0))continue;
