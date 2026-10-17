@@ -1,6 +1,6 @@
-# Hourglass Keep
+# Dawnward (repo: hourglass-keep)
 
-A single-file HTML5 canvas platformer in the manner of Prince of Persia (1989), played as an
+Dawnward (working title from the egypt branch; formerly Hourglass Keep) is a single-file HTML5 canvas platformer in the manner of Prince of Persia (1989), played as an
 offline PWA on an iPhone in landscape. GitHub Pages serves `main` at
 https://daniel-gheorghian.github.io/hourglass-keep/
 
@@ -191,6 +191,12 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   reads the theme: it builds by `L.gstyle`, the old five-theme turn (`GEN_STYLE`), so floors stay as they were. Arches, doors and
   windows are post and lintel (the dungeon style's vaults stay round). No churches, crosses or the Ark, no living peoples as enemies
   or decoration. Pictures and sources: `egyptshot.py`, `egyptfx.py`, `egyptpage.py` (egypt_themes.html).
+  Built in (owner, round 4): the themes' lamps (`drawLampEg`) and the re-skinned traps are on by default: granite portcullis
+  (`egSlab`; lift gates keep their bars; no metal mask), sliding roof block with sand (`egStone`, `egBlock`), sand floor, bronze-
+  tipped stakes, and the chase drawn as a granite plug (`drawPlug`; the storm shader, veil and Classic bakes are off behind it).
+  Look only: hit boxes, timing, generator and bot unchanged. `EGP={lamps,traps,plug}` turns them off for debugging. Title
+  Dawnward; fonts Rokkitt (display, HUD numbers) and Jost (text). Not renamed: the cache key `hourglass-keep-vN`, the save key,
+  the repo and its URLs.
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized from `estPath()` at a careful pace, times 0.84 to 1.08.
 - Pose angles are measured from straight down; positive means forward.
