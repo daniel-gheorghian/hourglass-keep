@@ -70,8 +70,8 @@ JS = r'''([name,plan,over,start,kind,shots])=>{const H=__HK;window.__HKfreeze=tr
 # (with shots the run is replayed from the start for every frame taken: the jump is deterministic, so frame k is the same)
 SHOTJS = JS.replace("fr.length<12", "fr.length<=window.__k&&fr.length<12").replace("window.__shot=fr[fr.length-1];return {more:true,name};", "if(fr.length>window.__k){window.__shot=fr[fr.length-1];return {more:true,name};}")
 with sync_playwright() as p:
-    args = ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] if MODE == 'torch' else []
-    b = p.chromium.launch(args=args)
+    # (a plain launch for the check, so suite.py's shared browser can run it; the pictures ask for this Mac's GPU)
+    b = p.chromium.launch(args=['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist']) if SHOTS and MODE == 'torch' else p.chromium.launch()
     pg = b.new_page(viewport={'width': 852, 'height': 393}, device_scale_factor=2)
     errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)))
