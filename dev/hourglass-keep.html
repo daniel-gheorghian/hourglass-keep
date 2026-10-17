@@ -5151,7 +5151,7 @@ function stormLayer2D(ctx,ch,fx,a,x0,x1,y0,y1){
   if(!stormReady(ch)||a<=0.005)return;const T=ST.T,t=gameTime,tc=t*(S.set.calm?0.5:1),rT=ch.rTop,top=rT*TH,bot=(ch.rBot+1)*TH,YT=top-120,YB=bot+24,ka=Math.min(1,a*1.6);
   const X0=Math.floor((x0-4)/2)*2,X1=Math.min(x1+4,fx+80),Y0=Math.floor(Math.max(y0-4,YT)/8)*8,Y1=Math.min(y1+4,YB);
   if(X1>X0&&Y1>Y0){const w=Math.ceil((X1-X0)/2),h=Math.ceil((Y1-Y0)/2);
-    if(!ST.cc||ST.cc.width<w||ST.cc.height<h){const W=Math.max(w,ST.cc?ST.cc.width:0)+16,H=Math.max(h,ST.cc?ST.cc.height:0)+16;ST.cc=stCanvas(W,H);ST.mc=stCanvas(W,H);ST.lc=stCanvas(W,H);ST.cg=ST.cc.getContext('2d');ST.mg=ST.mc.getContext('2d');ST.lg=ST.lc.getContext('2d');}
+    if(!ST.cc||ST.cc.width<w||ST.cc.height<h){const W=Math.max(w,ST.cc?ST.cc.width:0)+16,H=Math.max(h,ST.cc?ST.cc.height:0)+16;ST.cc=stCanvas(W,H);ST.mc=stCanvas(W,H);ST.lc=stCanvas(W,H);ST.cc._glv=1; /* (unit WGL: redrawn every frame) */ST.cg=ST.cc.getContext('2d');ST.mg=ST.mc.getContext('2d');ST.lg=ST.lc.getContext('2d');}
     const m=ST.mg,c=ST.cg,nz=Math.min(256,Math.ceil((Y1-Y0)/8)),bz=ST.bz;
     if(!T.pb){T.pb=T.body.map(b=>c.createPattern(b,'repeat'));T.pm=T.mid.map(b=>c.createPattern(b,'repeat'));T.pd=c.createPattern(T.dis,'repeat');}
     if(!ST.envPat)ST.envPat=m.createPattern(ST.env,'repeat-x');
@@ -6264,7 +6264,7 @@ const renderXf={VZ:1,camD:0,camDY:0}; // the last frame's world-to-canvas transf
 // true, though the frame runs a little slower than it would), and every few seconds one effect is left out to show what it
 // costs; the table is drawn over the HUD. Torchlight does not fall back to Classic meanwhile. Nothing is stored.
 const PF={upd:0,iv0:0,on:/[?&]prof\b/.test(location.search),t:0,gl:null,a:{},fa:{},fn:0,ws:0,al:false,cur:'all',iv:0,n:0,t0:0,ix:0,res:{},stg:null,off:{},sv:null,
-  rs:0,img:false,last:0,steps:[['all','all on'],['metal','metal'],['shafts','sky beams'],['flame','flames'],['sand','sand'],['relief','relief'],['shadow','shadows'],['mist','mist/sheen'],['heat','heat'],['grade','grade'],['storm','sandstorm'],['img','texImage2D'],['rs75','scene .75'],['rs50','scene .5'],['sync','no delay']],
+  rs:0,img:false,last:0,steps:[['all','all on'],['metal','metal'],['shafts','sky beams'],['flame','flames'],['sand','sand'],['relief','relief'],['shadow','shadows'],['mist','mist/sheen'],['heat','heat'],['grade','grade'],['storm','sandstorm'],['img','texImage2D'],['rs75','scene .75'],['rs50','scene .5'],['sync','no delay'],['wgl','2D scene (v60)']],
   s(){if(this.on){this.t=performance.now();this.a={};this.gl=null;}},
   p(k){if(!this.on)return;if(this.gl)this.gl.finish();const t=performance.now();this.a[k]=(this.a[k]||0)+t-this.t;this.t=t;}};
 // ?bench (owner, v53): the same test on the phone every time, without anyone driving it. The test bot (dev/tools/bot.js,
@@ -6279,7 +6279,7 @@ function benchBoot(){const tries=['dev/tools/bot.js','tools/bot.js'],load=i=>{if
   const t=document.createElement('script');t.src=tries[i]+'?v='+APP_VERSION;t.onload=()=>setTimeout(benchStart,600);t.onerror=()=>{t.remove();load(i+1);};document.head.appendChild(t);};load(0);}
 function benchStart(){if(!window.botGen)return;BENCH.save=JSON.stringify(S);BENCH.run=true;BENCH.out=[];
   for(const id in HINTS)S.hints[id]=1;for(const id of HINT_MOVE)S.learned[id]=1;
-  S.set.lightMode=BENCH.arg==='classic'?'classic':'torch';window.__HKnoauto=BENCH.arg!=='auto';if(BENCH.arg==='saver'){S.set.saver=true;layout();}hideAll();benchFloor(0);} // (?bench=saver: Battery saver on, as the owner plays it: every other frame, 1x resolution)
+  S.set.lightMode=BENCH.arg==='classic'?'classic':'torch';window.__HKnoauto=BENCH.arg!=='auto';if(BENCH.arg==='saver'){S.set.saver=true;layout();}if(BENCH.arg==='2d')GLFX.wgl=false;hideAll();benchFloor(0);} // (?bench=saver: Battery saver on, as the owner plays it: every other frame, 1x resolution; ?bench=2d: the scene drawn in 2D and copied, as up to v60, to compare on the same phone)
 function benchFloor(i){BENCH.i=i;const n=BENCH.floors[i];GLP.rs=BENCH.arg==='75'?0.75:1;GLP.inSession=true;
   BENCH.g=window.botGen(n,9000+n,{fight:true});BENCH.iv=[];BENCH.wk=[];BENCH.rb=roomBuilds;BENCH.ru=GLREL.ups||0;BENCH.fb=null;BENCH.done=null;BENCH.t0=0;
   if(BENCH.arg==='auto')S.set.lightMode='torch';BENCH.step();}
@@ -6294,9 +6294,9 @@ function benchCheck(){if(!BENCH.run||BENCH.i<0)return;const el=BENCH.t0?(perform
     slow:n?iv.filter(v=>v>20).length/n:0,w2,wk:BENCH.wk.length?BENCH.wk.reduce((a,b)=>a+b,0)/BENCH.wk.length:0,rb:roomBuilds-BENCH.rb,ru:(GLREL.ups||0)-BENCH.ru,
     sc:GLP.rs,fb:BENCH.fb,bot:BENCH.done?(BENCH.done.ok===true?'done':String(BENCH.done.why||BENCH.done.ok)):''});
   BENCH.g=null;if(BENCH.i+1<BENCH.floors.length)benchFloor(BENCH.i+1);else benchEnd();}
-function benchEnd(){BENCH.run=false;BENCH.i=-1;S=JSON.parse(BENCH.save);window.__HKnoauto=false;mode='title';previewTitle();show('title');if(BENCH.arg==='saver')layout();
+function benchEnd(){BENCH.run=false;GLFX.wgl=true;BENCH.i=-1;S=JSON.parse(BENCH.save);window.__HKnoauto=false;mode='title';previewTitle();show('title');if(BENCH.arg==='saver')layout();
   const f=(v,d=1,w=5)=>v.toFixed(d).padStart(w),gl=GLP.gl,ri=gl&&gl.getExtension('WEBGL_debug_renderer_info');
-  const rows=['Hourglass Keep v'+APP_VERSION+' bench: '+(BENCH.arg==='saver'?'Battery saver (torch, every other frame drawn, 1x; times per 60 Hz step)':BENCH.arg||'torch, full size, no fall back'),
+  const rows=['Hourglass Keep v'+APP_VERSION+' bench: '+(BENCH.arg==='saver'?'Battery saver (torch, every other frame drawn, 1x; times per 60 Hz step)':BENCH.arg==='2d'?'torch with the scene drawn in 2D and copied (v60 path)':BENCH.arg||'torch, full size, no fall back'),
     navigator.userAgent.replace(/^Mozilla\/5\.0 /,'').slice(0,110),'canvas '+cv.width+'x'+cv.height+'  dpr '+(window.devicePixelRatio||1)+(ri?'  '+gl.getParameter(ri.UNMASKED_RENDERER_WEBGL):''),
     'fl theme      s   fps  mean   p95   max >20ms  w2s  work rooms relf scale'+(BENCH.arg==='auto'?'  off@':'')];
   let T={s:0,fr:0,sum:0,slow:0,w2:0,wk:0,rb:0,ru:0};
@@ -6310,7 +6310,7 @@ function benchEnd(){BENCH.run=false;BENCH.i=-1;S=JSON.parse(BENCH.save);window._
   d.appendChild(pre);btn('Copy',()=>{try{navigator.clipboard.writeText(txt);msg('Copied.',2);}catch(e){}});btn('Run again',()=>location.reload());btn('Close',()=>{d.remove();});
   document.body.appendChild(d);}
 function pfApply(){const k=PF.cur=PF.al?'all':PF.steps[PF.ix][0];if(!PF.sv)PF.sv={...GLFX};Object.assign(GLFX,PF.sv);PF.off={};PF.rs=0;PF.img=false;PF.sync=false;
-  if(k==='img')PF.img=true;else if(k==='sync')PF.sync=true;else if(k==='rs75')PF.rs=0.75;else if(k==='rs50')PF.rs=0.5;else
+  if(k==='img')PF.img=true;else if(k==='sync')PF.sync=true;else if(k==='wgl')GLFX.wgl=false;else if(k==='rs75')PF.rs=0.75;else if(k==='rs50')PF.rs=0.5;else
   if(k==='metal')GLFX.metal=false;else if(k==='shafts')GLFX.shafts=false;else if(k==='relief')GLFX.relief=false;else if(k==='shadow')GLFX.shadow=false;
   else if(k==='heat')GLFX.heat=false;else if(k==='grade')GLFX.grade=false;else if(k==='storm')GLFX.storm2=false;else if(k==='mist')GLFX.mist=GLFX.sheen=GLFX.caustics=false;else if(k!=='all')PF.off[k]=true;}
 // one drawn frame: ms of work (update + render, GL finished) and the time since the last frame; a step lasts 3 s (the first half second not counted)
@@ -6326,6 +6326,7 @@ function pfDraw(ctx,sh){const fx=(v,d=1)=>v.toFixed(d),R=PF.res,sg=v=>(v>=0?'+':
     rows.push((k==='all'?'(none)':nm).padEnd(15)+fx(w).padStart(6)+(k==='all'?'      ':sg(o.d/o.n).padStart(6))+fx(iv).padStart(8)+(k==='all'?'':sg(o.di/o.n).padStart(6)));}
   const sl=PF.stg?Object.entries(PF.stg).filter(e=>e[1]>=0.05).map(e=>e[0]+' '+fx(e[1])):[];
   for(let i=0;i<sl.length;i+=4)rows.push((i?'':'stages (all on): ')+sl.slice(i,i+4).join('  '));
+  if(GLP.gls){const t=GLS.stats;rows.push('webgl scene: '+t.verts+' vertices, '+t.draws+' draws, '+t.batches+' batches, '+t.uploads+' uploads');}
   ctx.fillStyle='rgba(0,0,0,.72)';ctx.fillRect(x-2,y-2,206,rows.length*lh+3);ctx.fillStyle='#9fffd2';rows.forEach((r,i)=>ctx.fillText(r,x,y+i*lh));ctx.restore();}
 // ================= unit WGL: the Torchlight scene drawn by WebGL2 (owner, v61: the same look, less work and heat) =================
 // Until v60 the Torchlight scene was drawn in Canvas2D and copied into WebGL every frame (glScene). On the iPhone that copy was
@@ -6433,6 +6434,7 @@ function glsInit(gl){
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
     GLS.rampData=new Uint8Array(256*4);GLS.rampRows.clear();GLS.rampN=0;GLS.tex.clear();GLS.T.length=0;
     GLS.gl=gl;GLS.ok=true;GLS.scene=g2Target('scene',9);GLS.bg=g2Target('bg',0);GLS.F=new G2D(GLS.scene);GLS.Fbg=new G2D(GLS.bg);
+    for(const [k,pr] of [['sil',1],['mask',2],['metal',2],['occ',2]]){GLS[k]=g2Target(k,pr);GLS['F'+k]=new G2D(GLS[k]);} // (unit WGL stage 3: the masks)
     g2grow(1<<15);g2growI(1<<16);}
   catch(e){GLS.ok=false;GLS.why=String(e&&e.message||e);}}
 function g2growI(n){if(GLS.icap>=n)return;let c=Math.max(GLS.icap*2,1<<16);while(c<n)c*=2;const a=new Uint32Array(c);if(GLS.I32)a.set(GLS.I32.subarray(0,GLS.ni));GLS.I32=a;GLS.icap=c;}
@@ -6451,6 +6453,8 @@ function g2Size(t,w,h){const gl=GLS.gl;if(t.w===w&&t.h===h&&t.fb)return;t.w=w;t.
 // a frame's recording starts (render(), Torchlight): every target's list is emptied
 function g2Begin(){GLS.nv=0;GLS.ni=0;if(GLS.rampN>448){GLS.rampRows.clear();GLS.rampN=0;} // (gradient rows are recycled between frames, never inside one)
   GLS.id=0;GLS.gpN=0;GLS.fr++;for(const t of GLS.T)t.ops.length=0;GLS.T.length=0;GLS.stats.verts=0;}
+// a mask target's facade, begun on its first use in a frame (cleared to clear)
+function g2Mk(k,w,h,clear){const F=GLS['F'+k];if(F.T._fr!==GLS.fr){F.T._fr=GLS.fr;F.begin(w,h,clear);}return F;}
 function g2Use(t){if(!t.used){t.used=true;GLS.T.push(t);}}
 
 // a canvas as a texture: uploaded the first time it is drawn, again only when it is marked as changing (_glv) or resized
@@ -6560,7 +6564,7 @@ class G2D{
     const col=this._col(st);this._quad(X0,Y0,X1,Y1,X2,Y2,X3,Y3,col,mo,gi,z,st);}
   strokeRect(x,y,w,h){const sv=this.P,sc=this.cur;this.P=[];this.cur=null;this.rect(x,y,w,h);this._stroke(this.P);this.P=sv;this.cur=sc;}
   clearRect(x,y,w,h){const so=this.s.op,sf=this.s.fs,sa=this.s.ga;this.s.op=6;this.s.fs={k:0,c:[0,0,0,0],s:'transparent'};this.s.ga=1;this.fillRect(x,y,w,h);this.s.op=so;this.s.fs=sf;this.s.ga=sa;}
-  drawImage(img,a,b,c,d,e,f,g,h){let sx=0,sy=0,sw,sh,dx,dy,dw,dh;const iw=img.width,ih=img.height;
+  drawImage(img,a,b,c,d,e,f,g,h){let sx=0,sy=0,sw,sh,dx,dy,dw,dh;const iw=img.width,ih=img.height; // (img: a canvas, a target, or a view: a part of a target)
     if(c===undefined){dx=a;dy=b;dw=iw;dh=ih;sw=iw;sh=ih;}else if(e===undefined){dx=a;dy=b;dw=c;dh=d;sw=iw;sh=ih;}else{sx=a;sy=b;sw=c;sh=d;dx=e;dy=f;dw=g;dh=h;}
     if(!iw||!ih||!sw||!sh||!dw||!dh)return;
     if(sw<0){sx+=sw;sw=-sw;}if(sh<0){sy+=sh;sh=-sh;}if(dw<0){dx+=dw;dw=-dw;}if(dh<0){dy+=dh;dh=-dh;}
@@ -6568,8 +6572,9 @@ class G2D{
     if(sx<0){dx-=sx*dw/sw;dw+=sx*dw/sw;sw+=sx;sx=0;}if(sy<0){dy-=sy*dh/sh;dh+=sy*dh/sh;sh+=sy;sy=0;}
     if(sx+sw>iw){const k=(iw-sx)/sw;dw*=k;sw=iw-sx;}if(sy+sh>ih){const k=(ih-sy)/sh;dh*=k;sh=ih-sy;}if(sw<=0||sh<=0)return;
     const m=this.s.m,X0=m[0]*dx+m[2]*dy+m[4],Y0=m[1]*dx+m[3]*dy+m[5],X1=m[0]*(dx+dw)+m[2]*dy+m[4],Y1=m[1]*(dx+dw)+m[3]*dy+m[5],X2=m[0]*(dx+dw)+m[2]*(dy+dh)+m[4],Y2=m[1]*(dx+dw)+m[3]*(dy+dh)+m[5],X3=m[0]*dx+m[2]*(dy+dh)+m[4],Y3=m[1]*dx+m[3]*(dy+dh)+m[5];
+    let iw2=iw,ih2=ih;if(img.isView){sx+=img.x;sy+=img.y;img=img.tgt;iw2=img.width;ih2=img.height;}
     const a8=Math.round(this.s.ga*255);if(!a8)return;const z=this._z();this._batch(img,this.s.sm?0:1);
-    const u0=sx/iw,u1=(sx+sw)/iw,fl=img.isTgt,v0=fl?1-sy/ih:sy/ih,v1=fl?1-(sy+sh)/ih:(sy+sh)/ih,col=(a8<<24|a8<<16|a8<<8|a8)>>>0; // (a target is drawn bottom-up: its rows run the other way)
+    const u0=sx/iw2,u1=(sx+sw)/iw2,fl=img.isTgt,v0=fl?1-sy/ih2:sy/ih2,v1=fl?1-(sy+sh)/ih2:(sy+sh)/ih2,col=(a8<<24|a8<<16|a8<<8|a8)>>>0; // (a target is drawn bottom-up: its rows run the other way)
     this._vq(X0,Y0,X1,Y1,X2,Y2,X3,Y3,col,1,0,z,u0,v0,u1,v0,u1,v1,u0,v1);}
   createLinearGradient(a,b,c,d){return g2cx2().createLinearGradient(a,b,c,d);}
   createRadialGradient(a,b,c,d,e,f){return g2cx2().createRadialGradient(a,b,c,d,e,f);}
@@ -6996,9 +7001,10 @@ function drawMetalMask(VZ,camD,camDY){
   MS.nb=0;MS.ns=0;MS.SW.fill(0);MS.ub4[0]=MS.ub4[1]=1e9;MS.ub4[2]=MS.ub4[3]=-1e9;
   if(!msAny(c0,c1,r0,r1,x0,x1,y0,y1))return false;
   const mw=Math.ceil(w/2)+1,mh=Math.ceil(h/2)+1;
-  if(!MS.c){MS.c=document.createElement('canvas');MS.g=MS.c.getContext('2d',{alpha:false});}
-  if(MS.c.width!==mw||MS.c.height!==mh){MS.c.width=mw;MS.c.height=mh;MS.pv=false;}
-  const g=MS.g,hx=Math.floor(camD/2),hy=Math.floor(camDY/2);MS.ox=2*hx-camD;MS.oy=2*hy-camDY; // (snapped to even screen pixels, so still metal does not shimmer as the view moves)
+  let g;if(GLP.gls){g=g2Mk('metal',mw,mh,[0,0,0,1]);MS.pv=false;} // (unit WGL) drawn by WebGL into its own target
+  else{if(!MS.c){MS.c=document.createElement('canvas');MS.g=MS.c.getContext('2d',{alpha:false});}
+  if(MS.c.width!==mw||MS.c.height!==mh){MS.c.width=mw;MS.c.height=mh;MS.pv=false;}g=MS.g;}
+  const hx=Math.floor(camD/2),hy=Math.floor(camDY/2);MS.ox=2*hx-camD;MS.oy=2*hy-camDY; // (snapped to even screen pixels, so still metal does not shimmer as the view moves)
   g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='source-over';g.fillStyle='#000';const pb=MS.pb; // (only what the last metal frame drew is cleared)
   if(MS.pv)g.fillRect(pb[0]-2,pb[1]-2,pb[2]-pb[0]+4,pb[3]-pb[1]+4);else g.fillRect(0,0,mw,mh);
   g.setTransform(VZ/2,0,0,VZ/2,-hx,-hy);g.lineCap='butt';g.lineJoin='miter';
@@ -7058,7 +7064,7 @@ function glMetal(lights,VZ,camD,camDY){
   MSF.rec=false;MS.on=0;msUse(false);
   if(!GLFX.metal||!MS.ok||!MS.V1||!L){MSF.n=0;return;}
   const any=drawMetalMask(VZ,camD,camDY);MSF.n=0;if(!any)return;
-  const gl=GLP.gl,w=cv.width,h=cv.height,mw=MS.c.width,mh=MS.c.height;
+  const gl=GLP.gl,w=cv.width,h=cv.height,MC=GLP.gls?GLS.metal:MS.c,mw=MC.width,mh=MC.height;
   MS.ups=(MS.ups||0)+1;
   msLamps(lights,VZ,camD,camDY,w,h);
   const p=GLMETAL_P[GLMETAL_K]||GLMETAL_P.satin,calm=!!S.set.calm,U=MS.U;
@@ -7071,7 +7077,7 @@ function glMetal(lights,VZ,camD,camDY){
   MS.on=1;}
 // (with the bright-pass or the composite program in use) its metal uniforms, on frames that show metal
 function glMetalU(U){const gl=GLP.gl;if(!U||!MS.on)return;gl.uniform1i(U.u_mt,5);
-  const V=MS.U;gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,GLP.mtex);
+  const V=MS.U;gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,GLP.mt);
   gl.uniform4f(U.u_mm,V[0],V[1],V[2],V[3]);gl.uniform4f(U.u_mq,V[4],V[5],V[6],V[7]);gl.uniform4f(U.u_mq2,V[8],V[9],V[10],V[11]);
   gl.uniform4f(U.u_mo,V[12],V[13],V[14],V[15]);gl.uniform4f(U.u_mw,V[16],V[17],V[18],V[19]);gl.uniform2f(U.u_mtx,V[20],V[21]);
   gl.uniform4fv(U.u_ml,MS.ML);gl.uniform3fv(U.u_mc,MS.MC);gl.uniform4fv(U.u_mf,MS.MF);gl.uniform4fv(U.u_msw,MS.SW);}
@@ -7197,8 +7203,12 @@ const GLCH=[],GLBODY=[[0,-50,20,20],[0,-37,34,30],[0,-21,32,30],[0,-8,28,26]];le
 // the figure itself, flat and solid red, in the pose it is in: the shadow's shape, what cuts the beams, what hides the metal
 // behind it. (v53) Drawn once per figure per frame, at twice the world's scale, into a canvas of its own (SIL, reused frame to
 // frame; SIL.m maps this frame's figures to them, cleared by glPrep): before, each of the three drew the figure again.
-const SIL={pool:[],m:new Map()};
+const SIL={pool:[],m:new Map(),v:[]};
 function glSilhouette(e){let c=SIL.m.get(e);if(c!==undefined)return c;
+  if(GLP.gls){const i=SIL.m.size;if(i>=12){SIL.m.set(e,null);return null;} // (unit WGL) a 192 px slot of one target (4 x 3), drawn by WebGL
+    const g=g2Mk('sil',768,576,[0,0,0,0]),x=(i&3)*192,y=(i>>2)*192;g.setTransform(1,0,0,1,0,0);g.save();g.beginPath();g.rect(x,y,192,192);g.clip();g.setTransform(2,0,0,2,x,y);
+    try{figDraw(g,48,80,e.face||1,e.pose,e.skel?PAL_SKEL:PAL_HERO,{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});c=SIL.v[i]||(SIL.v[i]={isView:true,tgt:GLS.sil,x,y,width:192,height:192});}catch(err){c=null;}
+    g.restore();SIL.m.set(e,c);return c;}
   c=SIL.pool[SIL.m.size];if(!c){c=document.createElement('canvas');c.width=c.height=192;c._g=c.getContext('2d');SIL.pool.push(c);}
   const g=c._g;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,192,192);g.setTransform(2,0,0,2,0,0);
   try{figDraw(g,48,80,e.face||1,e.pose,e.skel?PAL_SKEL:PAL_HERO,{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});}catch(err){c=null;}
@@ -7218,7 +7228,7 @@ function glShadow(g,x,y,sc,lights,spr,e){
   return n;
 }
 function glMask(lights,VZ,camD,camDY){
-  const {gl,mkC,mkG:g}=GLP,lw=mkC.width,lh=mkC.height,t=gameTime,cx=camD/VZ,cy=camDY/VZ,vw=cv.width/VZ,vh=cv.height/VZ;
+  const {gl,mkC}=GLP,lw=mkC.width,lh=mkC.height,g=GLP.gls?g2Mk('mask',lw,lh,[0,0,0,1]):GLP.mkG,t=gameTime,cx=camD/VZ,cy=camDY/VZ,vw=cv.width/VZ,vh=cv.height/VZ;
   g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='source-over';g.globalAlpha=1;g.fillStyle='#000';g.fillRect(0,0,lw,lh);
   g.setTransform(VZ/4,0,0,VZ/4,-camD/4,-camDY/4);g.globalCompositeOperation='lighter';
   let any=0,sh=0;
@@ -7373,17 +7383,27 @@ function glcPre(VZ,camD,camDY,th){GLC.pns=0;GLC.ocAny=0;if(!GLC.on||!L)return;
 // metal; 2 px of black between them, and every read clamped inside its own part. Sizes are rounded up to 32 px so the canvas
 // and the texture are rarely remade.
 const GLA={c:null,g:null,w:0,h:0,had:true,kT:new Float32Array(4),kC:new Float32Array(4),oT:new Float32Array(4),oC:new Float32Array(4)};
-function glAtlasUp(){const gl=GLP.gl,A=GLA;if(!A.dirty||!A.c)return;A.dirty=false;const W=A.c.width,H=A.c.height;
+// (unit WGL) the atlas on the GPU: the same layout as the 2D one, each part copied from its mask's resolved texture (canvas rows
+// run down, GL's up: a part at canvas y0..y0+h lands at GL rows H-y0-h..H-y0); black where nothing is
+function glAtlasGL(){const gl=GLP.gl,G=GLA.G;if(!G)return;const T=GLP.atl||(GLP.atl={t:null,f:null,w:0,h:0});
+  if(T.w!==G.W||T.h!==G.H){if(T.t){gl.deleteTexture(T.t);gl.deleteFramebuffer(T.f);}const f=glFbo(gl,G.W,G.H);T.t=f.t;T.f=f.f;T.w=G.W;T.h=G.H;}
+  gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,T.f);gl.viewport(0,0,G.W,G.H);gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);
+  const cp=(t,sx,sy,w,h,dx,dy)=>{if(!t.rf||w<=0||h<=0)return;gl.bindFramebuffer(gl.READ_FRAMEBUFFER,t.rf);const Y=t.h-sy-h,DY=G.H-dy-h;gl.blitFramebuffer(sx,Y,sx+w,Y+h,dx,DY,dx+w,DY+h,gl.COLOR_BUFFER_BIT,gl.NEAREST);};
+  if(G.mk)cp(GLS.mask,0,0,G.lw,G.lh,0,0);if(G.oc)cp(GLS.occ,0,0,G.ow,G.oh,G.lw+2,0);if(G.mo)cp(GLS.metal,G.bx,G.by,G.bw,G.bh,0,G.Y0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);GLP.mt=T.t;}
+function glAtlasUp(){const gl=GLP.gl,A=GLA;GLP.mt=GLP.mtex;if(!A.dirty||!A.c)return;A.dirty=false;const W=A.c.width,H=A.c.height;
   gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,GLP.mtex);
   if(A.w!==W||A.h!==H){gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,A.c);A.w=W;A.h=H;}
   else gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,A.c);}
-function glAtlas(w,h,lw,lh){const gl=GLP.gl,A=GLA,ow=Math.ceil(w/8),oh=Math.ceil(h/8),mo=MS.on&&MS.c;
+function glAtlas(w,h,lw,lh){const gl=GLP.gl,A=GLA,ow=Math.ceil(w/8),oh=Math.ceil(h/8),mo=MS.on&&(GLP.gls||MS.c);
   const cb=MS.cb,bx=mo?Math.max(0,Math.floor(cb[0])):0,by=mo?Math.max(0,Math.floor(cb[1])):0,bw=mo?Math.max(1,Math.ceil(cb[2])-bx):0,bh=mo?Math.max(1,Math.ceil(cb[3])-by):0;
   const up=v=>Math.ceil(v/32)*32,W=up(Math.max(lw+2+ow,bw)),Y0=Math.max(lh,oh)+2,H=up(Y0+bh);
-  if(!A.c){A.c=document.createElement('canvas');A.g=A.c.getContext('2d',{alpha:false});}
-  if(A.c.width!==W||A.c.height!==H){A.c.width=W;A.c.height=H;}
-  const g=A.g,any=GLP.mkAny||GLC.ocAny||mo;
-  if(any||A.had){g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='source-over';g.fillStyle='#000';g.fillRect(0,0,W,H);
+  const any=GLP.mkAny||GLC.ocAny||mo;
+  if(GLP.gls){A.G={W,H,lw,lh,ow,oh,bx,by,bw,bh,Y0,mk:GLP.mkAny,oc:GLC.ocAny,mo:!!mo};} // (unit WGL: laid out here, copied on the GPU by glAtlasGL)
+  else{if(!A.c){A.c=document.createElement('canvas');A.g=A.c.getContext('2d',{alpha:false});}
+  if(A.c.width!==W||A.c.height!==H){A.c.width=W;A.c.height=H;}}
+  const g=A.g;
+  if(!GLP.gls&&(any||A.had)){g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='source-over';g.fillStyle='#000';g.fillRect(0,0,W,H);
     if(GLP.mkAny)g.drawImage(GLP.mkC,0,0);
     if(GLC.ocAny)g.drawImage(GLC.ocC,lw+2,0);
     if(mo)g.drawImage(MS.c,bx,by,bw,bh,0,Y0,bw,bh);
@@ -7407,16 +7427,15 @@ function glPrep(lights,VZ,camD,camDY,th){const w=cv.width,h=cv.height,lw=Math.ce
   glAtlas(w,h,lw,lh); // the three masks, side by side in one canvas
   const gls=GLP.gls;if(!gls){glShrink(w,h);glRelStage();} // the scene's smaller copy (when the scale is under 1), and a room's half-size copy for the relief (unit WGL: neither when WebGL draws the scene)
   GLP.pend={lights,VZ,camD,camDY,th,w,h,gls};
-  if(!GLP.pipe||(PF.on&&PF.sync)||GLP.first||GLP.now){GLP.now=false;glSubmit();}}
+  if(gls||!GLP.pipe||(PF.on&&PF.sync)||GLP.first||GLP.now){GLP.now=false;glSubmit();}} // (unit WGL: the whole frame is WebGL's, so it is drawn at once: no frame of delay)
 function glSubmit(){const p=GLP.pend;GLP.pend=null;if(!p||p.w!==cv.width||p.h!==cv.height||!L||p.th!==L.theme)return false;
   GLP.fgls=p.gls;glFrame(p.lights,p.VZ,p.camD,p.camDY,p.th);return true;}
 function glFrame(lights,VZ,camD,camDY,th){
   const {gl,P}=GLP,w=cv.width,h=cv.height,lw=Math.ceil(w/4),lh=Math.ceil(h/4),lk=lookOf(th.style),t=gameTime;
   glSize();
   // 1. copy the 2D frame and the masks (drawn by glPrep)
-  if(GLP.fgls){g2Replay();GLP.stex=GLS.scene.tex;PF.p('scene');} // (unit WGL) the frame's recorded drawing, drawn
-  else{glScene(w,h);GLP.stex=GLP.tex;PF.p('upload');}
-  glAtlasUp();PF.p('masks');
+  if(GLP.fgls){g2Replay();GLP.stex=GLS.scene.tex;PF.p('scene');glAtlasGL();PF.p('masks');} // (unit WGL) the frame's recorded drawing (scene and masks), drawn; the masks' atlas put together on the GPU
+  else{glScene(w,h);GLP.stex=GLP.tex;PF.p('upload');glAtlasUp();PF.p('masks');}
   // 2. light map: ambient, then every light added as a quad with its own falloff and flicker
   let n=0;const B=GLLIGHTS;
   for(const q of lights){if(n>=GLMAXL)break;
@@ -7438,10 +7457,10 @@ function glFrame(lights,VZ,camD,camDY,th){
   // 3. full-screen passes: bright-pass, blur, composite
   gl.bindBuffer(gl.ARRAY_BUFFER,GLP.tri);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
   const bind=(unit,tex)=>{gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,tex);};
-  gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.br.f);gl.viewport(0,0,lw,lh);glClr(gl);bind(0,GLP.stex);bind(1,GLP.fb.map.t);bind(3,GLP.mtex);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.br.f);gl.viewport(0,0,lw,lh);glClr(gl);bind(0,GLP.stex);bind(1,GLP.fb.map.t);bind(3,GLP.mt);
   msPasses(m=>{gl.useProgram(P.bright.p);gl.uniform1i(P.bright.u.u_sc,0);gl.uniform1i(P.bright.u.u_map,1);gl.uniform1i(P.bright.u.u_cs,6);gl.uniform1i(P.bright.u.u_mk,3);gl.uniform4fv(P.bright.u.u_ocT,GLA.oT);gl.uniform4fv(P.bright.u.u_ocC,GLA.oC);gl.uniform1f(P.bright.u.u_csk,cfx&1&&GLFX.shafts?RY_BLOOM:0);gl.uniform2f(P.bright.u.u_px,1.5/w,1.5/h);if(m)glMetalU(MS.ub);gl.drawArrays(gl.TRIANGLES,0,3);},lh,4); // (unit MS: the metal program only over the metal)
   gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.bl.f);glClr(gl);gl.useProgram(P.blur.p);bind(0,GLP.fb.br.t);gl.uniform1i(P.blur.u.u_t0,0);gl.uniform2f(P.blur.u.u_d,1.6/lw,0);gl.drawArrays(gl.TRIANGLES,0,3);
-  PF.p('bloom');gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);glClr(gl);bind(0,GLP.stex);bind(1,GLP.fb.map.t);bind(2,GLP.fb.bl.t);bind(3,GLP.mtex);
+  PF.p('bloom');gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);glClr(gl);bind(0,GLP.stex);bind(1,GLP.fb.map.t);bind(2,GLP.fb.bl.t);bind(3,GLP.mt);
   msPasses(m=>{gl.useProgram(P.final.p);
   {const U=P.final.u,gr=gradeOf(th.style),on=GLFX.grade&&GFX().grade;gl.uniform1i(U.u_mk,3);gl.uniform4fv(U.u_mkT,GLA.kT);gl.uniform4fv(U.u_mkC,GLA.kC);gl.uniform2f(U.u_px,1/w,1/h);gl.uniform2f(U.u_mp,1/lw,1/lh);gl.uniform1f(U.u_t,t%1000);
     gl.uniform4f(U.u_fx,GLFX.shadow?1:0,GLFX.heat?1:0,GLFX.storm?1:0,S.set.calm?0.3:1);gl.uniform1f(U.u_sat,on?gr.sat:1);gl.uniform3fv(U.u_sh,on?gr.sh:GLNEUT);gl.uniform3fv(U.u_hi,on?gr.hi:GLNEUT);glAtmoU(U,cfx);glStormU(U);}
@@ -7621,8 +7640,9 @@ const ryNear=(a,b)=>a.d-b.d;
 // the figures that stand in a beam, flat, at an eighth of the resolution: what the shafts are cut by
 function glcOcc(VZ,camD,camDY){
   const w=Math.ceil(cv.width/8),h=Math.ceil(cv.height/8);
-  if(!GLC.ocC){GLC.ocC=document.createElement('canvas');GLC.ocG=GLC.ocC.getContext('2d');}
-  const g=GLC.ocG;let fresh=false;if(GLC.ow!==w||GLC.oh!==h){GLC.ocC.width=w;GLC.ocC.height=h;GLC.ow=w;GLC.oh=h;fresh=true;}
+  let g;if(GLP.gls){g=g2Mk('occ',w,h,[0,0,0,1]);GLC.ow=w;GLC.oh=h;} // (unit WGL) drawn by WebGL into its own target
+  else{if(!GLC.ocC){GLC.ocC=document.createElement('canvas');GLC.ocG=GLC.ocC.getContext('2d');}
+  g=GLC.ocG;if(GLC.ow!==w||GLC.oh!==h){GLC.ocC.width=w;GLC.ocC.height=h;GLC.ow=w;GLC.oh=h;}}
   g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='source-over';g.fillStyle='#000';g.fillRect(0,0,w,h);g.setTransform(VZ/8,0,0,VZ/8,-camD/8,-camDY/8);
   let any=0;const bb=GLCBB,near=e=>{const sx=(e.x*VZ-camD)/4,sy=(e.y*VZ-camDY)/4,m=24*VZ/4;return sx>bb[0]-m&&sx<bb[2]+m&&sy>bb[1]-m&&sy<bb[3]+m*3;};
   const one=e=>{if(!near(e))return;const s=glSilhouette(e);if(s){g.drawImage(s,e.x-48,e.y+(e.yo||0)-80,96,96);any=1;}};
@@ -7646,7 +7666,7 @@ function glAtmo(VZ,camD,camDY,th,lw,lh){
     const U=GLC.S.u;gl.bindFramebuffer(gl.FRAMEBUFFER,GLC.fs.f);gl.viewport(0,0,lw,lh);gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);
     {const x0=Math.max(0,Math.floor(GLCBB[0])),x1=Math.min(lw,Math.ceil(GLCBB[2])),y0=Math.max(0,Math.floor(GLCBB[1])),y1=Math.min(lh,Math.ceil(GLCBB[3]));
       gl.enable(gl.SCISSOR_TEST);gl.scissor(x0,lh-y1,Math.max(0,x1-x0),Math.max(0,y1-y0));} // only around the beams and the arches (GL's y runs up)
-    gl.useProgram(GLC.S.p);com(U);gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,GLP.mtex);gl.uniform1i(U.u_oc,4);gl.uniform4fv(U.u_ocT,GLA.oT);gl.uniform4fv(U.u_ocC,GLA.oC);
+    gl.useProgram(GLC.S.p);com(U);gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,GLP.mt);gl.uniform1i(U.u_oc,4);gl.uniform4fv(U.u_ocT,GLA.oT);gl.uniform4fv(U.u_ocC,GLA.oC);
     if(ns)glcRy(gl);else{gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,GLC.ry||GLC.tm);}const sb=skyBeam(); // (unit RY) the profiles on unit 2 (the composite binds its own there later)
     gl.uniform4fv(U.u_src,GLCSRC);gl.uniform4fv(U.u_scol,GLCCOL);gl.uniform1f(U.u_ns,ns);gl.uniform2f(U.u_dir,sb.dx,sb.dy);gl.uniform1f(U.u_ln,sb.ln);gl.uniform1i(U.u_ry,2);{const am=glcRGB(lk.amb),A=glAmbK(st,lk)*(am[0]*.3+am[1]*.5+am[2]*.2)/255;gl.uniform4f(U.u_bq,sb.lq,A,RY_FIG,RY_FLOOR);gl.uniform4f(U.u_sk,RY_AIR,RY_RIM,RY_MOTE,RY_OWNG);}gl.uniform2f(U.u_rys,1/RYW,1/(GLC.ryh||RYH0));
     const sr=glcRGB((BGART[st]||BGART.dungeon)['glow'+tod]||lk.win);
@@ -7810,18 +7830,37 @@ function render(){PF.s();
   ctx.setTransform(VS,0,0,VS,0,0);
   if(gf.atmo)hazePass(ctx);PF.p('atmo2d');if(sh)PF.gl=GLP.gl;
   if(sh){try{glPrep(frameLights,VZ,camD,camDY,L.theme);}catch(e){glKill(String(e&&e.message||e));return render();}
-    ctx=gx;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);ctx.setTransform(VS,0,0,VS,0,0);} // from here on only what the shader must not darken: flashes, HUD, text
+    ctx=gx;ctx.setTransform(VS,0,0,VS,0,0);} // from here on only what the shader must not darken: flashes, HUD, text
   else{if(!vignette){vignette=ctx.createRadialGradient(viewW/2,ROOM_H/2,ROOM_H*0.45,viewW/2,ROOM_H/2,Math.max(viewW,ROOM_W)*0.66);vignette.addColorStop(0,'rgba(5,3,10,0)');vignette.addColorStop(1,'rgba(5,3,10,.5)');
     vignette2=ctx.createRadialGradient(viewW/2,ROOM_H*0.55,ROOM_H*0.4,viewW/2,ROOM_H*0.55,Math.max(viewW,ROOM_W)*0.62);vignette2.addColorStop(0,'rgba(5,3,10,0)');vignette2.addColorStop(1,'rgba(5,3,10,.66)');}
   ctx.fillStyle=gf.grade?vignette2:vignette;ctx.fillRect(0,0,viewW,ROOM_H);lowEdge2D(ctx);} // S3-A: last life, Classic
+  if(sh){const k=hudKey(sh);if(k!==null&&k===GLP.hudK){PF.p('prep');PF.gl=null;if(PF.on){PF.p('hud');pfDraw(ctx,sh);}return;}GLP.hudK=k; // (unit WGL) the HUD canvas is drawn again only when what it shows changed
+    ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);ctx.setTransform(VS,0,0,VS,0,0);}else GLP.hudK=null;
+  hudLayer(ctx,sh);
+  if(PF.on){PF.p('hud');pfDraw(ctx,sh);}
+}
+// what is drawn over the picture: flashes, the sands' streaks, the HUD, text, ?fps (in Torchlight on the 2D canvas above WebGL)
+function hudLayer(ctx,sh){
   if(flashFx){ctx.globalAlpha=Math.max(0,flashFx.a*(1-flashFx.t/flashFx.dur));if(flashFx.edge){const px=P?clamp(P.x-cam.x,40,viewW-40):viewW/2,py=P?clamp(P.y-cam.y-30,40,ROOM_H-40):ROOM_H/2,gr=ctx.createRadialGradient(px,py,26,px,py,Math.max(viewW,ROOM_H)*0.62);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,flashFx.col);ctx.fillStyle=gr;}else ctx.fillStyle=flashFx.col;ctx.fillRect(0,0,viewW,ROOM_H);ctx.globalAlpha=1;}
   if(HK.rw>0.003)rewind2D(ctx,sh); // S3-A: the sands turn back (Classic: the whole look; both: sand streaks)
   PF.p('prep');PF.gl=null;if(!document.body.classList.contains('panelOpen'))drawHUD(ctx);
   drawOverlayText(ctx);
   if(GLP.fps){ctx.textAlign='left';ctx.textBaseline='top';ctx.font='600 7px monospace';ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(hud.l-1,ROOM_H-17,92,12);ctx.fillStyle='#9fffd2';
     ctx.fillText((sh?'TORCH ':'CLASSIC ')+GLP.ms.toFixed(1)+' ms  '+(GLP.ms>0?Math.round(1000/GLP.ms):0)+' fps',hud.l+1,ROOM_H-15);}
-  if(PF.on){PF.p('hud');pfDraw(ctx,sh);}
 }
+// (unit WGL) the HUD layer's drawing as a list of its calls and arguments, made by running hudLayer on a recorder: the same list
+// as last frame means the same pixels, so the 2D canvas above WebGL is left alone (Safari then neither draws nor composites it
+// again). Not while ?prof is on (its table changes every frame).
+const HUDREC={q:[],c:null};
+function hudKey(sh){if(PF.on)return null;const q=HUDREC.q;q.length=0;let c=HUDREC.c;
+  if(!c){c=HUDREC.c={};const pr=v=>v&&typeof v==='object'?(v._hk?v._hk.join(' ')+'/'+v._st.join(' '):'?'):v;
+    for(const m of ['fillRect','fillText','strokeText','beginPath','moveTo','lineTo','closePath','fill','stroke','arc','rect','ellipse','save','restore','setTransform','translate','scale','rotate','clearRect','drawImage','strokeRect','quadraticCurveTo','bezierCurveTo','clip','roundRect','setLineDash'])
+      c[m]=function(){q.push(m);for(let i=0;i<arguments.length;i++)q.push(pr(arguments[i]));};
+    for(const k of ['fillStyle','strokeStyle','globalAlpha','font','textAlign','textBaseline','lineWidth','globalCompositeOperation','lineCap','lineJoin','imageSmoothingEnabled'])
+      Object.defineProperty(c,k,{get(){return this['_'+k];},set(v){this['_'+k]=v;q.push(k,pr(v));}});
+    c.measureText=t=>{gx.font=c._font||'10px sans-serif';return gx.measureText(t);};
+    c.createLinearGradient=(a,b,d,e)=>gx.createLinearGradient(a,b,d,e);c.createRadialGradient=(a,b,d,e,f,g)=>gx.createRadialGradient(a,b,d,e,f,g);}
+  q.push(cv.width,cv.height,VS);hudLayer(c,sh);return q.join(',');}
 function fmt(s){s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),sec=s%60;return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(sec).padStart(2,'0');}
 function heart(ctx,x,y,full,fill,line){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+7,y);ctx.lineTo(x+3.5,y+9);ctx.closePath();ctx.fillStyle=full?fill:'rgba(10,8,20,.45)';ctx.fill();ctx.strokeStyle=line;ctx.lineWidth=0.8;ctx.stroke();}
 function drawHUD(ctx){
@@ -8135,6 +8174,7 @@ Object.assign(window.__HK,{hurt,HK,DISS,sandP,SAND_HP,GLFX,setClock:f=>{performa
 Object.assign(window.__HK,{FLM,FLV,ventState,cyc}); // FL (flames: the sheets and the vent's look, for tests)
 Object.assign(window.__HK,{GLFX,GLREL,clearRooms,bgCache,bgLayers,solidBelow:(c,r)=>solidBelow(L,c,r),roomCanvas}); // (unit B's switches and caches, for its tests)
 Object.assign(window.__HK,{GLS,G2D,g2Target,g2Begin,g2Replay,EC,g2col,HKPath,drawFigureHD,figDraw,paintBackdrop,bgLayers,BGART,lightSprite,drawLight,drawGate,drawJaws,drawDoor,drawHourglass,drawFlask,drawSnakeHD,drawLift}); // (unit WGL, for its parity tests)
+Object.assign(window.__HK,{GLA}); // (the mask atlas's layout, for wgl_maskcmp.py)
 Object.assign(window.__HK,{MS,MSF,GLMETAL_P,msPreset:k=>{if(k!==undefined)GLMETAL_K=k;return GLMETAL_K;},msPaint:()=>METAL_PAINT_HI}); // (unit MS, for its tests and pictures)
 
 // (unit ST, for stormfair.py and the pictures) where the storm's front is at the feet, in either mode: for each storm row, at

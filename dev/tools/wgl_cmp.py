@@ -34,6 +34,7 @@ S.append(('f09_rewind', 9, 9209, 'fight', 'rewind'))
 S.append(('f16_rewind', 16, 9216, 900, 'rewind'))
 S.append(('f20_dark', 20, 9220, 1200, 'lowlife'))
 for (n, sd) in ((25, 9100), (26, 9100), (14, 9100), (22, 9100)): S.append(('f%02d_stormon' % n, n, sd, 2, 'stormset'))
+for (n, fr) in ((5, 0.3), (8, 0.55), (12, 0.8)): S.append(('f%02d_middiss%02d' % (n, fr * 100), n, 9100 + n, 'dissolve', 'mid%s' % fr))
 
 RUN = r'''([n,seed,cond,extra])=>{const H=__HK;H.S.set.lightMode='torch';H.GLP.pipe=false;window.__HKnoauto=true;
   let T=1e6;H.setClock(()=>T); // (a clock that only moves with the game: every effect that reads it is the same in both builds)
@@ -43,6 +44,7 @@ RUN = r'''([n,seed,cond,extra])=>{const H=__HK;H.S.set.lightMode='torch';H.GLP.p
   const tk=m=>{Math.random=rnd;for(let i=0;i<m;i++){T+=1000/60;H.tick(1);}};
   if(extra==='rewind'){tk(30);H.startRewind&&H.startRewind();tk(8);}
   if(extra==='lowlife'){H.P.hp=1;tk(40);}
+  if(extra.startsWith('mid')){const fr=+extra.slice(3);for(const g of H.G)if(!g.alive&&!g.gone&&g.t>H.DISS.t0){g.t=H.DISS.t0+H.DISS.dur*fr;}}
   if(extra==='stormset'){const L=H.L,c=L.ext.chase;if(c){let sp=null;for(let cc=c.c0+6;cc<c.c1-4&&!sp;cc++)for(let r=c.rTop+1;r<c.rBot;r++)if(H.solidBelow(cc,r)&&H.solidBelow(cc-1,r)&&H.solidBelow(cc-2,r)&&H.solidBelow(cc-3,r)){sp={x:cc*32+16,r};break;}
     if(sp){const P=H.P;P.x=sp.x;P.y=(sp.r+1)*64-4;P.fallY=P.y;P.state='stand';P.inv=1e9;P.face=1;H.cam.snap=true;H.mode='play';c.on=true;c.done=false;c.t=1;c.wx=P.x-45;tk(20);P.x=sp.x;c.wx=P.x-45;H.cam.snap=true;}}}
   %s

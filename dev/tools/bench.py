@@ -6,7 +6,7 @@ import os, sys
 from playwright.sync_api import sync_playwright
 HERE = os.path.dirname(os.path.abspath(__file__))
 a = sys.argv[1:]
-arg = a[0] if a and a[0] in ('torch', '75', 'auto', 'classic', 'saver') else ''
+arg = a[0] if a and a[0] in ('torch', '75', 'auto', 'classic', 'saver', '2d') else ''
 html = next((x for x in a if x.endswith('.html')), os.path.join(HERE, '..', 'hourglass-keep.html'))
 url = 'file://' + os.path.abspath(html) + '?bench' + ('=' + arg if arg and arg != 'torch' else '')
 with sync_playwright() as p:

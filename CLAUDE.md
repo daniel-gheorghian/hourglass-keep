@@ -134,13 +134,22 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   `fillCorridor`) and `FLAT_K` (weight of plain floor in the run's menu) set it; check with `metrics40.py`. A remote plate (P1, P5) whose gate
   finds no room in the turn makes `buildLevel` lay the floor out again, so no dead-end side room is left behind. Timed gates (P4 too)
   are `estPath()` times `timerK()`; `estPath` times a careful pace (`WALK_T` and the action table, measured against the bot) so that the tightest factor 0.84 is still beatable. A longway floor always holds a fork (else it is laid out again, and the last resort drops the flag).
-- Torchlight's cost on the iPhone is waiting for Safari to finish drawing a 2D canvas before it can be copied into WebGL (measured
-  with `?prof`), not the shader passes. So a Torchlight frame is sent one frame late: `glPrep` draws the scene's masks on the 2D side
-  and `glSubmit`, at the start of the next `render()`, copies the scene (`glScene`, at `GLP.rs` of full size: 1, .75 or .5, stepped
-  down by `glTime` when frames run slow, reset each floor) and one atlas holding every mask (`glAtlas`/`glAtlasUp`) and runs the
-  passes. A new mask goes into the atlas and is drawn in `glPrep`, never copied on its own; any other canvas copied into WebGL is
-  drawn in one frame and copied in a later one (the relief's rooms: `glRelStage`, then `glRelUpload`). Tests that compare the picture of one
-  exact state set `GLP.pipe=false` (frames sent at once). `?prof` on the device shows each stage and each effect's cost.
+- Torchlight's scene is drawn by WebGL2 (unit WGL, v61; plan and research in `dev/WEBGL_PLAN.md`). Until v60 it was drawn in 2D and
+  copied into WebGL every frame, and on the iPhone that copy (Safari waits for the 2D canvas, reads it back, uploads it: WebKit bug
+  294602) was most of the frame. Now the same drawing functions draw through `G2D`, a recording Canvas2D look-alike (`GLS.F`): paths
+  flattened in screen pixels, fans, earcut (inlined), stencil-then-cover for self-crossing and even-odd fills, strokes with joins, caps
+  and dashes, stencil clips, gradients evaluated per pixel (stops in a ramp texture), composite modes, one indexed vertex buffer a
+  frame, 4x MSAA resolved into the scene texture (`GLS.scene.tex`). `Path2D` inside the game is `HKPath` (records its commands);
+  gradients and patterns remember how they were made (prototype hooks), so the same objects work on both contexts. The masks
+  (effect mask, silhouettes in one target of 192 px slots, metal, beam occluders) are drawn the same way into their own targets and
+  copied into the atlas on the GPU (`glAtlasGL`, same layout as `glAtlas`), so the shaders are unchanged and nothing waits: the frame
+  is drawn at once (no frame of delay). Images are uploaded once: rooms when first drawn or two frames after they are built
+  (`g2Warm`), the relief reading a room's mip level 1; a canvas redrawn every frame must be marked `_glv=1` (the dissolving guard).
+  `GLP.rs` is now the scene target's scale. Classic is untouched. Without WebGL2, or with `GLFX.wgl=false` (`?prof` step '2D scene',
+  `?bench=2d`), Torchlight takes the v60 path (2D scene copied one frame late through `glPrep`/`glSubmit`/`glScene`/`glAtlasUp`).
+  Tests that compare the picture of one exact state set `GLP.pipe=false`. `wgl_cmp.py`, `wgl_maskcmp.py` and `wgl_parity.py` compare
+  frames, mask atlases and single drawing functions against main or the real 2D context. The HUD canvas above WebGL is redrawn only
+  when its list of drawing calls changes (`hudKey`).
 - Torchlight's ambient light never drops under `AMB_MIN` (0.45 of full on its brightest channel, `glAmbK`; owner, v56 and v57: the Forge by
   Moonlight fell to 0.26), and each sky opening adds a soft bounce light where its beam meets the floor (`gatherLights`, Torchlight only).
   The fire vent burns over its whole grate (`VJETS`: a jet per slot, back and front rows, merging into one sheet); its timing and
