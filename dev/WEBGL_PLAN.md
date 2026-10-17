@@ -224,6 +224,7 @@ in main is flat (a difference there is not antialiasing).
 Per function against the real Canvas2D (`wgl_parity.py`: rects, circles, concave, star, even-odd, self-crossing, strokes
 with every join and cap, dashes, linear and radial gradients, transforms, nested clips, composite modes, images, Path2D,
 figures): mean 0.05 to 0.66, nothing off away from edges beyond 0.4 % (the 0.4 % is the 1.25 px figure outline's AA).
+Classic against main (`wgl_classiccmp.py`, 34 states): identical (at most 1 LSB).
 
 ### Speed (bench.py, Chrome on this Mac's AMD GPU through ANGLE-Metal; Chrome copies 2D canvases cheaply, so the Mac
 ### cannot show the phone's gain: only the script cost added by the new path)
@@ -233,7 +234,7 @@ figures): mean 0.05 to 0.66, nothing off away from edges beyond 0.4 % (the 0.4 %
 | stage 2 | 59.2 | 16.9 | 20.0 | 2.1 | 0 |
 | stage 4 (final) | 59.3 | 16.9 | 19.8 | 2.5 | 0 |
 | final, `?bench=2d` (the v60 path in the same build) | 59.1 | 16.9 | 19.6 | 1.8 | 89 |
-| Battery saver: stage 1 / final | 59.7 / 59.5 | 16.7 / 16.8 | 17.4 / 17.7 | 2.1 / 3.0 | 89 / 0 |
+| Battery saver: stage 1 / final | 59.7 / 59.6 | 16.7 / 16.8 | 17.4 / 17.5 | 2.1 / 2.7 | 89 / 0 |
 
 The new path costs about 0.9 ms more script on the Mac (tessellation: the stroker, earcut, ellipses). On the phone it
 removes the scene copy (6.7 ms at full size in v52 `?prof`), the masks' copy (1.1 ms), the relief copies and the waits for
