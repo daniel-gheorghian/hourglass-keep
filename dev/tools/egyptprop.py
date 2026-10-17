@@ -28,7 +28,7 @@ FINDF = r'''([floors,kinds,want,gap])=>{const H=__HK,out=[];
     if(out.length>=want)break;}
   return out;}'''
 LAMPF = r'''([t])=>{const H=__HK;let wall=null,free=null;
-  for(let n=4*t+1;n<=4*t+4&&!(wall&&free);n++)for(let sd=1;sd<=10&&!(wall&&free);sd++){const L=__P.load(n,700+sd);
+  const F0=__HK.floorsOf(__HK.THEMES[t].look)[0];for(let n=F0;n<=F0+3&&!(wall&&free);n++)for(let sd=1;sd<=10&&!(wall&&free);sd++){const L=__P.load(n,700+sd);
     if(!wall)for(const q of L.torches){if(q.broken||H.lampFree(q))continue;if(H.solidBelow(q.c+2,q.r)&&!L.feat[q.r*L.cols+q.c+2]){wall={n,seed:700+sd,c:q.c,r:q.r};break;}}
     if(!free)for(let r=1;r<L.rows;r++)for(let c=10;c<L.cols-10;c++){if(!H.solidBelow(c,r)||L.feat[r*L.cols+c]||!H.solidBelow(c+2,r))continue;const q={c,r};if(!H.lampFree(q))continue;
       if(L.torches.some(o=>o.r===r&&Math.abs(o.c-c)<3)||L.cps.some(o=>o.r===r&&Math.abs(o.x/32-c)<4)||L.door.r===r&&Math.abs(L.door.c-c)<4)continue;free={n,seed:700+sd,c,r};break;}}
@@ -98,7 +98,7 @@ with sync_playwright() as p:
         man['lamps'].append(ent)
         print('lamp', look, q, flush=True)
     for pg in (pt, pc):
-        pg.evaluate("()=>{__HK.EGP.lamps=false;__HK.EGP.unlit=false;}")
+        pg.evaluate("()=>{__HK.EGP.lamps=true;__HK.EGP.unlit=false;}")
     # ---- traps: (id, feature kinds, flags, prep, floors to look on)
     F = lambda ns: [[n, s] for n in ns for s in (801, 802, 803)]
     TR = [('portcullis', ['gate'], {'traps': True}, None, [F([6, 7, 26, 27]), F([18, 19, 41, 42])]),
@@ -135,24 +135,22 @@ with sync_playwright() as p:
     pt.close(); pc.close()
     # ---- Dawnward in the candidate fonts: the title, the floor card and the HUD with the floor's banner
     UA = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36'}
-    CANDS = [('rokkitt', 'Rokkitt', 'Rokkitt:wght@600;700', 'Jost', 'Jost:wght@400;600;800'),
+    CANDS = [('rokkitt', None, None, None, None),  # (the game as built: Rokkitt + Jost)
              ('marcellus', 'Marcellus', 'Marcellus', 'Jost', 'Jost:wght@400;600;800'),
              ('poiret', 'Poiret One', 'Poiret+One', 'Jost', 'Jost:wght@400;600;800'),
-             ('now', None, None, None, None)]
+             ('now', 'Lalezar', 'Lalezar', 'Vazirmatn', 'Vazirmatn:wght@400;600;800')]  # (before: the v62 pair)
     for key, disp, dq, body, bq in CANDS:
         css = None
         if disp:
             req = urllib.request.Request('https://fonts.googleapis.com/css2?family=%s&family=%s&display=swap' % (dq, bq), headers=UA)
             css = urllib.request.urlopen(req, timeout=20).read().decode()
-            css = css.replace("font-family: '%s'" % disp, "font-family: 'Lalezar'").replace("font-family: '%s'" % body, "font-family: 'Vazirmatn'")
+            css = css.replace("font-family: '%s'" % disp, "font-family: 'Rokkitt'").replace("font-family: '%s'" % body, "font-family: 'Jost'")
         route = (lambda c: (lambda r: r.fulfill(status=200, content_type='text/css', body=c)))(css) if css else None
         pg = newpage(b, 'torch', route)
         pg.evaluate("document.fonts.ready")
         pg.wait_for_timeout(600)
         # title
-        pg.evaluate("""()=>{const t=document.getElementById('title');t.hidden=false;t.querySelector('h1').textContent='Dawnward';
-          document.getElementById('tEyebrow').textContent='Twelve hours of night';for(const b of t.querySelectorAll('.menu button'))if(b.offsetParent&&/keep/i.test(b.textContent))b.textContent='Into the night';document.title='Dawnward';
-          t.querySelector('.lede').textContent='Run, leap, hang from ledges and cross swords with the tomb robbers. Every floor is built fresh: the sun\\u2019s boat sails on through the hours of the night toward dawn.';}""")
+        pg.evaluate("()=>{document.getElementById('title').hidden=false;}")
         pg.wait_for_timeout(300)
         pg.screenshot(path=os.path.join(OUT, 'font_%s_title.png' % key))
         # the floor card

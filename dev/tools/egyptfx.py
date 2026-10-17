@@ -12,7 +12,7 @@ SRC = a[0] if len(a) > 0 else os.path.join(HERE, '..', 'hourglass-keep.html')
 OUT = a[1] if len(a) > 1 else os.path.join(HERE, 'egypt_themes')
 os.makedirs(OUT, exist_ok=True)
 FIND = r'''([t,want])=>{const H=__HK;window.__HKfreeze=true;
-  for(let n=4*t+1;n<=4*t+4;n++)for(let sd=1;sd<=8;sd++){const L=H.load(n,600+sd,true);const C=L.cols,F=(c,r)=>c<0||c>=C||r<0||r>=L.rows?null:L.feat[r*C+c];
+  const F0=__HK.floorsOf(__HK.THEMES[t].look)[0];for(let n=F0;n<=F0+3;n++)for(let sd=1;sd<=8;sd++){const L=H.load(n,600+sd,true);const C=L.cols,F=(c,r)=>c<0||c>=C||r<0||r>=L.rows?null:L.feat[r*C+c];
     for(let r=1;r<L.rows-1;r++)for(let c=10;c<C-10;c++){if(!H.solidBelow(c,r)||!H.solidBelow(c-1,r)||!H.solidBelow(c+1,r)||F(c,r)||F(c-1,r)||F(c+1,r))continue;
       let ok=false;
       if(want==='arch'){for(let cc=c-4;cc<=c+4;cc++)if(H.isOpenArch(cc,r-1)||H.isOpenArch(cc,r))ok=true;}
@@ -47,8 +47,9 @@ with sync_playwright() as p:
         q_.evaluate("document.querySelectorAll('.screen').forEach(e=>e.hidden=true)")
         q_.evaluate("()=>{__HK.S.set.lightMode='torch';}")
     looks = pg.evaluate("__HK.THEMES.map(t=>t.look)")
+    fls = pg.evaluate("__HK.THEMES.map(t=>__HK.floorsOf(t.look,180))")
     for t, look in enumerate(looks):
-        for tod in sorted({0, (4 * t) // 20 % 3}):
+        for tod in sorted({0} | {((n - 1) // 20) % 3 for n in fls[t][:2]}):
             d = pg.evaluate(STRIP, [look, tod])
             fn = 'bg_%s_%d.png' % (look, tod)
             im = Image.open(io.BytesIO(base64.b64decode(d.split(',')[1]))).convert('RGB')

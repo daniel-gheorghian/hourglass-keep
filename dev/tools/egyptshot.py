@@ -15,7 +15,7 @@ BEFORE = a[2] if len(a) > 2 else None
 os.makedirs(OUT, exist_ok=True)
 TRAPS = ['spikes', 'chomp', 'saw', 'pend', 'gate', 'vent', 'darter', 'loose', 'stone', 'lift', 'chain', 'bar', 'banner', 'hurtdrop', 'grate', 'closer', 'plate', 'low']
 FIND = r'''([t,traps])=>{const H=__HK;window.__HKfreeze=true;for(const id in H.HINTS){H.S.hints[id]=1;H.S.learned[id]=1;}const cand=[];
-  for(let n=4*t+1;n<=4*t+4;n++)for(let sd=1;sd<=6;sd++){const L=H.load(n,500+sd,true);H.banner=null;const C=L.cols,F=(c,r)=>c<0||c>=C||r<0||r>=L.rows?null:L.feat[r*C+c];
+  const F0=__HK.floorsOf(__HK.THEMES[t].look)[0];for(let n=F0;n<=F0+3;n++)for(let sd=1;sd<=6;sd++){const L=H.load(n,500+sd,true);H.banner=null;const C=L.cols,F=(c,r)=>c<0||c>=C||r<0||r>=L.rows?null:L.feat[r*C+c];
     for(let r=1;r<L.rows-1;r++)for(let c=8;c<C-8;c++){if(!H.solidBelow(c,r)||!H.solidBelow(c-1,r)||!H.solidBelow(c+1,r)||F(c,r)||F(c-1,r)||F(c+1,r))continue;
       if(L.base[r*C+c]===undefined)continue;const ts=new Set();let look=0,lo=0,hi=0;
       for(let rr=r-1;rr<=r;rr++)for(let cc=c-6;cc<=c+6;cc++){const f=F(cc,rr);if(f&&traps.includes(f.t)){ts.add(f.t);if(cc<c)lo++;else hi++;}
@@ -64,11 +64,11 @@ man = {'themes': []}
 with sync_playwright() as p:
     b = p.chromium.launch(args=['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'])
     probe = page(b, SRC, 'torch')
-    names = probe.evaluate("__HK.THEMES.map(t=>[t.name,t.style,t.look])")
+    names = probe.evaluate("__HK.THEMES.map(t=>[t.name,t.style,t.look,__HK.floorsOf(t.look,180)])")
     errs = []
     for t in range(12):
         picks = probe.evaluate(FIND, [t, TRAPS])
-        ent = {'i': t, 'name': names[t][0], 'style': names[t][1], 'look': names[t][2], 'poses': []}
+        ent = {'i': t, 'name': names[t][0], 'style': names[t][1], 'look': names[t][2], 'floors': names[t][3], 'poses': []}
         for k, q in enumerate(picks):
             pose = {'n': q['n'], 'seed': q['seed'], 'c': q['c'], 'r': q['r'], 'traps': q['ts'], 'face': q['face'], 'shots': {}}
             for mode in ('torch', 'classic'):

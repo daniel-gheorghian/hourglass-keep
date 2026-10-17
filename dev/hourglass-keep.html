@@ -115,9 +115,9 @@ body.portrait #rotate{display:flex}
 
     <div id="title" class="screen">
       <div class="panel split">
-        <p class="eyebrow" id="tEyebrow">An endless keep</p>
+        <p class="eyebrow" id="tEyebrow">Twelve hours of night</p>
         <h1>Dawnward</h1>
-        <p class="lede">Run, leap, hang from ledges and cross swords with the keep's guards. Every floor is built fresh, so the climb never runs out.</p>
+        <p class="lede">Run, leap, hang from ledges and cross swords with the tomb robbers. Every floor is built fresh: the sun's boat sails on through the hours of the night toward dawn.</p>
         <div class="menu">
           <button id="bContinue" class="primary" type="button">Continue</button>
           <button id="bNew" type="button">New run</button>
@@ -154,9 +154,9 @@ body.portrait #rotate{display:flex}
           <dt>Blocks</dt><dd>Hold <kbd>Grab</kbd> and press toward a loose block to push it, away to pull it. A block holds a plate down for good, and you can climb over it.</dd>
           <dt>Crawl</dt><dd>Down gets you on hands and knees, left or right crawls, up stands. Low tunnels and swinging blades call for it.</dd>
           <dt>Fight</dt><dd><kbd>Grab</kbd> strikes. Up blocks when the guard raises his blade, then strike back fast; better guards parry a flurry and answer it. Down sheathes. Strike snakes before they coil, or crouch and <kbd>Grab</kbd> to draw your blade low and thrust at them in a tunnel. Skeletons only fall to a pit, so drive them over the edge.</dd>
-          <dt>Gates</dt><dd>A plate raises a gate. An hourglass on a gate means it shuts again, with the time left shown at the top. A red plate right in front of a gate slams it shut, so jump over it. Some gates open from a plate out of sight, up a climb or down a hole; colour-marked gates answer to the plate of the same colour.</dd>
+          <dt>Gates</dt><dd>A plate raises a gate. A water clock on a gate means it shuts again, with the time left shown at the top. A red plate right in front of a gate slams it shut, so jump over it. Some gates open from a plate out of sight, up a climb or down a hole; colour-marked gates answer to the plate of the same colour.</dd>
           <dt>Traps</dt><dd>Jump saw blades as they come. Crouch under darts. When a granite plug starts to slide behind you, run and do not stop until the arch.</dd>
-          <dt>Sands</dt><dd>When you fall, <kbd>Grab</kbd> turns back time about five seconds. You carry three turns of the glass; every hourglass refills them.</dd>
+          <dt>Water</dt><dd>When you fall, <kbd>Grab</kbd> turns back time about five seconds. You carry three measures of water; every water clock refills them.</dd>
           <dt>Flasks</dt><dd>Stand on one and tap <kbd>Grab</kbd> to drink. A small red flask heals one life, a large red one heals them all, gold adds a life, dark blue is poison. Large red flasks are rare and wait at the far ends of gated side passages; gold ones hide in passages without a gate.</dd>
           <dt>Exit</dt><dd>A floor plate somewhere opens the exit. Press up at the open door.</dd>
           <dt>Keys</dt><dd>Arrows move, <kbd>Space</kbd> jumps, <kbd>Shift</kbd> grabs, <kbd>P</kbd> pauses.</dd>
@@ -268,8 +268,8 @@ function hash2(a,b){let h=(Math.imul(a|0,374761393)+Math.imul(b|0,668265263))|0;
 // one region an hour and is reborn at dawn), in places of ancient Egypt, Kush and the Sahara. Twelve themes, four floors each.
 // `style` is the family of drawing (stone courses, arches, lamps, metal, windows: dungeon, palace, tile, forge, crypt); `look`
 // picks the theme's own backdrop, hangings and light. The generator never reads the theme: it builds each floor from the old
-// five-theme turn (GEN_STYLE), so the floors are the same as before the twelve themes (and they run in the same order for
-// floors 1 to 48). The sources each theme's motifs come from are in dev/tools/egypt_themes.html.
+// five-theme turn (GEN_STYLE), so the floors are the same as before the twelve themes; and a floor's theme always has the
+// style its floor is built by (themeOf, SCHED). The sources each theme's motifs come from are in dev/tools/egypt_themes.html.
 const THEMES=[
  // the primeval waters (Amduat hours 2-3); papyrus-bundle columns, the Ramesseum's vaulted brick store-rooms
  {name:'The Waters of Nun',style:'dungeon',look:'nun',mortar:'#141824',brick:'#232b3d',brick2:'#1c2333',wall:'#4a5268',wallA:'#535c74',wallB:'#42495d',hi:'#6c7590',lo:'#2b3041',top:'#9ca2b6',front:'#4c5266',trim:'#8d93a6',sky:'#0e1b36',guard:'#8a2c3a',guard2:'#353a4b',glow:'255,170,90'},
@@ -337,11 +337,21 @@ for(const t of THEMES){t.cloth=tapOf(t).g;t.cloth2=tapOf(t).a;}
 // Progress up the tower: every 20 floors the keep turns over one cycle. Cycle 0 is dusk, 1 night (moon and stars, a cool
 // grade), 2 dawn (a warm grade), then the day repeats: the night's three watches, ending at sunrise on floor 60. Each cycle
 // the keep is more worn (more breaches, rubble, cobwebs and cracks, fewer lit lamps), and the land seen through the windows
-// sinks a little every floor: he is climbing a tower. The twelve themes turn on their own, every 48 floors (THEMES.length*4),
-// so a theme first seen by moonlight comes back in another light.
+// sinks a little every floor: he is climbing a tower.
+// Which theme a floor has (owner, round 4): four floors to a theme; each block of four takes the drawing style the generator builds
+// it by (GEN_STYLE[block % 5]), and within that style SCHED picks the theme by the light the block falls in (dusk, night, dawn: one
+// 20-floor cycle each) and by which 60-floor turn of the day it is (three turns, then it repeats: 180 floors). The old five looks
+// fill floors 1-20; the Forges and the Green Hall come back by moonlight in floors 33-40, the Blue Chambers at dawn; over 120 floors
+// every old look is seen in every light, and the dungeon and palace themes go round every light in turn.
 const CYCLE=20;
 function progOf(n){const cy=Math.floor((n-1)/CYCLE);return {cyc:cy,tod:cy%3,wear:Math.min(cy,3),sink:Math.min(90,(n-1)*1.7)};}
-function themeOf(n){return THEMES[Math.floor((n-1)/4)%THEMES.length];}
+const SCHED=[ // [turn of the day][drawing style] = the themes at [dusk, night, dawn]
+  {dungeon:['nun','foggara','hawara'],palace:['west','deffufa','shali'],tile:['blue','wells','blue'],forge:['meroe','meroe','napata'],crypt:['osiris','osiris','aksum']},
+  {dungeon:['hawara','nun','foggara'],palace:['shali','west','deffufa'],tile:['wells','blue','wells'],forge:['napata','napata','meroe'],crypt:['aksum','aksum','osiris']},
+  {dungeon:['foggara','hawara','nun'],palace:['deffufa','shali','west'],tile:['blue','wells','wells'],forge:['meroe','napata','napata'],crypt:['osiris','aksum','aksum']}];
+const THEME_BY=Object.fromEntries(THEMES.map(t=>[t.look,t]));
+function themeOf(n){const b=Math.floor((n-1)/4),st=GEN_STYLE[b%5],light=Math.floor((n-1)/20)%3,turn=Math.floor((n-1)/60)%3;return THEME_BY[SCHED[turn][st][light]];}
+function floorsOf(look,upto=180){const out=[];for(let n=1;n<=upto;n+=4)if(themeOf(n).look===look)out.push(n);return out;} // (each block's first floor, for the tools and the page)
 function themeName(n){const t=themeOf(n),p=progOf(n);let nm=t.name;
   if(p.wear>=2)nm='The Ruined '+nm.replace(/^The /,'');
   return p.cyc===0?nm:nm+(p.tod===1?' by Moonlight':p.tod===2?' at Dawn':' at Dusk');}
@@ -2383,7 +2393,7 @@ function startRewind(){let ti=0;
 function stepRewind(){rw.acc+=1.6;while(rw.acc>=1&&rw.idx>rw.target){rw.acc-=1;rw.idx--;}
   applySnap(REW[rw.idx]);
   if(rw.idx<=rw.target){REW.length=rw.target+1;rw=null;rwEnd=performance.now()/1000;mode='play';GLP.quiet=performance.now()+3000;clearInput();P.inv=1.2;P.stumble=0;deadT=0;
-    msg((S.sands>0?'The sands turn back. '+S.sands+(S.sands===1?' turn':' turns')+' of the glass left.':'The sands turn back. The glass is empty until the next hourglass.'),2.8);}}
+    msg((S.sands>0?'The water turns back. '+S.sands+(S.sands===1?' measure':' measures')+' of water left.':'The water turns back. Your clock is dry until the next water clock.'),2.8);}}
 const STABLE=['stand','run','stop','garde','advance','retreat','land','crouch','step','turn','parry','strike','blocked'];
 function snapshotResume(){
   if(!L||!P||mode!=='play'||!STABLE.includes(P.state)||!supported())return;
@@ -2587,9 +2597,9 @@ function atDoor(){const d=L.door;return d&&d.r===pRow()&&Math.abs(P.x-d.x)<16;}
 function hurt(n,cause){if(P.state==='dead')return;if(n>0)hitAt=performance.now()/1000;P.hp-=n;P.flash=0.3;Snd.play('hurt');try{navigator.vibrate&&navigator.vibrate(40);}catch(e){}if(P.hp<=0){P.hp=0;die(cause);}}
 function die(cause){if(P.state==='dead')return;deathAt=gameTime;S.resume=null;writeSave();setState('dead');P.cause=cause;P.flash=0;for(const g of G)if(g.flash>0)g.flash=0;P.vx=0;P.vy=0;P.hp=0;P.sword=false;P.yo=0;mode='dead';deadT=0;Snd.play('die');if(cause==='blade'||cause==='spikes'||cause==='sword')sparks(P.x,P.y-24,8,'#d94a3a');}
 const PAIRN=['amber','teal','violet'],PAIRC=['#e0a43a','#45b8b0','#a77ee6'];
-function gateMsg(f){if(f.fwd)return 'Somewhere ahead a gate grinds open, but its sand is running. Run for it!';const nm=f.pair!==undefined?'The '+PAIRN[f.pair]+' gate':'A gate';
+function gateMsg(f){if(f.fwd)return 'Somewhere ahead a gate grinds open, but its water is running. Run for it!';const nm=f.pair!==undefined?'The '+PAIRN[f.pair]+' gate':'A gate';
   if(f.latch)return f.where?nm+' grinds open '+f.where+' and stays open.':'Somewhere on this floor, a gate grinds open and stays open.';
-  return nm+' grinds open '+f.where+', but its sand is running. Get back before it shuts.';}
+  return nm+' grinds open '+f.where+', but its water is running. Get back before it shuts.';}
 // a passage's crumbling chain and ambush wake the first time its plate (or prize) is reached
 // the latching plates pressed so far on this floor (their gates stand open for good), as "c,r" keys
 function pressedPlates(){return L.dyn.filter(o=>(o.f.t==='plate'&&o.f.latch&&o.f.g.tm===Infinity)||(o.f.t==='closer'&&o.f.jam)).map(o=>o.c+','+o.r);}
@@ -2638,7 +2648,7 @@ function standOn(){
     else if(f.t==='closer'&&!f.jam){f.press=gameTime;if(f.g.tm>0||f.g.open>0.05){f.g.tm=0;f.g.slam=true;Snd.play('gate');shake(0.9);hint('closer');}}
     else if(f.t==='xplate'){f.press=gameTime;if(!L.door.opening&&L.door.open<1){L.door.opening=true;msg('A heavy door grinds open somewhere on this floor.',3.4);Snd.play('door');}}
   }
-  for(let i=0;i<L.cps.length;i++){const cp=L.cps[i];if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<14){cp.on=true;cp.onAt=gameTime;L.cpIndex=i;S.cp=i;S.floorTime=levelTime;S.cpPlates=pressedPlates();const fill=(S.sands|0)<SANDS;S.sands=SANDS;writeSave();msg(fill?'The hourglass turns and your glass fills. If you fall, you rise here.':'The hourglass turns. If you fall, you rise here.',3.2);Snd.play('cp');sparks(cp.x,SURF(cp.r)-26,10,'rgb('+(L.theme.glow||'232,196,127')+')');}}
+  for(let i=0;i<L.cps.length;i++){const cp=L.cps[i];if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<14){cp.on=true;cp.onAt=gameTime;L.cpIndex=i;S.cp=i;S.floorTime=levelTime;S.cpPlates=pressedPlates();const fill=(S.sands|0)<SANDS;S.sands=SANDS;writeSave();msg(fill?'The water clock fills, and so does yours. If you fall, you rise here.':'The water clock fills. If you fall, you rise here.',3.2);Snd.play('cp');sparks(cp.x,SURF(cp.r)-26,10,'rgb('+(L.theme.glow||'232,196,127')+')');}}
 }
 // a jump that ends hanging on a ledge: across a pit (gap, wide) or a storey up with Grab held (jgrab)
 function learnGrab(ys){const jk=P.jumpKind;if(jk!=='run'&&jk!=='stand')return;const dx=Math.abs(P.x-P.jx);if(dx>=40)learn('gap');if(jk==='run'&&ys<P.jy-40)learn('jgrab');else if(jk==='run'&&dx>=80)learn('wide');}
@@ -3288,14 +3298,14 @@ const HINTS={
   drop:'Press down at an edge to hang, down again to let go. Hanging first takes the sting out of long drops.',
   spikes:'Stakes in the floor. Hold Grab and tap toward them to tiptoe across, or jump them.',
   loose:'Sand in the cracks: those tiles give way under you. Keep running.',
-  plate:'A plate raises a gate. If the gate carries an hourglass it shuts again almost at once: run over the plate without stopping, and take any jump from the run.',
+  plate:'A plate raises a gate. If the gate carries a water clock it shuts again almost at once: run over the plate without stopping, and take any jump from the run.',
   chomp:'Blades snap shut on a rhythm. Watch one cycle, then go.',
   fight:'Grab strikes. Press up to block as his blade rises, then strike back at once.',
   parried:'Parried. Guards block blows thrown in a rush, and the good ones strike straight back. Press up to block, then hit him while he reels.',
   ranks:'Guards differ, and their dress shows it: ochre and rust, green and cream, crimson and gold, violet with a white plume. The better ones parry a flurry of blows.',
   poke:'A snake in the tunnel. Crouch and press Grab before you crawl in to draw your blade low, then Grab thrusts. Or wait for it to come out.',
   potion:'A flask. Stand on it and press Grab to drink.',
-  cp:'Touch the hourglass. If you fall after it, you start again from here.',
+  cp:'Touch the water clock. If you fall after it, you start again from here.',
   door:'The exit. It opens from a floor plate somewhere on this floor.',
   enter:'The way up is open. Press up at the door.',
   crawl:'Low passage. Press down to get on hands and knees, then left or right to crawl. Up stands you back up.',
@@ -3308,7 +3318,7 @@ const HINTS={
   reinf:'Another guard drops in from the gallery.',
   closer:'A closing plate. Step on it and the gate slams shut. Jump over it.',
   latch:'This gate opens from a plate somewhere out of sight. Look above, or below.',
-  sandgate:'The hourglass on this gate means it will not stay open. Its plate is out of sight; find it, then race back before the sand runs out.',
+  sandgate:'The water clock on this gate means it will not stay open. Its plate is out of sight; find it, then race back before the water runs out.',
   wallrun:'Run at a wall and press Jump to run up it. You can reach a ledge two floors up and catch it.',
   walljump:'Kick off walls: press Jump each time you touch one. Bounce between close walls to climb a shaft.',
   swing:'A swing bar. Push left and right in time with the swing to build it up (it creaks when it will carry you), then Jump as you swing forward. Down lets go.',
@@ -3326,13 +3336,13 @@ const HINTS={
   slabplate:'A loose slab hangs in the gallery over this plate. Run across it up there and it falls and holds the plate down.',
   slabgate:'This gate shuts the moment the plate is let go. Something heavy must hold the plate down: look for a loose slab above it.',
   slabcloser:'A closing plate too wide to jump. A loose slab hangs in the gallery above it: let it fall and the plate is jammed.',
-  racegate:'The hourglass on this gate means it will not stay open. Its plate lies back the way you came: press it, then run for the gate.',
+  racegate:'The water clock on this gate means it will not stay open. Its plate lies back the way you came: press it, then run for the gate.',
   collapse:'This ledge will not hold. Stand on it and let it drop you to the floor below.',
   jgrab:'A ledge a floor up across a pit. Run, jump, and hold Grab in the air to catch its edge; then press up to climb.',
   hurtdrop:'A long drop. It will hurt, or take the way round.',
   lift:'Step on the plate to call the lift. Hold up or down to ride.',
   chain:'Step on as a slab passes.',
-  double:'Two marked gates. Each answers to the plate of its colour, one above and one below. The one with the hourglass will not stay open.',
+  double:'Two marked gates. Each answers to the plate of its colour, one above and one below. The one with the water clock will not stay open.',
 };
 // A hint for a move comes back (once a floor) until the move is done; the moves are the ids in HINT_MOVE, learned by learn() where they succeed.
 // Every other hint is plain information and shows once ever. One hint at a time: while one waits or shows, new ones are dropped (they come again).
@@ -4586,13 +4596,26 @@ function egBlock(ctx){const K='#0b0812';ctx.fillStyle=K;ctx.fillRect(-15,-1,30,1
 function egStone(ctx,f,fl){const run=f.s===1?1:0.45;egBlock(ctx);
   for(const sx of [-14.5,14.5]){sandStream(ctx,sx,-1,fl,f.s===1?2.6:1.3,run,sx>0?0.5:0);egHeap(ctx,sx,fl,f.s===1?14:11,f.s===1?3.6:2.8);}
   ctx.fillStyle=SANDC_EG.body;ctx.fillRect(-16,-2.2,5,1.6);ctx.fillRect(11,-2.2,5,1.6);}
-function drawPlug(ctx,ch,x0,x1,y0,y1){const fx=ch.diss?ch.diss.bx:ch.wx,top=ch.rTop*TH,bot=(ch.rBot+1)*TH,K='#0b0812',a=1-(ch.fade||0);if(fx<x0-20)return;ctx.save();ctx.globalAlpha=a;
-  const L0=Math.max(x0-10,fx-600);ctx.fillStyle=K;ctx.fillRect(L0,top,fx-L0+2,bot-top);
-  ctx.fillStyle='#6a5652';ctx.fillRect(L0,top,fx-L0-2,bot-top); // the plug's side, in its own shade
-  const q=mulberry32(hash2(ch.c0|0,ch.rTop));for(let i=0;i<400;i++){const x=L0+q()*(fx-L0),y=top+q()*(bot-top);ctx.fillStyle=i%3?'#3a2c2a':'#c8b4a8';ctx.fillRect(x,y,0.8,0.8);}
-  for(let y=top+TH;y<bot;y+=TH){ctx.fillStyle='rgba(0,0,0,.4)';ctx.fillRect(L0,y-1,fx-L0,2);} // the joints between its courses
-  const g=ctx.createLinearGradient(fx-14,0,fx,0);g.addColorStop(0,'rgba(255,230,210,0)');g.addColorStop(1,'rgba(255,230,210,.35)');ctx.fillStyle=g;ctx.fillRect(fx-14,top,14,bot-top); // its polished leading face
-  ctx.fillStyle='rgba(214,190,140,.8)';for(let r=ch.rTop;r<=ch.rBot;r++){const ys=SURF(r);for(let i=0;i<10;i++){const u=(gameTime*2.4+i/10)%1;ctx.fillRect(fx+u*10,ys-2-Math.sin(u*Math.PI)*8-i%3,1.2,1.2);}} // the sand and grit it pushes ahead
+// The chase drawn as granite plugs (owner, round 4: a plug is the size of the passage it slides down, not a wall). In every row of
+// the chase's span that has a floor at the front, a block one passage high (floor to ceiling, at most a storey) and two tiles long
+// fills the corridor's depth, its polished leading face at the front (ch.wx; the kill line, speed and rows are the storm's own); where
+// there is no floor (a shaft, the air over a drop) the line is marked by the dust it throws up, a pale veil the height of the span.
+const PLUGL=64;
+function drawPlug(ctx,ch,x0,x1,y0,y1){const fx=ch.diss?ch.diss.bx:ch.wx,a=1-(ch.fade||0),K='#0b0812',t=gameTime;if(fx<x0-PLUGL-20||a<=0.01)return;ctx.save();ctx.globalAlpha=a;
+  const top=ch.rTop*TH,bot=(ch.rBot+1)*TH,cf=Math.floor(fx/TW);
+  ctx.fillStyle='rgba(236,214,166,.16)';ctx.fillRect(fx-10,Math.max(top,y0-10),26,Math.min(bot,y1+10)-Math.max(top,y0-10)); // the dust it throws up, marking the line in every row
+  for(let r=ch.rTop;r<=ch.rBot;r++){const ys=SURF(r);if(ys<y0-80||ys-80>y1)continue;if(B(L,cf,r)===WALL||!solidBelow(L,cf,r))continue;
+    const cy=ceilingY(cf,r),h=Math.min(ys-cy,TH-4),tp=ys-h,xl=fx-HX-PLUGL,xr=fx-HX,q=mulberry32(hash2(r*13+7,ch.c0|0));
+    ctx.fillStyle=K;ctx.fillRect(xl,tp-1,PLUGL+1.5,h+HY+1); // its long side, toward us
+    ctx.fillStyle='#7e625c';ctx.fillRect(xl,tp,PLUGL,h+HY-0.5);
+    for(let i=0;i<110;i++){const u=q(),v=q(),r2=q(),sz=r2<0.15?2:r2<0.5?1.4:0.9;ctx.fillStyle=r2<0.15?'#c89484':i%3?'#2a201e':'#eadcd0';ctx.fillRect(xl+1+u*(PLUGL-3),tp+1+v*(h+HY-4),sz,sz*0.9);}
+    ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(xl+PLUGL*0.5,tp,1,h+HY-0.5); // the joint between its two stones
+    ctx.fillStyle=K;ctx.beginPath();ctx.moveTo(xr,tp-1);ctx.lineTo(xr+DX+1,tp-DY-1);ctx.lineTo(xr+DX+1,ys+HY-DY);ctx.lineTo(xr,ys+HY+1);ctx.closePath();ctx.fill(); // its leading face, across the corridor
+    ctx.fillStyle='#b88a7c';ctx.beginPath();ctx.moveTo(xr+0.5,tp);ctx.lineTo(xr+DX,tp-DY);ctx.lineTo(xr+DX,ys+HY-DY-0.5);ctx.lineTo(xr+0.5,ys+HY-0.5);ctx.closePath();ctx.fill();
+    for(let i=0;i<40;i++){const u=q(),v=q(),r2=q();ctx.fillStyle=r2<0.2?'#d8a494':i%3?'#3a2c2a':'#f4e8de';ctx.fillRect(xr+1+u*(DX-2.5),tp-DY*u+1+v*(h+HY-3),r2<0.3?1.4:0.9,1.1);}
+    ctx.fillStyle='rgba(255,240,226,.55)';ctx.fillRect(xr+0.5,tp,0.9,h+HY-0.5); // the polished arris catching the light
+    ctx.fillStyle='rgba(240,222,176,.9)';for(let i=0;i<12;i++){const u=(t*2.4+i/12)%1;ctx.fillRect(xr+DX*0.5+u*12,ys-1-Math.sin(u*Math.PI)*7-(i%3),1.3,1.3);} // sand and grit pushed ahead of it
+    egHeap(ctx,xr+DX*0.5+5,ys,12,2);}
   ctx.restore();}
 function drawLight(ctx,t,th){if(EGP.lamps&&drawLampEg(ctx,t,th))return;
   const free=lampFree(t),base=SURF(t.r)-HY+1.5,key=(t.r-1)*TH+11;
@@ -4776,35 +4799,26 @@ function drawHourglass(ctx,cp){
     let gr=ctx.createRadialGradient(0,0,1,0,0,30);gr.addColorStop(0,'rgba('+gl+','+(0.55*k*turn)+')');gr.addColorStop(1,'rgba('+gl+',0)');ctx.fillStyle=gr;ctx.fillRect(-32,-32,64,64);
     if(!GFX().light){gr=ctx.createRadialGradient(0,0,4,0,0,70);gr.addColorStop(0,'rgba('+gl+','+(0.22*turn)+')');gr.addColorStop(1,'rgba('+gl+',0)');ctx.fillStyle=gr;ctx.fillRect(-72,-72,144,144);}
     ctx.restore();}
-  ctx.rotate(lit?Math.PI*(1-ease(turn)):0); // turning over when he reaches it (drawn upside down until it has turned)
-  const w=4.3,h=8;
-  // glass: dark rim, tinted body
-  hgBulbs(ctx,w,h);ctx.lineWidth=2.2;ctx.strokeStyle='#0b0812';ctx.stroke();ctx.fillStyle='rgba('+gl+','+(lit?0.2:0.1)+')';ctx.fill();ctx.fillStyle='rgba(12,9,20,'+(lit?0.25:0.55)+')';ctx.fill();
-  // sand: theme light mixed into gold, bright and running when lit, dull and spent when not
-  const k=lit&&turn>=1?((gameTime-(cp.onAt||0)-0.7)%8)/8:0,f=lit?(turn<1?1:1-k):0;
-  ctx.save();hgBulbs(ctx,w,h);ctx.clip();ctx.fillStyle=lit?'rgb('+gl+')':'rgba('+gl+',.45)';
-  if(f>0.02){const t=-h+(h-1)*(1-f);ctx.fillRect(-w-1,t,2*w+2,-t);}
-  const hh=(h-1)*(1-f);if(hh>0.1){ctx.beginPath();ctx.moveTo(-w-1,h);ctx.lineTo(w+1,h);ctx.lineTo(w+1,h-hh*0.75);ctx.lineTo(0,h-hh);ctx.lineTo(-w-1,h-hh*0.75);ctx.closePath();ctx.fill();}
-  if(lit&&turn>=1)ctx.fillRect(-0.4,0,0.8,h-hh);
-  if(lit){ctx.globalCompositeOperation='lighter';ctx.fillStyle='rgba(255,255,255,.35)';ctx.fillRect(-0.5,-1.5,1,3);}
+  // the water clock (Karnak, Amenhotep III): an alabaster vessel wider at the mouth, the hours marked inside, a spout low on its
+  // side; it fills when he reaches it and its water then runs out through the spout into a basin on the pedestal: the hour slipping away
+  const k=lit&&turn>=1?((gameTime-(cp.onAt||0)-0.7)%8)/8:0,f=lit?(turn<1?ease(turn):1-k):0,TW2=7,BW2=4.4,YT=-9,YB=8,hw=y=>BW2+(TW2-BW2)*(YB-y)/(YB-YT);
+  const ves=(d)=>{ctx.beginPath();ctx.moveTo(-TW2-d,YT-d);ctx.lineTo(TW2+d,YT-d);ctx.lineTo(BW2+d,YB+d);ctx.lineTo(-BW2-d,YB+d);ctx.closePath();};
+  ves(1.2);ctx.fillStyle='#0b0812';ctx.fill(); // its dark outline
+  ves(0);ctx.fillStyle=lit?'rgba(40,52,70,.95)':'rgba(30,26,34,.95)';ctx.fill(); // the stone seen through: dark where there is no water
+  if(f>0.01){const ly=YB-(YB-YT-1.2)*f;ctx.fillStyle=lit?'#6fc2ee':'#4a6a80';ctx.beginPath();ctx.moveTo(-hw(ly),ly);ctx.lineTo(hw(ly),ly);ctx.lineTo(BW2,YB);ctx.lineTo(-BW2,YB);ctx.closePath();ctx.fill();
+    ctx.fillStyle=lit?'#e2f6ff':'#8aa4b4';ctx.fillRect(-hw(ly),ly,2*hw(ly),1);} // its surface
+  ctx.fillStyle=lit?'rgba(236,228,206,.32)':'rgba(200,190,170,.22)';ves(0);ctx.fill(); // the translucent alabaster over it
+  ctx.fillStyle=lit?'rgba(255,248,230,.85)':'rgba(220,210,190,.5)';for(let c=-1;c<=1;c++)for(let i=0;i<5;i++){const yy=YT+2.5+i*3,xx=c*hw(yy)*0.5;ctx.fillRect(xx-0.45,yy,0.9,0.9);} // the hour marks
+  ctx.fillStyle='#0b0812';ctx.fillRect(-TW2-1.6,YT-2.6,2*TW2+3.2,2.6);ctx.fillStyle=lit?'#efe6cc':'#b8ae96';ctx.fillRect(-TW2-1,YT-2.1,2*TW2+2,1.6); // the rim
+  ctx.fillStyle='rgba(255,255,255,.4)';ctx.fillRect(-TW2+1.4,YT+1,0.9,5);
+  ctx.fillStyle='#0b0812';ctx.fillRect(BW2-0.6,YB-3.2,3.2,2.2);ctx.fillStyle=lit?'#d8cfb4':'#a89e86';ctx.fillRect(BW2,YB-2.7,2.4,1.2); // the spout
   ctx.restore();
-  hgBulbs(ctx,w,h);ctx.lineWidth=0.7;ctx.strokeStyle='rgba(230,236,248,'+(lit?0.8:0.5)+')';ctx.stroke();
-  ctx.fillStyle='rgba(255,255,255,.5)';ctx.fillRect(-w+1.2,-h+1.5,0.9,3.2);
-  // the frame: two caps and posts in the theme's material
-  const cap=(yy)=>{ctx.fillStyle='#0b0812';ctx.fillRect(-7,yy-1.7,14,3.4);ctx.fillStyle=M[0];ctx.fillRect(-6.3,yy-1.1,12.6,2.2);ctx.fillStyle=M[1];ctx.fillRect(-6.3,yy+0.3,12.6,0.8);
-    if(st==='dungeon'){ctx.fillStyle=M[3];for(const rx of [-4.5,0,4.5])ctx.fillRect(rx-0.5,yy-0.7,1,1);}
-    else if(st==='palace'){ctx.fillStyle=M[3];ctx.beginPath();ctx.arc(0,yy,1.2,0,6.2832);ctx.fill();}
-    else if(st==='tile'){ctx.fillStyle=M[1];ctx.fillRect(-4.5,yy-0.5,9,1);ctx.fillStyle=M[3];ctx.fillRect(-0.6,yy-0.6,1.2,1.2);}
-    else if(st==='forge'){ctx.fillStyle=M[3];ctx.globalAlpha=lit?0.95:0.55;ctx.fillRect(-6.3,yy-0.15,12.6,0.5);ctx.globalAlpha=1;}
-    else{ctx.fillStyle=M[3];for(const rx of [-3.8,3.8])ctx.fillRect(rx-0.6,yy-0.6,1.2,1.2);}};
-  ctx.fillStyle='#0b0812';ctx.fillRect(-6.4,-h,2.4,2*h);ctx.fillRect(4,-h,2.4,2*h);ctx.fillStyle=M[2];ctx.fillRect(-5.8,-h,1.2,2*h);ctx.fillRect(4.6,-h,1.2,2*h);
-  if(st==='palace'||st==='crypt'){ctx.fillStyle=M[0];for(const px of [-5.2,5.2])for(const yy of [-3.5,3.5]){ctx.beginPath();ctx.arc(px,yy,1.1,0,6.2832);ctx.fill();}} // turned posts
-  cap(-h-0.6);cap(h+0.6);
-  if(st==='palace'||st==='tile'){ctx.fillStyle=M[0];ctx.beginPath();ctx.moveTo(-1.6,-h-2.2);ctx.lineTo(0,-h-4.2);ctx.lineTo(1.6,-h-2.2);ctx.fill();} // a finial
-  ctx.restore();
-  // sand motes drifting up round it while it runs
-  if(lit){ctx.save();ctx.globalCompositeOperation='lighter';for(let i=0;i<5;i++){const u=(gameTime*0.35+i/5+x*0.01)%1;ctx.globalAlpha=(1-u)*0.8*turn;ctx.fillStyle='rgb('+gl+')';
-      ctx.fillRect(x+Math.sin(u*8+i*1.7)*(6+u*4),cy+10-u*30,1,1);}ctx.restore();}
+  // the basin under the spout, and the thin stream running into it while the hour runs
+  const bx=x+BW2+2,by=ptop-1;ctx.fillStyle='#0b0812';ctx.beginPath();ctx.ellipse(bx,by,3.6,1.5,0,0,6.2832);ctx.fill();ctx.fillStyle=lit?'#5fa8d8':'#3a3640';ctx.beginPath();ctx.ellipse(bx,by-0.3,2.6,0.8,0,0,6.2832);ctx.fill();
+  if(lit&&turn>=1){const sy=cy+YB-2.2,L1=by-1-sy;ctx.fillStyle='rgba(170,224,255,.9)';ctx.fillRect(bx-0.5,sy,1,L1);for(let i=0;i<3;i++){const u=(gameTime*2.2+i/3)%1;ctx.fillStyle='#eaf8ff';ctx.fillRect(bx-0.7,sy+u*L1,1.4,1.4);}}
+  // drops of light rising round it while it runs (the water's glint), cool as water
+  if(lit){ctx.save();ctx.globalCompositeOperation='lighter';for(let i=0;i<5;i++){const u=(gameTime*0.35+i/5+x*0.01)%1;ctx.globalAlpha=(1-u)*0.7*turn;ctx.fillStyle='rgb(190,232,255)';
+      ctx.fillRect(x+Math.sin(u*8+i*1.7)*(7+u*4),cy+10-u*30,1,1);}ctx.restore();}
 }
 // ---- doors: each theme's own (an Egyptian doorway: a lintel under a cavetto cornice in a moulded frame; the Cistern's is vaulted) ----
 // the arch head as a path: round for the Cistern, pointed for the rest; with yb given it is the whole opening down to the floor
@@ -5250,21 +5264,16 @@ function drawStone(ctx,o,f,again){
 // their shape first: caps wider than the glass, two posts and rounded bulbs (straight triangles meeting at a point read
 // as an X at this size), a dark rim so it holds on any wall. The state is in the sand alone: sand in the top bulb is
 // time to come (bright), sand in the bottom bulb has run (spent: dull when frac is 0 and dim is set).
-function drawGlass(ctx,x,y,frac,cap,dim){ctx.save();ctx.translate(x,y);
-  const f=clamp(frac,0,1),bulbs=()=>{ctx.beginPath();ctx.moveTo(-3.7,-5.4);ctx.quadraticCurveTo(-4.3,-1.5,-0.75,0);ctx.quadraticCurveTo(-4.3,1.5,-3.7,5.4);
-    ctx.lineTo(3.7,5.4);ctx.quadraticCurveTo(4.3,1.5,0.75,0);ctx.quadraticCurveTo(4.3,-1.5,3.7,-5.4);ctx.closePath();};
-  // the dark rim round the whole shape, then the glass (dark inside, so the sand stands out)
-  ctx.fillStyle='#0b0812';ctx.fillRect(-6,-8,12,3.6);ctx.fillRect(-6,4.4,12,3.6);ctx.fillRect(-5.6,-5,2.2,10);ctx.fillRect(3.4,-5,2.2,10);
-  bulbs();ctx.lineWidth=2.4;ctx.strokeStyle='#0b0812';ctx.stroke();ctx.fillStyle='rgba(28,22,40,.92)';ctx.fill();
-  const sand=dim?'#8c7448':'#f2cf86';ctx.save();bulbs();ctx.clip();ctx.fillStyle=sand;
-  if(f>0.02){const t=-5.4+5*(1-f);ctx.fillRect(-5,t,10,-t);}                                     // the top bulb, emptying from the top
-  const h=5*(1-f);if(h>0.1){ctx.beginPath();ctx.moveTo(-5,5.4);ctx.lineTo(5,5.4);ctx.lineTo(5,5.4-h*0.8);ctx.lineTo(0,5.4-h);ctx.lineTo(-5,5.4-h*0.8);ctx.closePath();ctx.fill();} // the heap below
-  if(f>0.02&&f<0.98)ctx.fillRect(-0.35,0,0.7,5.4-h);                                              // the running thread
-  ctx.restore();
-  bulbs();ctx.lineWidth=0.8;ctx.strokeStyle='rgba(225,232,245,.75)';ctx.stroke();                 // the glass's own edge
-  ctx.fillStyle='rgba(255,255,255,.55)';ctx.fillRect(-2.9,-4.4,0.8,2.4);                          // a glint
-  ctx.fillStyle=cap||'#d8b04a';ctx.fillRect(-5.2,-7.2,10.4,2);ctx.fillRect(-5.2,5.2,10.4,2);ctx.fillRect(-4.9,-5.2,0.9,10.4);ctx.fillRect(4,-5.2,0.9,10.4); // caps and posts
-  ctx.fillStyle='rgba(255,245,210,.5)';ctx.fillRect(-5.2,-7.2,10.4,0.6);ctx.fillRect(-5.2,5.2,10.4,0.6);
+function drawGlass(ctx,x,y,frac,cap,dim){ctx.save();ctx.translate(x,y); // a small water clock: one silhouette in every state, the water's level is the state
+  const f=clamp(frac,0,1),T=5.4,Bw=3.2,Y0=-5.4,Y1=5.6,hw=yy=>Bw+(T-Bw)*(Y1-yy)/(Y1-Y0);
+  const ves=d=>{ctx.beginPath();ctx.moveTo(-T-d,Y0-d);ctx.lineTo(T+d,Y0-d);ctx.lineTo(Bw+d,Y1+d);ctx.lineTo(-Bw-d,Y1+d);ctx.closePath();};
+  ves(1.3);ctx.fillStyle='#0b0812';ctx.fill();ves(0);ctx.fillStyle='rgba(28,22,40,.92)';ctx.fill();
+  if(f>0.02){const ly=Y1-(Y1-Y0-0.6)*f;ctx.fillStyle=dim?'#4a6070':'#7cc8f2';ctx.beginPath();ctx.moveTo(-hw(ly),ly);ctx.lineTo(hw(ly),ly);ctx.lineTo(Bw,Y1);ctx.lineTo(-Bw,Y1);ctx.closePath();ctx.fill();
+    ctx.fillStyle=dim?'#7a90a0':'#e4f6ff';ctx.fillRect(-hw(ly),ly,2*hw(ly),0.8);}
+  if(f>0.02&&f<0.98){ctx.fillStyle='#0b0812';ctx.fillRect(Bw-0.2,Y1-2.4,2.6,1.8);ctx.fillStyle='#bfe6ff';ctx.fillRect(Bw+1.4,Y1-1.4,0.8,4);} // running: the spout and its thread of water
+  ctx.fillStyle='rgba(255,255,255,.5)';for(let i=0;i<3;i++)ctx.fillRect(-1.6,Y0+2+i*2.8,0.7,0.7); // the hour marks
+  ctx.fillStyle=cap||'#d8b04a';ctx.fillRect(-T-1,Y0-2,2*T+2,1.8);ctx.fillRect(-Bw-0.6,Y1,2*Bw+1.2,1.3); // the rim and the foot
+  ctx.fillStyle='rgba(255,245,210,.5)';ctx.fillRect(-T-1,Y0-2,2*T+2,0.6);
   ctx.restore();}
 // ---- the sandstorm (unit ST): a wall of lit dust, not a shadow ----
 // The owner: "it doesn't look like a sandstorm, it looks more like a shadow; I can sometimes notice the painted edge underneath".
@@ -7200,8 +7209,8 @@ const GLSL_A=`uniform vec4 u_a;uniform vec3 u_c;
       for(int i=0;i<4;i++){float f=float(i)/3.;s+=vec3(texture2D(u_sc,uv-d*f*1.25).r,texture2D(u_sc,uv-d*f).g,texture2D(u_sc,uv-d*f*.75).b);}return s*.25;}
     vec3 hkGrade(vec3 c,vec2 uv){float k=u_a.x,l=u_a.z;if(k<.003&&l<.003)return c;
       vec2 d=(uv-u_c.xy)*vec2(u_vg.x,1.);float e=length((uv-.5)*vec2(1.7,1.9));
-      if(k>.003){float lm=dot(c,vec3(.299,.587,.114));c=mix(c,vec3(lm)*vec3(1.2,.95,.66)+vec3(.03,.018,0.),k*.85);
-        c+=vec3(.32,.22,.09)*exp(-dot(d,d)*6.)*k*.14;c*=1.-k*smoothstep(.85-.35*k,1.3,e)*.6;}
+      if(k>.003){float lm=dot(c,vec3(.299,.587,.114));c=mix(c,vec3(lm)*vec3(.82,1.,1.16)+vec3(0.,.012,.03),k*.85); // (the water turns back: a cool grade, the ripples of hkWarp)
+        c+=vec3(.1,.22,.32)*exp(-dot(d,d)*6.)*k*.14;c*=1.-k*smoothstep(.85-.35*k,1.3,e)*.6;}
       if(l>.003)c=mix(c,vec3(.5,.03,.05)*(.6+dot(c,vec3(.33))),l*smoothstep(.55,1.15,e)*.42);
       return c;}`;
 function hkUniforms(U,VZ,camD,camDY,w,h){const {gl}=GLP;
@@ -7213,17 +7222,17 @@ let rwGrad=null,rwGradW=0;
 function rewind2D(ctx,sh){const W=viewW,H=ROOM_H,k=HK.rw,now=HK.now,calm=HK.dist<1,px=P?clamp(P.x-cam.x,0,W):W/2,py=P?clamp(P.y-cam.y-30,0,H):H/2;
   if(!(sh&&GLFX.rewind)){ctx.save();
     ctx.globalCompositeOperation='saturation';ctx.globalAlpha=0.85*k;ctx.fillStyle='#808080';ctx.fillRect(0,0,W,H);
-    ctx.globalCompositeOperation='multiply';ctx.globalAlpha=0.6*k;ctx.fillStyle='#f2cf94';ctx.fillRect(0,0,W,H);
+    ctx.globalCompositeOperation='multiply';ctx.globalAlpha=0.6*k;ctx.fillStyle='#bcd6ea';ctx.fillRect(0,0,W,H);
     ctx.globalCompositeOperation='source-over';
-    if(!rwGrad||rwGradW!==W){rwGradW=W;rwGrad=ctx.createRadialGradient(0,0,H*0.5,0,0,Math.max(W,H)*0.85);rwGrad.addColorStop(0,'rgba(40,24,8,0)');rwGrad.addColorStop(1,'rgba(40,24,8,.7)');}
+    if(!rwGrad||rwGradW!==W){rwGradW=W;rwGrad=ctx.createRadialGradient(0,0,H*0.5,0,0,Math.max(W,H)*0.85);rwGrad.addColorStop(0,'rgba(8,22,40,0)');rwGrad.addColorStop(1,'rgba(8,22,40,.7)');}
     ctx.globalAlpha=k;ctx.translate(W/2,H/2);const s=1-0.4*k;ctx.scale(s,s);ctx.fillStyle=rwGrad;ctx.fillRect(-W*2,-H*2,W*4,H*4);ctx.setTransform(VS,0,0,VS,0,0);
-    if(!calm){ctx.strokeStyle='rgba(255,226,160,.4)';ctx.lineWidth=1.2;for(let i=0;i<3;i++){const f=(now*0.9+i/3)%1;ctx.globalAlpha=k*Math.sin(f*3.14159)*0.7;ctx.beginPath();ctx.ellipse(px,py,10+(1-f)*W*0.5,6+(1-f)*H*0.5,0,0,6.2832);ctx.stroke();}}
+    if(!calm){ctx.strokeStyle='rgba(180,224,255,.4)';ctx.lineWidth=1.2;for(let i=0;i<3;i++){const f=(now*0.9+i/3)%1;ctx.globalAlpha=k*Math.sin(f*3.14159)*0.7;ctx.beginPath();ctx.ellipse(px,py,10+(1-f)*W*0.5,6+(1-f)*H*0.5,0,0,6.2832);ctx.stroke();}}
     ctx.restore();}
-  ctx.save();ctx.globalAlpha=Math.min(1,k*1.2);ctx.strokeStyle='rgba(255,226,160,.7)';ctx.lineWidth=0.9;ctx.beginPath();
+  ctx.save();ctx.globalAlpha=Math.min(1,k*1.2);ctx.strokeStyle='rgba(186,228,255,.7)';ctx.lineWidth=0.9;ctx.beginPath(); // drops drawn back toward him
   for(let i=0,n=calm?28:64;i<n;i++){const h=hash2(i,77),a=(h%1000)/1000*6.2832,R=30+((h>>>10)%1000)/1000*W*0.55,f=(now*(0.45+((h>>>20)%100)/160)+((h>>>4)%100)/100)%1,r=R*(1-f),c=Math.cos(a),sn=Math.sin(a),x=px+c*r*1.3,y=py+sn*r*0.8;
     if(x<0||x>W||y<0||y>H)continue;ctx.moveTo(x,y);ctx.lineTo(x+c*(2+7*(1-f)),y+sn*(2+5*(1-f)));}
   ctx.stroke();ctx.restore();
-  if(mode==='rewind'){ctx.textAlign='center';ctx.fillStyle='#ffe2a0';ctx.font='16px Rokkitt, Georgia, serif';ctx.fillText('The sands turn back',W/2,H*0.38);}}
+  if(mode==='rewind'){ctx.textAlign='center';ctx.fillStyle='#ffe2a0';ctx.font='16px Rokkitt, Georgia, serif';ctx.fillText('The water turns back',W/2,H*0.38);}}
 // last life in Classic: a dark red glow at the edges, pulsing slowly (the shader does the same in Torchlight)
 let lowGrad=null,lowGradW=0;
 function lowEdge2D(ctx){const k=HK.low;if(k<0.01)return;const W=viewW,H=ROOM_H;
@@ -8369,8 +8378,8 @@ function drawOverlayText(ctx){
     const cause={fall:'The fall was too far',spikes:'Impaled on the stakes',sword:'Cut down',blade:'Caught by the blade',crush:'Crushed by a falling block',poison:'Poisoned',snake:'Bitten by a snake',fire:'Burned',pend:'Struck by the pendulum',saw:'Cut by the saw',dart:'Struck by a dart',sand:EGP.plug?'Crushed by the granite plug':'Swallowed by the sand'}[P.cause]||'You fell';
     ctx.fillStyle='#e4683b';ctx.font='24px Rokkitt, Georgia, serif';ctx.fillText(cause,viewW/2,ROOM_H/2-10);
     ctx.fillStyle='#f2e9d8';ctx.font='600 8.5px Jost, system-ui, sans-serif';
-    if(canRewind()){if(deadT>0.7){ctx.fillStyle='#e8c47f';ctx.fillText('Rewind: turn back the sands ('+S.sands+' left)',viewW/2,ROOM_H/2+13);ctx.fillStyle='#f2e9d8';ctx.fillText(L.cpIndex>=0?'Jump: rise at the hourglass':'Jump: rise at the floor gate',viewW/2,ROOM_H/2+26);}}
-    else ctx.fillText(deadT>0.9?(L.cpIndex>=0?'Tap Jump to rise at the hourglass':'Tap Jump to rise at the floor gate'):'',viewW/2,ROOM_H/2+14);
+    if(canRewind()){if(deadT>0.7){ctx.fillStyle='#e8c47f';ctx.fillText('Rewind: turn back the water ('+S.sands+' left)',viewW/2,ROOM_H/2+13);ctx.fillStyle='#f2e9d8';ctx.fillText(L.cpIndex>=0?'Jump: rise at the water clock':'Jump: rise at the floor gate',viewW/2,ROOM_H/2+26);}}
+    else ctx.fillText(deadT>0.9?(L.cpIndex>=0?'Tap Jump to rise at the water clock':'Tap Jump to rise at the floor gate'):'',viewW/2,ROOM_H/2+14);
     if(P.cause==='spikes'){ctx.fillStyle='#e8c47f';ctx.fillText('Spikes spare a careful step: hold Grab and tap toward them.',viewW/2,ROOM_H/2+(canRewind()?42:30));}
     ctx.globalAlpha=1;}
 }
@@ -8518,9 +8527,9 @@ function refreshTitle(){
   const has=S.started;
   $('bContinue').hidden=!has;
   $('bContinue').textContent='Continue on Floor '+S.level;
-  $('tEyebrow').textContent=has?'Floor '+S.level+' · '+themeName(S.level):'An endless keep';
+  $('tEyebrow').textContent=has?'Floor '+S.level+' · '+themeName(S.level):'Twelve hours of night';
   $('bNew').classList.toggle('primary',!has);
-  $('bNew').textContent=has?'New run':'Enter the keep';
+  $('bNew').textContent=has?'New run':'Into the night';
 }
 const GFXB={gLight:'light',gAtmo:'atmo',gGrade:'grade',gHero:'hero',gFx:'fx',gHd:'hd',gBg:'bg'};
 function syncGfx(){const g=GFX();syncLightMode();for(const id in GFXB)$(id).setAttribute('aria-pressed',String(!!g[GFXB[id]]));}
@@ -8633,7 +8642,7 @@ window.__HK={tapCloth,THEMES,progOf,themeName,hint,learn,HINTS,HINT_MOVE,get ban
   get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG};
 Object.assign(window.__HK,{guardBudget,snakeBudget}); // (the fighters' budgets, for guardscan.py)
 Object.defineProperty(window.__HK,'intro',{get(){return intro;},set(v){intro=v;}}); // (the floor's title banner, for egyptprop.py)
-Object.assign(window.__HK,{EGP,BGART,bgArt,LFX,themeOf,get PF(){return PF;}}); // (the themes' backdrops and effects, for egyptshot.py and egyptfx.py)
+Object.assign(window.__HK,{EGP,SCHED,floorsOf,BGART,bgArt,LFX,themeOf,get PF(){return PF;}}); // (the themes' backdrops and effects, for egyptshot.py and egyptfx.py)
 Object.assign(window.__HK,{hurt,HK,DISS,sandP,SAND_HP,GLFX,setClock:f=>{performance.now=f;}}); // S3-A (tests)
 Object.assign(window.__HK,{FLM,FLV,ventState,cyc}); // FL (flames: the sheets and the vent's look, for tests)
 Object.assign(window.__HK,{GLFX,GLREL,clearRooms,bgCache,bgLayers,solidBelow:(c,r)=>solidBelow(L,c,r),roomCanvas}); // (unit B's switches and caches, for its tests)
