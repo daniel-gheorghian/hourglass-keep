@@ -1702,6 +1702,11 @@ function buildLevel(n,seed,test,legacy,att){
   for(const f of L.lifts)if(f.t==='lift'&&f.y===f.yT)L.base[f.rT*cols+f.sc]=FLOOR; // (a platform resting at the top is the floor there; base0 keeps the open shaft)
   for(const bl of L.ext.blocks){bl.under=raw(bl.c,bl.r);set(bl.c,bl.r,WALL);}
   for(let rr=0;rr<rows;rr++)for(let cc=0;cc<cols;cc++){const f=fe(cc,rr);if(f)L.dyn.push({c:cc,r:rr,f});}
+  // A saw takes a full jump. Where a later run's floor ended up straight over its slot (a corridor one storey tall), he would
+  // take the low leap there, which cannot clear the blade: lay the floor out again (a few floors in a hundred; the others
+  // are left exactly as they were).
+  if(att>=0)for(const o of L.dyn){if(o.f.t!=='saw')continue;
+    for(let cc=Math.floor(o.f.x0/TW)-1;cc<=Math.floor(o.f.x1/TW)+1;cc++)if(o.r<1||L.base[(o.r-1)*cols+cc]!==EMPTY)return null;}
   // fewer timed side-passage gates: about two in five of them are let stay open once their plate is found (decided by a
   // hash, so the layout itself does not change)
   for(const o of L.dyn){const g=o.f;if(g.t!=='gate'||!g.far||g.latch||g.pair!==undefined||!(g.dur>0))continue;
@@ -2393,17 +2398,25 @@ function hazardEdge(maxD){
 }
 function tryJump(){const e=hazardEdge(30);if(e!==null&&Math.abs(e-P.x)>6){P.tx=e-P.face*4;setState('edgeWalk');return;}startJump('stand');}
 function startJump(kind){P.jumpKind=kind;if(kind==='run')launch();else setState('jumpPrep');}
-// Under a beam (a gate's or a guillotine's lintel) a full jump would put his head through the stone: he takes a low,
-// flat leap instead, ducked forward. It carries a little less far, so it is only used where it still lands on safe floor.
-const LOWJ={run:[212,128],stand:[150,112]},HEAD_UP=52,HEAD_LOW=44;
+// Under stone at his height (a gate's or a guillotine's lintel, a corridor one storey tall, an upper floor's slab) a full
+// jump would put his head through it: he takes a low, flat leap instead, ducked forward. It carries a little less far, and it
+// is taken wherever the full arc meets a ceiling, even where it may fall short (falling short is his own doing; going through
+// the ceiling would be ours). The head clamp in stAir keeps either leap under the ceiling.
+const LOWJ={run:[212,128],stand:[150,112]},HEAD_UP=52,HEAD_LOW=44,CEIL_LIP=5;
+// The underside of what is over column c for feet in row r: a wall's bottom, or an upper floor's slab (its front lip hangs
+// CEIL_LIP below the row's top, as in ceilOff); two rows up at most (no jump lifts the head further). null: open overhead.
+function ceilY(c,r){for(let k=1;k<=2;k++){const b=B(L,c,r-k);if(b===WALL)return (r-k+1)*TH;if(b===FLOOR)return (r-k+1)*TH+CEIL_LIP;}return null;}
+// the lowest ceiling over his head's width (x-6 to x+6) for feet in row r; null if none
+function ceilOver(x,r){let cy=null;for(const dx of [-6,0,6]){const c=Math.floor((x+dx)/TW);if(B(L,c,r)===WALL)continue;const y=ceilY(c,r);if(y!==null&&(cy===null||y>cy))cy=y;}return cy;}
+// Would the full arc put his head into a ceiling? A graze of up to CEIL_TOL px (a ledge's lip met at the very end of the arc)
+// keeps the full jump: the clamp holds his head under it, a nudge too small to see, and the full jump still clears its trap.
+const CEIL_TOL=3;
 function beamOverhead(run){const row=pRow(),vx=run?183:132,vy=run?190:159,T=2*vy/GRAV;
-  for(let t=0.02;t<T;t+=0.02){const x=P.x+P.face*vx*t,h=vy*t-0.5*GRAV*t*t,c=Math.floor(x/TW);
-    if(B(L,c,row-1)===WALL&&B(L,c,row)!==WALL&&HEAD_UP+h>(SURF(row)-row*TH)-2)return true;}
+  for(let t=0.02;t<T;t+=0.02){const x=P.x+P.face*vx*t,hy=P.y-(vy*t-0.5*GRAV*t*t)-HEAD_UP,cy=ceilOver(x,row);
+    if(cy!==null&&hy<cy-CEIL_TOL)return true;}
   return false;}
-function lowLandsSafe(run){const [vx,vy]=LOWJ[run?'run':'stand'],x=P.x+P.face*vx*2*vy/GRAV,c=Math.floor(x/TW),row=pRow(),f=F(L,c,row);
-  return solidBelow(L,c,row)&&B(L,c,row)!==WALL&&!(f&&(f.t==='spikes'||f.t==='loose'));}
 function launch(){const run=P.jumpKind==='run';P.jx=P.x;P.jy=P.y;let vx=run?183:132,vy=run?190:159;P.lowJump=false;
-  if(beamOverhead(run)&&lowLandsSafe(run)){[vx,vy]=LOWJ[run?'run':'stand'];P.lowJump=true;}
+  if(beamOverhead(run)){[vx,vy]=LOWJ[run?'run':'stand'];P.lowJump=true;}
   setState('air');P.vx=P.face*vx;P.vy=-vy;P.fallY=P.y;P.autoGrab=true;Snd.play('jump');}
 function startStep(){
   const row=pRow();let tx=P.x+P.face*13;
@@ -2691,9 +2704,10 @@ function stAir(dt){
   // kick off a wall: Jump while touching one (or just after leaving it)
   if(gameTime-(P.wallT||-9)<0.12&&took('j',0.12)){if(ws){startPlant(ws,true);stPlant(dt);}else kickOff(P.wallS);return;}
   const py=P.y;P.y+=P.vy*dt;
-  // a jump from the floor never carries his head into the stone overhead
-  if(P.vy<0&&(P.jumpKind==='run'||P.jumpKind==='stand')){const hh=P.lowJump?HEAD_LOW:HEAD_UP,rt=Math.floor((P.y-hh)/TH);
-    if(rt!==Math.floor((py-hh)/TH)&&B(L,pCol(),rt)===WALL){P.y=(rt+1)*TH+hh;P.vy=0;}}
+  // a jump from the floor never carries his head into the stone or the slab overhead: rising, or falling in under a
+  // ceiling that starts lower than his head
+  if(P.jumpKind==='run'||P.jumpKind==='stand'){const hh=P.lowJump?HEAD_LOW:HEAD_UP,cy=ceilOver(P.x,rowOf(P.y));
+    if(cy!==null&&P.y-hh<cy){P.y=cy+hh;if(P.vy<0)P.vy=0;}}
   // a swing bar within reach of the hands
   if(P.autoGrab||I.g){const b=barNear();if(b){swingCatch(b);Snd.play('grab');hint('swing');return;}}
   if(P.vy>0){
