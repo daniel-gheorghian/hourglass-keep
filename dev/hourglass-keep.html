@@ -6256,7 +6256,7 @@ function benchBoot(){const tries=['dev/tools/bot.js','tools/bot.js'],load=i=>{if
   const t=document.createElement('script');t.src=tries[i]+'?v='+APP_VERSION;t.onload=()=>setTimeout(benchStart,600);t.onerror=()=>{t.remove();load(i+1);};document.head.appendChild(t);};load(0);}
 function benchStart(){if(!window.botGen)return;BENCH.save=JSON.stringify(S);BENCH.run=true;BENCH.out=[];
   for(const id in HINTS)S.hints[id]=1;for(const id of HINT_MOVE)S.learned[id]=1;
-  S.set.lightMode=BENCH.arg==='classic'?'classic':'torch';window.__HKnoauto=BENCH.arg!=='auto';hideAll();benchFloor(0);}
+  S.set.lightMode=BENCH.arg==='classic'?'classic':'torch';window.__HKnoauto=BENCH.arg!=='auto';if(BENCH.arg==='saver'){S.set.saver=true;layout();}hideAll();benchFloor(0);} // (?bench=saver: Battery saver on, as the owner plays it: every other frame, 1x resolution)
 function benchFloor(i){BENCH.i=i;const n=BENCH.floors[i];GLP.rs=BENCH.arg==='75'?0.75:1;GLP.inSession=true;
   BENCH.g=window.botGen(n,9000+n,{fight:true});BENCH.iv=[];BENCH.wk=[];BENCH.rb=roomBuilds;BENCH.ru=GLREL.ups||0;BENCH.fb=null;BENCH.done=null;BENCH.t0=0;
   if(BENCH.arg==='auto')S.set.lightMode='torch';BENCH.step();}
@@ -6271,9 +6271,9 @@ function benchCheck(){if(!BENCH.run||BENCH.i<0)return;const el=BENCH.t0?(perform
     slow:n?iv.filter(v=>v>20).length/n:0,w2,wk:BENCH.wk.length?BENCH.wk.reduce((a,b)=>a+b,0)/BENCH.wk.length:0,rb:roomBuilds-BENCH.rb,ru:(GLREL.ups||0)-BENCH.ru,
     sc:GLP.rs,fb:BENCH.fb,bot:BENCH.done?(BENCH.done.ok===true?'done':String(BENCH.done.why||BENCH.done.ok)):''});
   BENCH.g=null;if(BENCH.i+1<BENCH.floors.length)benchFloor(BENCH.i+1);else benchEnd();}
-function benchEnd(){BENCH.run=false;BENCH.i=-1;S=JSON.parse(BENCH.save);window.__HKnoauto=false;mode='title';previewTitle();show('title');
+function benchEnd(){BENCH.run=false;BENCH.i=-1;S=JSON.parse(BENCH.save);window.__HKnoauto=false;mode='title';previewTitle();show('title');if(BENCH.arg==='saver')layout();
   const f=(v,d=1,w=5)=>v.toFixed(d).padStart(w),gl=GLP.gl,ri=gl&&gl.getExtension('WEBGL_debug_renderer_info');
-  const rows=['Hourglass Keep v'+APP_VERSION+' bench: '+(BENCH.arg||'torch, full size, no fall back'),
+  const rows=['Hourglass Keep v'+APP_VERSION+' bench: '+(BENCH.arg==='saver'?'Battery saver (torch, every other frame drawn, 1x; times per 60 Hz step)':BENCH.arg||'torch, full size, no fall back'),
     navigator.userAgent.replace(/^Mozilla\/5\.0 /,'').slice(0,110),'canvas '+cv.width+'x'+cv.height+'  dpr '+(window.devicePixelRatio||1)+(ri?'  '+gl.getParameter(ri.UNMASKED_RENDERER_WEBGL):''),
     'fl theme      s   fps  mean   p95   max >20ms  w2s  work rooms relf scale'+(BENCH.arg==='auto'?'  off@':'')];
   let T={s:0,fr:0,sum:0,slow:0,w2:0,wk:0,rb:0,ru:0};
@@ -6703,6 +6703,9 @@ const GLSH={
       c=c/(1.+max(c-.85,0.)*.6); // roll the bright end off instead of clipping it
       vec2 q=(v_u-vec2(.5,.45))*vec2(u_vg.x,1.);float v=smoothstep(.4,u_vg.y,length(q))*.66; // vignette (u_vg = aspect, outer radius)
       gl_FragColor=vec4(mix(c,vec3(.02,.012,.04),v),1.);}`]};
+// (stage 1, webgl plan) a pass that overwrites its whole target starts with a clear, so a tile-based GPU (Apple's) starts the
+// pass from a cleared tile instead of loading the old contents from memory (Metal's load action Clear rather than Load)
+function glClr(gl){gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);}
 function glMake(gl,src){const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o;};
   const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,src[0]));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,src[1]));return p;}
 function glLink(gl,p,names){gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));const u={};for(const n of names)u[n]=gl.getUniformLocation(p,n);return {p,u};}
@@ -6756,7 +6759,8 @@ Object.assign(GLFX,{metal:true,metalGlint:true}); // unit MS: the metal shader, 
 const GLGRADE={dungeon:{sh:[.93,.98,1.07],hi:[1.04,1.01,.96],sat:.96},palace:{sh:[1.04,.99,.93],hi:[1.07,1.02,.92],sat:1.1},tile:{sh:[.95,.98,1.06],hi:[1.04,1.02,.95],sat:1.05},
   forge:{sh:[1.07,.94,.9],hi:[1.1,.99,.9],sat:1.1},crypt:{sh:[.9,1.06,1.0],hi:[.97,1.06,.99],sat:.92}};
 const TODG=[null,{sh:[.96,.985,1.05],hi:[.96,.99,1.04],sat:.96},{sh:[1.05,1.0,.94],hi:[1.07,1.02,.9],sat:1.05}]; // the time of day's grade, over the theme's
-function gradeOf(style){const g=GLGRADE[style]||GLGRADE.dungeon,t=L&&L.prog?TODG[L.prog.tod]:null;return t?{sh:g.sh.map((v,i)=>v*t.sh[i]),hi:g.hi.map((v,i)=>v*t.hi[i]),sat:g.sat*t.sat}:g;}
+const gradeMemo=new Map(); // (made once per theme and time of day, not every frame)
+function gradeOf(style){const td=L&&L.prog?L.prog.tod:0,k=style+td;let o=gradeMemo.get(k);if(o)return o;const g=GLGRADE[style]||GLGRADE.dungeon,t=TODG[td]||null;o=t?{sh:g.sh.map((v,i)=>v*t.sh[i]),hi:g.hi.map((v,i)=>v*t.hi[i]),sat:g.sat*t.sat}:g;gradeMemo.set(k,o);return o;}
 const GLNEUT=[1,1,1],GLSTRONG={torch:1,fire:1,door:1,win:1}; // lights that throw a shadow
 const GLCH=[],GLBODY=[[0,-50,20,20],[0,-37,34,30],[0,-21,32,30],[0,-8,28,26]];let stormStrip=null;
 // the soft shadow of one figure on the back wall: cast away from the nearest strong lights (up to two), longer the farther
@@ -6987,7 +6991,7 @@ function glFrame(lights,VZ,camD,camDY,th){
     if(cx+r<0||cx-r>w||cy+r<0||cy-r>h)continue;
     for(let k=0;k<6;k++){const o=(n*6+k)*GLSTRIDE;B[o]=GLK[k][0];B[o+1]=GLK[k][1];B[o+2]=cx;B[o+3]=cy;B[o+4]=r;B[o+5]=0;B[o+6]=fl;B[o+7]=ph;B[o+8]=0;B[o+9]=0;B[o+10]=col[0]*a;B[o+11]=col[1]*a;B[o+12]=col[2]*a;}
     n++;}
-  const am=lk.amb.split(','),GLAMB=glAmbK(th.style,lk); // ambient, darker than the classic map's so the gaps between torches fall into shadow (owner, v41)
+  const am=glcRGB(lk.amb),GLAMB=glAmbK(th.style,lk); // ambient, darker than the classic map's so the gaps between torches fall into shadow (owner, v41)
   gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.map.f);gl.viewport(0,0,lw,lh);gl.clearColor(am[0]*GLAMB/255/1.5,am[1]*GLAMB/255/1.5,am[2]*GLAMB/255/1.5,1);gl.clear(gl.COLOR_BUFFER_BIT);
   if(n){gl.useProgram(P.light.p);gl.uniform2f(P.light.u.u_s,w,h);gl.uniform1f(P.light.u.u_t,t);
     gl.bindBuffer(gl.ARRAY_BUFFER,GLP.lb);gl.bufferSubData(gl.ARRAY_BUFFER,0,B,0,n*6*GLSTRIDE);
@@ -7000,10 +7004,10 @@ function glFrame(lights,VZ,camD,camDY,th){
   // 3. full-screen passes: bright-pass, blur, composite
   gl.bindBuffer(gl.ARRAY_BUFFER,GLP.tri);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
   const bind=(unit,tex)=>{gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,tex);};
-  gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.br.f);gl.viewport(0,0,lw,lh);bind(0,GLP.tex);bind(1,GLP.fb.map.t);bind(3,GLP.mtex);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.br.f);gl.viewport(0,0,lw,lh);glClr(gl);bind(0,GLP.tex);bind(1,GLP.fb.map.t);bind(3,GLP.mtex);
   msPasses(m=>{gl.useProgram(P.bright.p);gl.uniform1i(P.bright.u.u_sc,0);gl.uniform1i(P.bright.u.u_map,1);gl.uniform1i(P.bright.u.u_cs,6);gl.uniform1i(P.bright.u.u_mk,3);gl.uniform4fv(P.bright.u.u_ocT,GLA.oT);gl.uniform4fv(P.bright.u.u_ocC,GLA.oC);gl.uniform1f(P.bright.u.u_csk,cfx&1&&GLFX.shafts?RY_BLOOM:0);gl.uniform2f(P.bright.u.u_px,1.5/w,1.5/h);if(m)glMetalU(MS.ub);gl.drawArrays(gl.TRIANGLES,0,3);},lh,4); // (unit MS: the metal program only over the metal)
-  gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.bl.f);gl.useProgram(P.blur.p);bind(0,GLP.fb.br.t);gl.uniform1i(P.blur.u.u_t0,0);gl.uniform2f(P.blur.u.u_d,1.6/lw,0);gl.drawArrays(gl.TRIANGLES,0,3);
-  PF.p('bloom');gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);bind(0,GLP.tex);bind(1,GLP.fb.map.t);bind(2,GLP.fb.bl.t);bind(3,GLP.mtex);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.bl.f);glClr(gl);gl.useProgram(P.blur.p);bind(0,GLP.fb.br.t);gl.uniform1i(P.blur.u.u_t0,0);gl.uniform2f(P.blur.u.u_d,1.6/lw,0);gl.drawArrays(gl.TRIANGLES,0,3);
+  PF.p('bloom');gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);glClr(gl);bind(0,GLP.tex);bind(1,GLP.fb.map.t);bind(2,GLP.fb.bl.t);bind(3,GLP.mtex);
   msPasses(m=>{gl.useProgram(P.final.p);
   {const U=P.final.u,gr=gradeOf(th.style),on=GLFX.grade&&GFX().grade;gl.uniform1i(U.u_mk,3);gl.uniform4fv(U.u_mkT,GLA.kT);gl.uniform4fv(U.u_mkC,GLA.kC);gl.uniform2f(U.u_px,1/w,1/h);gl.uniform2f(U.u_mp,1/lw,1/lh);gl.uniform1f(U.u_t,t%1000);
     gl.uniform4f(U.u_fx,GLFX.shadow?1:0,GLFX.heat?1:0,GLFX.storm?1:0,S.set.calm?0.3:1);gl.uniform1f(U.u_sat,on?gr.sat:1);gl.uniform3fv(U.u_sh,on?gr.sh:GLNEUT);gl.uniform3fv(U.u_hi,on?gr.hi:GLNEUT);glAtmoU(U,cfx);glStormU(U);}
@@ -7215,7 +7219,7 @@ function glAtmo(VZ,camD,camDY,th,lw,lh){
     gl.uniform3f(U.u_sky,sr[0]/255,sr[1]/255,sr[2]/255);gl.uniform4f(U.u_cau,cs?0.3:0,S.set.calm?0.35:0.8,0,0);
     gl.drawArrays(gl.TRIANGLES,0,3);gl.disable(gl.SCISSOR_TEST);f|=1;}
   if(mist||sheen){
-    const U=GLC.M.u;gl.bindFramebuffer(gl.FRAMEBUFFER,GLC.fm.f);gl.viewport(0,0,lw,lh);gl.useProgram(GLC.M.p);com(U);
+    const U=GLC.M.u;gl.bindFramebuffer(gl.FRAMEBUFFER,GLC.fm.f);gl.viewport(0,0,lw,lh);glClr(gl);gl.useProgram(GLC.M.p);com(U);
     gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,GLP.tex);gl.uniform1i(U.u_sc,0);
     const am=glcRGB(lk.amb),A=glAmbK(st,lk)*Math.max(am[0],am[1],am[2])/255,mc=glcRGB(lk.mist);
     const ms=!mist?0:st==='crypt'?0.8:st==='dungeon'?0.75:0.5,mh=st==='crypt'?15:st==='dungeon'?11:9;
@@ -7303,7 +7307,7 @@ function glStorm(VZ,camD,camDY,w,h,lw,lh){
   const sx1=Math.min(lw,Math.ceil((xr*VZ-camD)/4)),sy0=Math.max(0,Math.floor(((top-120)*VZ-camDY)/4)),sy1=Math.min(lh,Math.ceil(((bot+24)*VZ-camDY)/4));
   if(sx1<=0||sy1<=sy0)return; // not on screen
   const gl=GLP.gl;if(!GLST.fb||GLST.fw!==lw||GLST.fh!==lh){GLST.fb=glFbo(gl,lw,lh);GLST.fw=lw;GLST.fh=lh;}
-  gl.bindFramebuffer(gl.FRAMEBUFFER,GLST.fb.f);gl.viewport(0,0,lw,lh);gl.enable(gl.SCISSOR_TEST);gl.scissor(0,lh-sy1,sx1,sy1-sy0);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,GLST.fb.f);gl.viewport(0,0,lw,lh);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.enable(gl.SCISSOR_TEST);gl.scissor(0,lh-sy1,sx1,sy1-sy0); // (cleared whole: the tile is never loaded)
   const U=GLST.p.u,col=stormCol(),sb=skyBeam();gl.useProgram(GLST.p.p);
   gl.uniform4f(U.u_cam,camD,camDY,1/VZ,VZ);gl.uniform2f(U.u_res,w,h);gl.uniform1f(U.u_t,gameTime%1000);
   gl.uniform4f(U.u_st,fx,top,bot,ch.rTop);gl.uniform4f(U.u_fx,a,S.set.calm?0.5:1,S.set.calm?0.3:1,burst?Math.max(bu,1e-4):0);gl.uniform4f(U.u_bu,ch.wx,P?P.x:0,P?P.y-30:0,0);gl.uniform4f(U.u_fl,STB.rise,STB.roll,STB.per,STB.fw);
