@@ -6471,12 +6471,18 @@ function glsInit(gl){
     const smp=(min,mag,wrap)=>{const s=gl.createSampler();gl.samplerParameteri(s,gl.TEXTURE_MIN_FILTER,min);gl.samplerParameteri(s,gl.TEXTURE_MAG_FILTER,mag);gl.samplerParameteri(s,gl.TEXTURE_WRAP_S,wrap);gl.samplerParameteri(s,gl.TEXTURE_WRAP_T,wrap);return s;};
     GLS.smp=[smp(gl.LINEAR,gl.LINEAR,gl.CLAMP_TO_EDGE),smp(gl.NEAREST,gl.NEAREST,gl.CLAMP_TO_EDGE),smp(gl.LINEAR,gl.LINEAR,gl.REPEAT),smp(gl.NEAREST,gl.NEAREST,gl.REPEAT)];
     GLS.smpL1=smp(gl.LINEAR_MIPMAP_NEAREST,gl.LINEAR,gl.CLAMP_TO_EDGE);gl.samplerParameterf(GLS.smpL1,gl.TEXTURE_MIN_LOD,1);gl.samplerParameterf(GLS.smpL1,gl.TEXTURE_MAX_LOD,1); // (the relief reads a room at half size)
-    GLS.ramp=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,GLS.ramp);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,256,512,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
-    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
-    GLS.gp=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,GLS.gp);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,2,512,0,gl.RGBA,gl.FLOAT,null);
-    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+    // (v61b) the gradient rows in three textures in turn: a frame with new rows copies the current one into the next on the GPU
+    // and writes its rows there, never into a texture the GPU may still be reading (new rows come every frame on some floors)
+    GLS.rampR=[0,1,2].map(()=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,256,512,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+      const f=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,f);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);return {t,f};});
+    gl.bindFramebuffer(gl.FRAMEBUFFER,null);GLS.rampI=0;GLS.ramp=GLS.rampR[0].t;
+    // (v61b) three parameter textures in turn, one a frame: a frame's write never lands in one the GPU may still be reading
+    // (on the phone's shared memory, writing into a texture in use makes the browser wait for the GPU)
+    GLS.gpR=[0,1,2].map(()=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,2,512,0,gl.RGBA,gl.FLOAT,null);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);return t;});GLS.gp=GLS.gpR[0];
     GLS.rampData=new Uint8Array(256*4);GLS.rampRows.clear();GLS.rampN=0;GLS.tex.clear();GLS.T.length=0;
-    GLS.gl=gl;GLS.ok=true;GLS.scene=g2Target('scene',9);GLS.bg=g2Target('bg',0);GLS.F=new G2D(GLS.scene);GLS.Fbg=new G2D(GLS.bg);
+    GLS.gl=gl;GLS.ok=true;GLS.scene=g2Target('scene',9);GLS.bg=g2Target('bg',0);GLS.F=new G2D(GLS.scene);GLS.Fbg=new G2D(GLS.bg);GLS.atlT=null;
     for(const [k,pr] of [['sil',1],['mask',2],['metal',2],['occ',2],['diss',1]]){GLS[k]=g2Target(k,pr);GLS['F'+k]=new G2D(GLS[k]);} // (unit WGL stage 3: the masks)
     g2grow(1<<15);g2growI(1<<16);}
   catch(e){GLS.ok=false;GLS.why=String(e&&e.message||e);}}
@@ -6544,10 +6550,17 @@ function g2Stage(){const U=G2UP,c=U.c,y=U.s*U.sh,h=Math.min(U.sh,c.height-y);if(
 function g2GradPM(rad){const k=rad?'gpmR':'gpmL';if(GLS[k]!==undefined)return GLS[k];const c=document.createElement('canvas');c.width=64;c.height=1;const x=c.getContext('2d'),
   gr=rad?x.createRadialGradient(0,0,0,0,0,64):x.createLinearGradient(0,0,64,0);
   gr.addColorStop(0,'#fff');gr.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=gr;x.fillRect(0,0,64,1);const d=x.getImageData(32,0,1,1).data;return GLS[k]=d[3]>0&&d[0]>200;}
-function g2RampRow(g){const pm=g2GradPM(g._hk[0]===1),k=(pm?'P':'U')+(g._k||(g._k=g._st.join('|')));let r=GLS.rampRows.get(k);if(r!==undefined)return r;
+// (v61b) a gradient's stops are kept with their alphas over the largest one (g._am), which the fill's alpha carries instead: a glow
+// fading in or out is one row, not a new row every frame (7 a second on floor 1, each a write into the rows' texture). Exact: both
+// ways of mixing the colours are linear in the alphas.
+function g2RampRow(g){const pm=g2GradPM(g._hk[0]===1);
+  if(!g._k){const st=g._st,n=st.length/2,S=[];let m=0;for(let i=0;i<n;i++){const c=g2col(st[i*2+1])||[0,0,0,0];S.push([Math.max(0,Math.min(1,+st[i*2])),c]);if(c[3]>m)m=c[3];} // (stops in the order given; the canvas sorts equal offsets stably)
+    const am=m>0&&m<1?m:1;g._am=am;g._S=S.map(q=>[q[0],[q[1][0],q[1][1],q[1][2],Math.min(1,q[1][3]/am)]]);
+    g._k=g._S.map(q=>q[0]+'|'+q[1][0]+','+q[1][1]+','+q[1][2]+','+Math.round(q[1][3]*4096)).join('|');}
+  const k=(pm?'P':'U')+g._k;let r=GLS.rampRows.get(k);if(r!==undefined)return r;
   if(GLS.rampN>=512){g2warn('ramp rows full');return 511;}
-  r=GLS.rampN++;GLS.rampRows.set(k,r);const st=g._st,n=st.length/2,D=new Uint8Array(256*4);
-  const S=[];for(let i=0;i<n;i++){const c=g2col(st[i*2+1])||[0,0,0,0];S.push([Math.max(0,Math.min(1,+st[i*2])),c]);} // (stops in the order given; the canvas sorts equal offsets stably)
+  r=GLS.rampN++;GLS.rampRows.set(k,r);const D=new Uint8Array(256*4);
+  const S=g._S.slice();
   S.sort((a,b)=>a[0]-b[0]);
   for(let x=0;x<256;x++){const t=x/255;let c;if(!S.length)c=[0,0,0,0];else if(t<=S[0][0])c=S[0][1];else if(t>=S[S.length-1][0])c=S[S.length-1][1];
     else{let j=0;while(j<S.length-1&&S[j+1][0]<t)j++;const a=S[j],b=S[j+1],f=b[0]>a[0]?(t-a[0])/(b[0]-a[0]):1;
@@ -6672,7 +6685,7 @@ class G2D{
   // ---- internals ----
   _z(){const i=++GLS.id;return 1-i/262144;} // (one depth per call: a pixel is painted once per fill or stroke)
   _style(st){if(st.k===0)return 0;if(st.k===1){this._gi=g2GradIx(st.g);return st.g._hk[0]===0?2:3;}if(st.k===2)return 4;return -1;}
-  _col(st){const ga=this.s.ga;if(st.k===0){const c=st.c,a=c[3]*ga;return (Math.round(a*255)<<24|Math.round(c[2]*a)<<16|Math.round(c[1]*a)<<8|Math.round(c[0]*a))>>>0;}const a8=Math.round(ga*255);return (a8<<24|a8<<16|a8<<8|a8)>>>0;}
+  _col(st){const ga=this.s.ga;if(st.k===0){const c=st.c,a=c[3]*ga;return (Math.round(a*255)<<24|Math.round(c[2]*a)<<16|Math.round(c[1]*a)<<8|Math.round(c[0]*a))>>>0;}const a8=Math.round(ga*(st.k===1&&st.g._am||1)*255);return (a8<<24|a8<<16|a8<<8|a8)>>>0;} // (a gradient: times its stops' largest alpha, g2RampRow)
   // starts a new batch when the target, texture, sampler, blend or clip level changes (a fill without a texture joins any)
   _batch(tex,smp){const T=this.T,ops=T.ops,op=this.s.op,B=this.B;
     if(B&&B.k===0&&B.op===op&&B.lvl===this.lvl&&B.rc===this.rc&&(tex===null||(B.tex===tex&&B.smp===smp)||B.tex===null)&&B.first+B.n===GLS.ni){if(tex!==null&&B.tex===null){B.tex=tex;B.smp=smp;}return;}
@@ -6796,9 +6809,11 @@ const G2BL=[[1,0x303,1,0x303],[1,1,1,1],[0x306,0x303,1,0x303],[0,0x303,0,0x303],
 function g2Replay(){const gl=GLS.gl,U=GLS.prog.u;if(!GLS.T.length)return;GLS.stamp++;GLS.stats.draws=0;GLS.stats.uploads=0;
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
   // gradient rows and parameters (from typed arrays: no canvas is copied)
+  if(GLS.rampDirty.length){const a=GLS.rampR[GLS.rampI],nx=(GLS.rampI+1)%3,b=GLS.rampR[nx];GLS.rampI=nx;GLS.ramp=b.t;
+    gl.disable(gl.SCISSOR_TEST);gl.bindFramebuffer(gl.READ_FRAMEBUFFER,a.f);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,b.f);gl.blitFramebuffer(0,0,256,512,0,0,256,512,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
   gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,GLS.ramp);
   for(let i=0;i<GLS.rampDirty.length;i+=2)gl.texSubImage2D(gl.TEXTURE_2D,0,0,GLS.rampDirty[i],256,1,gl.RGBA,gl.UNSIGNED_BYTE,GLS.rampDirty[i+1]);GLS.rampDirty.length=0;
-  gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,GLS.gp);if(GLS.gpN)gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,2,GLS.gpN,gl.RGBA,gl.FLOAT,GLS.gpData,0);
+  gl.activeTexture(gl.TEXTURE2);if(GLS.gpN)GLS.gp=GLS.gpR[GLS.stamp%3];gl.bindTexture(gl.TEXTURE_2D,GLS.gp);if(GLS.gpN)gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,2,GLS.gpN,gl.RGBA,gl.FLOAT,GLS.gpData,0);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
   // the images first (an upload inside a pass would split it); the targets drawn from (the backdrop) before those that use them
   const TT=GLS.T.slice().sort((a,b)=>(a.pri||0)-(b.pri||0));
@@ -6808,13 +6823,31 @@ function g2Replay(){const gl=GLS.gl,U=GLS.prog.u;if(!GLS.T.length)return;GLS.sta
   gl.useProgram(GLS.prog.p);gl.uniform1i(U.u_tx,0);gl.uniform1i(U.u_rp,1);gl.uniform1i(U.u_gp,2);
   gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,GLS.ramp);gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,GLS.gp);gl.activeTexture(gl.TEXTURE0);
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.NOTEQUAL);gl.enable(gl.STENCIL_TEST);gl.enable(gl.BLEND);gl.disable(gl.SCISSOR_TEST);
-  for(const t of TT){t.used=false;const rs=t===GLS.scene?GLS.rs:1;g2Size(t,Math.max(1,Math.round(t.w0*rs)),Math.max(1,Math.round(t.h0*rs))); // (the render scale applies to the scene only)
-    gl.bindFramebuffer(gl.FRAMEBUFFER,t.fb);gl.viewport(0,0,t.w,t.h);gl.uniform2f(U.u_s,t.w0,t.h0);
-    gl.colorMask(true,true,true,true);gl.depthMask(true);gl.stencilMask(0xFF);const c=t.clear;gl.clearColor(c[0],c[1],c[2],c[3]);gl.clearDepth(1);gl.clearStencil(0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);
+  // (v61b) the masks (mask, occluders, metal) are drawn straight into their places in one multisampled atlas (GLA.G's layout):
+  // one pass and one resolve, where each had its own and the atlas a pass of copies (on the phone a pass costs more than its pixels)
+  const G=GLA.G,AT=G?(GLS.atlT||(GLS.atlT=g2Target('atlas',2))):null,PL=G?{mask:G.mk&&[0,0,G.lw,G.lh,0,0],occ:G.oc&&[0,0,G.ow,G.oh,G.lw+2,0],metal:G.mo&&[G.bx,G.by,G.bw,G.bh,0,G.Y0]}:null;
+  let atOpen=false;
+  const atBegin=()=>{AT.w0=G.W;AT.h0=G.H;g2Size(AT,G.W,G.H);gl.bindFramebuffer(gl.FRAMEBUFFER,AT.fb);gl.viewport(0,0,G.W,G.H);gl.disable(gl.SCISSOR_TEST);
+    gl.colorMask(true,true,true,true);gl.depthMask(true);gl.stencilMask(0xFF);gl.clearColor(0,0,0,1);gl.clearDepth(1);gl.clearStencil(0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);atOpen=true;};
+  const resolve=t=>{gl.disable(gl.SCISSOR_TEST);gl.bindFramebuffer(gl.FRAMEBUFFER,t.fb);gl.invalidateFramebuffer(gl.FRAMEBUFFER,[gl.DEPTH_STENCIL_ATTACHMENT]); // (depth and stencil dropped while the pass is still open: they are never stored)
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER,t.fb);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,t.rf);gl.blitFramebuffer(0,0,t.w,t.h,0,0,t.w,t.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);
+    gl.invalidateFramebuffer(gl.READ_FRAMEBUFFER,[gl.COLOR_ATTACHMENT0]);gl.bindFramebuffer(gl.FRAMEBUFFER,null);};
+  for(const t of TT){t.used=false;const sub=AT&&t.name in PL;
+    if(atOpen&&!sub){resolve(AT);atOpen=false;AT.done=true;}
+    let ox=0,oy=0,rg=null;
+    if(sub){const q=PL[t.name];if(!q)continue;if(!atOpen&&!AT.done)atBegin();else if(!atOpen)continue;t.w=t.w0;t.h=t.h0;
+      const rx=q[4],ry=G.H-q[5]-q[3];ox=rx-q[0];oy=G.H-q[5]-t.h+q[1];rg=[rx,ry,q[2],q[3]];
+      gl.viewport(ox,oy,t.w,t.h);gl.uniform2f(U.u_s,t.w0,t.h0);gl.enable(gl.SCISSOR_TEST);gl.scissor(rx,ry,q[2],q[3]);
+      gl.colorMask(true,true,true,true);gl.depthMask(true);gl.stencilMask(0xFF);const c=t.clear;gl.clearColor(c[0],c[1],c[2],c[3]);gl.clear(gl.COLOR_BUFFER_BIT);}
+    else{const rs=t===GLS.scene?GLS.rs:1;g2Size(t,Math.max(1,Math.round(t.w0*rs)),Math.max(1,Math.round(t.h0*rs))); // (the render scale applies to the scene only)
+    gl.bindFramebuffer(gl.FRAMEBUFFER,t.fb);gl.viewport(0,0,t.w,t.h);gl.uniform2f(U.u_s,t.w0,t.h0);gl.disable(gl.SCISSOR_TEST);
+    gl.colorMask(true,true,true,true);gl.depthMask(true);gl.stencilMask(0xFF);const c=t.clear;gl.clearColor(c[0],c[1],c[2],c[3]);gl.clearDepth(1);gl.clearStencil(0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);}
     let curOp=-1,curTex=null,curSmp=-2,curRc=null,curCm=0;const sx=t.w/t.w0,sy=t.h/t.h0;gl.uniform1i(U.u_cm,0);
     const rect=o=>{const r=o.rc||null,cm=r?(o.op===4?2:o.op===6?3:1):0;if(r!==curRc){curRc=r;
-        if(r){const X0=r[0]*sx,X1=r[2]*sx,Y0=t.h-r[3]*sy,Y1=t.h-r[1]*sy,a=Math.max(0,Math.floor(X0)),b=Math.max(0,Math.floor(Y0));gl.enable(gl.SCISSOR_TEST);gl.scissor(a,b,Math.max(0,Math.ceil(X1)-a),Math.max(0,Math.ceil(Y1)-b));gl.uniform4f(U.u_cr,X0,Y0,X1,Y1);}
-        else gl.disable(gl.SCISSOR_TEST);}
+        if(r){const X0=ox+r[0]*sx,X1=ox+r[2]*sx,Y0=oy+t.h-r[3]*sy,Y1=oy+t.h-r[1]*sy;let a=Math.max(0,Math.floor(X0)),b=Math.max(0,Math.floor(Y0)),a1=Math.ceil(X1),b1=Math.ceil(Y1);
+          if(rg){a=Math.max(a,rg[0]);b=Math.max(b,rg[1]);a1=Math.min(a1,rg[0]+rg[2]);b1=Math.min(b1,rg[1]+rg[3]);}
+          gl.enable(gl.SCISSOR_TEST);gl.scissor(a,b,Math.max(0,a1-a),Math.max(0,b1-b));gl.uniform4f(U.u_cr,X0,Y0,X1,Y1);}
+        else if(rg)gl.scissor(rg[0],rg[1],rg[2],rg[3]);else gl.disable(gl.SCISSOR_TEST);}
       if(cm!==curCm){curCm=cm;gl.uniform1i(U.u_cm,cm);}};
     const blend=k=>{if(k===curOp)return;curOp=k;const b=G2BL[k];gl.blendFuncSeparate(b[0],b[1],b[2],b[3]);};
     const tex=o=>{const tt=o.tex?(o.tex.isTgt?o.tex.tex:o.tt):null;if(tt&&tt!==curTex){gl.bindTexture(gl.TEXTURE_2D,tt);curTex=tt;}if(o.smp>=0&&o.smp!==curSmp){gl.bindSampler(0,GLS.smp[o.smp]);curSmp=o.smp;}};
@@ -6833,9 +6866,9 @@ function g2Replay(){const gl=GLS.gl,U=GLS.prog.u;if(!GLS.T.length)return;GLS.sta
         gl.drawElements(gl.TRIANGLES,o.cn,gl.UNSIGNED_INT,o.cf*4);GLS.stats.draws++;color(true);continue;}
       if(o.k===5){color(false);gl.stencilFunc(gl.LESS,L,0xE0);gl.stencilOp(gl.KEEP,gl.KEEP,gl.REPLACE); // (above the outer level: back to it)
         gl.drawElements(gl.TRIANGLES,o.n,gl.UNSIGNED_INT,o.first*4);GLS.stats.draws++;color(true);continue;}}
-    // resolve the samples into the target's texture, then drop them (they are never stored to memory)
-    gl.disable(gl.SCISSOR_TEST);gl.bindFramebuffer(gl.READ_FRAMEBUFFER,t.fb);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,t.rf);gl.blitFramebuffer(0,0,t.w,t.h,0,0,t.w,t.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);
-    gl.invalidateFramebuffer(gl.READ_FRAMEBUFFER,[gl.COLOR_ATTACHMENT0,gl.DEPTH_STENCIL_ATTACHMENT]);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
+    // resolve the samples into the target's texture, then drop them (the atlas: once, after its last mask)
+    if(!sub)resolve(t);}
+  if(AT){if(!AT.done){if(!atOpen)atBegin();resolve(AT);}AT.done=false;} // (no mask this frame: the atlas is still cleared)
   gl.bindSampler(0,null);gl.disable(gl.DEPTH_TEST);gl.disable(gl.STENCIL_TEST);gl.disable(gl.BLEND);gl.colorMask(true,true,true,true);gl.depthMask(true);gl.stencilMask(0xFF);gl.stencilOp(gl.KEEP,gl.KEEP,gl.KEEP);
   gl.bindVertexArray(null);gl.activeTexture(gl.TEXTURE0);
   GLS.stats.verts=GLS.nv;let nb=0;for(const t of TT)nb+=t.ops.length;GLS.stats.batches=nb;
@@ -7499,7 +7532,8 @@ function glcPre(VZ,camD,camDY,th){GLC.pns=0;GLC.ocAny=0;if(!GLC.on||!L)return;
 const GLA={c:null,g:null,w:0,h:0,had:true,kT:new Float32Array(4),kC:new Float32Array(4),oT:new Float32Array(4),oC:new Float32Array(4)};
 // (unit WGL) the atlas on the GPU: the same layout as the 2D one, each part copied from its mask's resolved texture (canvas rows
 // run down, GL's up: a part at canvas y0..y0+h lands at GL rows H-y0-h..H-y0); black where nothing is
-function glAtlasGL(){const gl=GLP.gl,G=GLA.G;if(!G)return;const T=GLP.atl||(GLP.atl={t:null,f:null,w:0,h:0});
+function glAtlasGL(){const gl=GLP.gl,G=GLA.G;if(!G)return;if(GLS.atlT&&GLS.atlT.tex){GLP.mt=GLS.atlT.tex;return;} // (v61b: drawn in place by g2Replay)
+  const T=GLP.atl||(GLP.atl={t:null,f:null,w:0,h:0});
   if(T.w!==G.W||T.h!==G.H){if(T.t){gl.deleteTexture(T.t);gl.deleteFramebuffer(T.f);}const f=glFbo(gl,G.W,G.H);T.t=f.t;T.f=f.f;T.w=G.W;T.h=G.H;}
   gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,T.f);gl.viewport(0,0,G.W,G.H);gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);
   const cp=(t,sx,sy,w,h,dx,dy)=>{if(!t.rf||w<=0||h<=0)return;gl.bindFramebuffer(gl.READ_FRAMEBUFFER,t.rf);const Y=t.h-sy-h,DY=G.H-dy-h;gl.blitFramebuffer(sx,Y,sx+w,Y+h,dx,DY,dx+w,DY+h,gl.COLOR_BUFFER_BIT,gl.NEAREST);};
@@ -7511,7 +7545,7 @@ function glAtlasUp(){const gl=GLP.gl,A=GLA;GLP.mt=GLP.mtex;if(!A.dirty||!A.c)ret
   else gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,A.c);}
 function glAtlas(w,h,lw,lh){const gl=GLP.gl,A=GLA,ow=Math.ceil(w/8),oh=Math.ceil(h/8),mo=MS.on&&(GLP.gls||MS.c);
   const cb=MS.cb,bx=mo?Math.max(0,Math.floor(cb[0])):0,by=mo?Math.max(0,Math.floor(cb[1])):0,bw=mo?Math.max(1,Math.ceil(cb[2])-bx):0,bh=mo?Math.max(1,Math.ceil(cb[3])-by):0;
-  const up=v=>Math.ceil(v/32)*32,W=up(Math.max(lw+2+ow,bw)),Y0=Math.max(lh,oh)+2,H=up(Y0+bh);
+  const up=v=>Math.ceil(v/32)*32,Y0=Math.max(lh,oh)+2,W=GLP.gls?up(Math.max(lw+2+ow,Math.ceil(w/2))):up(Math.max(lw+2+ow,bw)),H=GLP.gls?up(Y0+Math.ceil(h/2)):up(Y0+bh); // (v61b, WebGL masks: the atlas is a multisampled target, sized for the largest metal box so it is not made again as the box changes)
   const any=GLP.mkAny||GLC.ocAny||mo;
   if(GLP.gls){A.G={W,H,lw,lh,ow,oh,bx,by,bw,bh,Y0,mk:GLP.mkAny,oc:GLC.ocAny,mo:!!mo};} // (unit WGL: laid out here, copied on the GPU by glAtlasGL)
   else{if(!A.c){A.c=document.createElement('canvas');A.g=A.c.getContext('2d',{alpha:false});}
