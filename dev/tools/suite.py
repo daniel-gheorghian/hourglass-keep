@@ -66,6 +66,7 @@ J += [(u[:-3], [u], tail_check()) for u in unit if os.path.exists(os.path.join(H
 J += [('swingtest', ['swingtest.py', str(n), str(n + 2)], tail_check()) for n in [6, 12, 20]] # the swing bar is a trapeze: rest, one-way hold, pumping, the run-in catch, releases, rewind
 J += [('stormfair', ['stormfair.py', str(n), str(n + 1)], tail_check()) for n in [6, 9, 13, 17, 21, 25]] # the sandstorm's front reads where it kills, Classic and Torchlight, every theme
 J += [('liftkick', ['liftkick.py'], tail_check(r'ALL OK'))] # no wall plant or kick in a lift's shaft; kick shafts still climb
+J += [('liftscan', ['liftscan.py', str(n), str(n + 5), '3', 'both'], tail_check(r'ALL OK')) for n in range(3, 61, 6)] # no part of a lift or its rider over a wall's front, a low ceiling or a grating in front of it (Classic and Torchlight)
 J += [('lowceil', ['lowceil.py'], tail_check(r'ALL OK'))] # under a ceiling at his height a jump is the low leap and never goes through the stone
 J += [('gratepeek', ['gratepeek.py', '6', '27', '6'], tail_check(r'tested [1-9]\d* bad 0 '))] # crouching on a grating shows the flask below
 # longest jobs first so the tail of the run isn't one slow floor

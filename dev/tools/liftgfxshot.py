@@ -15,6 +15,7 @@ AT = [x[3:].split(':') for x in a if x.startswith('at=')]  # at=n:seed:liftindex
 CASES = [('lift2d', 3, 0), ('lift3u', 9, 0), ('lift2u', 17, 0), ('lift3d', 26, 0), ('lift2d', 38, 0), ('lift2u', 50, 0),
          ('chn2d', 8, 0), ('chn3u', 20, 0), ('chn2u', 41, 0)]
 FRACS = [0, 0.5, 1]
+FACE = next((int(x[5:]) for x in a if x.startswith('face=')), 0)
 DSF = next((float(x[4:]) for x in a if x.startswith('dsf=')), 2)
 FR = next((x[3:] for x in a if x.startswith('fr=')), None)
 if FR: FRACS = [float(v) for v in FR.split(',')]
@@ -26,12 +27,12 @@ FIND = r'''([kind,n0,skip])=>{const H=__HK;if(kind[0]==='#')return [n0,skip];win
 PLACE = r'''([n,seed,kind,frac])=>{const H=__HK,L=H.load(n,seed,true);H.banner=null;const P=H.P;P.inv=1e9;
   const sg=kind[0]==='#'?null:L.segs.find(q=>q.k==='turn-'+kind);
   let lf=sg?null:L.lifts[+kind.slice(1)];if(sg)lf=L.lifts.find(q=>q.ca>=Math.min(sg.c0,sg.c1)-1&&q.cb<=Math.max(sg.c0,sg.c1)+1&&q.rT>=Math.min(sg.r0,sg.r1)&&q.rB<=Math.max(sg.r0,sg.r1));
-  if(lf.t==='lift'){lf.y=lf.yT+(lf.yB-lf.yT)*frac;P.x=lf.sc*32+16;P.y=lf.y;P.fallY=P.y;P.face=lf.sT<0?1:-1;
+  if(lf.t==='lift'){lf.y=lf.yT+(lf.yB-lf.yT)*frac;P.x=lf.sc*32+16;P.y=lf.y;P.fallY=P.y;P.face=window.__face||(lf.sT<0?1:-1);
     if(frac>0&&frac<1){P.state='lift';P.lift=lf;}else P.state='stand';
     L.base[lf.rT*L.cols+lf.sc]=frac===0?1:0;lf.gT=frac===0?1:0;lf.gB=frac===1?1:0;}
   else{H.tick(Math.round(frac*6*60));const q=H.chainPos(lf,0,H.gameTime);P.x=q.x;P.y=q.y;P.fallY=P.y;P.state='lift';P.lift=lf;P.slab=0;P.bx=q.x;P.by=q.y;P.bt=-9;}
-  H.cam.snap=true;H.tick(1);
-  if(lf.t==='lift'){lf.y=lf.yT+(lf.yB-lf.yT)*frac;P.x=lf.sc*32+16;P.y=lf.y;}
+  H.cam.snap=true;
+  for(let k=0;k<24;k++){H.tick(1);if(lf.t==='lift'){lf.y=lf.yT+(lf.yB-lf.yT)*frac;P.x=lf.sc*32+16;P.y=lf.y;}} // (his look offsets ease in, as in play)
   if(H.GLP)H.GLP.pipe=false;window.__HKfreeze=true;H.render();H.render();H.render();
   const X=H.XF,cv=[...document.querySelectorAll('canvas')].find(c=>c.getBoundingClientRect().width>0),R=cv.getBoundingClientRect();
   const m=(x,y)=>[R.left+(x*X.VZ-X.camD)/cv.width*R.width,R.top+(y*X.VZ-X.camDY)/cv.height*R.height];
@@ -56,6 +57,7 @@ with sync_playwright() as p:
             pg.goto('file://' + os.path.abspath(SRC)); pg.wait_for_timeout(300)
             pg.evaluate("document.querySelectorAll('.screen').forEach(e=>e.hidden=true)")
             pg.evaluate("m=>{__HK.S.set.lightMode=m}", MODE)
+            if FACE: pg.evaluate("f=>{window.__face=f}", FACE)
             f = pg.evaluate(FIND, [kind, n0, skip])
             if not f:
                 print('none', kind, n0); pg.close(); break
