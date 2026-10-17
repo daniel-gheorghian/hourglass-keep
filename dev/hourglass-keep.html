@@ -6439,26 +6439,30 @@ void main(){v_c=a_c;v_t=a_t;v_g=vec2(mod(a_g.x,8.),floor(a_g.x/8.+.01));gl_Posit
 // modes (v_g.x): 0 colour; 1 image (premultiplied) times alpha; 2 linear gradient, 3 radial gradient (v_t: the point in the
 // gradient's space; v_g.y its row of parameters); 4 pattern (v_t: image texels / size, repeated by the sampler)
 const G2FS=`#version 300 es
-precision highp float;in vec4 v_c;in vec2 v_t;flat in vec2 v_g;uniform sampler2D u_tx,u_rp;uniform highp sampler2D u_gp;out vec4 o;
-void main(){int m=int(v_g.x+.5);
-  if(m==0){o=v_c;return;}
-  if(m==1||m==4){o=texture(u_tx,v_t)*v_c.a;return;}
+precision highp float;in vec4 v_c;in vec2 v_t;flat in vec2 v_g;uniform sampler2D u_tx,u_rp;uniform highp sampler2D u_gp;uniform vec4 u_cr;uniform int u_cm;out vec4 o;
+vec4 shade(){int m=int(v_g.x+.5);
+  if(m==0){return v_c;}
+  if(m==1||m==4){return texture(u_tx,v_t)*v_c.a;}
   int gi=int(v_g.y+.5);
   if(m>=5){vec4 A=texelFetch(u_gp,ivec2(0,gi),0);float v=texelFetch(u_tx,ivec2(floor(v_t)),0).r,d=v-A.x; // the dissolve: noise against the threshold, the band's sand
-    if(m==5){o=d<0.?vec4(0.):vec4(1.);return;}
-    if(d<0.||d>=A.y){o=vec4(0.);return;}o=vec4(texture(u_rp,vec2((floor(d/A.y*15.)*16.+8.5)/256.,(A.z+.5)/512.)).rgb,1.);return;}vec4 A=texelFetch(u_gp,ivec2(0,gi),0),B=texelFetch(u_gp,ivec2(1,gi),0);float t;
+    if(m==5){return d<0.?vec4(0.):vec4(1.);}
+    if(d<0.||d>=A.y){return vec4(0.);}return vec4(texture(u_rp,vec2((floor(d/A.y*15.)*16.+8.5)/256.,(A.z+.5)/512.)).rgb,1.);}vec4 A=texelFetch(u_gp,ivec2(0,gi),0),B=texelFetch(u_gp,ivec2(1,gi),0);float t;
   if(m==2){vec2 d=A.zw-A.xy;float dd=dot(d,d);t=dd>0.?dot(v_t-A.xy,d)/dd:0.;}
   else{vec2 cd=B.xy-A.xy,pd=v_t-A.xy;float r0=A.z,dr=B.z-A.z,a=dot(cd,cd)-dr*dr,b=dot(pd,cd)+r0*dr,c=dot(pd,pd)-r0*r0; // two circles (the canvas rule): the largest t with r(t) >= 0 whose circle passes through the point
-    if(abs(a)<1e-6){if(abs(b)<1e-9){o=vec4(0.);return;}t=c/(2.*b);if(r0+t*dr<0.){o=vec4(0.);return;}}
-    else{float D=b*b-a*c;if(D<0.){o=vec4(0.);return;}float s=sqrt(D),t1=(b+s)/a,t2=(b-s)/a;t=max(t1,t2);if(r0+t*dr<0.){t=min(t1,t2);if(r0+t*dr<0.){o=vec4(0.);return;}}}}
-  vec4 c=texture(u_rp,vec2((clamp(t,0.,1.)*255.+.5)/256.,(B.w+.5)/512.));o=vec4(c.rgb*c.a,c.a)*v_c.a;}`;
+    if(abs(a)<1e-6){if(abs(b)<1e-9){return vec4(0.);}t=c/(2.*b);if(r0+t*dr<0.){return vec4(0.);}}
+    else{float D=b*b-a*c;if(D<0.){return vec4(0.);}float s=sqrt(D),t1=(b+s)/a,t2=(b-s)/a;t=max(t1,t2);if(r0+t*dr<0.){t=min(t1,t2);if(r0+t*dr<0.){return vec4(0.);}}}}
+  vec4 c=texture(u_rp,vec2((clamp(t,0.,1.)*255.+.5)/256.,(B.w+.5)/512.));return vec4(c.rgb*c.a,c.a)*v_c.a;}
+// (a rectangle clip, u_cm 1 to 3) the share of this pixel inside u_cr (framebuffer px): the colour scaled by it; destination-in
+// keeps the uncovered share of what is there; copy takes the pixel when it is mostly inside
+void main(){o=shade();if(u_cm==0)return;vec2 lo=clamp(gl_FragCoord.xy-.5,u_cr.xy,u_cr.zw),hi=clamp(gl_FragCoord.xy+.5,u_cr.xy,u_cr.zw);float cv=(hi.x-lo.x)*(hi.y-lo.y);
+  if(u_cm==1)o*=cv;else if(u_cm==2)o=vec4(o.rgb,1.-cv*(1.-o.a));else if(cv<.5)discard;}`;
 const G2STRIDE=7,G2OPS={'source-over':0,'lighter':1,'multiply':2,'destination-out':3,'destination-in':4,'source-atop':5,'copy':6,'screen':7,'destination-over':8};
 const GLS={ok:false,gl:null,why:'',on:false,vb:null,ib:null,F32:null,U32:null,I32:null,nv:0,cap:0,ni:0,icap:0,id:0,stamp:0,fr:0,tex:new Map(),T:[],ramp:null,rampRows:new Map(),rampN:0,rampData:null,rampDirty:[],
   gp:null,gpData:new Float32Array(512*8),gpN:0,smp:[],prog:null,vao:null,u:null,scene:null,bg:null,F:null,Fbg:null,rs:1,stats:{draws:0,verts:0,uploads:0,batches:0},max:0,warned:{}};
 function g2warn(k){if(!GLS.warned[k]){GLS.warned[k]=1;console.log('G2D: '+k);}}
 function glsInit(gl){
   try{if(!(typeof WebGL2RenderingContext!=='undefined'&&gl instanceof WebGL2RenderingContext))throw new Error('webgl2 needed');
-    const p=glMake(gl,[G2VS,G2FS]);['a_p','a_c','a_t','a_g'].forEach((n,i)=>gl.bindAttribLocation(p,i,n));GLS.prog=glLink(gl,p,['u_s','u_tx','u_rp','u_gp']);
+    const p=glMake(gl,[G2VS,G2FS]);['a_p','a_c','a_t','a_g'].forEach((n,i)=>gl.bindAttribLocation(p,i,n));GLS.prog=glLink(gl,p,['u_s','u_tx','u_rp','u_gp','u_cr','u_cm']);
     GLS.max=Math.min(window.__HKmsaa||4,gl.getParameter(gl.MAX_SAMPLES)||0); // (4x: the edges' antialiasing; __HKmsaa for tests)
     GLS.vao=gl.createVertexArray();gl.bindVertexArray(GLS.vao);GLS.vb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,GLS.vb);
     const S4=G2STRIDE*4;gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,S4,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,4,gl.UNSIGNED_BYTE,true,S4,8);
@@ -6568,8 +6572,8 @@ const G2CAP={butt:0,round:1,square:2},G2JOIN={miter:0,round:1,bevel:2};
 function G2State(){return {m:[1,0,0,1,0,0],ga:1,op:0,fs:{k:0,c:[0,0,0,1],s:'#000000'},ss:{k:0,c:[0,0,0,1],s:'#000000'},lw:1,cap:0,join:0,ml:10,dash:null,doff:0,sm:true,clips:0};}
 function g2cloneSt(s){return {m:s.m.slice(),ga:s.ga,op:s.op,fs:s.fs,ss:s.ss,lw:s.lw,cap:s.cap,join:s.join,ml:s.ml,dash:s.dash,doff:s.doff,sm:s.sm,clips:0};}
 class G2D{
-  constructor(t){this.T=t;this.isG2D=true;this.s=G2State();this.stk=[];this.P=[];this.P2=[];this.pool=[];this.pn=0;this.cpool=[];this.cout=[];this.sk={col:0,mo:0,gi:0,z:0,st:null};this.cur=null;this.cx=0;this.cy=0;this.lvl=0;this.B=null;this.canvas={width:0,height:0};this.font='10px sans-serif';this.textAlign='start';this.textBaseline='alphabetic';}
-  begin(w,h,clear){const t=this.T;t.used=false;g2Use(t);t.ops.length=0;t.clear=clear||[0,0,0,0];t.w0=t.width=w;t.h0=t.height=h;this.canvas.width=w;this.canvas.height=h;this.s=G2State();this.stk.length=0;this.P.length=0;this.pn=0;this.cur=null;this.lvl=0;this.B=null;}
+  constructor(t){this.T=t;this.isG2D=true;this.s=G2State();this.stk=[];this.P=[];this.P2=[];this.pool=[];this.pn=0;this.cpool=[];this.cout=[];this.sk={col:0,mo:0,gi:0,z:0,st:null};this.cur=null;this.cx=0;this.cy=0;this.lvl=0;this.rc=null;this.B=null;this.canvas={width:0,height:0};this.font='10px sans-serif';this.textAlign='start';this.textBaseline='alphabetic';}
+  begin(w,h,clear){const t=this.T;t.used=false;g2Use(t);t.ops.length=0;t.clear=clear||[0,0,0,0];t.w0=t.width=w;t.h0=t.height=h;this.canvas.width=w;this.canvas.height=h;this.s=G2State();this.stk.length=0;this.P.length=0;this.pn=0;this.cur=null;this.lvl=0;this.rc=null;this.B=null;}
   // ---- state ----
   save(){this.stk.push(this.s);this.s=g2cloneSt(this.s);}
   restore(){if(!this.stk.length)return;const s=this.s;for(let i=0;i<s.clips;i++)this.clipPop();this.s=this.stk.pop();}
@@ -6636,7 +6640,10 @@ class G2D{
   clip(a,b){const p=a&&typeof a==='object'?a:null,rule=typeof a==='string'?a:typeof b==='string'?b:'nonzero';
     if(p){this._w0(p);this._clip(this.P,rule);this._w1();}else this._clip(this.P,rule);}
   fillRect(x,y,w,h){if(!(w&&h))return;const m=this.s.m,X0=m[0]*x+m[2]*y+m[4],Y0=m[1]*x+m[3]*y+m[5],X1=m[0]*(x+w)+m[2]*y+m[4],Y1=m[1]*(x+w)+m[3]*y+m[5],X2=m[0]*(x+w)+m[2]*(y+h)+m[4],Y2=m[1]*(x+w)+m[3]*(y+h)+m[5],X3=m[0]*x+m[2]*(y+h)+m[4],Y3=m[1]*x+m[3]*(y+h)+m[5];
-    const st=this.s.fs,mo=this._style(st);if(mo<0)return;const z=this._z(),gi=mo>=2?this._gi:0;this._batch(st.k===2?st.tex:null,st.k===2?st.smp:-1);
+    const st=this.s.fs,T=this.T;
+    if(!T.ops.length&&!this.s.op&&!this.lvl&&!this.rc&&st.k===0&&st.c[3]*this.s.ga>=1&&!m[1]&&!m[2]&&Math.min(X0,X2)<=0&&Math.min(Y0,Y2)<=0&&Math.max(X0,X2)>=T.w0&&Math.max(Y0,Y2)>=T.h0){
+      T.clear=[st.c[0]/255,st.c[1]/255,st.c[2]/255,1];return;} // (v61b: an opaque fill of the whole target before anything else is its clear colour: one full-screen layer less)
+    const mo=this._style(st);if(mo<0)return;const z=this._z(),gi=mo>=2?this._gi:0;this._batch(st.k===2?st.tex:null,st.k===2?st.smp:-1);
     const col=this._col(st);this._quad(X0,Y0,X1,Y1,X2,Y2,X3,Y3,col,mo,gi,z,st);}
   strokeRect(x,y,w,h){this._w0(null);this.rect(x,y,w,h);this._stroke(this.P);this._w1();}
   clearRect(x,y,w,h){const so=this.s.op,sf=this.s.fs,sa=this.s.ga;this.s.op=6;this.s.fs={k:0,c:[0,0,0,0],s:'transparent'};this.s.ga=1;this.fillRect(x,y,w,h);this.s.op=so;this.s.fs=sf;this.s.ga=sa;}
@@ -6668,8 +6675,8 @@ class G2D{
   _col(st){const ga=this.s.ga;if(st.k===0){const c=st.c,a=c[3]*ga;return (Math.round(a*255)<<24|Math.round(c[2]*a)<<16|Math.round(c[1]*a)<<8|Math.round(c[0]*a))>>>0;}const a8=Math.round(ga*255);return (a8<<24|a8<<16|a8<<8|a8)>>>0;}
   // starts a new batch when the target, texture, sampler, blend or clip level changes (a fill without a texture joins any)
   _batch(tex,smp){const T=this.T,ops=T.ops,op=this.s.op,B=this.B;
-    if(B&&B.k===0&&B.op===op&&B.lvl===this.lvl&&(tex===null||(B.tex===tex&&B.smp===smp)||B.tex===null)&&B.first+B.n===GLS.ni){if(tex!==null&&B.tex===null){B.tex=tex;B.smp=smp;}return;}
-    this.B={k:0,first:GLS.ni,n:0,op,tex,smp,lvl:this.lvl};ops.push(this.B);}
+    if(B&&B.k===0&&B.op===op&&B.lvl===this.lvl&&B.rc===this.rc&&(tex===null||(B.tex===tex&&B.smp===smp)||B.tex===null)&&B.first+B.n===GLS.ni){if(tex!==null&&B.tex===null){B.tex=tex;B.smp=smp;}return;}
+    this.B={k:0,first:GLS.ni,n:0,op,tex,smp,lvl:this.lvl,rc:this.rc};ops.push(this.B);}
   // one vertex (returns its number): position, colour (premultiplied, packed), the style's coordinates, mode + 8 x gradient, depth
   _v(X,Y,col,u,v,mo,gi,z){if(GLS.nv>=GLS.cap)g2grow(GLS.nv+1);const F=GLS.F32,o=GLS.nv*G2STRIDE;F[o]=X;F[o+1]=Y;GLS.U32[o+2]=col;F[o+3]=u;F[o+4]=v;F[o+5]=mo+gi*8;F[o+6]=z;return GLS.nv++;}
   _i3(a,b,c){if(GLS.ni+3>GLS.icap)g2growI(GLS.ni+3);const I=GLS.I32,o=GLS.ni;I[o]=a;I[o+1]=b;I[o+2]=c;GLS.ni+=3;this.B.n+=3;}
@@ -6699,21 +6706,30 @@ class G2D{
   // (rule 'mark': a simple shape only sets bit 0). Step 2: a box over the shape, drawn where the low bits are not 0, which
   // also writes the stencil back with them cleared (a fill: the same level; a clip: one level up).
   _stc(C,rule,col,mo,gi,z,st,clip,simple){const ops=this.T.ops;let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
-    const W={k:clip?1:2,first:GLS.ni,n:0,rule:simple?'mark':rule,lvl:this.lvl,op:this.s.op,tex:st&&st.k===2?st.tex:null,smp:st&&st.k===2?st.smp:-1,cf:0,cn:0};ops.push(W);this.B=W;
+    const W={k:clip?1:2,first:GLS.ni,n:0,rule:simple?'mark':rule,lvl:this.lvl,rc:this.rc,op:this.s.op,tex:st&&st.k===2?st.tex:null,smp:st&&st.k===2?st.smp:-1,cf:0,cn:0};ops.push(W);this.B=W;
     for(const o of C){const c=o.c,n=o.n;for(let i=0;i<n;i++){const x=c[i*2],y=c[i*2+1];if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
       if(simple)this._emitPoly(o,0,0,0,0,null);
       else{const b=GLS.nv;for(let i=0;i<n;i++)this._v(c[i*2],c[i*2+1],0,0,0,0,0,z);for(let i=1;i<n-1;i++)this._i3(b,b+i,b+i+1);}}
     W.cf=GLS.ni;const nb=W.n;x0=Math.floor(x0)-1;y0=Math.floor(y0)-1;x1=Math.ceil(x1)+1;y1=Math.ceil(y1)+1;
     if(clip)this._vq(x0,y0,x1,y0,x1,y1,x0,y1,0,0,0,z,0,0,0,0,0,0,0,0);else this._quad(x0,y0,x1,y0,x1,y1,x0,y1,col,mo,gi,z,st);
     W.cn=W.n-nb;W.n=nb;this.B=null;return [x0,y0,x1,y1];}
-  _clip(P,rule){const C=this._contours(P);if(this.lvl>=7){g2warn('clip depth');return;}
+  _clip(P,rule){const C=this._contours(P);
+    // (v61b) one axis-aligned rectangle: no stencil (three passes over its area, a third of the scene's GPU time on floor 1);
+    // the rectangle, cut by the one in force, goes with the ops drawn inside it (a scissor box and each pixel's covered share)
+    if(C.length===1&&C[0].n===4){const c=C[0].c,e=1e-6,ax=Math.abs(c[0]-c[2])<e&&Math.abs(c[3]-c[5])<e&&Math.abs(c[4]-c[6])<e&&Math.abs(c[7]-c[1])<e,
+      ay=Math.abs(c[1]-c[3])<e&&Math.abs(c[2]-c[4])<e&&Math.abs(c[5]-c[7])<e&&Math.abs(c[6]-c[0])<e;
+      if(ax||ay){const q=this.rc,T=this.T;let x0=Math.min(c[0],c[4]),y0=Math.min(c[1],c[5]),x1=Math.max(c[0],c[4]),y1=Math.max(c[1],c[5]);
+        if(q){x0=Math.max(x0,q[0]);y0=Math.max(y0,q[1]);x1=Math.min(x1,q[2]);y1=Math.min(y1,q[3]);}if(x1<x0)x1=x0;if(y1<y0)y1=y0;
+        (this.s.cb||(this.s.cb=[])).push({rc:q});this.s.clips++;this.B=null;
+        if(!(x0<=0&&y0<=0&&x1>=T.w0&&y1>=T.h0))this.rc=[x0,y0,x1,y1];return;}} // (a rectangle over the whole target clips nothing)
+    if(this.lvl>=7){g2warn('clip depth');return;}
     let bb;
-    if(!C.length){bb=[0,0,0,0];this.T.ops.push({k:4,first:GLS.ni,n:0,lvl:this.lvl});} // (an empty clip: nothing is drawn until it is restored)
+    if(!C.length){bb=[0,0,0,0];this.T.ops.push({k:4,first:GLS.ni,n:0,lvl:this.lvl,rc:this.rc});} // (an empty clip: nothing is drawn until it is restored)
     else{const simple=(C.length===1||(rule!=='evenodd'&&C.every(o=>(o.a>0)===(C[0].a>0))))&&this._plain(C);
       bb=this._stc(C,rule,0,0,0,0,null,true,simple);}
     this.lvl++;this.s.clips++;(this.s.cb||(this.s.cb=[])).push(bb);this.B=null;}
   // back one clip level (restore): over the clip's box, every pixel above the outer level is set back to it
-  clipPop(){const s=this.s,bb=s.cb.pop();this.lvl--;const W={k:5,first:GLS.ni,n:0,lvl:this.lvl};this.T.ops.push(W);this.B=W;
+  clipPop(){const s=this.s,bb=s.cb.pop();if(bb&&bb.rc!==undefined){this.rc=bb.rc;this.B=null;return;}this.lvl--;const W={k:5,first:GLS.ni,n:0,lvl:this.lvl,rc:this.rc};this.T.ops.push(W);this.B=W;
     this._vq(bb[0],bb[1],bb[2],bb[1],bb[2],bb[3],bb[0],bb[3],0,0,0,0,0,0,0,0,0,0,0,0);this.B=null;}
   _stroke(P){const st=this.s.ss,mo=this._style(st);if(mo<0)return;const gi=mo>=2?this._gi:0,col=this._col(st);if(!(col>>>24))return;
     const m=this.s.m,k=Math.sqrt(Math.abs(m[0]*m[3]-m[1]*m[2])),hw=this.s.lw*k/2;if(!(hw>0))return;
@@ -6777,7 +6793,6 @@ function g2dash(c,n,closed,D,off){const out=[];let tot=0;for(const v of D)tot+=v
 
 // ---- replay: what was recorded is drawn (Torchlight's next frame, or at once with GLP.pipe off) ----
 const G2BL=[[1,0x303,1,0x303],[1,1,1,1],[0x306,0x303,1,0x303],[0,0x303,0,0x303],[0,0x302,0,0x302],[0x304,0x303,0,1],[1,0,1,0],[1,0x301,1,0x303],[0x305,1,0x305,1]]; // (premultiplied: src, dst factors for colour and alpha)
-const G2INV=/[?&]inv=1/.test(location.search); // (&inv=1: the old way, colour samples dropped too: to check the fix on the phone)
 function g2Replay(){const gl=GLS.gl,U=GLS.prog.u;if(!GLS.T.length)return;GLS.stamp++;GLS.stats.draws=0;GLS.stats.uploads=0;
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
   // gradient rows and parameters (from typed arrays: no canvas is copied)
@@ -6796,11 +6811,15 @@ function g2Replay(){const gl=GLS.gl,U=GLS.prog.u;if(!GLS.T.length)return;GLS.sta
   for(const t of TT){t.used=false;const rs=t===GLS.scene?GLS.rs:1;g2Size(t,Math.max(1,Math.round(t.w0*rs)),Math.max(1,Math.round(t.h0*rs))); // (the render scale applies to the scene only)
     gl.bindFramebuffer(gl.FRAMEBUFFER,t.fb);gl.viewport(0,0,t.w,t.h);gl.uniform2f(U.u_s,t.w0,t.h0);
     gl.colorMask(true,true,true,true);gl.depthMask(true);gl.stencilMask(0xFF);const c=t.clear;gl.clearColor(c[0],c[1],c[2],c[3]);gl.clearDepth(1);gl.clearStencil(0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);
-    let curOp=-1,curTex=null,curSmp=-2;
+    let curOp=-1,curTex=null,curSmp=-2,curRc=null,curCm=0;const sx=t.w/t.w0,sy=t.h/t.h0;gl.uniform1i(U.u_cm,0);
+    const rect=o=>{const r=o.rc||null,cm=r?(o.op===4?2:o.op===6?3:1):0;if(r!==curRc){curRc=r;
+        if(r){const X0=r[0]*sx,X1=r[2]*sx,Y0=t.h-r[3]*sy,Y1=t.h-r[1]*sy,a=Math.max(0,Math.floor(X0)),b=Math.max(0,Math.floor(Y0));gl.enable(gl.SCISSOR_TEST);gl.scissor(a,b,Math.max(0,Math.ceil(X1)-a),Math.max(0,Math.ceil(Y1)-b));gl.uniform4f(U.u_cr,X0,Y0,X1,Y1);}
+        else gl.disable(gl.SCISSOR_TEST);}
+      if(cm!==curCm){curCm=cm;gl.uniform1i(U.u_cm,cm);}};
     const blend=k=>{if(k===curOp)return;curOp=k;const b=G2BL[k];gl.blendFuncSeparate(b[0],b[1],b[2],b[3]);};
     const tex=o=>{const tt=o.tex?(o.tex.isTgt?o.tex.tex:o.tt):null;if(tt&&tt!==curTex){gl.bindTexture(gl.TEXTURE_2D,tt);curTex=tt;}if(o.smp>=0&&o.smp!==curSmp){gl.bindSampler(0,GLS.smp[o.smp]);curSmp=o.smp;}};
     const color=on=>{gl.colorMask(on,on,on,on);gl.depthMask(on);if(on)gl.enable(gl.DEPTH_TEST);else gl.disable(gl.DEPTH_TEST);};
-    for(const o of t.ops){const L=o.lvl<<5;
+    for(const o of t.ops){const L=o.lvl<<5;rect(o);
       if(o.k===0){if(!o.n)continue;blend(o.op);tex(o);gl.stencilFunc(gl.EQUAL,L,0xE0);gl.stencilOp(gl.KEEP,gl.KEEP,gl.KEEP);gl.drawElements(gl.TRIANGLES,o.n,gl.UNSIGNED_INT,o.first*4);GLS.stats.draws++;continue;}
       if(o.k===1||o.k===2){const lo=o.rule==='nonzero'?0x1F:0x01;color(false);
         // step 1: the winding (or a mark) of each pixel inside the current clip, into the low bits
@@ -6815,11 +6834,8 @@ function g2Replay(){const gl=GLS.gl,U=GLS.prog.u;if(!GLS.T.length)return;GLS.sta
       if(o.k===5){color(false);gl.stencilFunc(gl.LESS,L,0xE0);gl.stencilOp(gl.KEEP,gl.KEEP,gl.REPLACE); // (above the outer level: back to it)
         gl.drawElements(gl.TRIANGLES,o.n,gl.UNSIGNED_INT,o.first*4);GLS.stats.draws++;color(true);continue;}}
     // resolve the samples into the target's texture, then drop them (they are never stored to memory)
-    gl.bindFramebuffer(gl.READ_FRAMEBUFFER,t.fb);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,t.rf);gl.blitFramebuffer(0,0,t.w,t.h,0,0,t.w,t.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);
-    // (v61b) only the depth and stencil samples are dropped now. Dropping the colour samples too let the iPhone (Apple's tile GPU,
-    // through ANGLE-Metal) skip the resolve of some tiles: squares of an older frame stayed in the scene texture, a blocky edge
-    // that shimmered as the view moved (owner's screenshot, floor 10)
-    gl.invalidateFramebuffer(gl.READ_FRAMEBUFFER,G2INV?[gl.COLOR_ATTACHMENT0,gl.DEPTH_STENCIL_ATTACHMENT]:[gl.DEPTH_STENCIL_ATTACHMENT]);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
+    gl.disable(gl.SCISSOR_TEST);gl.bindFramebuffer(gl.READ_FRAMEBUFFER,t.fb);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,t.rf);gl.blitFramebuffer(0,0,t.w,t.h,0,0,t.w,t.h,gl.COLOR_BUFFER_BIT,gl.NEAREST);
+    gl.invalidateFramebuffer(gl.READ_FRAMEBUFFER,[gl.COLOR_ATTACHMENT0,gl.DEPTH_STENCIL_ATTACHMENT]);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
   gl.bindSampler(0,null);gl.disable(gl.DEPTH_TEST);gl.disable(gl.STENCIL_TEST);gl.disable(gl.BLEND);gl.colorMask(true,true,true,true);gl.depthMask(true);gl.stencilMask(0xFF);gl.stencilOp(gl.KEEP,gl.KEEP,gl.KEEP);
   gl.bindVertexArray(null);gl.activeTexture(gl.TEXTURE0);
   GLS.stats.verts=GLS.nv;let nb=0;for(const t of TT)nb+=t.ops.length;GLS.stats.batches=nb;
@@ -7652,7 +7668,7 @@ const GLCSH={
           if(ma+ms<.003&&fc<=0.)continue;aS+=cl.rgb*ms;aA+=cl.rgb*ma;sw+=ma+ms;tm+=ts;}
         if(sw>0.){tm=max(tm/sw,0.);float T=1.,ys=floor((w.y-65.)/64.)*64.+60.; // a floor between the pixel and the opening: found exactly where the line crosses each floor level, so a thin slab is never stepped over
           for(int k=0;k<4;k++){float y=ys-64.*float(k),t=(w.y-y)/u_dir.y;if(t>tm)break;float e=.08+t*.002;T*=1.-smoothstep(.5-e,.5+e,texture2D(u_tm,vec2((w.x-u_dir.x*t)/32./u_tsz.x,(floor((y-1.)/64.)+.5)/u_tsz.y)).g);if(T<.01)break;} // (read between the tiles along the floor, so the shadow of a slab's end has a soft edge)
-          float st=(tm-4.)/12.,n0=fract(52.983*fract(dot(gl_FragCoord.xy,vec2(.06711,.00584)))); // jittered, so twelve steps leave no bands
+          float st=(tm-4.)/12.,n0=.5; // (v61b: the same steps for every pixel: a jitter per quarter-size pixel made a staircase of squares along the shadow edges that crawled as the view moved (owner, floor 1); the walls and figures read between texels, so no bands show)
           bool inside=fig; // (a figure in the beam is lit; it shades what lies behind it; the march stops at the opening)
           if(T>0.&&st>0.)for(int j=0;j<12;j++){float ts=4.+(float(j)+n0)*st;vec2 q=w-u_dir*ts;float d=1.-(tm-ts)/lq; // the light's depth at this step
             float e=.07+ts*.0022,wl=smoothstep(.5-e,.5+e,texture2D(u_tm,(q-vec2((d-.5)*16.,0.))/vec2(32.,64.)/u_tsz).r); // (a wall block at that depth: its front face is drawn half a step to the left; read between the tiles, so its shadow has a soft edge that widens away from the block)
