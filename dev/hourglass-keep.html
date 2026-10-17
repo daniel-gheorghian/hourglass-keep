@@ -4216,7 +4216,7 @@ function winArch(p,x,y,pad){const x0=x-6,x1=x+6,bot=y+13,apex=y-13; // a clerest
 function windowPath(st,x,y){const p=new Path2D();
   if(st==='dungeon')p.rect(x-2.6,y-10,5.2,19);
   else if(st==='forge')p.arc(x,y,6.2,0,Math.PI*2);
-  else if(st==='crypt'){for(let i=0;i<16;i++){const a=i*Math.PI/8-Math.PI/2,rr=i%2?3.1:5.8;p.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr);}p.closePath();}
+  else if(st==='crypt'){for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2,rr=i%2?2.6:5.8;p.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr);}p.closePath();}
   else winArch(p,x,y,0);
   return p;}
 function windowBars(g,st,x,y){ // (the tiled hall's lattice runs past the pane: the caller clips it)
@@ -4517,18 +4517,55 @@ function drawLampEg(ctx,t,th){const look=th.look,st=th.style,free=lampFree(t),x=
 // the re-skinned traps (EGP.traps): a granite portcullis slab for the gate (Khufu's and Unas's portcullises in their grooves); a
 // dressed roof block with sand running from its seams for the falling stone (Hawara's sliding roof blocks); bronze-tipped stakes
 // for the spikes (a film invention, kept for play); EGP.plug: the chase's front a granite plug sliding down the corridor
-function egSlab(ctx,pl,drop){const K='#0b0812',a=pl.L0,b=pl.R0,ya=pl.ce(a)-3,yb=pl.ce(b)-3;
-  ctx.fillStyle=K;ctx.beginPath();ctx.moveTo(a,ya);ctx.lineTo(b,yb);ctx.lineTo(b,yb+drop+3);ctx.lineTo(a,ya+drop+3);ctx.closePath();ctx.fill();
-  ctx.fillStyle='#8a6a62';ctx.beginPath();ctx.moveTo(a+1,ya);ctx.lineTo(b-1,yb);ctx.lineTo(b-1,yb+drop+1.6);ctx.lineTo(a+1,ya+drop+1.6);ctx.closePath();ctx.fill(); // Aswan's rose granite
-  const q=mulberry32(hash2(Math.round(a),Math.round(ya)));for(let i=0;i<Math.min(140,drop*2.2);i++){const u=q(),v=q()*drop;ctx.fillStyle=i%3?'#3a2c2a':i%5?'#d8c4b4':'#5a4a4a';ctx.fillRect(a+1+u*(b-a-2),ya+(yb-ya)*u+v,q()<0.3?1.2:0.7,0.7);}
-  ctx.fillStyle='rgba(255,236,220,.22)';ctx.beginPath();ctx.moveTo(a+1,ya+drop-1);ctx.lineTo(b-1,yb+drop-1);ctx.lineTo(b-1,yb+drop+1.6);ctx.lineTo(a+1,ya+drop+1.6);ctx.closePath();ctx.fill(); // its dressed foot catching the light
-  ctx.fillStyle='rgba(0,0,0,.28)';ctx.fillRect(b-3,Math.min(ya,yb),2,drop+6);}
-function egStone(ctx,f){const K='#0b0812',q=mulberry32(77);ctx.fillStyle=K;ctx.fillRect(-15,-1,30,19);ctx.fillStyle='#c4b08a';ctx.fillRect(-14,0,28,16);ctx.fillStyle='#e0d0aa';ctx.fillRect(-14,0,28,1.6); // dressed limestone
-  ctx.strokeStyle='rgba(90,70,40,.45)';ctx.lineWidth=0.5;for(let i=0;i<9;i++){const x=-12+i*3;ctx.beginPath();ctx.moveTo(x,3);ctx.lineTo(x+1.4,13);ctx.stroke();} // chisel marks
-  ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(-14,12,28,4);
-  const run=f.s===1?1:0.35,t=gameTime;ctx.fillStyle='rgba(222,196,140,.85)'; // sand running from the seams over it
-  for(const sx of [-14.5,14.5])for(let i=0;i<6;i++){const u=((t*(1.4+run)+i/6+(sx>0?0.37:0))%1);if(u>run+0.3)continue;ctx.fillRect(sx-0.5+Math.sin(i*2.1)*0.6,-1+u*26,0.9,1.6);}
-  ctx.globalAlpha=0.6;ctx.fillRect(-16,-2,4,1.2);ctx.fillRect(12,-2,4,1.2);ctx.globalAlpha=1;}
+// the portcullis: a slab 10 px thick across the corridor, seen as its lit front face and its long side receding into the room, in
+// rose granite with crystals big enough to hold at phone scale; it runs in a groove cut in the back wall, and over the slot in the
+// ceiling a log carries the four ropes it was lowered on (Perring found four rope grooves behind the slab nearest Khufu's chamber)
+const GRAN={face:'#b4877a',side:'#86625a',dk:'#2a201e',wh:'#f2e6dc',pk:'#d29a88',edge:'#e8c8b8'};
+function egSlab(ctx,pl,drop,X,half){const K='#0b0812',T=10,a=pl.L0,b=pl.R0,ya=pl.ce(a)-3,yb=pl.ce(b)-3,fa=pl.fl(a),fb=pl.fl(b);
+  ctx.restore();ctx.save(); // (its own clip: wider than the bars' plane)
+  if(!half){ctx.save();const ly=pl.top-1.5,lx0=a-T/2-4,lx1=b+T/2+4; // the log over the slot and the ropes
+    ctx.fillStyle=K;ctx.fillRect(lx0-0.6,ly-2.8,lx1-lx0+1.2,5.6);ctx.fillStyle='#6a4a2a';ctx.fillRect(lx0,ly-2.2,lx1-lx0,4.4);ctx.fillStyle='#9a7448';ctx.fillRect(lx0,ly-2.2,lx1-lx0,1.1);
+    ctx.fillStyle='#c8a070';ctx.beginPath();ctx.arc(lx0+0.6,ly,2,0,6.2832);ctx.fill();ctx.strokeStyle='#6a4a2a';ctx.lineWidth=0.5;ctx.beginPath();ctx.arc(lx0+0.6,ly,1,0,6.2832);ctx.stroke();
+    for(let i=0;i<4;i++){const rx=a-T/2+2+i*(b-a+T-4)/3;ctx.strokeStyle=K;ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(rx,ly-2.6);ctx.lineTo(rx,pl.top+4);ctx.stroke();ctx.strokeStyle='#d8b888';ctx.lineWidth=0.9;ctx.stroke();}
+    ctx.restore();}
+  ctx.beginPath();ctx.rect(a-T/2-6,pl.top,b-a+T+12,Math.max(fa,fb)+6-pl.top);ctx.clip();ctx.beginPath();if(half)ctx.rect(X-40,-1e5,56,2e5);else ctx.rect(X+16,-1e5,60,2e5);ctx.clip();
+  // the groove in the back wall it runs in, seen below it when it is up
+  ctx.fillStyle='rgba(6,4,10,.8)';ctx.beginPath();ctx.moveTo(b+T/2-1,yb-4);ctx.lineTo(b+T/2+3,yb-6);ctx.lineTo(b+T/2+3,fb-2);ctx.lineTo(b+T/2-1,fb);ctx.closePath();ctx.fill();
+  ctx.fillStyle='rgba(255,230,210,.25)';ctx.fillRect(b+T/2+3,yb-6,0.8,fb-yb+4);
+  const yd=drop+3,q=mulberry32(hash2(Math.round(a),Math.round(ya)));
+  const side=()=>{ctx.beginPath();ctx.moveTo(a+T/2,ya);ctx.lineTo(b+T/2,yb);ctx.lineTo(b+T/2,yb+yd);ctx.lineTo(a+T/2,ya+yd);ctx.closePath();};
+  const front=()=>{ctx.beginPath();ctx.rect(a-T/2,ya,T,yd);};
+  ctx.fillStyle=K;ctx.beginPath();ctx.moveTo(a-T/2-1,ya);ctx.lineTo(b+T/2+1,yb);ctx.lineTo(b+T/2+1,yb+yd+1);ctx.lineTo(a+T/2+1,ya+yd+1.2);ctx.lineTo(a-T/2-1,ya+yd+1.2);ctx.closePath();ctx.fill();
+  side();ctx.fillStyle=GRAN.side;ctx.fill();front();ctx.fillStyle=GRAN.face;ctx.fill();
+  const spk=(n,x0,w,y0,dy,yh)=>{for(let i=0;i<n;i++){const u=q(),v=q()*yh,r=q(),sz=r<0.15?2.2:r<0.55?1.5:1;ctx.fillStyle=r<0.15?GRAN.pk:i%3?GRAN.dk:GRAN.wh;ctx.fillRect(x0+u*w,y0+dy*u+v,sz,sz*0.9);}};
+  ctx.save();side();ctx.clip();spk(Math.min(160,drop*2),a+T/2,b-a,ya,yb-ya,yd);ctx.restore();
+  ctx.save();front();ctx.clip();spk(Math.min(120,drop*1.4),a-T/2,T,ya,0,yd);ctx.restore();
+  ctx.fillStyle=GRAN.edge;ctx.fillRect(a-T/2,ya,0.9,yd);ctx.fillRect(a-T/2,ya+yd-1.4,T,1.4); // the arris catching the light, the dressed foot
+  ctx.fillStyle='rgba(255,236,220,.25)';ctx.beginPath();ctx.moveTo(a+T/2,ya+yd-1.4);ctx.lineTo(b+T/2,yb+yd-1.4);ctx.lineTo(b+T/2,yb+yd);ctx.lineTo(a+T/2,ya+yd);ctx.closePath();ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(a+T/2-0.6,ya,1.2,yd);
+  ctx.fillStyle='rgba(6,4,10,.85)';ctx.fillRect(a-T/2-3,pl.top,b-a+T+6,3);} // the slot's mouth in the ceiling
+// sand: streams of fine pale sand (dense, a lit edge, grains breaking off), the heap where they land, the puff when a floor gives
+const SANDC_EG={body:'rgba(244,224,172,.92)',lit:'#fff6dc',grain:'#f8e6b8',heap:'#d8bc84',heapLit:'#f4dcaa'};
+function sandStream(ctx,x,y0,y1,w,k,seed){if(y1<=y0+1)return;const t=gameTime,L1=y1-y0;
+  const per=9+seed*3,off=(t*70+seed*40)%per; // the stream runs in beads that slide down it, thinning and paling as it falls
+  for(let y=y0-off;y<y1;y+=per){const a=Math.max(y,y0),b=Math.min(y+per*0.78,y1);if(b<=a)continue;const u=(a-y0)/L1,ww=w*(1-0.35*u)*(0.85+0.15*Math.sin(y*0.7+seed*9));
+    ctx.globalAlpha=(0.5+0.4*k)*(1-0.45*u);ctx.fillStyle=SANDC_EG.body;ctx.fillRect(x-ww/2,a,ww,b-a);
+    ctx.globalAlpha=(0.9)*(1-0.4*u);ctx.fillStyle=SANDC_EG.lit;ctx.fillRect(x-ww/2,a,Math.max(0.5,ww*0.3),b-a);} // its lit edge
+  ctx.globalAlpha=1;
+  ctx.fillStyle='rgba(120,90,50,.25)';ctx.fillRect(x+w/2-0.6,y0,0.6,L1);
+  ctx.fillStyle=SANDC_EG.grain;for(let i=0;i<Math.ceil(L1/5)*k;i++){const u=((t*(1.6+0.3*(i%3))+i*0.37+seed)%1),yy=y0+u*L1;ctx.globalAlpha=0.9*(1-u*0.3);ctx.fillRect(x+Math.sin(i*1.7+seed)*(w*0.5+1.2*u)-0.6,yy,1.2,1.4);}ctx.globalAlpha=1;}
+function sandHeap(ctx,x,y,w,h){ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(x,y+0.6,w*0.6,1.4,0,0,6.2832);ctx.fill();
+  ctx.fillStyle=SANDC_EG.heap;ctx.beginPath();ctx.moveTo(x-w/2,y);ctx.quadraticCurveTo(x,y-h*2,x+w/2,y);ctx.closePath();ctx.fill();
+  ctx.fillStyle=SANDC_EG.heapLit;ctx.beginPath();ctx.moveTo(x-w/2+1,y-0.4);ctx.quadraticCurveTo(x-w*0.15,y-h*1.8,x+w*0.05,y-h*0.9);ctx.closePath();ctx.fill();}
+function sandPuff(ctx,x,y,age){if(age>0.9)return;const k=age/0.9;for(let i=0;i<7;i++){const a=i/7*Math.PI-Math.PI,r=6+k*26;ctx.globalAlpha=0.55*(1-k);ctx.fillStyle=i%2?'#f0dcae':'#d8c090';
+  ctx.beginPath();ctx.ellipse(x+Math.cos(a)*r,y+Math.sin(a)*r*0.35-k*6,4+k*7,2.4+k*4,0,0,6.2832);ctx.fill();}ctx.globalAlpha=1;}
+function egBlock(ctx){const K='#0b0812';ctx.fillStyle=K;ctx.fillRect(-15,-1,30,19);ctx.fillStyle='#c4b08a';ctx.fillRect(-14,0,28,16);ctx.fillStyle='#e8d8b2';ctx.fillRect(-14,0,28,1.8); // dressed limestone
+  ctx.strokeStyle='rgba(90,70,40,.5)';ctx.lineWidth=0.6;for(let i=0;i<9;i++){const x=-12+i*3;ctx.beginPath();ctx.moveTo(x,3);ctx.lineTo(x+1.4,13);ctx.stroke();} // chisel marks
+  ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(-14,12,28,4);}
+// the roof block hanging: sand runs from its seams to the floor (a thread while it waits, full streams once it shifts) and heaps there
+function egStone(ctx,f,fl){const run=f.s===1?1:0.45;egBlock(ctx);
+  for(const sx of [-14.5,14.5]){sandStream(ctx,sx,-1,fl,f.s===1?2.6:1.3,run,sx>0?0.5:0);sandHeap(ctx,sx,fl,f.s===1?10:7,f.s===1?3:2);}
+  ctx.fillStyle=SANDC_EG.body;ctx.fillRect(-16,-2.2,5,1.6);ctx.fillRect(11,-2.2,5,1.6);}
 function drawPlug(ctx,ch,x0,x1,y0,y1){const fx=ch.diss?ch.diss.bx:ch.wx,top=ch.rTop*TH,bot=(ch.rBot+1)*TH,K='#0b0812',a=1-(ch.fade||0);if(fx<x0-20)return;ctx.save();ctx.globalAlpha=a;
   const L0=Math.max(x0-10,fx-600);ctx.fillStyle=K;ctx.fillRect(L0,top,fx-L0+2,bot-top);
   ctx.fillStyle='#6a5652';ctx.fillRect(L0,top,fx-L0-2,bot-top); // the plug's side, in its own shade
@@ -5174,10 +5211,12 @@ function drawVentFire(ctx,o,f){
 // dust now and then. Where the ceiling is the top of the screen the HUD's dark band lies over it, so drawHUD draws it again on top.
 const hudStones=[];
 function drawStone(ctx,o,f,again){
-  if(f.s>=2)return;const x=o.c*TW+16,cy=ceilingY(o.c,o.r),sh=f.s===1?(Math.random()-0.5)*2:0,th=L.theme;
+  if(f.s>=2){if(EGP.traps&&L.rubble.has(o.r*L.cols+o.c)){const q=onFloor(o.c*TW+16,0.55,SURF(o.r));ctx.save();ctx.translate(q.x,q.y-16);egBlock(ctx);ctx.restore(); // fallen: the block on the floor in its own sand
+    sandHeap(ctx,q.x-15,q.y,12,2.6);sandHeap(ctx,q.x+15,q.y,10,2.2);}return;}
+  const x=o.c*TW+16,cy=ceilingY(o.c,o.r),sh=f.s===1?(Math.random()-0.5)*2:0,th=L.theme;
   if(!again)hudStones.push([o,f]);
   ctx.save();ctx.translate(x+sh,cy);
-  if(EGP.traps){egStone(ctx,f);ctx.restore();return;}
+  if(EGP.traps){egStone(ctx,f,SURF(o.r)-2-cy);ctx.restore();return;}
   ctx.fillStyle='#0b0812';ctx.fillRect(-15,-1,30,19);ctx.fillStyle=th.wallB;ctx.fillRect(-14,0,28,16);ctx.fillStyle=th.hi;ctx.fillRect(-14,0,28,2);
   ctx.fillStyle='rgba(0,0,0,.28)';ctx.fillRect(-14,12,28,4);
   ctx.strokeStyle='#05030a';ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(-4,0);ctx.lineTo(-7,5);ctx.lineTo(-2,8);ctx.lineTo(-6,12);ctx.lineTo(-3,16);ctx.moveTo(-2,8);ctx.lineTo(5,7);ctx.lineTo(8,11);ctx.lineTo(6,16);ctx.moveTo(5,7);ctx.lineTo(9,2);ctx.lineTo(8,0);ctx.stroke();
@@ -5505,7 +5544,7 @@ function drawGate(ctx,f,X,Y,ys,half){
   if(!half)slots(ctx,pl);
   if(gg){const drop=gg.drop;
   ctx.save();planeClip(ctx,pl,X,half);
-  if(EGP.traps)egSlab(ctx,pl,drop);else{
+  if(EGP.traps)egSlab(ctx,pl,drop,X,half);else{
   // cross bars, parallel to the gate's slant; the first one below the ceiling carries the pair colour. Bevelled: a pale line along the top edge
   for(let k=0;k<gg.nc;k++){const off=gg.co[k],col=k===0&&f.pair!==undefined?PAIRC[f.pair]:null;
     ctx.strokeStyle='#0b0812';ctx.lineWidth=col?3.6:2.4;ctx.beginPath();ctx.moveTo(pl.L0+1,pl.ce(pl.L0+1)+off);ctx.lineTo(pl.R0-1,pl.ce(pl.R0-1)+off);ctx.stroke();
@@ -5814,7 +5853,8 @@ function drawDynamic(ctx,x0,x1,y0,y1){
         ctx.strokeStyle='rgba(0,0,0,.88)';ctx.lineWidth=1.9;ctx.beginPath();ctx.moveTo(X+7,ys-3);ctx.lineTo(X+10,ys+1);ctx.lineTo(X+15,ys-1);ctx.lineTo(X+14,ys+3);ctx.moveTo(X+21,ys-3);ctx.lineTo(X+22,ys+3.5);ctx.moveTo(X+15,ys-1);ctx.lineTo(X+19,ys-2.5);ctx.stroke();
         ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(fx+11,ft);ctx.lineTo(fx+12,ft+2.5);ctx.lineTo(fx+10.5,ft+5);ctx.moveTo(fx+24,ft);ctx.lineTo(fx+23,ft+5);ctx.stroke();
         if(EGP.traps){ctx.fillStyle='rgba(222,196,140,.9)';for(const ex of [fx,fx+TW]){ctx.fillRect(ex-0.6,ft,1.2,5);}const q2=onFloor(X+15,0.5,ys);ctx.fillRect(q2.x-3,q2.y-0.4,6,0.8); // sand in its seams
-          if(f.s===1)for(let i=0;i<14;i++){const u=(gameTime*2.6+i/14)%1;ctx.fillRect(fx+6+(i%5)*5,ft+5+u*40,1,1.8);}} // and pouring through as it gives
+          if(f.s===1){let rb=o.r+1;while(rb<L.rows&&!solidBelow(L,o.c,rb)&&rb-o.r<4)rb++;const yb=rb<L.rows&&rb-o.r<4?SURF(rb)-0.8-sh:ft+70;
+            for(let i=0;i<4;i++)sandStream(ctx,fx+7+i*6.5,ft+4,yb,i%2?2:2.8,1,i*0.3);if(yb<ft+69)sandHeap(ctx,fx+16+DX*0.5,yb,22,3.4);}} // and pouring through as it gives, heaping on the floor below
         ctx.restore();}break;
       case'closer':{dynSlab(ctx,o.c,o.r,X,ys,th);const dn=f.jam||gameTime-f.press<0.12,lift=dn?1:2.4;
         ctx.save();ctx.translate(0,-lift);floorQuad(ctx,X+1,X+31,0.03,0.97,ys,lift);ctx.fillStyle='#8f2f2a';ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=0.7;ctx.stroke();
@@ -5857,7 +5897,11 @@ function drawDynamic(ctx,x0,x1,y0,y1){
   for(const it of L.items)if(!it.taken&&inRoom(it.c,it.r))drawFlask(ctx,it);
   drawLooseFlasks(ctx);
   for(const d of L.debris){ctx.save();ctx.translate(d.x-16,d.y);
-    if(d.kind==='plank')drawPlank(ctx,0,0,0);
+    if(EGP.traps&&(d.kind==='slab'||d.kind==='rock')){if(d.y0===undefined)d.y0=d.y;const age=Math.sqrt(2*Math.max(0,d.y-d.y0)/GRAV);ctx.restore();ctx.save(); // (re-skinned: a sand floor's slab, the roof block)
+      if(d.kind==='rock'){sandStream(ctx,d.x,d.y0-14,d.y-16,3.2,1,0.2);ctx.translate(d.x,d.y-16);egBlock(ctx);}
+      else{sandStream(ctx,d.x-6,d.y0+4,d.y-4,2.6,1,0.1);sandStream(ctx,d.x+5,d.y0+4,d.y-4,2,1,0.6);ctx.translate(d.x-16,d.y);slab(ctx,0,0,L.theme,true,true);}
+      ctx.restore();ctx.save();if(d.kind==='slab')sandPuff(ctx,d.x,d.y0+2,age);ctx.restore();ctx.save();}
+    else if(d.kind==='plank')drawPlank(ctx,0,0,0);
     else if(d.kind==='rock'){const rk=[[4,-11],[9,-15],[19,-14],[27,-10],[28,-2],[21,1],[8,1],[4,-4]];ctx.beginPath();rk.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();ctx.fillStyle=th.wallB;ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=1.4;ctx.stroke();
       ctx.fillStyle=th.hi;ctx.fillRect(9,-14,10,1.2);ctx.strokeStyle='rgba(0,0,0,.6)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(14,-14);ctx.lineTo(12,-7);ctx.lineTo(16,0);ctx.moveTo(22,-12);ctx.lineTo(20,-5);ctx.stroke();}
     else slab(ctx,0,0,th,true,true);ctx.restore();}
@@ -5946,7 +5990,8 @@ function gatherLights(x0,x1,y0,y1){
     if(f.t==='vent'){const ph=cyc(f,t);if(ph>=0.7||ph<0.03){const vs=ventState(ph);add(X+16,ys-24,110,'255,140,60',0.9*vs.k*vs.al,'fire',{r:30,a:0.4*vs.k*vs.al});}} // (lit through the whole danger window)
     else if(f.t==='gate'&&!f.latch&&f.dur>0&&f.tm>0&&f.tm<Infinity)add(X+16-HX,o.r*TH-12,34,'255,200,120',0.55,'item');
     // traps keep a faint glint of their own so the dark never hides them
-    else if(f.t==='stone'&&f.s<2)add(X+16,ceilingY(o.c,o.r)+8,34,'225,222,240',0.3,'trap');
+    else if(f.t==='stone'&&f.s<2){add(X+16,ceilingY(o.c,o.r)+8,34,'225,222,240',0.3,'trap');if(EGP.traps)add(X+16,SURF(o.r)-24,44,'255,236,196',0.32,'trap');}
+    else if(EGP.traps&&f.t==='loose'&&f.s===1)add(X+16,SURF(o.r)+26,44,'255,236,196',0.34,'trap');
     else if(f.t==='spikes'||f.t==='chomp'||f.t==='closer'||f.t==='plate'||f.t==='xplate'||f.t==='lplate'||(f.t==='loose'&&f.s<2))add(X+16,ys-8,30,'225,222,240',0.36,'trap');
     else if(f.t==='darter'&&f.dir>0)add(f.x+(f.dir>0?4:0),f.y,34,'255,214,150',0.5,'trap');
     else if(f.t==='shaftfoot')add(X+16,o.r*TH-20,40,'236,228,200',0.32,'trap');

@@ -22,7 +22,6 @@ JS = r'''window.__P={
 FINDF = r'''([floors,kinds,want,gap])=>{const H=__HK,out=[];
   for(const [n,seed] of floors){const L=__P.load(n,seed),C=L.cols,F=(c,r)=>c<0||c>=C||r<0||r>=L.rows?null:L.feat[r*C+c];
     for(let r=1;r<L.rows-1&&out.length<want;r++)for(let c=10;c<C-10;c++){const f=F(c,r);if(!f||!kinds.includes(f.t))continue;
-      if(f.t==='stone'){let rr=r-1;while(rr>=0&&L.base[rr*C+c]!==2)rr--;if(r-rr>1)continue;}
       for(const d of [-gap,gap,-gap-1,gap+1]){const pc=c+d;if(!H.solidBelow(pc,r)||F(pc,r)||F(pc-1,r)&&F(pc-1,r).t!=='plate'||F(pc+1,r)&&kinds.includes(F(pc+1,r).t)&&d<0&&false)continue;
         if(!H.solidBelow(pc,r))continue;out.push({n,seed,c,r,pc,face:d<0?1:-1,t:f.t,name:H.themeName(n)});break;}
       if(out.length&&out[out.length-1].n===n&&out[out.length-1].c===c)break;}
@@ -43,8 +42,12 @@ SHOW = r'''([q,flags,prep])=>{const H=__HK;Object.assign(H.EGP,flags);__P.load(q
   if(prep==='spikes')for(const o of L.dyn)if(o.f.t==='spikes')o.f.ext=1;
   if(prep==='shake')for(const o of L.dyn)if(o.f.t==='loose'&&o.c===q.c&&o.r===q.r){o.f.s=1;o.f.tm=0.3;}
   if(prep==='chase'){const ch=L.ext.chase;ch.on=true;ch.wx=H.P.x-48;}
-  if(prep==='high'){H.cam.y-=40;H.cam.gy-=40;}
-  __P.draw();return __P.scr(q.c*32+16,(q.r+1)*64-(prep==='high'?70:30));}'''
+  const SURF=r=>(r+1)*64-4,C=L.cols,fo=L.dyn.find(o=>o.c===q.c&&o.r===q.r);
+  if(prep==='fall'||prep==='rest'){let rr=q.r-1;while(rr>=0&&L.base[rr*C+q.c]!==2)rr--;const cy=(rr+1)*64;fo.f.s=prep==='fall'?2:3;
+    if(prep==='fall')L.debris.push({x:q.c*32+16,y:cy+14+0.5*(SURF(q.r)-cy-14),vy:220,c:q.c,hitP:true,kind:'rock',y0:cy+14});else{L.rubble.add(q.r*C+q.c);H.clearRooms();}}
+  if(prep==='give'){fo.f.s=2;L.base[q.r*C+q.c]=0;H.clearRooms();L.debris.push({x:q.c*32+16,y:SURF(q.r)+22,vy:230,c:q.c,hitP:true,kind:'slab',y0:SURF(q.r)});}
+  if(prep==='high'||prep==='fall'||prep==='rest'){H.cam.y-=40;H.cam.gy-=40;}
+  __P.draw();return __P.scr(q.c*32+16,(q.r+1)*64-(prep==='high'||prep==='fall'?62:prep==='rest'?40:prep==='give'?10:30));}'''
 CHASEF = r'''([floors])=>{const H=__HK,out=[];for(const [n,seed] of floors){const L=__P.load(n,seed),ch=L.ext.chase;if(!ch)continue;
   for(let c=ch.c0+6;c<ch.c1-4;c++)for(let r=ch.rTop;r<=ch.rBot;r++)if(H.solidBelow(c,r)&&!L.feat[r*L.cols+c]&&H.solidBelow(c-3,r)){out.push({n,seed,c:c-3,r,pc:c,face:1,t:'chase',name:H.themeName(n)});return out;}}return out;}'''
 SNAKEF = r'''([floors])=>{const H=__HK,out=[];for(const [n,seed] of floors){const L=__P.load(n,seed);for(const s of L.snakeSpecs){const c=Math.floor(s.x/32),pc=c-3;
@@ -99,8 +102,8 @@ with sync_playwright() as p:
     # ---- traps: (id, feature kinds, flags, prep, floors to look on)
     F = lambda ns: [[n, s] for n in ns for s in (801, 802, 803)]
     TR = [('portcullis', ['gate'], {'traps': True}, None, [F([6, 7, 26, 27]), F([18, 19, 41, 42])]),
-          ('roofblock', ['stone'], {'traps': True}, 'high', [F([2, 3, 4, 41, 42, 43]), F([21, 22, 23, 24])]),
-          ('sandfloor', ['loose'], {'traps': True}, 'shake', [F([10, 11, 30, 31]), F([45, 46, 47])]),
+          ('roofblock', ['stone'], {'traps': True}, ['fall', 'rest'], [F([2, 3, 4, 41, 42, 43]), F([21, 22, 23, 24])]),
+          ('sandfloor', ['loose'], {'traps': True}, ['shake', 'give'], [F([10, 11, 30, 31]), F([45, 46, 47])]),
           ('stakes', ['spikes'], {'traps': True}, 'spikes', [F([14, 15, 34, 35]), F([5, 6, 7, 8])]),
           ('wellshaft', ['hurtdrop'], {}, None, [F([29, 30, 31, 32]), F([9, 10, 11, 12])]),
           ('snakes', None, {}, None, [F([21, 22, 23, 24]), F([37, 38, 39, 40])]),
@@ -119,10 +122,10 @@ with sync_playwright() as p:
             if not qs:
                 print('no spot', tid, k); continue
             q = qs[0]
-            pose = {'n': q['n'], 'seed': q['seed'], 'name': q['name'], 'shots': {}}
+            pose = {'n': q['n'], 'seed': q['seed'], 'name': q['name'], 'shots': {}, 'state': {'fall': 'mid-fall', 'rest': 'fallen, resting', 'shake': 'giving way', 'give': 'just given way'}.get(prep[k] if isinstance(prep, list) else prep, '')}
             for lab, pg in (('torch', pt), ('classic', pc)):
                 stem = 'trap_%s_%d_%s' % (tid, k, lab)
-                xy = pg.evaluate(SHOW, [q, dict({'traps': False, 'plug': False}, **flags), prep])
+                xy = pg.evaluate(SHOW, [q, dict({'traps': False, 'plug': False}, **flags), prep[k] if isinstance(prep, list) else prep])
                 grab(pg, xy, stem)
                 pose['shots'][lab] = stem
             ent['poses'].append(pose)

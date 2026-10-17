@@ -77,7 +77,8 @@ def links(src):
 
 def sections(D, REL, img):
     prop = json.load(open(os.path.join(D, 'prop.json')))
-    out = []
+    import egyptaudit
+    out = [egyptaudit.section()]
     # ---- the name
     out.append('''<section class="card" id="name"><h2>The name: Dawnward</h2>
 <p>The working title. The prince goes up through the twelve hours of the night, as the sun's boat (the barque of Ra) sails through the twelve regions
@@ -126,7 +127,7 @@ app, Steam, itch.io and the App Store by name, and US trademark listings. Near n
         if not t:
             continue
         for k, p in enumerate(t['poses']):
-            out.append('<p class="meta">Pose %d: floor %d, seed %d · %s</p><div class="g4">' % (k + 1, p['n'], p['seed'], E(p['name'])) + ''.join(
+            out.append('<p class="meta">Pose %d: floor %d, seed %d · %s%s</p><div class="g4">' % (k + 1, p['n'], p['seed'], E(p['name']), (' · ' + E(p['state'])) if p.get('state') else '') + ''.join(
                 '<figure>%s<figcaption>%s, %s</figcaption></figure>' % (img(p['shots'][m] + '_' + w + '.jpg', m), m.title(), w) for m in ('torch', 'classic') for w in ('close', 'wide')) + '</div>')
     out.append('</section>')
-    return out, [('name', 'The name'), ('font', 'The font'), ('lamps', 'Lamps'), ('traps', 'Traps')]
+    return out, [('audit', 'What changes'), ('name', 'The name'), ('font', 'The font'), ('lamps', 'Lamps'), ('traps', 'Traps')]
