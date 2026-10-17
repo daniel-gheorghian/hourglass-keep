@@ -5439,6 +5439,9 @@ function updateLook(dt){
     // jumping up at a wall's near face he slips behind its front face; once hanging the wall hides all but his hands
     if(lg.s<0&&wallBelow(lg))mode=st==='jumpUp'?1:2;}
   else tdx=st==='dead'?0:pushOut(P.x,P.y,P.face,P.pose);
+  // (liftocc2) in a lift's shaft there is no room to be pressed back into: at most to the shaft's left side (his back against it);
+  // what still reaches past the wall's front face on his right is cut by it (liftOccl, when he is drawn)
+  if(tdx<0&&L.lifts.length){const lf=liftAround();if(lf)tdx=Math.max(tdx,Math.min(0,lf.ca*TW+10-P.x));}
   const a=1-Math.exp(-dt*28);
   if((P.hideMode||0)>0&&!mode){P.rdx=tdx;P.rdy=tdy;} // stepping out from behind the wall: no slide in plain view
   else{P.rdx=(P.rdx||0)+(tdx-(P.rdx||0))*a;P.rdy=(P.rdy||0)+(tdy-(P.rdy||0))*a;}
@@ -5470,7 +5473,8 @@ const CUT_AT_WALL=new Set(['plate','xplate','lplate','closer','loose','spikes'])
 // brackets, verdigris on the bronze in the damp themes, a chipped platform lip, streaks down the shaft; 3 a rotten bite out of the
 // beam's end bound with rope, heavier rust and soot or moss, a cracked platform. Never broken, never like a hurtdrop.
 function liftVisible(f,x0,x1,y0,y1){return (f.cb+1)*TW+80>x0&&f.ca*TW-80<x1&&f.rB*TH+TH+10>y0&&f.rT*TH-40<y1;}
-function drawLift(ctx,f,half){if(f.t==='chain')drawLiftChain(ctx,f,half);else drawLiftCounterweight(ctx,f,half);}
+const LIFT_DBG={off:false,rider:false,gatesR:false}; // (liftscan.py: off leaves the lifts out of a frame, rider the prince, and gatesR draws only the gratings on the shafts' right edges, to compare with frames that have them)
+function drawLift(ctx,f,half){if(LIFT_DBG.off||(LIFT_DBG.gatesR&&f.t==='chain'))return;if(f.t==='chain')drawLiftChain(ctx,f,half);else drawLiftCounterweight(ctx,f,half);}
 function liftWear(f){if(f.wl===undefined||f.wn!==L.n){const x=(f.ca+f.cb+1)*TW/2,ym=(f.rT*TH+SURF(f.rB))/2;f.wn=L.n;f.wl=inBreach(x,ym,true)?3:wearLevel(x,ym);}return f.wl;}
 // the front faces of the walls and low ceilings round a lift: cut out of what is drawn next (ctx in world space; save/restore round it)
 // (a floor's lip and its shadow lie over the top of the wall under it, so that strip is left open: a platform docked there shows its own)
@@ -5478,6 +5482,15 @@ function liftOccl(ctx,f){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);
   for(let r=f.rT-2;r<=f.rB+1;r++)for(let c=f.ca-2;c<=f.cb+2;c++){if(c<0||c>=L.cols||r<0||r>=L.rows)continue;
     if(B(L,c,r)===WALL){const lip=r>0&&B(L,c,r-1)!==WALL?9:0;ctx.rect(c*TW-HX,r*TH+lip,TW,TH-lip);}else{const q=F(L,c,r);if(q&&q.t==='low')ctx.rect(c*TW-HX,r*TH,TW,TH-34);}}
   ctx.clip('evenodd');}
+// (liftocc2) the right-hand side faces of the walls round a lift, cut out of what lies on the shaft's back wall (its darkening and
+// grooves, the counterweight's channel and stone): a side face stands in front of the back plane all along its depth (things at
+// his depth, the chains, wheels, platform and slabs, are in front of its back half and are not cut)
+function liftOcclSide(ctx,f){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);
+  for(let r=f.rT-2;r<=f.rB+1;r++)for(let c=f.ca-2;c<=f.cb+2;c++){if(c<0||c+1>=L.cols||r<0||r>=L.rows||B(L,c,r)!==WALL||B(L,c+1,r)===WALL)continue;
+    const x=(c+1)*TW-HX,y=r*TH;ctx.moveTo(x,y);ctx.lineTo(x,y+TH);ctx.lineTo(x+DX,y+TH-DY);ctx.lineTo(x+DX,y-DY);ctx.closePath();}
+  ctx.clip('evenodd');}
+// the lift whose shaft he is in (riding it, or standing or falling inside it), or null
+function liftAround(){if(P.state==='lift'&&P.lift)return P.lift;const c=pCol(),ra=rowOf(P.y-40),rb=rowOf(P.y-1);for(const f of L.lifts)if(c>=f.ca&&c<=f.cb&&rb>=f.rT&&ra<=f.rB)return f;return null;}
 function liftChainLine(ctx,x0,y0,x1,y1,W){ctx.strokeStyle='#0b0812';ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
   const pal=metalPal('chain');ctx.strokeStyle=pal[1];ctx.lineWidth=1.4;ctx.setLineDash([2.2,1.6]);ctx.stroke();      // links: a body, and a thin lit edge up and to the left
   if(W){ctx.strokeStyle='rgba(122,58,26,'+(0.22*W)+')';ctx.setLineDash([1.4,2.4]);ctx.lineDashOffset=1.1;ctx.stroke();ctx.lineDashOffset=0;} // rust on the links
@@ -5528,10 +5541,14 @@ function liftRig(f){const X=f.sc*TW,top=f.rT*TH,ws=-f.sT,by=B(L,f.sc,f.rT-1)===W
   return {X,top,ws,by,hy,wt,cx:X+12.5,ca:X+5.5,cb:X+19.5};}
 function drawLiftCounterweight(ctx,f,half){
   const th=L.theme,ys=f.y,bot=SURF(f.rB),W=liftWear(f),R=liftRig(f),X=R.X;
-  for(let e=0;e<2;e++){const rr=e?f.rB:f.rT,xg=liftGx(f,e?f.sB:f.sT);
-    drawGate(ctx,{open:e?f.gB:f.gT,latch:true,dur:0},xg-16,rr*TH,SURF(rr),half?1:0);}
-  if(half)return;
+  // the mouth gratings stand on the shaft's edges. (liftocc2) Seen in this view (depth runs up and to the right), a grating on the
+  // shaft's left edge is behind everything in the shaft where they overlap, and one on its right edge in front of it: so a left
+  // one is drawn whole before the shaft's contents, a right one after them (its near half after the rider too)
+  const gate=(e,h)=>{const rr=e?f.rB:f.rT;drawGate(ctx,{open:e?f.gB:f.gT,latch:true,dur:0},liftGx(f,e?f.sB:f.sT)-16,rr*TH,SURF(rr),h);};
+  if(half||LIFT_DBG.gatesR){for(let e=0;e<2;e++)if((e?f.sB:f.sT)>0)gate(e,half?1:0);return;}
+  for(let e=0;e<2;e++)if((e?f.sB:f.sT)<0){gate(e,0);gate(e,1);}
   ctx.save();liftOccl(ctx,f);
+  ctx.save();liftOcclSide(ctx,f);
   liftShaftBack(ctx,X,TW,R.top,bot,W);
   // the channel the counterweight runs in, cut into the back wall behind the platform
   ctx.fillStyle='rgba(0,0,0,.38)';ctx.fillRect(R.cx-5,R.hy,10,bot-R.hy);ctx.fillStyle='rgba(255,255,255,.09)';ctx.fillRect(R.cx+5,R.hy,0.8,bot-R.hy);ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(R.cx-5,R.hy,1.2,bot-R.hy);
@@ -5541,6 +5558,7 @@ function drawLiftCounterweight(ctx,f,half){
     ctx.strokeStyle='rgba(0,0,0,.45)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(x+1.5,y+h*0.5);ctx.lineTo(x+w-1.5,y+h*0.5);ctx.stroke();
     if(W>=2){ctx.fillStyle='#0b0812';ctx.beginPath();ctx.moveTo(x+w+1.2,y+h-4-rq()*3);ctx.lineTo(x+w+1.2,y+h+1.2);ctx.lineTo(x+w-3,y+h+1.2);ctx.closePath();ctx.fill();} // a chipped corner
     ctx.fillStyle='#0b0812';ctx.beginPath();ctx.arc(R.cx,y-1.5,2.2,0,6.2832);ctx.fill();ctx.fillStyle=W>=2?'#7a4a2c':'#b98a4a';ctx.beginPath();ctx.arc(R.cx,y-1.5,1.1,0,6.2832);ctx.fill();}
+  ctx.restore(); // (the back plane done)
   // the hoist beam: from inside the wall on side ws out over the shaft to the mouth's edge, a brace under it into the same wall
   const ws=R.ws,xw=ws>0?X+TW+10:X-10,xo=ws>0?X-3:X+TW+3;
   liftTimber(ctx,xw,R.by+3,xo,R.by+3,6,W,true);
@@ -5551,6 +5569,7 @@ function drawLiftCounterweight(ctx,f,half){
   // the platform: the same floor slab as the ledges, held at mid depth by an iron eye under each chain
   liftSlab(ctx,X,ys,th,W,hash2(f.sc,f.rB));liftEye(ctx,R.ca,ys,W);liftEye(ctx,R.cb,ys,W);
   ctx.restore();
+  for(let e=0;e<2;e++)if((e?f.sB:f.sT)>0)gate(e,0);
 }
 // 2. the chain-loop lift: a bronze gear at the top and the bottom, an endless chain round them, and slabs fixed to the chain.
 // The bottom run turns in a slot along the floor of the shaft's foot (the floor the slabs ride over there): only the upper
@@ -5559,7 +5578,7 @@ function drawLiftChain(ctx,f,half){
   if(half)return;
   const th=L.theme,xE=f.c0*TW+16,xX=f.c1*TW+16,X0=f.ca*TW,top=f.rT*TH,W=liftWear(f),yS=f.yB;
   ctx.save();liftOccl(ctx,f);
-  liftShaftBack(ctx,X0,2*TW,top,f.yB,W);
+  ctx.save();liftOcclSide(ctx,f);liftShaftBack(ctx,X0,2*TW,top,f.yB,W);ctx.restore();
   {const x0=Math.min(xE,xX)-9,x1=Math.max(xE,xX)+9;ctx.fillStyle='rgba(4,3,8,.85)';ctx.fillRect(x0,yS-1.6,x1-x0,3.2);ctx.fillStyle='rgba(255,255,255,.1)';ctx.fillRect(x0,yS+1.6,x1-x0,0.6);} // the slot
   const below=fn=>{ctx.save();ctx.beginPath();ctx.rect(X0-40,top-80,2*TW+80,yS+1.6-(top-80));ctx.clip();fn();ctx.restore();}; // (drawn only down to the slot's lower lip)
   // the chain: a heavy link chain up the entry column, over the top, down the exit column and back along the bottom. Its links
@@ -5682,14 +5701,15 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     const wc=g.alive?wallPress(g.x,g.y,g.face,g.pose):null;ctx.save();figClip(ctx,0,null,wc);
     if(!g.alive&&DISS.on&&g.t>DISS.t0)dissolveGuard(ctx,g,(g.t-DISS.t0)/DISS.dur,c=>drawActor(c,g,g.x,g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:false,hasSword:!g.skel,pale:true,flash:g.flash})); // S3-A: crumbles into sand
     else{if(g.dz)g.dz.on=false;drawActor(ctx,g,g.x+(wc?wc.dx:0),g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:(g.alive&&g.state!=='idle'&&g.state!=='drop'),hasSword:!g.skel,pale:true,flash:g.flash,alpha:g.alive||DISS.on?undefined:clamp(1-(g.t-1.1)/0.8,0,1)});}ctx.restore();}
-  if(P&&!(P.state==='dead'&&P.cause==='fall'&&P.y>L.rows*TH)){
+  if(P&&!(P.state==='dead'&&P.cause==='fall'&&P.y>L.rows*TH)&&!LIFT_DBG.rider){
     // behind the wall's face he is dimmed while he moves (jumping up, climbing), so a climb reads as one continuous move;
     // once he hangs still the wall covers him as in PoP1, where a wall's front is drawn over the Kid (SDLPoP draw_tile_fore)
     const dimA=P.state==='hang'?0.4*Math.max(0,1-P.t/0.3):0.4;
     if(P.hideMode>0&&P.hideLg&&dimA>0.01){
       const lg=P.hideLg;ctx.save();ctx.beginPath();if(P.hideMode===2)ctx.rect(-1e5,lg.ys+1.5,2e5,1e5);else ctx.rect(lg.xe-HX,lg.ys+1.5,TW,HANG+16);ctx.clip();ctx.globalAlpha=dimA;
       drawActor(ctx,P,P.x+(P.rdx||0),P.y+(P.rdy||0),P.face,P.pose,PAL_HERO,{yo:P.yo,hasSword:true,time:gameTime});ctx.restore();}
-    ctx.save();figClip(ctx,P.hideMode,P.hideLg,P.state==='dead'?null:wallPress(P.x,P.y,P.face,P.pose));
+    ctx.save();{const lf=L.lifts.length?liftAround():null;if(lf)liftOccl(ctx,lf);} // (in a lift's shaft the walls' front faces round it are nearer than he is)
+    figClip(ctx,P.hideMode,P.hideLg,P.state==='dead'?null:wallPress(P.x,P.y,P.face,P.pose));
     drawActor(ctx,P,P.x+(P.rdx||0),P.y+(P.rdy||0),P.face,P.pose,PAL_HERO,{yo:P.yo,sword:(P.sword&&!!P.foe)||P.state==='lowStrike'||P.state==='poke'||(P.lowSword&&P.state==='crouch')||P.state==='slide',swLen:P.state==='slide'?SL_BLADE:0,hasSword:true,flash:P.flash,alpha:P.state==='exit'?Math.max(0,1-P.t*1.1):undefined,flutter:Math.min(1,Math.abs(P.vx)/90+(P.state==='air'?0.8:0)),time:gameTime});
     if(P.state==='drink'&&P.dkG&&!P.dkRel&&P.drinkIt)drawHeldFlask(ctx);
     ctx.restore();
@@ -6997,7 +7017,7 @@ function msGate(g,f,X,Y,ys,half,id){const gg=gateGeom(X,Y,ys,f);if(!gg)return;co
 function msLine(g,x0,y0,x1,y1,lw,id){g.strokeStyle=msCol(id,Math.abs(x1-x0)>Math.abs(y1-y0)?MS_ACROSS:MS_UP);g.lineWidth=lw;g.beginPath();g.moveTo(x0,y0);g.lineTo(x1,y1);g.stroke();}
 function msDisc(g,x,y,r,id){g.fillStyle=msCol(id,MS_ANY);g.beginPath();g.arc(x,y,r,0,6.2832);g.fill();}
 // lifts (drawLiftCounterweight, drawLiftChain): mouth gates, chains, pulleys and gears, the slab's brackets
-function msLift(g,f,half){
+function msLift(g,f,half){if(LIFT_DBG.off)return;
   if(f.t==='chain'){if(half)return;const xE=f.c0*TW+16,xX=f.c1*TW+16,ch=msKind('chain'),bz=MKID.bronze,yS=f.yB;
     g.save();liftOccl(g,f);g.beginPath();g.rect(Math.min(xE,xX)-20,f.yT-20,Math.abs(xX-xE)+40,yS+1.6-(f.yT-20));g.clip(); // (as drawn: hidden by the walls' faces, the bottom run sunk in its slot)
     msLine(g,xE,f.yT+3,xE,yS,5,ch);msLine(g,xX,f.yT+3,xX,yS,5,ch);msLine(g,xE,f.yT+3,xX,f.yT+3,5,ch);msLine(g,xE,yS,xX,yS,3,ch);
@@ -7005,8 +7025,11 @@ function msLift(g,f,half){
     g.save();liftOccl(g,f);g.fillStyle=msCol(bz,MS_ANY);for(let i=0;i<f.n;i++){const q=chainPos(f,i,gameTime);g.fillRect(q.x-3,q.y+HY,6,5);}g.restore();
     msBox(Math.min(xE,xX)-10,f.yT-8,Math.max(xE,xX)+10,f.yB+12);return;}
   const ys=f.y,gid=msKind('gate'),ch=msKind('chain'),bz=MKID.bronze;
-  for(let e=0;e<2;e++){const rr=e?f.rB:f.rT,xg=liftGx(f,e?f.sB:f.sT);msGate(g,{open:e?f.gB:f.gT,latch:true,dur:0},xg-16,rr*TH,SURF(rr),half?1:0,gid);}
-  if(half)return;
+  const gate=(e,h)=>{const rr=e?f.rB:f.rT;msGate(g,{open:e?f.gB:f.gT,latch:true,dur:0},liftGx(f,e?f.sB:f.sT)-16,rr*TH,SURF(rr),h,gid);};
+  if(half){for(let e=0;e<2;e++)if((e?f.sB:f.sT)>0)gate(e,1);return;} // (as drawn: a right mouth's near half after the rider,
+  let lg=false;for(let e=0;e<2;e++)if((e?f.sB:f.sT)<0){gate(e,0);gate(e,1);lg=true;} // a left mouth whole and behind the platform)
+  if(lg){const X=f.sc*TW,fx=X-HX,ft=ys+HY;g.save();liftOccl(g,f);g.fillStyle='#000';g.beginPath();g.moveTo(fx,ft+5);g.lineTo(fx,ft);g.lineTo(fx+DX,ys-HY);g.lineTo(fx+TW+DX,ys-HY);g.lineTo(fx+TW,ft);g.lineTo(fx+TW,ft+5);g.closePath();g.fill();g.restore();}
+  for(let e=0;e<2;e++)if((e?f.sB:f.sT)>0)gate(e,0);
   const R=liftRig(f),X=R.X;g.save();liftOccl(g,f);
   msLine(g,R.cx,R.hy,R.cx,R.wt-2,2.6,ch);msLine(g,R.ca,R.hy,R.ca,ys-1,2.6,ch);msLine(g,R.cb,R.hy,R.cb,ys-1,2.6,ch);
   msDisc(g,R.cx,R.hy,7,bz);
@@ -8194,7 +8217,7 @@ window.__HK={tapCloth,THEMES,progOf,themeName,hint,learn,HINTS,HINT_MOVE,get ban
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
   get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,ryOps,ryShape,ryProfile,skyBeam,RY,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,plantPose,legIK,mk,drawDynamic,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
-  get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V};
+  get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG};
 Object.assign(window.__HK,{guardBudget,snakeBudget}); // (the fighters' budgets, for guardscan.py)
 Object.assign(window.__HK,{hurt,HK,DISS,sandP,SAND_HP,GLFX,setClock:f=>{performance.now=f;}}); // S3-A (tests)
 Object.assign(window.__HK,{FLM,FLV,ventState,cyc}); // FL (flames: the sheets and the vent's look, for tests)

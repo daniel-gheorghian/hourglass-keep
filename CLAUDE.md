@@ -29,7 +29,7 @@ they load `bot.js` by a relative path and write their output next to themselves.
 
 ## Build
 
-From the repo root, with N the release number (current release v60, next v61):
+From the repo root, with N the release number (current release v61, next v62):
 
 ```
 python3 dev/tools/build.py dev/hourglass-keep.html index.html sw.js N
@@ -172,6 +172,8 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   out behind the walls' front faces in front of them (`liftOccl`), the counterweight runs in the back wall behind the platform, and
   they follow the stonework's wear (`liftWear`). Paternoster slabs and a counterweight platform stopped mid-shaft are solid to him in
   the air (`liftAir`); a slab coming down on him at the foot steps him aside, never hurts. A ride held on Down ends standing (`P.liftHold`).
+  A mouth grating on a shaft's right edge is drawn after the shaft's contents, the rider is cut by `liftOccl` too, and the shaft's
+  back-wall parts are cut by the side faces beside it (v61); `liftscan.py` checks every lift for pixels over walls and gratings.
 - A ceiling at his height (a WALL, or an upper floor's slab, `ceilY`) makes any floor jump the low leap (v60, owner), and the head
   clamp holds every frame; a saw that would sit under such a ceiling becomes spikes in place (the low leap cannot clear it).
   Check with `lowceil.py`.
