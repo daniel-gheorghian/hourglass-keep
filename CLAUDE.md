@@ -144,7 +144,8 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   (effect mask, silhouettes in one target of 192 px slots, metal, beam occluders) are drawn the same way into their own targets and
   copied into the atlas on the GPU (`glAtlasGL`, same layout as `glAtlas`), so the shaders are unchanged and nothing waits: the frame
   is drawn at once (no frame of delay). Images are uploaded once: rooms when first drawn or two frames after they are built
-  (`g2Warm`), the relief reading a room's mip level 1; a canvas redrawn every frame must be marked `_glv=1` (the dissolving guard).
+  (`g2Warm`), the relief reading a room's mip level 1; a canvas redrawn every frame must be marked `_glv=1` (the dissolve's first frame; after it the dissolve runs on the GPU,
+  `G2D._diss`, from the same noise and ramp).
   `GLP.rs` is now the scene target's scale. Classic is untouched. Without WebGL2, or with `GLFX.wgl=false` (`?prof` step '2D scene',
   `?bench=2d`), Torchlight takes the v60 path (2D scene copied one frame late through `glPrep`/`glSubmit`/`glScene`/`glAtlasUp`).
   Tests that compare the picture of one exact state set `GLP.pipe=false`. `wgl_cmp.py`, `wgl_maskcmp.py` and `wgl_parity.py` compare

@@ -182,12 +182,61 @@ metal, fights, lifts, a rewind, darkness).
 * With no 2D canvas left to wait for, `glPrep`/`glSubmit` draw in the same frame: the one-frame delay of v52 goes.
 * Phone: the masks copy (~1.1 ms) and the 2D silhouettes go. Risk: low (the same drawing code through the proven facade).
 
-### Stage 4. Measure, then trim (only what does not change the picture)
-* Sprite atlas if `?prof` shows many batches; vertex format packing; render scale as a real scene scale.
+### Stage 4. Trim what still copies a canvas (done: the dissolve)
+* The dissolving guard (S3-A) was the last canvas copied into WebGL every frame (its picture plus two noise masks built
+  with putImageData). Now, from its second frame on, the guard is drawn by the facade into a slot of its own target and the
+  noise threshold and the crumbling edge's sand are computed on the GPU from the same noise (uploaded once as a float
+  texture) and the same 16-step ramp (`G2D._diss`, modes 5 and 6). The first frame still runs in 2D once, because the
+  grains' starting points are read back from it (`getImageData`, as before).
+* Not done (measure first): a sprite atlas (batches are 30 to 70 a frame), packing the vertex format further.
 
-### Stage 5 (optional). Rooms built off the 2D canvas
-* Draw `drawRoomStatic` through the facade into the room texture (no room upload at all) or build rooms in a worker.
+### Stage 5 (optional, not done). Rooms built without a 2D canvas
+* Each room picture is still drawn in 2D and uploaded once (on a quiet frame two frames after it is built): about one a
+  second while moving. Drawing `drawRoomStatic` through the facade straight into a texture would remove that copy, but a
+  whole room is ~5 000 calls of JS tessellation in one frame (the 2D build is spread over three frames); it needs the build
+  split across frames into a kept target. Worth doing only if `?prof` on the phone shows room uploads as spikes.
 
-### What the owner should measure on the phone after each stage
-`?bench` (Torchlight, full size), `?bench=saver`, `?bench=auto`, and `?prof` (rows: `scene` = the facade's replay,
-`masks`, `lmap`, `relief`, `atmo`, `bloom`, `compose`, `storm`), plus how warm the phone gets after 10 minutes of play.
+### What the owner should measure on the phone
+On the preview build: `?bench` (Torchlight, full size, the new path), `?bench=2d` (the same build, the scene drawn in 2D
+and copied: the v60 path), `?bench=saver` (Battery saver), `?bench=auto` (the game's own scaling and fall back), and
+`?prof` (rows: `scene` = the facade's draw, `masks` = the atlas copy on the GPU, `lmap`, `relief`, `atmo`, `bloom`,
+`compose`, `storm`; the step '2D scene (v60)' toggles the old path; a line gives vertices, draws, batches and uploads).
+Compare the `work` column (script time a frame) and `mean`/`>20ms` of `?bench` against `?bench=2d`, and how warm the
+phone gets after 10 minutes of play in each.
+
+---
+
+## 4. Results (branch `webgl`, measured on this Mac)
+
+### Visual equivalence
+Exact game states rendered in Torchlight by main and by the branch (`wgl_cmp.py`: the bot plays a floor to a tick or a
+condition, the same clock and random numbers for every render, `GLP.pipe=false`, 14 renders, the WebGL canvas read back;
+headless Chromium's SwiftShader, 1704×786). Differences in 0-255 over RGB; "flat" counts only pixels whose neighbourhood
+in main is flat (a difference there is not antialiasing).
+
+| Stage | States | Mean | Pixels off by >24 (worst state) | Same, away from edges | Notes |
+|---|---|---|---|---|---|
+| 1 | 27 | 0 | 0 | 0 | bit-identical (1 LSB of driver noise in one state) |
+| 2 | 77 | 0.56 | 0.071 % | 0.0038 % | every difference on a shape's edge (4x MSAA against analytic AA) |
+| 3 | 84 | 0.56 | 0.075 % | 0.0032 % | mask atlas itself (`wgl_maskcmp.py`): mean 0.03, 0.35 % at edges |
+| 4 | 34 + 17 | 0.55 / 0.61 | 0.081 % | 0.0009 % | the second set: fights, dissolves (also mid-dissolve at 30, 55, 80 %) |
+
+Per function against the real Canvas2D (`wgl_parity.py`: rects, circles, concave, star, even-odd, self-crossing, strokes
+with every join and cap, dashes, linear and radial gradients, transforms, nested clips, composite modes, images, Path2D,
+figures): mean 0.05 to 0.66, nothing off away from edges beyond 0.4 % (the 0.4 % is the 1.25 px figure outline's AA).
+
+### Speed (bench.py, Chrome on this Mac's AMD GPU through ANGLE-Metal; Chrome copies 2D canvases cheaply, so the Mac
+### cannot show the phone's gain: only the script cost added by the new path)
+| Build | fps | mean ms | worst 2 s | work ms | relief copies |
+|---|---|---|---|---|---|
+| main (v60) | 59.0 | 17.0 | 19.8 | 1.6 | 89 |
+| stage 2 | 59.2 | 16.9 | 20.0 | 2.1 | 0 |
+| stage 4 (final) | 59.3 | 16.9 | 19.8 | 2.5 | 0 |
+| final, `?bench=2d` (the v60 path in the same build) | 59.1 | 16.9 | 19.6 | 1.8 | 89 |
+| Battery saver: stage 1 / final | 59.7 / 59.5 | 16.7 / 16.8 | 17.4 / 17.7 | 2.1 / 3.0 | 89 / 0 |
+
+The new path costs about 0.9 ms more script on the Mac (tessellation: the stroker, earcut, ellipses). On the phone it
+removes the scene copy (6.7 ms at full size in v52 `?prof`), the masks' copy (1.1 ms), the relief copies and the waits for
+Safari's 2D raster, which made up most of the phone's 9.3 to 10.3 ms of script work in v54. Expected phone script work:
+about 3 to 5 ms a frame at full size, and no frame of delay. To be confirmed on the phone with `?bench` against
+`?bench=2d`.

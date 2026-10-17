@@ -6407,7 +6407,10 @@ precision highp float;in vec4 v_c;in vec2 v_t;flat in vec2 v_g;uniform sampler2D
 void main(){int m=int(v_g.x+.5);
   if(m==0){o=v_c;return;}
   if(m==1||m==4){o=texture(u_tx,v_t)*v_c.a;return;}
-  int gi=int(v_g.y+.5);vec4 A=texelFetch(u_gp,ivec2(0,gi),0),B=texelFetch(u_gp,ivec2(1,gi),0);float t;
+  int gi=int(v_g.y+.5);
+  if(m>=5){vec4 A=texelFetch(u_gp,ivec2(0,gi),0);float v=texelFetch(u_tx,ivec2(floor(v_t)),0).r,d=v-A.x; // the dissolve: noise against the threshold, the band's sand
+    if(m==5){o=d<0.?vec4(0.):vec4(1.);return;}
+    if(d<0.||d>=A.y){o=vec4(0.);return;}o=vec4(texture(u_rp,vec2((floor(d/A.y*15.)*16.+8.5)/256.,(A.z+.5)/512.)).rgb,1.);return;}vec4 A=texelFetch(u_gp,ivec2(0,gi),0),B=texelFetch(u_gp,ivec2(1,gi),0);float t;
   if(m==2){vec2 d=A.zw-A.xy;float dd=dot(d,d);t=dd>0.?dot(v_t-A.xy,d)/dd:0.;}
   else{vec2 cd=B.xy-A.xy,pd=v_t-A.xy;float r0=A.z,dr=B.z-A.z,a=dot(cd,cd)-dr*dr,b=dot(pd,cd)+r0*dr,c=dot(pd,pd)-r0*r0; // two circles (the canvas rule): the largest t with r(t) >= 0 whose circle passes through the point
     if(abs(a)<1e-6){if(abs(b)<1e-9){o=vec4(0.);return;}t=c/(2.*b);if(r0+t*dr<0.){o=vec4(0.);return;}}
@@ -6434,7 +6437,7 @@ function glsInit(gl){
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
     GLS.rampData=new Uint8Array(256*4);GLS.rampRows.clear();GLS.rampN=0;GLS.tex.clear();GLS.T.length=0;
     GLS.gl=gl;GLS.ok=true;GLS.scene=g2Target('scene',9);GLS.bg=g2Target('bg',0);GLS.F=new G2D(GLS.scene);GLS.Fbg=new G2D(GLS.bg);
-    for(const [k,pr] of [['sil',1],['mask',2],['metal',2],['occ',2]]){GLS[k]=g2Target(k,pr);GLS['F'+k]=new G2D(GLS[k]);} // (unit WGL stage 3: the masks)
+    for(const [k,pr] of [['sil',1],['mask',2],['metal',2],['occ',2],['diss',1]]){GLS[k]=g2Target(k,pr);GLS['F'+k]=new G2D(GLS[k]);} // (unit WGL stage 3: the masks)
     g2grow(1<<15);g2growI(1<<16);}
   catch(e){GLS.ok=false;GLS.why=String(e&&e.message||e);}}
 function g2growI(n){if(GLS.icap>=n)return;let c=Math.max(GLS.icap*2,1<<16);while(c<n)c*=2;const a=new Uint32Array(c);if(GLS.I32)a.set(GLS.I32.subarray(0,GLS.ni));GLS.I32=a;GLS.icap=c;}
@@ -6451,7 +6454,7 @@ function g2Size(t,w,h){const gl=GLS.gl;if(t.w===w&&t.h===h&&t.fb)return;t.w=w;t.
   t.tex=glTex(gl,w,h);t.rf=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,t.rf);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t.tex,0);
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);}
 // a frame's recording starts (render(), Torchlight): every target's list is emptied
-function g2Begin(){GLS.nv=0;GLS.ni=0;if(GLS.rampN>448){GLS.rampRows.clear();GLS.rampN=0;} // (gradient rows are recycled between frames, never inside one)
+function g2Begin(){GLS.nv=0;GLS.ni=0;DISS.slot.clear();if(GLS.rampN>448){GLS.rampRows.clear();GLS.rampN=0;} // (gradient rows are recycled between frames, never inside one)
   GLS.id=0;GLS.gpN=0;GLS.fr++;for(const t of GLS.T)t.ops.length=0;GLS.T.length=0;GLS.stats.verts=0;}
 // a mask target's facade, begun on its first use in a frame (cleared to clear)
 function g2Mk(k,w,h,clear){const F=GLS['F'+k];if(F.T._fr!==GLS.fr){F.T._fr=GLS.fr;F.begin(w,h,clear);}return F;}
@@ -6482,6 +6485,13 @@ function g2RampRow(g){const k=g._k||(g._k=g._st.join('|'));let r=GLS.rampRows.ge
     else{let j=0;while(j<S.length-1&&S[j+1][0]<t)j++;const a=S[j],b=S[j+1],f=b[0]>a[0]?(t-a[0])/(b[0]-a[0]):1;c=[a[1][0]+(b[1][0]-a[1][0])*f,a[1][1]+(b[1][1]-a[1][1])*f,a[1][2]+(b[1][2]-a[1][2])*f,a[1][3]+(b[1][3]-a[1][3])*f];}
     D[x*4]=Math.round(c[0]);D[x*4+1]=Math.round(c[1]);D[x*4+2]=Math.round(c[2]);D[x*4+3]=Math.round(c[3]*255);}
   GLS.rampDirty.push(r,D);return r;}
+// a row of four numbers in the parameters' texture (for the dissolve), and the dissolve's ramp and noise
+function g2Param(a,b,c,d){if(GLS.gpN>=512)return 0;const i=GLS.gpN++,o=i*8,D=GLS.gpData;D[o]=a;D[o+1]=b;D[o+2]=c;D[o+3]=d;D[o+4]=D[o+5]=D[o+6]=D[o+7]=0;return i;}
+function g2DissRow(){let r=GLS.rampRows.get('DISS');if(r!==undefined)return r;if(GLS.rampN>=512)return 511;r=GLS.rampN++;GLS.rampRows.set('DISS',r);
+  const D=new Uint8Array(1024);for(let x=0;x<256;x++){const c=DISS_RAMP[x>>4];D[x*4]=c&255;D[x*4+1]=(c>>8)&255;D[x*4+2]=(c>>16)&255;D[x*4+3]=255;}GLS.rampDirty.push(r,D);return r;}
+function g2DissTex(){if(GLS.dissT)return GLS.dissT;const gl=GLS.gl,t=gl.createTexture(),{NW,NH}=DISS,d=new Float32Array(NW*NH*4);for(let i=0;i<NW*NH;i++)d[i*4]=dissN[i];
+  gl.bindTexture(gl.TEXTURE_2D,t);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,NW,NH,0,gl.RGBA,gl.FLOAT,d);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);return GLS.dissT={glt:t,width:NW,height:NH};}
 function g2GradIx(g){if(g._fr===GLS.fr)return g._gi;if(GLS.gpN>=512){g2warn('too many gradients');return 0;}const i=GLS.gpN++,o=i*8,D=GLS.gpData,h=g._hk,row=g2RampRow(g);
   if(h[0]===0){D[o]=h[1];D[o+1]=h[2];D[o+2]=h[3];D[o+3]=h[4];D[o+4]=0;D[o+5]=0;D[o+6]=0;D[o+7]=row;}
   else{D[o]=h[1];D[o+1]=h[2];D[o+2]=h[3];D[o+3]=0;D[o+4]=h[4];D[o+5]=h[5];D[o+6]=h[6];D[o+7]=row;}
@@ -6576,6 +6586,11 @@ class G2D{
     const a8=Math.round(this.s.ga*255);if(!a8)return;const z=this._z();this._batch(img,this.s.sm?0:1);
     const u0=sx/iw2,u1=(sx+sw)/iw2,fl=img.isTgt,v0=fl?1-sy/ih2:sy/ih2,v1=fl?1-(sy+sh)/ih2:(sy+sh)/ih2,col=(a8<<24|a8<<16|a8<<8|a8)>>>0; // (a target is drawn bottom-up: its rows run the other way)
     this._vq(X0,Y0,X1,Y1,X2,Y2,X3,Y3,col,1,0,z,u0,v0,u1,v0,u1,v1,u0,v1);}
+  // (the dissolve) over the rectangle x,y,w,h (screen px, a K px cell per noise cell from ox,oy): mode 5 keeps what lies past the
+  // threshold q (destination-in), mode 6 lays the crumbling edge's sand (the ramp over the band w) over what is left (source-atop)
+  _diss(x,y,w,h,K,ox,oy,q,bw){const so=this.s.op,pi=g2Param(q,bw,g2DissRow(),0),tx=g2DissTex();
+    for(const [mo,op] of [[5,4],[6,5]]){this.s.op=op;const z=this._z();this._batch(tx,1);this._vq(x,y,x+w,y,x+w,y+h,x,y+h,0xFFFFFFFF,mo,pi,z,ox,oy,ox+w/K,oy,ox+w/K,oy+h/K,ox,oy+h/K);}
+    this.s.op=so;}
   createLinearGradient(a,b,c,d){return g2cx2().createLinearGradient(a,b,c,d);}
   createRadialGradient(a,b,c,d,e,f){return g2cx2().createRadialGradient(a,b,c,d,e,f);}
   createPattern(img,rep){return g2cx2().createPattern(img,rep);}
@@ -6643,27 +6658,28 @@ class G2D{
   _strokePoly(c,n,closed,hw,col,mo,gi,z,st){
     if(closed&&n>=2&&Math.abs(c[0]-c[n*2-2])<1e-7&&Math.abs(c[1]-c[n*2-1])<1e-7)n--;
     if(n<2)return;const cap=this.s.cap,join=this.s.join,ml=this.s.ml,V=mo===0?(x,y)=>this._v(x,y,col,0,0,0,0,z):(x,y)=>this._vx(x,y,col,mo,gi,z,st),rstep=join===1||cap===1?2*Math.acos(Math.max(-1,1-0.25/Math.max(hw,0.3))):1;
-    const segs=closed?n:n-1;
-    for(let i=0;i<segs;i++){const ax=c[i*2],ay=c[i*2+1],j=(i+1)%n,bx=c[j*2],by=c[j*2+1];let dx=bx-ax,dy=by-ay;const L=Math.hypot(dx,dy);if(L<1e-9)continue;dx/=L;dy/=L;
+    const segs=closed?n:n-1;if(G2SD.length<segs*2)G2SD=new Float64Array(segs*4);const D=G2SD; // (each segment's direction, worked out once: unit x, y; 0,0 when it has no length)
+    for(let i=0;i<segs;i++){const ax=c[i*2],ay=c[i*2+1],j=i+1===n?0:i+1,bx=c[j*2],by=c[j*2+1];let dx=bx-ax,dy=by-ay;const L=Math.sqrt(dx*dx+dy*dy);
+      if(L<1e-9){D[i*2]=0;D[i*2+1]=0;continue;}dx/=L;dy/=L;D[i*2]=dx;D[i*2+1]=dy;
       let sx=0,sy=0,ex=0,ey=0;if(!closed&&cap===2){if(i===0){sx=-dx*hw;sy=-dy*hw;}if(i===segs-1){ex=dx*hw;ey=dy*hw;}}
       const nx=-dy*hw,ny=dx*hw,a=V(ax+sx+nx,ay+sy+ny),b=V(bx+ex+nx,by+ey+ny),cc=V(bx+ex-nx,by+ey-ny),d=V(ax+sx-nx,ay+sy-ny);this._i3(a,b,cc);this._i3(a,cc,d);}
     // joins at the inner points (and, closed, at every point)
-    for(let i=closed?0:1;i<(closed?n:n-1);i++){const p=(i-1+n)%n,q=(i+1)%n;
-      const px=c[p*2],py=c[p*2+1],x=c[i*2],y=c[i*2+1],qx=c[q*2],qy=c[q*2+1];let d0x=x-px,d0y=y-py,d1x=qx-x,d1y=qy-y;const l0=Math.hypot(d0x,d0y),l1=Math.hypot(d1x,d1y);if(l0<1e-9||l1<1e-9)continue;d0x/=l0;d0y/=l0;d1x/=l1;d1y/=l1;
-      const cr=d0x*d1y-d0y*d1x;if(Math.abs(cr)<1e-9&&d0x*d1x+d0y*d1y>0)continue;
-      const s=cr>0?-1:1,o0x=x-d0y*hw*s,o0y=y+d0x*hw*s,o1x=x-d1y*hw*s,o1y=y+d1x*hw*s; // the outer corners of the two segments
+    for(let i=closed?0:1;i<(closed?n:n-1);i++){const p=i===0?segs-1:i-1,d0x=D[p*2],d0y=D[p*2+1],d1x=D[i*2],d1y=D[i*2+1];if((!d0x&&!d0y)||(!d1x&&!d1y))continue;
+      const x=c[i*2],y=c[i*2+1],cr=d0x*d1y-d0y*d1x,dt=d0x*d1x+d0y*d1y;if(Math.abs(cr)<1e-9&&dt>0)continue;
+      const s=cr>0?-hw:hw,o0x=x-d0y*s,o0y=y+d0x*s,o1x=x-d1y*s,o1y=y+d1x*s; // the outer corners of the two segments
       const ci=V(x,y),i0=V(o0x,o0y),i1=V(o1x,o1y);
       if(join===1){ // round: a wedge of the circle between them, as many steps as the curve needs (one on a gentle bend)
-        const ang=Math.atan2(Math.abs(cr),d0x*d1x+d0y*d1y),k=Math.max(1,Math.ceil(ang/rstep));if(k===1){this._i3(ci,i0,i1);continue;}
+        const ang=Math.atan2(Math.abs(cr),dt),k=Math.max(1,Math.ceil(ang/rstep));if(k===1){this._i3(ci,i0,i1);continue;}
         const a0=Math.atan2(o0y-y,o0x-x),da=cr>0?ang:-ang;let pv=i0; // (the outer corner turns the way the line turns)
         for(let j=1;j<=k;j++){const a=a0+da*j/k,qv=j===k?i1:V(x+hw*Math.cos(a),y+hw*Math.sin(a));this._i3(ci,pv,qv);pv=qv;}continue;}
       this._i3(ci,i0,i1);
-      if(join===0){const cosT=d0x*d1x+d0y*d1y,ratio=1/Math.sqrt(Math.max(1e-12,(1+cosT)/2)); // miter length over half width
-        if(ratio<=ml){const mx=(o0x+o1x)/2,my=(o0y+o1y)/2,ux=(mx-x),uy=(my-y),ul=Math.hypot(ux,uy);if(ul>1e-9){const t=V(x+ux/ul*hw*ratio,y+uy/ul*hw*ratio);this._i3(i0,t,i1);}}}}
+      if(join===0){const ratio=1/Math.sqrt(Math.max(1e-12,(1+dt)/2)); // miter length over half width
+        if(ratio<=ml){let ux=-(d0y+d1y)*s,uy=(d0x+d1x)*s;const ul=Math.sqrt(ux*ux+uy*uy);if(ul>1e-9){ux/=ul;uy/=ul;const t=V(x+ux*hw*ratio,y+uy*hw*ratio);this._i3(i0,t,i1);}}}}
     if(!closed&&cap===1){this._disc(c[0],c[1],hw,V);this._disc(c[n*2-2],c[n*2-1],hw,V);}}
   _disc(x,y,r,V){const n=Math.max(8,Math.min(64,Math.ceil(Math.PI/Math.acos(Math.max(-1,1-0.25/Math.max(r,0.3)))))),ci=V(x,y),f=V(x+r,y);let pv=f;
     for(let i=1;i<=n;i++){const a=i/n*Math.PI*2,qv=i===n?f:V(x+r*Math.cos(a),y+r*Math.sin(a));this._i3(ci,pv,qv);pv=qv;}}
 }
+let G2SD=new Float64Array(256); // (the stroker's scratch: segment directions)
 function g2cx2(){if(!g2cx)g2cx=document.createElement('canvas').getContext('2d');return g2cx;}
 // a fill or stroke style: colour (k 0), gradient (k 1), pattern (k 2)
 const G2STY=new Map();
@@ -6701,7 +6717,7 @@ function g2Replay(){const gl=GLS.gl,U=GLS.prog.u;if(!GLS.T.length)return;GLS.sta
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
   // the images first (an upload inside a pass would split it); the targets drawn from (the backdrop) before those that use them
   const TT=GLS.T.slice().sort((a,b)=>(a.pri||0)-(b.pri||0));
-  gl.activeTexture(gl.TEXTURE0);for(const t of TT)for(const o of t.ops)if(o.tex&&!o.tex.isTgt)o.tt=g2Tex(o.tex);
+  gl.activeTexture(gl.TEXTURE0);for(const t of TT)for(const o of t.ops)if(o.tex&&!o.tex.isTgt)o.tt=o.tex.glt||g2Tex(o.tex);
   let rooms=0;for(const [c,e] of GLS.tex)if(c._room&&e.st===GLS.stamp)rooms++;if(!rooms)g2Warm();
   gl.bindVertexArray(GLS.vao);gl.bindBuffer(gl.ARRAY_BUFFER,GLS.vb);gl.bufferData(gl.ARRAY_BUFFER,GLS.F32.subarray(0,GLS.nv*G2STRIDE),gl.STREAM_DRAW);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,GLS.I32.subarray(0,GLS.ni),gl.STREAM_DRAW);
   gl.useProgram(GLS.prog.p);gl.uniform1i(U.u_tx,0);gl.uniform1i(U.u_rp,1);gl.uniform1i(U.u_gp,2);
@@ -6796,7 +6812,7 @@ function lowEdge2D(ctx){const k=HK.low;if(k<0.01)return;const W=viewW,H=ROOM_H;
 // (the body is eaten by sand; nothing glows or is added to the light), and grains fall from the body in streams (dissGrains) onto a
 // small heap that settles, puffs dust and fades (SAND pool below). The guard is drawn into a small canvas first, masked with a
 // canvas built from the noise by putImageData (no reading back, nothing allocated per frame).
-const DISS={on:true,t0:1.1,dur:1.0,W:128,H:80,OX:64,OY:68,w:0.1,NW:192,NH:120};
+const DISS={slot:new Map(),v:[],on:true,t0:1.1,dur:1.0,W:128,H:80,OX:64,OY:68,w:0.1,NW:192,NH:120};
 let dissN=null,dissCM=null,dissCE=null,dissIm=null,dissIe=null,dissM=null,dissE=null,dissK=0,dissRow=null,dissCol=null,DISS_RAMP=null,dissM32=null,dissE32=null;
 function dissInit(){const {NW,NH}=DISS,r=mulberry32(4711),v=new Float32Array(NW*NH),n=NW*NH;
   const layer=(cell,amp)=>{const gw=Math.ceil(NW/cell)+2,gh=Math.ceil(NH/cell)+2,gr=new Float32Array(gw*gh);for(let i=0;i<gr.length;i++)gr[i]=r();
@@ -6816,8 +6832,14 @@ function dissolveGuard(ctx,g,p,draw){
   const K=clamp(Math.round(renderXf.VZ),1,3),W=DISS.W*K,H=DISS.H*K,w=DISS.w,q=clamp(p,0,1)*(1+w),bx=Math.round(g.x)-DISS.OX,by=Math.round(g.y)-DISS.OY;
   dissBuf(K);
   let z=g.dz;if(!z){const mk=()=>document.createElement('canvas');z=g.dz={T:mk(),E:mk(),K:0,on:false,ox:Math.floor(Math.random()*(DISS.NW-DISS.W)),oy:Math.floor(Math.random()*(DISS.NH-DISS.H)),pts:null,n:0,acc:0,bx:0,by:0};}
-  if(z.K!==K){z.K=K;z.T.width=z.E.width=W;z.T.height=z.E.height=H;}z.T._glv=1; // (unit WGL: drawn anew every frame, so WebGL takes it again every frame)
-  const t=z.T.getContext('2d'),e=z.E.getContext('2d');
+  if(z.K!==K){z.K=K;z.T.width=z.E.width=W;z.T.height=z.E.height=H;}
+  if(ctx.isG2D&&z.pts&&GLS.ok){ // (unit WGL) the guard drawn by WebGL into a slot (4 of 384 x 240), the noise's threshold and the edge's sand computed on the GPU: no canvas uploaded
+    const sl=DISS.slot.get(g)??(DISS.slot.size<4?DISS.slot.set(g,DISS.slot.size).get(g):-1);if(sl>=0){
+      const F=g2Mk('diss',1536,240,[0,0,0,0]),sx=sl*384;F.setTransform(1,0,0,1,0,0);F.save();F.beginPath();F.rect(sx,0,W,H);F.clip();
+      F.setTransform(K,0,0,K,sx-bx*K,-by*K);draw(F);F.setTransform(1,0,0,1,0,0);F._diss(sx,0,W,H,K,z.ox,z.oy,q,w);F.restore();
+      z.on=true;z.bx=bx;z.by=by;const v=DISS.v[sl]||(DISS.v[sl]={isView:true,tgt:GLS.diss,x:sx,y:0,width:0,height:0});v.width=W;v.height=H;
+      ctx.drawImage(v,bx,by,DISS.W,DISS.H);return true;}}
+  const t=z.T.getContext('2d'),e=z.E.getContext('2d');z.T._glv=1; // (unit WGL: the first frame, and past four at once, in 2D: drawn anew every frame, so WebGL takes it again every frame)
   t.setTransform(1,0,0,1,0,0);t.globalCompositeOperation='source-over';t.globalAlpha=1;t.clearRect(0,0,W,H);
   t.setTransform(K,0,0,K,-bx*K,-by*K);draw(t);t.setTransform(1,0,0,1,0,0);
   if(!z.pts){ // once: where the body is, in the noise's cells, for the grains to start from
@@ -7851,16 +7873,20 @@ function hudLayer(ctx,sh){
 // (unit WGL) the HUD layer's drawing as a list of its calls and arguments, made by running hudLayer on a recorder: the same list
 // as last frame means the same pixels, so the 2D canvas above WebGL is left alone (Safari then neither draws nor composites it
 // again). Not while ?prof is on (its table changes every frame).
-const HUDREC={q:[],c:null};
-function hudKey(sh){if(PF.on)return null;const q=HUDREC.q;q.length=0;let c=HUDREC.c;
-  if(!c){c=HUDREC.c={};const pr=v=>v&&typeof v==='object'?(v._hk?v._hk.join(' ')+'/'+v._st.join(' '):'?'):v;
-    for(const m of ['fillRect','fillText','strokeText','beginPath','moveTo','lineTo','closePath','fill','stroke','arc','rect','ellipse','save','restore','setTransform','translate','scale','rotate','clearRect','drawImage','strokeRect','quadraticCurveTo','bezierCurveTo','clip','roundRect','setLineDash'])
-      c[m]=function(){q.push(m);for(let i=0;i<arguments.length;i++)q.push(pr(arguments[i]));};
-    for(const k of ['fillStyle','strokeStyle','globalAlpha','font','textAlign','textBaseline','lineWidth','globalCompositeOperation','lineCap','lineJoin','imageSmoothingEnabled'])
-      Object.defineProperty(c,k,{get(){return this['_'+k];},set(v){this['_'+k]=v;q.push(k,pr(v));}});
-    c.measureText=t=>{gx.font=c._font||'10px sans-serif';return gx.measureText(t);};
+const HUDREC={h1:0,h2:0,c:null,mt:new Map(),f64:new Float64Array(1),u32:null};
+function hudKey(sh){if(PF.on)return null;const H=HUDREC;let c=H.c;
+  if(!c){c=H.c={};H.u32=new Uint32Array(H.f64.buffer);
+    // (two running 32-bit hashes of every call's name and arguments: the same calls with the same arguments give the same key)
+    const mix=x=>{H.h1=Math.imul(H.h1^x,16777619);H.h2=Math.imul(H.h2+x|0,2246822519)^(H.h2>>>13);};
+    const put=v=>{if(typeof v==='number'){H.f64[0]=v;mix(H.u32[0]);mix(H.u32[1]);}else if(typeof v==='string'){mix(v.length+7);for(let i=0;i<v.length;i++)mix(v.charCodeAt(i));}
+      else if(v&&typeof v==='object'){if(v._hk){for(const x of v._hk)put(x);for(const x of v._st)put(x);}else mix(99);}else mix(v?3:5);};
+    for(const m of ['fillRect','fillText','strokeText','beginPath','moveTo','lineTo','closePath','fill','stroke','arc','rect','ellipse','save','restore','setTransform','translate','scale','rotate','clearRect','drawImage','strokeRect','quadraticCurveTo','bezierCurveTo','clip','roundRect','setLineDash']){
+      const id=m.length*131+m.charCodeAt(0)*7+m.charCodeAt(m.length-1);c[m]=function(){mix(id);for(let i=0;i<arguments.length;i++)put(arguments[i]);};}
+    for(const k of ['fillStyle','strokeStyle','globalAlpha','font','textAlign','textBaseline','lineWidth','globalCompositeOperation','lineCap','lineJoin','imageSmoothingEnabled']){const id=k.length*977+k.charCodeAt(0);
+      Object.defineProperty(c,k,{get(){return this['_'+k];},set(v){this['_'+k]=v;mix(id);put(v);}});}
+    c.measureText=t=>{const f=c._font||'10px sans-serif',k=f+'|'+t;let r=H.mt.get(k);if(!r){gx.font=f;r={width:gx.measureText(t).width};if(H.mt.size>400)H.mt.clear();H.mt.set(k,r);}return r;};
     c.createLinearGradient=(a,b,d,e)=>gx.createLinearGradient(a,b,d,e);c.createRadialGradient=(a,b,d,e,f,g)=>gx.createRadialGradient(a,b,d,e,f,g);}
-  q.push(cv.width,cv.height,VS);hudLayer(c,sh);return q.join(',');}
+  H.h1=2166136261;H.h2=0x9747b28c;H.f64[0]=cv.width*65536+cv.height;H.h1^=H.u32[0];H.h2^=Math.round(VS*1000);hudLayer(c,sh);return H.h1+':'+H.h2;}
 function fmt(s){s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),sec=s%60;return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(sec).padStart(2,'0');}
 function heart(ctx,x,y,full,fill,line){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+7,y);ctx.lineTo(x+3.5,y+9);ctx.closePath();ctx.fillStyle=full?fill:'rgba(10,8,20,.45)';ctx.fill();ctx.strokeStyle=line;ctx.lineWidth=0.8;ctx.stroke();}
 function drawHUD(ctx){
