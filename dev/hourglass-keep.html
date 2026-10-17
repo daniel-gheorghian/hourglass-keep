@@ -245,32 +245,85 @@ const approach=(v,t,d)=>v<t?Math.min(t,v+d):Math.max(t,v-d);
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 function hash2(a,b){let h=(Math.imul(a|0,374761393)+Math.imul(b|0,668265263))|0;h=Math.imul(h^(h>>>13),1274126177);return (h^(h>>>16))>>>0;}
 
+// The keep is the tomb-world of the twelve hours of the night (the Amduat and the Book of Gates: the sun's boat goes through
+// one region an hour and is reborn at dawn), in places of ancient Egypt, Kush and the Sahara. Twelve themes, four floors each.
+// `style` is the family of drawing (stone courses, arches, lamps, metal, windows: dungeon, palace, tile, forge, crypt); `look`
+// picks the theme's own backdrop, hangings and light. The generator never reads the theme: it builds each floor from the old
+// five-theme turn (GEN_STYLE), so the floors are the same as before the twelve themes (and they run in the same order for
+// floors 1 to 48). The sources each theme's motifs come from are in dev/tools/egypt_themes.html.
 const THEMES=[
- {name:'The Cistern',style:'dungeon',mortar:'#141824',brick:'#232b3d',brick2:'#1c2333',wall:'#4a5268',wallA:'#535c74',wallB:'#42495d',hi:'#6c7590',lo:'#2b3041',top:'#9ca2b6',front:'#4c5266',trim:'#8d93a6',sky:'#0e1b36',guard:'#8a2c3a',guard2:'#353a4b',glow:'255,170,90'},
- {name:'Sandstone Halls',style:'palace',mortar:'#22170f',brick:'#3b2b1f',brick2:'#2c1f15',wall:'#9a7046',wallA:'#a8794c',wallB:'#8d663f',hi:'#c69a64',lo:'#5f432a',top:'#e6bc82',front:'#8a6239',trim:'#e2bd7c',inlay:'#7c2f22',cloth:'#7a2230',cloth2:'#d8b04a',glass:'240,166,74',sky:'#16264a',guard:'#2f5a7a',guard2:'#4e3c29',glow:'255,190,110'},
- {name:'Lapis Gallery',style:'tile',mortar:'#0d1126',brick:'#1d2546',brick2:'#161d3b',wall:'#2d4a8e',wallA:'#34539b',wallB:'#284382',hi:'#4c6dbd',lo:'#1a2b5c',top:'#ddc891',front:'#7c6b41',trim:'#d8b04a',tileA:'#2d7bbf',tileB:'#b9ae92',tileC:'#d8b04a',tileD:'#13285e',glass:'250,200,120',sky:'#0a1230',guard:'#9a4422',guard2:'#2a2f4a',glow:'235,205,150'},
- {name:'Ember Forge',style:'forge',mortar:'#1a0a0b',brick:'#381819',brick2:'#2e1415',wall:'#74352a',wallA:'#7f3c30',wallB:'#6a3026',hi:'#9d5640',lo:'#461c16',top:'#d09169',front:'#6d3a28',trim:'#b5674a',sky:'#2a0f12',guard:'#2b2b33',guard2:'#5a1f1a',glow:'255,125,60'},
- {name:'Jade Crypt',style:'crypt',mortar:'#081411',brick:'#18302a',brick2:'#11241f',wall:'#2e6253',wallA:'#346b5b',wallB:'#295a4c',hi:'#4b8b76',lo:'#1a3b32',top:'#bdcda7',front:'#4f6b54',trim:'#9fbf9c',sky:'#071a1a',guard:'#5f2c6e',guard2:'#1f3832',glow:'190,255,210'},
+ // the primeval waters (Amduat hours 2-3); papyrus-bundle columns, the Ramesseum's vaulted brick store-rooms
+ {name:'The Waters of Nun',style:'dungeon',look:'nun',mortar:'#141824',brick:'#232b3d',brick2:'#1c2333',wall:'#4a5268',wallA:'#535c74',wallB:'#42495d',hi:'#6c7590',lo:'#2b3041',top:'#9ca2b6',front:'#4c5266',trim:'#8d93a6',sky:'#0e1b36',guard:'#8a2c3a',guard2:'#353a4b',glow:'255,170,90'},
+ // a Theban mortuary temple on the west bank: pylons, the Theban hills and el-Qurn, palms
+ {name:'The Halls of the West',style:'palace',look:'west',mortar:'#22170f',brick:'#3b2b1f',brick2:'#2c1f15',wall:'#9a7046',wallA:'#a8794c',wallB:'#8d663f',hi:'#c69a64',lo:'#5f432a',top:'#e6bc82',front:'#8a6239',trim:'#e2bd7c',inlay:'#a3402a',glass:'240,166,74',sky:'#16264a',guard:'#2f5a7a',guard2:'#4e3c29',glow:'255,190,110'},
+ // Djoser's blue chambers under the step pyramid at Saqqara: faience tiles set like reed matting
+ {name:'The Blue Chambers',style:'tile',look:'blue',mortar:'#0d1426',brick:'#1d2a46',brick2:'#16213b',wall:'#2d5288',wallA:'#345b94',wallB:'#284a7c',hi:'#4c74b4',lo:'#1a2f58',top:'#ddcfa0',front:'#7c6f48',trim:'#d8b04a',tileA:'#2a8a9c',tileB:'#cfc2a0',tileC:'#d8b04a',tileD:'#13285e',glass:'250,200,120',sky:'#0a1230',guard:'#9a4422',guard2:'#2a2f4a',glow:'235,205,150'},
+ // the iron works of Meroë in Kush, with the royal pyramids beyond
+ {name:'The Forges of Meroë',style:'forge',look:'meroe',mortar:'#1a0a0b',brick:'#381819',brick2:'#2e1415',wall:'#74352a',wallA:'#7f3c30',wallB:'#6a3026',hi:'#9d5640',lo:'#461c16',top:'#d09169',front:'#6d3a28',trim:'#b5674a',sky:'#2a0f12',guard:'#2b2b33',guard2:'#5a1f1a',glow:'255,125,60'},
+ // the hall of Osiris, green for rebirth, where the heart is weighed (Book of the Dead, spell 125; the Book of Gates' fifth hour)
+ {name:'The Green Hall of Osiris',style:'crypt',look:'osiris',mortar:'#081411',brick:'#18302a',brick2:'#11241f',wall:'#2e6253',wallA:'#346b5b',wallB:'#295a4c',hi:'#4b8b76',lo:'#1a3b32',top:'#bdcda7',front:'#4f6b54',trim:'#9fbf9c',sky:'#071a1a',guard:'#5f2c6e',guard2:'#1f3832',glow:'190,255,210'},
+ // the Garamantes' foggaras in the Fezzan: water channels cut under the desert, a line of shafts above each
+ {name:'The Foggaras of Garama',style:'dungeon',look:'foggara',mortar:'#1c140e',brick:'#3a2a1c',brick2:'#2c2016',wall:'#6b5238',wallA:'#755a3e',wallB:'#5f4932',hi:'#8f7250',lo:'#3e2f20',top:'#c2a27a',front:'#665036',trim:'#a88a62',sky:'#1a1830',guard:'#3c4f6a',guard2:'#3a2c1f',glow:'255,180,110',
+  lk:{amb:'116,102,96',win:'176,182,240',top:'214,208,236',bot:'255,232,204',haze:'96,74,52',mist:'160,140,110'}},
+ // Kerma in Kush: the Western Deffufa, a mudbrick temple three storeys high; round huts, acacias
+ {name:'The Deffufa of Kerma',style:'palace',look:'deffufa',mortar:'#21140c',brick:'#3e2618',brick2:'#2e1c12',wall:'#8a5236',wallA:'#955a3b',wallB:'#7d4a30',hi:'#b07450',lo:'#563220',top:'#d6a47a',front:'#7c4a2e',trim:'#e0c28a',inlay:'#2f7a72',glass:'240,170,90',sky:'#1c2548',guard:'#5a6a2a',guard2:'#4a3020',glow:'255,185,110',
+  lk:{amb:'126,102,112',win:'160,170,250',top:'214,206,250',bot:'255,226,196',haze:'104,72,96',mist:'180,145,140'}},
+ // the Valley of the Kings: painted corridors going down hour by hour, a well shaft across them (KV34 and its kin)
+ {name:'The Well Corridors',style:'tile',look:'wells',mortar:'#1a140c',brick:'#3a2c18',brick2:'#2c2112',wall:'#a07c3e',wallA:'#aa8444',wallB:'#927038',hi:'#c8a260',lo:'#5e4620',top:'#e8d2a0',front:'#8a6a34',trim:'#e0cfa0',tileA:'#2f6f9f',tileB:'#e2d3a8',tileC:'#a3402a',tileD:'#1d1a17',glass:'250,210,140',sky:'#121a36',guard:'#6a2c4a',guard2:'#3a2c18',glow:'255,205,140',
+  lk:{amb:'124,110,112',win:'170,184,250',top:'220,212,240',bot:'255,234,200',haze:'110,88,60',mist:'190,170,130'}},
+ // Napata in Kush: Gebel Barkal, the holy mountain, and the steep pyramids of Nuri and el-Kurru
+ {name:'The Pyramids of Napata',style:'forge',look:'napata',mortar:'#1e0e0a',brick:'#40201a',brick2:'#331812',wall:'#8a4a32',wallA:'#94523a',wallB:'#7c422c',hi:'#b06a4a',lo:'#52281a',top:'#d8a07a',front:'#7a4430',trim:'#c8945a',sky:'#2a1420',guard:'#2c3a4a',guard2:'#5a2a1c',glow:'255,150,80',
+  lk:{amb:'130,100,100',win:'255,160,100',top:'226,206,222',bot:'255,218,184',haze:'110,58,48',mist:'180,124,104'}},
+ // Aksum before its churches: the field of carved stelae over granite-lined royal tombs
+ {name:'The Stelae of Aksum',style:'crypt',look:'aksum',mortar:'#0c0e10',brick:'#22262a',brick2:'#1a1d20',wall:'#4e555c',wallA:'#566068',wallB:'#464c52',hi:'#737d86',lo:'#2a2f34',top:'#b8bcb8',front:'#545a5e',trim:'#b0a284',sky:'#0c1420',guard:'#6a3a2a',guard2:'#2a2e32',glow:'230,214,170',
+  lk:{amb:'106,112,126',win:'204,216,240',top:'210,218,236',bot:'240,236,222',haze:'70,80,96',mist:'150,160,175'}},
+ // Hawara: the mudbrick pyramid of Amenemhat III and the temple Herodotus called the Labyrinth, passages that lead nowhere
+ {name:'The Labyrinth of Hawara',style:'dungeon',look:'hawara',mortar:'#16130e',brick:'#332d22',brick2:'#27221a',wall:'#7a705c',wallA:'#857a64',wallB:'#6e6552',hi:'#a39780',lo:'#463f32',top:'#d0c4a6',front:'#6f6550',trim:'#b0a080',sky:'#141c30',guard:'#2a4a6a',guard2:'#3a3428',glow:'255,195,130',
+  lk:{amb:'116,110,122',win:'164,180,250',top:'214,214,240',bot:'255,234,206',haze:'88,80,92',mist:'165,155,150'}},
+ // Shali at Siwa: the fortress town built of kershef (salt and mud) that the rain of 1926 melted; the oasis' palms and salt lakes
+ {name:'The Salt Fortress of Shali',style:'palace',look:'shali',mortar:'#221c14',brick:'#3e3428',brick2:'#2e271e',wall:'#9a8a72',wallA:'#a69580',wallB:'#8c7c66',hi:'#c4b49a',lo:'#5c5040',top:'#e6dccb',front:'#857560',trim:'#e8e2d4',inlay:'#3e7d5a',glass:'240,200,140',sky:'#1a2a50',guard:'#6a3a2a',guard2:'#4a4030',glow:'255,200,130',
+  lk:{amb:'120,112,128',win:'160,180,255',top:'212,214,250',bot:'255,236,214',haze:'96,92,128',mist:'190,184,190'}},
 ];
+const GEN_STYLE=['dungeon','palace','tile','forge','crypt'];
+// each theme's own effects, on top of its style's (Torchlight unless said; Classic has the 2D ones): caus, water caustics thrown up
+// through the open arches and the water's glints (as the Cistern had); drip, water dripping from the ceiling (both modes); heat, how
+// much each flame's air shimmers (style default: forge .5, tile 0, else .25); dust [strength, height, wind], a low drifting dust
+// along the floors instead of the style's mist (the mist pass, its noise blown sideways), with sand gusts in both modes; dry, no wet
+// sheen on the floors; salt, lamp-lit sparkle of salt crystals in the kershef (both modes); glaze, glints running across the faience
+// as the flames move (both modes); motes, more dust in the sky's shafts; beamA, the shafts' angle (degrees from straight down) at
+// every time of day, for light that falls down the foggaras' shafts from overhead.
+const LFX={nun:{caus:1,drip:1},west:{},blue:{glaze:1},meroe:{heat:0.6},osiris:{},foggara:{caus:1,drip:1,beamA:-9,motes:1.6},
+  deffufa:{dust:[0.32,8,4.5],dry:1},wells:{motes:2.2,dust:[0.18,6,1.2],dry:1},napata:{heat:0.4,dust:[0.28,8,5],dry:1},aksum:{},hawara:{dust:[0.26,9,2],dry:1},shali:{salt:1,dry:1}};
+const lfx=()=>L&&L.theme&&LFX[L.theme.look]||{}; // the five-theme turn the generator builds by (theme index mod 5)
 
-// Persian hangings: dyes as the sources give them (Q3 of the tapestry research): madder reds, indigo, weld/saffron yellow,
-// walnut browns, undyed ivory and wool, a leaf green (weld over indigo). A palette per theme: g ground, a main motif, b second
-// colour, c light, d border colour, e leaf green.
-const DYE={madder:'#8a2f2a',madderB:'#7a2a3a',copper:'#a8502e',indigo:'#24457a',weld:'#d6a93a',walnut:'#4b3326',ivory:'#e6dcc2',leaf:'#4d6b3a',mustard:'#c28f2c',gold:'#d8b04a',wool:'#b9a98a',soot:'#2c1d17'};
-const TAP={dungeon:{g:DYE.walnut,a:DYE.madder,b:DYE.wool,c:DYE.ivory,d:DYE.indigo,e:DYE.leaf},
-  palace:{g:DYE.madder,a:DYE.weld,b:DYE.indigo,c:DYE.ivory,d:DYE.gold,e:DYE.leaf},
-  tile:{g:DYE.indigo,a:DYE.ivory,b:DYE.madder,c:DYE.mustard,d:DYE.mustard,e:DYE.leaf},
-  forge:{g:DYE.soot,a:DYE.copper,b:DYE.mustard,c:'#d8c9a0',d:DYE.madderB,e:DYE.leaf},
-  crypt:{g:DYE.indigo,a:DYE.ivory,b:DYE.leaf,c:DYE.weld,d:'#3a5230',e:DYE.leaf}};
-for(const t of THEMES){t.cloth=TAP[t.style].g;t.cloth2=TAP[t.style].a;}
+// Hangings: painted and woven linen and reed mats in the Egyptian painter's colours (Egyptian blue, malachite green, red and
+// yellow ochre, gypsum white, carbon black) on undyed linen. A palette per theme: g ground, a main motif, b second colour,
+// c light, d border colour, e leaf green.
+const PIG={blue:'#2a5d9f',green:'#3e7d5a',red:'#a3402a',yellow:'#cf9a35',white:'#e6dcc4',black:'#1d1a17',linen:'#cbbd98',turq:'#2f8f8c',gold:'#d8b04a',brown:'#6a4426'};
+const TAP={nun:{g:'#24456e',a:PIG.white,b:PIG.green,c:PIG.yellow,d:PIG.black,e:PIG.green},
+  west:{g:PIG.linen,a:PIG.red,b:PIG.blue,c:PIG.white,d:PIG.yellow,e:PIG.green},
+  blue:{g:PIG.blue,a:PIG.white,b:PIG.red,c:PIG.yellow,d:PIG.yellow,e:PIG.turq},
+  meroe:{g:PIG.black,a:PIG.red,b:PIG.yellow,c:'#d8c9a0',d:PIG.red,e:PIG.green},
+  osiris:{g:'#2c5a40',a:PIG.white,b:PIG.black,c:PIG.yellow,d:'#1f3a2a',e:'#7fb08a'},
+  foggara:{g:PIG.brown,a:PIG.yellow,b:PIG.red,c:PIG.white,d:PIG.black,e:PIG.green},
+  deffufa:{g:PIG.red,a:PIG.white,b:PIG.black,c:PIG.yellow,d:PIG.turq,e:PIG.green},
+  wells:{g:PIG.yellow,a:PIG.red,b:PIG.blue,c:PIG.white,d:PIG.black,e:PIG.green},
+  napata:{g:'#5a2a1c',a:PIG.yellow,b:PIG.turq,c:PIG.white,d:PIG.red,e:PIG.green},
+  aksum:{g:'#3e3a36',a:PIG.white,b:PIG.red,c:PIG.yellow,d:'#262422',e:PIG.green},
+  hawara:{g:PIG.linen,a:PIG.blue,b:PIG.red,c:PIG.white,d:PIG.yellow,e:PIG.green},
+  shali:{g:PIG.linen,a:PIG.green,b:PIG.red,c:PIG.white,d:PIG.blue,e:PIG.green}};
+const tapOf=th=>TAP[th.look]||TAP.west;
+for(const t of THEMES){t.cloth=tapOf(t).g;t.cloth2=tapOf(t).a;}
 
 // Progress up the tower: every 20 floors the keep turns over one cycle. Cycle 0 is dusk, 1 night (moon and stars, a cool
-// grade), 2 dawn (a warm grade), then the day repeats; each cycle the keep is more worn (more breaches, rubble, cobwebs and
-// cracks, fewer lit lamps), and the city seen through the windows sinks a little every floor: rooftops and domes first,
-// then minaret tops, then only sky; he is climbing a tower.
+// grade), 2 dawn (a warm grade), then the day repeats: the night's three watches, ending at sunrise on floor 60. Each cycle
+// the keep is more worn (more breaches, rubble, cobwebs and cracks, fewer lit lamps), and the land seen through the windows
+// sinks a little every floor: he is climbing a tower. The twelve themes turn on their own, every 48 floors (THEMES.length*4),
+// so a theme first seen by moonlight comes back in another light.
 const CYCLE=20;
 function progOf(n){const cy=Math.floor((n-1)/CYCLE);return {cyc:cy,tod:cy%3,wear:Math.min(cy,3),sink:Math.min(90,(n-1)*1.7)};}
-function themeName(n){const i=Math.floor((n-1)/4),t=THEMES[i%THEMES.length],p=progOf(n);let nm=t.name;
+function themeOf(n){return THEMES[Math.floor((n-1)/4)%THEMES.length];}
+function themeName(n){const t=themeOf(n),p=progOf(n);let nm=t.name;
   if(p.wear>=2)nm='The Ruined '+nm.replace(/^The /,'');
   return p.cyc===0?nm:nm+(p.tod===1?' by Moonlight':p.tod===2?' at Dawn':' at Dusk');}
 const WEAR_UP=[0,0.06,0.13,0.19]; // added to the wear field per cycle
@@ -460,7 +513,7 @@ function buildLevel(n,seed,test,legacy,att){
   const cols=(plan.W+2)*RW, rows=6+3*(plan.H-1)+7, roomsW=cols/RW, roomsH=Math.ceil(rows/RH), bandRow=b=>6+3*b;
   const L={n,seed,d,feature:FT,runMv:{},cols,rows,roomsW,roomsH,chaseFloor,base:new Uint8Array(cols*rows).fill(WALL),feat:new Array(cols*rows).fill(null),
     items:[],guards:[],snakeSpecs:[],torches:[],windows:[],cps:[],path:[],debris:[],dyn:[],rubble:new Set(),segs:[],puzzles:[],lifts:[],plan,routeT,
-    theme:THEMES[Math.floor((n-1)/4)%THEMES.length],prog:progOf(n),door:null,start:null,cpIndex:-1,test:!!test,ext:{darts:[],blocks:[]}};
+    theme:themeOf(n),gstyle:GEN_STYLE[Math.floor((n-1)/4)%5],prog:progOf(n),door:null,start:null,cpIndex:-1,test:!!test,ext:{darts:[],blocks:[]}};
   // Runs heading left are built exactly as runs heading right, in a mirrored column space (MX - c), as Spelunky mirrors
   // its rooms; everything a run writes goes through these, and what holds pixel positions is mirrored after the run.
   // A run may only use the columns of its own window (vLo..vHi) and the cells no earlier run has kept clear (resv).
@@ -476,7 +529,7 @@ function buildLevel(n,seed,test,legacy,att){
   ri(1,9);ri(1,3);ri(1,9); // the stream's first three draws (the fourth is the sandstorm roll peeked above)
   // progress along the route, in tiles: what guards, checkpoints and the rest are spaced by
   let progBase=0,cEntry=0;const prog=()=>progBase+(c-cEntry);
-  const style=L.theme.style;
+  const style=L.gstyle; // the old five-theme turn, never the look: the floors stay as they were
   // the fighters' budgets, from their own stream (the layout streams are left alone by the draws made here)
   const gbrng=mulberry32(hash2(seed,8317)),GB=guardBudget(n,gbrng(),FL==='barracks'),SB=snakeBudget(n,gbrng());
   const guardGap=Math.max(30,Math.floor(routeT*0.7/Math.max(1,GB))); // never two guards inside three rooms
@@ -3863,16 +3916,15 @@ function backCell(g,X,Y,gc,gr,th){
   if(D0(gc,gr-1)!==EMPTY){const gr2=g.createLinearGradient(0,Y,0,Y+16);gr2.addColorStop(0,'rgba(0,0,0,.45)');gr2.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr2;g.fillRect(X,Y,TW,16);}
   const gr3=g.createLinearGradient(0,Y+TH-22,0,Y+TH);gr3.addColorStop(0,'rgba(0,0,0,0)');gr3.addColorStop(1,'rgba(0,0,0,.28)');g.fillStyle=gr3;g.fillRect(X,Y+TH-22,TW,22);
 }
-function star8(g,cx,cy,R,r,col){g.fillStyle=col;g.beginPath();for(let i=0;i<16;i++){const a=i*Math.PI/8-Math.PI/2,rr=i%2?r:R,px=cx+Math.cos(a)*rr,py=cy+Math.sin(a)*rr;if(i)g.lineTo(px,py);else g.moveTo(px,py);}g.closePath();g.fill();}
+// the five-pointed star (sba, the hieroglyph N14) of the painted tomb ceilings: R the points, r the hollows
+function star8(g,cx,cy,R,r,col){r=Math.min(r,R*0.45);g.fillStyle=col;g.beginPath();for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2,rr=i%2?r:R,px=cx+Math.cos(a)*rr,py=cy+Math.sin(a)*rr;if(i)g.lineTo(px,py);else g.moveTo(px,py);}g.closePath();g.fill();}
 function tilePanel(g,X,Y,th){
   const top=Y+26,bot=Y+TH-4,s=8;
   g.fillStyle=th.tileB;g.fillRect(X,top,TW,bot-top);
-  for(let ty=top;ty<bot;ty+=s)for(let tx=X;tx<X+TW;tx+=s){
-    const cx=tx+s/2,cy=ty+s/2;
-    star8(g,cx,cy,3.7,2.1,th.tileA);
-    g.fillStyle=th.tileC;g.fillRect(cx-0.7,cy-0.7,1.4,1.4);
-    g.fillStyle=th.tileD;g.fillRect(tx-0.7,ty-0.7,1.4,1.4);
-  }
+  for(let ty=top,r=0;ty<bot;ty+=4.4,r++)for(let tx=X+(r%2?-1.5:0);tx<X+TW;tx+=3.2){ // Djoser's faience: small glazed oblongs in rows, like the reed mats they copy
+    g.fillStyle=th.tileA;g.fillRect(tx+0.3,ty+0.4,2.6,3.6);g.fillStyle='rgba(255,255,255,.16)';g.fillRect(tx+0.3,ty+0.4,2.6,0.7);}
+  g.fillStyle=th.tileD;for(let ty=top+s*2;ty<bot;ty+=s*2)g.fillRect(X,ty-0.5,TW,1); // the binding bands across the mat
+  g.fillStyle=th.tileC;g.fillRect(X+TW/2-0.6,top,1.2,bot-top);
   g.fillStyle=th.tileD;g.fillRect(X,top-3.5,TW,3.5);
   g.fillStyle=th.tileC;g.fillRect(X,top-3.5,TW,0.8);g.fillRect(X,top-0.8,TW,0.8);
   g.fillStyle='rgba(6,8,28,.38)';g.fillRect(X,top-3.5,TW,bot-top+3.5);
@@ -3925,7 +3977,7 @@ function planHangings(){const out=[];const mod={dungeon:9,palace:5,tile:6,forge:
     const state=inBreach(x,top+4,true)||inBreach(x,mid,true)||inBreach(x,bot-2,true)?4:wearLevel(x,mid); // 4: gone with the wall
     out.push({c,r,x,top,bot,state,seed:h,k:long?5:(h>>>5)%6,w,long});}
   return out;}
-// dyes fade in the order the sources give: weld yellow first (to straw and grey), then madder red (to brown-pink), indigo last
+// colours fade in the order the dye and pigment sources give: yellow first (to straw and grey), then red (to brown-pink), blue last
 // (to a lighter blue); ivory yellows a little; level 1 worn, 2 damaged, 3 ragged
 function fadeCol(hex,lv){if(!lv||hex[0]!=='#')return hex;const [r,g,b]=hexRGB(hex),mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn,sat=mx?d/mx:0;
   let hu=0;if(d){hu=mx===r?((g-b)/d+6)%6:mx===g?(b-r)/d+2:(r-g)/d+4;hu*=60;}
@@ -3936,68 +3988,66 @@ function fadeCol(hex,lv){if(!lv||hex[0]!=='#')return hex;const [r,g,b]=hexRGB(he
   else if(sat<0.3&&mx>150){f=0.08*lv;t=[208,190,146];}                                      // ivory and wool
   else{f=0.05*lv;t=[116,106,88];}
   return 'rgb('+mixRGB([r,g,b],t,f).map(Math.round)+')';}
-// the woven cloth of a hanging (k 0-5, drawn over the rectangle x0,y0,w,h) or the shaft runner (k 6, a repeating run of
-// qalamkar panels, 32 px each from py). Designs, after the sources: 0 cypress growing from a vase among rocks, with two birds
-// (Qajar qalamkar); 1 vases with flowers in a column of panels (the royal tent); 2 a field of boteh; 3 a peacock among vines
-// in a border of leaf-outlined diamonds on four grounds (the chintz door curtain); 4 a medallion with quarter-medallions in the
-// corners and tiraz strips top and bottom (a carpet layout, the doubtful one); 5 an arch with a paisley finial and parrots and
-// carnations (the long niche hanging). lv: how faded it is (0-3); the borders fray first.
-function tapCloth(g,th,k,x0,y0,w,h,py,lv=0){const T0=TAP[th.style]||TAP.palace,F=c=>fadeCol(c,lv),T={g:F(T0.g),a:F(T0.a),b:F(T0.b),c:F(T0.c),d:F(T0.d),e:F(T0.e)},cx=x0+w/2;
+// the cloth of a hanging (k 0-5, drawn over the rectangle x0,y0,w,h) or the shaft runner (k 6, a repeating run of panels,
+// 32 px each from py), in the manner of Egyptian painted linen and wall painting: a block border (bands of coloured oblongs)
+// round most of them; 0 lotus flowers rising from a pool of zigzag water; 1 registers, each a frieze of lotus flowers and buds;
+// 2 a reed mat (the weave Djoser's faience tiles copy); 3 a star ceiling (yellow five-pointed stars on blue) under a kheker
+// frieze; 4 the winged sun disc over a broad collar of bead rows; 5 the long hanging: a papyrus column with lotus at its foot
+// under a kheker frieze. lv: how faded it is (0-3); the borders fray first.
+function tapCloth(g,th,k,x0,y0,w,h,py,lv=0){const T0=tapOf(th),F=c=>fadeCol(c,lv),T={g:F(T0.g),a:F(T0.a),b:F(T0.b),c:F(T0.c),d:F(T0.d),e:F(T0.e)},cx=x0+w/2;
   g.save();g.beginPath();g.rect(x0,y0,w,h);g.clip();
   g.fillStyle=T.g;g.fillRect(x0,y0,w,h);
-  const bird=(x,y,s,col,wing)=>{g.save();g.translate(x,y);g.scale(s,Math.abs(s));g.fillStyle=col;g.beginPath();g.ellipse(0,0,3,1.7,-0.15,0,6.2832);g.fill();g.beginPath();g.moveTo(-2.4,0);g.lineTo(-6,2.6);g.lineTo(-5,-0.4);g.closePath();g.fill();
-    g.beginPath();g.arc(2.9,-1.7,1.3,0,6.2832);g.fill();g.fillStyle=wing;g.beginPath();g.moveTo(3.9,-1.8);g.lineTo(5.4,-1.2);g.lineTo(3.9,-1);g.closePath();g.fill();g.beginPath();g.ellipse(-0.4,-0.4,1.9,0.9,-0.3,0,6.2832);g.fill();g.restore();};
-  const vase=(x,yb,s,col,band)=>{g.fillStyle=col;g.beginPath();g.moveTo(x-2*s,yb);g.bezierCurveTo(x-6*s,yb-3*s,x-5*s,yb-8*s,x-2*s,yb-9*s);g.lineTo(x-1.6*s,yb-11*s);g.lineTo(x+1.6*s,yb-11*s);g.lineTo(x+2*s,yb-9*s);g.bezierCurveTo(x+5*s,yb-8*s,x+6*s,yb-3*s,x+2*s,yb);g.closePath();g.fill();g.fillStyle=band;g.fillRect(x-4.2*s,yb-6.2*s,8.4*s,1.3*s);g.fillRect(x-2.2*s,yb-11.6*s,4.4*s,1.1*s);};
-  const flower=(x,y,r,c1,c2)=>{g.fillStyle=c1;for(let i=0;i<5;i++){const an=i*1.2566;g.beginPath();g.arc(x+Math.cos(an)*r*0.8,y+Math.sin(an)*r*0.8,r*0.55,0,6.2832);g.fill();}g.fillStyle=c2;g.beginPath();g.arc(x,y,r*0.45,0,6.2832);g.fill();};
-  const boteh=(x,y,s,flip,c1,c2,c3)=>{g.save();g.translate(x,y);g.scale(flip?-s:s,s);g.fillStyle=c1;g.beginPath();g.moveTo(-2.4,10);g.bezierCurveTo(-8,4,-4.6,-7,1.6,-11);g.bezierCurveTo(1,-5,6.4,-2,4.4,4);g.bezierCurveTo(3.4,9,-0.6,11,-2.4,10);g.closePath();g.fill();
-    g.fillStyle=c2;g.beginPath();g.ellipse(0.2,2.4,2.2,3.8,-0.3,0,6.2832);g.fill();g.fillStyle=c3;g.fillRect(-0.4,1.4,1.4,1.4);g.restore();};
-  const tiraz=(x,y,ww,col)=>{g.fillStyle=col;g.fillRect(x,y+4.2,ww,1.2);for(let i=0;i<ww;i+=3)if(((i/3)|0)%3!==2)g.fillRect(x+i,y+(((i/3)|0)%2?0:1.6),1.8,3.8);}; // a woven inscription band of stepped blocks
-  if(k===6){ // the runner: panels of vase-and-flowers and of boteh, edged by selvedge stripes and a tiraz strip between them
-    g.fillStyle=T.d;g.fillRect(x0,y0,2,h);g.fillRect(x0+w-2,y0,2,h);g.fillStyle=T.c;g.fillRect(x0+2,y0,0.8,h);g.fillRect(x0+w-2.8,y0,0.8,h);
-    const fx=x0+4.4,fw=w-8.8;
+  const lotus=(x,yb,s,c1,c2)=>{g.fillStyle=c1;g.beginPath();g.moveTo(x,yb);g.lineTo(x-4*s,yb-6*s);g.lineTo(x-1.4*s,yb-5*s);g.lineTo(x,yb-7.4*s);g.lineTo(x+1.4*s,yb-5*s);g.lineTo(x+4*s,yb-6*s);g.closePath();g.fill(); // the open flower: three sepals fanned
+    g.fillStyle=c2;g.beginPath();g.moveTo(x-1.2*s,yb-1);g.lineTo(x,yb-5.4*s);g.lineTo(x+1.2*s,yb-1);g.closePath();g.fill();};
+  const bud=(x,yb,s,c1)=>{g.fillStyle=c1;g.beginPath();g.moveTo(x-1.6*s,yb);g.quadraticCurveTo(x-2*s,yb-3.6*s,x,yb-6*s);g.quadraticCurveTo(x+2*s,yb-3.6*s,x+1.6*s,yb);g.closePath();g.fill();};
+  const blocks=(x,y,ww,hh,vert)=>{const cl=[T.a,T.c,T.b,T.c,T.e,T.c],n=Math.max(2,Math.round((vert?hh:ww)/3.2)),st=(vert?hh:ww)/n; // the block border
+    for(let i=0;i<n;i++){g.fillStyle=cl[i%cl.length];if(vert)g.fillRect(x,y+i*st+0.3,ww,st-0.6);else g.fillRect(x+i*st+0.3,y,st-0.6,hh);}};
+  const kheker=(x,y,ww,col)=>{g.fillStyle=col;for(let i=0;i+2.6<=ww;i+=3.2){const kx=x+i+1.3;g.beginPath();g.moveTo(kx-1.2,y+6);g.lineTo(kx-1.2,y+2);g.quadraticCurveTo(kx,y-0.6,kx+1.2,y+2);g.lineTo(kx+1.2,y+6);g.closePath();g.fill();
+      g.fillRect(kx-1.5,y+3.2,3,0.7);}}; // a row of tied reed bundles, the frieze along the top of a tomb wall
+  const water=(x,y,ww,hh,col)=>{g.strokeStyle=col;g.lineWidth=0.7;for(let yy=y+1.5;yy<y+hh;yy+=2.6){g.beginPath();for(let xx=x;xx<=x+ww;xx+=2.4)g.lineTo(xx,yy+((((xx-x)/2.4)|0)%2?1.1:0));g.stroke();}};
+  if(k===6){ // the runner: lotus panels and reed-mat panels between block-border selvedges
+    blocks(x0,y0,2.4,h,true);blocks(x0+w-2.4,y0,2.4,h,true);
+    const fx=x0+3.4,fw=w-6.8;
     for(let y=py+Math.floor((y0-py)/32)*32,i=Math.floor((y0-py)/32);y<y0+h;y+=32,i++){const odd=((i%2)+2)%2;
-      g.strokeStyle=T.a;g.lineWidth=1;g.strokeRect(fx+0.5,y+4.5,fw-1,23);
-      if(odd){boteh(cx-fw*0.22,y+16,0.62,false,T.a,T.b,T.c);boteh(cx+fw*0.22,y+16,0.62,true,T.a,T.b,T.c);}
-      else{vase(cx,y+25,1.15,T.a,T.c);for(const sx of [-1,0,1]){g.strokeStyle=T.e;g.lineWidth=0.9;g.beginPath();g.moveTo(cx,y+12.5);g.quadraticCurveTo(cx+sx*3,y+9,cx+sx*6,y+7);g.stroke();flower(cx+sx*6,y+7,2.4,sx?T.c:T.b,T.a);}}
-      tiraz(fx,y+27.2,fw,T.c);}
+      g.fillStyle=T.d;g.fillRect(fx,y+28,fw,1.2);
+      if(odd){for(let yy=y+3;yy<y+27;yy+=3.2)for(let xx=fx+1,j=0;xx<fx+fw-1;xx+=2.6,j++){g.fillStyle=(j+((yy-y)/3.2|0))%2?T.a:T.c;g.fillRect(xx,yy,1.6,2.4);}}
+      else{water(fx,y+21,fw,6,T.b);for(const sx of [-1,0,1]){g.strokeStyle=T.e;g.lineWidth=0.8;g.beginPath();g.moveTo(cx+sx*fw*0.3,y+22);g.lineTo(cx+sx*fw*0.3,y+(sx?13:9));g.stroke();
+        if(sx)bud(cx+sx*fw*0.3,y+13,0.9,T.a);else lotus(cx,y+9.5,1.05,T.a,T.c);}}}
     g.restore();return;}
-  // a hanging: the border, then one motif
   const ix=x0+5,iy=y0+5,iw=w-10,ih=h-10;
-  if(k===3){const cl=[T.c,T.a,T.b,T.d],nx=Math.round((w-4)/6),ny=Math.round((h-4)/6),sx=(w-4)/nx,sy=(h-4)/ny;
-    const dia=(x,y,c1)=>{g.fillStyle=c1;g.beginPath();g.moveTo(x,y-2.8);g.lineTo(x+2.6,y);g.lineTo(x,y+2.8);g.lineTo(x-2.6,y);g.closePath();g.fill();g.strokeStyle=T.e;g.lineWidth=0.8;g.stroke();};
-    for(let i=0;i<nx;i++){dia(x0+2+sx*(i+0.5),y0+3.2,cl[i%4]);dia(x0+2+sx*(i+0.5),y0+h-3.2,cl[(i+2)%4]);}
-    for(let j=1;j<ny-1;j++){dia(x0+3.2,y0+2+sy*(j+0.5),cl[j%4]);dia(x0+w-3.2,y0+2+sy*(j+0.5),cl[(j+2)%4]);}}
-  else{g.lineWidth=2.2;g.strokeStyle=T.d;if(lv>=1)g.setLineDash([9,1.5+lv,5,1+lv]);g.strokeRect(x0+1.1,y0+1.1,w-2.2,h-2.2);g.setLineDash([]);g.lineWidth=0.7;g.strokeStyle=T.c;g.strokeRect(x0+3.3,y0+3.3,w-6.6,h-6.6);}
+  if(k===3){g.fillStyle=T.b===T.g?T.d:T.b;g.fillRect(x0,y0,w,h);} // the star ceiling's ground is the second colour
+  blocks(x0+0.6,y0+0.6,w-1.2,2.6,false);blocks(x0+0.6,y0+h-3.2,w-1.2,2.6,false);blocks(x0+0.6,y0+3.4,2.6,h-6.8,true);blocks(x0+w-3.2,y0+3.4,2.6,h-6.8,true);
+  if(lv>=1){g.fillStyle='rgba(0,0,0,'+(0.12*lv)+')';g.fillRect(x0,y0,w,h);} // a faded border reads first
+  g.fillStyle=T.d;g.fillRect(x0+3.2,y0+3.2,w-6.4,0.8);g.fillRect(x0+3.2,y0+h-4,w-6.4,0.8);
   g.beginPath();g.rect(ix,iy,iw,ih);g.clip();
-  if(k===0){const by=iy+ih-1,vy=by-6;
-    g.fillStyle=T.b;g.beginPath();g.moveTo(cx-iw*0.46,by);g.lineTo(cx-iw*0.2,by-6);g.lineTo(cx-iw*0.08,by-3.4);g.lineTo(cx,by-7);g.lineTo(cx+iw*0.1,by-3.6);g.lineTo(cx+iw*0.28,by-6.4);g.lineTo(cx+iw*0.46,by);g.closePath();g.fill();
-    vase(cx,vy,1.1,T.a,T.c);
-    const top=iy+2,bt=vy-13;g.fillStyle=T.e;g.beginPath();g.moveTo(cx,top);g.bezierCurveTo(cx+iw*0.3,top+(bt-top)*0.45,cx+iw*0.16,bt-4,cx,bt);g.bezierCurveTo(cx-iw*0.16,bt-4,cx-iw*0.3,top+(bt-top)*0.45,cx,top);g.fill();
-    g.strokeStyle=T.c;g.lineWidth=0.6;g.globalAlpha=0.6;g.beginPath();g.moveTo(cx,top+3);g.lineTo(cx,bt);g.stroke();g.globalAlpha=1;
-    bird(cx-iw*0.3,iy+ih*0.3,1,T.a,T.c);bird(cx+iw*0.3,iy+ih*0.4,-1,T.c,T.a);}
-  else if(k===1){const n=Math.max(2,Math.round(ih/22)),ph=ih/n;
-    for(let i=0;i<n;i++){const y=iy+i*ph;g.strokeStyle=T.c;g.lineWidth=0.8;g.strokeRect(ix+0.5,y+1,iw-1,ph-2);
-      const vb=y+ph-3.4;vase(cx,vb,0.8,T.a,T.c);
-      for(const sx of [-1,0,1]){g.strokeStyle=T.e;g.lineWidth=0.8;g.beginPath();g.moveTo(cx,vb-9);g.quadraticCurveTo(cx+sx*3,vb-12,cx+sx*7,vb-14);g.stroke();flower(cx+sx*7,vb-14,2,sx?T.b:T.c,T.a);}}}
-  else if(k===2){const rows=Math.max(2,Math.round(ih/17)),rh=ih/rows,cols=2,cw=iw/cols;
-    for(let j=0;j<rows;j++)for(let i=0;i<cols+1;i++){const x=ix+cw*(i+((j%2)?0.5:0)),y=iy+rh*(j+0.5);boteh(x,y,0.55,(i+j)%2===1,j%2?T.a:T.c,j%2?T.c:T.b,T.g);}}
-  else if(k===3){g.strokeStyle=T.e;g.lineWidth=1;g.beginPath();for(let y=iy-2;y<=iy+ih+2;y+=2){const x=cx+Math.sin((y-iy)*0.28)*iw*0.28;y===iy-2?g.moveTo(x,y):g.lineTo(x,y);}g.stroke();
-    for(let y=iy+5,i=0;y<iy+ih-3;y+=11,i++){const x=cx+Math.sin((y-iy)*0.28)*iw*0.28,sd=i%2?1:-1;g.fillStyle=T.e;g.beginPath();g.ellipse(x+sd*3,y,3.2,1.4,sd*-0.5,0,6.2832);g.fill();flower(x-sd*2,y+3,1.5,T.c,T.a);}
-    const py2=iy+ih*0.5; // the peacock: a fan of eyed feathers falling behind a blue body, a small head with a crest
-    for(let i=-3;i<=3;i++){const an=Math.PI/2+i*0.34,lx=cx+Math.cos(an)*9,ly=py2+4+Math.sin(an)*9;g.fillStyle=i%2?T.e:T.a;g.beginPath();g.ellipse(lx,ly,2.4,4.6,an-Math.PI/2,0,6.2832);g.fill();g.fillStyle=T.c;g.beginPath();g.arc(cx+Math.cos(an)*11.5,py2+4+Math.sin(an)*11.5,1,0,6.2832);g.fill();}
-    g.fillStyle=T.b;g.beginPath();g.ellipse(cx,py2+1,3.2,5,0,0,6.2832);g.fill();g.beginPath();g.arc(cx+1,py2-5,1.6,0,6.2832);g.fill();g.fillStyle=T.c;g.fillRect(cx+0.4,py2-8.4,0.7,2);g.fillRect(cx+1.9,py2-8.1,0.7,1.8);}
-  else if(k===4){g.restore();g.save();g.beginPath();g.rect(x0,y0,w,h);g.clip();tiraz(x0+3.4,y0+3.4,w-6.8,T.c);tiraz(x0+3.4,y0+h-10.4,w-6.8,T.c);g.beginPath();g.rect(ix,iy+7,iw,ih-14);g.clip();
-    const cy=y0+h/2,R=Math.min(iw,ih)*0.4;star8(g,cx,cy,R,R*0.55,T.a);star8(g,cx,cy,R*0.62,R*0.34,T.c);g.fillStyle=T.b;g.beginPath();g.arc(cx,cy,R*0.2,0,6.2832);g.fill();
-    for(const [qx,qy] of [[ix,iy+7],[ix+iw,iy+7],[ix,iy+ih-7],[ix+iw,iy+ih-7]]){g.fillStyle=T.b;g.beginPath();g.arc(qx,qy,7,0,6.2832);g.fill();g.fillStyle=T.c;g.beginPath();g.arc(qx,qy,3,0,6.2832);g.fill();}}
-  else{ // the niche hanging: an arch (pointed, a mihrab outline) with a paisley finial, birds and carnations in panels at the head and foot
-    const top=iy+9,sp=top+iw*0.5,L1=ix+2,R1=ix+iw-2;g.fillStyle=T.d;g.globalAlpha=0.45;g.beginPath();g.moveTo(L1,iy+ih-8);g.lineTo(L1,sp);g.quadraticCurveTo(L1,top+2,cx,top-1);g.quadraticCurveTo(R1,top+2,R1,sp);g.lineTo(R1,iy+ih-8);g.closePath();g.fill();g.globalAlpha=1;
-    for(const [ins,col,lw] of [[0,T.a,1.8],[3,T.c,0.9]]){g.strokeStyle=col;g.lineWidth=lw;g.beginPath();g.moveTo(L1+ins,iy+ih-8);g.lineTo(L1+ins,sp);g.quadraticCurveTo(L1+ins,top+2+ins,cx,top-1+ins*1.4);g.quadraticCurveTo(R1-ins,top+2+ins,R1-ins,sp);g.lineTo(R1-ins,iy+ih-8);g.stroke();}
-    boteh(cx,iy+4.5,0.36,false,T.a,T.c,T.g); // the paisley finial
-    if(ih>80){for(let y=sp+8,i=0;y<iy+ih-24;y+=15,i++)boteh(cx,y,0.38,i%2===1,T.b,T.c,T.g);}else flower(cx,sp+ (iy+ih-8-sp)*0.4,2.6,T.b,T.c);
-    bird(cx-iw*0.27,iy+ih-4,1,T.c,T.a);bird(cx+iw*0.27,iy+ih-4,-1,T.c,T.a);flower(cx,iy+ih-4,1.9,T.b,T.c);}
+  if(k===0){const by=iy+ih;water(ix,by-8,iw,8,T.b);
+    for(const [sx,hh,f] of [[-0.3,0.62,0],[0,0.82,1],[0.3,0.55,0]]){const x=cx+sx*iw,top=by-8-ih*hh*0.8;g.strokeStyle=T.e;g.lineWidth=0.9;g.beginPath();g.moveTo(x,by-7);g.quadraticCurveTo(x+sx*6,(by+top)/2,x,top);g.stroke();
+      if(f)lotus(x,top,1.4,T.a,T.c);else bud(x,top,1.1,T.a);}
+    g.fillStyle=T.e;for(const sx of [-1,1]){g.beginPath();g.ellipse(cx+sx*iw*0.18,by-8.4,4,1.3,0,0,6.2832);g.fill();}} // lily pads on the water
+  else if(k===1){const n=Math.max(2,Math.round(ih/20)),ph=ih/n;
+    for(let i=0;i<n;i++){const y=iy+i*ph;g.fillStyle=T.d;g.fillRect(ix,y+ph-1.2,iw,1.2);
+      const m=Math.max(2,Math.round(iw/7));for(let j=0;j<m;j++){const x=ix+(j+0.5)*iw/m;g.strokeStyle=T.e;g.lineWidth=0.6;g.beginPath();g.moveTo(x,y+ph-1.4);g.lineTo(x,y+ph*0.5);g.stroke();
+        if(j%2)bud(x,y+ph*0.55,0.75,T.a);else lotus(x,y+ph*0.55,0.8,T.a,T.c);}}}
+  else if(k===2){for(let yy=iy,r=0;yy<iy+ih;yy+=4,r++)for(let xx=ix-2,j=0;xx<ix+iw;xx+=3,j++){g.fillStyle=(j+r)%3===0?T.a:(j+r)%3===1?T.c:T.e;g.fillRect(xx+(r%2?1.5:0),yy,2,3.2);}
+    g.fillStyle=T.d;for(let yy=iy+11;yy<iy+ih;yy+=12)g.fillRect(ix,yy,iw,1);} // tied every so often, as mats are
+  else if(k===3){kheker(ix,iy,iw,T.a);
+    for(let yy=iy+11,r=0;yy<iy+ih-2;yy+=7,r++)for(let xx=ix+(r%2?5:2);xx<ix+iw-1;xx+=7)star8(g,xx,yy,2.6,1.05,T.c);}
+  else if(k===4){const dy=iy+8;g.fillStyle=T.a;for(const sx of [-1,1]){g.beginPath();g.moveTo(cx+sx*3,dy-2.4);g.quadraticCurveTo(cx+sx*iw*0.3,dy-4.6,cx+sx*iw*0.52,dy-1.6);g.lineTo(cx+sx*iw*0.5,dy+0.4);g.quadraticCurveTo(cx+sx*iw*0.3,dy+1.8,cx+sx*3,dy+2.4);g.closePath();g.fill();
+      g.strokeStyle=T.c;g.lineWidth=0.5;for(let f=1;f<4;f++){g.beginPath();g.moveTo(cx+sx*(3+f*iw*0.11),dy-2.4);g.lineTo(cx+sx*(3+f*iw*0.11),dy+1.6);g.stroke();}} // the wings, their feathers
+    g.fillStyle=T.b;g.beginPath();g.arc(cx,dy,2.8,0,6.2832);g.fill();g.fillStyle=T.c;g.fillRect(cx-0.5,dy-0.5,1,1);
+    const cy=iy+ih*0.42,R=Math.min(iw*0.55,ih*0.5),cl=[T.a,T.b,T.c,T.e];
+    for(let i=0;i<5;i++){g.strokeStyle=cl[i%4];g.lineWidth=2;g.beginPath();g.arc(cx,cy,R*(0.45+i*0.13),0.15*Math.PI,0.85*Math.PI);g.stroke();} // the collar's bead rows
+    g.fillStyle=T.c;for(let i=0;i<7;i++){const a=(0.18+i*0.1)*Math.PI;bud(cx+Math.cos(a)*R*1.08,cy+Math.sin(a)*R*1.08+2.4,0.5,T.c);}}
+  else{kheker(ix,iy,iw,T.a);const top=iy+11,bot=iy+ih-10,cw=Math.max(4,iw*0.24);
+    g.fillStyle=T.c;g.fillRect(cx-cw/2,top+8,cw,bot-top-8); // the shaft
+    g.fillStyle=T.d;for(const yy of [top+10,top+12.4,bot-3])g.fillRect(cx-cw/2,yy,cw,0.9);
+    g.fillStyle=T.a;g.beginPath();g.moveTo(cx-cw/2,top+8);g.lineTo(cx-cw*1.25,top);g.quadraticCurveTo(cx,top-3,cx+cw*1.25,top);g.lineTo(cx+cw/2,top+8);g.closePath();g.fill(); // the open papyrus umbel
+    g.fillStyle=T.b;g.fillRect(cx-cw*0.75,bot,cw*1.5,2);
+    if(ih>80)for(let y=top+20,i=0;y<bot-12;y+=16,i++){g.fillStyle=T.b;g.fillRect(cx-cw/2-0.6,y,cw+1.2,1);}
+    lotus(cx-iw*0.32,iy+ih-1,0.9,T.a,T.c);lotus(cx+iw*0.32,iy+ih-1,0.9,T.a,T.c);bud(cx-iw*0.15,iy+ih-1,0.7,T.e);bud(cx+iw*0.15,iy+ih-1,0.7,T.e);}
   g.restore();}
 // a tapestry on the back wall: intact, faded, torn, or down (only its rod left, askew)
-function drawHanging(g,hg,ox,oy,th){const x=hg.x+ox,top=hg.top+oy,bot=hg.bot+oy,rq=mulberry32(hg.seed),w=hg.w||36,len=bot-top,T=TAP[th.style]||TAP.palace;
+function drawHanging(g,hg,ox,oy,th){const x=hg.x+ox,top=hg.top+oy,bot=hg.bot+oy,rq=mulberry32(hg.seed),w=hg.w||36,len=bot-top,T=tapOf(th);
   if(hg.state===4)return;
   const bar=()=>{const hw=w/2+1.5;g.fillStyle='#0b0812';g.fillRect(-hw,-1.6,hw*2,3);g.fillStyle=th.trim;g.fillRect(-hw+0.5,-1.2,hw*2-1,1.6);g.fillRect(-hw-0.5,-2.2,2,3.4);g.fillRect(hw-1.5,-2.2,2,3.4);};
   const rod=(a)=>{g.save();g.translate(x,top);g.rotate(a);bar();g.restore();
@@ -4077,17 +4127,15 @@ function drawWallScars(g,rx,ry,th){const ox=-rx*ROOM_W,oy=-ry*ROOM_H;
 function drawFallen(g,rx,ry,th){const ox=-rx*ROOM_W,oy=-ry*ROOM_H;
   for(const t of L.torches){if(!t.broken||t.c<rx*RW-1||t.c>(rx+1)*RW||t.r<ry*RH-1||t.r>(ry+1)*RH+1)continue;drawFallenLamp(g,t,ox,oy,th);}
   for(const hg of L.hangings||[]){if(hg.state<3||hg.c<rx*RW-1||hg.c>(rx+1)*RW||hg.r<ry*RH-1||hg.r>(ry+1)*RH+1)continue;drawFallenCloth(g,hg,ox,oy,th);}}
-function niche(g,x,y,th){
+function niche(g,x,y,th){ // a false door: a carved doorway for the dead (the ka) to pass, recessed in steps under a lintel and a drum
   const w=11,top=y-12,bot=y+9;
-  const p=()=>{g.beginPath();g.moveTo(x-w/2,bot);g.lineTo(x-w/2,top+6);g.quadraticCurveTo(x-w/2,top,x,top-3);g.quadraticCurveTo(x+w/2,top,x+w/2,top+6);g.lineTo(x+w/2,bot);g.closePath();};
-  p();g.fillStyle='rgba(0,0,0,.45)';g.fill();g.strokeStyle=th.trim;g.globalAlpha=0.55;g.lineWidth=0.9;g.stroke();g.globalAlpha=1;
-  // a muqarnas head over it: two stepped tiers of little pointed niches, and a turquoise glazed course above
-  g.save();g.beginPath();g.rect(x-w/2-4,top-12,w+8,12);g.clip();
-  const tier=(n,yy,wd,off)=>{for(let i=0;i<n;i++){const ax=x-w/2-off+(i+0.5)*wd;g.beginPath();g.moveTo(ax-wd/2,yy+4);g.lineTo(ax-wd/2,yy+2.2);g.quadraticCurveTo(ax-wd/2,yy+0.6,ax,yy-0.8);g.quadraticCurveTo(ax+wd/2,yy+0.6,ax+wd/2,yy+2.2);g.lineTo(ax+wd/2,yy+4);g.closePath();g.fillStyle='rgba(0,0,0,.5)';g.fill();g.strokeStyle=th.trim;g.globalAlpha=0.7;g.lineWidth=0.6;g.stroke();g.globalAlpha=1;}};
-  tier(3,top-5.6,w/2.5,0.9);tier(4,top-9.2,w/3,-0.6+w/3/2-0.4);
-  g.restore();
-  g.fillStyle='#1f9e90';g.globalAlpha=0.8;g.fillRect(x-w/2-1.4,top-11.6,w+2.8,1.8);g.fillStyle='rgba(235,248,235,.7)';for(let i=0;i<5;i++)g.fillRect(x-w/2-1+i*2.9,top-11.6,0.9,1.8);g.globalAlpha=1;
-  g.fillStyle=th.top;g.fillRect(x-w/2-1,bot,w+2,1.6);
+  g.fillStyle='rgba(0,0,0,.28)';g.fillRect(x-w/2-2,top-6,w+4,bot-top+6); // the outer frame
+  g.strokeStyle=th.trim;g.globalAlpha=0.6;g.lineWidth=0.8;g.strokeRect(x-w/2-2,top-6,w+4,bot-top+6);g.globalAlpha=1;
+  g.fillStyle='rgba(0,0,0,.4)';g.fillRect(x-w/2+1,top,w-2,bot-top);g.fillStyle='rgba(0,0,0,.55)';g.fillRect(x-1.6,top+5,3.2,bot-top-5); // the recess, and the door itself
+  g.fillStyle=th.trim;g.globalAlpha=0.75;g.fillRect(x-w/2-2,top-1.4,w+4,1.4); // the lintel
+  g.beginPath();g.ellipse(x,top+4,2.6,0.9,0,0,6.2832);g.fill();g.globalAlpha=1; // the drum over the door
+  g.fillStyle='#1f9e90';g.globalAlpha=0.7;g.fillRect(x-w/2-1,top-5,w+2,1.6);g.globalAlpha=1; // a painted band over the offering panel
+  g.fillStyle=th.top;g.fillRect(x-w/2-2,bot,w+4,1.6);
 }
 function cornice(g,X,Y,th,gc,gr){
   const yb=Y+TH,W=gc===undefined?0:wearLevel(gc*TW+16,gr*TH+TH-4),rq=mulberry32(hash2((gc|0)*13+1,(gr|0)*7+5));
@@ -4095,8 +4143,9 @@ function cornice(g,X,Y,th,gc,gr){
   for(let i=0;i<4;i++){const ax=X+i*8+4;
     if(W===3&&rq()<0.35){g.fillStyle='rgba(0,0,0,.4)';g.fillRect(ax-3.6,yb-6,7.2,6);continue;} // this little arch has fallen
     const top=W>=2&&rq()<0.3?yb-4.6-rq()*1.5:yb-7.4; // chipped
-    g.fillStyle=th.wallA;g.globalAlpha=W>=1?0.85:1;g.beginPath();g.moveTo(ax-3.6,yb);g.lineTo(ax-3.6,yb-3.2);g.quadraticCurveTo(ax-3.6,top+1,ax,top);g.quadraticCurveTo(ax+3.6,top+1,ax+3.6,yb-3.2);g.lineTo(ax+3.6,yb);g.closePath();g.fill();g.globalAlpha=1;
-    g.fillStyle='rgba(0,0,0,.34)';g.fillRect(ax-2.2,yb-2.6,4.4,2.6);}
+    g.fillStyle=th.wallA;g.globalAlpha=W>=1?0.85:1; // a kheker: tied reed bundles, two to the course, along the top of the wall
+    for(const kx of [ax-1.9,ax+1.9]){g.beginPath();g.moveTo(kx-1.6,yb);g.lineTo(kx-1.6,top+2.4);g.quadraticCurveTo(kx,top-0.6,kx+1.6,top+2.4);g.lineTo(kx+1.6,yb);g.closePath();g.fill();}g.globalAlpha=1;
+    g.fillStyle='rgba(0,0,0,.34)';g.fillRect(ax-3.6,top+3.4,7.2,0.8);g.fillRect(ax-0.3,top+1,0.6,yb-top-1);}
   g.fillStyle=th.trim;g.globalAlpha=W>=2?0.4:0.6;g.fillRect(X,yb-8.6,TW,0.8);g.globalAlpha=1;
   if(th.style==='tile'){g.fillStyle=th.tileA;g.fillRect(X,yb-1.2,TW,1.2);}
 }
@@ -4109,12 +4158,12 @@ function inOpening(gc,gr){return isOpenArch(gc,gr)||isOpenArch(gc,gr-1);}
 // what an open arch cuts out of the wall (cell X,Y its top-left): between the piers, from the parapet up to the round (dungeon)
 // or pointed crown; the arch's picture and its beam of light (ryShape) both use it
 function archPath(st,X,Y){const p=new Path2D(),x0=X+3.4,x1=X+TW-3.4,cx=X+TW/2,spring=Y+30,apex=Y+12,pb=Y+TH*2-4-PARAPET;
-  p.moveTo(x0,pb);p.lineTo(x0,spring);if(st==='dungeon')p.arc(cx,spring,(x1-x0)/2,Math.PI,0);else{p.quadraticCurveTo(x0,apex+7,cx,apex);p.quadraticCurveTo(x1,apex+7,x1,spring);}
+  p.moveTo(x0,pb);p.lineTo(x0,spring);if(st==='dungeon')p.arc(cx,spring,(x1-x0)/2,Math.PI,0);else{p.lineTo(x0,apex+3);p.lineTo(x1,apex+3);} // a lintel
   p.lineTo(x1,pb);p.closePath();return p;}
 function drawArch(g,X,Y,th,open,gc,gr,part){
   const st=th.style,round=st==='dungeon',x0=X+3.4,x1=X+TW-3.4,cx=X+TW/2,spring=Y+30,apex=Y+12,floor=Y+TH*2-4;
   const W=gc===undefined?0:wearLevel(gc*TW+16,gr*TH+30),rq=mulberry32(hash2((gc|0)*41+3,(gr|0)*19+11));
-  const curve=(a,b,ap)=>{if(round)g.arc(cx,spring,(b-a)/2,Math.PI,0);else{g.quadraticCurveTo(a,ap+7,cx,ap);g.quadraticCurveTo(b,ap+7,b,spring);}};
+  const curve=(a,b,ap)=>{if(round)g.arc(cx,spring,(b-a)/2,Math.PI,0);else{g.lineTo(a,ap+3);g.lineTo(b,ap+3);g.lineTo(b,spring);}}; // a vault in the Cistern, a lintel elsewhere
   if(part!=='frame'){
   if(open){const pb=floor-PARAPET;g.save();g.globalCompositeOperation='destination-out';g.fillStyle='#000';g.globalAlpha=1;g.fill(archPath(st,X,Y));g.restore();
     g.fillStyle='rgba(0,0,0,.35)';g.fillRect(x0-0.6,pb+1,x1-x0+1.2,2);g.fillStyle=st==='tile'?th.tileC:th.top;g.fillRect(x0-0.6,pb-0.8,x1-x0+1.2,1.8);
@@ -4136,6 +4185,10 @@ function drawArch(g,X,Y,th,open,gc,gr,part){
   g.strokeStyle=outline;g.lineWidth=round?3:1.3;g.globalAlpha=round?(W>=1?0.85:1):(W>=1?0.62:0.8);g.stroke();g.globalAlpha=1;g.setLineDash([]);
   if(round){g.setLineDash([1.2,3]);g.strokeStyle=th.lo;g.lineWidth=3;g.stroke();g.setLineDash([]);}
   if(st==='tile'){g.beginPath();g.moveTo(x0+0.6,spring);curve(x0+0.6,x1-0.6,apex+1.6);g.strokeStyle=th.tileA;g.lineWidth=0.9;g.stroke();}
+  if(!round){const cl=st==='tile'?th.tileC:st==='forge'?th.wallB:th.trim; // the lintel's cavetto cornice: a torus roll, then the gorge flaring out
+    g.fillStyle='rgba(0,0,0,.35)';g.fillRect(x0-3,apex-1.4,x1-x0+6,1.4);g.fillStyle=cl;g.globalAlpha=W>=1?0.7:0.9;g.fillRect(x0-2.6,apex-0.8,x1-x0+5.2,1);
+    g.beginPath();g.moveTo(x0-2.6,apex-1.4);g.quadraticCurveTo(x0-2.8,apex-4.4,x0-4.6,apex-6);g.lineTo(x1+4.6,apex-6);g.quadraticCurveTo(x1+2.8,apex-4.4,x1+2.6,apex-1.4);g.closePath();g.fill();g.globalAlpha=1;
+    g.fillStyle='rgba(0,0,0,.25)';for(let i=0;i<6;i++)g.fillRect(x0-2+i*(x1-x0+4)/5.4,apex-5.4,0.6,4);} // its fluting
   if(st==='forge'){g.setLineDash([1,2.4]);g.strokeStyle=th.lo;g.lineWidth=2.4;g.beginPath();g.moveTo(x0-1.2,spring);curve(x0-1.2,x1+1.2,apex-1.4);g.stroke();g.setLineDash([]);}
   for(const px of [X+1.7,X+TW-1.7]){
     if(round||st==='forge'){g.fillStyle=round?'#6b5d4c':th.wallB;g.fillRect(px-2.3,spring-1,4.6,floor-spring+1);g.fillStyle=round?'#9a8668':th.hi;g.fillRect(px-2.3,spring-1,0.8,floor-spring+1);g.fillStyle='rgba(0,0,0,.25)';g.fillRect(px+1.3,spring-1,1,floor-spring+1);}
@@ -4158,8 +4211,8 @@ function drawArch(g,X,Y,th,open,gc,gr,part){
 // The opening of a window (what is cut out of the wall with the background on) and what is drawn across it, as one source for
 // the window's picture and for its beam of light (ryShape): the dungeon's slit and its bars, the forge's round hole and its
 // grid, the crypt's star, the pointed arch of the palace and the tiled hall (the hall's with its lattice).
-function winArch(p,x,y,pad){const x0=x-6,x1=x+6,bot=y+13,apex=y-13,spring=apex+7; // the pointed arch, 12 by 26 (pad: grown by that much)
-  p.moveTo(x0-pad,bot+pad);p.lineTo(x0-pad,spring);p.quadraticCurveTo(x0-pad,apex+3,x,apex-pad);p.quadraticCurveTo(x1+pad,apex+3,x1+pad,spring);p.lineTo(x1+pad,bot+pad);p.closePath();}
+function winArch(p,x,y,pad){const x0=x-6,x1=x+6,bot=y+13,apex=y-13; // a clerestory opening under a lintel, 12 by 26 (pad: grown by that much)
+  p.moveTo(x0-pad,bot+pad);p.lineTo(x0-pad,apex+2-pad);p.lineTo(x1+pad,apex+2-pad);p.lineTo(x1+pad,bot+pad);p.closePath();}
 function windowPath(st,x,y){const p=new Path2D();
   if(st==='dungeon')p.rect(x-2.6,y-10,5.2,19);
   else if(st==='forge')p.arc(x,y,6.2,0,Math.PI*2);
@@ -4169,8 +4222,7 @@ function windowPath(st,x,y){const p=new Path2D();
 function windowBars(g,st,x,y){ // (the tiled hall's lattice runs past the pane: the caller clips it)
   if(st==='dungeon'){g.fillStyle='#15171d';g.fillRect(x-0.7,y-11,1.4,21);g.fillRect(x-3.6,y-3,7.2,1.2);g.fillRect(x-3.6,y+4,7.2,1.2);}
   else if(st==='forge'){g.strokeStyle='#1a0d0a';g.lineWidth=1.1;for(let i=-1;i<=1;i++){g.beginPath();g.moveTo(x+i*3,y-6);g.lineTo(x+i*3,y+6);g.moveTo(x-6,y+i*3);g.lineTo(x+6,y+i*3);g.stroke();}}
-  else if(st==='tile'){const x0=x-6,apex=y-13,bot=y+13,hgt=26;g.strokeStyle='#2e1d10';g.lineWidth=1.05;
-    for(let k=-hgt;k<12+hgt;k+=3.4){g.beginPath();g.moveTo(x0+k,apex-2);g.lineTo(x0+k-hgt-4,bot+2);g.stroke();g.beginPath();g.moveTo(x0+k-hgt-4,apex-2);g.lineTo(x0+k,bot+2);g.stroke();}}}
+  else if(st==='tile'){g.fillStyle='#2e1d10';for(let k=-4.5;k<=4.5;k+=3)g.fillRect(x+k-0.75,y-13,1.5,27);}} // a stone grille of upright slats, as in the temples' clerestories
 function drawWindow(g,x,y,th,seed,open){
   const st=th.style;
   // With the background on, a window is a real opening: the same scene the open arches look out on shows through it
@@ -4204,10 +4256,11 @@ function drawWindow(g,x,y,th,seed,open){
     const sky=g.createLinearGradient(0,apex,0,bot);sky.addColorStop(0,skyOf(th));sky.addColorStop(1,todSkyCol('#3b3a66',L.prog?L.prog.tod:0));g.fillStyle=sky;g.fillRect(x0,apex-2,w,hgt+4);
     const rnd=mulberry32(seed*31+7);g.fillStyle='rgba(255,245,220,.85)';for(let i=0;i<4;i++)g.fillRect(x0+1+rnd()*(w-2),apex+4+rnd()*9,0.7,0.7);
     g.fillStyle='#f3e6c4';g.beginPath();g.arc(x+2.6,apex+6.5,1.9,0,Math.PI*2);g.fill();g.fillStyle=skyOf(th);g.beginPath();g.arc(x+3.5,apex+6,1.6,0,Math.PI*2);g.fill();
-    const base=bot;g.fillStyle='#0d0b18';
-    g.beginPath();g.arc(x-1.6,base-6,3.6,Math.PI,0);g.fill();g.fillRect(x-5.2,base-6,7.2,7);g.fillRect(x-1.9,base-12.6,0.6,3.4);
-    g.fillRect(x+3,base-15,1.7,16);g.beginPath();g.moveTo(x+2.6,base-15);g.lineTo(x+3.85,base-18.5);g.lineTo(x+5.1,base-15);g.closePath();g.fill();
-    g.beginPath();g.arc(x+5.6,base-3,2.3,Math.PI,0);g.fill();g.fillRect(x-7,base-3,14,4);
+    const base=bot;g.fillStyle='#0d0b18'; // far off: a pylon, an obelisk and a palm against the sky
+    g.beginPath();g.moveTo(x-6.4,base);g.lineTo(x-5.6,base-9);g.lineTo(x-1.2,base-9);g.lineTo(x-0.4,base);g.closePath();g.fill();g.fillRect(x-6,base-9.8,5.2,0.8);
+    g.fillRect(x+3,base-15,1.7,16);g.beginPath();g.moveTo(x+2.8,base-15);g.lineTo(x+3.85,base-17);g.lineTo(x+4.9,base-15);g.closePath();g.fill();
+    g.strokeStyle='#0d0b18';g.lineWidth=0.7;g.beginPath();g.moveTo(x+0.8,base);g.lineTo(x+1.4,base-8);g.stroke();for(const a of [-2.4,-1.6,-0.8]){g.beginPath();g.moveTo(x+1.4,base-8);g.lineTo(x+1.4+Math.cos(a)*3.4,base-8-Math.sin(-a)*1.6+1);g.stroke();}
+    g.fillRect(x-7,base-2.6,14,3.6);
   }else{
     if(open){g.globalCompositeOperation='destination-out';g.fillStyle='#000';g.fillRect(x0-2,apex-4,w+4,hgt+8);g.globalCompositeOperation='source-over';}
     else{g.fillStyle='rgba('+th.glow+',0.6)';g.fillRect(x0,apex-2,w,hgt+4);}
@@ -4567,11 +4620,11 @@ function drawHourglass(ctx,cp){
   if(lit){ctx.save();ctx.globalCompositeOperation='lighter';for(let i=0;i<5;i++){const u=(gameTime*0.35+i/5+x*0.01)%1;ctx.globalAlpha=(1-u)*0.8*turn;ctx.fillStyle='rgb('+gl+')';
       ctx.fillRect(x+Math.sin(u*8+i*1.7)*(6+u*4),cy+10-u*30,1,1);}ctx.restore();}
 }
-// ---- doors: each theme's own (a Persian pishtaq doorway: a pointed arch in a rectangular frame, spandrels over the springing) ----
+// ---- doors: each theme's own (an Egyptian doorway: a lintel under a cavetto cornice in a moulded frame; the Cistern's is vaulted) ----
 // the arch head as a path: round for the Cistern, pointed for the rest; with yb given it is the whole opening down to the floor
 function doorHead(g,x0,x1,y0,kind,yb){const cx=(x0+x1)/2,sp=y0+(kind==='round'?(x1-x0)/2:11);
   if(yb!==null){g.beginPath();g.moveTo(x0,yb);g.lineTo(x0,sp);}else g.moveTo(x0,sp);
-  if(kind==='round')g.arc(cx,sp,(x1-x0)/2,Math.PI,0);else{g.quadraticCurveTo(x0,y0+4,cx,y0);g.quadraticCurveTo(x1,y0+4,x1,sp);}
+  if(kind==='round')g.arc(cx,sp,(x1-x0)/2,Math.PI,0);else{g.lineTo(x0,y0+2);g.lineTo(x1,y0+2);g.lineTo(x1,sp);} // a lintel
   if(yb!==null){g.lineTo(x1,yb);g.closePath();}return sp;}
 function doorLeaf(g,th,lx,ly,w,h){const st=th.style;
   const body=(c,c2)=>{g.fillStyle=c;g.fillRect(lx,ly,w,h);g.fillStyle=c2;for(let i=1;i<4;i++)g.fillRect(lx+i*6,ly,1,h);};
@@ -4583,7 +4636,7 @@ function doorLeaf(g,th,lx,ly,w,h){const st=th.style;
     star8(g,lx+w/2,ly+h*0.38,6.4,3.2,'#d8b04a');g.fillStyle='#6e4222';g.beginPath();g.arc(lx+w/2,ly+h*0.38,1.9,0,6.2832);g.fill();
     g.fillStyle='#d8b04a';for(let i=0;i<4;i++){g.fillRect(lx+3+i*6,ly+h-16,1.4,1.4);g.fillRect(lx+3+i*6,ly+7,1.4,1.4);}
     g.fillRect(lx+1.4,ly+h-12.4,w-2.8,0.8);}
-  else if(st==='tile'){body('#1f3c82','#162c63'); // lapis lacquer with a gold girih star and a turquoise border
+  else if(st==='tile'){body('#1f3c82','#162c63'); // painted blue, a gold star of the tomb ceilings and a turquoise border
     g.strokeStyle='#2d9fc4';g.lineWidth=1.2;g.strokeRect(lx+1.6,ly+2,w-3.2,h-4);
     star8(g,lx+w/2,ly+h*0.42,7.4,3.9,'#d8b04a');star8(g,lx+w/2,ly+h*0.42,4.1,2.4,'#1f3c82');star8(g,lx+w/2,ly+h*0.42,2.4,1.1,'#2d9fc4');
     g.fillStyle='#d8b04a';for(const d of [0.2,0.68,0.8])g.fillRect(lx+w/2-1,ly+h*d,2,2);}
@@ -4597,7 +4650,7 @@ function doorLeaf(g,th,lx,ly,w,h){const st=th.style;
   g.fillStyle='rgba(0,0,0,.35)';g.fillRect(lx,ly+h-2,w,2);}
 // the frame round the arched opening: spandrels, the ring of the arch, and the theme's ornament
 function doorArch(g,th,x0,x1,y0,ctop,yb,kind,sp){const st=th.style,cx=(x0+x1)/2,w=x1-x0;
-  const head=()=>{g.moveTo(x0,sp);if(kind==='round')g.arc(cx,sp,w/2,Math.PI,0);else{g.quadraticCurveTo(x0,y0+4,cx,y0);g.quadraticCurveTo(x1,y0+4,x1,sp);}};
+  const head=()=>{g.moveTo(x0,sp);if(kind==='round')g.arc(cx,sp,w/2,Math.PI,0);else{g.lineTo(x0,y0+2);g.lineTo(x1,y0+2);g.lineTo(x1,sp);}};
   const span=()=>{g.beginPath();g.rect(x0-0.5,y0-1,w+1,sp-y0+2);head();g.lineTo(x1,sp+1);g.lineTo(x0,sp+1);g.closePath();};
   // spandrels: the wall's own corners between the arch and the square frame
   span();g.fillStyle=st==='crypt'?'#1b4a40':st==='forge'?'#2a1a18':st==='dungeon'?th.wallB:th.wall;g.fill('evenodd');
@@ -4614,14 +4667,10 @@ function doorArch(g,th,x0,x1,y0,ctop,yb,kind,sp){const st=th.style,cx=(x0+x1)/2,
   else if(st==='tile'){g.strokeStyle=th.tileD;g.lineWidth=3.2;g.stroke();g.strokeStyle=th.tileA;g.lineWidth=1.8;g.stroke();g.strokeStyle=th.tileC;g.lineWidth=0.7;g.stroke();}
   else if(st==='forge'){g.strokeStyle='#120b08';g.lineWidth=3;g.stroke();g.strokeStyle='#4a3a34';g.lineWidth=1.4;g.stroke();}
   else{g.strokeStyle='#0b0812';g.lineWidth=2.8;g.stroke();g.strokeStyle='#22a898';g.lineWidth=1.8;g.stroke();g.strokeStyle='rgba(240,250,240,.55)';g.lineWidth=0.6;g.setLineDash([1.4,2.6]);g.stroke();g.setLineDash([]);}
-  if(st==='tile'){ // lobed: little cusps scalloped along the intrados
-    g.fillStyle=th.tileC;for(let i=1;i<7;i++){const u=i/7,t=u<0.5?u*2:(u-0.5)*2,m=1-t,px=u<0.5?m*m*x0+2*m*t*x0+t*t*cx:m*m*cx+2*m*t*x1+t*t*x1,py=u<0.5?m*m*sp+2*m*t*(y0+4)+t*t*y0:m*m*y0+2*m*t*(y0+4)+t*t*sp;
-      g.beginPath();g.arc(px,py+1.5,1.3,0,6.2832);g.fill();}}
-  if(st==='crypt'){ // a muqarnas hood in the head: two stepped tiers of little pointed niches
-    g.save();g.beginPath();g.moveTo(x0,sp+7);g.lineTo(x0,sp);g.quadraticCurveTo(x0,y0+4,cx,y0);g.quadraticCurveTo(x1,y0+4,x1,sp);g.lineTo(x1,sp+7);g.closePath();g.clip();
-    const row=(n,y,wd,hh,off)=>{for(let i=0;i<n;i++){const ax=x0+off+(i+0.5)*wd;g.beginPath();g.moveTo(ax-wd/2,y+hh);g.lineTo(ax-wd/2,y+hh*0.45);g.quadraticCurveTo(ax-wd/2,y+1,ax,y-0.4);g.quadraticCurveTo(ax+wd/2,y+1,ax+wd/2,y+hh*0.45);g.lineTo(ax+wd/2,y+hh);g.closePath();g.fillStyle='rgba(4,14,11,.82)';g.fill();g.strokeStyle=th.trim;g.lineWidth=0.7;g.globalAlpha=0.9;g.stroke();g.globalAlpha=1;}};
-    row(4,y0+0.6,w/4,6,0);row(3,y0+5.6,w/4,6,w/8);g.restore();}
-  // the rectangular frame (alfiz) round the arch, and each theme's band along the lintel and posts
+  if(kind!=='round'&&(st==='tile'||st==='crypt'||st==='palace')){const dy=y0-2.6,col=st==='tile'?th.tileC:st==='crypt'?'#22a898':th.trim; // the winged sun disc over the doorway
+    g.fillStyle=col;for(const sx of [-1,1]){g.beginPath();g.moveTo(cx+sx*2,dy-1.2);g.quadraticCurveTo(cx+sx*w*0.3,dy-2.6,cx+sx*w*0.48,dy-0.6);g.lineTo(cx+sx*w*0.46,dy+0.6);g.quadraticCurveTo(cx+sx*w*0.3,dy+0.6,cx+sx*2,dy+1.2);g.closePath();g.fill();}
+    g.fillStyle=st==='palace'?th.inlay:'#a3402a';g.beginPath();g.arc(cx,dy,1.9,0,6.2832);g.fill();}
+  // the frame round the doorway (its torus moulding), and each theme's band along the lintel and posts
   if(st==='palace'||st==='tile'){g.strokeStyle=st==='tile'?th.tileC:th.trim;g.lineWidth=0.8;g.globalAlpha=0.85;g.strokeRect(x0-5.4,ctop+1.6,w+10.8,yb-ctop-1.6);g.globalAlpha=1;}
   if(st==='crypt'){g.fillStyle='#22a898';g.fillRect(x0-6,ctop+1.2,w+12,2.6);g.fillStyle='rgba(240,250,240,.55)';for(let i=0;i<8;i++)g.fillRect(x0-5+i*3.5,ctop+1.2,1.3,2.6);g.fillStyle='#22a898';g.fillRect(x0-3.4,y0+8,1.5,yb-y0-8);g.fillRect(x1+1.9,y0+8,1.5,yb-y0-8);}
   if(st==='forge'){g.fillStyle='#5a4a44';for(let i=0;i<4;i++)g.fillRect(x0-4.6+i*w/3.2,ctop+2.6,1.4,1.4);g.fillStyle='rgba(255,120,40,.55)';g.fillRect(x0-6,y0-0.6,w+12,0.8);}
@@ -5722,7 +5771,8 @@ const LOOK={
   forge:{amb:'134,96,92',win:'255,125,60',top:'222,204,220',bot:'255,214,178',haze:'115,52,40',mist:'175,115,95'},
   crypt:{amb:'90,122,118',win:'170,236,214',top:'196,226,232',bot:'236,246,216',haze:'50,102,96',mist:'125,175,165'}};
 const lookCache={};
-function lookOf(style){const tod=L&&L.prog?L.prog.tod:0,key=style+tod;if(lookCache[key])return lookCache[key];const lk=LOOK[style]||LOOK.dungeon;if(!tod)return lookCache[key]=lk;
+function lookOf(style){const th=L&&L.theme,ov=th&&th.lk&&th.style===style,tod=L&&L.prog?L.prog.tod:0,key=(ov?th.look:style)+tod;if(lookCache[key])return lookCache[key]; // (a theme's own light, `lk`, over its style's)
+  const lk=ov?Object.assign({},LOOK[style],th.lk):LOOK[style]||LOOK.dungeon;if(!tod)return lookCache[key]=lk;
   const f=c=>todRGB(c.split(',').map(Number),tod,tod===1?0.6:1.2).map(Math.round).join(',');
   const o=Object.assign({},lk,{top:f(lk.top),bot:f(lk.bot),amb:f(lk.amb),haze:f(lk.haze),mist:f(lk.mist),win:tod===2?'255,206,140':f(lk.win)});
   if(style==='forge'||style==='crypt')o.win=lk.win; // (those windows are their own light, not the sky's)
@@ -5742,7 +5792,7 @@ function gatherLights(x0,x1,y0,y1){
     // glow at the pane, a soft halo round it and the light spilling down the wall onto the floor under it (a near light in the
     // wall, not the sky's parallel light, so it lights the stone round it)
     for(const o of ryOps())if(o.kind==='win'){if(ow){add(o.x,o.y,92,wc,0.5*RY_OWN,'win',{r:21,a:0.4});add(o.x,o.y+18,58,wc,0.32*RY_OWN,'sky');}else add(o.x,o.y,84,wc,0.42,'win',{r:15,a:0.26});}}
-  if(GFX().bg){const art=BGART[th.style]||BGART.dungeon,td=L.prog?L.prog.tod:0,gk='glow'+td,sc=art[gk]||(art[gk]=(()=>{const q=todSky(art.sky,td)[2],m=q[0]==='#'?hexRGB(q):q.match(/\d+/g).map(Number);return m.map(v=>Math.min(255,Math.round(v)+60)).join(',');})());;
+  if(GFX().bg){const art=bgArt(th),td=L.prog?L.prog.tod:0,gk='glow'+td,sc=art[gk]||(art[gk]=(()=>{const q=todSky(art.sky,td)[2],m=q[0]==='#'?hexRGB(q):q.match(/\d+/g).map(Number);return m.map(v=>Math.min(255,Math.round(v)+60)).join(',');})());;
     const sb=skyBeam(),bo=shaderOn(),own=th.style==='forge'||th.style==='crypt';
     for(const o of openingsIn(x0,x1,y0,y1)){add(o[0]+o[2]/2,o[1]+o[3]*0.55,o[3]*0.62,sc,0.55,'sky');
       // (Torchlight) bounce: a small soft glow where the beam from the opening's middle lands on the floor of its storey (v58: the
@@ -5783,7 +5833,7 @@ function lightPass(ctx,lights,sc,camD,camDY,gradeOnly){
     for(const q of lights){l.globalAlpha=Math.min(1,q.a);l.drawImage(lightSprite(q.col),q.x-q.r,q.y-q.r,2*q.r,2*q.r);}
     l.globalAlpha=1;l.setTransform(1,0,0,1,0,0);}
   else{l.fillStyle='#fff';l.fillRect(0,0,lw,lh);}
-  if(g.grade){l.globalCompositeOperation='multiply';l.drawImage(stripCanvas('grade-'+th.style+(L.prog?L.prog.tod:0),[[0,'rgb('+lk.top+')'],[0.55,'rgb(246,242,246)'],[1,'rgb('+lk.bot+')']]),0,0,lw,lh);}
+  if(g.grade){l.globalCompositeOperation='multiply';l.drawImage(stripCanvas('grade-'+th.look+(L.prog?L.prog.tod:0),[[0,'rgb('+lk.top+')'],[0.55,'rgb(246,242,246)'],[1,'rgb('+lk.bot+')']]),0,0,lw,lh);}
   l.globalCompositeOperation='source-over';
   ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='multiply';ctx.imageSmoothingEnabled=true;ctx.drawImage(lightC,0,0,lw*4,lh*4);ctx.restore();
 }
@@ -5814,9 +5864,9 @@ const SKYBC=[],RY_OWN=0.85,RY_2D=0.55,RY_AIR=1.0,RY_FLOOR=1.8,RY_FIG=0.2,RY_FIGC
 // and lands on the floor's top face in front of the wall. On the screen (oblique: depth d moves a point by DX*(d-.5) across and
 // DY*(.5-d) down) one step of fall moves it (sx-DX*q, 1+DY*q); sx is chosen so that the screen angle stays a. dx, dy: that screen
 // direction, unit; lq: screen px along it for the light to cross the room's whole depth (wall to front edge).
-function skyBeam(){const td=L&&L.prog?L.prog.tod:0;let b=SKYBC[td];if(b)return b;const s=SKYB[td]||SKYB[0],r=s.a*Math.PI/180,q=s.q;
+function skyBeam(){const td=L&&L.prog?L.prog.tod:0,ba=lfx().beamA,key=ba===undefined?td:td+':'+ba;let b=SKYBC[key];if(b)return b;const s=SKYB[td]||SKYB[0],r=(ba===undefined?s.a:ba)*Math.PI/180,q=s.q;
   const vx=Math.tan(r)*(1+DY*q),vy=1+DY*q,n=Math.hypot(vx,vy),sx=-vx+DX*q; // (+a is light from the right, so it moves left)
-  return SKYBC[td]={dx:-vx/n,dy:vy/n,k:s.k,ln:s.ln,col:s.col.join(','),q,sx,lq:n/q,per:n};} // (per: screen px along the beam per px fallen)
+  return SKYBC[key]={dx:-vx/n,dy:vy/n,k:s.k,ln:s.ln,col:s.col.join(','),q,sx,lq:n/q,per:n};} // (per: screen px along the beam per px fallen)
 // the openings of the floor that let the sky in, with their shapes (one list per floor and background setting): every window
 // that is drawn (not where an open arch stands, nor one a breach has taken away: the breach casts its own beam), each run of
 // open arches side by side as one shape (the piers leave the gaps between the beams), every breach right through the wall
@@ -5962,7 +6012,7 @@ function atmoPass(ctx,lights,x0,x1,y0,y1){
   ctx.restore();
 }
 function hazePass(ctx){const lk=lookOf(L.theme.style);
-  ctx.drawImage(stripCanvas('haze-'+L.theme.style,[[0,'rgba('+lk.haze+',0.26)'],[0.55,'rgba('+lk.haze+',0.06)'],[1,'rgba('+lk.haze+',0)']]),0,0,viewW,ROOM_H*0.62);}
+  ctx.drawImage(stripCanvas('haze-'+L.theme.look,[[0,'rgba('+lk.haze+',0.26)'],[0.55,'rgba('+lk.haze+',0.06)'],[1,'rgba('+lk.haze+',0)']]),0,0,viewW,ROOM_H*0.62);}
 // characters: a contact shadow and a rim of light on the side facing the nearest lamp (a silhouette in the light's
 // colour, nudged toward it and drawn behind the figure, so only its edge shows)
 let frameLights=[];
@@ -6038,24 +6088,41 @@ function updateLookFx(dt){
 // ================= background: distant layers seen through the open arches and windows =================
 // Each part of the keep looks out on its own view, in layers that scroll at their own speeds (far ones barely move).
 const BG_W=640,BG_H=210,BG_BASE=176;
+// (each theme's view: the sky's four stops and the layers far to near; `nostars`: no stars even at night, for a smoky sky)
 const BGART={
-  palace:{sky:['#1a2452','#363c78','#9a5a62','#3c2838'],layers:[
+  nun:{sky:['#0b111c','#18263c','#22344e','#152438'],layers:[ // papyrus-bundle columns under their architraves, standing in the water
+    {f:0.06,kind:'pcolon',col:'#2a3852',gap:30,w:7,lift:-30},{f:0.15,kind:'pcolon',col:'#131c2c',gap:64,w:13,lift:-30},{f:0.15,kind:'water',col:'rgba(130,160,200,.16)',lift:-30},{f:0.32,kind:'chains',col:'#06090f',lift:0}]},
+  west:{sky:['#1a2452','#363c78','#9a5a62','#3c2838'],layers:[ // the Theban hills with el-Qurn, a temple's pylons and flagstaffs, palms
     {f:0.015,kind:'stars',moon:'#f3e6c4'},{f:0.03,kind:'clouds',col:'rgba(170,140,180,.13)',drift:2.5},
-    {f:0.07,kind:'dunes',col:'#463a62',lift:6},{f:0.16,kind:'city',col:'#2a2044',win:'#ffc070',lift:14},{f:0.3,kind:'palms',col:'#140f26',lift:26}]},
-  tile:{sky:['#0e1c4c','#24398e','#5470bc','#22306c'],layers:[
-    {f:0.015,kind:'stars',moon:'#e6ecff'},{f:0.07,kind:'hills',col:'#2a3c78',lift:4},{f:0.16,kind:'pavilions',col:'#18264e',win:'#ffd9a0',lift:12},{f:0.3,kind:'cypress',col:'#0a1230',lift:24}]},
-  dungeon:{sky:['#0b111c','#18263c','#22344e','#152438'],layers:[
-    {f:0.06,kind:'colonnade',col:'#2a3852',gap:26,w:6,lift:-30},{f:0.15,kind:'colonnade',col:'#131c2c',gap:58,w:12,lift:-30},{f:0.15,kind:'water',col:'rgba(130,160,200,.16)',lift:-30},{f:0.32,kind:'chains',col:'#06090f',lift:0}]},
-  forge:{sky:['#140404','#3e0f08','#8a3010','#b8461a'],layers:[
-    {f:0.06,kind:'chimneys',col:'#3a1c14',glow:'#ff7a30',lift:8},{f:0.16,kind:'furnaces',col:'#1e0b07',glow:'#ff8a3a',lift:16},{f:0.04,kind:'smoke',col:'rgba(30,18,16,.55)',drift:4},{f:0.32,kind:'chains',col:'#0a0403',lift:0}]},
-  crypt:{sky:['#06120f','#14342c','#2a5a4c','#183c33'],layers:[
-    {f:0.06,kind:'obelisks',col:'#1e4238',glow:'#7fffd0',lift:6},{f:0.16,kind:'tombs',col:'#0e221c',glow:'#8fffd8',lift:14},{f:0.05,kind:'clouds',col:'rgba(120,190,170,.12)',drift:3.5},{f:0.3,kind:'trees',col:'#050c0a',lift:24}]}};
+    {f:0.05,kind:'qurn',col:'#463a62',lift:8},{f:0.16,kind:'pylons',col:'#2a2044',win:'#ffc070',lift:14},{f:0.3,kind:'palms',col:'#140f26',lift:26}]},
+  blue:{sky:['#0e1c4c','#24398e','#5470bc','#22306c'],layers:[ // Saqqara: the step pyramid and its niched enclosure wall on the desert's edge
+    {f:0.015,kind:'stars',moon:'#e6ecff'},{f:0.05,kind:'hills',col:'#2a3c78',lift:-4},{f:0.1,kind:'steppyr',col:'#22346a',lift:6},{f:0.18,kind:'niched',col:'#18264e',lift:12},{f:0.3,kind:'palms',col:'#0a1230',lift:24}]},
+  meroe:{sky:['#140404','#3e0f08','#8a3010','#b8461a'],nostars:1,layers:[ // Meroë: the steep royal pyramids behind the smelting furnaces and their smoke
+    {f:0.04,kind:'kushpyr',col:'#4a1a10',lift:2},{f:0.08,kind:'chimneys',col:'#3a1c14',glow:'#ff7a30',lift:8},{f:0.16,kind:'furnaces',col:'#1e0b07',glow:'#ff8a3a',lift:16},{f:0.04,kind:'smoke',col:'rgba(30,18,16,.55)',drift:4},{f:0.32,kind:'chains',col:'#0a0403',lift:0}]},
+  osiris:{sky:['#06120f','#14342c','#2a5a4c','#183c33'],layers:[ // obelisks and lit shrines under a cavetto cornice, trees
+    {f:0.06,kind:'obelisks',col:'#1e4238',glow:'#7fffd0',lift:6},{f:0.16,kind:'shrines',col:'#0e221c',glow:'#8fffd8',lift:14},{f:0.05,kind:'clouds',col:'rgba(120,190,170,.12)',drift:3.5},{f:0.3,kind:'trees',col:'#050c0a',lift:24}]},
+  foggara:{sky:['#141428','#2c2a4a','#7a5a5a','#3a2a26'],layers:[ // the Fezzan: an escarpment, and lines of shaft mounds running across the sand to the palms
+    {f:0.015,kind:'stars',moon:'#f0e6d0'},{f:0.04,kind:'escarp',col:'#3a2e40',lift:22},{f:0.09,kind:'mounds',col:'#4a3832',lift:8,rows:3,sz:0.8},{f:0.18,kind:'mounds',col:'#2c201c',lift:-2,rows:2,sz:1.4},{f:0.32,kind:'palms',col:'#0e0a0c',lift:20,few:1}]},
+  deffufa:{sky:['#1c2048','#3a3a70','#a0605a','#3c2a30'],layers:[ // Kerma: the Deffufa's mudbrick mass, round huts, acacias
+    {f:0.015,kind:'stars',moon:'#f3e6c4'},{f:0.03,kind:'clouds',col:'rgba(180,140,160,.12)',drift:2},{f:0.06,kind:'dunes',col:'#4a3a5a',lift:2},
+    {f:0.14,kind:'deffufa',col:'#2c1e30',win:'#ffb060',lift:10},{f:0.22,kind:'huts',col:'#1a1220',lift:16},{f:0.32,kind:'acacia',col:'#0e0a14',lift:24}]},
+  wells:{sky:['#101830','#28305a','#8a6a60','#3a2c2a'],layers:[ // the Valley of the Kings: el-Qurn over the cliffs, the tombs' doorways cut in them
+    {f:0.015,kind:'stars',moon:'#f3e6c4'},{f:0.04,kind:'qurn',col:'#3a2c38',lift:26},{f:0.14,kind:'cliffs',col:'#241a22',win:'#ffc880',lift:8},{f:0.3,kind:'hills',col:'#120c12',lift:-30}]},
+  napata:{sky:['#1a1024','#4a2030','#c0603a','#5a2a24'],layers:[ // Gebel Barkal and its pinnacle, the steep pyramids, the Nile, palms
+    {f:0.015,kind:'stars',moon:'#f6dcc0'},{f:0.05,kind:'barkal',col:'#3a1c22',lift:12},{f:0.11,kind:'kushpyr',col:'#2a1218',lift:8},{f:0.17,kind:'water',col:'rgba(240,170,120,.14)',lift:-6},{f:0.3,kind:'palms',col:'#0e0608',lift:22}]},
+  aksum:{sky:['#0a121e','#1c2c44','#56607a','#26303e'],layers:[ // the highlands' flat-topped ambas, the field of storeyed stelae, trees
+    {f:0.015,kind:'stars',moon:'#e6ecff'},{f:0.03,kind:'clouds',col:'rgba(160,170,190,.12)',drift:3},{f:0.05,kind:'ambas',col:'#222c3a',lift:20},{f:0.14,kind:'stelae',col:'#141a24',lift:10},{f:0.3,kind:'trees',col:'#06080c',lift:22}]},
+  hawara:{sky:['#121a32','#2a3460','#86707a','#2c2a3a'],layers:[ // Hawara: the worn mudbrick pyramid, the Fayum's water, the Labyrinth's broken walls, palms
+    {f:0.015,kind:'stars',moon:'#f3e6c4'},{f:0.06,kind:'ruinpyr',col:'#2e2a3a',lift:10},{f:0.12,kind:'water',col:'rgba(150,170,210,.15)',lift:-10},{f:0.18,kind:'labwalls',col:'#1a1824',lift:4},{f:0.3,kind:'palms',col:'#0a0a12',lift:24,few:1}]},
+  shali:{sky:['#16244c','#34407a','#a07070','#3a2c3a'],layers:[ // Siwa: the hills, a salt lake, Shali's melted kershef town on its rock, date palms
+    {f:0.015,kind:'stars',moon:'#f3e6c4'},{f:0.04,kind:'hills',col:'#3a3456',lift:6},{f:0.1,kind:'saltlake',col:'rgba(235,235,240,.5)',lift:-6},{f:0.16,kind:'shali',col:'#2a2238',win:'#ffc070',lift:12},{f:0.3,kind:'palms',col:'#120e1e',lift:24}]}};
+const bgArt=th=>BGART[th.look]||BGART.nun;
 const bgCache=new Map();
 const BGQ=0.42; // the background is painted at this fraction of screen resolution: cheaper, and soft like distant scenery
-function bgLayers(style,tod=0){const key=style+':'+tod+':'+VS.toFixed(2);let v=bgCache.get(key);if(v)return v;
-  const art=BGART[style]||BGART.dungeon,sc=Math.max(0.5,VS*BGQ);
+function bgLayers(look,tod=0){const key=look+':'+tod+':'+VS.toFixed(2);let v=bgCache.get(key);if(v)return v;
+  const art=BGART[look]||BGART.nun,sc=Math.max(0.5,VS*BGQ),style=look;
   let lys=art.layers.map(ly=>Object.assign({},ly,{col:todColor(ly.col,tod),tod}));
-  if(tod===1&&!lys.some(q=>q.kind==='stars')&&style!=='forge')lys=[{f:0.015,kind:'stars',moon:'#d6def5',tod},...lys]; // a night sky has stars even over the Cistern
+  if(tod===1&&!lys.some(q=>q.kind==='stars')&&!art.nostars)lys=[{f:0.015,kind:'stars',moon:'#d6def5',tod},...lys]; // a night sky has stars even over the Cistern
   v=lys.map((ly,i)=>{const c=document.createElement('canvas');c.width=Math.round(BG_W*sc);c.height=Math.round(BG_H*sc);const g=c.getContext('2d');g.setTransform(sc,0,0,sc,0,0);
     const rnd=mulberry32(hash2(i*31+7,style.length*97+i));
     // everything is drawn twice, a layer-width apart, so the strip tiles seamlessly
@@ -6093,12 +6160,54 @@ function bgPaint(g,ly,rnd){const B=BG_BASE-(ly.lift||0),T=Math.PI*2,R=(a,b)=>a+r
         else if(k<0.7){const mx=x+w*0.7,mh=h+R(20,40);g.fillRect(mx-2.2,B-mh,4.4,mh);g.fillRect(mx-3.4,B-mh+8,6.8,2);g.beginPath();g.moveTo(mx-2.6,B-mh);g.lineTo(mx,B-mh-7);g.lineTo(mx+2.6,B-mh);g.fill();}
         g.fillStyle=ly.win;for(let j=0;j<3;j++)if(rnd()<0.5){g.globalAlpha=R(0.5,0.9);g.fillRect(x+R(2,w-4),B-R(4,h-4),1.6,2.2);}g.globalAlpha=1;g.fillStyle=ly.col;
         x+=w+R(-4,6);}break;}
-    case'palms':ground();for(let i=0;i<6;i++){const x=R(0,BG_W),h=R(40,70),lean=R(-8,8);g.strokeStyle=ly.col;g.lineWidth=2.4;g.beginPath();g.moveTo(x,B);g.quadraticCurveTo(x+lean*0.3,B-h*0.6,x+lean,B-h);g.stroke();
+    case'palms':ground();for(let i=0;i<(ly.few?4:6);i++){const x=R(0,BG_W),h=R(40,70),lean=R(-8,8);g.strokeStyle=ly.col;g.lineWidth=2.4;g.beginPath();g.moveTo(x,B);g.quadraticCurveTo(x+lean*0.3,B-h*0.6,x+lean,B-h);g.stroke();
         for(let k=0;k<7;k++){const a=-Math.PI/2+(k-3)*0.45;g.lineWidth=1.6;g.beginPath();g.moveTo(x+lean,B-h);g.quadraticCurveTo(x+lean+Math.cos(a)*9,B-h+Math.sin(a)*9-3,x+lean+Math.cos(a)*16,B-h+Math.sin(a)*12+6);g.stroke();}}
-      for(let i=0;i<3;i++){const x=R(0,BG_W),w=R(16,24),h=R(70,96);g.fillRect(x,B-h,w,h);for(let k=0;k<w;k+=5)g.fillRect(x+k,B-h-3,3,3);}break;
+      break;
     case'pavilions':ground();for(let i=0;i<7;i++){const x=i*BG_W/7+R(0,30),w=R(26,44),h=R(18,30);g.fillRect(x,B-h,w,h);g.beginPath();g.moveTo(x+w/2-w*0.3,B-h);g.bezierCurveTo(x+w/2-w*0.42,B-h-w*0.4,x+w/2-2,B-h-w*0.45,x+w/2,B-h-w*0.62);g.bezierCurveTo(x+w/2+2,B-h-w*0.45,x+w/2+w*0.42,B-h-w*0.4,x+w/2+w*0.3,B-h);g.fill();
         g.fillStyle=ly.win;for(let k=0;k<3;k++){g.globalAlpha=R(0.4,0.85);const ax=x+w*(0.2+k*0.3)-2;g.beginPath();g.moveTo(ax,B-3);g.lineTo(ax,B-h*0.55);g.quadraticCurveTo(ax+2,B-h*0.7,ax+4,B-h*0.55);g.lineTo(ax+4,B-3);g.fill();}g.globalAlpha=1;g.fillStyle=ly.col;}break;
     case'cypress':ground();for(let i=0;i<12;i++){const x=R(0,BG_W),h=R(34,64),w=R(5,8);g.beginPath();g.ellipse(x,B-h/2,w,h/2,0,0,T);g.fill();}g.fillRect(-2,B-10,BG_W+4,10);break;
+    case'pcolon':{const gap=ly.gap,w=ly.w,top=10;g.fillRect(-2,top-8,BG_W+4,7);g.fillRect(-2,top-10,BG_W+4,1.4); // the architrave, its cornice
+      for(let x=0;x<BG_W;x+=gap){const cx=x+w/2;g.fillRect(x-1,top-1,w+2,2.4);g.beginPath();g.ellipse(cx,top+6,w*0.72,5.4,0,0,T);g.fill(); // the abacus and the closed papyrus bud
+        g.beginPath();g.moveTo(x+w*0.08,top+9);g.lineTo(x,B-4);g.lineTo(x+w,B-4);g.lineTo(x+w*0.92,top+9);g.closePath();g.fill(); // the bundle shaft, swelling at the foot
+        for(const yy of [top+12,top+14.4,top+16.8])g.fillRect(x-0.6,yy,w+1.2,1); g.beginPath();g.ellipse(cx,B-3,w*0.8,2.4,0,0,T);g.fill();}
+      ground();break;}
+    case'qurn':g.beginPath();g.moveTo(-2,BG_H);for(let x=-2;x<=BG_W+2;x+=6){const d=Math.min(Math.abs(x-150),Math.abs(x-470)),pk=Math.max(0,28-d*0.42);g.lineTo(x,B-22-8*Math.sin(x*0.011+0.4)-4*Math.sin(x*0.037)-pk);}g.lineTo(BG_W+2,BG_H);g.fill();break; // the hills with el-Qurn, the peak shaped like a pyramid
+    case'pylons':ground();for(let i=0;i<3;i++){const x=i*BG_W/3+R(10,80),w=R(64,86),h=R(36,48),tw=w*0.4;
+        for(const sx of [x,x+w-tw]){g.beginPath();g.moveTo(sx,B);g.lineTo(sx+tw*0.1,B-h);g.lineTo(sx+tw*0.9,B-h);g.lineTo(sx+tw,B);g.closePath();g.fill();g.fillRect(sx+tw*0.06,B-h-2.4,tw*0.88,2.4); // each tower battered, under its cornice
+          g.fillRect(sx+tw*0.3,B-h-16,1,16);g.fillRect(sx+tw*0.7,B-h-16,1,16);g.beginPath();g.moveTo(sx+tw*0.3+1,B-h-16);g.lineTo(sx+tw*0.3+5,B-h-14);g.lineTo(sx+tw*0.3+1,B-h-12);g.fill();} // flagstaffs with pennants
+        g.fillRect(x+tw,B-h*0.62,w-2*tw,h*0.62);g.fillStyle=ly.win;g.globalAlpha=0.7;g.fillRect(x+w/2-2.4,B-h*0.44,4.8,h*0.44);g.globalAlpha=1;g.fillStyle=ly.col;}break; // the gate between, lit
+    case'steppyr':for(let i=0;i<2;i++){const x=i*BG_W/2+R(60,200),w=R(110,140),h=w*0.46,n=6;for(let k=0;k<n;k++){const ww=w*(1-k*0.14),hh=h/n;g.beginPath();g.moveTo(x-ww/2,B-k*hh);g.lineTo(x-ww/2+hh*0.25,B-(k+1)*hh);g.lineTo(x+ww/2-hh*0.25,B-(k+1)*hh);g.lineTo(x+ww/2,B-k*hh);g.closePath();g.fill();}}ground();break; // Djoser's six steps
+    case'niched':ground();g.fillRect(-2,B-15,BG_W+4,15);for(let x=0;x<BG_W;x+=9){g.fillRect(x,B-17,4,2);if((x/9|0)%5===0)g.fillRect(x-2,B-19,8,4);}break; // the enclosure wall, panelled and with bastions
+    case'kushpyr':ground();for(let i=0;i<9;i++){const x=R(0,BG_W),w=R(10,20),h=w*1.55;g.beginPath();g.moveTo(x-w/2,B);g.lineTo(x-w*0.06,B-h);g.lineTo(x+w*0.06,B-h);g.lineTo(x+w/2,B);g.closePath();g.fill(); // steep, about 70 degrees, a flat top
+        if(rnd()<0.6){const cw=w*0.5;g.fillRect(x-w/2-cw*0.7,B-cw*0.55,cw,cw*0.55);g.fillRect(x-w/2-cw*0.8,B-cw*0.62,cw*1.2,1);}}break; // and a pylon chapel at its foot
+    case'shrines':ground();{let x=0;while(x<BG_W){const w=R(18,30),h=R(14,24);g.fillStyle=ly.col;g.beginPath();g.moveTo(x,B);g.lineTo(x+1.4,B-h);g.lineTo(x+w-1.4,B-h);g.lineTo(x+w,B);g.closePath();g.fill();g.fillRect(x-1,B-h-3,w+2,3); // a shrine, its cornice
+        if(rnd()<0.6){const gx=x+w/2,gy=B-h*0.4;const gr=g.createRadialGradient(gx,gy,0,gx,gy,10);gr.addColorStop(0,'rgba(140,255,215,.5)');gr.addColorStop(1,'rgba(140,255,215,0)');g.fillStyle=gr;g.fillRect(gx-10,gy-10,20,20);g.fillStyle=ly.glow;g.fillRect(gx-1.4,gy-3,2.8,6);}
+        x+=w+R(10,34);}}break;
+    case'escarp':g.beginPath();g.moveTo(-2,BG_H);{let x=-2,y=B-14;g.lineTo(x,y);while(x<BG_W+2){const run=R(30,90);x+=run;g.lineTo(x,y);const ny=B-R(8,30);x+=Math.abs(ny-y)*0.6+2;y=ny;g.lineTo(x,y);}}g.lineTo(BG_W+2,BG_H);g.fill();break; // flat tops, short steep drops
+    case'mounds':ground();{const rows=ly.rows||2,sz=ly.sz||1;for(let r=0;r<rows;r++){const y0=B-2-r*7*sz,sl=R(-0.05,0.05);for(let x=R(-8,4);x<BG_W;x+=R(9,14)*sz){const y=y0+(x-BG_W/2)*sl;g.fillStyle=ly.col;g.beginPath();g.ellipse(x,y,4.4*sz,1.9*sz,0,Math.PI,0);g.fill();
+        g.fillStyle='rgba(0,0,0,.35)';g.beginPath();g.ellipse(x,y-0.6*sz,1.4*sz,0.6*sz,0,0,T);g.fill();}}}g.fillStyle=ly.col;break; // the spoil ring round each shaft of a foggara, in lines across the sand
+    case'deffufa':ground();for(let i=0;i<2;i++){const x=i*BG_W/2+R(40,200),w=R(80,110),h=R(48,62),rr=6;g.beginPath();g.moveTo(x,B);g.lineTo(x+1,B-h+rr);g.quadraticCurveTo(x+1,B-h,x+rr,B-h);g.lineTo(x+w-rr,B-h);g.quadraticCurveTo(x+w-1,B-h,x+w-1,B-h+rr);g.lineTo(x+w,B);g.closePath();g.fill(); // the mass, its corners rounded
+        g.fillRect(x+w*0.7,B-h-8,w*0.22,9); g.beginPath();g.moveTo(x-30,B);g.lineTo(x,B-h*0.5);g.lineTo(x,B);g.fill(); // a turret, the stair ramp
+        g.fillStyle=ly.win;g.globalAlpha=0.65;g.fillRect(x+w*0.4,B-12,4,12);g.fillRect(x+w*0.2,B-h*0.6,2,4);g.globalAlpha=1;g.fillStyle=ly.col;}break;
+    case'huts':ground();for(let i=0;i<10;i++){const x=R(0,BG_W),w=R(9,15),h=w*0.6;g.fillRect(x-w/2,B-h,w,h);g.beginPath();g.moveTo(x-w*0.62,B-h);g.lineTo(x,B-h-w*0.7);g.lineTo(x+w*0.62,B-h);g.fill();}break; // round huts under conical thatch
+    case'acacia':ground();for(let i=0;i<4;i++){const x=R(0,BG_W),h=R(26,40),w=R(26,40);g.strokeStyle=ly.col;g.lineWidth=1.8;g.beginPath();g.moveTo(x,B);g.lineTo(x+2,B-h*0.6);g.lineTo(x-4,B-h);g.moveTo(x+2,B-h*0.6);g.lineTo(x+7,B-h);g.stroke();
+        g.beginPath();g.ellipse(x+1,B-h-2,w/2,4,0,0,T);g.fill();}break; // umbrella-topped acacias
+    case'cliffs':g.beginPath();g.moveTo(-2,BG_H);for(let x=-2;x<=BG_W+2;x+=4)g.lineTo(x,B-54-6*Math.sin(x*0.02)-R(0,3));g.lineTo(BG_W+2,BG_H);g.fill();
+      g.fillStyle='rgba(0,0,0,.3)';for(let x=R(0,8);x<BG_W;x+=R(6,14))g.fillRect(x,B-52,1,R(20,50)); // the rills down the limestone
+      for(let i=0;i<5;i++){const x=R(10,BG_W-10),y=B-R(4,20);g.fillStyle='#000';g.fillRect(x-3,y-7,6,7);g.fillStyle=ly.win;g.globalAlpha=0.35;g.fillRect(x-2,y-6,4,6);g.globalAlpha=1;}g.fillStyle=ly.col;break; // tomb doorways cut low in the cliff
+    case'barkal':ground();{const x=R(120,420),w=220,h=60;g.beginPath();g.moveTo(x-w/2-30,B);g.lineTo(x-w/2,B-h);g.lineTo(x+w/2,B-h);g.lineTo(x+w/2+16,B-h*0.4);g.lineTo(x+w/2+40,B);g.closePath();g.fill(); // the flat-topped mountain
+        g.beginPath();g.moveTo(x+w/2-26,B-h);g.lineTo(x+w/2-22,B-h-26);g.lineTo(x+w/2-16,B-h-30);g.lineTo(x+w/2-12,B-h-20);g.lineTo(x+w/2-8,B-h);g.fill();}break; // and its pinnacle, seen as a rearing cobra
+    case'stelae':ground();for(let i=0;i<9;i++){const x=R(0,BG_W),w=R(5,10),h=R(30,92),fall=rnd()<0.18;
+        if(fall){g.fillRect(x-h/2,B-w*0.8,h,w*0.8);continue;} // one lies broken on the ground
+        g.fillRect(x-w/2,B-h,w,h);g.beginPath();g.ellipse(x,B-h,w/2,w*0.45,0,Math.PI,0);g.fill(); // its rounded head
+        g.fillStyle='rgba(0,0,0,.4)';for(let y=B-h+w;y<B-8;y+=9){g.fillRect(x-w/2,y,w,0.9);g.fillRect(x-w*0.25,y+3,w*0.18,2.6);g.fillRect(x+w*0.07,y+3,w*0.18,2.6);}g.fillRect(x-w*0.2,B-7,w*0.4,7);g.fillStyle=ly.col;}break; // carved storeys, false windows, a false door at the foot
+    case'ambas':g.beginPath();g.moveTo(-2,BG_H);{let x=-2;g.lineTo(x,B-6);while(x<BG_W+2){const w=R(40,110),h=R(18,40);g.lineTo(x+6,B-h);g.lineTo(x+w-6,B-h);g.lineTo(x+w,B-6);x+=w+R(4,30);g.lineTo(x,B-6);}}g.lineTo(BG_W+2,BG_H);g.fill();break; // flat-topped mountains with sheer sides
+    case'ruinpyr':ground();for(let i=0;i<2;i++){const x=i*BG_W/2+R(80,220),w=R(100,130),h=w*0.38;g.beginPath();g.moveTo(x-w/2,B);for(let k=1;k<=10;k++){const u=k/10;g.lineTo(x-w/2+u*w/2,B-h*u+R(-2,2.5));}for(let k=9;k>=0;k--){const u=k/10;g.lineTo(x+w/2-u*w/2,B-h*u+R(-2,2.5));}g.closePath();g.fill();}break; // a worn mudbrick mound, its casing gone
+    case'labwalls':ground();for(let x=R(0,10);x<BG_W;x+=R(10,26)){const h=R(4,14);g.fillRect(x,B-h,R(6,16),h);if(rnd()<0.3){g.fillRect(x+2,B-h-R(6,14),3,R(6,14));}}break; // the Labyrinth's broken walls and column stumps
+    case'saltlake':g.fillRect(-2,B-3,BG_W+4,8);g.fillStyle='rgba(255,255,255,.35)';for(let i=0;i<30;i++)g.fillRect(R(0,BG_W),B-2+R(0,5),R(6,20),0.6);g.fillStyle=ly.col;break; // a salt-crusted lake
+    case'shali':ground();{const x0=R(120,300),w=R(220,280);g.beginPath();g.moveTo(x0-30,B);g.quadraticCurveTo(x0+w/2,B-34,x0+w+30,B);g.fill(); // its rock
+        let x=x0;while(x<x0+w){const bw=R(10,24),bh=R(16,40)*(1-Math.abs(x-x0-w/2)/(w*0.8)),yb=B-12;g.beginPath();g.moveTo(x,yb);g.lineTo(x+R(-1,1),yb-bh+4);g.quadraticCurveTo(x+bw*0.2,yb-bh-R(0,3),x+bw*0.5,yb-bh+R(-1,2));g.quadraticCurveTo(x+bw*0.8,yb-bh-R(0,3),x+bw,yb-bh+4);g.lineTo(x+bw,yb);g.closePath();g.fill(); // melted tops
+          if(rnd()<0.5){g.fillStyle=ly.win;g.globalAlpha=R(0.4,0.8);g.fillRect(x+R(2,bw-4),yb-R(4,bh-6),1.6,2.2);g.globalAlpha=1;g.fillStyle=ly.col;}x+=bw*R(0.6,0.95);}}break;
     case'colonnade':{const gap=ly.gap,w=ly.w,top=10;g.fillRect(-2,top-6,BG_W+4,8);for(let x=0;x<BG_W;x+=gap){g.fillRect(x,top,w,B-top);g.fillRect(x-2,top,w+4,3);g.fillRect(x-2,B-4,w+4,4);
         g.beginPath();g.moveTo(x+w,top+gap*0.5);g.quadraticCurveTo(x+w+(gap-w)/2,top,x+gap,top+gap*0.5);g.lineTo(x+gap,top);g.lineTo(x+w,top);g.fill();}ground();break;}
     case'water':g.fillStyle='rgba(8,14,24,.65)';g.fillRect(-2,B,BG_W+4,BG_H-B+2);g.strokeStyle=ly.col;g.lineWidth=0.8;for(let i=0;i<40;i++){const x=R(0,BG_W),y=R(B+2,BG_H-2),w=R(8,26);g.beginPath();g.moveTo(x,y);g.lineTo(x+w,y);g.stroke();}break;
@@ -6127,7 +6236,7 @@ function openingsIn(x0,x1,y0,y1){const out=[],st=L.theme.style;
 let bgC=null,bgG=null;
 function drawBackdrop(ctx,cx,cy,vw,vh,VZ,camD,camDY){
   const ops=openingsIn(cx,cx+vw,cy,cy+vh);if(!ops.length)return;
-  const art=BGART[L.theme.style]||BGART.dungeon,ly=bgLayers(L.theme.style,L.prog?L.prog.tod:0),k=VZ/VS;
+  const art=bgArt(L.theme),ly=bgLayers(L.theme.look,L.prog?L.prog.tod:0),k=VZ/VS;
   // only the part of the screen the openings cover is painted (in view units)
   // openings close together (a run of arches) are painted as one box; scattered windows each get their own
   const boxes=[];
@@ -6151,11 +6260,11 @@ function paintBackdrop(ctx,art,ly,bx0,by0,bx1,by1){if(bx1<=bx0||by1<=by0)return;
   ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.imageSmoothingEnabled=true;
   ctx.drawImage(bgC,bx0*q,by0*q,(bx1-bx0)*q,(by1-by0)*q,bx0*VS,by0*VS,(bx1-bx0)*VS,(by1-by0)*VS);ctx.restore();}
 
-// ================= ambient life: per-theme atmosphere, and a few things found everywhere =================
+// ================= ambient life: per-style atmosphere (and per theme, LFX), and a few things found everywhere =================
 //  everywhere: dust drifting in the air, moths around the lamps, now and then a trickle of grit from the ceiling
-//  Cistern: water dripping from the ceiling into rings on the floor, bats      Sandstone Halls: gusts of sand
-//  Lapis Gallery: fireflies, drifting rose petals                               Ember Forge: falling ash, spark bursts, smoke under the ceiling
-//  Jade Crypt: will-o'-wisps, bats, a thick ground fog
+//  dungeon: bats (water dripping where the theme has drip)                    palace, and themes with dust: gusts of sand
+//  tile: fireflies, drifting lotus petals                                     forge: falling ash, spark bursts, smoke under the ceiling
+//  crypt: will-o'-wisps, bats, a thick ground fog                             salt and glaze themes: lamp-lit glints (lampGlints)
 const FOGK={crypt:2.1,dungeon:1.35,forge:0.7};
 const AMB=[];let ambNext={};
 const rr=(a,b)=>a+Math.random()*(b-a);
@@ -6170,9 +6279,9 @@ function updateAmbient(dt){
   if(ambCount('mote')<26)AMB.push({k:'mote',x:rr(v.x0,v.x1),y:rr(v.y0,v.y1),vx:rr(-3,3),vy:rr(-2,2),t:0,life:rr(5,10),sz:rr(0.6,1.4)});
   // a trickle of grit from the ceiling (everywhere)
   if(due('grit',5,11)){for(let k=0;k<12;k++){const c=Math.floor(rr(v.x0+20,v.x1-20)/TW),r=Math.floor(rr(v.y0,v.y1)/TH);if(hasCeil(c,r)&&solidBelow(L,c,r)){const x=c*TW+rr(6,26);AMB.push({k:'trickle',x,y:r*TH+ceilOff(c,r),floor:SURF(r),t:0,life:rr(1.4,2.4)});break;}}}
-  if(st==='palace'&&due('gust',6,11)){const dir=Math.random()<0.5?1:-1;for(let i=0;i<46;i++)AMB.push({k:'gust',x:dir>0?v.x0-rr(0,W*0.7):v.x1+rr(0,W*0.7),y:rr(v.y0,v.y1),vx:dir*rr(170,260),vy:rr(4,18),t:0,life:3.2,len:rr(5,13)});}
+  if((st==='palace'||lfx().dust)&&due('gust',6,11)){const dir=Math.random()<0.5?1:-1;for(let i=0;i<46;i++)AMB.push({k:'gust',x:dir>0?v.x0-rr(0,W*0.7):v.x1+rr(0,W*0.7),y:rr(v.y0,v.y1),vx:dir*rr(170,260),vy:rr(4,18),t:0,life:3.2,len:rr(5,13)});}
   if(st==='tile'){if(ambCount('fly')<13)AMB.push({k:'fly',x:rr(v.x0,v.x1),y:rr(v.y0+10,v.y1-20),vx:rr(-8,8),vy:rr(-6,6),t:0,life:rr(7,14),ph:rr(0,6)});
-    if(ambCount('petal')<6&&Math.random()<dt*0.9)AMB.push({k:'petal',x:rr(v.x0,v.x1),y:v.y0-6,vx:rr(-6,6),vy:rr(10,18),t:0,life:14,ph:rr(0,6),rot:rr(0,6),col:Math.random()<0.6?'#e88aa0':'#f4d6dc'});}
+    if(ambCount('petal')<6&&Math.random()<dt*0.9)AMB.push({k:'petal',x:rr(v.x0,v.x1),y:v.y0-6,vx:rr(-6,6),vy:rr(10,18),t:0,life:14,ph:rr(0,6),rot:rr(0,6),col:Math.random()<0.6?'#8fa8e8':'#e8eef8'});} // (blue and white lotus petals)
   if(st==='forge'){if(ambCount('ash')<36)AMB.push({k:'ash',x:rr(v.x0,v.x1),y:v.y0+rr(-10,Hh*0.4),vx:rr(-4,4),vy:rr(6,14),t:0,life:rr(8,14),ph:rr(0,6),sz:rr(1,2.2)});
     if(due('sparks',1,2.6)){const ls=L.torches.filter(q=>!q.broken&&q.c*TW>v.x0-20&&q.c*TW<v.x1+20&&q.r*TH>v.y0-TH&&q.r*TH<v.y1);if(ls.length){const q=ls[Math.floor(Math.random()*ls.length)],x=q.c*TW+16,y=SURF(q.r)-46;
       for(let i=0;i<14;i++)AMB.push({k:'spark',x,y,vx:rr(-50,50),vy:rr(-170,-70),t:0,life:rr(0.6,1.2)});}}
@@ -6225,10 +6334,19 @@ function drawDrips(ctx,x0,x1,y0,y1){const t=gameTime;{for(let r=Math.max(1,Math.
       else if(ph<swell+fall+0.7){const k=(ph-swell-fall)/0.7;ctx.strokeStyle='rgba(200,225,255,'+(0.85*(1-k))+')';ctx.lineWidth=0.9;ctx.beginPath();ctx.ellipse(x,fy,2+k*9,0.6+k*2,0,0,Math.PI*2);ctx.stroke();
         if(k<0.4){ctx.fillStyle='rgba(190,215,240,'+(0.8*(1-k/0.4))+')';for(const s of [-1,1])ctx.fillRect(x+s*(1+k*9),fy-3*Math.sin(k/0.4*Math.PI),0.8,0.8);}}}}
 }
+// salt and glaze, single crystals and tiles flashing, in both modes (Torchlight adds a soft shimmer in its mist pass): near each lit lamp, fixed points on the floor's top face and
+// the wall (salt) or along the faience dado (glaze) catch the flame in turn, a short twinkle each on its own beat
+function lampGlints(ctx,x0,x1,y0,y1,salt){const t=gameTime,col=salt?'255,246,226':'226,246,255';ctx.save();ctx.globalCompositeOperation='lighter';
+  for(const q of L.torches){if(q.broken)continue;const lx=q.c*TW+16,ly=SURF(q.r)-38;if(lx<x0-80||lx>x1+80||ly<y0-60||ly>y1+60)continue;
+    for(let i=0;i<(salt?14:9);i++){const h=hash2(q.c*31+i*7,q.r*17+i),fx=((h&1023)/1023-0.5)*120,u=((h>>>10)&1023)/1023,fy=salt?(u<0.45?SURF(q.r)-3+u*6:SURF(q.r)-10-u*44):SURF(q.r)-4-u*30;
+      const x=lx+fx,ph=(h>>>20)%100/16,b=Math.pow(Math.max(0,Math.sin(t*(1.3+((h>>>4)&7)*0.35)+ph)),14)*(1-Math.abs(fx)/70);if(b<0.05||(!salt&&B(L,Math.floor(x/TW),q.r)===WALL))continue;
+      ctx.globalAlpha=Math.min(1,b);ctx.drawImage(lightSprite(col),x-3,fy-3,6,6);ctx.fillStyle='rgb('+col+')';ctx.fillRect(x-0.5,fy-1.5,1,3);ctx.fillRect(x-1.5,fy-0.5,3,1);}}
+  ctx.restore();}
 // things that give their own light, or catch it: drawn after the lighting
 function ambientGlow(ctx,x0,x1,y0,y1){
   const st=L.theme.style,t=gameTime;ctx.save();
-  if(st==='dungeon')drawDrips(ctx,x0,x1,y0,y1);
+  if(lfx().drip)drawDrips(ctx,x0,x1,y0,y1);
+  if(lfx().salt||lfx().glaze)lampGlints(ctx,x0,x1,y0,y1,!!lfx().salt);
   for(const p of AMB)if(p.k==='ash'){const a=fadeIO(p);if(a<=0)continue;ctx.globalAlpha=a*0.55;ctx.fillStyle=p.sz>1.8?'rgb(255,170,90)':'rgb(186,176,170)';ctx.fillRect(p.x,p.y,p.sz,p.sz*0.7);}
   ctx.globalAlpha=1;ctx.globalCompositeOperation='lighter';
   // moths around every lamp in view (everywhere)
@@ -6772,7 +6890,7 @@ function glSize(){
   GLP.mkC.width=lw;GLP.mkC.height=lh;if(GLP.mtex)gl.deleteTexture(GLP.mtex);GLP.mtex=glTex(gl,1,1);GLA.w=GLA.h=0;GLA.had=true;GLP.tw=w;GLP.th=h;
 }
 // ---- the effect mask: one small 2D canvas (the light map's size) read by the composite. r = shadows, g = heat, b = storm ----
-const GLFX={shadow:true,heat:true,storm:true,grade:true};
+const GLFX={shadow:true,heat:true,storm:true,grade:true,lookfx:true}; // (lookfx: the themes' own salt and glaze, LFX)
 GLFX.rewind=GLFX.hit=GLFX.low=true; // S3-A // each effect behind a constant: false turns it off in code
 Object.assign(GLFX,{metal:true,metalGlint:true}); // unit MS: the metal shader, and its glints
 // per theme grade: tint of the shadows and of the lights, and saturation (kept subtle: the 2D grade still runs under it)
@@ -6830,7 +6948,7 @@ function glMask(lights,VZ,camD,camDY){
     for(const o of L.dyn){const f=o.f;if(f.t!=='vent')continue;const X=o.c*TW;if(X<cx-60||X>cx+vw+60)continue;
       const ph=cyc(f,t),a=(ph>=.7?Math.min(1,(ph-.7)/.05):ph<.12?.5*(1-ph/.12):0)*hk; // hot while it burns, and a moment after
       if(a>.01){g.globalAlpha=a;g.drawImage(green,X+16-30,SURF(o.r)-100,60,110);any=1;}}
-    for(const q of lights){if(q.kind!=='torch'||q.r<100)continue;g.globalAlpha=(forge?.5:L.theme.style==='tile'?0:.25)*hk;if(g.globalAlpha>0){g.drawImage(green,q.x-14,q.y-70,28,70);any=1;}} // every flame shimmers a little, the forge's most
+    for(const q of lights){if(q.kind!=='torch'||q.r<100)continue;g.globalAlpha=(lfx().heat!==undefined?lfx().heat:forge?.5:L.theme.style==='tile'?0:.25)*hk;if(g.globalAlpha>0){g.drawImage(green,q.x-14,q.y-70,28,70);any=1;}} // every flame shimmers a little, the forge's most
     g.globalAlpha=1;}
   const ch=L.ext.chase;
   if(GLFX.storm&&ch&&ch.on&&(ch.fade||0)<1&&P){ // everything behind the front is hazy; ahead of it the haze thins out over a few tiles
@@ -6951,7 +7069,7 @@ function glScene(w,h){const gl=GLP.gl;let src=GLP.sceneC;if(GLP.dOk)src=GLP.dC;
   else gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,src);}
 // the beams' sources in view and the figures standing in them, found before the atlas is copied (glAtmo reads GLC.pns)
 function glcPre(VZ,camD,camDY,th){GLC.pns=0;GLC.ocAny=0;if(!GLC.on||!L)return;
-  const caus=GLFX.caustics&&th.style==='dungeon'&&GFX().bg;
+  const caus=GLFX.caustics&&!!lfx().caus&&GFX().bg;
   GLC.pns=GLFX.shafts||caus?glcSources(VZ,camD,camDY,GLFX.shafts,caus):0;
   if(GLC.pns){glcOcc(VZ,camD,camDY);GLC.ocAny=1;}}
 // the mask atlas (texture unit 3, and 4 and 5 where the beams and the metal read it): the effect mask (quarter resolution) at
@@ -7143,10 +7261,11 @@ const GLCSH={
       vec3 t=o+oa;float lt=dot(t,vec3(.3,.5,.2)),dz=(h21(gl_FragCoord.xy+fract(u_t*7.)*61.)-.5)/255.*step(.001,lt); // (dithered against banding)
       gl_FragColor=vec4(t*.5+dz,lt>0.?dot(oa,vec3(.3,.5,.2))/lt:0.);}`], // (stored at half, so a bright pane keeps its colour in eight bits; a: how much of it is in the air)
   // M: mist and wet sheen -> rgb added, a veils
-  m:[GLV,GLCHEAD+`uniform vec4 u_mist;uniform vec3 u_mcol;uniform sampler2D u_sc;
+  m:[GLV,GLCHEAD+`uniform vec4 u_mist,u_lx;uniform vec3 u_mcol;uniform sampler2D u_sc;
     void main(){vec2 w=wpos(v_u);vec4 tl=tile(w);float fy=w.y-floor(w.y/64.)*64.;vec4 o=vec4(0.);
       if(u_mist.x>0.&&tl.r<.5){float g=texture2D(u_tm,vec2(w.x/32./u_tsz.x,(floor(w.y/64.)+.5)/u_tsz.y)).g; // (soft along the floor, so it thins out at its ends)
-        if(g>.01){float n=vn(vec2(w.x*.022+u_t*.09,w.y*.04))*.6+vn(vec2(w.x*.055-u_t*.16,w.y*.09+3.))*.4;
+        float wd=u_lx.z,sx=1./(1.+.35*(wd-1.)); // (the theme's wind: dust blown along the floor, its noise stretched the way it goes)
+        if(g>.01){float n=vn(vec2(w.x*.022*sx+u_t*.09*wd,w.y*.04))*.6+vn(vec2(w.x*.055*sx-u_t*.16*wd,w.y*.09+3.))*.4;
           float hg=60.-fy,d=g*exp(-max(hg,0.)/(u_mist.y*(.7+.9*n)))*u_mist.x*(.15+1.25*smoothstep(.3,.8,n)); // height fog: thickest on the floor, thin a hand above it, drifting
           vec3 lt=texture2D(u_map,v_u).rgb*1.5;o=vec4(u_mcol*(lt*.4+.26)*d,d*.5);}} // lit by what lights the floor there
       if(u_mist.z>0.&&tl.g>.5&&fy>55.5){float dp=clamp((64.-fy)/8.,0.,1.),wet=smoothstep(.3,.7,vn(vec2(w.x*.04,floor(w.y/64.)*5.3))); // across the slab's top: 0 its front edge, 1 its back
@@ -7155,10 +7274,16 @@ const GLCSH={
         vec3 S=vec3(0.);for(int j=0;j<3;j++){float hy=4.+dp*58.+float(j)*7.;vec2 su=v_u+vec2(0.,(fy-60.+hy)*u_cam.w/u_res.y);S+=texture2D(u_sc,su).rgb*texture2D(u_map,su).rgb*1.5;}
         S=max(S/3.-.3,0.)*2.; // and the bright things above (flames, lamps, a lit figure), mirrored and stretched: wet stone shows the lights, not the dark wall
         o.rgb+=(R*.35+S*.5)*wet*(.3+.7*dp)*u_mist.z;} // stronger toward the back, where the eye meets the floor at a glancing angle
+      if(u_lx.x+u_lx.y>0.&&tl.a<.25){vec3 R=max(texture2D(u_map,v_u).rgb*1.5-u_mist.w,0.);float lr=dot(R,vec3(.3,.5,.2)); // (the lamps' light only: no glint in the ambient dark)
+        if(lr>.015){
+          if(u_lx.x>0.){float n=vn(vec2(w.x*.09+u_t*.05,w.y*.12))*vn(vec2(w.x*.21-u_t*.11,w.y*.27+7.)); // salt: the kershef's crystals glitter in the lamplight, a soft shimmer that wanders
+            float sf=(tl.g>.5&&fy>55.5)?1.:(tl.r>.5?.5:.35);o.rgb+=R*smoothstep(.3,.62,n)*sf*u_lx.x*.9;} // (single crystals flash in 2D, lampGlints, sharp at full resolution)
+          if(u_lx.y>0.&&tl.g>.5&&tl.r<.5&&fy>26.&&fy<60.){ // glaze: the faience dado; a sheen runs across it as the flames sway (single tiles flash in 2D, lampGlints)
+            float sw=smoothstep(.8,1.,sin(w.x*.11-u_t*.9+fy*.06+sin(u_t*.37)*2.));o.rgb+=R*sw*.5*u_lx.y;}}}
       gl_FragColor=o;}`]};
 const glcRGB=col=>{let c=GLCOL.get(col);if(!c){c=col.split(',').map(Number);GLCOL.set(col,c);}return c;}; // (parsed once)
 function glcInit(gl,P){
-  const mk=src=>{const p=glMake(gl,src);gl.bindAttribLocation(p,0,'a_p');return glLink(gl,p,['u_cam','u_res','u_tsz','u_tm','u_map','u_t','u_src','u_scol','u_ns','u_dir','u_oc','u_cau','u_sky','u_mist','u_mcol','u_sc','u_ln','u_rys','u_ry','u_ocT','u_ocC','u_bq','u_sk']);};
+  const mk=src=>{const p=glMake(gl,src);gl.bindAttribLocation(p,0,'a_p');return glLink(gl,p,['u_cam','u_res','u_tsz','u_tm','u_map','u_t','u_src','u_scol','u_ns','u_dir','u_oc','u_cau','u_sky','u_mist','u_mcol','u_sc','u_ln','u_rys','u_ry','u_ocT','u_ocC','u_bq','u_sk','u_lx']);};
   GLC.S=mk(GLCSH.s);GLC.M=mk(GLCSH.m);
   for(const n of ['u_cs','u_cm','u_cfx'])P.final.u[n]=gl.getUniformLocation(P.final.p,n);
   GLC.max=gl.getParameter(gl.MAX_TEXTURE_SIZE)||4096;GLC.tm=null;GLC.lv=null;GLC.oct=null;GLC.fs=null;GLC.ry=null;GLC.on=true;}
@@ -7173,10 +7298,10 @@ function glcRy(gl){
   RY.dirty.length=0;gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);}
 // the tile texture: r wall, g floor (a walkable surface at the cell's foot), b near the water (Cistern, around open arches), a open arch (1 its top cell, .5 the one below)
 function glcTiles(gl){
-  const bg=GFX().bg,key=(L.seed|0)+':'+L.cols+':'+L.rows+':'+bg;
+  const bg=GFX().bg,key=(L.seed|0)+':'+L.cols+':'+L.rows+':'+bg+':'+L.theme.look;
   if(GLC.lv===L&&GLC.key===key&&(GLC.tk++%40))return true;
   const C=L.cols,R=L.rows;if(C>GLC.max||R>GLC.max)return false;
-  if(!GLC.td||GLC.td.length<C*R*4)GLC.td=new Uint8Array(C*R*4);const d=GLC.td,wet=L.theme.style==='dungeon';d.fill(0,0,C*R*4);
+  if(!GLC.td||GLC.td.length<C*R*4)GLC.td=new Uint8Array(C*R*4);const d=GLC.td,wet=!!lfx().caus;d.fill(0,0,C*R*4);
   for(let r=0;r<R;r++)for(let c=0;c<C;c++){const i=(r*C+c)*4,b=B(L,c,r);d[i]=b===WALL?255:0;d[i+1]=b!==WALL&&solidBelow(L,c,r)?255:0;
     if(bg&&isOpenArch(c,r)){d[i+3]=255;if(r+1<R)d[i+4*C+3]=128;
       if(wet)for(let rr=r-1;rr<=r+1;rr++)for(let dc=-3;dc<=3;dc++){const cc=c+dc;if(rr<0||rr>=R||cc<0||cc>=C)continue;const v=Math.round(255*(1-Math.abs(dc)/4)*(rr<r?0.6:1)),j=(rr*C+cc)*4+2;if(d[j]<v)d[j]=v;}}}
@@ -7218,9 +7343,10 @@ function glcOcc(VZ,camD,camDY){
 function glAtmo(VZ,camD,camDY,th,lw,lh){
   const {gl}=GLP;if(!GLC.on||!L)return 0;
   const st=th.style,gf=GFX(),tod=L.prog?L.prog.tod:0,lk=lookOf(st),wetT=st==='dungeon'||st==='crypt';
-  const caus=GLFX.caustics&&st==='dungeon'&&gf.bg,mist=GLFX.mist&&gf.atmo&&(st==='crypt'||st==='dungeon'||(tod===1&&st!=='forge')),sheen=GLFX.sheen&&wetT;
+  const fx=lfx(),dust=GLFX.mist&&gf.atmo&&fx.dust,lx=GLFX.lookfx&&gf.atmo&&(fx.salt||fx.glaze);
+  const caus=GLFX.caustics&&!!fx.caus&&gf.bg,mist=GLFX.mist&&gf.atmo&&(dust||st==='crypt'||st==='dungeon'||(tod===1&&st!=='forge')),sheen=GLFX.sheen&&wetT&&!fx.dry;
   const ns=GLC.pns,cs=caus&&GLC.arch; // (glcPre found the sources; caustics only where an open arch is in view)
-  if(!ns&&!cs&&!mist&&!sheen)return 0;
+  if(!ns&&!cs&&!mist&&!sheen&&!lx)return 0;
   if(!glcTiles(gl))return 0;
   if(!GLC.fs||GLC.fw!==lw||GLC.fh!==lh){GLC.fs=glFbo(gl,lw,lh);GLC.fm=glFbo(gl,lw,lh);GLC.fw=lw;GLC.fh=lh;}
   const w=cv.width,h=cv.height,t=gameTime%1000;let f=0;
@@ -7233,16 +7359,17 @@ function glAtmo(VZ,camD,camDY,th,lw,lh){
       gl.enable(gl.SCISSOR_TEST);gl.scissor(x0,lh-y1,Math.max(0,x1-x0),Math.max(0,y1-y0));} // only around the beams and the arches (GL's y runs up)
     gl.useProgram(GLC.S.p);com(U);gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,GLP.mtex);gl.uniform1i(U.u_oc,4);gl.uniform4fv(U.u_ocT,GLA.oT);gl.uniform4fv(U.u_ocC,GLA.oC);
     if(ns)glcRy(gl);else{gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,GLC.ry||GLC.tm);}const sb=skyBeam(); // (unit RY) the profiles on unit 2 (the composite binds its own there later)
-    gl.uniform4fv(U.u_src,GLCSRC);gl.uniform4fv(U.u_scol,GLCCOL);gl.uniform1f(U.u_ns,ns);gl.uniform2f(U.u_dir,sb.dx,sb.dy);gl.uniform1f(U.u_ln,sb.ln);gl.uniform1i(U.u_ry,2);{const am=glcRGB(lk.amb),A=glAmbK(st,lk)*(am[0]*.3+am[1]*.5+am[2]*.2)/255;gl.uniform4f(U.u_bq,sb.lq,A,RY_FIG,RY_FLOOR);gl.uniform4f(U.u_sk,RY_AIR,RY_RIM,RY_MOTE,RY_OWNG);}gl.uniform2f(U.u_rys,1/RYW,1/(GLC.ryh||RYH0));
-    const sr=glcRGB((BGART[st]||BGART.dungeon)['glow'+tod]||lk.win);
+    gl.uniform4fv(U.u_src,GLCSRC);gl.uniform4fv(U.u_scol,GLCCOL);gl.uniform1f(U.u_ns,ns);gl.uniform2f(U.u_dir,sb.dx,sb.dy);gl.uniform1f(U.u_ln,sb.ln);gl.uniform1i(U.u_ry,2);{const am=glcRGB(lk.amb),A=glAmbK(st,lk)*(am[0]*.3+am[1]*.5+am[2]*.2)/255;gl.uniform4f(U.u_bq,sb.lq,A,RY_FIG,RY_FLOOR);gl.uniform4f(U.u_sk,RY_AIR,RY_RIM,RY_MOTE*(fx.motes||1),RY_OWNG);}gl.uniform2f(U.u_rys,1/RYW,1/(GLC.ryh||RYH0));
+    const sr=glcRGB(bgArt(L.theme)['glow'+tod]||lk.win);
     gl.uniform3f(U.u_sky,sr[0]/255,sr[1]/255,sr[2]/255);gl.uniform4f(U.u_cau,cs?0.3:0,S.set.calm?0.35:0.8,0,0);
     gl.drawArrays(gl.TRIANGLES,0,3);gl.disable(gl.SCISSOR_TEST);f|=1;}
-  if(mist||sheen){
+  if(mist||sheen||lx){
     const U=GLC.M.u;gl.bindFramebuffer(gl.FRAMEBUFFER,GLC.fm.f);gl.viewport(0,0,lw,lh);gl.useProgram(GLC.M.p);com(U);
     gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,GLP.tex);gl.uniform1i(U.u_sc,0);
     const am=glcRGB(lk.amb),A=glAmbK(st,lk)*Math.max(am[0],am[1],am[2])/255,mc=glcRGB(lk.mist);
-    const ms=!mist?0:st==='crypt'?0.8:st==='dungeon'?0.75:0.5,mh=st==='crypt'?15:st==='dungeon'?11:9;
+    const ms=!mist?0:dust?dust[0]:st==='crypt'?0.8:st==='dungeon'?0.75:0.5,mh=dust?dust[1]:st==='crypt'?15:st==='dungeon'?11:9;
     gl.uniform4f(U.u_mist,ms,mh,sheen?(st==='dungeon'?1:0.8):0,A*1.08);gl.uniform3f(U.u_mcol,mc[0]/255,mc[1]/255,mc[2]/255);
+    gl.uniform4f(U.u_lx,lx&&fx.salt?(S.set.calm?0.5:1):0,lx&&fx.glaze?(S.set.calm?0.5:1):0,dust?dust[2]:1,0); // the theme's own: salt, glaze, the dust's wind
     gl.drawArrays(gl.TRIANGLES,0,3);f|=2;}
   gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,GLC.fs?GLC.fs.t:null);gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_2D,GLC.fm?GLC.fm.t:null);
   return f;}
@@ -7713,6 +7840,7 @@ window.__HK={tapCloth,THEMES,progOf,themeName,hint,learn,HINTS,HINT_MOVE,get ban
   levelCompleteHook:null,render,layout,startLevel,
   get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG};
 Object.assign(window.__HK,{guardBudget,snakeBudget}); // (the fighters' budgets, for guardscan.py)
+Object.assign(window.__HK,{BGART,bgArt,LFX,themeOf,get PF(){return PF;}}); // (the themes' backdrops and effects, for egyptshot.py and egyptfx.py)
 Object.assign(window.__HK,{hurt,HK,DISS,sandP,SAND_HP,GLFX,setClock:f=>{performance.now=f;}}); // S3-A (tests)
 Object.assign(window.__HK,{FLM,FLV,ventState,cyc}); // FL (flames: the sheets and the vent's look, for tests)
 Object.assign(window.__HK,{GLFX,GLREL,clearRooms,bgCache,bgLayers,solidBelow:(c,r)=>solidBelow(L,c,r),roomCanvas}); // (unit B's switches and caches, for its tests)

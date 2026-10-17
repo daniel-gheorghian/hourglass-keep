@@ -168,6 +168,12 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   clamp holds every frame; a saw that would sit under such a ceiling becomes spikes in place (the low leap cannot clear it).
   Check with `lowceil.py`.
 - The sandstorm's surface boils (v60, owner): a two-phase flow map in the shader, baked looping frames crossfaded in Classic (`STB`).
+- Themes (branch egypt, owner): twelve themes of Egypt, Kush and the Sahara, four floors each (`THEMES`, `themeOf`), turning every 48
+  floors; time of day and wear still turn every 20 (`progOf`). A theme has a drawing `style` (dungeon, palace, tile, forge, crypt: the
+  style-keyed tables) and a `look` (its backdrop `BGART`, hangings `TAP`, Torchlight light `lk`, effects `LFX`). The generator never
+  reads the theme: it builds by `L.gstyle`, the old five-theme turn (`GEN_STYLE`), so floors stay as they were. Arches, doors and
+  windows are post and lintel (the dungeon style's vaults stay round). No churches, crosses or the Ark, no living peoples as enemies
+  or decoration. Pictures and sources: `egyptshot.py`, `egyptfx.py`, `egyptpage.py` (egypt_themes.html).
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized from `estPath()` at a careful pace, times 0.84 to 1.08.
 - Pose angles are measured from straight down; positive means forward.
