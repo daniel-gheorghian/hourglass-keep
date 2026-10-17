@@ -6296,7 +6296,7 @@ const renderXf={VZ:1,camD:0,camDY:0}; // the last frame's world-to-canvas transf
 // true, though the frame runs a little slower than it would), and every few seconds one effect is left out to show what it
 // costs; the table is drawn over the HUD. Torchlight does not fall back to Classic meanwhile. Nothing is stored.
 const PF={upd:0,iv0:0,on:/[?&]prof\b/.test(location.search),t:0,gl:null,a:{},fa:{},fn:0,ws:0,al:false,cur:'all',iv:0,n:0,t0:0,ix:0,res:{},stg:null,off:{},sv:null,
-  rs:0,img:false,last:0,steps:[['all','all on'],['metal','metal'],['shafts','sky beams'],['flame','flames'],['sand','sand'],['relief','relief'],['shadow','shadows'],['mist','mist/sheen'],['heat','heat'],['grade','grade'],['storm','sandstorm'],['img','texImage2D'],['rs75','scene .75'],['rs50','scene .5'],['sync','no delay'],['wgl','2D scene (v60)'],['msaa2','MSAA 2x'],['msaa1','MSAA off']],
+  rs:0,img:false,last:0,steps:[['all','all on'],['metal','metal'],['shafts','sky beams'],['flame','flames'],['sand','sand'],['relief','relief'],['shadow','shadows'],['mist','mist/sheen'],['heat','heat'],['grade','grade'],['storm','sandstorm'],['img','upload (v60)'],['rs75','scene .75'],['rs50','scene .5'],['sync','no delay'],['wgl','2D scene (v60)'],['msaa2','MSAA 2x'],['msaa1','MSAA off']],
   s(){if(this.on){this.t=performance.now();this.a={};this.gl=null;}},
   p(k){if(!this.on)return;if(this.gl)this.gl.finish();const t=performance.now();this.a[k]=(this.a[k]||0)+t-this.t;this.t=t;}};
 // ?bench (owner, v53): the same test on the phone every time, without anyone driving it. The test bot (dev/tools/bot.js,
@@ -6311,7 +6311,7 @@ function benchBoot(){const tries=['dev/tools/bot.js','tools/bot.js'],load=i=>{if
   const t=document.createElement('script');t.src=tries[i]+'?v='+APP_VERSION;t.onload=()=>setTimeout(benchStart,600);t.onerror=()=>{t.remove();load(i+1);};document.head.appendChild(t);};load(0);}
 function benchStart(){if(!window.botGen)return;BENCH.save=JSON.stringify(S);BENCH.run=true;BENCH.out=[];
   for(const id in HINTS)S.hints[id]=1;for(const id of HINT_MOVE)S.learned[id]=1;
-  S.set.lightMode=BENCH.arg==='classic'?'classic':'torch';window.__HKnoauto=BENCH.arg!=='auto';if(BENCH.arg==='saver'){S.set.saver=true;layout();}if(BENCH.arg==='2d'||/[?&]wgl=0/.test(location.search))GLFX.wgl=false;hideAll();benchFloor(0);} // (?bench=saver: Battery saver on, as the owner plays it: every other frame, 1x resolution; ?bench=2d: the scene drawn in 2D and copied, as up to v60, to compare on the same phone)
+  S.set.lightMode=BENCH.arg==='classic'?'classic':'torch';window.__HKnoauto=BENCH.arg!=='auto';if(BENCH.arg==='saver'){S.set.saver=true;layout();}if(BENCH.arg==='2d')GLFX.wgl=false;hideAll();benchFloor(0);} // (?bench=saver: Battery saver on, as the owner plays it: every other frame, 1x resolution; ?bench=2d: the scene drawn in 2D and copied, as up to v60, to compare on the same phone)
 function benchFloor(i){BENCH.i=i;const n=BENCH.floors[i];GLP.rs=BENCH.arg==='75'?0.75:1;GLP.inSession=true;
   BENCH.g=window.botGen(n,9000+n,{fight:true});BENCH.iv=[];BENCH.wk=[];BENCH.tr=BENCH.TR[n]=[];BENCH.rb=roomBuilds;BENCH.ru=GLREL.ups||0;BENCH.fb=null;BENCH.done=null;BENCH.t0=0;
   if(BENCH.arg==='auto')S.set.lightMode='torch';BENCH.step();}
@@ -6327,7 +6327,7 @@ function benchCheck(){if(!BENCH.run||BENCH.i<0)return;const el=BENCH.t0?(perform
     slow:n?iv.filter(v=>v>20).length/n:0,w2,wk:BENCH.wk.length?BENCH.wk.reduce((a,b)=>a+b,0)/BENCH.wk.length:0,rb:roomBuilds-BENCH.rb,ru:(GLREL.ups||0)-BENCH.ru,
     sc:GLP.rs,fb:BENCH.fb,bot:BENCH.done?(BENCH.done.ok===true?'done':String(BENCH.done.why||BENCH.done.ok)):''});
   BENCH.g=null;if(BENCH.i+1<BENCH.floors.length)benchFloor(BENCH.i+1);else benchEnd();}
-function benchEnd(){BENCH.run=false;GLFX.wgl=true;BENCH.i=-1;S=JSON.parse(BENCH.save);window.__HKnoauto=false;mode='title';previewTitle();show('title');if(BENCH.arg==='saver')layout();
+function benchEnd(){BENCH.run=false;GLFX.wgl=WGL_DEF;BENCH.i=-1;S=JSON.parse(BENCH.save);window.__HKnoauto=false;mode='title';previewTitle();show('title');if(BENCH.arg==='saver')layout();
   const f=(v,d=1,w=5)=>v.toFixed(d).padStart(w),gl=GLP.gl,ri=gl&&gl.getExtension('WEBGL_debug_renderer_info');
   const rows=['Hourglass Keep v'+APP_VERSION+' bench: '+(BENCH.arg==='saver'?'Battery saver (torch, every other frame drawn, 1x; times per 60 Hz step)':BENCH.arg==='2d'?'torch with the scene drawn in 2D and copied (v60 path)':BENCH.arg||'torch, full size, no fall back'),
     navigator.userAgent.replace(/^Mozilla\/5\.0 /,'').slice(0,110),'canvas '+cv.width+'x'+cv.height+'  dpr '+(window.devicePixelRatio||1)+(ri?'  '+gl.getParameter(ri.UNMASKED_RENDERER_WEBGL):''),
@@ -6804,7 +6804,7 @@ function g2dash(c,n,closed,D,off){const out=[];let tot=0;for(const v of D)tot+=v
       if(left<=1e-9){di=(di+1)%D.length;left=D[di];on=!on;if(on)cur=[ax,ay];else{if(cur&&cur.length>=4)out.push(cur);cur=null;}}}}
   if(on&&cur&&cur.length>=4)out.push(cur);return out;}
 
-// ---- replay: what was recorded is drawn (Torchlight's next frame, or at once with GLP.pipe off) ----
+// ---- replay: what was recorded is drawn, in the same frame (glPrep then glSubmit at once: no frame of delay on this path) ----
 const G2BL=[[1,0x303,1,0x303],[1,1,1,1],[0x306,0x303,1,0x303],[0,0x303,0,0x303],[0,0x302,0,0x302],[0x304,0x303,0,1],[1,0,1,0],[1,0x301,1,0x303],[0x305,1,0x305,1]]; // (premultiplied: src, dst factors for colour and alpha)
 function g2Replay(){const gl=GLS.gl,U=GLS.prog.u;if(!GLS.T.length)return;GLS.stamp++;GLS.stats.draws=0;GLS.stats.uploads=0;
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
@@ -7335,7 +7335,7 @@ function glSize(){
 const GLFX={shadow:true,heat:true,storm:true,grade:true};
 GLFX.rewind=GLFX.hit=GLFX.low=true; // S3-A // each effect behind a constant: false turns it off in code
 Object.assign(GLFX,{metal:true,metalGlint:true}); // unit MS: the metal shader, and its glints
-GLFX.wgl=true; // unit WGL: the scene drawn by WebGL2 (false: drawn in 2D and copied, as up to v60)
+const WGL_DEF=!/[?&]wgl=0/.test(location.search);GLFX.wgl=WGL_DEF; // unit WGL: the scene drawn by WebGL2 (false: drawn in 2D and copied, as up to v60; ?wgl=0 in the URL: the fallback)
 // per theme grade: tint of the shadows and of the lights, and saturation (kept subtle: the 2D grade still runs under it)
 const GLGRADE={dungeon:{sh:[.93,.98,1.07],hi:[1.04,1.01,.96],sat:.96},palace:{sh:[1.04,.99,.93],hi:[1.07,1.02,.92],sat:1.1},tile:{sh:[.95,.98,1.06],hi:[1.04,1.02,.95],sat:1.05},
   forge:{sh:[1.07,.94,.9],hi:[1.1,.99,.9],sat:1.1},crypt:{sh:[.9,1.06,1.0],hi:[.97,1.06,.99],sat:.92}};
@@ -8295,7 +8295,7 @@ function loop(ts){
   updateGrabLabel(ts);
   if(mode==='play'||mode==='dead'||mode==='rewind'){acc+=dt;let n=0;const u0=PF.on||BENCH.g?performance.now():0;while(acc>=STEP&&n<6){acc-=STEP;n++;if(BENCH.g)BENCH.step();snapPrev();if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}if(n>=6)acc=0;if(PF.on||BENCH.g)PF.upd=performance.now()-u0;
     Snd.rumble(stormNear()); // (unit ST)
-    frame++;if(S.set.saver&&(frame&1))return;{const iv=(ts-GLP.lastR)/(S.set.saver?2:1);if(GLP.lastR&&iv<250){glTime(iv);PF.iv0=iv;}GLP.lastR=ts;}const b0=roomBuilds,mz=PF.on||BENCH.run,r0=mz?performance.now():0;if(PF.on){try{renderAt(acc/STEP);}catch(e){PF.err=String(e&&e.message||e).slice(0,60)+' ('+PF.cur+')';console.log('prof step '+PF.cur+': '+(e&&e.stack||e));}}else renderAt(acc/STEP);if(PF.on){PF.a.update=PF.upd;pfFrame(PF.upd+performance.now()-r0,PF.iv0||0);}if(BENCH.run)benchFrame(PF.iv0||0,PF.upd+performance.now()-r0);idleFrames=0;drawBuilds+=roomBuilds-b0;if(roomBuilds===b0)roomWork();}
+    frame++;if(S.set.saver&&(frame&1))return;{const iv=(ts-GLP.lastR)/(S.set.saver?2:1);if(GLP.lastR&&iv<250){glTime(iv);PF.iv0=iv;}GLP.lastR=ts;}const b0=roomBuilds,mz=PF.on||BENCH.run,r0=mz?performance.now():0;if(PF.on){try{renderAt(acc/STEP);}catch(e){const m=String(e&&e.message||e).slice(0,60)+' ('+PF.cur+')';if(m!==PF.err)console.log('prof step '+PF.cur+': '+(e&&e.stack||e));PF.err=m;}}else renderAt(acc/STEP);if(PF.on){PF.a.update=PF.upd;pfFrame(PF.upd+performance.now()-r0,PF.iv0||0);}if(BENCH.run)benchFrame(PF.iv0||0,PF.upd+performance.now()-r0);idleFrames=0;drawBuilds+=roomBuilds-b0;if(roomBuilds===b0)roomWork();}
   else{acc=0;GLP.lastR=0;Snd.rumble(0);if(++idleFrames%20===0)render();}
 }
 

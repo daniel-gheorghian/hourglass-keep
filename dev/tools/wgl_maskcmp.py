@@ -50,7 +50,7 @@ RUN = r'''([n,seed,cond,extra])=>{const H=__HK;H.S.set.lightMode='torch';H.GLP.p
     if(sp){const P=H.P;P.x=sp.x;P.y=(sp.r+1)*64-4;P.fallY=P.y;P.state='stand';P.inv=1e9;P.face=1;H.cam.snap=true;H.mode='play';c.on=true;c.done=false;c.t=1;c.wx=P.x-45;tk(20);P.x=sp.x;c.wx=P.x-45;H.cam.snap=true;}}}
   %s
   for(let i=0;i<14;i++){a=12345;Math.random=rnd;T+=1000/60;H.render();}
-  const g=H.GLP.gl,GP=H.GLP,tex=GP.atl&&GP.gls?GP.atl.t:GP.mtex,w=GP.atl&&GP.gls?GP.atl.w:H.GLA.w,h=GP.atl&&GP.gls?GP.atl.h:H.GLA.h,px=new Uint8Array(w*h*4);
+  const g=H.GLP.gl,GP=H.GLP,AT=GP.gls&&H.GLS&&H.GLS.atlT&&H.GLS.atlT.tex?H.GLS.atlT:null,tex=AT?AT.tex:GP.atl&&GP.gls?GP.atl.t:GP.mtex,w=AT?AT.w:GP.atl&&GP.gls?GP.atl.w:H.GLA.w,h=AT?AT.h:GP.atl&&GP.gls?GP.atl.h:H.GLA.h,px=new Uint8Array(w*h*4); // (v62: the multisampled atlas's resolved texture)
   const fb=g.createFramebuffer();g.bindFramebuffer(g.FRAMEBUFFER,fb);g.framebufferTexture2D(g.FRAMEBUFFER,g.COLOR_ATTACHMENT0,g.TEXTURE_2D,tex,0);g.readPixels(0,0,w,h,g.RGBA,g.UNSIGNED_BYTE,px);g.bindFramebuffer(g.FRAMEBUFFER,null);g.deleteFramebuffer(fb);
   let s='';const CH=0x8000;for(let i=0;i<px.length;i+=CH)s+=String.fromCharCode.apply(null,px.subarray(i,i+CH));
   return {w,h,k,ok:r.ok,mode:H.mode,px:btoa(s),on:H.shaderOn()};}''' % (json.dumps(COND), PRE)
@@ -76,7 +76,8 @@ ra, ea = grab(A); rb, eb = grab(B)
 rows = []; crops = []
 for (name, *_r) in S:
     a, ka, oa = ra[name]; b, kb, ob = rb[name]
-    if a.shape != b.shape: rows.append((name, 'shape', a.shape, b.shape)); continue
+    if a.shape != b.shape:  # (v62's atlas has a fixed size, larger than the parts need: the parts sit at the same places from the top left)
+        hh, ww = min(a.shape[0], b.shape[0]), min(a.shape[1], b.shape[1]); a = a[:hh, :ww]; b = b[:hh, :ww]
     d = np.abs(a.astype(np.int16) - b.astype(np.int16)).max(axis=2)
     g = a.astype(np.int16).max(axis=2)
     pad = np.pad(g, 1, mode='edge'); mx = np.maximum.reduce([pad[i:i + g.shape[0], j:j + g.shape[1]] for i in range(3) for j in range(3)]); mn = np.minimum.reduce([pad[i:i + g.shape[0], j:j + g.shape[1]] for i in range(3) for j in range(3)])
