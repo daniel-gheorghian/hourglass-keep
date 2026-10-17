@@ -151,6 +151,13 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   Tests that compare the picture of one exact state set `GLP.pipe=false`. `wgl_cmp.py`, `wgl_maskcmp.py` and `wgl_parity.py` compare
   frames, mask atlases and single drawing functions against main or the real 2D context. The HUD canvas above WebGL is redrawn only
   when its list of drawing calls changes (`hudKey`).
+  Rooms built in the background are uploaded in strips of 80 rows, one a frame (`g2Warm`/`g2Stage`): a whole room's upload made
+  Safari wait 12 ms or more. The facade's gradient ramps follow the browser's own 2D canvas (`g2GradPM`: Safari mixes radial
+  gradients premultiplied, linear ones not; Chrome neither). The storm's Classic tiles (`stormReady(ch,bud)`) are baked a few rows at a
+  time within a budget, and not at all when the storm shader draws the storm. `WK=1` runs the wgl_* tools in Playwright's WebKit
+  (Safari's engine; serve dev/ with `python3 -m http.server 8765 --bind 127.0.0.1`): it shows the 2D-canvas copy cost the phone has
+  (the v60 path at 24 fps there). `?bench&floors=17` benches chosen floors; `__BENCH_TRACE` holds each floor's first 6 s frame by
+  frame (`wgl_trace.py`).
 - Torchlight's ambient light never drops under `AMB_MIN` (0.45 of full on its brightest channel, `glAmbK`; owner, v56 and v57: the Forge by
   Moonlight fell to 0.26), and each sky opening adds a soft bounce light where its beam meets the floor (`gatherLights`, Torchlight only).
   The fire vent burns over its whole grate (`VJETS`: a jet per slot, back and front rows, merging into one sheet); its timing and

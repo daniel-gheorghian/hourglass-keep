@@ -5,6 +5,7 @@ import sys, os, base64
 import numpy as np
 from PIL import Image, ImageDraw
 from playwright.sync_api import sync_playwright
+import wgl_env as E
 HERE = os.path.dirname(os.path.abspath(__file__))
 html = next((x for x in sys.argv[1:] if x.endswith('.html')), os.path.join(HERE, '..', 'hourglass-keep.html'))
 ONLY = ([x[5:] for x in sys.argv[1:] if x.startswith('only=')] or [''])[0].split(',')
@@ -25,6 +26,7 @@ CASES = {
  'composite': "g=>{g.fillStyle='#406080';g.fillRect(0,0,160,110);g.globalCompositeOperation='lighter';g.fillStyle='rgba(200,100,50,.6)';g.beginPath();g.arc(60,50,35,0,6.28);g.fill();g.globalCompositeOperation='multiply';g.fillStyle='#c0ffc0';g.fillRect(70,30,80,60);g.globalCompositeOperation='destination-out';g.fillStyle='rgba(0,0,0,.5)';g.fillRect(10,80,40,20);g.globalCompositeOperation='source-over';}",
  'image': "g=>{const c=__HK.lightSprite('255,190,110');g.drawImage(c,10,10,60,60);g.globalAlpha=.6;g.drawImage(c,0,0,32,32,70,20,80,80);g.globalAlpha=1;g.globalCompositeOperation='lighter';g.drawImage(c,90,40,40,40);g.globalCompositeOperation='source-over';}",
  'path2d': "g=>{const p=new __HK.HKPath();p.moveTo(20,20);p.quadraticCurveTo(80,0,140,30);p.lineTo(120,90);p.arc(60,80,25,0,3.5,true);p.closePath();g.fillStyle='#7a5';g.fill(p);g.strokeStyle='#0b0812';g.lineWidth=1.25;g.stroke(p);g.save();g.translate(10,5);g.scale(.82,.82);g.fillStyle='#ae7';g.fill(p);g.restore();}",
+ 'downscale': "g=>{const H=__HK;if(!window.__SILC){const c=document.createElement('canvas');c.width=c.height=192;const x=c.getContext('2d');x.setTransform(2,0,0,2,0,0);H.drawFigureHD(x,48,80,1,Object.values(H.PS)[3],H.PAL_HERO,{mono:'#ff0000',hasSword:false,time:0});window.__SILC=c;}for(let i=0;i<6;i++)g.drawImage(__SILC,4+i*26.3,10+i*0.37,34-i*3,34-i*3);g.drawImage(__SILC,20,55,64,64);}",
  'figure': "g=>{const H=__HK;g.save();g.scale(2.4,2.4);H.drawFigureHD(g,35,44,1,H.PS.stand||Object.values(H.PS)[0],H.PAL_HERO,{hasSword:true,sword:true,time:3.2,lt:{dir:1,col:'255,188,100',k:.8}});g.restore();}",
  'figure2': "g=>{const H=__HK;const ps=Object.values(H.PS);g.save();g.scale(2.4,2.4);H.drawFigureHD(g,30,44,-1,ps[Math.min(ps.length-1,9)],H.PAL_HERO,{hasSword:true,sword:true,time:1.7,lt:{dir:-1,col:'150,175,255',k:.5}});H.drawFigureHD(g,52,44,1,ps[Math.min(ps.length-1,20)],H.PAL_HERO,{mono:'#ff0000',hasSword:false,time:0});g.restore();}",
 }
@@ -37,9 +39,9 @@ RUN = r'''([src,W,Hh])=>{const H=__HK,draw=eval(src);
   const enc=u=>{let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s);};
   return {a:enc(new Uint8Array(a.buffer)),b:enc(px),st:Object.assign({},H.GLS.stats)};}'''
 with sync_playwright() as p:
-    b = p.chromium.launch(); pg = b.new_page(viewport={'width': 844, 'height': 390}); errs = []
+    b = E.launch(p); pg = b.new_page(viewport={'width': 844, 'height': 390}); errs = []
     pg.on('pageerror', lambda e: errs.append(str(e))); pg.on('console', lambda m: errs.append(m.text) if 'G2D' in m.text else None)
-    pg.goto('file://' + os.path.abspath(html)); pg.wait_for_timeout(400)
+    E.setup(pg); pg.goto(E.url(html)); pg.wait_for_timeout(400)
     pg.evaluate("window.__HKfreeze=true;document.querySelectorAll('.screen').forEach(e=>e.hidden=true)")
     rows = []
     for name, src in CASES.items():

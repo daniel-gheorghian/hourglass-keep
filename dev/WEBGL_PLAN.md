@@ -241,3 +241,26 @@ removes the scene copy (6.7 ms at full size in v52 `?prof`), the masks' copy (1.
 Safari's 2D raster, which made up most of the phone's 9.3 to 10.3 ms of script work in v54. Expected phone script work:
 about 3 to 5 ms a frame at full size, and no frame of delay. To be confirmed on the phone with `?bench` against
 `?bench=2d`.
+
+---
+
+## 5. After the first phone run (v61 merged)
+
+Phone, ?bench (new path / v60 path in the same build / saver): fps 54.5 / 55.3 / 57.4, work 10.9 / 13.0 / 10.7 ms, >20 ms
+frames 13 % / 10 % / 2 %. The new path ran cool, the v60 path warmed the phone. Owner: a stutter at the start of the green
+level (floor 17) in every mode; the saver's lights flicker; a light edge waving on floors 1 and 5 (new path).
+
+**WebKit on this Mac.** Playwright's WebKit (Safari's engine: its 2D canvas, its WebGL on ANGLE-Metal, its GPU process) runs
+the game (`WK=1` with the wgl_* tools, the page served on 127.0.0.1:8765, Google Fonts blocked). It reproduces the copy cost:
+the v60 path runs at 24 fps there (40 ms of script a frame), the new path at 60 fps (3.3 ms). It is the closest thing to the
+phone on this machine.
+
+| Finding | Cause | Change |
+|---|---|---|
+| Stutter at the start of floor 17 (every mode) | the storm's tiles for Classic (unit ST, v60) were baked at the floor's start, one whole tile a frame: 13 to 20 ms of script each on this Mac (50 to 150 ms on the phone) for ~15 frames; the crypt floor has a chase | Torchlight with the storm shader never used those tiles: no bake there. Classic (and Torchlight without it) bakes a few rows at a time within 2 ms a frame (`stormReady(ch,bud)`, the bakes are generators). Trace of floor 17's first 6 s (Chromium, Mac GPU): before 14 to 15 frames over 6 ms of work (10 to 20 ms), after none (Torchlight) / work at most 7.7 ms (Classic) |
+| More >20 ms frames on the new path | each room picture built in the background was uploaded whole: in WebKit 12 to 18 ms of script for the read back, and the next frame 36 to 40 ms late; rooms come in threes as he moves | rooms are uploaded in strips of 80 rows (drawn into a small staging canvas, uploaded two frames later, one strip a frame): in WebKit each strip 4 to 7 ms, the next frame at most 21 to 24 ms; WebKit bench: worst frame (after the first) 37 to 72 ms -> 24 to 41 ms, >20 ms 3 % -> 2 % |
+| GC pressure | the facade made 918 KB of garbage a frame (Chromium; the v60 path 310 KB): contour arrays, earcut nodes, closures | pooled contours (typed arrays), earcut node pool, no closures in fills and strokes: 610 KB a frame, the rest being V8 boxing doubles (JavaScriptCore NaN-boxes them, so on the phone it is close to the v60 path's) |
+| Radial gradients looked different in Safari | Safari's 2D canvas mixes a radial gradient's colours premultiplied (CoreGraphics), Chrome and the facade unpremultiplied: e.g. a white-to-transparent radial is twice as bright halfway in Safari | the facade asks the browser's own 2D canvas once per kind (`g2GradPM`) and builds its ramps the same way: in WebKit the facade's radial now matches its 2D canvas (mean 0.6 against 15) |
+| Saver: the lights flicker | measured in WebKit at the phone's size (568x189 CSS, dpr 3; saver: dpr 1, 30 fps): the same back-and-forth change rate on the new path and on the v60 path (0.57 % / 0.60 % of pixels a frame), twice normal Torchlight's. Not the lamps' own flicker (the same with 'Softer flashes'). It is moving lights at 30 fps on a light map of 142 x 48 texels | none (not a regression; changing it changes the saver's look) |
+| Waving light edge (floors 1, 5) | not reproduced: still and scrolling cameras give the same frames on both paths in Chromium and WebKit, and live play (frames lined up by the camera) changes no more on the new path. Most likely the extra slow frames (a juddering camera on a bright diagonal edge) | the two fixes above; to be checked on the phone |
+| MSAA | 2x against 4x in WebKit: twice the edge pixels off by >24 against the v60 path (0.091 % / 0.047 %) | kept 4x; `?prof` steps 'MSAA 2x' and 'MSAA off' measure its cost on the phone |

@@ -9,6 +9,7 @@ import sys, os, base64, json
 import numpy as np
 from PIL import Image
 from playwright.sync_api import sync_playwright
+import wgl_env as E
 HERE = os.path.dirname(os.path.abspath(__file__))
 A, B, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
 QUICK = 'quick' in sys.argv[4:]
@@ -56,11 +57,11 @@ RUN = r'''([n,seed,cond,extra])=>{const H=__HK;H.S.set.lightMode='torch';H.GLP.p
 def grab(html):
     out = {}
     with sync_playwright() as p:
-        b = p.chromium.launch(); errs = []
+        b = E.launch(p); errs = []
         for (name, n, seed, cond, extra) in S:
             ctx = b.new_context(viewport={'width': 852, 'height': 393}, device_scale_factor=2); pg = ctx.new_page()
             pg.on('pageerror', lambda e: errs.append(name + ': ' + str(e)))
-            pg.goto('file://' + os.path.abspath(html)); pg.wait_for_timeout(300); pg.add_script_tag(path=os.path.join(HERE, 'bot.js'))
+            E.setup(pg); pg.goto(E.url(html)); pg.wait_for_timeout(300); pg.add_script_tag(path=os.path.join(HERE, 'bot.js'))
             pg.evaluate("window.__HKfreeze=true;document.querySelectorAll('.screen').forEach(e=>e.hidden=true);document.getElementById('app').classList.add('overlay')")
             r = pg.evaluate(RUN, [n, seed, cond, extra])
             a = np.frombuffer(base64.b64decode(r['px']), dtype=np.uint8).reshape(r['h'], r['w'], 4)[::-1, :, :3].copy()
