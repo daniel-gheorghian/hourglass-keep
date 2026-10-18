@@ -51,6 +51,9 @@ body.panelOpen #pad,body.panelOpen .btn,body.panelOpen #bPause{visibility:hidden
 #app.overlay #pad{background:radial-gradient(circle at 50% 50%,rgba(232,196,127,.16) 0 24%,rgba(10,8,20,.32) 25% 100%)}
 .screen{position:fixed;inset:0;z-index:5;display:grid;place-items:center;background:var(--shade);padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));overflow:auto;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
 .panel{width:min(560px,100%);display:grid;gap:14px;padding-block:8px}
+#title .panel,#pause .panel{position:relative;padding-top:20px}
+#title .panel::before,#pause .panel::before{content:"";position:absolute;left:0;right:0;top:0;height:8px;background:linear-gradient(to bottom,rgba(232,196,127,.3),rgba(232,196,127,.04));clip-path:polygon(0 0,100% 0,98.5% 100%,1.5% 100%);pointer-events:none}
+#title .panel::after,#pause .panel::after{content:"";position:absolute;left:1.5%;right:1.5%;top:9px;height:2px;border-radius:2px;background:rgba(232,196,127,.5);pointer-events:none}
 .eyebrow{margin:0;font:600 12px/1.2 var(--f-body);letter-spacing:.18em;text-transform:uppercase;color:var(--haze)}
 h1{font:400 clamp(44px,10vw,76px)/.92 var(--f-display);color:var(--sand);margin:0;text-wrap:balance;letter-spacing:.005em}
 h2{font:400 34px/1 var(--f-display);color:var(--sand);margin:0;text-wrap:balance}
@@ -2026,12 +2029,12 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
   const lean=p.lean,tx=Math.sin(lean),ty=-Math.cos(lean),nx=-ty,ny=tx; // torso axis and its forward normal
   const at=(u)=>[s.sh[0]*u,s.sh[1]*u];
   // --- back layer: scarf tail, sash tails, back arm, back leg ---
-  const EG=pal.egy;
+  const EG=pal.egy,FULL=EG==='lock'||EG==='khat'||EG==='kush'; // (EG: kilt, bare legs; FULL: round 6's princely gear)
   if(pal.hero&&!EG){const nk=[s.sh[0]-nx*1.5+tx*1,s.sh[1]-ny*1.5+ty*1];const sc=trail(nk,5,3.2,wind,t,0.6+0.4*Math.min(1,Math.abs(vx)/90),0);
     tcel(ctx,sc,[3.0,2.8,2.5,2.1,1.6,1.0],C('sash'),D('sash'),O);}
   {const w0=at(0.16),wa=[w0[0]-nx*4,w0[1]-ny*4];const st=trail(wa,2,2.6,wind,t+0.3,0.5,1.7);tcel(ctx,st,[2.2,1.8,1.2],D('sash',-0.2),shadeHex(D('sash',-0.2),-0.25),O);}
   const arm=(sh,e,h,base,shade)=>{tcel(ctx,[sh,e,h],[3.5,2.9,2.2],base,shade,O);
-    if(EG&&!O.mono){const bd=(a,b,u,w)=>{const m=[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u],dx=b[0]-a[0],dy=b[1]-a[1],d=Math.hypot(dx,dy)||1;ctx.strokeStyle=pal.band;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(m[0]-dy/d*1.9,m[1]+dx/d*1.9);ctx.lineTo(m[0]+dy/d*1.9,m[1]-dx/d*1.9);ctx.stroke();};
+    if(FULL&&!O.mono){const bd=(a,b,u,w)=>{const m=[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u],dx=b[0]-a[0],dy=b[1]-a[1],d=Math.hypot(dx,dy)||1;ctx.strokeStyle=pal.band;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(m[0]-dy/d*1.9,m[1]+dx/d*1.9);ctx.lineTo(m[0]+dy/d*1.9,m[1]-dx/d*1.9);ctx.stroke();};
       bd(sh,e,0.42,1.1);bd(e,h,0.78,0.9);} // a gold armlet on the upper arm, a bracelet at the wrist
     const hp=new Path2D();hp.ellipse(h[0],h[1],1.35,1.2,0,0,Math.PI*2);if(O.mono){ctx.fillStyle=O.mono;ctx.fill(hp);}else{ctx.strokeStyle=O.out;ctx.lineWidth=1.1;ctx.stroke(hp);ctx.fillStyle=base;ctx.fill(hp);}};
   const leg=(f,k,base,shade,cuff,boot,X)=>{
@@ -2039,7 +2042,7 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
     if(EG){tcel(ctx,[[0,0],k,mid,ank],[6.6,5.2,4.6,3.0],base,shade,O); // bare legs; a sandal: a flat sole, a thong
       const sp=new Path2D(),M=(dx,dy)=>sp.moveTo(...X(dx,dy)),Ln=(dx,dy)=>sp.lineTo(...X(dx,dy)),Q=(a,b,c,d)=>sp.quadraticCurveTo(...X(a,b),...X(c,d));
       M(-2.2,0.4);Q(-2.4,-2,0.2,-1.9);Q(3.4,-1.3,6.2,-0.5);Q(6.9,0.1,6.2,0.6);Ln(-1.4,0.6);sp.closePath();celAt(ctx,sp,base,shade,O,...X(2.6,-0.4));
-      if(!O.mono){ctx.strokeStyle=boot;ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(...X(-2.3,1.1));ctx.lineTo(...X(6.6,1.1));ctx.stroke();ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(...X(0.2,-1.8));ctx.lineTo(...X(4.4,0.4));ctx.stroke();}
+      if(FULL&&!O.mono){ctx.strokeStyle=boot;ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(...X(-2.3,1.1));ctx.lineTo(...X(6.6,1.1));ctx.stroke();ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(...X(0.2,-1.8));ctx.lineTo(...X(4.4,0.4));ctx.stroke();}
       return;}
     tcel(ctx,[[0,0],k,mid,ank],[8.2,6.8,6.2,3.6],base,shade,O);
     // cuff band and the slipper with its curled toe
@@ -2051,18 +2054,23 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
   if(EG)leg(s.fB,s.kB,D('skin',-0.18),shadeHex(D('skin',-0.18),-0.22),null,shadeHex(C('boot'),-0.2),footXf(p,s,s.fB,s.kB,p.hB,p.kB));
   else leg(s.fB,s.kB,D('pants',-0.12),shadeHex(D('pants',-0.12),-0.18),shadeHex(C('pants'),-0.45),shadeHex(C('boot'),-0.2),footXf(p,s,s.fB,s.kB,p.hB,p.kB));
   // sheathed sword at the hip when not drawn
-  if(!o.sword&&o.hasSword&&!O.mono&&EG){ctx.save();const hp=at(0.24);ctx.translate(hp[0]+nx*1.5,hp[1]+ny*1.5);ctx.rotate(lean+1.2);ctx.scale(0.7,0.7);khopesh(ctx,[0,0],0,0,15,O,true);ctx.restore();} // (the khopesh tucked in the belt at the front)
+  if(!o.sword&&o.hasSword&&!O.mono&&EG==='rob'){} // (a robber carries nothing in hand until he fights)
+  else if(!o.sword&&o.hasSword&&!O.mono&&FULL){ctx.save();const hp=at(0.24);ctx.translate(hp[0]+nx*1.5,hp[1]+ny*1.5);ctx.rotate(lean+1.2);ctx.scale(0.7,0.7);khopesh(ctx,[0,0],0,0,15,O,true);ctx.restore();} // (the khopesh tucked in the belt at the front)
   else if(!o.sword&&o.hasSword&&!O.mono){ctx.save();const hp=at(0.12);ctx.translate(hp[0]-nx*1,hp[1]-ny*1);ctx.rotate(lean+1.95);
     const sc=new Path2D();sc.moveTo(0,-1.3);sc.quadraticCurveTo(7,-2.2,13,0.2);sc.lineTo(12.6,1.5);sc.quadraticCurveTo(7,0.2,0,1.3);sc.closePath();celAt(ctx,sc,o.pale?'#a98255':'#6b4a2a','#4a321c',O,6.5,0);
     ctx.fillStyle='#d8b04a';ctx.fillRect(-1.6,-1.8,1.6,3.6);ctx.restore();}
   // --- torso: vest over the chest, sash at the waist ---
   const tp=[[0,0],at(0.38),at(0.78),at(1)],tw=[9.2,8.2,11.2,9.6];
   tcel(ctx,tp,tw,C('tunic'),D('tunic'),O);
-  if(EG&&!O.mono){ // the broad collar (wesekh): rows of faience beads round the neck, a drop row at the edge
+  if(FULL&&!O.mono){ // the broad collar (wesekh): rows of faience beads round the neck, a drop row at the edge
     const cl=pal.coll;for(let i=0;i<3;i++){const o2=2.9-i*1.0,u0=0.99,u1=0.8+i*0.05;const a0=at(u0),a1=at(u1),a2=at(u0);
       tcel(ctx,[[a0[0]-nx*(3.6-i*0.3),a0[1]-ny*(3.6-i*0.3)],[a1[0]+nx*o2*0.3,a1[1]+ny*o2*0.3],[a2[0]+nx*(4.8-i*0.5),a2[1]+ny*(4.8-i*0.5)]],[2.1,2.5,2.1],cl[i],shadeHex(cl[i],-0.3),O);}
     if(pal.egy==='kush'){const c0=at(0.97),c1=at(0.74);ctx.strokeStyle='#1a1210';ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(c0[0]+nx*3.6,c0[1]+ny*3.6);ctx.lineTo(c1[0]+nx*4.4,c1[1]+ny*4.4);ctx.stroke(); // the ram's head on its cord
       ctx.fillStyle='#e0b64a';ctx.beginPath();ctx.arc(c1[0]+nx*4.4,c1[1]+ny*4.4,1.3,0,6.2832);ctx.fill();ctx.strokeStyle='#a87a20';ctx.lineWidth=0.5;ctx.beginPath();ctx.arc(c1[0]+nx*4.0,c1[1]+ny*4.0,0.9,0.3,2.6);ctx.stroke();}}
+  else if(EG&&!O.mono){ // a plain neckline (the bare-chested robbers have none); the captain's corselet: rows of leather
+    if(!pal.bare){const c0=at(0.98),c1=at(0.84);ctx.fillStyle=C('skin');ctx.beginPath();ctx.moveTo(c0[0]+nx*4.0,c0[1]+ny*4.0);ctx.lineTo(c1[0]+nx*4.6,c1[1]+ny*4.6);ctx.lineTo(c0[0]+nx*1.4,c0[1]+ny*1.4);ctx.closePath();ctx.fill();}
+    if(pal.corselet){ctx.strokeStyle=shadeHex(C('tunic'),-0.4);ctx.lineWidth=0.6;for(const u of [0.42,0.55,0.68]){const m=at(u);ctx.beginPath();ctx.moveTo(m[0]-nx*4.4,m[1]-ny*4.4);ctx.lineTo(m[0]+nx*5.2,m[1]+ny*5.2);ctx.stroke();}
+      const sh2=at(0.95),wb=at(0.3);ctx.strokeStyle=shadeHex(C('tunic'),0.25);ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(sh2[0]-nx*1.5,sh2[1]-ny*1.5);ctx.lineTo(wb[0]+nx*3.5,wb[1]+ny*3.5);ctx.stroke();}}
   else if(!O.mono){ // open collar and trim along the vest's front edge
     const c0=at(0.98),c1=at(0.7);ctx.fillStyle=C('skin');ctx.beginPath();ctx.moveTo(c0[0]+nx*4.2,c0[1]+ny*4.2);ctx.lineTo(c1[0]+nx*5.3,c1[1]+ny*5.3);ctx.lineTo(c0[0]+nx*1.2,c0[1]+ny*1.2);ctx.closePath();ctx.fill();
     ctx.strokeStyle=pal.trim||'#d8b04a';ctx.lineWidth=0.9;ctx.beginPath();const e0=at(0.2),e1=at(0.72);ctx.moveTo(e0[0]+nx*4.4,e0[1]+ny*4.4);ctx.quadraticCurveTo(e1[0]+nx*5.8,e1[1]+ny*5.8,c1[0]+nx*5.2,c1[1]+ny*5.2);ctx.lineTo(c0[0]+nx*4.2,c0[1]+ny*4.2);ctx.stroke();}
@@ -2087,7 +2095,18 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
       if(!O.mono){ctx.strokeStyle=shadeHex(pal.helm,0.35);ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(hd[0]-hnx*r*0.4+hx*r*1.05,hd[1]-hny*r*0.4+hy*r*1.05);ctx.quadraticCurveTo(hd[0]+hx*r*1.12,hd[1]+hy*r*1.12,hd[0]+hnx*r*0.5+hx*r*0.95,hd[1]+hny*r*0.5+hy*r*0.95);ctx.stroke();}
       const sp=[hd[0]+hx*(r+0.5),hd[1]+hy*(r+0.5)];ctx.fillStyle=O.mono||shadeHex(pal.helm,-0.2);ctx.beginPath();ctx.moveTo(sp[0]-hnx*0.9,sp[1]-hny*0.9);ctx.lineTo(sp[0]+hx*3.4,sp[1]+hy*3.4);ctx.lineTo(sp[0]+hnx*0.9,sp[1]+hny*0.9);ctx.fill();
       if(pal.plume){const pl=trail([sp[0]+hx*3,sp[1]+hy*3],4,2.6,[-1+wind[0],-0.8],t,0.5,2.2);tcel(ctx,pl,[2.6,2.8,2.4,1.8,1],pal.plume,shadeHex(pal.plume,-0.35),O);}}
-  else if(EG){const r=LEN.hd;
+  else if(pal.head==='cloth'||pal.head==='cap'){const r=LEN.hd; // a robber's head cloth, tied at the nape; or a leather cap
+    if(pal.head==='cap'){const hp=new Path2D();hp.moveTo(hd[0]+hnx*r*0.85+hx*r*0.35,hd[1]+hny*r*0.85+hy*r*0.35);
+      hp.bezierCurveTo(hd[0]+hnx*r*0.6+hx*r*1.45,hd[1]+hny*r*0.6+hy*r*1.45,hd[0]-hnx*r*1.25+hx*r*1.3,hd[1]-hny*r*1.25+hy*r*1.3,hd[0]-hnx*r*1.15-hx*r*0.25,hd[1]-hny*r*1.15-hy*r*0.25);
+      hp.quadraticCurveTo(hd[0]-hnx*r*0.35+hx*r*0.25,hd[1]-hny*r*0.35+hy*r*0.25,hd[0]+hnx*r*0.85+hx*r*0.35,hd[1]+hny*r*0.85+hy*r*0.35);hp.closePath();
+      celAt(ctx,hp,pal.cap,shadeHex(pal.cap,-0.35),O,hd[0]+hx*r*0.7,hd[1]+hy*r*0.7);
+      if(!O.mono){ctx.strokeStyle=shadeHex(pal.cap,0.3);ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(hd[0]+hnx*r*0.8+hx*r*0.45,hd[1]+hny*r*0.8+hy*r*0.45);ctx.quadraticCurveTo(hd[0]-hnx*r*0.2+hx*r*0.8,hd[1]-hny*r*0.2+hy*r*0.8,hd[0]-hnx*r*1.05+hx*r*0.1,hd[1]-hny*r*1.05+hy*r*0.1);ctx.stroke();}}
+    else{const hp=new Path2D();hp.moveTo(hd[0]+hnx*r*0.8+hx*r*0.4,hd[1]+hny*r*0.8+hy*r*0.4);
+      hp.bezierCurveTo(hd[0]+hnx*r*0.55+hx*r*1.45,hd[1]+hny*r*0.55+hy*r*1.45,hd[0]-hnx*r*1.35+hx*r*1.3,hd[1]-hny*r*1.35+hy*r*1.3,hd[0]-hnx*r*1.25-hx*r*0.1,hd[1]-hny*r*1.25-hy*r*0.1);
+      hp.quadraticCurveTo(hd[0]-hnx*r*0.45+hx*r*0.1,hd[1]-hny*r*0.45+hy*r*0.1,hd[0]+hnx*r*0.8+hx*r*0.4,hd[1]+hny*r*0.8+hy*r*0.4);hp.closePath();
+      const tl=trail([hd[0]-hnx*r*1.15-hx*r*0.1,hd[1]-hny*r*1.15-hy*r*0.1],3,2.4,wind,t+0.6,0.6,3.1);tcel(ctx,tl,[2.6,2.2,1.6,1.0],shadeHex(pal.khat,-0.1),shadeHex(pal.khat,-0.35),O); // the cloth's tied ends
+      celAt(ctx,hp,pal.khat,shadeHex(pal.khat,-0.32),O,hd[0]-hnx*r*0.2+hx*r*0.6,hd[1]-hny*r*0.2+hy*r*0.6);}}
+  else if(FULL){const r=LEN.hd;
     if(EG==='lock'||EG==='kush'){const hp=new Path2D(); // a shaven or close-cropped crown (the Kushite: a close cap with a gold band)
       hp.moveTo(hd[0]+hnx*r*0.8+hx*r*0.45,hd[1]+hny*r*0.8+hy*r*0.45);
       hp.bezierCurveTo(hd[0]+hnx*r*0.55+hx*r*1.3,hd[1]+hny*r*0.55+hy*r*1.3,hd[0]-hnx*r*1.15+hx*r*1.2,hd[1]-hny*r*1.15+hy*r*1.2,hd[0]-hnx*r*1.08-hx*r*0.1,hd[1]-hny*r*1.08-hy*r*0.1);
@@ -2120,7 +2139,7 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
   if(!pal.bones&&!O.mono){ // eye and brow
     const r=LEN.hd,ex=hd[0]+hnx*r*0.48+hx*r*0.12,ey=hd[1]+hny*r*0.48+hy*r*0.12;ctx.fillStyle='#120c18';ctx.beginPath();ctx.ellipse(ex,ey,0.62,0.85,ha,0,Math.PI*2);ctx.fill();
     ctx.strokeStyle=shadeHex(C(pal.helm?'skin':'hair'),-0.3);ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(ex-hnx*0.9+hx*1.4,ey-hny*0.9+hy*1.4);ctx.lineTo(ex+hnx*1.1+hx*1.2,ey+hny*1.1+hy*1.2);ctx.stroke();
-    if(EG){ctx.strokeStyle='#120c18';ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(ex-hnx*1.9-hx*0.2,ey-hny*1.9-hy*0.2);ctx.stroke();}} // a line of kohl drawn back from the eye
+    if(FULL){ctx.strokeStyle='#120c18';ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(ex-hnx*1.9-hx*0.2,ey-hny*1.9-hy*0.2);ctx.stroke();}} // a line of kohl drawn back from the eye
   // --- front layer: leg, sword, arm ---
   if(EG){leg(s.fF,s.kF,C('skin'),D('skin'),null,C('boot'),footXf(p,s,s.fF,s.kF,p.hF,p.kF));
     const lp=(k,u,o2)=>[k[0]*u+nx*o2,k[1]*u+ny*o2],w0=at(0.26),F=lp(s.kF,0.55,3.0),Bk=lp(s.kB,0.55,-3.0),H0=lp(s.kF,0.5,-1),H1=lp(s.kB,0.5,1); // the shendyt: a wrap of white linen from the waist to above the knee
@@ -2132,12 +2151,13 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
   else leg(s.fF,s.kF,C('pants'),D('pants'),shadeHex(C('pants'),-0.42),C('boot'),footXf(p,s,s.fF,s.kF,p.hF,p.kF));
   if(o.sword&&o.smear&&!O.mono){const h=s.hF;for(const [f,al] of [[1,0.16],[0.5,0.3]]){const a=p.sw+o.smear*f,dx=Math.cos(a),dy=-Math.sin(a);ctx.globalAlpha=al*(o.alpha===undefined?1:o.alpha);
     ctx.fillStyle='#e8eef8';ctx.beginPath();ctx.moveTo(h[0],h[1]);ctx.lineTo(h[0]+Math.cos(p.sw)*18,h[1]-Math.sin(p.sw)*18);ctx.lineTo(h[0]+dx*18,h[1]+dy*18);ctx.closePath();ctx.fill();}ctx.globalAlpha=o.alpha===undefined?1:o.alpha;}
-  if(o.sword&&EG)khopesh(ctx,s.hF,p.sw,1,o.swLen||18,O,false);
+  if(o.sword&&(FULL||pal.weapon==='khopesh'))khopesh(ctx,s.hF,p.sw,1,o.swLen||18,O,false);
+  else if(o.sword&&(pal.weapon==='club'||pal.weapon==='axe'))robWeapon(ctx,s.hF,p.sw,o.swLen||18,O,pal.weapon);
   else if(o.sword){const h=s.hF,a=p.sw,dx=Math.cos(a),dy=-Math.sin(a),nx2=-dy,ny2=dx,L2=o.swLen||18;
     const bl=new Path2D();bl.moveTo(h[0]+nx2*0.9,h[1]+ny2*0.9);bl.quadraticCurveTo(h[0]+dx*L2*0.6+nx2*1.6,h[1]+dy*L2*0.6+ny2*1.6,h[0]+dx*L2+nx2*2.6,h[1]+dy*L2+ny2*2.6);
     bl.quadraticCurveTo(h[0]+dx*L2*0.7-nx2*0.6,h[1]+dy*L2*0.7-ny2*0.6,h[0]-nx2*0.9,h[1]-ny2*0.9);bl.closePath();
-    if(O.mono){ctx.fillStyle=O.mono;ctx.fill(bl);}else{msFig(ctx,MKID.steel,bl);ctx.strokeStyle=O.out;ctx.lineWidth=1.1;ctx.stroke(bl);ctx.fillStyle='#c9cfda';ctx.fill(bl);
-      ctx.strokeStyle='#f6f8fc';ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(h[0]+dx*3+nx2*1.1,h[1]+dy*3+ny2*1.1);ctx.quadraticCurveTo(h[0]+dx*L2*0.6+nx2*1.9,h[1]+dy*L2*0.6+ny2*1.9,h[0]+dx*(L2-1)+nx2*2.4,h[1]+dy*(L2-1)+ny2*2.4);ctx.stroke();
+    if(O.mono){ctx.fillStyle=O.mono;ctx.fill(bl);}else{msFig(ctx,EG?MKID.bronze:MKID.steel,bl);ctx.strokeStyle=O.out;ctx.lineWidth=1.1;ctx.stroke(bl);ctx.fillStyle=EG?'#cda26a':'#c9cfda';ctx.fill(bl);
+      ctx.strokeStyle=EG?'#f4dcaa':'#f6f8fc';ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(h[0]+dx*3+nx2*1.1,h[1]+dy*3+ny2*1.1);ctx.quadraticCurveTo(h[0]+dx*L2*0.6+nx2*1.9,h[1]+dy*L2*0.6+ny2*1.9,h[0]+dx*(L2-1)+nx2*2.4,h[1]+dy*(L2-1)+ny2*2.4);ctx.stroke();
       ctx.strokeStyle='#d8b04a';ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(h[0]+nx2*3,h[1]+ny2*3);ctx.lineTo(h[0]-nx2*3,h[1]-ny2*3);ctx.stroke();
       ctx.strokeStyle='#4a321c';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(h[0],h[1]);ctx.lineTo(h[0]-dx*3,h[1]-dy*3);ctx.stroke();}}
   arm(s.sh,s.eF,s.hF,C('skin'),D('skin'));
@@ -2155,6 +2175,15 @@ function khopesh(ctx,h,a,flip,L2,O,hung){const dx=Math.cos(a),dy=-Math.sin(a),nx
   ctx.strokeStyle='#f2d9a0';ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(...P(L2*0.36,1.4));ctx.quadraticCurveTo(...P(L2*0.62,4.6),...P(L2*0.96,2.6));ctx.stroke(); // the bright cutting edge
   ctx.strokeStyle='#3a2414';ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(...P(0,0));ctx.lineTo(...P(-3.2,0));ctx.stroke(); // the grip
   ctx.fillStyle='#d8b04a';ctx.beginPath();ctx.arc(...P(-3.6,0),0.9,0,6.2832);ctx.fill();}
+// a robber's club (a wooden mace-like stick, thick at the head) or axe (a bronze head, the epsilon shape of the New Kingdom battle-axe,
+// lashed to a wooden haft): along the sword's angle and length from the hand, so the fight reads as before
+function robWeapon(ctx,h,a,L2,O,kind){const dx=Math.cos(a),dy=-Math.sin(a),nx2=-dy,ny2=dx,P=(u,v)=>[h[0]+dx*u+nx2*v,h[1]+dy*u+ny2*v];
+  if(kind==='club'){const pts=[P(-2.5,0),P(L2*0.4,0),P(L2*0.75,0),P(L2*0.95,0)];if(O.mono){tcel(ctx,pts,[1.8,2.2,3.2,4.2],O.mono,O.mono,O);return;}
+    tcel(ctx,pts,[1.8,2.2,3.2,4.2],'#7a5232','#4a301a',O);ctx.strokeStyle='#3a2414';ctx.lineWidth=0.5;for(const u of [0.62,0.8]){const m=P(L2*u,0);ctx.beginPath();ctx.moveTo(m[0]-nx2*1.6,m[1]-ny2*1.6);ctx.lineTo(m[0]+nx2*1.6,m[1]+ny2*1.6);ctx.stroke();}return;}
+  const haft=[P(-2.5,0),P(L2*0.95,0)],hd=new Path2D();hd.moveTo(...P(L2*0.66,0.6));hd.quadraticCurveTo(...P(L2*0.6,5.8),...P(L2*0.8,6.2));hd.quadraticCurveTo(...P(L2*0.98,5.6),...P(L2*0.9,0.6));hd.closePath();
+  if(O.mono){tcel(ctx,haft,[1.6,1.6],O.mono,O.mono,O);ctx.fillStyle=O.mono;ctx.fill(hd);return;}
+  tcel(ctx,haft,[1.6,1.6],'#7a5232','#4a301a',O);msFig(ctx,MKID.bronze,hd);ctx.strokeStyle=O.out;ctx.lineWidth=1;ctx.stroke(hd);ctx.fillStyle='#c39350';ctx.fill(hd);
+  ctx.strokeStyle='#f2d9a0';ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(...P(L2*0.63,5.2));ctx.quadraticCurveTo(...P(L2*0.8,6.6),...P(L2*0.95,5.2));ctx.stroke();}
 // A keyed run cycle (contact, down, passing, up, then the same with legs and arms swapped), smoothed with
 // Catmull-Rom so it flows; the body dips on the down beat and floats on the up beat.
 const RUNK=[
@@ -2237,7 +2266,7 @@ function drawSkeletonHD(ctx,x,y,face,p,pal,o){
 }
 
 const PAL_WHITE={skin:'#fff',skinD:'#fff',tunic:'#fff',tunicD:'#fff',pants:'#fff',pantsD:'#fff',sash:'#fff',hair:'#fff',boot:'#fff'},PAL_WHITE_B=Object.assign({},PAL_WHITE,{bones:true});
-const PAL_GSIL={hero:true}; // (the guards' silhouettes: the old outline, trousers and all, not the prince's kilt)
+const PAL_GSIL={egy:'rob',head:'cloth'}; // (the robbers' silhouettes: a kilt and a head cloth)
 const PAL_SKEL={skin:'#e9e3cf',skinD:'#c3bb9f',pants:'#e9e3cf',pantsD:'#c3bb9f',boot:'#d9d1b8',bones:true};
 // The prince (owner, round 6): an Egyptian prince of the New Kingdom, after the reliefs and statues of royal sons: the sidelock of
 // youth (a plaited lock on the right of a shaven head, the mark of the 18th Dynasty's princes; Ramesses II's sons in their processions),
@@ -2245,7 +2274,12 @@ const PAL_SKEL={skin:'#e9e3cf',skinD:'#c3bb9f',pants:'#e9e3cf',pantsD:'#c3bb9f',
 // sandals, the red-brown of Egyptian painting's men, and the khopesh (two in Tutankhamun's tomb). Variants on the page: B the khat
 // headcloth, C a Kushite (Napatan) youth: close cap with a gold band, ear studs, a ram's-head amulet on a cord (as the Kushite kings
 // wore it), darker skin. The same skeleton, poses, hitboxes and timings; only the drawing changes (pal.egy in drawFigureHD).
+// Round 7 (owner: "not full prince gear; like the original prince, I like that style"): P, the original figure in plain white
+// linen, a short tunic over a kilt, bare feet, his own hair, the orange sash as the one accent, the straight blade in bronze: the
+// everyday dress of young Egyptian men (a linen kilt, a short tunic from the New Kingdom on, barefoot), close to Prince of Persia's
+// white-clad hero. A, B, C (round 6) stay for the page.
 const HERO_VAR={
+  P:{egy:'plain',skin:'#b98058',skinD:'#94603e',tunic:'#ece4cf',tunicD:'#c6bb9c',pants:'#ece4cf',pantsD:'#c6bb9c',sash:'#e4683b',hair:'#2b1b12',boot:'#94603e'},
   A:{egy:'lock',skin:'#b0703f',skinD:'#87522c',tunic:'#b0703f',tunicD:'#87522c',pants:'#efe7d2',pantsD:'#c8bd9f',sash:'#b5352a',hair:'#1a1210',boot:'#7a5230',coll:['#2f6fb0','#d8b04a','#b5352a'],band:'#d8b04a'},
   B:{egy:'khat',skin:'#b0703f',skinD:'#87522c',tunic:'#b0703f',tunicD:'#87522c',pants:'#efe7d2',pantsD:'#c8bd9f',sash:'#2f5d9f',hair:'#1a1210',boot:'#7a5230',coll:['#2f8f8c','#d8b04a','#2f5d9f'],band:'#d8b04a',khat:'#ece4cf'},
   C:{egy:'kush',skin:'#6b4026',skinD:'#4c2b18',tunic:'#6b4026',tunicD:'#4c2b18',pants:'#efe7d2',pantsD:'#c8bd9f',sash:'#c8952a',hair:'#141010',boot:'#6a4426',coll:['#b5352a','#d8b04a','#2f8f8c'],band:'#e0b64a'}};
@@ -2255,14 +2289,18 @@ const PAL_HERO={skin:'#c98f60',skinD:'#a8734a',tunic:'#3b4aa6',tunicD:'#2c387e',
 // shadows shifted toward the cool side and lights toward the warm, a split in value (light tunic over dark trousers, so some part
 // of him stands apart from walls both dark and light), and one or two accents from the complementary side (sash, trim, plume).
 // Escalation: recruits ochre and rust, soldiers green and cream, veterans crimson and gold, captains violet, gold and a white plume.
+// The guards are tomb robbers (round 7, owner): the workmen and officials of the tomb-robbery papyri, in the same plain style as the
+// prince: kilts of undyed linen, head cloths, bare chests and bare feet; the veteran in a short tunic and a leather cap, the captain in a
+// leather corselet. Each tier keeps its colour (ochre, green, crimson, violet: its cloth and sash) and has its own weapon (a club, an
+// axe, a khopesh), drawn along the sword's line: their fighting, reach and timing are the swordsmen's.
 const GUARD_PAL={
-  0:{skin:'#b4805a',skinD:'#8f6140',tunic:'#d9a032',tunicD:'#9c6c1c',pants:'#6e4720',pantsD:'#442a12',sash:'#8c3a18',trim:'#f3d98a',helm:'#b07a30',boot:'#24160b'}, // recruit: ochre, umber, rust
-  1:{skin:'#8c5c3c',skinD:'#6d4429',tunic:'#3fd03a',tunicD:'#1b8a3e',pants:'#17692f',pantsD:'#0b3d1e',sash:'#f4e9b0',trim:'#f0d060',helm:'#c4e08a',boot:'#1a120c'}, // soldier: vibrant green (light leans yellow, shadow leans teal), cream
-  2:{skin:'#a67650',skinD:'#835836',tunic:'#ea3a52',tunicD:'#a31c34',pants:'#6c2038',pantsD:'#431224',sash:'#eec45a',trim:'#f4d878',helm:'#e0a090',plume:'#f6a53a',boot:'#1c120b'}, // veteran: crimson, wine, gold
-  3:{skin:'#7e5036',skinD:'#613b26',tunic:'#b25cf0',tunicD:'#6c2eb0',pants:'#4a2a7c',pantsD:'#2c1650',sash:'#f0c040',trim:'#ffd76b',helm:'#e2b84a',plume:'#fbf6ea',boot:'#2a1a10'}}; // captain: violet, gold, white plume
-const PAL_HERO0=Object.assign({},PAL_HERO);let HERO_STYLE='A';
+  0:{egy:'rob',bare:1,head:'cloth',khat:'#d9a032',weapon:'club',skin:'#b4805a',skinD:'#8f6140',tunic:'#b4805a',tunicD:'#8f6140',pants:'#d3c7a8',pantsD:'#a99d80',sash:'#8c3a18',trim:'#f3d98a',boot:'#8f6140'}, // recruit: ochre
+  1:{egy:'rob',bare:1,head:'cloth',khat:'#3fd03a',weapon:'axe',skin:'#8c5c3c',skinD:'#6d4429',tunic:'#8c5c3c',tunicD:'#6d4429',pants:'#d3c7a8',pantsD:'#a99d80',sash:'#17692f',trim:'#f0d060',boot:'#6d4429'}, // soldier: green
+  2:{egy:'rob',head:'cap',cap:'#6e4424',weapon:'axe',skin:'#a67650',skinD:'#835836',tunic:'#ea3a52',tunicD:'#a31c34',pants:'#d3c7a8',pantsD:'#a99d80',sash:'#eec45a',trim:'#f4d878',boot:'#835836'}, // veteran: crimson tunic
+  3:{egy:'rob',head:'cap',cap:'#4e3018',corselet:1,weapon:'khopesh',skin:'#7e5036',skinD:'#613b26',tunic:'#8a5a2e',tunicD:'#5e3a1c',pants:'#d3c7a8',pantsD:'#a99d80',sash:'#b25cf0',trim:'#ffd76b',boot:'#613b26'}}; // captain: leather, violet
+const PAL_HERO0=Object.assign({},PAL_HERO);let HERO_STYLE='P';
 function setHero(k){HERO_STYLE=k;for(const q of Object.keys(PAL_HERO))delete PAL_HERO[q];Object.assign(PAL_HERO,PAL_HERO0,k&&HERO_VAR[k]||{});}
-setHero('A');
+setHero('P');
 function guardPal(g){return GUARD_PAL[g.cap?3:Math.min(2,g.tier|0)];}
 function drawFigure(ctx,x,y,face,p,pal,o){
   const s=skel(p);
@@ -4812,18 +4850,38 @@ function drawBannerTile(ctx,X,Y,f,th){const x0=X+2,w=28,y0=f.top?Y+9:Y,y1=f.bot?
     if(thru&&f.bot){ctx.fillStyle=c2;for(let i=0;i<2;i++){const fx0=s<0?x0+1+i*3.8:x0+w-2.4-i*3.8;ctx.fillRect(fx0+dx(yEnd)*0.8,yEnd-4,1.4,4);}}}}
 // A flask with its base at (0,0), upright; fill is the liquid left (1 = as on the floor), tilt the angle it is held at (the liquid
 // stays level in the world), ph a phase for the bubble (none while carried).
+// The flasks are Egyptian core-formed glass (round 7, owner: "an Egyptian glass jar, to keep the glowing effects"): New Kingdom
+// vessels of blue glass wound with yellow and white trails combed into feathers and zigzags, one shape to a kind: a krateriskos
+// (a small bowl on a foot) for the small heal, an amphoriskos (two handles) for the large, the fish bottle of Amarna for the extra
+// life, a dark alabastron for poison. The glass is translucent, so the liquid's colour, level, tilt and bubbles show as before, at
+// the same size (flaskR) and pickup box.
+function jarPath(type,r){const p=new Path2D();
+  if(type==='heal'){p.ellipse(0,-r-0.6,r,r*0.86,0,0,Math.PI*2);p.moveTo(-r*0.45,-0.2);p.lineTo(r*0.45,-0.2);p.lineTo(r*0.25,-r*0.4);p.lineTo(-r*0.25,-r*0.4);p.closePath();}
+  else if(type==='big'){p.ellipse(0,-r,r*0.86,r*1.02,0,0,Math.PI*2);}
+  else if(type==='life'){p.ellipse(0.4,-r,r*1.18,r*0.72,0,0,Math.PI*2);p.moveTo(-r*0.7,-r);p.lineTo(-r*1.55,-r-r*0.6);p.lineTo(-r*1.35,-r);p.lineTo(-r*1.55,-r+r*0.6);p.closePath();}
+  else{p.ellipse(0,-r*1.05,r*0.72,r*1.05,0,0,Math.PI*2);}
+  return p;}
 function flaskBody(ctx,type,ph,fill,tilt){
-  const big=type==='life'||type==='big',r=flaskR(type);
-  const col=type==='heal'||type==='big'?'#e0413a':type==='life'?'#f0c040':'#2b3fb8';
-  if(type==='big'){ctx.fillStyle='#0b0812';ctx.fillRect(-2.3,-2*r-7.5,4.6,8);ctx.fillStyle='rgba(220,230,240,.35)';ctx.fillRect(-1.4,-2*r-6.5,2.8,7);ctx.fillStyle='#d8b04a';ctx.fillRect(-2.6,-2*r-8.6,5.2,2.2);}
-  ctx.fillStyle='#0b0812';ctx.beginPath();ctx.arc(0,-r,r+0.9,0,Math.PI*2);ctx.fill();ctx.fillRect(-1.7,-2*r-5,3.4,6);
-  ctx.fillStyle='rgba(220,230,240,.35)';ctx.beginPath();ctx.arc(0,-r,r,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle=col;
-  if(fill>=1&&!tilt){ctx.beginPath();ctx.arc(0,-r,r-0.5,-0.15,Math.PI+0.15);ctx.fill();}
-  else if(fill>0.01){const R=r-0.5,h0=-0.15*R,h=h0+(R-h0)*(1-fill);ctx.save();ctx.beginPath();ctx.arc(0,-r,R,0,Math.PI*2);ctx.clip();ctx.translate(0,-r);ctx.rotate(-tilt);ctx.fillRect(-R-1,h,2*R+2,2*R+2);ctx.restore();}
-  ctx.fillStyle='rgba(220,230,240,.4)';ctx.fillRect(-0.9,-2*r-4,1.8,4.5);
-  ctx.fillStyle='#8a5a32';ctx.fillRect(-1.3,-2*r-5.5,2.6,1.8);
-  if(ph!==undefined){const b=(gameTime*0.9+ph*0.13)%1;ctx.fillStyle='rgba(255,255,255,.6)';ctx.beginPath();ctx.arc(Math.sin(b*9)*1.1,-r-b*r*1.4,0.6,0,Math.PI*2);ctx.fill();}
+  const r=flaskR(type),pois=type==='poison',col=type==='heal'||type==='big'?'#e0413a':type==='life'?'#f0c040':'#2b3fb8',K='#0b0812';
+  const glass=pois?'rgba(40,36,60,.55)':'rgba(70,120,210,.42)',tr1=pois?'#c8c0a8':'#f2d24a',tr2='#f4f0e2',body=jarPath(type,r);
+  const nk=type==='life'?[r*0.95,-r*1.55]:[0,type==='big'?-2*r-0.6:type==='heal'?-2*r+0.6:-2.1*r]; // the neck's foot
+  // the neck and rim, and the amphoriskos' handles
+  ctx.fillStyle=K;ctx.fillRect(nk[0]-1.7,nk[1]-4.6,3.4,5.2);ctx.fillStyle=pois?'#3a3450':'#2a5ea8';ctx.fillRect(nk[0]-1.0,nk[1]-4,2,4.6);ctx.fillStyle=tr1;ctx.fillRect(nk[0]-2,nk[1]-5,4,1.3);
+  if(type==='big'){ctx.strokeStyle=K;ctx.lineWidth=1.9;for(const sx of [-1,1]){ctx.beginPath();ctx.moveTo(sx*1.4,nk[1]-2.6);ctx.quadraticCurveTo(sx*r*1.05,nk[1]-2.8,sx*r*0.72,-r*1.55);ctx.stroke();}
+    ctx.strokeStyle='#2a5ea8';ctx.lineWidth=0.9;for(const sx of [-1,1]){ctx.beginPath();ctx.moveTo(sx*1.4,nk[1]-2.6);ctx.quadraticCurveTo(sx*r*1.05,nk[1]-2.8,sx*r*0.72,-r*1.55);ctx.stroke();}}
+  ctx.lineWidth=1.8;ctx.strokeStyle=K;ctx.stroke(body);ctx.fillStyle=glass;ctx.fill(body);
+  // the liquid: full, or level and tilted (as before), seen through the glass
+  ctx.save();ctx.clip(body);ctx.fillStyle=col;
+  if(fill>0.01){const top=type==='life'?-r*1.72:-2*r-0.6,bot=type==='heal'?-0.2:0,h=bot-(bot-top)*Math.min(1,fill*0.92+0.06);ctx.translate(0,-r);ctx.rotate(-tilt);ctx.fillRect(-3*r,h+r,6*r,4*r);}
+  ctx.restore();
+  // the trails wound round it: a band at the shoulder, feathered zigzags over the body
+  ctx.save();ctx.clip(body);ctx.lineWidth=0.7;const yc=type==='life'?-r:-r*(type==='poison'?1.05:1),hh=type==='life'?r*0.72:r;
+  ctx.strokeStyle=tr1;ctx.beginPath();ctx.moveTo(-2*r,yc-hh*0.62);ctx.lineTo(2*r,yc-hh*0.62);ctx.stroke();
+  for(const [cl,o2] of [[tr1,-0.1],[tr2,0.28]]){ctx.strokeStyle=cl;ctx.beginPath();for(let i=0;i<=8;i++){const x=-1.5*r+i*0.375*r,y=yc+hh*o2+(i%2?-hh*0.22:hh*0.22);i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();}
+  if(type==='life'){ctx.fillStyle=K;ctx.beginPath();ctx.arc(r*0.95,-r-0.6,0.7,0,Math.PI*2);ctx.fill();}
+  ctx.restore();
+  ctx.fillStyle='rgba(255,255,255,.45)';ctx.fillRect(-r*0.45,-r*1.55,0.9,r*0.7); // a glint on the glass
+  if(ph!==undefined){const b=(gameTime*0.9+ph*0.13)%1;ctx.fillStyle='rgba(255,255,255,.6)';ctx.beginPath();ctx.arc(Math.sin(b*9)*1.1,-r-b*r*1.0,0.6,0,Math.PI*2);ctx.fill();}
 }
 function drawFlask(ctx,it){ctx.save();ctx.translate(it.x,SURF(it.r)-3);flaskBody(ctx,it.type,it.x,1,0);ctx.restore();}
 // the flask he is drinking: held by the neck in the front hand, tipping as the frame says; and one that has been let go, falling and lying
@@ -4884,24 +4942,10 @@ function drawHourglass(ctx,cp){
     let gr=ctx.createRadialGradient(0,0,1,0,0,30);gr.addColorStop(0,'rgba('+gl+','+(0.55*k*turn)+')');gr.addColorStop(1,'rgba('+gl+',0)');ctx.fillStyle=gr;ctx.fillRect(-32,-32,64,64);
     if(!GFX().light){gr=ctx.createRadialGradient(0,0,4,0,0,70);gr.addColorStop(0,'rgba('+gl+','+(0.22*turn)+')');gr.addColorStop(1,'rgba('+gl+',0)');ctx.fillStyle=gr;ctx.fillRect(-72,-72,144,144);}
     ctx.restore();}
-  // the water clock (Karnak, Amenhotep III): an alabaster vessel wider at the mouth, the hours marked inside, a spout low on its
-  // side; it fills when he reaches it and its water then runs out through the spout into a basin on the pedestal: the hour slipping away
-  const k=lit&&turn>=1?((gameTime-(cp.onAt||0)-0.7)%8)/8:0,f=lit?(turn<1?ease(turn):1-k):0,TW2=7,BW2=4.4,YT=-9,YB=8,hw=y=>BW2+(TW2-BW2)*(YB-y)/(YB-YT);
-  const ves=(d)=>{ctx.beginPath();ctx.moveTo(-TW2-d,YT-d);ctx.lineTo(TW2+d,YT-d);ctx.lineTo(BW2+d,YB+d);ctx.lineTo(-BW2-d,YB+d);ctx.closePath();};
-  ves(1.2);ctx.fillStyle='#0b0812';ctx.fill(); // its dark outline
-  ves(0);ctx.fillStyle=lit?'rgba(40,52,70,.95)':'rgba(30,26,34,.95)';ctx.fill(); // the stone seen through: dark where there is no water
-  if(f>0.01){const ly=YB-(YB-YT-1.2)*f;ctx.fillStyle=lit?'#6fc2ee':'#4a6a80';ctx.beginPath();ctx.moveTo(-hw(ly),ly);ctx.lineTo(hw(ly),ly);ctx.lineTo(BW2,YB);ctx.lineTo(-BW2,YB);ctx.closePath();ctx.fill();
-    ctx.fillStyle=lit?'#e2f6ff':'#8aa4b4';ctx.fillRect(-hw(ly),ly,2*hw(ly),1); // its surface
-    if(lit){const kl=keyLight(x,cy+ly+26),gx=kl.dir*hw(ly)*0.55;ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=0.5+0.5*kl.k;ctx.drawImage(lightSprite(kl.col),gx-4,ly-3,8,6);ctx.fillStyle='#ffffff';ctx.fillRect(gx-1.6,ly,3.2,0.9);ctx.restore();}} // the lamp caught on the water
-  ctx.fillStyle=lit?'rgba(236,228,206,.32)':'rgba(200,190,170,.22)';ves(0);ctx.fill(); // the translucent alabaster over it
-  ctx.fillStyle=lit?'rgba(255,248,230,.85)':'rgba(220,210,190,.5)';for(let c=-1;c<=1;c++)for(let i=0;i<5;i++){const yy=YT+2.5+i*3,xx=c*hw(yy)*0.5;ctx.fillRect(xx-0.45,yy,0.9,0.9);} // the hour marks
-  ctx.fillStyle='#0b0812';ctx.fillRect(-TW2-1.6,YT-2.6,2*TW2+3.2,2.6);ctx.fillStyle=lit?'#efe6cc':'#b8ae96';ctx.fillRect(-TW2-1,YT-2.1,2*TW2+2,1.6); // the rim
-  ctx.fillStyle='rgba(255,255,255,.4)';ctx.fillRect(-TW2+1.4,YT+1,0.9,5);
-  ctx.fillStyle='#0b0812';ctx.fillRect(BW2-0.6,YB-3.2,3.2,2.2);ctx.fillStyle=lit?'#d8cfb4':'#a89e86';ctx.fillRect(BW2,YB-2.7,2.4,1.2); // the spout
+  // the barque clock, large: it fills when he reaches it, then its hour runs out (8 s and round again); unlit it stands dry and dull
+  const k=lit&&turn>=1?((gameTime-(cp.onAt||0)-0.7)%8)/8:0,f=lit?(turn<1?ease(turn):1-k):0;
+  barqueClock(ctx,f,{s:1.75,lit,dim:!lit,t:gameTime,glow:lit,kl:lit?keyLight(x,cy+12):null});
   ctx.restore();
-  // the basin under the spout, and the thin stream running into it while the hour runs
-  const bx=x+BW2+2,by=ptop-1;ctx.fillStyle='#0b0812';ctx.beginPath();ctx.ellipse(bx,by,3.6,1.5,0,0,6.2832);ctx.fill();ctx.fillStyle=lit?'#5fa8d8':'#3a3640';ctx.beginPath();ctx.ellipse(bx,by-0.3,2.6,0.8,0,0,6.2832);ctx.fill();
-  if(lit&&turn>=1){const sy=cy+YB-2.2,L1=by-1-sy;ctx.fillStyle='rgba(170,224,255,.9)';ctx.fillRect(bx-0.5,sy,1,L1);ctx.save();ctx.globalCompositeOperation='lighter';for(let i=0;i<3;i++){const u=(gameTime*2.2+i/3)%1;ctx.fillStyle='#eaf8ff';ctx.fillRect(bx-0.7,sy+u*L1,1.4,1.4);}ctx.restore();}
   // drops of light rising round it while it runs (the water's glint), cool as water
   if(lit){ctx.save();ctx.globalCompositeOperation='lighter';for(let i=0;i<5;i++){const u=(gameTime*0.35+i/5+x*0.01)%1;ctx.globalAlpha=(1-u)*0.7*turn;ctx.fillStyle='rgb(190,232,255)';
       ctx.fillRect(x+Math.sin(u*8+i*1.7)*(7+u*4),cy+10-u*30,1,1);}ctx.restore();}
@@ -5350,17 +5394,67 @@ function drawStone(ctx,o,f,again){
 // their shape first: caps wider than the glass, two posts and rounded bulbs (straight triangles meeting at a point read
 // as an X at this size), a dark rim so it holds on any wall. The state is in the sand alone: sand in the top bulb is
 // time to come (bright), sand in the bottom bulb has run (spent: dull when frac is 0 and dim is set).
-function drawGlass(ctx,x,y,frac,cap,dim){ctx.save();ctx.translate(x,y); // a small water clock: one silhouette in every state, the water's level is the state
-  const f=clamp(frac,0,1),T=5.4,Bw=3.2,Y0=-5.4,Y1=5.6,hw=yy=>Bw+(T-Bw)*(Y1-yy)/(Y1-Y0);
-  const ves=d=>{ctx.beginPath();ctx.moveTo(-T-d,Y0-d);ctx.lineTo(T+d,Y0-d);ctx.lineTo(Bw+d,Y1+d);ctx.lineTo(-Bw-d,Y1+d);ctx.closePath();};
-  ves(1.3);ctx.fillStyle='#0b0812';ctx.fill();ves(0);ctx.fillStyle='rgba(28,22,40,.92)';ctx.fill();
-  if(f>0.02){const ly=Y1-(Y1-Y0-0.6)*f;ctx.fillStyle=dim?'#4a6070':'#7cc8f2';ctx.beginPath();ctx.moveTo(-hw(ly),ly);ctx.lineTo(hw(ly),ly);ctx.lineTo(Bw,Y1);ctx.lineTo(-Bw,Y1);ctx.closePath();ctx.fill();
-    ctx.fillStyle=dim?'#7a90a0':'#e4f6ff';ctx.fillRect(-hw(ly),ly,2*hw(ly),0.8);}
-  if(f>0.02&&f<0.98){ctx.fillStyle='#0b0812';ctx.fillRect(Bw-0.2,Y1-2.4,2.6,1.8);ctx.fillStyle='#bfe6ff';ctx.fillRect(Bw+1.4,Y1-1.4,0.8,4);} // running: the spout and its thread of water
-  ctx.fillStyle='rgba(255,255,255,.5)';for(let i=0;i<3;i++)ctx.fillRect(-1.6,Y0+2+i*2.8,0.7,0.7); // the hour marks
-  ctx.fillStyle=cap||'#d8b04a';ctx.fillRect(-T-1,Y0-2,2*T+2,1.8);ctx.fillRect(-Bw-0.6,Y1,2*Bw+1.2,1.3); // the rim and the foot
-  ctx.fillStyle='rgba(255,245,210,.5)';ctx.fillRect(-T-1,Y0-2,2*T+2,0.6);
+// ---- the barque clock (round 7, owner: "an Egyptian hour glass that is unique"): an invented timekeeper. An open lotus bowl of
+// calcite over a lower basin, joined by a glowing stream, between two djed-pillar uprights; on the water in the bowl rides the sun's
+// barque with its disc, and as the hour runs out it sinks with the water into the night (the Amduat: the sun's boat goes down
+// through the twelve hours). The bowl's side carries the hour marks of the Karnak clepsydra. f: the water left in the bowl (1 full,
+// 0 drained); o: {s scale, lit, dim, cap (the frame's colour), glow (its light: rim, stream, inner glow), rev (the water flowing
+// back up: the rewind), t}. Drawn at the origin, about 13 by 16 px at s=1: the HUD's measures, the gates' timers, the checkpoint.
+function barqueClock(ctx,f,o){const s=o.s||1,dim=o.dim,lit=o.lit!==false&&!dim,t=o.t||0,K='#0b0812',cap=o.cap||'#d8b04a';f=clamp(f,0,1);
+  ctx.save();ctx.scale(s,s);
+  const W0=(cap&&!dim)?cap:'#7a6234',water=dim?'#4a6070':'#7cc8f2',hiW=dim?'#7a90a0':'#e4f6ff',calc=dim?'#9a9078':'#eadfc4';
+  // the djed uprights: a post each side, three bars at the head
+  ctx.fillStyle=K;ctx.fillRect(-7.2,-8.4,2.2,16.6);ctx.fillRect(5,-8.4,2.2,16.6);ctx.fillStyle=W0;ctx.fillRect(-6.7,-7.9,1.2,15.6);ctx.fillRect(5.5,-7.9,1.2,15.6);
+  for(const yy of [-8.2,-7,-5.8]){ctx.fillStyle=K;ctx.fillRect(-7.6,yy-0.5,3,1.2);ctx.fillRect(4.6,yy-0.5,3,1.2);ctx.fillStyle=W0;ctx.fillRect(-7.4,yy-0.3,2.6,0.7);ctx.fillRect(4.8,yy-0.3,2.6,0.7);}
+  // the upper bowl: an open lotus of calcite, the water in it, the hour marks on its side
+  const bt=-0.6,tp=-6.6,hw=y=>2.0+(4.6-2.0)*(bt-y)/(bt-tp),bowl=d=>{ctx.beginPath();ctx.moveTo(-4.6-d,tp-d*0.5);ctx.lineTo(4.6+d,tp-d*0.5);ctx.lineTo(2.0+d*0.6,bt+d);ctx.lineTo(-2.0-d*0.6,bt+d);ctx.closePath();};
+  bowl(1.1);ctx.fillStyle=K;ctx.fill();bowl(0);ctx.fillStyle=dim?'#2a2430':'#241c32';ctx.fill();
+  const ly=bt-(bt-tp-0.4)*f;
+  if(f>0.02){ctx.fillStyle=water;ctx.beginPath();ctx.moveTo(-hw(ly),ly);ctx.lineTo(hw(ly),ly);ctx.lineTo(2.0,bt);ctx.lineTo(-2.0,bt);ctx.closePath();ctx.fill();}
+  ctx.fillStyle=dim?'rgba(200,190,170,.25)':'rgba(240,232,214,.28)';bowl(0);ctx.fill(); // (the calcite over the water: translucent)
+  for(const [px,py] of [[-4.6,tp],[0,tp],[4.6,tp]]){ctx.fillStyle=K;ctx.beginPath();ctx.moveTo(px-1.6,py+0.4);ctx.lineTo(px,py-1.9);ctx.lineTo(px+1.6,py+0.4);ctx.fill();ctx.fillStyle=calc;ctx.beginPath();ctx.moveTo(px-1,py+0.1);ctx.lineTo(px,py-1.2);ctx.lineTo(px+1,py+0.1);ctx.fill();} // the lotus' petal tips
+  ctx.fillStyle=calc;ctx.fillRect(-4.6,tp-0.3,9.2,0.8);
+  ctx.fillStyle=dim?'rgba(230,220,200,.4)':'rgba(255,250,236,.7)';for(let i=0;i<4;i++)ctx.fillRect(-0.4-hw(tp+1.2+i*1.3)*0.55,tp+1.2+i*1.3,0.8,0.5); // the hour marks
+  // the sun's barque on the water, its disc above it: it sinks with the water into the night
+  if(f>0.04){ctx.fillStyle=K;ctx.beginPath();ctx.moveTo(-2.6,ly-0.9);ctx.quadraticCurveTo(0,ly+1.3,2.6,ly-0.9);ctx.lineTo(1.6,ly-0.1);ctx.lineTo(-1.6,ly-0.1);ctx.closePath();ctx.fill();
+    ctx.fillStyle=dim?'#8a7848':'#e8b84a';ctx.beginPath();ctx.moveTo(-2.1,ly-0.8);ctx.quadraticCurveTo(0,ly+0.8,2.1,ly-0.8);ctx.lineTo(1.4,ly-0.3);ctx.lineTo(-1.4,ly-0.3);ctx.closePath();ctx.fill();
+    ctx.fillStyle=K;ctx.beginPath();ctx.arc(0,ly-2.2,1.35,0,6.2832);ctx.fill();ctx.fillStyle=dim?'#a08a50':'#ffcf4a';ctx.beginPath();ctx.arc(0,ly-2.2,0.95,0,6.2832);ctx.fill();}
+  // the stream between them: running while the hour runs; flowing back up in the rewind
+  const run=f>0.02&&f<0.98||o.rev;
+  if(run){ctx.fillStyle=dim?'#6a8090':'#bfe6ff';ctx.fillRect(-0.45,bt,0.9,4.6);ctx.fillStyle='#ffffff';for(let i=0;i<2;i++){const u=((t*2.4*(o.rev?-1:1)+i/2)%1+1)%1;ctx.fillRect(-0.6,bt+u*4.4,1.2,0.9);}}
+  // the lower basin and the water gathered in it
+  const b0=4.0,b1=6.6;ctx.fillStyle=K;ctx.beginPath();ctx.moveTo(-5.2,b0-0.8);ctx.lineTo(5.2,b0-0.8);ctx.lineTo(3.6,b1+0.9);ctx.lineTo(-3.6,b1+0.9);ctx.closePath();ctx.fill();
+  ctx.fillStyle=dim?'#2a2430':'#241c32';ctx.beginPath();ctx.moveTo(-4.4,b0);ctx.lineTo(4.4,b0);ctx.lineTo(3.0,b1);ctx.lineTo(-3.0,b1);ctx.closePath();ctx.fill();
+  const lh=(b1-b0)*(1-f);if(lh>0.15){const yy=b1-lh,w=3.0+1.4*(lh/(b1-b0));ctx.fillStyle=water;ctx.beginPath();ctx.moveTo(-w,yy);ctx.lineTo(w,yy);ctx.lineTo(3.0,b1);ctx.lineTo(-3.0,b1);ctx.closePath();ctx.fill();ctx.fillStyle=hiW;ctx.fillRect(-w,yy,2*w,0.6);}
+  ctx.fillStyle=calc;ctx.fillRect(-5.2,b0-0.8,10.4,0.8);
+  ctx.fillStyle=W0;ctx.fillRect(-7.4,7.6,14.8,1.3); // the foot
+  if(f>0.02){ctx.fillStyle=hiW;ctx.fillRect(-hw(ly),ly,2*hw(ly),0.6);}
+  // its light (the glow, o.glow): a Fresnel rim on the water and the calcite's edge toward the lamp, light through the stream, a soft
+  // glow inside the bowl and round the sun's disc so it reads as the timer; added light, drawn here in both modes
+  if(o.glow&&lit){ctx.save();ctx.globalCompositeOperation='lighter';const kd=o.kl?o.kl.dir:1,kc=o.kl?o.kl.col:'255,220,170',kk=o.kl?o.kl.k:0.5,pulse=0.85+0.15*Math.sin(t*2.3);
+    if(f>0.02){ctx.globalAlpha=0.5*pulse;ctx.drawImage(lightSprite('140,210,255'),-hw(ly)-1,ly-1,2*hw(ly)+2,bt-ly+2); // the inner glow in the water
+      ctx.globalAlpha=0.55+0.4*kk;ctx.fillStyle='rgb('+kc+')';ctx.fillRect(kd>0?hw(ly)*0.2:-hw(ly),ly-0.2,hw(ly)*0.8,0.7); // the rim on the side toward the lamp
+      ctx.globalAlpha=0.7*pulse;ctx.drawImage(lightSprite('255,214,110'),-3.2,ly-5.4,6.4,6.4);} // the sun's disc
+    if(run){ctx.globalAlpha=0.6*pulse;ctx.drawImage(lightSprite('170,225,255'),-1.8,bt-0.5,3.6,5.6);} // light through the stream
+    ctx.globalAlpha=0.35+0.35*kk;ctx.fillStyle='rgb('+kc+')';ctx.fillRect(kd>0?3.2:-4.8,tp+0.4,1.6,0.6);ctx.fillRect(kd>0?2.4:-3.6,b0-0.6,1.4,0.5); // the calcite's lit edges
+    ctx.restore();}
   ctx.restore();}
+// the two other concepts on the page (not used in the game): B, Thoth's baboon pouring the hours from a vessel; C, the sun's disc
+// going down a was-sceptre column of twelve hours
+function conceptClock(ctx,kind,f,s){const K='#0b0812';ctx.save();ctx.scale(s,s);f=clamp(f,0,1);
+  if(kind==='B'){ctx.fillStyle=K;ctx.beginPath();ctx.moveTo(-5,-1);ctx.lineTo(5,-1);ctx.lineTo(3.4,7.4);ctx.lineTo(-3.4,7.4);ctx.closePath();ctx.fill();ctx.fillStyle='#eadfc4';ctx.beginPath();ctx.moveTo(-4.2,-0.4);ctx.lineTo(4.2,-0.4);ctx.lineTo(2.8,6.8);ctx.lineTo(-2.8,6.8);ctx.closePath();ctx.fill();
+    const ly=6.8-7*f;ctx.fillStyle='#7cc8f2';if(f>0.02)ctx.fillRect(-3.6+(6.8-ly)*0.0,Math.max(ly,-0.4),7.2-((6.8-Math.max(ly,-0.4))*0.2),6.8-Math.max(ly,-0.4));
+    ctx.fillStyle=K;ctx.beginPath();ctx.ellipse(0,-4.2,3.2,3.4,0,0,6.2832);ctx.fill();ctx.fillStyle='#6a7a5a';ctx.beginPath();ctx.ellipse(0,-4.2,2.5,2.7,0,0,6.2832);ctx.fill(); // the seated baboon of Thoth on the rim
+    ctx.fillStyle='#d8c4a0';ctx.beginPath();ctx.ellipse(1.2,-5.2,1.3,1.1,0,0,6.2832);ctx.fill();ctx.fillStyle=K;ctx.fillRect(1.5,-5.6,0.6,0.6);
+    ctx.fillStyle='#d8b04a';ctx.beginPath();ctx.arc(0,-8.6,1.3,0,6.2832);ctx.fill(); // the moon disc on his head
+    if(f>0.02&&f<0.98){ctx.fillStyle='#bfe6ff';ctx.fillRect(3.6,5.6,2.6,0.8);ctx.fillRect(5.8,6,0.8,2.4);}}
+  else{ctx.fillStyle=K;ctx.fillRect(-1.6,-9,3.2,18);ctx.fillStyle='#2a6a9a';ctx.fillRect(-1,-8.4,2,16.8); // the was-sceptre column and its twelve hours
+    ctx.fillStyle='rgba(255,250,236,.6)';for(let i=0;i<12;i++)ctx.fillRect(-1,-8+i*1.38,2,0.35);
+    ctx.fillStyle=K;ctx.beginPath();ctx.moveTo(-1.6,-9);ctx.lineTo(-3.6,-10.6);ctx.lineTo(1.8,-9.6);ctx.fill();ctx.fillRect(-3.4,8.6,6.8,1.4);
+    const y=-7.6+15.2*(1-f);ctx.fillStyle=K;ctx.beginPath();ctx.arc(3.2,y,2.2,0,6.2832);ctx.fill();ctx.fillStyle='#ffcf4a';ctx.beginPath();ctx.arc(3.2,y,1.6,0,6.2832);ctx.fill();
+    ctx.globalCompositeOperation='lighter';ctx.globalAlpha=0.6;ctx.drawImage(lightSprite('255,210,110'),0,y-3.6,6.4,7.2);}
+  ctx.restore();}
+function drawGlass(ctx,x,y,frac,cap,dim,rev){ctx.save();ctx.translate(x,y);ctx.scale(0.86,0.86);barqueClock(ctx,frac,{s:1,dim,cap,rev,t:rev||(frac>0.02&&frac<0.98)?gameTime:0,glow:!dim});ctx.restore();} // (a still clock is still: the HUD is redrawn only when its picture changes)
 // ---- the sandstorm (unit ST): a wall of lit dust, not a shadow ----
 // The owner: "it doesn't look like a sandstorm, it looks more like a shadow; I can sometimes notice the painted edge underneath".
 // A haboob is a tall wall of tan to orange-brown dust, lit on the side facing the sky, its base still a readable brown (NWS
@@ -7330,7 +7424,7 @@ function rewind2D(ctx,sh){const W=viewW,H=ROOM_H,k=HK.rw,now=HK.now,calm=HK.dist
   for(let i=0,n=calm?28:64;i<n;i++){const h=hash2(i,77),a=(h%1000)/1000*6.2832,R=30+((h>>>10)%1000)/1000*W*0.55,f=(now*(0.45+((h>>>20)%100)/160)+((h>>>4)%100)/100)%1,r=R*(1-f),c=Math.cos(a),sn=Math.sin(a),x=px+c*r*1.3,y=py+sn*r*0.8;
     if(x<0||x>W||y<0||y>H)continue;ctx.moveTo(x,y);ctx.lineTo(x+c*(2+7*(1-f)),y+sn*(2+5*(1-f)));}
   ctx.stroke();ctx.restore();
-  if(mode==='rewind'){ctx.textAlign='center';ctx.fillStyle='#ffe2a0';ctx.font='16px Rokkitt, Georgia, serif';ctx.fillText('The water turns back',W/2,H*0.38);}}
+  if(mode==='rewind'){ctx.textAlign='center';ctx.fillStyle='#ffe2a0';ctx.font='16px Rokkitt, Georgia, serif';ctx.fillText('The water turns back',W/2,H*0.38);ctx.save();ctx.translate(W/2,H*0.38-30);barqueClock(ctx,(gameTime*0.6)%1,{s:2,rev:true,t:gameTime,glow:true});ctx.restore();}}
 // last life in Classic: a dark red glow at the edges, pulsing slowly (the shader does the same in Torchlight)
 let lowGrad=null,lowGradW=0;
 function lowEdge2D(ctx){const k=HK.low;if(k<0.01)return;const W=viewW,H=ROOM_H;
@@ -8445,7 +8539,12 @@ function hudKey(sh){if(PF.on)return null;const H=HUDREC;let c=H.c;
     c.createLinearGradient=(a,b,d,e)=>gx.createLinearGradient(a,b,d,e);c.createRadialGradient=(a,b,d,e,f,g)=>gx.createRadialGradient(a,b,d,e,f,g);}
   H.h1=2166136261;H.h2=0x9747b28c;H.f64[0]=cv.width*65536+cv.height;H.h1^=H.u32[0];H.h2^=Math.round(VS*1000);hudLayer(c,sh);return H.h1+':'+H.h2;}
 function fmt(s){s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),sec=s%60;return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(sec).padStart(2,'0');}
-function heart(ctx,x,y,full,fill,line){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+7,y);ctx.lineTo(x+3.5,y+9);ctx.closePath();ctx.fillStyle=full?fill:'rgba(10,8,20,.45)';ctx.fill();ctx.strokeStyle=line;ctx.lineWidth=0.8;ctx.stroke();}
+// a life: the ib heart amulet (round 7, owner), a vessel-shaped heart with a rim and two lugs at the shoulders; blue-green faience,
+// a pale glaze highlight; a lost life is its dark empty outline (the guards' health uses the same shape in their tier's colour)
+function heart(ctx,x,y,full,fill,line){const p=new Path2D();p.moveTo(x+2.2,y);p.lineTo(x+4.8,y);p.lineTo(x+4.9,y+1.3);p.quadraticCurveTo(x+7.6,y+1,x+7.2,y+2.8);
+  p.quadraticCurveTo(x+7.2,y+7.4,x+3.5,y+9.2);p.quadraticCurveTo(x-0.2,y+7.4,x-0.2,y+2.8);p.quadraticCurveTo(x-0.6,y+1,x+2.1,y+1.3);p.closePath();
+  ctx.fillStyle=full?fill:'rgba(10,8,20,.45)';ctx.fill(p);ctx.strokeStyle=line;ctx.lineWidth=0.8;ctx.stroke(p);
+  if(full){ctx.fillStyle='rgba(255,255,255,.55)';ctx.fillRect(x+1.4,y+3,1,2.6);ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(x+2.1,y+1.2,2.8,0.6);}}
 function drawHUD(ctx){
   const top=hud.t,gh=top+26,gr=ctx.createLinearGradient(0,0,0,gh);gr.addColorStop(0,'rgba(8,6,14,.72)');gr.addColorStop(1,'rgba(8,6,14,0)');
   ctx.fillStyle=gr;
@@ -8455,13 +8554,13 @@ function drawHUD(ctx){
       if(y0<gh&&y1>0){ctx.rect(x0,Math.max(0,y0),x1-x0,Math.min(gh,y1)-Math.max(0,y0));holes++;}}
     if(holes)ctx.fill('evenodd');else ctx.fillRect(0,0,viewW,gh);}
   let x=hud.l;
-  for(let i=0;i<S.maxHp;i++)heart(ctx,x+i*10,top+2,P&&i<P.hp,'#e0413a',P&&i<P.hp?'#ff8c74':'rgba(224,65,58,.6)');
+  for(let i=0;i<S.maxHp;i++)heart(ctx,x+i*10,top+2,P&&i<P.hp,'#2fae9e',P&&i<P.hp?'#b8f5e8':'rgba(70,190,170,.55)');
   x+=S.maxHp*10+5;
   ctx.textBaseline='middle';ctx.textAlign='left';
   ctx.fillStyle='#e8c47f';ctx.font='11px Rokkitt, Georgia, serif';const label='FLOOR '+L.n;ctx.fillText(label,x,top+7.5);
   x+=ctx.measureText(label).width+6;
   ctx.fillStyle='#cfc7e6';ctx.font='600 7.5px Jost, system-ui, sans-serif';ctx.fillText(fmt(levelTime),x,top+7);
-  x+=ctx.measureText(fmt(levelTime)).width+9;x+=2;for(let i=0;i<SANDS;i++){const on=i<(S.sands|0);drawGlass(ctx,x+i*13,top+7.5,on?1:0,on?null:'#7a6234',!on);}const leftEnd=x+SANDS*13;
+  x+=ctx.measureText(fmt(levelTime)).width+9;x+=2;for(let i=0;i<SANDS;i++){const on=i<(S.sands|0),rw=mode==='rewind'&&i===(S.sands|0);drawGlass(ctx,x+i*13,top+7.5,rw?((gameTime*0.7)%1):on?1:0,on||rw?null:'#7a6234',!on&&!rw,rw);}const leftEnd=x+SANDS*13;
   if(P){let tg=null,bd=1e9;for(const o of L.dyn){const f=o.f;if(f.t!=='gate'||!(f.tm>0)||f.tm===Infinity||!(f.dur>0)||gameTime-(f.heldAt||-9)<0.2)continue;const dd=Math.abs(o.c*TW+16-P.x)+Math.abs(o.r*TH-P.y)*2;if(dd<bd){bd=dd;tg=f;}}
     if(tg){const fr=tg.tm/tg.dur,cx=viewW/2,col=fr>0.5?'#e8c47f':fr>0.25?'#f0a040':'#ff5a4a',ty=leftEnd>cx-24?top+21:top+7;
       if(!(fr<0.25&&Math.floor(tg.tm*4)%2)){drawGlass(ctx,cx-15,ty,fr);ctx.textAlign='left';ctx.fillStyle=col;ctx.font='12px Rokkitt, Georgia, serif';ctx.fillText(tg.tm.toFixed(1),cx-6,ty+1);}}}
@@ -8754,7 +8853,7 @@ window.__HK={tapCloth,THEMES,progOf,themeName,hint,learn,HINTS,HINT_MOVE,get ban
   get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG};
 Object.assign(window.__HK,{guardBudget,snakeBudget}); // (the fighters' budgets, for guardscan.py)
 Object.defineProperty(window.__HK,'intro',{get(){return intro;},set(v){intro=v;}}); // (the floor's title banner, for egyptprop.py)
-Object.assign(window.__HK,{EGP,setHero,HERO_VAR,PAL_HERO,SCHED,floorsOf,BGART,bgArt,LFX,themeOf,get PF(){return PF;}}); // (the themes' backdrops and effects, for egyptshot.py and egyptfx.py)
+Object.assign(window.__HK,{EGP,barqueClock,conceptClock,flaskBody,flaskR,heart,setHero,HERO_VAR,PAL_HERO,SCHED,floorsOf,BGART,bgArt,LFX,themeOf,get PF(){return PF;}}); // (the themes' backdrops and effects, for egyptshot.py and egyptfx.py)
 Object.assign(window.__HK,{hurt,HK,DISS,sandP,SAND_HP,GLFX,setClock:f=>{performance.now=f;}}); // S3-A (tests)
 Object.assign(window.__HK,{FLM,FLV,ventState,cyc}); // FL (flames: the sheets and the vent's look, for tests)
 Object.assign(window.__HK,{GLFX,GLREL,clearRooms,bgCache,bgLayers,solidBelow:(c,r)=>solidBelow(L,c,r),roomCanvas}); // (unit B's switches and caches, for its tests)
