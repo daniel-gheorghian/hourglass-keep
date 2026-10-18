@@ -67,13 +67,14 @@ Egyptian counterpart drawn where it was. The real losses are small:</p><ul>
   <li>the spikes: bronze-tipped stakes;</li>
   <li>the sandstorm chase: granite plugs, one passage high, in every corridor row of the chase.</li></ul>
   The hints, How to play and the death notices name them.</li>
-<li><b>The water clock</b> (the Karnak clepsydra) for the hourglass:
-  <ul><li>the checkpoint fills, then drains into a basin;</li>
-  <li>the HUD's three measures of water and the gates' timers are small clocks;</li>
+<li><b>The barque clock</b> (round 7: an invented Egyptian timekeeper, a lotus bowl over a basin between djed uprights, the sun's barque sinking with the water) for the hourglass:
+  <ul><li>the checkpoint fills, then drains into its basin;</li>
+  <li>the HUD's three measures and the gates' timers are small barque clocks;</li>
   <li>the rewind turns the water back, in a cool grade with ripples;</li>
   <li>every "hourglass" and "sands" in the text now says water clock or water.</li></ul></li>
 <li><b>Title and fonts:</b> Dawnward, on the title screen, the page title, the manifest, the home-screen title and the bench header. Rokkitt and Jost.</li>
 <li><b>Petals:</b> rose petals become lotus petals.</li>
+<li><b>Round 7:</b> the prince in plain white linen (the original figure); the guards as tomb robbers (kilts, head cloths and caps; club, axe, khopesh); the flasks as core-formed glass jars; the lives as faience ib hearts; a thin cornice over the title and pause panels.</li>
 <li><b>Colours:</b> the old five keep their palettes, except the Blue Chambers and the Halls' inlay.</li></ul>
 <h3>(c) Still in the code behind a switch, or easy to bring back</h3><ul>
 <li><code>EGP={lamps,traps,plug}</code> turns off the lamps, the trap re-skins and the plug: the v61 lamps, iron gate, rock, cracked tile, steel spikes and the sandstorm (its shader too) come back. The tests use it: metaltest's gate scene and stormfair check the iron gate and the storm.</li>

@@ -96,9 +96,12 @@ for t in shots['themes']:
     out.append('<a href="#t%d">%d. %s</a>' % (t['i'], t['i'] + 1, html.escape(t['name'])))
 import egyptround2
 R2, R2NAV = egyptround2.sections(D, REL, img)
-out.append(' · ' + ''.join('<a href="#%s"><b>%s</b></a>' % (k, l) for k, l in R2NAV + [('objects', 'Light on objects'), ('tints', 'Softer tints'), ('prince', 'The prince')]))
+out.append(' · ' + ''.join('<a href="#%s"><b>%s</b></a>' % (k, l) for k, l in R2NAV + [('objects', 'Light on objects'), ('r7prince', 'Plain prince'), ('robbers', 'Robbers'), ('barque', 'Barque clock'), ('jars', 'Jars'), ('hearts', 'Hearts, panels'), ('tints', 'Softer tints'), ('prince', 'Round 6 prince')]))
 out.append('</nav>')
 out.extend(R2)
+import egyptround7
+R7, R7NAV = egyptround7.sections(D, REL, img)
+out.extend(R7)
 import egyptround6
 R6, R6NAV = egyptround6.sections(D, REL, img)
 out.extend(R6)

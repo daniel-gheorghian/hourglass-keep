@@ -40,8 +40,8 @@ def sections(D, REL, img):
             ('tint_before_%s_p0_torch_wide.jpg' % t, 'before, Torchlight'), ('%s_p0_torch_wide.jpg' % t, 'after, Torchlight'), ('tint_before_%s_p0_classic_wide.jpg' % t, 'before, Classic'), ('%s_p0_classic_wide.jpg' % t, 'after, Classic')))))
     out.append('</section>')
     # ---- the prince
-    out.append('<section class="card" id="prince"><h2>The prince, Egyptian</h2><p>Researched as the themes were: how a young royal or noble man of the New Kingdom, and of Kush in the Napatan age, was dressed and shown. '
-               '<b>Built in: variant A.</b> The same skeleton, poses, hit boxes and timings; gameplay and the bot are untouched (the drawing alone changes, <code>drawFigureHD</code> with <code>pal.egy</code>). '
+    out.append('<section class="card" id="prince"><h2>Round 6: the prince in full Egyptian dress (superseded)</h2><p>Researched as the themes were: how a young royal or noble man of the New Kingdom, and of Kush in the Napatan age, was dressed and shown. '
+               '<b>Round 6 (superseded in round 7 by the plain prince above).</b> Variant A was built in then. The same skeleton, poses, hit boxes and timings; gameplay and the bot are untouched (the drawing alone changes, <code>drawFigureHD</code> with <code>pal.egy</code>). '
                'The figures\' mask and the beams\' figure light work from his new outline. The guards\' silhouettes keep their own outline (<code>PAL_GSIL</code>). The khopesh is drawn along the sword\'s line and length, so the fight reads the same. '
                '<code>setHero(\'B\')</code> or <code>(\'C\')</code> shows the others.</p>' + links(SRC))
     for v in pr['variants']:
@@ -52,9 +52,9 @@ def sections(D, REL, img):
         out.append('<figure style="margin-top:8px;max-width:420px">%s<figcaption>Running, Torchlight</figcaption></figure>' % img(v['gif'], 'run'))
     if pr['themes']:
         out.append('<h3>Variant A on every theme\'s floor (Torchlight, phone size)</h3><div class="g4">' + ''.join('<figure>%s<figcaption>%s</figcaption></figure>' % (img(t['img'], t['name']), E(t['name'])) for t in pr['themes']) + '</div>')
-    out.append('''<h3>What else of his, and of the guards, is still medieval (proposals, not done)</h3><ul>
+    out.append('''<h3>Round 6's proposals for the rest (done in round 7, see above)</h3><ul>
 <li><b>The guards:</b> helmeted swordsmen with plumes, in the old palace colours, with straight steel blades. As tomb robbers they should match: bare-chested men in kilts or short tunics, head cloths, a few with
-the leather caps of New Kingdom soldiers; khopesh, axe, club or spear; the captain in a soldier\'s leather corselet (the robbers of the <a href="https://en.wikipedia.org/wiki/Tomb_robbery_papyri">tomb-robbery papyri</a> were workmen and officials). The skeletons can stay.</li>
+the leather caps of New Kingdom soldiers; khopesh, axe, club or spear; the captain in a soldier\'s leather corselet (the robbers of the <a href="https://en.wikipedia.org/wiki/Abbott_Papyrus">tomb-robbery papyri</a> were workmen and officials). The skeletons can stay.</li>
 <li><b>The flasks:</b> glass bottles with corks read medieval. Egyptian ones: a small faience or pottery jar (a kohl pot for small, an alabastron for large, a gold-capped jar for the extra life), poison in a dark stone jar.</li>
 <li><b>The HUD's lives:</b> the red triangles are neutral, but could be a small ankh or a heart (ib) in faience.</li>
 <li><b>The title card and menus:</b> done (Dawnward, Rokkitt and Jost); the pause and title screens' plain panels could take a cavetto-cornice frame.</li>
