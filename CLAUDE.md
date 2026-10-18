@@ -25,11 +25,13 @@ playwright install chromium
 ```
 
 The scripts drive the page in headless Chromium through Playwright. Run them from `dev/tools`:
-they load `bot.js` by a relative path and write their output next to themselves.
+they load `bot.js` by a relative path and write their output next to themselves. Many (run2, rendersmoke, featbot, glauto,
+respawnplates and others) open the main checkout's `dev/hourglass-keep.html` by absolute path, so in a git worktree they test
+main's file, not the branch: run them from a copy of `dev/` with that path rewritten to the copy.
 
 ## Build
 
-From the repo root, with N the release number (current release v62, next v63):
+From the repo root, with N the release number (current release v63, next v64):
 
 ```
 python3 dev/tools/build.py dev/hourglass-keep.html index.html sw.js N
