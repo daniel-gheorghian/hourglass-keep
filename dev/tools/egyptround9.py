@@ -13,7 +13,7 @@ def fig(img, f, cap):
 
 
 def sections(D, REL, img):
-    o = ['<section class="card" id="prince9"><h2>The prince, round 9 (built in)</h2><p>Owner: "For the prince: I\'d make the sash golden and the chest not that pronounced, study a bit profiles of muscular/athletic youth. Also not fond of the headband and the hair."</p><ul>'
+    o = ['<section class="card" id="prince9"><h2>The prince, round 9 (built in; his build redrawn in round 10, above: the sash and the hair stay)</h2><p>Owner: "For the prince: I\'d make the sash golden and the chest not that pronounced, study a bit profiles of muscular/athletic youth. Also not fond of the headband and the hair."</p><ul>'
          '<li><b>Gold sash:</b> a gold-yellow girdle, like gilded linen, with a bright upper edge that takes the lamp\'s tint; it is drawn, not added light, so it never blooms. Its tie ends hang at the front as before.</li>'
          '<li><b>A lean young build:</b> the broad shoulders and narrow waist stay, but his torso is slimmer and the chest flatter, with one soft line under it and a faint shoulder line, no belly or rib shading; his arms and calves are leaner. '
          'The robbers keep the heavier build of grown men, which also tells them apart at a glance. What it is based on: the young male figures of Egyptian art, slim and long-limbed with broad shoulders and a narrow waist (Tutankhamun\'s ka statues; the youths of New Kingdom tomb paintings such as Nebamun\'s), '
