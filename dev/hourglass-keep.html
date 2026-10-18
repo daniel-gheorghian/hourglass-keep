@@ -4882,22 +4882,43 @@ function wearRubble(ctx,x0,x1,ys,W,seed){if(W<2)return;const q=mulberry32(seed);
 // the ceiling's front edge, where a dark slot opens and the ceiling's shadow falls on it. The log and ropes over it are gone: they would sit
 // inside the ceiling, out of sight.
 const T_SLAB=7;
-function egSlab(ctx,pl,drop,X,half,plain){const K='#0b0812',T=T_SLAB,a=pl.L0,b=pl.R0,ya=pl.ce(a)-3,yb=pl.ce(b)-3,fa=pl.fl(a),fb=pl.fl(b),th=L.theme,lk=th.look||'west',kind=plain?THEME_STONE[lk]||'limestone':SLAB_STONE[lk]||'granite';
+// Round 14 (owner: "at the top it looks like the slab is behind the wall right at the top right corner. Also the slab has thickness, and the light
+// coming from the left should really fall and produce light and shadow that clearly will show the edge of the slab"). (1) Where the ceiling
+// block over the gate ends at the tile's right edge (no wall beside it above the corridor), its dithered right side face stood over the slab's
+// back corner and the slab was cut level with the ceiling's front edge, so its top-right corner seemed to pass behind the wall. The slab now runs
+// up to the slot along its own slant there, in front of that face, with the slot's dark mouth over it (a second pass in a rectangle clip).
+// (2) The key light (keyLight: the nearest lamp or the scene's light, its side) models it: the face toward the light lit, the one turned from it
+// in shade, a crisp bright arris between them, and its shadow cast on the floor and the back wall on the far side; both modes, no pass.
+function egSlab(ctx,pl,drop,X,half,plain){const c=Math.floor((X+1)/TW),r=Math.floor((pl.top+1)/TH),xe=X+TW-HX;
+  if(!half&&!plain&&r>0&&B(L,c,r-1)===WALL&&B(L,c+1,r-1)!==WALL&&pl.R0+T_SLAB/2>xe){ /* (not a lift's mouth: beside it the shaft is open above) */ctx.save();ctx.beginPath();ctx.rect(xe,pl.top-DY-4,pl.R0+T_SLAB/2+2-xe,DY+4);ctx.clip();egSlabBody(ctx,pl,drop,X,plain,true);ctx.restore();}
+  ctx.beginPath();ctx.rect(pl.L0-T_SLAB/2-6,pl.top,pl.W+T_SLAB+12,Math.max(pl.fl(pl.L0),pl.fl(pl.R0))+6-pl.top);ctx.clip();ctx.beginPath();if(half)ctx.rect(X-40,-1e5,56,2e5);else ctx.rect(X+16,-1e5,60,2e5);ctx.clip(); // (left in force: the ceiling's shade is drawn in it after)
+  egSlabBody(ctx,pl,drop,X,plain,false);}
+function egSlabBody(ctx,pl,drop,X,plain,top){const K='#0b0812',T=T_SLAB,a=pl.L0,b=pl.R0,ya=pl.ce(a)-3,yb=pl.ce(b)-3,fa=pl.fl(a),fb=pl.fl(b),th=L.theme,lk=th.look||'west',kind=plain?THEME_STONE[lk]||'limestone':SLAB_STONE[lk]||'granite';
   const S=4,yd=Math.min(72,drop+3),yA=ya+yd,yB=yb+yd,sl=(yb-ya)/(b-a),TX=stoneTex(kind,24,72,plain?null:lk),v0=72-yd,Wr=EGP.wear!==undefined?EGP.wear:wearLevel(X+16,(pl.top+fa)/2),sd=hash2(Math.round(X),Math.round(pl.top));
-  ctx.beginPath();ctx.rect(a-T/2-6,pl.top,b-a+T+12,Math.max(fa,fb)+6-pl.top);ctx.clip();ctx.beginPath();if(half)ctx.rect(X-40,-1e5,56,2e5);else ctx.rect(X+16,-1e5,60,2e5);ctx.clip();
+  const kl=keyLight(a+HX,(pl.top+fa)/2),lw=0.45+0.55*kl.k,fromL=kl.dir<0;
   // the slot across the floor and the groove up the back wall, in the theme's own stone: dark, with the far lip catching the light
   ctx.fillStyle='rgba(6,4,10,.8)';ctx.beginPath();ctx.moveTo(a-T/2,fa);ctx.lineTo(a+T/2,fa);ctx.lineTo(b+T/2,fb);ctx.lineTo(b-T/2,fb);ctx.closePath();ctx.fill();
   ctx.fillStyle=th.hi;ctx.globalAlpha=0.55;ctx.beginPath();ctx.moveTo(a+T/2,fa);ctx.lineTo(b+T/2,fb);ctx.lineTo(b+T/2+0.7,fb);ctx.lineTo(a+T/2+0.7,fa);ctx.closePath();ctx.fill();ctx.globalAlpha=1;
-  ctx.fillStyle='rgba(6,4,10,.82)';ctx.fillRect(b-T/2-0.5,yb,T+1,fb-yb);ctx.fillStyle=th.wallB||th.wall;ctx.fillRect(b+T/2+0.5,yb,1,fb-yb);ctx.fillStyle=th.lo||K;ctx.fillRect(b-T/2-1.4,yb,0.9,fb-yb);
+  if(!top){ctx.fillStyle='rgba(6,4,10,.82)';ctx.fillRect(b-T/2-0.5,yb,T+1,fb-yb);ctx.fillStyle=th.wallB||th.wall;ctx.fillRect(b+T/2+0.5,yb,1,fb-yb);ctx.fillStyle=th.lo||K;ctx.fillRect(b-T/2-1.4,yb,0.9,fb-yb);
+    // its shadow, on the far side from the light: across the floor along its foot, and down the back wall beside its back edge
+    const sh=(4+10*yd/60)*(fromL?1:-1),ex=fromL?T/2:-T/2,yf=Math.min(yA,fa),ybk=Math.min(yB,fb);ctx.fillStyle='rgba(6,4,12,'+(0.34*lw).toFixed(3)+')';
+    if(yd>6){ctx.beginPath();ctx.moveTo(a+ex,fa);ctx.lineTo(b+ex,fb);ctx.lineTo(b+ex+sh,fb);ctx.lineTo(a+ex+sh,fa);ctx.closePath();ctx.fill();
+      const gw=ctx.createLinearGradient(b+ex,0,b+ex+sh*0.6,0);gw.addColorStop(0,'rgba(6,4,12,'+(0.3*lw).toFixed(3)+')');gw.addColorStop(1,'rgba(6,4,12,0)');ctx.fillStyle=gw;ctx.fillRect(Math.min(b+ex,b+ex+sh*0.6),yb,Math.abs(sh*0.6),fb-yb);}}
   // the slab: its outline, the broad face (sheared with the depth, turned from the light, darker toward the back), the front face
   ctx.fillStyle=K;ctx.beginPath();ctx.moveTo(a-T/2-0.8,ya);ctx.lineTo(b+T/2+0.8,yb);ctx.lineTo(b+T/2+0.8,yB+0.8);ctx.lineTo(a+T/2+0.8,yA+0.9);ctx.lineTo(a-T/2-0.8,yA+0.9);ctx.closePath();ctx.fill();
   ctx.save();ctx.transform(1,sl,0,1,a+T/2,ya);ctx.drawImage(TX,0,v0*S,16*S,yd*S,0,0,b-a,yd);
-  const gs=ctx.createLinearGradient(0,0,b-a,0);gs.addColorStop(0,'rgba(24,12,18,.16)');gs.addColorStop(1,'rgba(24,12,18,.4)');ctx.fillStyle=gs;ctx.fillRect(0,0,b-a,yd);ctx.restore();
+  const gs=ctx.createLinearGradient(0,0,b-a,0); // the broad face: in shade with the light on the left, lit with it on the right; darker toward the back
+  if(fromL){gs.addColorStop(0,'rgba(20,10,18,'+(0.34+0.14*lw).toFixed(3)+')');gs.addColorStop(1,'rgba(20,10,18,'+(0.5+0.12*lw).toFixed(3)+')');}
+  else{gs.addColorStop(0,'rgba(255,236,214,'+(0.2*lw).toFixed(3)+')');gs.addColorStop(1,'rgba(20,10,18,.22)');}
+  ctx.fillStyle=gs;ctx.fillRect(0,0,b-a,yd);ctx.restore();
   ctx.drawImage(TX,17*S,v0*S,T*S,yd*S,a-T/2,ya,T,yd);
-  ctx.fillStyle='rgba(255,242,230,.3)';ctx.fillRect(a-T/2,ya,0.7,yd);ctx.fillStyle='rgba(255,242,230,.2)';ctx.fillRect(a+T/2-0.5,ya,0.5,yd); // the arrises
+  ctx.fillStyle=fromL?'rgba(255,236,214,'+(0.22*lw).toFixed(3)+')':'rgba(20,10,18,'+(0.3+0.1*lw).toFixed(3)+')';ctx.fillRect(a-T/2,ya,T,yd); // the narrow face: lit from the left, in shade from the right
+  ctx.fillStyle=fromL?'rgba(255,244,232,'+(0.4*lw).toFixed(3)+')':'rgba(0,0,0,.35)';ctx.fillRect(a-T/2,ya,0.7,yd); // its outer edge
+  ctx.fillStyle='rgba(255,246,234,'+(0.5+0.4*lw).toFixed(3)+')';ctx.fillRect(a+T/2-0.6,ya,0.9,yd); // the arris between the two faces, crisp: the edge that shows its thickness
   stoneWear(ctx,[[a+T/2,ya],[b+T/2,yb],[b+T/2,yB],[a+T/2,yA]],Wr,sd,false);stoneWear(ctx,[[a-T/2,ya],[a+T/2,ya],[a+T/2,yA],[a-T/2,yA]],Math.max(0,Wr-1),sd+7,false);
-  if(drop>8)wearRubble(ctx,a+HX-T/2,a+HX+T/2,pl.fl(a+HX),Wr,sd+3);
+  if(drop>8&&!plain&&!top)wearRubble(ctx,a+HX-T/2,a+HX+T/2,pl.fl(a+HX),Wr,sd+3); // (not at a lift's mouth: its foot is at the shaft's edge)
   ctx.fillStyle='rgba(6,4,10,.88)';ctx.fillRect(a-T/2-1.5,pl.top,T+3,2.2); // the slot's mouth at the ceiling's front edge
+  if(top){ctx.fillStyle='rgba(6,4,10,.92)';ctx.beginPath();ctx.moveTo(a+T/2,ya-0.5);ctx.lineTo(b+T/2+1.5,yb-0.5);ctx.lineTo(b+T/2+1.5,yb+3.5);ctx.lineTo(a+T/2,ya+3.5);ctx.closePath();ctx.fill();} // (and along its slant where it rises beside the ceiling's side face)
   if(STONES[kind].cry)stoneGlints(ctx,TX,(u,v)=>{if(u<0.5||u>15.5)return null;const yy=v-v0;if(yy<1||yy>yd-1)return null;const x=u*(b-a)/16;return [a+T/2+x,ya+yy+sl*x];},sd);}
 // ---- sand (round 12, owner: "starts with slow trickles of sand, quickly increasing, exponentially, a large puff of sands"): one routine
 // for every trap that pours sand (the roof block, the sand-filled shaft under a slab, the plugs). sandK: the flow at time t of a pour
@@ -6323,12 +6344,18 @@ function liftEye(ctx,x,ys,W){
 function liftRig(f){const X=f.sc*TW,top=f.rT*TH,ws=-f.sT,by=B(L,f.sc,f.rT-1)===WALL?top+1:top-9; // (open above: the beam sits on the wall's top, above head height)
   const fr=clamp((f.y-f.yT)/(f.yB-f.yT),0,1),hy=by+11,wt=lerp(SURF(f.rB)-26,hy+10,fr); // the weight's top: low when the platform is high
   return {X,top,ws,by,hy,wt,cx:X+12.5,ca:X+5.5,cb:X+19.5};}
+// a counterweight lift's mouth on landing e (0 top, 1 bottom): its closure, drawn as a gate in the plane beside the shaft (round 14: in the
+// Egyptian themes a stone slab standing wholly outside the shaft, its inner face on the shaft's edge; the plane for play, liftGx, is unchanged)
+function liftMouth(ctx,f,e,h){const rr=e?f.rB:f.rT,s=e?f.sB:f.sT,gx=EGP.traps?(s<0?f.sc*TW-T_SLAB/2:(f.sc+1)*TW+T_SLAB/2):liftGx(f,s);drawGate(ctx,{open:e?f.gB:f.gT,latch:true,dur:0,lg:1},gx-16,rr*TH,SURF(rr),h);}
 function drawLiftCounterweight(ctx,f,half){
   const th=L.theme,ys=f.y,bot=SURF(f.rB),W=liftWear(f),R=liftRig(f),X=R.X;
   // the mouth gratings stand on the shaft's edges. (liftocc2) Seen in this view (depth runs up and to the right), a grating on the
   // shaft's left edge is behind everything in the shaft where they overlap, and one on its right edge in front of it: so a left
   // one is drawn whole before the shaft's contents, a right one after them (its near half after the rider too)
-  const gate=(e,h)=>{const rr=e?f.rB:f.rT;drawGate(ctx,{open:e?f.gB:f.gT,latch:true,dur:0,lg:1},liftGx(f,e?f.sB:f.sT)-16,rr*TH,SURF(rr),h);};
+  // (round 14, owner: "the tile of the lift should move freely in the shaft, then the slab right next to the edge of the lift tile, then next to the
+  // thickness of the slab the outer tile"): the stone slab stands wholly outside the shaft, its inner face on the shaft's edge, and the call
+  // plate is drawn beyond it; the gate's plane for play (liftGx) is unchanged
+  const gate=(e,h)=>liftMouth(ctx,f,e,h);
   if(half||LIFT_DBG.gatesR){for(let e=0;e<2;e++)if((e?f.sB:f.sT)>0)gate(e,half?1:0);return;}
   for(let e=0;e<2;e++)if((e?f.sB:f.sT)<0){gate(e,0);gate(e,1);}
   ctx.save();liftOccl(ctx,f);
@@ -6451,9 +6478,12 @@ function drawDynamic(ctx,x0,x1,y0,y1){
         ctx.save();ctx.translate(0,-lift);floorQuad(ctx,X+1,X+31,0.03,0.97,ys,lift);ctx.fillStyle='#8f2f2a';ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=0.7;ctx.stroke();
         ctx.strokeStyle='#0b0812';ctx.lineWidth=1.1;ctx.beginPath();for(let i=0;i<3;i++){const a=onFloor(X+9+i*7,0.25,ys),b=onFloor(X+9+i*7,0.75,ys);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}ctx.stroke();ctx.restore();if(f.jam)drawHeap(ctx,o,X,ys,th);break;}
       case'plate':case'xplate':case'lplate':{dynSlab(ctx,o.c,o.r,X,ys,th);const dn=f.jam||gameTime-f.press<0.12,lift=dn?1:2.4;
-        ctx.save();ctx.translate(0,-lift);floorQuad(ctx,X+1,X+31,0.03,0.97,ys,lift);ctx.fillStyle=f.t==='xplate'?'#d8b04a':f.t==='lplate'?'#b98a4a':f.pair!==undefined?PAIRC[f.pair]:th.top;ctx.fill();
+        const lf=f.t==='lplate'&&EGP.traps&&f.lf&&f.lf.t==='lift'?f.lf:null,inL=lf&&o.c===lf.sc-1?T_SLAB+1:0,inR=lf&&o.c===lf.sc+1?T_SLAB+1:0; // (beside a lift's mouth: clear of its slab)
+        ctx.save();ctx.translate(0,-lift);floorQuad(ctx,X+1+inR,X+31-inL,0.03,0.97,ys,lift);ctx.fillStyle=f.t==='xplate'?'#d8b04a':f.t==='lplate'?'#b98a4a':f.pair!==undefined?PAIRC[f.pair]:th.top;ctx.fill();
         ctx.fillStyle='rgba(255,255,255,.18)';ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=0.7;ctx.stroke();
-        if(f.t==='xplate'){const q=onFloor(X+16,0.5,ys);ctx.fillStyle='#0b0812';ctx.beginPath();ctx.ellipse(q.x,q.y,1.6,0.9,0,0,Math.PI*2);ctx.fill();}ctx.restore();if(f.jam)drawHeap(ctx,o,X,ys,th);break;}
+        if(f.t==='xplate'){const q=onFloor(X+16,0.5,ys);ctx.fillStyle='#0b0812';ctx.beginPath();ctx.ellipse(q.x,q.y,1.6,0.9,0,0,Math.PI*2);ctx.fill();}ctx.restore();if(f.jam)drawHeap(ctx,o,X,ys,th);
+        if(lf&&(inL||inR)){const e=o.r===lf.rB?1:0;if((e?lf.sB:lf.sT)===(inL?-1:1)){ctx.save();liftOccl(ctx,lf);ctx.beginPath();ctx.rect(X-40,ys-HY-6,TW+80,DY+12);ctx.clip();liftMouth(ctx,lf,e,0);liftMouth(ctx,lf,e,1);ctx.restore();}} // (the lift's mouth slab stands on this cell's floor: its foot drawn again over it)
+        break;}
       case'spikes':{const e=f.ext;if(e<=0.02)break;const m=o.c%2?-1:1;
         // a few thin needles of uneven height and lean, rooted at slightly different depths of the floor
         for(const [bx,d,hh,ln] of SPK){const q=onFloor(X+16+m*(bx-16),d,ys),x=q.x,b=q.y,tx=x+m*ln*e,tip=b-hh*e;
