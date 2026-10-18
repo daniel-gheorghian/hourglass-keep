@@ -8893,11 +8893,11 @@ function glTime(ms){
     // which this cannot see, so a step up that goes slow again within UP_BACK ms doubles the windows the next try needs (up to UP_MAX);
     // a new floor resets that. Quiet windows (a floor's start, a respawn, a rewind) count for neither; Battery saver and the profiler are left as
     // they were (no step up). Bookkeeping per 2 s window only.
-    const quiet=performance.now()<GLP.quiet,slow=!quiet&&avg>18.5;GLP.slowN=slow?(GLP.slowN||0)+1:0;if(!quiet)GLP.fastN=avg<UP_MS?(GLP.fastN||0)+1:0;
+    const quiet=performance.now()<GLP.quiet,slow=!quiet&&avg>38;GLP.slowN=slow?(GLP.slowN||0)+1:0;if(!quiet)GLP.fastN=avg<UP_MS?(GLP.fastN||0)+1:0;
     const tl=S.set.lightMode==='torch'&&GLP.used&&!window.__HKnoauto&&!PF.on;
     if(GLP.skip)GLP.skip=false; // the first window after switching on holds the shader compile
     else if(quiet){}
-    else if(GLP.slowN>=2){if(tl&&avg>18.5&&GLP.rs>0.5){if(performance.now()-(GLP.upAt||-1e9)<UP_BACK)GLP.upNeed=Math.min(UP_MAX,(GLP.upNeed||UP_N)*2);GLP.rs=GLP.rs>0.8?0.75:0.5;GLP.slowN=0;GLP.fastN=0;}} // below about 54 fps: a smaller scene copy first
+    else if(GLP.slowN>=2){if(tl&&avg>38&&GLP.rs>0.5){if(performance.now()-(GLP.upAt||-1e9)<UP_BACK)GLP.upNeed=Math.min(UP_MAX,(GLP.upNeed||UP_N)*2);GLP.rs=GLP.rs>0.8?0.75:0.5;GLP.slowN=0;GLP.fastN=0;}} // (v65, owner: 38 ms) below about 26 fps: a smaller scene copy first
     else if(tl&&!S.set.saver&&GLP.rs<1&&GLP.fastN>=(GLP.upNeed||UP_N)){GLP.rs=GLP.rs<0.6?0.75:1;GLP.fastN=0;GLP.upAt=performance.now();} // fast for a while: one step back up
     // (v63, owner: "disable the automatic disabling of the torchlight. Leave only manual control": slow frames only make the scene copy smaller,
     // down to half size; they never switch to Classic. Only the Graphics menu does that, or a WebGL context that is missing or lost, glKill)

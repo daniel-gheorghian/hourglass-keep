@@ -31,7 +31,7 @@ main's file, not the branch: run them from a copy of `dev/` with that path rewri
 
 ## Build
 
-From the repo root, with N the release number (current release v64, next v65):
+From the repo root, with N the release number (current release v65, next v66):
 
 ```
 python3 dev/tools/build.py dev/hourglass-keep.html index.html sw.js N
@@ -80,7 +80,7 @@ The pause menu's Tools… screen (v63) has buttons that reload the page with `?b
 the bench's table and the profiler each have a button back to the game. Its Show FPS toggle (v64, `S.set.fps`, off by default) puts a small
 readout under the pause button: fps and frame time from glTime's half-second average, and the Torchlight scale when under 100%.
 Lighting mode (v63, owner): only the player switches between Torchlight and Classic (Graphics). Slow frames only scale Torchlight's
-scene down (`GLP.rs` 1, .75, .5); they never switch to Classic. It steps back up one level after three 2 s windows with no
+scene down (`GLP.rs` 1, .75, .5), and only when two 2 s windows in a row average over 38 ms (v65, owner; was 18.5); they never switch to Classic. It steps back up one level after three 2 s windows with no
 dropped frame (`UP_MS` 17.2 ms); a step up that turns slow again within 10 s doubles the windows the next try needs (up to 30), reset each floor. A missing or lost WebGL context still falls back to Classic (`glKill`),
 as the screen would otherwise be black; `glauto.py` checks this.
 
