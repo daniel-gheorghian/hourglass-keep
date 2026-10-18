@@ -20,21 +20,21 @@ NOTES = {
    src=[('Pylon: two battered towers flanking a gate, flagstaffs in their niches', W('Pylon_(architecture)')), ('Al-Qurn, the peak over the Valley of the Kings', W('Al-Qurn')),
         ('Cavetto cornice', W('Cavetto')), ('The painter\'s colours: Egyptian blue among them', W('Egyptian_blue')), ('Winged sun', W('Winged_sun')),
         ('Blue lotus (the petals in the tiled halls)', W('Nymphaea_caerulea'))],
-   eff='None of its own (the sky\'s shafts and sand gusts of its drawing style).'),
+   eff='New: dust hanging in the open arches, lit by the low sun at dusk and dawn and cool under the moon, with more motes in the shafts (1.8x). Based on: the west bank at sunset, the light low over the Theban hills and through the temple courts, and the dust of the desert edge. Torchlight (mist pass); Classic keeps the sand gusts.'),
  'blue': dict(was='Lapis Gallery', what='The rooms under Djoser\'s step pyramid at Saqqara, faced with thousands of small faience tiles set like reed matting.',
    changed='Name, a bluer-green tile. The girih-star dado became rows of small glazed oblongs bound by bands, like the Saqqara panels; the backdrop\'s pavilions and cypresses became the step pyramid and its panelled enclosure wall; the lobed arches and girih stars became lintels and the five-pointed star of the tomb ceilings; the window lattice became upright stone slats.',
    src=[('Djoser\'s blue chambers: faience tiles imitating reed mats (Met catalogue text)', 'https://www.almendron.com/artehistoria/arte/culturas/egyptian-art-in-age-of-the-pyramids/catalogue-third-dynasty/trackback/'),
         ('Pyramid of Djoser and its niched enclosure wall', W('Pyramid_of_Djoser')), ('Egyptian faience', W('Egyptian_faience'))],
-   eff='Glaze: a sheen runs across the faience as the flames sway (Torchlight, in the mist pass), and single tiles flash near the lamps (both modes).'),
+   eff='Stronger: long soft highlights slide across the faience walls as the flames move, on top of the glaze sheen on the dado (now 0.8) and the single tiles flashing near the lamps. Based on: Egyptian faience\'s glassy glaze, which throws back lamplight in bright moving highlights. (both modes).'),
  'meroe': dict(was='Ember Forge', what='The iron works of Meroë in Kush: slag heaps that made it "the Birmingham of Africa", iron worked there from the 7th-6th century BC.',
    changed='Name. The steep royal pyramids of Meroë now stand behind the furnaces and their smoke. Kept: the forge, its palette and its heat.',
    src=[('Humphris et al., iron production at Meroë (UCL)', 'https://discovery-pp.ucl.ac.uk/10042893/9/Humphris%20et%20al.%20JFA%20approved.pdf'), ('Pyramids of Meroë: small, steep (about 72 degrees)', 'https://en.wikipedia.org/wiki/Pyramids_of_Mero%C3%AB')],
-   eff='Heat: every flame\'s air shimmers more than elsewhere (0.6 against the forge\'s 0.5).'),
+   eff='New: slag glowing in the cracks of the floor, pulsing slowly, its own light; and the flames\' air shimmers much more (0.8 against the forge\'s 0.5). Based on: Meroë\'s iron-smelting furnaces and the slag heaps they left round the city. Torchlight (mist pass and the heat mask); Classic gets soft glows on fixed spots.'),
  'osiris': dict(was='Jade Crypt', what='The hall of Osiris, green for rebirth, where the heart is weighed against the feather of Ma\'at.',
    changed='Name. The domed tombs of the backdrop became shrines under a cavetto cornice; the muqarnas hoods over the niches became false doors (a doorway carved for the dead to pass); the star window has five points.',
    src=[('Book of the Dead, spell 125 (Cornell)', 'https://exhibits.library.cornell.edu/godsandscholars/feature/cornell-papyrus-egypt-ptolemaic-period-320-30-bce'), ('Osiris, green-skinned', 'https://en.wikipedia.org/wiki/Osiris'),
         ('False door (Penn Museum)', 'https://www.penn.museum/collections/object/335457'), ('Book of Gates: the judgement hall in the fifth hour', 'https://en.wikipedia.org/wiki/Book_of_Gates')],
-   eff='None of its own (the crypt\'s green mist and wet sheen).'),
+   eff='New: thin layers of pale green incense smoke drifting across the hall at different heights, lit by the lamps, over the crypt\'s mist and wet sheen. Based on: incense burnt before Osiris and in the judgement scenes of the Book of the Dead, where censers stand before the god. Torchlight (mist pass); Classic draws a few pale bands drifting.'),
  'foggara': dict(what='The Garamantes\' foggaras in the Fezzan: water channels dug under the desert, a shaft every few metres; over 550 counted, in use about 400 BC to AD 700.',
    changed=None, src=[('Garamantes and their foggaras (Oxford Classics)', 'https://www.classics.ox.ac.uk/node/2758756'), ('Garamantes', W('Garamantes')), ('Qanats (the same way of carrying water)', W('Qanat'))],
    eff='The sky\'s shafts fall almost straight down (from overhead, down the foggaras\' shafts) at every time of day, with more dust in them; water caustics through the arches; drips in both modes.'),
@@ -49,7 +49,7 @@ NOTES = {
    eff='Heat (0.4) and dust blown hard along the floors; no wet sheen.'),
  'aksum': dict(what='Aksum before its churches: the field of stelae carved as many-storeyed houses with false doors and windows, over granite-lined royal tombs. Only the pre-Christian stelae and tombs; no church, cross or Ark.',
    changed=None, src=[('Aksum\'s monumental architecture and stelae (Met essay)', 'https://www.metmuseum.org/ja/essays/monumental-architecture-and-stelae-of-the-aksumite-empire'), ('King Ezana\'s Stele', 'https://en.wikipedia.org/wiki/King_Ezana%27s_Stele'), ('UNESCO, Aksum', 'https://whc.unesco.org/en/news/125')],
-   eff='None of its own (the crypt\'s cool mist, here grey-blue).'),
+   eff='New: a highland mist that rolls along the floor in the wind (deeper and moving, the wet floor kept), and crystals in the granite walls catching the lamps. Based on: Aksum stands at about 2,100 m on the Tigray plateau, where mists form over the plateau in the rains; its stelae and tombs are cut from local granite (nepheline syenite). Torchlight (mist pass); Classic: crystals flashing near the lamps.'),
  'hawara': dict(what='Hawara: the mudbrick pyramid of Amenemhat III, its passages with blind turns and sliding roof blocks, and the temple beside it that Herodotus called the Labyrinth.',
    changed=None, src=[('Hawara (Petrie: blind passages, trapdoor roof blocks)', 'https://en.wikipedia.org/wiki/Hawara'), ('History Hit, Hawara pyramid', 'https://www.historyhit.com/locations/hawara-pyramid/')],
    eff='Dry: a slow dust instead of the dungeon style\'s mist, no wet sheen, no drips or caustics.'),
@@ -96,9 +96,13 @@ for t in shots['themes']:
     out.append('<a href="#t%d">%d. %s</a>' % (t['i'], t['i'] + 1, html.escape(t['name'])))
 import egyptround2
 R2, R2NAV = egyptround2.sections(D, REL, img)
-out.append(' · ' + ''.join('<a href="#%s"><b>%s</b></a>' % (k, l) for k, l in R2NAV))
+out.append(' · ' + ''.join('<a href="#%s"><b>%s</b></a>' % (k, l) for k, l in R2NAV + [('objects', 'Light on objects')]))
 out.append('</nav>')
 out.extend(R2)
+OB = fx.get('obj', [])
+if OB:
+    out.append('<section class="card" id="objects"><h2>Light on the new objects</h2><p>Drawn with Canvas2D calls in the shared code (added light, no new pass, no clip), so they are the same in Classic and on the WebGL path: the water clock\'s water catches the nearest lamp (the key light the figures use) and its stream glints; the sand\'s grains catch the light as they turn; rose granite crystals in the portcullis and the plugs flash in the torchlight, more near a lamp (granite\'s feldspar and mica cleavage faces); the calcite lamps glow through their stone (the Osiris chalice\'s painted figures show through it, as in Tutankhamun\'s lit chalice); the rewind\'s cool wash now reads on the red and gold floors. Torchlight left, Classic right, 0.1 s a frame.</p>' +
+               ''.join('<h3>%s</h3><div class="g2">%s</div>' % (html.escape(o['label']), ''.join('<figure>%s<figcaption>%s</figcaption></figure>' % (img(o['gif'][m], m), m.title()) for m in ('torch', 'classic') if m in o['gif'])) for o in OB) + '</section>')
 for t in shots['themes']:
     N = NOTES[t['look']]
     LT = ['dusk', 'night', 'dawn']
