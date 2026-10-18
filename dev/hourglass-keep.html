@@ -4890,39 +4890,45 @@ function drawBannerTile(ctx,X,Y,f,th){const x0=X+2,w=28,y0=f.top?Y+9:Y,y1=f.bot?
     if(thru&&f.bot){ctx.fillStyle=c2;for(let i=0;i<2;i++){const fx0=s<0?x0+1+i*3.8:x0+w-2.4-i*3.8;ctx.fillRect(fx0+dx(yEnd)*0.8,yEnd-4,1.4,4);}}}}
 // A flask with its base at (0,0), upright; fill is the liquid left (1 = as on the floor), tilt the angle it is held at (the liquid
 // stays level in the world), ph a phase for the bubble (none while carried).
-// The flasks are Egyptian core-formed glass (round 7, owner: "an Egyptian glass jar, to keep the glowing effects"): New Kingdom
-// vessels of blue glass wound with yellow and white trails combed into feathers and zigzags, one shape to a kind: a krateriskos
-// (a small bowl on a foot) for the small heal, an amphoriskos (two handles) for the large, the fish bottle of Amarna for the extra
-// life, a dark alabastron for poison. The glass is translucent, so the liquid's colour, level, tilt and bubbles show as before, at
-// the same size (flaskR) and pickup box.
-function jarPath(type,r){const p=new Path2D();
-  if(type==='heal'){p.ellipse(0,-r-0.6,r,r*0.86,0,0,Math.PI*2);p.moveTo(-r*0.45,-0.2);p.lineTo(r*0.45,-0.2);p.lineTo(r*0.25,-r*0.4);p.lineTo(-r*0.25,-r*0.4);p.closePath();}
-  else if(type==='big'){p.ellipse(0,-r,r*0.86,r*1.02,0,0,Math.PI*2);}
-  else if(type==='life'){p.ellipse(0.4,-r,r*1.18,r*0.72,0,0,Math.PI*2);p.moveTo(-r*0.7,-r);p.lineTo(-r*1.55,-r-r*0.6);p.lineTo(-r*1.35,-r);p.lineTo(-r*1.55,-r+r*0.6);p.closePath();}
-  else{p.ellipse(0,-r*1.05,r*0.72,r*1.05,0,0,Math.PI*2);}
-  return p;}
+// The flasks (round 9, owner: "if an Egyptian would have made the original potions"): v62's flasks as an Egyptian craftsman would
+// have made them, the same round bulb, neck, sizes and liquid, in clear glass with a pale turquoise tint (poison: dark, like
+// obsidian) so the liquid glows through as before, and one or two touches each, after Tutankhamun's grave goods: a gold rim and a
+// blue faience knob for a stopper (heal); a lotus-bud stopper and a small gold cartouche tag on a cord, under v62's gold rim (big);
+// gold leaf over the shoulder and a gold papyrus-umbel stopper (life); a black stone stopper (poison). No painted pattern.
 function flaskBody(ctx,type,ph,fill,tilt){
-  const r=flaskR(type),pois=type==='poison',col=type==='heal'||type==='big'?'#e0413a':type==='life'?'#f0c040':'#2b3fb8',K='#0b0812';
-  const glass=pois?'rgba(40,36,60,.55)':'rgba(70,120,210,.42)',tr1=pois?'#c8c0a8':'#f2d24a',tr2='#f4f0e2',body=jarPath(type,r);
-  const nk=type==='life'?[r*0.95,-r*1.55]:[0,type==='big'?-2*r-0.6:type==='heal'?-2*r+0.6:-2.1*r]; // the neck's foot
-  // the neck and rim, and the amphoriskos' handles
-  ctx.fillStyle=K;ctx.fillRect(nk[0]-1.7,nk[1]-4.6,3.4,5.2);ctx.fillStyle=pois?'#3a3450':'#2a5ea8';ctx.fillRect(nk[0]-1.0,nk[1]-4,2,4.6);ctx.fillStyle=tr1;ctx.fillRect(nk[0]-2,nk[1]-5,4,1.3);
-  if(type==='big'){ctx.strokeStyle=K;ctx.lineWidth=1.9;for(const sx of [-1,1]){ctx.beginPath();ctx.moveTo(sx*1.4,nk[1]-2.6);ctx.quadraticCurveTo(sx*r*1.05,nk[1]-2.8,sx*r*0.72,-r*1.55);ctx.stroke();}
-    ctx.strokeStyle='#2a5ea8';ctx.lineWidth=0.9;for(const sx of [-1,1]){ctx.beginPath();ctx.moveTo(sx*1.4,nk[1]-2.6);ctx.quadraticCurveTo(sx*r*1.05,nk[1]-2.8,sx*r*0.72,-r*1.55);ctx.stroke();}}
-  ctx.lineWidth=1.8;ctx.strokeStyle=K;ctx.stroke(body);ctx.fillStyle=pois?'#2e2a40':'#244f94';ctx.fill(body); // (round 8: the glass first, its own colour)
-  // the liquid: a glow seen through the glass, filling the lower part (level and tilt as before when drunk)
-  ctx.save();ctx.clip(body);ctx.globalCompositeOperation='lighter';ctx.globalAlpha=0.55;ctx.fillStyle=col;
-  if(fill>0.01){const top=type==='life'?-r*1.72:-2*r-0.6,bot=type==='heal'?-0.2:0,h=bot-(bot-top)*Math.min(0.7,fill*0.64+0.06);ctx.translate(0,-r);ctx.rotate(-tilt);ctx.fillRect(-3*r,h+r,6*r,4*r);
-    ctx.globalAlpha=0.5;ctx.drawImage(lightSprite(type==='heal'||type==='big'?'255,90,80':type==='life'?'255,210,90':'110,120,255'),-1.6*r,h+r-r*0.6,3.2*r,2.4*r);}
-  ctx.restore();
-  // the trails wound round it: a band at the shoulder, feathered zigzags over the body
-  ctx.save();ctx.clip(body);ctx.lineWidth=0.95;const yc=type==='life'?-r:-r*(type==='poison'?1.05:1),hh=type==='life'?r*0.72:r;
-  ctx.strokeStyle=tr1;ctx.beginPath();ctx.moveTo(-2*r,yc-hh*0.62);ctx.lineTo(2*r,yc-hh*0.62);ctx.stroke();
-  for(const [cl,o2] of [[tr1,-0.1],[tr2,0.28]]){ctx.strokeStyle=cl;ctx.beginPath();for(let i=0;i<=8;i++){const x=-1.5*r+i*0.375*r,y=yc+hh*o2+(i%2?-hh*0.22:hh*0.22);i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();}
-  if(type==='life'){ctx.fillStyle=K;ctx.beginPath();ctx.arc(r*0.95,-r-0.6,0.7,0,Math.PI*2);ctx.fill();}
-  ctx.restore();
-  ctx.fillStyle='rgba(255,255,255,.45)';ctx.fillRect(-r*0.45,-r*1.55,0.9,r*0.7); // a glint on the glass
-  if(ph!==undefined){const b=(gameTime*0.9+ph*0.13)%1;ctx.fillStyle='rgba(255,255,255,.6)';ctx.beginPath();ctx.arc(Math.sin(b*9)*1.1,-r-b*r*1.0,0.6,0,Math.PI*2);ctx.fill();}
+  const r=flaskR(type),pois=type==='poison',big=type==='big',K='#0b0812',G='#e2b84a',GD='#8a6418',FA='#2f9fae';
+  const col=type==='heal'||big?'#e0413a':type==='life'?'#f0c040':'#2b3fb8';
+  const gl=pois?'rgba(40,34,52,.7)':'rgba(170,228,222,.34)',gn=pois?'rgba(60,52,76,.75)':'rgba(190,236,230,.42)',nt=big?-2*r-7.5:-2*r-5;
+  // the neck and bulb, outlined as v62
+  if(big){ctx.fillStyle=K;ctx.fillRect(-2.3,nt,4.6,8);ctx.fillStyle=gn;ctx.fillRect(-1.4,nt+1,2.8,7);}
+  ctx.fillStyle=K;ctx.beginPath();ctx.arc(0,-r,r+0.9,0,Math.PI*2);ctx.fill();ctx.fillRect(-1.7,-2*r-5,3.4,6);
+  ctx.fillStyle=gl;ctx.beginPath();ctx.arc(0,-r,r,0,Math.PI*2);ctx.fill();
+  // the liquid, as v62
+  ctx.fillStyle=col;
+  if(fill>=1&&!tilt){ctx.beginPath();ctx.arc(0,-r,r-0.5,-0.15,Math.PI+0.15);ctx.fill();}
+  else if(fill>0.01){const R=r-0.5,h0=-0.15*R,h=h0+(R-h0)*(1-fill);ctx.save();ctx.beginPath();ctx.arc(0,-r,R,0,Math.PI*2);ctx.clip();ctx.translate(0,-r);ctx.rotate(-tilt);ctx.fillRect(-R-1,h,2*R+2,2*R+2);ctx.restore();}
+  if(pois){ctx.fillStyle='rgba(16,12,24,.3)';ctx.beginPath();ctx.arc(0,-r,r,0,Math.PI*2);ctx.fill();} // the dark glass over it
+  if(type==='life'){ctx.save();ctx.beginPath();ctx.arc(0,-r,r,0,Math.PI*2);ctx.clip(); // gold leaf over the shoulder
+    ctx.fillStyle=G;ctx.fillRect(-r,-2*r,2*r,r*0.42);ctx.fillStyle=GD;ctx.fillRect(-r,-2*r+r*0.42,2*r,0.5);ctx.restore();}
+  ctx.fillStyle=gn;ctx.fillRect(-0.9,-2*r-4,1.8,4.5); // the neck's glass
+  ctx.fillStyle=pois?'rgba(210,200,240,.4)':'rgba(235,252,248,.6)';ctx.fillRect(-r*0.6,-r*1.55,0.8,r*0.45); // a glint on the bulb
+  // the stoppers and the gold
+  if(type==='heal'){ctx.fillStyle=G;ctx.fillRect(-2.1,nt-0.3,4.2,1.1); // the gold rim
+    ctx.fillStyle=K;ctx.beginPath();ctx.arc(0,nt-1.5,1.9,0,Math.PI*2);ctx.fill();ctx.fillStyle=FA;ctx.beginPath();ctx.arc(0,nt-1.5,1.3,0,Math.PI*2);ctx.fill(); // the faience knob
+    ctx.fillStyle='rgba(220,255,250,.7)';ctx.fillRect(-0.7,nt-2.3,0.6,0.6);}
+  else if(big){const y0=nt-1.1;ctx.fillStyle='#d8b04a';ctx.fillRect(-2.6,y0,5.2,2.2); // v62's gold rim
+    const bud=new Path2D();bud.moveTo(-1.9,y0);bud.quadraticCurveTo(-2.1,y0-2.6,0,y0-4.8);bud.quadraticCurveTo(2.1,y0-2.6,1.9,y0);bud.closePath(); // the lotus bud
+    ctx.lineWidth=1;ctx.strokeStyle=K;ctx.stroke(bud);ctx.fillStyle=FA;ctx.fill(bud);
+    ctx.strokeStyle=G;ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(-1.8,y0);ctx.quadraticCurveTo(-1.2,y0-2.2,-0.2,y0-3.2);ctx.moveTo(1.8,y0);ctx.quadraticCurveTo(1.2,y0-2.2,0.2,y0-3.2);ctx.stroke(); // its sepals
+    ctx.strokeStyle='#6a5238';ctx.lineWidth=0.5;ctx.beginPath();ctx.moveTo(1.7,-2*r-2.5);ctx.quadraticCurveTo(2.6,-2*r-0.6,2.8,-2*r+0.9);ctx.stroke(); // the cord
+    ctx.fillStyle=K;ctx.fillRect(2.0,-2*r+0.7,1.7,2.5);ctx.fillStyle=G;ctx.fillRect(2.35,-2*r+1.0,1.0,1.9); // the cartouche tag
+    ctx.fillStyle=GD;ctx.fillRect(2.35,-2*r+2.5,1.0,0.4);}
+  else if(type==='life'){const um=new Path2D();um.moveTo(-0.7,nt+0.6);um.lineTo(-2.6,nt-2.6);um.quadraticCurveTo(0,nt-3.8,2.6,nt-2.6);um.lineTo(0.7,nt+0.6);um.closePath(); // the papyrus umbel
+    ctx.lineWidth=0.9;ctx.strokeStyle=K;ctx.stroke(um);ctx.fillStyle=G;ctx.fill(um);
+    ctx.strokeStyle=GD;ctx.lineWidth=0.45;ctx.beginPath();ctx.moveTo(0,nt+0.4);ctx.lineTo(-1.3,nt-2.6);ctx.moveTo(0,nt+0.4);ctx.lineTo(0,nt-3.1);ctx.moveTo(0,nt+0.4);ctx.lineTo(1.3,nt-2.6);ctx.stroke();}
+  else{ctx.fillStyle=K;ctx.beginPath();ctx.ellipse(0,nt-0.6,2.4,2.6,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#24222a';ctx.beginPath();ctx.ellipse(0,nt-0.6,1.7,1.9,0,0,Math.PI*2);ctx.fill(); // the black stone stopper
+    ctx.fillStyle='rgba(200,200,220,.5)';ctx.fillRect(-1.0,nt-1.8,0.7,0.6);}
+  if(ph!==undefined){const b=(gameTime*0.9+ph*0.13)%1;ctx.fillStyle='rgba(255,255,255,.6)';ctx.beginPath();ctx.arc(Math.sin(b*9)*1.1,-r-b*r*1.4,0.6,0,Math.PI*2);ctx.fill();}
 }
 function drawFlask(ctx,it){ctx.save();ctx.translate(it.x,SURF(it.r)-3);flaskBody(ctx,it.type,it.x,1,0);ctx.restore();}
 // the flask he is drinking: held by the neck in the front hand, tipping as the frame says; and one that has been let go, falling and lying
