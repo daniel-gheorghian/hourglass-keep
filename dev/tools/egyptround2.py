@@ -34,8 +34,8 @@ LAMPS = {
 
 TRAPS = [
  ('portcullis', 'Granite portcullis', 'real', 'gate (and the closer\'s gate)',
-  'Old Kingdom pyramids closed their corridors with granite slabs lowered in grooves: three in the Great Pyramid\'s antechamber, dropped once the king was inside; three in succession in Unas\'s corridor. The game\'s gate becomes a slab of Aswan rose granite rising and falling in the same grooves, on the same timing.',
-  [('Live Science: the portcullis "machine" in the Great Pyramid\'s antechamber', 'https://livescience.com/55347-primitive-machine-in-great-pyramid-protected-pharaoh.html'), ('Pyramid of Unas: three granite portcullises in the corridor', 'https://en.wikipedia.org/wiki/Pyramid_of_Unas')]),
+  'Old Kingdom pyramids closed their corridors with granite slabs lowered in grooves: three in succession in Unas\'s corridor, still in place. The Great Pyramid\'s antechamber has grooves for three more, but whether slabs were ever lowered there, and how, is disputed. The game\'s gate becomes a slab of Aswan rose granite rising and falling in the same grooves, on the same timing.',
+  [('Live Science: the antechamber\'s grooves and the disputed portcullis "machine" in the Great Pyramid', 'https://livescience.com/55347-primitive-machine-in-great-pyramid-protected-pharaoh.html'), ('Pyramid of Unas: three granite portcullises in the corridor', 'https://en.wikipedia.org/wiki/Pyramid_of_Unas')]),
  ('roofblock', 'Sliding roof block', 'real', 'falling stone',
   'At Hawara, Petrie found 20-ton roof blocks meant to slide down into the passages as trapdoors (left open, never slid), and a burial chamber sealed by a roof slab lowered on sand. The falling stone becomes a dressed limestone block with sand running from its seams; it drops on the same trigger.',
   [('Hawara (Petrie: sliding trapdoor roof blocks, blind passages)', 'https://en.wikipedia.org/wiki/Hawara'), ('Petrie, Kahun, Gurob and Hawara (1890), the chamber', 'https://digi.ub.uni-heidelberg.de/diglit/petrie1890/0016'), ('History Hit: the roof block lowered with sand', 'https://www.historyhit.com/locations/hawara-pyramid/')]),
