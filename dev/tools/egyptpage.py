@@ -96,7 +96,7 @@ for t in shots['themes']:
     out.append('<a href="#t%d">%d. %s</a>' % (t['i'], t['i'] + 1, html.escape(t['name'])))
 import egyptround2
 R2, R2NAV = egyptround2.sections(D, REL, img)
-out.append(' · ' + ''.join('<a href="#%s"><b>%s</b></a>' % (k, l) for k, l in R2NAV + [('skyclock', 'Sky clock'), ('jars8', 'Jars'), ('objects', 'Light on objects'), ('r7prince', 'Plain prince'), ('robbers', 'Robbers'), ('barque', 'Barque clock (superseded)'), ('jars', 'Jars (round 7)'), ('hearts', 'Hearts, panels'), ('tints', 'Softer tints'), ('prince', 'Round 6 prince')]))
+out.append(' · ' + ''.join('<a href="#%s"><b>%s</b></a>' % (k, l) for k, l in R2NAV + [('skyclock', 'Sky clock'), ('jars8', 'Jars'), ('prince8', 'The prince'), ('objects', 'Light on objects'), ('r7prince', 'Plain prince (round 7)'), ('robbers', 'Robbers'), ('barque', 'Barque clock (superseded)'), ('jars', 'Jars (round 7)'), ('hearts', 'Hearts, panels'), ('tints', 'Softer tints'), ('prince', 'Round 6 prince')]))
 out.append('</nav>')
 out.extend(R2)
 import egyptround8

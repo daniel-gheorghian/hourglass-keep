@@ -14,7 +14,7 @@ def fig(img, f, cap):
 
 def sections(D, REL, img):
     o = []
-    o.append('<section class="card" id="r7prince"><h2>The prince: plain linen (built in)</h2><p>Owner: "The prince should not be in full prince gear. Should be something like the original prince, I like that style." He is the original figure again (its proportions, flat colours, hair and read), Egyptian only in a few plain things: '
+    o.append('<section class="card" id="r7prince"><h2>Round 7: the prince in plain linen (superseded by round 8)</h2><p>Owner: "The prince should not be in full prince gear. Should be something like the original prince, I like that style." He is the original figure again (its proportions, flat colours, hair and read), Egyptian only in a few plain things: '
              'a short tunic and a kilt of undyed white linen, bare feet, his own hair, the orange sash as the one accent, and the straight blade in bronze (the straight sword of the New Kingdom; the khopesh fought the original\'s look). '
              '<b>Based on:</b> the everyday dress of ordinary young Egyptian men, a linen kilt and, from the New Kingdom, a short tunic over it, mostly barefoot; close to Prince of Persia\'s white-clad hero. Same skeleton, poses, hit boxes and timing; the bot unchanged; the figures\' mask and the beams\' figure light from his outline.</p>' +
              links([('Clothing in ancient Egypt (the kilt, the tunic, going barefoot)', 'https://en.wikipedia.org/wiki/Clothing_in_ancient_Egypt'), ('Shendyt', 'https://en.wikipedia.org/wiki/Shendyt'), ('The Met: a linen kerchief from Tutankhamun\'s embalming cache (a plain head cloth)', 'https://www.metmuseum.org/toah/works-of-art/09.184.218')]) +

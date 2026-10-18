@@ -17,6 +17,12 @@ GATE = r'''()=>{const H=__HK;for(const n of [6,7,10,11,14,18]){for(const sd of [
 REW = r'''()=>{const H=__HK;const L=__P.load(13,824);H.S.sands=3;H.mode='play';for(let k=0;k<240;k++){H.P.inv=1e9;H.tick(1);}H.P.inv=0;H.hurt(9,'fall');H.tick(50);H.startRewind();H.tick(14);H.render();H.render();return 1;}'''
 
 
+HAIR = r"""()=>{const H=__HK,P=H.PS,opts=[['fillet','own hair, linen fillet (built in)'],['wig','short rounded wig'],['lock','close crop, side lock'],['long','long, tied back']];
+  const S=3,W=44,Hh=64,c=document.createElement('canvas');c.width=opts.length*W*S;c.height=Hh*S;const g=c.getContext('2d');g.fillStyle='#2a2430';g.fillRect(0,0,c.width,c.height);g.setTransform(S,0,0,S,0,0);
+  H.setHero('P');opts.forEach(([k],i)=>{const pal=Object.assign({},H.PAL_HERO,{hairStyle:k});H.drawFigureHD(g,i*W+W/2,Hh-6,1,P.stand,pal,{hasSword:true,time:1.3,lt:{dir:1,col:'255,200,140',k:0.5}});});return c.toDataURL('image/png');}"""
+SPOT = r"""([n])=>{const H=__HK;H.setHero('P');for(const sd of [941,942,943,944]){const L=__P.load(n,sd);for(let c=Math.floor(L.start.x/32)+3;c<L.cols-10;c++){const r=L.start.r;if(H.solidBelow(c,r)&&H.solidBelow(c+3,r)&&!L.feat[r*L.cols+c]&&L.torches.some(t=>!t.broken&&t.r===r&&Math.abs(t.c-c)<=4)){__P.stand(c,r,1);H.render();H.render();H.render();return __P.scr(H.P.x,H.P.y-30);}}}return null;}"""
+
+
 def png(d):
     return Image.open(io.BytesIO(base64.b64decode(d.split(',')[1]))).convert('RGB')
 
@@ -50,6 +56,23 @@ with sync_playwright() as p:
         xy = pg.evaluate(R7.ITEM)
         if xy:
             R7.crop(Image.open(io.BytesIO(pg.screenshot())).convert('RGB'), xy, 360, 240).save(os.path.join(OUT, 'r8_jar_game_%s.jpg' % lab), quality=90)
+    # the prince (round 8): v62, round 7 and round 8 side by side; the hair options; running; on the darkest themes' floors
+    png(pt.evaluate(R7.FIGS, [['old', 'R7', 'P']])).save(os.path.join(OUT, 'r8_prince_compare.png'))
+    png(pt.evaluate(HAIR)).save(os.path.join(OUT, 'r8_prince_hair.png'))
+    frames = []
+    for k in range(22):
+        if k == 0:
+            pt.evaluate("()=>{const H=__HK;H.setHero('P');const L=__P.load(9,951);__P.stand(Math.floor(L.start.x/32)+2,L.start.r,1);H.setKey('kb','r',true);}")
+        xy = pt.evaluate("()=>{const H=__HK;H.tick(4);H.P.inv=1e9;H.banner=null;H.render();return __P.scr(H.P.x,H.P.y-30);}")
+        frames.append(R7.crop(Image.open(io.BytesIO(pt.screenshot())).convert('RGB'), xy, 480, 300).resize((360, 225), Image.LANCZOS))
+    pt.evaluate("()=>__HK.setKey('kb','r',false)")
+    frames[0].save(os.path.join(OUT, 'r8_prince_run.gif'), save_all=True, append_images=frames[1:], duration=67, loop=0, optimize=True)
+    for look in ('osiris', 'nun', 'hawara', 'meroe'):
+        for lab, pg in (('torch', pt), ('classic', pc)):
+            n = pg.evaluate("l=>__HK.floorsOf(l)[0]", look)
+            xy = pg.evaluate(SPOT, [n])
+            if xy:
+                R7.crop(Image.open(io.BytesIO(pg.screenshot())).convert('RGB'), xy, 300, 240).save(os.path.join(OUT, 'r8_prince_on_%s_%s.jpg' % (look, lab)), quality=90)
     errs = (pt.errs + pc.errs)[:10]
     b.close()
 json.dump({'errors': errs}, open(os.path.join(OUT, 'r8.json'), 'w'))

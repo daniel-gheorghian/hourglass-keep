@@ -2033,13 +2033,20 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
   if(pal.hero&&!EG){const nk=[s.sh[0]-nx*1.5+tx*1,s.sh[1]-ny*1.5+ty*1];const sc=trail(nk,5,3.2,wind,t,0.6+0.4*Math.min(1,Math.abs(vx)/90),0);
     tcel(ctx,sc,[3.0,2.8,2.5,2.1,1.6,1.0],C('sash'),D('sash'),O);}
   {const w0=at(0.16),wa=[w0[0]-nx*4,w0[1]-ny*4];const st=trail(wa,2,2.6,wind,t+0.3,0.5,1.7);tcel(ctx,st,[2.2,1.8,1.2],D('sash',-0.2),shadeHex(D('sash',-0.2),-0.25),O);}
-  const arm=(sh,e,h,base,shade)=>{tcel(ctx,[sh,e,h],[3.5,2.9,2.2],base,shade,O);
+  const sheen=(a,b,w)=>{if(O.mono||!EG)return;const k=0.18+0.32*Math.min(1,O._lk||0);ctx.save();ctx.globalAlpha*=k;ctx.strokeStyle=litTint(shadeHex(C('skin'),0.42),O._lc,Math.max(0.3,O._lk||0));ctx.lineWidth=w||0.9;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(a[0]+O._lx*0.9,a[1]+O._ly*0.9);ctx.lineTo(b[0]+O._lx*0.9,b[1]+O._ly*0.9);ctx.stroke();ctx.restore();}; // (the oiled skin's soft highlight, toward the light)
+  const arm=(sh,e,h,base,shade)=>{if(EG){const m=[sh[0]+(e[0]-sh[0])*0.42,sh[1]+(e[1]-sh[1])*0.42];tcel(ctx,[sh,m,e,h],[3.8,3.7,2.7,2.2],base,shade,O); // (a rounded upper arm, a slimmer forearm)
+      if(!O.mono){const dx=e[0]-sh[0],dy=e[1]-sh[1],d=Math.hypot(dx,dy)||1,px=-dy/d,py=dx/d,q=[sh[0]+dx*0.2,sh[1]+dy*0.2];ctx.strokeStyle=shade;ctx.globalAlpha*=0.8;ctx.lineWidth=0.55;ctx.beginPath();
+        ctx.moveTo(q[0]+px*1.7,q[1]+py*1.7);ctx.quadraticCurveTo(q[0]+dx*0.12,q[1]+dy*0.12,q[0]-px*1.5+dx*0.1,q[1]-py*1.5+dy*0.1);ctx.stroke();ctx.globalAlpha/=0.8;
+        sheen([sh[0]+dx*0.08,sh[1]+dy*0.08],[sh[0]+dx*0.55,sh[1]+dy*0.55],1.0);}} // the deltoid's edge; the sheen on the upper arm
+    else tcel(ctx,[sh,e,h],[3.5,2.9,2.2],base,shade,O);
     if(FULL&&!O.mono){const bd=(a,b,u,w)=>{const m=[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u],dx=b[0]-a[0],dy=b[1]-a[1],d=Math.hypot(dx,dy)||1;ctx.strokeStyle=pal.band;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(m[0]-dy/d*1.9,m[1]+dx/d*1.9);ctx.lineTo(m[0]+dy/d*1.9,m[1]-dx/d*1.9);ctx.stroke();};
       bd(sh,e,0.42,1.1);bd(e,h,0.78,0.9);} // a gold armlet on the upper arm, a bracelet at the wrist
     const hp=new Path2D();hp.ellipse(h[0],h[1],1.35,1.2,0,0,Math.PI*2);if(O.mono){ctx.fillStyle=O.mono;ctx.fill(hp);}else{ctx.strokeStyle=O.out;ctx.lineWidth=1.1;ctx.stroke(hp);ctx.fillStyle=base;ctx.fill(hp);}};
   const leg=(f,k,base,shade,cuff,boot,X)=>{
     const mid=[k[0]+(f[0]-k[0])*0.55-0.6,k[1]+(f[1]-k[1])*0.55],ank=[k[0]+(f[0]-k[0])*0.9,k[1]+(f[1]-k[1])*0.9];
-    if(EG){tcel(ctx,[[0,0],k,mid,ank],[6.6,5.2,4.6,3.0],base,shade,O); // bare legs; a sandal: a flat sole, a thong
+    if(EG){tcel(ctx,[[0,0],k,mid,ank],[6.9,4.7,5.0,2.7],base,shade,O); // bare legs (the calf fuller than the knee); a sandal: a flat sole, a thong
+      sheen([k[0]+(mid[0]-k[0])*0.3,k[1]+(mid[1]-k[1])*0.3],[k[0]+(mid[0]-k[0])*1.25,k[1]+(mid[1]-k[1])*1.25],1.0); // the calf's sheen
       const sp=new Path2D(),M=(dx,dy)=>sp.moveTo(...X(dx,dy)),Ln=(dx,dy)=>sp.lineTo(...X(dx,dy)),Q=(a,b,c,d)=>sp.quadraticCurveTo(...X(a,b),...X(c,d));
       M(-2.2,0.4);Q(-2.4,-2,0.2,-1.9);Q(3.4,-1.3,6.2,-0.5);Q(6.9,0.1,6.2,0.6);Ln(-1.4,0.6);sp.closePath();celAt(ctx,sp,base,shade,O,...X(2.6,-0.4));
       if(FULL&&!O.mono){ctx.strokeStyle=boot;ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(...X(-2.3,1.1));ctx.lineTo(...X(6.6,1.1));ctx.stroke();ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(...X(0.2,-1.8));ctx.lineTo(...X(4.4,0.4));ctx.stroke();}
@@ -2060,8 +2067,14 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
     const sc=new Path2D();sc.moveTo(0,-1.3);sc.quadraticCurveTo(7,-2.2,13,0.2);sc.lineTo(12.6,1.5);sc.quadraticCurveTo(7,0.2,0,1.3);sc.closePath();celAt(ctx,sc,o.pale?'#a98255':'#6b4a2a','#4a321c',O,6.5,0);
     ctx.fillStyle='#d8b04a';ctx.fillRect(-1.6,-1.8,1.6,3.6);ctx.restore();}
   // --- torso: vest over the chest, sash at the waist ---
-  const tp=[[0,0],at(0.38),at(0.78),at(1)],tw=[9.2,8.2,11.2,9.6];
+  const tp=[[0,0],at(0.38),at(0.78),at(1)],tw=EG?[8.6,7.6,12.0,11.0]:[9.2,8.2,11.2,9.6]; // (EG: a narrow waist under broad shoulders)
   tcel(ctx,tp,tw,C('tunic'),D('tunic'),O);
+  if(EG&&pal.bare&&!O.mono){const sd=shadeHex(C('skin'),-0.32),L2=(a,b,c)=>{ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.quadraticCurveTo(b[0],b[1],c[0],c[1]);ctx.stroke();},P2=(u,o2)=>{const q=at(u);return [q[0]+nx*o2,q[1]+ny*o2];};
+    ctx.strokeStyle=sd;ctx.lineWidth=0.6;ctx.globalAlpha*=0.75;
+    L2(P2(0.84,0.4),P2(0.7,2.4),P2(0.72,5.4)); // the chest's lower edge
+    ctx.lineWidth=0.5;L2(P2(0.55,3.2),P2(0.53,4.3),P2(0.55,5.0));L2(P2(0.44,3.0),P2(0.42,4.1),P2(0.44,4.7)); // the belly
+    L2(P2(0.62,-0.6),P2(0.56,0.4),P2(0.5,0.0)); // the serratus under the arm
+    ctx.globalAlpha/=0.75;sheen(P2(0.95,-2.0),P2(0.97,2.6),1.2);sheen(P2(0.8,1.2),P2(0.76,3.6),1.0);} // the sheen on the shoulders and the chest
   if(FULL&&!O.mono){ // the broad collar (wesekh): rows of faience beads round the neck, a drop row at the edge
     const cl=pal.coll;for(let i=0;i<3;i++){const o2=2.9-i*1.0,u0=0.99,u1=0.8+i*0.05;const a0=at(u0),a1=at(u1),a2=at(u0);
       tcel(ctx,[[a0[0]-nx*(3.6-i*0.3),a0[1]-ny*(3.6-i*0.3)],[a1[0]+nx*o2*0.3,a1[1]+ny*o2*0.3],[a2[0]+nx*(4.8-i*0.5),a2[1]+ny*(4.8-i*0.5)]],[2.1,2.5,2.1],cl[i],shadeHex(cl[i],-0.3),O);}
@@ -2126,16 +2139,29 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
       const bag=trail([hd[0]-hnx*r*1.15-hx*r*0.3,hd[1]-hny*r*1.15-hy*r*0.3],2,2.6,wind,t+0.6,0.5,3.1);tcel(ctx,bag,[4.4,4.0,3.0],shadeHex(pal.khat,-0.08),shadeHex(pal.khat,-0.3),O);
       celAt(ctx,hp,pal.khat,shadeHex(pal.khat,-0.28),O,hd[0]-hnx*r*0.2+hx*r*0.6,hd[1]-hny*r*0.2+hy*r*0.6);
       if(!O.mono){ctx.strokeStyle=pal.band;ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(hd[0]+hnx*r*0.85+hx*r*0.3,hd[1]+hny*r*0.85+hy*r*0.3);ctx.lineTo(hd[0]-hnx*r*0.25+hx*r*0.2,hd[1]-hny*r*0.25+hy*r*0.2);ctx.stroke();}}}
-  else if(!pal.bones){ // hair: a swept mass over the crown, and a short tail that trails
+  else if(!pal.bones&&(pal.hairStyle==='wig'||pal.hairStyle==='lock')){const r=LEN.hd,hp=new Path2D();
+    if(pal.hairStyle==='wig'){ // a short rounded wig, as the workmen wear it in the tomb paintings: over the crown and down behind to the jaw
+      hp.moveTo(hd[0]+hnx*r*0.85+hx*r*0.6,hd[1]+hny*r*0.85+hy*r*0.6);hp.bezierCurveTo(hd[0]+hnx*r*0.7+hx*r*1.6,hd[1]+hny*r*0.7+hy*r*1.6,hd[0]-hnx*r*1.6+hx*r*1.5,hd[1]-hny*r*1.6+hy*r*1.5,hd[0]-hnx*r*1.4-hx*r*0.9,hd[1]-hny*r*1.4-hy*r*0.9);
+      hp.lineTo(hd[0]-hnx*r*0.25-hx*r*0.8,hd[1]-hny*r*0.25-hy*r*0.8);hp.quadraticCurveTo(hd[0]-hnx*r*0.35+hx*r*0.3,hd[1]-hny*r*0.35+hy*r*0.3,hd[0]+hnx*r*0.85+hx*r*0.6,hd[1]+hny*r*0.85+hy*r*0.6);hp.closePath();
+      celAt(ctx,hp,C('hair'),shadeHex(C('hair'),-0.45),O,hd[0]-hnx*r*0.4+hx*r*0.5,hd[1]-hny*r*0.4+hy*r*0.5);
+      if(!O.mono){ctx.strokeStyle=shadeHex(C('hair'),0.3);ctx.lineWidth=0.5;for(let i=0;i<3;i++){const a=-0.6+i*0.5;ctx.beginPath();ctx.moveTo(hd[0]-hnx*r*(0.2+a)+hx*r*1.25,hd[1]-hny*r*(0.2+a)+hy*r*1.25);ctx.lineTo(hd[0]-hnx*r*(0.6+a)-hx*r*0.2,hd[1]-hny*r*(0.6+a)-hy*r*0.2);ctx.stroke();}}}
+    else{ // close-cropped, a single side lock
+      hp.moveTo(hd[0]+hnx*r*0.8+hx*r*0.45,hd[1]+hny*r*0.8+hy*r*0.45);hp.bezierCurveTo(hd[0]+hnx*r*0.55+hx*r*1.3,hd[1]+hny*r*0.55+hy*r*1.3,hd[0]-hnx*r*1.15+hx*r*1.2,hd[1]-hny*r*1.15+hy*r*1.2,hd[0]-hnx*r*1.08-hx*r*0.1,hd[1]-hny*r*1.08-hy*r*0.1);
+      hp.quadraticCurveTo(hd[0]-hnx*r*0.4+hx*r*0.35,hd[1]-hny*r*0.4+hy*r*0.35,hd[0]+hnx*r*0.8+hx*r*0.45,hd[1]+hny*r*0.8+hy*r*0.45);hp.closePath();celAt(ctx,hp,C('hair'),shadeHex(C('hair'),-0.4),O,hd[0]+hx*r*0.7,hd[1]+hy*r*0.7);
+      const tl=trail([hd[0]-hnx*r*0.45+hx*r*0.2,hd[1]-hny*r*0.45+hy*r*0.2],4,2.3,[wind[0]*0.6,wind[1]+0.4],t+0.6,0.4,3.1);tcel(ctx,tl,[2.3,2.1,1.9,1.7,1.5],C('hair'),shadeHex(C('hair'),-0.4),O);}}
+  else if(!pal.bones){ // hair: a swept mass over the crown, and a short tail that trails (long: a longer tail, tied back)
     const r=LEN.hd,hp=new Path2D();
     hp.moveTo(hd[0]+hnx*r*0.85+hx*r*0.55,hd[1]+hny*r*0.85+hy*r*0.55);
     hp.bezierCurveTo(hd[0]+hnx*r*0.6+hx*r*1.45,hd[1]+hny*r*0.6+hy*r*1.45,hd[0]-hnx*r*1.3+hx*r*1.3,hd[1]-hny*r*1.3+hy*r*1.3,hd[0]-hnx*r*1.15-hx*r*0.2,hd[1]-hny*r*1.15-hy*r*0.2);
     hp.quadraticCurveTo(hd[0]-hnx*r*0.9-hx*r*0.9,hd[1]-hny*r*0.9-hy*r*0.9,hd[0]-hnx*r*0.25-hx*r*0.2,hd[1]-hny*r*0.25-hy*r*0.2);
     hp.quadraticCurveTo(hd[0]+hnx*r*0.1+hx*r*0.5,hd[1]+hny*r*0.1+hy*r*0.5,hd[0]+hnx*r*0.85+hx*r*0.55,hd[1]+hny*r*0.85+hy*r*0.55);hp.closePath();
-    const tl=trail([hd[0]-hnx*r*1.0+hx*r*0.1,hd[1]-hny*r*1.0+hy*r*0.1],3,2.4,wind,t+0.6,0.7,3.1);
-    tcel(ctx,tl,[3,2.5,1.8,0.9],C('hair'),shadeHex(C('hair'),-0.4),O);
+    const lg=pal.hairStyle==='long',tl=trail([hd[0]-hnx*r*1.0+hx*r*0.1,hd[1]-hny*r*1.0+hy*r*0.1],lg?6:3,lg?2.8:2.4,wind,t+0.6,0.7,3.1);
+    tcel(ctx,tl,lg?[3.2,3.0,2.8,2.5,2.1,1.6,1.0]:[3,2.5,1.8,0.9],C('hair'),shadeHex(C('hair'),-0.4),O);
+    if(lg&&!O.mono){ctx.strokeStyle=pal.fillet||'#f2ead6';ctx.lineWidth=1.2;const q=tl[1];ctx.beginPath();ctx.arc(q[0],q[1],1.4,0,6.2832);ctx.stroke();} // tied
     celAt(ctx,hp,C('hair'),shadeHex(C('hair'),-0.45),O,hd[0]-hnx*r*0.2+hx*r*0.6,hd[1]-hny*r*0.2+hy*r*0.6);
-    if(!O.mono){ctx.strokeStyle=shadeHex(C('hair'),0.25);ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(hd[0]-hnx*r*0.4+hx*r*1.0,hd[1]-hny*r*0.4+hy*r*1.0);ctx.quadraticCurveTo(hd[0]+hx*r*1.12,hd[1]+hy*r*1.12,hd[0]+hnx*r*0.45+hx*r*0.85,hd[1]+hny*r*0.45+hy*r*0.85);ctx.stroke();}}
+    if(!O.mono){ctx.strokeStyle=shadeHex(C('hair'),0.25);ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(hd[0]-hnx*r*0.4+hx*r*1.0,hd[1]-hny*r*0.4+hy*r*1.0);ctx.quadraticCurveTo(hd[0]+hx*r*1.12,hd[1]+hy*r*1.12,hd[0]+hnx*r*0.45+hx*r*0.85,hd[1]+hny*r*0.45+hy*r*0.85);ctx.stroke();
+      if(pal.hairStyle==='fillet'){ctx.strokeStyle=O.out;ctx.lineWidth=2.1;ctx.beginPath();ctx.moveTo(hd[0]+hnx*r*0.9+hx*r*0.55,hd[1]+hny*r*0.9+hy*r*0.55);ctx.quadraticCurveTo(hd[0]-hnx*r*0.1+hx*r*0.9,hd[1]-hny*r*0.1+hy*r*0.9,hd[0]-hnx*r*1.15+hx*r*0.35,hd[1]-hny*r*1.15+hy*r*0.35);ctx.stroke();
+        ctx.strokeStyle=pal.fillet;ctx.lineWidth=1.1;ctx.stroke();}}} // a band of white linen round the head
   if(!pal.bones&&!O.mono){ // eye and brow
     const r=LEN.hd,ex=hd[0]+hnx*r*0.48+hx*r*0.12,ey=hd[1]+hny*r*0.48+hy*r*0.12;ctx.fillStyle='#120c18';ctx.beginPath();ctx.ellipse(ex,ey,0.62,0.85,ha,0,Math.PI*2);ctx.fill();
     ctx.strokeStyle=shadeHex(C(pal.helm?'skin':'hair'),-0.3);ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(ex-hnx*0.9+hx*1.4,ey-hny*0.9+hy*1.4);ctx.lineTo(ex+hnx*1.1+hx*1.2,ey+hny*1.1+hy*1.2);ctx.stroke();
@@ -2145,9 +2171,13 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
     const lp=(k,u,o2)=>[k[0]*u+nx*o2,k[1]*u+ny*o2],w0=at(0.26),F=lp(s.kF,0.55,3.0),Bk=lp(s.kB,0.55,-3.0),H0=lp(s.kF,0.5,-1),H1=lp(s.kB,0.5,1); // the shendyt: a wrap of white linen from the waist to above the knee
     const kp=new Path2D();kp.moveTo(w0[0]-nx*4.8,w0[1]-ny*4.8);kp.lineTo(w0[0]+nx*4.8,w0[1]+ny*4.8);kp.lineTo(F[0],F[1]);kp.quadraticCurveTo((H0[0]+H1[0])/2+tx*-1.2,(H0[1]+H1[1])/2+ty*-1.2,Bk[0],Bk[1]);kp.closePath();
     celAt(ctx,kp,C('pants'),D('pants'),O,(w0[0]+F[0]+Bk[0])/3,(w0[1]+F[1]+Bk[1])/3);
-    if(!O.mono){ctx.strokeStyle=shadeHex(C('pants'),-0.22);ctx.lineWidth=0.5;for(let i=1;i<5;i++){const u=i/5,a=[w0[0]-nx*4.8+(nx*9.6)*u,w0[1]-ny*4.8+(ny*9.6)*u],b=[Bk[0]+(F[0]-Bk[0])*u,Bk[1]+(F[1]-Bk[1])*u];ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();} // pleats
-      ctx.fillStyle=shadeHex(C('pants'),-0.1);ctx.beginPath();ctx.moveTo(w0[0]+nx*2.4,w0[1]+ny*2.4);ctx.lineTo(F[0]-nx*0.4,F[1]-ny*0.4);ctx.lineTo(F[0]-nx*3,F[1]-ny*3);ctx.closePath();ctx.fill();} // the front tab
-    if(!O.mono){const m=at(0.27);ctx.strokeStyle=O.out;ctx.lineWidth=3.2;ctx.beginPath();ctx.moveTo(m[0]-nx*4.9,m[1]-ny*4.9);ctx.lineTo(m[0]+nx*4.9,m[1]+ny*4.9);ctx.stroke();ctx.strokeStyle=C('sash');ctx.lineWidth=2;ctx.stroke();}} // the belt over it
+    if(!O.mono&&(pal.pleat||FULL)){const fp=[w0[0]+nx*3.6,w0[1]+ny*3.6]; // the pleated front panel: fine lines fanning from the belt's front to the hem, soft shade bands between
+      for(let i=0;i<6;i++){const u=(i+0.5)/6,b=[Bk[0]+(F[0]-Bk[0])*u,Bk[1]+(F[1]-Bk[1])*u],a=[w0[0]-nx*4.8+(nx*9.6)*u*0.85,w0[1]-ny*4.8+(ny*9.6)*u*0.85];
+        if(i%2){ctx.fillStyle=shadeHex(C('pants'),-0.07);const u2=(i+1.5)/6,b2=[Bk[0]+(F[0]-Bk[0])*Math.min(1,u2),Bk[1]+(F[1]-Bk[1])*Math.min(1,u2)];ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.lineTo(b2[0],b2[1]);ctx.closePath();ctx.fill();}
+        ctx.strokeStyle=shadeHex(C('pants'),-0.24);ctx.lineWidth=0.45;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();}
+      ctx.fillStyle=shadeHex(C('pants'),-0.12);ctx.beginPath();ctx.moveTo(fp[0]-nx*1.2,fp[1]-ny*1.2);ctx.lineTo(F[0]-nx*0.4,F[1]-ny*0.4);ctx.lineTo(F[0]-nx*3,F[1]-ny*3);ctx.closePath();ctx.fill();} // the front tab
+    if(!O.mono){const m=at(0.27);ctx.strokeStyle=O.out;ctx.lineWidth=3.2;ctx.beginPath();ctx.moveTo(m[0]-nx*4.9,m[1]-ny*4.9);ctx.lineTo(m[0]+nx*4.9,m[1]+ny*4.9);ctx.stroke();ctx.strokeStyle=C('sash');ctx.lineWidth=2;ctx.stroke();
+      if(pal.pleat){const k0=[m[0]+nx*3.4,m[1]+ny*3.4],tie=trail(k0,2,2.4,[wind[0]*0.7,wind[1]],t+0.9,0.5,1.1);tcel(ctx,tie,[1.6,1.4,1.0],C('sash'),D('sash'),O);}}} // the belt over it (and the prince's tie)
   else leg(s.fF,s.kF,C('pants'),D('pants'),shadeHex(C('pants'),-0.42),C('boot'),footXf(p,s,s.fF,s.kF,p.hF,p.kF));
   if(o.sword&&o.smear&&!O.mono){const h=s.hF;for(const [f,al] of [[1,0.16],[0.5,0.3]]){const a=p.sw+o.smear*f,dx=Math.cos(a),dy=-Math.sin(a);ctx.globalAlpha=al*(o.alpha===undefined?1:o.alpha);
     ctx.fillStyle='#e8eef8';ctx.beginPath();ctx.moveTo(h[0],h[1]);ctx.lineTo(h[0]+Math.cos(p.sw)*18,h[1]-Math.sin(p.sw)*18);ctx.lineTo(h[0]+dx*18,h[1]+dy*18);ctx.closePath();ctx.fill();}ctx.globalAlpha=o.alpha===undefined?1:o.alpha;}
@@ -2279,7 +2309,11 @@ const PAL_SKEL={skin:'#e9e3cf',skinD:'#c3bb9f',pants:'#e9e3cf',pantsD:'#c3bb9f',
 // everyday dress of young Egyptian men (a linen kilt, a short tunic from the New Kingdom on, barefoot), close to Prince of Persia's
 // white-clad hero. A, B, C (round 6) stay for the page.
 const HERO_VAR={
-  P:{egy:'plain',skin:'#b98058',skinD:'#94603e',tunic:'#ece4cf',tunicD:'#c6bb9c',pants:'#ece4cf',pantsD:'#c6bb9c',sash:'#e4683b',hair:'#2b1b12',boot:'#94603e'},
+  // Round 8 (owner: "bare chest, only a loin cloth, darker skin", then "use the pleated Egyptian design"): P, bare-chested in a short
+  // pleated shendyt of white linen tied with the orange sash, a warm deep brown skin, his own short black hair under a linen fillet;
+  // R7 is round 7's plain prince (a tunic over a kilt). Hair options on the page: wig, lock, long (P with hairStyle changed).
+  P:{egy:'plain',bare:1,pleat:1,hairStyle:'fillet',fillet:'#f2ead6',skin:'#7c4a2c',skinD:'#5a331e',tunic:'#7c4a2c',tunicD:'#5a331e',pants:'#f2ead6',pantsD:'#cbbf9e',sash:'#ef7440',hair:'#1a1210',boot:'#5a331e'},
+  R7:{egy:'plain',skin:'#b98058',skinD:'#94603e',tunic:'#ece4cf',tunicD:'#c6bb9c',pants:'#ece4cf',pantsD:'#c6bb9c',sash:'#e4683b',hair:'#2b1b12',boot:'#94603e'},
   A:{egy:'lock',skin:'#b0703f',skinD:'#87522c',tunic:'#b0703f',tunicD:'#87522c',pants:'#efe7d2',pantsD:'#c8bd9f',sash:'#b5352a',hair:'#1a1210',boot:'#7a5230',coll:['#2f6fb0','#d8b04a','#b5352a'],band:'#d8b04a'},
   B:{egy:'khat',skin:'#b0703f',skinD:'#87522c',tunic:'#b0703f',tunicD:'#87522c',pants:'#efe7d2',pantsD:'#c8bd9f',sash:'#2f5d9f',hair:'#1a1210',boot:'#7a5230',coll:['#2f8f8c','#d8b04a','#2f5d9f'],band:'#d8b04a',khat:'#ece4cf'},
   C:{egy:'kush',skin:'#6b4026',skinD:'#4c2b18',tunic:'#6b4026',tunicD:'#4c2b18',pants:'#efe7d2',pantsD:'#c8bd9f',sash:'#c8952a',hair:'#141010',boot:'#6a4426',coll:['#b5352a','#d8b04a','#2f8f8c'],band:'#e0b64a'}};
@@ -2294,10 +2328,10 @@ const PAL_HERO={skin:'#c98f60',skinD:'#a8734a',tunic:'#3b4aa6',tunicD:'#2c387e',
 // leather corselet. Each tier keeps its colour (ochre, green, crimson, violet: its cloth and sash) and has its own weapon (a club, an
 // axe, a khopesh), drawn along the sword's line: their fighting, reach and timing are the swordsmen's.
 const GUARD_PAL={
-  0:{egy:'rob',bare:1,head:'cloth',khat:'#d9a032',weapon:'club',skin:'#b4805a',skinD:'#8f6140',tunic:'#b4805a',tunicD:'#8f6140',pants:'#d3c7a8',pantsD:'#a99d80',sash:'#8c3a18',trim:'#f3d98a',boot:'#8f6140'}, // recruit: ochre
-  1:{egy:'rob',bare:1,head:'cloth',khat:'#3fd03a',weapon:'axe',skin:'#8c5c3c',skinD:'#6d4429',tunic:'#8c5c3c',tunicD:'#6d4429',pants:'#d3c7a8',pantsD:'#a99d80',sash:'#17692f',trim:'#f0d060',boot:'#6d4429'}, // soldier: green
-  2:{egy:'rob',head:'cap',cap:'#6e4424',weapon:'axe',skin:'#a67650',skinD:'#835836',tunic:'#ea3a52',tunicD:'#a31c34',pants:'#d3c7a8',pantsD:'#a99d80',sash:'#eec45a',trim:'#f4d878',boot:'#835836'}, // veteran: crimson tunic
-  3:{egy:'rob',head:'cap',cap:'#4e3018',corselet:1,weapon:'khopesh',skin:'#7e5036',skinD:'#613b26',tunic:'#8a5a2e',tunicD:'#5e3a1c',pants:'#d3c7a8',pantsD:'#a99d80',sash:'#b25cf0',trim:'#ffd76b',boot:'#613b26'}}; // captain: leather, violet
+  0:{egy:'rob',bare:1,head:'cloth',khat:'#d9a032',weapon:'club',skin:'#b4805a',skinD:'#8f6140',tunic:'#b4805a',tunicD:'#8f6140',pants:'#bba985',pantsD:'#8f8064',sash:'#8c3a18',trim:'#f3d98a',boot:'#8f6140'}, // recruit: ochre
+  1:{egy:'rob',bare:1,head:'cloth',khat:'#3fd03a',weapon:'axe',skin:'#8c5c3c',skinD:'#6d4429',tunic:'#8c5c3c',tunicD:'#6d4429',pants:'#bba985',pantsD:'#8f8064',sash:'#17692f',trim:'#f0d060',boot:'#6d4429'}, // soldier: green
+  2:{egy:'rob',head:'cap',cap:'#6e4424',weapon:'axe',skin:'#a67650',skinD:'#835836',tunic:'#ea3a52',tunicD:'#a31c34',pants:'#bba985',pantsD:'#8f8064',sash:'#eec45a',trim:'#f4d878',boot:'#835836'}, // veteran: crimson tunic
+  3:{egy:'rob',head:'cap',cap:'#4e3018',corselet:1,weapon:'khopesh',skin:'#7e5036',skinD:'#613b26',tunic:'#8a5a2e',tunicD:'#5e3a1c',pants:'#bba985',pantsD:'#8f8064',sash:'#b25cf0',trim:'#ffd76b',boot:'#613b26'}}; // captain: leather, violet
 const PAL_HERO0=Object.assign({},PAL_HERO);let HERO_STYLE='P';
 function setHero(k){HERO_STYLE=k;for(const q of Object.keys(PAL_HERO))delete PAL_HERO[q];Object.assign(PAL_HERO,PAL_HERO0,k&&HERO_VAR[k]||{});}
 setHero('P');
