@@ -6586,13 +6586,14 @@ function lampGlints(ctx,x0,x1,y0,y1,salt){const t=gameTime,col=salt?'255,246,226
       ctx.globalAlpha=Math.min(1,b);ctx.drawImage(lightSprite(col),x-3,fy-3,6,6);ctx.fillStyle='rgb('+col+')';ctx.fillRect(x-0.5,fy-1.5,1,3);ctx.fillRect(x-1.5,fy-0.5,3,1);}}
   ctx.restore();}
 // Classic's simple equivalents of the mist pass's theme effects: embers (glows in the floor's cracks, on fixed spots), incense (a few
-// pale bands drifting across the view), granite (fixed points on the walls near lamps that catch the light in turn)
+// pale bands drifting across the view); and in both modes the granite's crystals (fixed points on the walls near lamps that catch
+// the light in turn: sharp at full resolution)
 function classicLookFx(ctx,x0,x1,y0,y1){const fx=lfx(),t=gameTime;ctx.save();ctx.globalCompositeOperation='lighter';
-  if(fx.embers){const sp=lightSprite('255,110,40');for(let r=Math.max(0,Math.floor(y0/TH));r<=Math.min(L.rows-1,Math.floor(y1/TH));r++)for(let c=Math.max(0,Math.floor(x0/TW));c<=Math.min(L.cols-1,Math.floor(x1/TW));c++){
+  const cl=!GLP.used;if(cl&&fx.embers){const sp=lightSprite('255,110,40');for(let r=Math.max(0,Math.floor(y0/TH));r<=Math.min(L.rows-1,Math.floor(y1/TH));r++)for(let c=Math.max(0,Math.floor(x0/TW));c<=Math.min(L.cols-1,Math.floor(x1/TW));c++){
       const h=hash2(c*5+3,r*9+1);if(h%5!==0||!solidBelow(L,c,r)||B(L,c,r)===WALL)continue;const ys=SURF(r),px=c*TW+4+(h>>>4)%24,e=0.55+0.45*Math.sin(t*1.1+(h>>>8)%60);ctx.globalAlpha=0.35*e;ctx.drawImage(sp,px-7,ys-3,14,6);}}
-  if(fx.incense){ctx.globalAlpha=1;for(let i=0;i<4;i++){const yy=y0+(i+0.5)*(y1-y0)/4+Math.sin(t*0.2+i*1.7)*10,g=ctx.createLinearGradient(0,yy-6,0,yy+6);g.addColorStop(0,'rgba(150,220,180,0)');g.addColorStop(0.5,'rgba(150,220,180,.07)');g.addColorStop(1,'rgba(150,220,180,0)');ctx.fillStyle=g;ctx.fillRect(x0,yy-6,x1-x0,12);}}
+  if(cl&&fx.incense){ctx.globalAlpha=1;for(let i=0;i<4;i++){const yy=y0+(i+0.5)*(y1-y0)/4+Math.sin(t*0.2+i*1.7)*10,g=ctx.createLinearGradient(0,yy-6,0,yy+6);g.addColorStop(0,'rgba(150,220,180,0)');g.addColorStop(0.5,'rgba(150,220,180,.07)');g.addColorStop(1,'rgba(150,220,180,0)');ctx.fillStyle=g;ctx.fillRect(x0,yy-6,x1-x0,12);}}
   if(fx.granite){for(const q of L.torches){if(q.broken)continue;const lx=q.c*TW+16,ly=SURF(q.r)-38;if(lx<x0-70||lx>x1+70||ly<y0-60||ly>y1+60)continue;
-      for(let i=0;i<8;i++){const h=hash2(q.c*13+i,q.r*7+i*3),px=lx+((h&1023)/1023-0.5)*110,py=ly+(((h>>>10)&1023)/1023-0.5)*70,tw=Math.sin(t*(0.7+((h>>>20)&7)*0.25)+(h>>>24));if(tw<0.6||B(L,Math.floor(px/TW),Math.floor(py/TH))===WALL)continue;
+      for(let i=0;i<12;i++){const h=hash2(q.c*13+i,q.r*7+i*3),px=lx+((h&1023)/1023-0.5)*110,py=ly+(((h>>>10)&1023)/1023-0.5)*70,tw=Math.sin(t*(0.7+((h>>>20)&7)*0.25)+(h>>>24));if(tw<0.6||B(L,Math.floor(px/TW),Math.floor(py/TH))===WALL)continue;
         ctx.globalAlpha=(tw-0.6)*2.2;ctx.fillStyle='#fff6ea';ctx.fillRect(px-0.6,py-0.6,1.2,1.2);ctx.drawImage(lightSprite('255,230,200'),px-2.5,py-2.5,5,5);}}}
   ctx.restore();}
 // things that give their own light, or catch it: drawn after the lighting
@@ -6600,7 +6601,7 @@ function ambientGlow(ctx,x0,x1,y0,y1){
   const st=L.theme.style,t=gameTime;ctx.save();
   if(lfx().drip)drawDrips(ctx,x0,x1,y0,y1);
   if(lfx().salt||lfx().glaze)lampGlints(ctx,x0,x1,y0,y1,!!lfx().salt);
-  if(!GLP.used&&(lfx().embers||lfx().incense||lfx().granite))classicLookFx(ctx,x0,x1,y0,y1); // (Torchlight does these in its mist pass)
+  if(lfx().granite||(!GLP.used&&(lfx().embers||lfx().incense)))classicLookFx(ctx,x0,x1,y0,y1); // (embers and incense: Torchlight does them in its mist pass; the granite's crystals are sharp points, drawn here in both modes)
   for(const p of AMB)if(p.k==='ash'){const a=fadeIO(p);if(a<=0)continue;ctx.globalAlpha=a*0.55;ctx.fillStyle=p.sz>1.8?'rgb(255,170,90)':'rgb(186,176,170)';ctx.fillRect(p.x,p.y,p.sz,p.sz*0.7);}
   ctx.globalAlpha=1;ctx.globalCompositeOperation='lighter';
   // moths around every lamp in view (everywhere)
@@ -8084,14 +8085,14 @@ const GLCSH={
       if(u_lx.w+u_lx2.x+u_lx2.y+u_lx2.z+u_lx2.w>0.){vec3 R=max(texture2D(u_map,v_u).rgb*1.5-u_mist.w,0.);float lr=dot(R,vec3(.3,.5,.2)); // (round 5: each theme's own)
         if(u_lx.w>0.&&tl.r<.5&&tl.a<.25&&lr>.01){ // the faience walls: long soft highlights that slide as the flames move, in the lamps' light only
           float sw=smoothstep(.72,1.,sin(w.x*.045+w.y*.02-u_t*.6+sin(u_t*.23+w.y*.01)*2.3))*smoothstep(.25,.6,vn(vec2(w.x*.03,w.y*.05+u_t*.05)));o.rgb+=R*sw*.55*u_lx.w;}
-        if(u_lx2.z>0.&&tl.r<.5&&tl.a<.25&&lr>.012){float n=vn(vec2(w.x*.31+u_t*.04,w.y*.29))*vn(vec2(w.x*.47-u_t*.07,w.y*.53+11.)); // granite: crystals catching the lamp, a sharp shimmer that wanders (smooth noise in world space: no per-pixel jitter)
-          o.rgb+=R*smoothstep(.42,.6,n)*1.3*u_lx2.z;}
-        if(u_lx2.y>0.&&tl.g>.5&&fy>55.5&&tl.r<.5){float n=vn(vec2(w.x*.11,floor(w.y/64.)*7.3+u_t*.05)),e=smoothstep(.66,.82,n)*(.55+.45*sin(u_t*1.1+n*20.)); // embers: slag glowing in the floor's cracks, its own light
-          o.rgb+=vec3(1.,.42,.12)*e*.55*u_lx2.y;}
+        if(u_lx2.z>0.&&tl.r<.5&&tl.a<.25&&lr>.04){float n=vn(vec2(w.x*.33+u_t*.03,w.y*.31))*vn(vec2(w.x*.29-u_t*.05,w.y*.37+11.))*vn(vec2(w.x*.41,w.y*.23-u_t*.04+5.)); // granite: crystals catching the lamp, sparse points that wander (smooth noise in world space: no per-pixel jitter)
+          o.rgb+=R*smoothstep(.36,.5,n)*.9*u_lx2.z;}
+        if(u_lx2.y>0.&&tl.g>.5&&fy>55.5&&tl.r<.5){float n=vn(vec2(w.x*.11,floor(w.y/64.)*7.3+u_t*.05)),e=smoothstep(.6,.78,n)*(.55+.45*sin(u_t*1.1+n*20.)); // embers: slag glowing in the floor's cracks, its own light
+          o.rgb+=vec3(1.,.42,.12)*e*1.1*u_lx2.y;}
         if(u_lx2.x>0.&&tl.r<.5){float n=vn(vec2(w.x*.012-u_t*.06,w.y*.03)),b=sin(w.y*.11+n*4.+u_t*.15)*.5+.5; // incense: thin layers of smoke drifting across the hall
-          float d=smoothstep(.62,.92,b)*smoothstep(.35,.75,vn(vec2(w.x*.03+u_t*.04,w.y*.08)))*.38*u_lx2.x;o.rgb+=vec3(.62,.9,.72)*(R*.55+.12)*d;o.a=max(o.a,d*.35);}
+          float d=smoothstep(.6,.92,b)*smoothstep(.35,.75,vn(vec2(w.x*.03+u_t*.04,w.y*.08)))*.5*u_lx2.x;o.rgb+=vec3(.62,.9,.72)*(R*.55+.12)*d;o.a=max(o.a,d*.35);}
         if(u_lx2.w>0.&&tl.a>.25){float inA=inArch(w); // arch dust: warm dust hanging in the open arches, lit by the low sun (or the moon)
-          float n=vn(vec2(w.x*.05+u_t*.08,w.y*.06-u_t*.05))*.6+vn(vec2(w.x*.13-u_t*.12,w.y*.15))*.4,d=smoothstep(.35,.85,n)*inA*.3*u_lx2.w;o.rgb+=u_lc*d;}}
+          float n=vn(vec2(w.x*.05+u_t*.08,w.y*.06-u_t*.05))*.6+vn(vec2(w.x*.13-u_t*.12,w.y*.15))*.4,d=smoothstep(.3,.8,n)*inA*.42*u_lx2.w;o.rgb+=u_lc*d;}}
       gl_FragColor=o;}`]};
 const glcRGB=col=>{let c=GLCOL.get(col);if(!c){c=col.split(',').map(Number);GLCOL.set(col,c);}return c;}; // (parsed once)
 function glcInit(gl,P){
@@ -8184,7 +8185,7 @@ function glAtmo(VZ,camD,camDY,th,lw,lh){
     gl.uniform4f(U.u_mist,ms,mh,sheen?(st==='dungeon'?1:0.8):0,A*1.08);gl.uniform3f(U.u_mcol,mc[0]/255,mc[1]/255,mc[2]/255);
     const ck=S.set.calm?0.5:1;
     gl.uniform4f(U.u_lx,lx&&fx.salt?ck:0,lx&&fx.glaze?ck:0,dust?dust[2]:1,lx&&fx.wallglaze?ck:0); // the theme's own: salt, glaze, the dust's wind, the faience walls
-    gl.uniform4f(U.u_lx2,lx&&fx.incense?1:0,lx&&fx.embers?ck:0,lx&&fx.granite?ck:0,lx&&fx.archdust?1:0); // incense, embers, granite, arch dust
+    gl.uniform4f(U.u_lx2,lx&&fx.incense?1:0,lx&&fx.embers?ck:0,0,lx&&fx.archdust?1:0); // incense, embers, (granite: its crystals are drawn as sharp points in 2D, classicLookFx: at a quarter of the resolution they read as blotches), arch dust
     {const c=tod===1?[150,175,235]:tod===2?[255,200,150]:[255,176,110];gl.uniform3f(U.u_lc,c[0]/255,c[1]/255,c[2]/255);} // the arch dust's light: the low sun, or the moon
     gl.drawArrays(gl.TRIANGLES,0,3);f|=2;}
   gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,GLC.fs?GLC.fs.t:null);gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_2D,GLC.fm?GLC.fm.t:null);
