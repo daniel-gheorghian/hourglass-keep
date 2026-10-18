@@ -79,7 +79,6 @@ if __name__ == '__main__':
                     fr[0].save(os.path.join(OUT, 'r10_run.gif'), save_all=True, append_images=fr[1:], duration=67, loop=0, optimize=True)
                 if mode == 'torch' and tag != 'v62':
                     png(pg.evaluate(SHEET, [['old', 'P', 0, 1, 3], 3])).save(os.path.join(OUT, 'r10_sheet3x_%s.png' % tag))
-                    png(pg.evaluate(SHEET, [['P', 1], 3])).save(os.path.join(OUT, 'r10_sheet3x_small_%s.png' % tag))
                 errs += pg.errs
                 pg.close()
         print('errors', errs[:3])
