@@ -77,7 +77,8 @@ same on this Mac's GPU (Chrome's costs differ from Safari's: compare Mac runs wi
 The pause menu's Tools… screen (v63) has buttons that reload the page with `?bench`, `?bench=classic`, `?bench=auto` or `?prof`;
 the bench's table and the profiler each have a button back to the game.
 Lighting mode (v63, owner): only the player switches between Torchlight and Classic (Graphics). Slow frames only scale Torchlight's
-scene down (`GLP.rs` 1, .75, .5); they never switch to Classic. A missing or lost WebGL context still falls back to Classic (`glKill`),
+scene down (`GLP.rs` 1, .75, .5); they never switch to Classic. It steps back up one level after three 2 s windows with no
+dropped frame (`UP_MS` 17.2 ms); a step up that turns slow again within 10 s doubles the windows the next try needs (up to 30), reset each floor. A missing or lost WebGL context still falls back to Classic (`glKill`),
 as the screen would otherwise be black; `glauto.py` checks this.
 
 Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chambershot.py` and `liftshot.py` do the same for chambers and lifts.
