@@ -2033,9 +2033,23 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
   const at=(u)=>[s.sh[0]*u,s.sh[1]*u];
   // --- back layer: scarf tail, sash tails, back arm, back leg ---
   const EG=pal.egy,FULL=EG==='lock'||EG==='khat'||EG==='kush'; // (EG: kilt, bare legs; FULL: round 6's princely gear)
+  // EG: the torso's shape round a spine that bends (the hips flexed: the back rounds; the arms up: it arches, the lats stretch and the
+  // chest lifts) and turns with the arms' swing; offsets toward the front (fo) and the back (bo) along it. Round 12 (owner: "that area is
+  // the ass of the prince and should be round and merge into the back; the sash is just above and follows the waist line"): the back's
+  // offsets go in at the waist (u 0.3, the narrowest) and out over the buttocks (u 0 to 0.14); the kilt and the belt are laid on this.
+  let TG=null;
+  if(EG){const lnX=pal.lean,ra=(sstep((Math.abs(p.aF)-1.7)/0.9)+sstep((Math.abs(p.aB)-1.7)/0.9))/2,fl=clamp((p.hF+p.hB)/2-lean,-0.6,1.4),tw2=clamp((Math.sin(p.aF)-Math.sin(p.aB))/2,-1,1);
+    const c=-1.1*fl+0.9*ra,m=at(0.5),cp=[m[0]+nx*c,m[1]+ny*c],E=s.sh,U=[0,0.14,0.3,0.46,0.62,0.76,0.88,0.96,1];
+    const Fo=lnX?[3.9,3.6,3.2,3.6,4.2,4.7,4.5,3.8,2.5]:[4.4,4.2,3.9,4.2,4.8,5.4,5.2,4.2,2.7],Bo=lnX?[4.6,4.1,3.2,3.5,4.1,4.6,4.6,4.0,2.8]:[5.1,4.6,3.8,4.1,4.7,5.2,5.2,4.5,3.0];
+    const sp=(u,o2)=>{const a=1-u;let gx=2*a*cp[0]+2*u*(E[0]-cp[0]),gy=2*a*cp[1]+2*u*(E[1]-cp[1]);const g=Math.hypot(gx,gy)||1;gx/=g;gy/=g;return [2*a*u*cp[0]+u*u*E[0]-gy*o2,2*a*u*cp[1]+u*u*E[1]+gx*o2];};
+    const TS=U.map(u=>{const a=1-u;let gx=2*a*cp[0]+2*u*(E[0]-cp[0]),gy=2*a*cp[1]+2*u*(E[1]-cp[1]);const g=Math.hypot(gx,gy)||1;gx/=g;gy/=g;return [2*a*u*cp[0]+u*u*E[0],2*a*u*cp[1]+u*u*E[1],-gy,gx];});
+    const fo=U.map((u,i)=>Fo[i]+ra*(u>0.5&&u<0.85?0.35:u>0.2&&u<0.5?-0.3:0)+tw2*0.5*sstep((u-0.55)/0.2)-(u>0.25&&u<0.55?Math.max(0,fl)*0.3:0)),
+      bo=U.map((u,i)=>Bo[i]+ra*0.9*sstep((u-0.65)/0.2)-tw2*0.3*sstep((u-0.55)/0.2)+(u>0.3&&u<0.7?Math.max(0,fl)*0.4:0)+(u<0.2?Math.max(0,fl)*0.5:0)); // (a flexed hip rounds the seat)
+    const iv=(A,u)=>{let i=0;while(i<U.length-2&&u>U[i+1])i++;const k=clamp((u-U[i])/(U[i+1]-U[i]),0,1);return A[i]+(A[i+1]-A[i])*k;};
+    TG={U,TS,fo,bo,sp,F:u=>iv(fo,u),B:u=>iv(bo,u),fl};}
   if(pal.hero&&!EG){const nk=[s.sh[0]-nx*1.5+tx*1,s.sh[1]-ny*1.5+ty*1];const sc=trail(nk,5,3.2,wind,t,0.6+0.4*Math.min(1,Math.abs(vx)/90),0);
     tcel(ctx,sc,[3.0,2.8,2.5,2.1,1.6,1.0],C('sash'),D('sash'),O);}
-  if(!pal.pleat){const w0=at(0.16),wa=[w0[0]-nx*4,w0[1]-ny*4];const st=trail(wa,2,2.6,wind,t+0.3,0.5,1.7);tcel(ctx,st,[2.2,1.8,1.2],D('sash',-0.2),shadeHex(D('sash',-0.2),-0.25),O);}
+  if(!pal.pleat){const w0=at(0.16),wa=TG?TG.sp(0.28,-TG.B(0.28)):[w0[0]-nx*4,w0[1]-ny*4];const st=trail(wa,2,2.6,wind,t+0.3,0.5,1.7);tcel(ctx,st,[2.2,1.8,1.2],D('sash',-0.2),shadeHex(D('sash',-0.2),-0.25),O);}
   const sheen=(a,b,w)=>{if(O.mono||!EG)return;const k=0.18+0.32*Math.min(1,O._lk||0);ctx.save();ctx.globalAlpha*=k;ctx.strokeStyle=litTint(shadeHex(C('skin'),0.42),O._lc,Math.max(0.3,O._lk||0));ctx.lineWidth=w||0.9;ctx.lineCap='round';
     ctx.beginPath();ctx.moveTo(a[0]+O._lx*0.9,a[1]+O._ly*0.9);ctx.lineTo(b[0]+O._lx*0.9,b[1]+O._ly*0.9);ctx.stroke();ctx.restore();}; // (the oiled skin's soft highlight, toward the light)
   const LN=EG&&pal.lean; // (the prince: a lean young athlete; the robbers are grown men, heavier)
@@ -2097,12 +2111,7 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
     // the chest lifts) and turns with the arms' swing; the lats flare over a narrow waist. Outlines first: the torso, the neck and the
     // front arm (its dark edge then shows only off the body); then the torso's fills: a base, a shaded plane on the side away from the
     // light, a lit plane over the chest and shoulder toward it, both tapering into the waist; then the neck.
-    const ra=(sstep((Math.abs(p.aF)-1.7)/0.9)+sstep((Math.abs(p.aB)-1.7)/0.9))/2,fl=clamp((p.hF+p.hB)/2-lean,-0.6,1.4),tw2=clamp((Math.sin(p.aF)-Math.sin(p.aB))/2,-1,1);
-    const c=-1.1*fl+0.9*ra,m=at(0.5),cp=[m[0]+nx*c,m[1]+ny*c],E=s.sh,U=[0,0.14,0.3,0.46,0.62,0.76,0.88,0.96,1];
-    const Fo=LN?[3.9,3.6,3.2,3.6,4.2,4.7,4.5,3.8,2.5]:[4.4,4.2,3.9,4.2,4.8,5.4,5.2,4.2,2.7],Bo=LN?[4.3,3.9,3.2,3.5,4.1,4.6,4.6,4.0,2.8]:[4.8,4.4,3.8,4.1,4.7,5.2,5.2,4.5,3.0];
-    const TS=U.map(u=>{const a=1-u;let gx=2*a*cp[0]+2*u*(E[0]-cp[0]),gy=2*a*cp[1]+2*u*(E[1]-cp[1]);const g=Math.hypot(gx,gy)||1;gx/=g;gy/=g;return [2*a*u*cp[0]+u*u*E[0],2*a*u*cp[1]+u*u*E[1],-gy,gx];});
-    const fo=U.map((u,i)=>Fo[i]+ra*(u>0.5&&u<0.85?0.35:u>0.2&&u<0.5?-0.3:0)+tw2*0.5*sstep((u-0.55)/0.2)-(u>0.25&&u<0.55?Math.max(0,fl)*0.3:0)),
-      bo=U.map((u,i)=>Bo[i]+ra*0.9*sstep((u-0.65)/0.2)-tw2*0.3*sstep((u-0.55)/0.2)+(u>0.3&&u<0.7?Math.max(0,fl)*0.4:0));
+    const U=TG.U,TS=TG.TS,fo=TG.fo,bo=TG.bo,E=s.sh;
     const pt=(i,o2)=>{const q=TS[i];return [q[0]+q[2]*o2,q[1]+q[3]*o2];},n8=U.length-1,ring=[];
     for(let i=0;i<=n8;i++)ring.push(pt(i,fo[i]));ring.push([E[0]+TS[n8][3]*1.1,E[1]-TS[n8][2]*1.1]);for(let i=n8;i>=0;i--)ring.push(pt(i,-bo[i]));
     const TP=smoothLoop(ring),n0=at(0.95),hd0=s.hd,ha0=lean+p.head,nk=[n0,[hd0[0]-Math.sin(ha0)*3.6,hd0[1]+Math.cos(ha0)*3.6]],nw=[4.0,3.0],NP=tubePath(nk,nw);
@@ -2208,21 +2217,29 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
     if(FULL){ctx.strokeStyle='#120c18';ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(ex-hnx*1.9-hx*0.2,ey-hny*1.9-hy*0.2);ctx.stroke();}} // a line of kohl drawn back from the eye
   // --- front layer: leg, sword, arm ---
   if(EG){leg(s.fF,s.kF,C('skin'),D('skin'),null,C('boot'),footXf(p,s,s.fF,s.kF,p.hF,p.kF));
-    const lp=(k,u,o2)=>[k[0]*u+nx*o2,k[1]*u+ny*o2],w0=at(0.26),F=lp(s.kF,0.55,3.0),Bk=lp(s.kB,0.55,-3.0),H0=lp(s.kF,0.5,-1),H1=lp(s.kB,0.5,1); // the shendyt: a wrap of white linen from the waist to above the knee
-    const kp=new Path2D();kp.moveTo(w0[0]-nx*4.8,w0[1]-ny*4.8);kp.lineTo(w0[0]+nx*4.8,w0[1]+ny*4.8);kp.lineTo(F[0],F[1]);kp.quadraticCurveTo((H0[0]+H1[0])/2+tx*-1.2,(H0[1]+H1[1])/2+ty*-1.2,Bk[0],Bk[1]);kp.closePath();
+    // the shendyt (round 12): linen wrapped close round the hips, its top on the waist line (a little higher at the back, lower at the front),
+    // fitted over the seat at the back: in from the waist, out round the buttocks, into the back of the thigh, one curve with no corner;
+    // at the front the pleated panel hangs a little forward to the hem above the knee
+    const sp=TG.sp,lr=(a,b,u)=>[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u],tb=(k,u,o2)=>{const d=Math.hypot(k[0],k[1])||1,ux=k[0]/d,uy=k[1]/d;return [k[0]*u+uy*o2,k[1]*u-ux*o2];}, // (a point on a thigh, o2 to its front)
+      dn=q=>q[0]*nx+q[1]*ny,wB=sp(0.3,-(TG.B(0.3)+0.3)),wF=sp(0.245,TG.F(0.245)+0.3),f1=tb(s.kF,0.55,3.3),f2=tb(s.kB,0.55,3.3),b1=tb(s.kF,0.55,-3.4),b2k=tb(s.kB,0.55,-3.4);
+    const F0=dn(f1)>=dn(f2)?f1:f2,F=[F0[0]+nx*0.4,F0[1]+ny*0.4],Bk=dn(b1)<=dn(b2k)?b1:b2k,H0=tb(s.kF,0.5,0),H1=tb(s.kB,0.5,0),Hc=[(H0[0]+H1[0])/2-tx*1.2,(H0[1]+H1[1])/2-ty*1.2];
+    const Bt=sp(-0.03,-(TG.B(0)+0.3)),Bu=sp(0.14,-(TG.B(0.14)+0.3)),BL0=lr(Bt,Bk,0.55),BL=[BL0[0]+nx*0.45,BL0[1]+ny*0.45]; // (under the seat the linen follows the fold into the thigh)
+    const kp=smoothLoop([wF,wF,F,F,Hc,Bk,BL,Bt,Bu,wB,wB]),w0=lr(wB,wF,0.5);
     celAt(ctx,kp,C('pants'),D('pants'),O,(w0[0]+F[0]+Bk[0])/3,(w0[1]+F[1]+Bk[1])/3);
-    if(!O.mono&&(pal.pleat||FULL)){const fp=[w0[0]+nx*3.6,w0[1]+ny*3.6]; // the pleated front panel: fine lines fanning from the belt's front to the hem, soft shade bands between
-      for(let i=0;i<6;i++){const u=(i+0.5)/6,b=[Bk[0]+(F[0]-Bk[0])*u,Bk[1]+(F[1]-Bk[1])*u],a=[w0[0]-nx*4.8+(nx*9.6)*u*0.85,w0[1]-ny*4.8+(ny*9.6)*u*0.85];
-        if(i%2){ctx.fillStyle=shadeHex(C('pants'),-0.07);const u2=(i+1.5)/6,b2=[Bk[0]+(F[0]-Bk[0])*Math.min(1,u2),Bk[1]+(F[1]-Bk[1])*Math.min(1,u2)];ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.lineTo(b2[0],b2[1]);ctx.closePath();ctx.fill();}
+    if(!O.mono&&(pal.pleat||FULL)){const fp=lr(wB,wF,0.86),up=[tx*0.35,ty*0.35]; // the pleated front panel: fine lines fanning from the belt's front to the hem, soft shade bands between
+      for(let i=0;i<6;i++){const u=(i+0.5)/6,b0=lr(Bk,F,0.3+0.7*u),b=[b0[0]+up[0],b0[1]+up[1]],a=lr(wB,wF,0.3+0.62*u);
+        if(i%2){ctx.fillStyle=shadeHex(C('pants'),-0.07);const u2=(i+1.5)/6,b20=lr(Bk,F,0.3+0.7*Math.min(1,u2)),b2=[b20[0]+up[0],b20[1]+up[1]];ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.lineTo(b2[0],b2[1]);ctx.closePath();ctx.fill();}
         ctx.strokeStyle=shadeHex(C('pants'),-0.24);ctx.lineWidth=0.45;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();}
       ctx.fillStyle=shadeHex(C('pants'),-0.12);ctx.beginPath();ctx.moveTo(fp[0]-nx*1.2,fp[1]-ny*1.2);ctx.lineTo(F[0]-nx*0.4,F[1]-ny*0.4);ctx.lineTo(F[0]-nx*3,F[1]-ny*3);ctx.closePath();ctx.fill();} // the front tab
-    if(!O.mono&&pal.pleat){const m=at(0.27),B=(o2,v)=>[m[0]+nx*o2+tx*v,m[1]+ny*o2+ty*v]; // the prince's belt (round 11): a thin band round the waist, seen
-      // side on, dipping a little toward the front as it wraps; muted gold close to the kilt, a fine bright top edge on the lit side; one short slim end
-      const band=()=>{ctx.beginPath();ctx.moveTo(...B(-4.7,0.2));ctx.quadraticCurveTo(...B(0.4,-0.25),...B(4.7,-0.55));};
-      ctx.strokeStyle=O.out;ctx.lineWidth=1.6;band();ctx.stroke();ctx.strokeStyle=C('sash');ctx.lineWidth=0.95;ctx.stroke();
-      const e0=O._lx>=0?-1.5:-4.4,e1=O._lx>=0?4.4:1.5;ctx.strokeStyle=litTint(pal.sashHi,O._lc,O._lk||0);ctx.lineWidth=0.3;ctx.beginPath();const vt=o2=>0.2-0.75*(o2+4.7)/9.4+0.42;ctx.moveTo(...B(e0,vt(e0)));ctx.lineTo(...B(e1,vt(e1)));ctx.stroke();
-      const k0=B(3.6,-0.5),tie=trail(k0,1,2.2,[wind[0]*0.5,wind[1]],t+0.9,0.4,1.1);tcel(ctx,tie,[1.0,0.7],C('sash'),D('sash'),O);}
-    else if(!O.mono){const m=at(0.27);ctx.strokeStyle=O.out;ctx.lineWidth=3.2;ctx.beginPath();ctx.moveTo(m[0]-nx*4.9,m[1]-ny*4.9);ctx.lineTo(m[0]+nx*4.9,m[1]+ny*4.9);ctx.stroke();ctx.strokeStyle=C('sash');ctx.lineWidth=2;ctx.stroke();}} // the belt over it
+    if(!O.mono){ // the belt (rounds 11, 12): a band on the waist line, from the back's outline to the front's, never past them; higher at the back,
+      // lower at the front, as a belt sits; the prince's thin, muted gold with a hairline of bright gold on the lit side and one short end,
+      // the robbers' a little wider in their colour
+      const BB=sp(0.3,-(TG.B(0.3)+0.1)),BF=sp(0.245,TG.F(0.245)+0.1),bm=lr(BB,BF,0.5),bc=[bm[0]-tx*0.2,bm[1]-ty*0.2],q=pal.pleat;
+      ctx.beginPath();ctx.moveTo(BB[0],BB[1]);ctx.quadraticCurveTo(bc[0],bc[1],BF[0],BF[1]);ctx.lineCap='butt';
+      ctx.strokeStyle=O.out;ctx.lineWidth=q?1.6:2.6;ctx.stroke();ctx.strokeStyle=C('sash');ctx.lineWidth=q?0.95:1.7;ctx.stroke();ctx.lineCap='round';
+      if(q){const e0=O._lx>=0?0.35:0.04,e1=O._lx>=0?0.96:0.65,h0=lr(BB,BF,e0),h1=lr(BB,BF,e1),k2=q?0.42:0.7;ctx.strokeStyle=litTint(pal.sashHi,O._lc,O._lk||0);ctx.lineWidth=0.3;ctx.beginPath();
+        ctx.moveTo(h0[0]+tx*k2-tx*0.2*4*e0*(1-e0),h0[1]+ty*k2-ty*0.2*4*e0*(1-e0));ctx.lineTo(h1[0]+tx*k2-tx*0.2*4*e1*(1-e1),h1[1]+ty*k2-ty*0.2*4*e1*(1-e1));ctx.stroke();
+        const k0=lr(BB,BF,0.86),tie=trail(k0,1,2.2,[wind[0]*0.5,wind[1]],t+0.9,0.4,1.1);tcel(ctx,tie,[1.0,0.7],C('sash'),D('sash'),O);}}}
   else leg(s.fF,s.kF,C('pants'),D('pants'),shadeHex(C('pants'),-0.42),C('boot'),footXf(p,s,s.fF,s.kF,p.hF,p.kF));
   if(o.sword&&o.smear&&!O.mono){const h=s.hF;for(const [f,al] of [[1,0.16],[0.5,0.3]]){const a=p.sw+o.smear*f,dx=Math.cos(a),dy=-Math.sin(a);ctx.globalAlpha=al*(o.alpha===undefined?1:o.alpha);
     ctx.fillStyle='#e8eef8';ctx.beginPath();ctx.moveTo(h[0],h[1]);ctx.lineTo(h[0]+Math.cos(p.sw)*18,h[1]-Math.sin(p.sw)*18);ctx.lineTo(h[0]+dx*18,h[1]+dy*18);ctx.closePath();ctx.fill();}ctx.globalAlpha=o.alpha===undefined?1:o.alpha;}

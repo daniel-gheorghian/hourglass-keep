@@ -1,6 +1,7 @@
-# egyptr11.py [new.html] [old.html] [outdir]: round 11's pictures for egypt_themes.html: the prince's belt before (old.html, default
-# ../_r10.html, made with git show 6241add:dev/hourglass-keep.html) and after, in the game at the phone's resolution (crops of the
-# 1704 px canvas, 1:1), standing, running, in a jump, hanging and fighting, the bot playing; one sheet per mode. It also refreshes the
+# egyptr11.py [new.html] [old.html] [outdir]: the belt, hips and seat (rounds 11 and 12) for egypt_themes.html: the figure before
+# (old.html, default ../_r11.html, made with git show d50648e:dev/hourglass-keep.html; round 11 compared it with round 10) and after, in
+# the game at the phone's resolution (crops of the 1704 px canvas, 1:1), standing, running, in a jump, hanging and fighting, the bot
+# playing, and under them the standing pose's hips and back enlarged 4x (nearest neighbour); one sheet per mode. It also refreshes the
 # in-game shots of the sections still current (the sky clock at the checkpoint, a gate's clock, the rewind, the HUD, a flask on the
 # floor) so that they show the current figure. Run from dev/tools.
 import ast, io, os, sys
@@ -11,12 +12,12 @@ import egyptr10 as R10
 HERE = os.path.dirname(os.path.abspath(__file__))
 a = sys.argv[1:]
 NEW = os.path.abspath(a[0] if len(a) > 0 else os.path.join(HERE, '..', 'hourglass-keep.html'))
-OLD = os.path.abspath(a[1] if len(a) > 1 else os.path.join(HERE, '..', '_r10.html'))
+OLD = os.path.abspath(a[1] if len(a) > 1 else os.path.join(HERE, '..', '_r11.html'))
 OUT = a[2] if len(a) > 2 else os.path.join(HERE, 'egypt_themes')
 R8C = {n.targets[0].id: n.value.value for n in ast.parse(open(os.path.join(HERE, 'egyptr8.py')).read()).body if isinstance(n, ast.Assign) and isinstance(n.value, ast.Constant)}
 # the bot plays a floor until the prince is in the state asked for
 BOT = r"""([runs,fight,cond])=>{const H=__HK,f=new Function('p','H','return '+cond);if(H.setHero)H.setHero('P');for(const [n,seed] of runs){window.__g=botGen(n,seed,{fight});
-  for(let k=0;k<60*500;k++){const r=__g.next();if(r.done)break;H.tick(1);H.intro=0;H.banner=null;const p=H.P;p.inv=1e9;if(f(p,H)){document.querySelectorAll('.screen').forEach(e=>e.hidden=true);H.render();H.render();return __P.scr(p.foe&&fight?(p.x+p.foe.x)/2:p.x,p.y-(p.state==='climb'||p.state==='hang'?58:30));}}}return null;}"""
+  for(let k=0;k<60*500;k++){const r=__g.next();if(r.done)break;H.tick(1);H.intro=0;H.banner=null;const p=H.P;p.inv=1e9;if(f(p,H)){document.querySelectorAll('.screen').forEach(e=>e.hidden=true);H.render();H.render();return [...__P.scr(p.foe&&fight?(p.x+p.foe.x)/2:p.x,p.y-(p.state==='climb'||p.state==='hang'?58:30)),...__P.scr(p.x-p.face*8,p.y-25)];}}}return null;}"""
 RUNS = [[3, 4103], [4, 4104], [5, 4105], [7, 4107], [9, 4109]]
 POSES = [('stand', RUNS, False, "p.state==='stand'&&p.t>0.15&&H.P.x>H.L.start.x+96"), ('run', RUNS, False, "p.state==='run'&&p.t>0.35"), ('jump', RUNS, False, "p.state==='air'&&Math.abs(p.vy)<70&&Math.abs(p.vx)>40"),
          ('hang', RUNS, False, "(p.state==='hang'&&p.t>0.1)||(p.state==='climb'&&p.t>0.05&&p.t<0.2)"), ('fight', [[6, 4106], [9, 4109]], True, "p.foe&&p.foe.alive&&Math.abs(p.foe.x-p.x)<40&&p.state==='strike'&&p.t>0.12")]
@@ -27,13 +28,15 @@ if __name__ == '__main__':
         b = p.chromium.launch(args=['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'])
         errs = []
         for mode in ('torch', 'classic'):
-            sh = Image.new('RGB', (len(POSES) * W, 2 * Hh + 2), (20, 16, 24))
+            sh = Image.new('RGB', (len(POSES) * W, 2 * Hh + 2 + 288), (20, 16, 24))
             for j, src in enumerate((OLD, NEW)):
                 pg = R10.page(b, src, mode)
                 for i, (nm, runs, fight, cond) in enumerate(POSES):
                     xy = pg.evaluate(BOT, [runs, fight, cond])
                     if xy:
                         sh.paste(R10.crop(pg, xy, W, Hh), (i * W, j * (Hh + 2)))
+                        if nm == 'stand':  # the hips and the back, 4x
+                            sh.paste(R10.crop(pg, xy[2:4], 66, 66).resize((264, 264), Image.NEAREST), (j * 274, 2 * Hh + 22))
                     else:
                         print('no', nm, mode, j)
                 errs += pg.errs
@@ -57,7 +60,8 @@ if __name__ == '__main__':
             d = ImageDraw.Draw(sh)
             for i, (nm, *_) in enumerate(POSES):
                 d.text((i * W + 6, 4), nm, fill=(240, 230, 210))
-            d.text((W * len(POSES) - 70, 4), 'round 10', fill=(240, 230, 210)); d.text((W * len(POSES) - 70, Hh + 6), 'round 11', fill=(240, 230, 210))
+            d.text((W * len(POSES) - 70, 4), 'round 11', fill=(240, 230, 210)); d.text((W * len(POSES) - 70, Hh + 6), 'round 12', fill=(240, 230, 210))
+            d.text((6, 2 * Hh + 6), 'standing: hips and back at 4x, round 11 | round 12', fill=(240, 230, 210))
             sh.save(os.path.join(OUT, 'r11_sash_%s.png' % mode))
         print('errors', errs[:3])
         b.close()
