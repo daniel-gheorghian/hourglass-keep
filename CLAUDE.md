@@ -194,7 +194,13 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   Built in (owner, round 4): the themes' lamps (`drawLampEg`) and the re-skinned traps are on by default: granite portcullis
   (`egSlab`; lift gates keep their bars; no metal mask), sliding roof block with sand (`egStone`, `egBlock`), sand floor, bronze-
   tipped stakes, and the chase drawn as a granite plug (`drawPlug`; the storm shader, veil and Classic bakes are off behind it).
-  Look only: hit boxes, timing, generator and bot unchanged. `EGP={lamps,traps,plug}` turns them off for debugging. Title
+  Look only: hit boxes, timing, generator and bot unchanged. `EGP={lamps,traps,plug}` turns them off for debugging (metaltest's
+  gate scene and stormfair test the iron gate and the storm that way). The plug is one passage-sized block per corridor row of the
+  chase, its leading face at `wx` (the kill line stays `wx+4`), with a dust veil marking the line where no floor is. The water clock
+  (the Karnak clepsydra) replaces the hourglass as look and words: the checkpoint (`drawHourglass`), the HUD's measures and gate
+  timers (`drawGlass`), the rewind's grade and words; `S.sands` and every timing are unchanged. Theme order: `themeOf(n)` takes the
+  block's generator style (`GEN_STYLE[block%5]`) and picks the theme by light and 60-floor turn from `SCHED` (repeats every 180
+  floors), so a floor's theme always has the style it is built by; `egyptaudit.py` keeps a copy of `SCHED`. Title
   Dawnward; fonts Rokkitt (display, HUD numbers) and Jost (text). Not renamed: the cache key `hourglass-keep-vN`, the save key,
   the repo and its URLs.
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.

@@ -27,6 +27,7 @@ SCENES = [(4, 9801, 'gate'), (8, 9501, 'saw'), (4, 9000, 'chomp'), (10, 9300, 'p
 SETUP = '''([n,s,t])=>{const H=__HK;window.__HKfreeze=true;window.__HKnoauto=true;document.querySelectorAll('.screen').forEach(e=>e.hidden=true);
   for(const id in H.HINTS)H.S.hints[id]=1;for(const id of H.HINT_MOVE)H.S.learned[id]=1;
   let a=s;Math.random=()=>{a=(a*16807)%2147483647;return a/2147483647;};
+  H.EGP.traps=t!=='gate'; // (egypt: the gate is a granite portcullis, not metal; the iron gate of EGP.traps=false still is)
   const L=H.load(n,s,true);H.banner=null;let x=L.start.x,r=L.start.r;
   if(t){const o=L.dyn.find(o=>o.f.t===t);if(!o)return false;x=o.c*32-56;r=o.r;}
   const P=H.P;P.x=x;P.y=(r+1)*64-4;P.fallY=P.y;P.state='stand';P.inv=1e9;H.cam.snap=true;H.mode='play';

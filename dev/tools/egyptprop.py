@@ -54,6 +54,18 @@ SNAKEF = r'''([floors])=>{const H=__HK,out=[];for(const [n,seed] of floors){cons
   if(H.solidBelow(pc,s.r)&&!L.feat[s.r*L.cols+pc]){out.push({n,seed,c,r:s.r,pc,face:1,t:'snake',name:H.themeName(n)});break;}}if(out.length)break;}return out;}'''
 
 
+
+# the water clock: the checkpoint reached (filled and draining) and not yet reached, a gate's running clock (the roundel and the HUD), the rewind
+CLOCK = r"""([kind])=>{const H=__HK;
+  if(kind==='lit'||kind==='dry'){for(const n of [9,17,29,5]){const L=__P.load(n,821);const cp=L.cps.find(c=>H.solidBelow(Math.floor(c.x/32)+2,c.r));if(!cp)continue;
+      __P.stand(Math.floor(cp.x/32)+2,cp.r,-1);if(kind==='lit'){cp.on=true;cp.onAt=H.gameTime-3.4;}H.S.sands=kind==='lit'?3:1;H.mode='play';__P.draw();return {xy:__P.scr(cp.x,(cp.r+1)*64-30),n};}}
+  if(kind==='gate'){for(const n of [6,7,10,11,14,18,22,26]){for(const sd of [821,822,823]){const L=__P.load(n,sd);const o=L.dyn.find(o=>o.f.t==='gate'&&o.f.dur>0&&!o.f.latch&&H.solidBelow(o.c-2,o.r));if(!o)continue;
+      __P.stand(o.c-2,o.r,1);o.f.tm=o.f.dur*0.55;o.f.open=1;o.f.heldAt=-9;H.mode='play';__P.draw();return {xy:__P.scr(o.c*32+16,(o.r+1)*64-40),n};}}}
+  if(kind==='rewind'){const L=__P.load(13,824);H.S.sands=3;const P=H.P;H.mode='play';P.inv=0;for(let k=0;k<240;k++){H.P.inv=1e9;H.tick(1);}
+    try{H.P.inv=0;H.hurt(9,'fall');H.tick(50);H.startRewind();H.tick(18);}catch(e){return {err:String(e)};}H.render();H.render();return {xy:__P.scr(H.P.x,H.P.y-30),n:13,mode:H.mode};}
+  return null;}"""
+
+
 def newpage(b, mode, route=None):
     pg = b.new_page(viewport={'width': 852, 'height': 393}, device_scale_factor=2)
     pg.errs = []
@@ -125,12 +137,25 @@ with sync_playwright() as p:
             pose = {'n': q['n'], 'seed': q['seed'], 'name': q['name'], 'shots': {}, 'state': {'fall': 'mid-fall', 'rest': 'fallen, resting', 'shake': 'giving way', 'give': 'just given way'}.get(prep[k] if isinstance(prep, list) else prep, '')}
             for lab, pg in (('torch', pt), ('classic', pc)):
                 stem = 'trap_%s_%d_%s' % (tid, k, lab)
-                xy = pg.evaluate(SHOW, [q, dict({'traps': False, 'plug': False}, **flags), prep[k] if isinstance(prep, list) else prep])
+                xy = pg.evaluate(SHOW, [q, dict({'traps': True, 'plug': True}, **flags), prep[k] if isinstance(prep, list) else prep])
                 grab(pg, xy, stem)
                 pose['shots'][lab] = stem
             ent['poses'].append(pose)
             print('trap', tid, q, flush=True)
         man['traps'].append(ent)
+    man['clock'] = []
+    for kind, label in (('lit', 'checkpoint reached: filled, draining into its basin'), ('dry', 'checkpoint not yet reached; the HUD with one measure left'), ('gate', 'a timed gate: its clock in the roundel and the HUD'), ('rewind', 'the rewind: the water turns back')):
+        ent = {'kind': kind, 'label': label, 'shots': {}}
+        for lab, pg in (('torch', pt), ('classic', pc)):
+            r = pg.evaluate(CLOCK, [kind])
+            if not r or 'err' in r:
+                print('clock', kind, lab, r); continue
+            stem = 'clock_%s_%s' % (kind, lab)
+            grab(pg, r['xy'], stem)
+            ent['shots'][lab] = stem
+            print('clock', kind, lab, r.get('n'), r.get('mode', ''), flush=True)
+        if len(ent['shots']) == 2:
+            man['clock'].append(ent)
     errs += pt.errs + pc.errs
     pt.close(); pc.close()
     # ---- Dawnward in the candidate fonts: the title, the floor card and the HUD with the floor's banner
