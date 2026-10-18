@@ -756,7 +756,7 @@ function buildLevel(n,seed,test,legacy,att){
         case'chomp':{const per=1.7-0.35*d,off=rng()*per;feat(s+2,b,{t:'chomp',per,off,last:0});if(p.m===2)feat(s+4,b,{t:'chomp',per,off:off+per*0.4,last:0});
           o=[{a:'timed',from:s+p.w-1,to:s,dir:-1}];k=[{a:'timed',from:s,to:s+p.w-1}];break;}
         case'stones':feat(s+2,b,{t:'stone',s:0,tm:0});feat(s+3,b,{t:'stone',s:0,tm:0});
-          o=[{a:'runover',from:s+5,to:s,dir:-1}];k=[{a:'walk',c:s+5}];break;
+          o=[{a:'runover',from:s+5,to:s,dir:-1}];k=[{a:'rjump',from:s+2,to:s+4},{a:'walk',c:s+5}];break; // (round 12: back over the two blocks that fell behind him)
         case'pend':feat(s+2,b,{t:'pend',per:2.3-0.4*d,off:rng()*3,amp:0.78,last:0});
           o=[{a:'crawl',from:s+4,to:s,dir:-1}];k=[{a:'crawl',from:s,to:s+4}];break;
         case'vents':{const per=2.4-0.5*d,off=rng()*per;feat(s+2,b,{t:'vent',per,off,last:0});if(n>=16||ch(0.5))feat(s+4,b,{t:'vent',per,off:off+per*(0.25+rng()*0.2),last:0});
@@ -2663,6 +2663,9 @@ function clampMove(x0,x1,y,self,crawl){
   for(let rr=Math.floor(top/TH)-1;rr<=Math.floor(bot/TH)+1;rr++){if(B(L,cc,rr)===FLOOR){const ys=SURF(rr);if(top<ys+4&&bot>ys-3){blockAt();break;}}}
   // gates
   const row=rowOf(y);
+  // a fallen roof block lying across the corridor: solid below its top
+  for(let sc=Math.floor(Math.min(x0,x1)/TW)-1;sc<=Math.floor(Math.max(x0,x1)/TW)+1;sc++){if(!stoneLying(sc,row)||y-6<=SURF(row)-BLK_H)continue;
+    const e=sc*TW+16-dir*BLK_W/2,front0=x0+dir*BW,front1=lim+dir*BW;if((e-front0)*dir>=-0.5&&(front1-e)*dir>0){const v=e-dir*BW;if((v-lim)*dir<0)lim=v;}}
   for(let gc=Math.floor(Math.min(x0,x1)/TW)-1;gc<=Math.floor(Math.max(x0,x1)/TW)+1;gc++){
     const f=F(L,gc,row);if(!f||f.t!=='gate'||f.open>=0.5)continue;
     const gx=gc*TW+16, front0=x0+dir*BW, front1=lim+dir*BW;
@@ -3441,7 +3444,9 @@ function updateFeatures(dt){
       case'loose':if(f.s===1){f.tm+=dt;if(f.tm>=(f.plank?0.42:0.5)){f.s=2;L.base[o.r*L.cols+o.c]=EMPTY;L.debris.push({x:o.c*TW+16,y:SURF(o.r),y0:SURF(o.r),vy:0,c:o.c,hitP:false,kind:f.plank?'plank':'slab'});Snd.play(f.plank?'creak':'crumble');invalidateCell(o.c,o.r);}}break;
       case'stone':
         if(f.s===0){if(alive&&pr===o.r&&Math.abs(P.x-(o.c*TW+16))<22&&!['hang','climb','climbDown'].includes(P.state)){f.s=1;f.tm=0;Snd.play('creak');hint('stone');}}
-        else if(f.s===1){f.tm+=dt;if(f.tm>=0.3){f.s=2;L.debris.push({x:o.c*TW+16,y:ceilingY(o.c,o.r)+14,y0:ceilingY(o.c,o.r)+14,vy:0,c:o.c,hitP:false,kind:'rock'});Snd.play('crumble');}}
+        else if(f.s>=2){if(alive&&pr===o.r&&L.rubble.has(o.r*L.cols+o.c)&&!['hang','climb','climbDown','exit'].includes(P.state)){const sx=o.c*TW+16,hw=BLK_W/2+BW,dx=P.x-sx; // on top of the fallen block: he slides off to the nearer side
+          if(Math.abs(dx)<hw&&P.y-6>SURF(o.r)-BLK_H&&!(P.state==='air'&&P.vy<0))P.x+=(dx<0?-1:1)*Math.min(hw-Math.abs(dx),160*dt);}}
+        else if(f.s===1){f.tm+=dt;if(f.tm>=0.3){f.s=2;L.debris.push({x:o.c*TW+16,y:ceilingY(o.c,o.r)+14,y0:ceilingY(o.c,o.r)+14,vy:0,c:o.c,r:o.r,hitP:false,kind:'rock'});Snd.play('crumble');}}
         break;
       case'pend':{const b=pendTip(o,f),side=Math.sign(b.th);
         if(side!==f.last&&tileVisible(o.c,o.r))Snd.play('swoosh');f.last=side;
@@ -3493,7 +3498,7 @@ function updateFeatures(dt){
     d.vy=Math.min(d.vy+GRAV*dt,480);const py=d.y;d.y+=d.vy*dt;
     if(!d.hitP&&alive&&Math.abs(P.x-d.x)<11&&d.y>P.y-48&&d.y-8<P.y&&!['air'].includes(P.state)&&py<P.y-20){d.hitP=true;hurt(1,'crush');if(P.state!=='dead'&&!['hang','climb'].includes(P.state)){setState('landHurt');}}
     let landed=false;
-    for(let r=Math.floor((py+4)/TH);r<=Math.floor((d.y+4)/TH)-1;r++){const ys=SURF(r);if(py<ys&&d.y>=ys&&solidBelow(L,d.c,r)){landed=true;if(B(L,d.c,r)===FLOOR){L.rubble.add(r*L.cols+d.c);if(d.kind==='slab')jamAt(d.c,r);}invalidateCell(d.c,r);dust(d.x,ys,6);if(tileVisible(d.c,r)){Snd.play('crash');shake(1.4);}break;}}
+    for(let r=Math.floor((py+4)/TH);r<=Math.floor((d.y+4)/TH)-1;r++){const ys=SURF(r);if(py<ys&&d.y>=ys&&solidBelow(L,d.c,r)){landed=true;if(B(L,d.c,r)===FLOOR){L.rubble.add(r*L.cols+d.c);if(d.kind==='slab')jamAt(d.c,r);if(d.kind==='rock'){const so=L.dyn.find(q=>q.c===d.c&&q.r===r&&q.f.t==='stone');if(so)so.f.land=gameTime;}}invalidateCell(d.c,r);dust(d.x,ys,6);if(tileVisible(d.c,r)){Snd.play('crash');shake(1.4);}break;}}
     if(landed||d.y>L.rows*TH+120)L.debris.splice(i,1);
   }
 }
@@ -4762,63 +4767,204 @@ function drawLampEg(ctx,t,th){const look=th.look,st=th.style,free=lampFree(t),x=
 // the re-skinned traps (EGP.traps): a granite portcullis slab for the gate (Khufu's and Unas's portcullises in their grooves); a
 // dressed roof block with sand running from its seams for the falling stone (Hawara's sliding roof blocks); bronze-tipped stakes
 // for the spikes (a film invention, kept for play); EGP.plug: the chase's front a granite plug sliding down the corridor
-// the portcullis: a slab 10 px thick across the corridor, seen as its lit front face and its long side receding into the room, in
-// rose granite with crystals big enough to hold at phone scale; it runs in a groove cut in the back wall, and over the slot in the
-// ceiling a log carries the four ropes it was lowered on (Perring found four rope grooves behind the slab nearest Khufu's chamber)
-const GRAN={face:'#b4877a',side:'#86625a',dk:'#2a201e',wh:'#f2e6dc',pk:'#d29a88',edge:'#e8c8b8'};
-function egSlab(ctx,pl,drop,X,half){const K='#0b0812',T=10,a=pl.L0,b=pl.R0,ya=pl.ce(a)-3,yb=pl.ce(b)-3,fa=pl.fl(a),fb=pl.fl(b);
-  if(!half){ctx.save();const ly=pl.top-1.5,lx0=a-T/2-4,lx1=b+T/2+4; // the log over the slot and the ropes
-    ctx.fillStyle=K;ctx.fillRect(lx0-0.6,ly-2.8,lx1-lx0+1.2,5.6);ctx.fillStyle='#6a4a2a';ctx.fillRect(lx0,ly-2.2,lx1-lx0,4.4);ctx.fillStyle='#9a7448';ctx.fillRect(lx0,ly-2.2,lx1-lx0,1.1);
-    ctx.fillStyle='#c8a070';ctx.beginPath();ctx.arc(lx0+0.6,ly,2,0,6.2832);ctx.fill();ctx.strokeStyle='#6a4a2a';ctx.lineWidth=0.5;ctx.beginPath();ctx.arc(lx0+0.6,ly,1,0,6.2832);ctx.stroke();
-    for(let i=0;i<4;i++){const rx=a-T/2+2+i*(b-a+T-4)/3;ctx.strokeStyle=K;ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(rx,ly-2.6);ctx.lineTo(rx,pl.top+4);ctx.stroke();ctx.strokeStyle='#d8b888';ctx.lineWidth=0.9;ctx.stroke();}
-    ctx.restore();}
+// ---- stones (round 12, owner: "check the actual granite texture, too pixelated"; "respect the level theme for the stone and the level of
+// damage and crumbling to that area"). Each stone is drawn once into a canvas at 4 px a game pixel, as soft-edged patches at the scale of
+// its crystals or grains in two or three tones over soft mottles (no noise pixel by pixel), then drawn scaled and smoothed onto each face,
+// sheared with the face and anchored to the stone, so it travels with it and does not swim. Entries: base, banding, mottles [colour, alpha],
+// patches [colour, per 10 px2, radius min, max, alpha, shape 0 grain 1 crystal 2 straw], polish. After the stones themselves: Aswan rose
+// granite (UCL Digital Egypt: about half pink potassium feldspar in crystals up to a few cm, a quarter glassy grey quartz, black biotite and
+// hornblende; Old Kingdom faces dressed and polished); Aksum's nepheline syenite (granite-like, grey); Hawara's quartzite (its burial
+// chamber and roof blocks); Nubian sandstone (Napata, Meroë), bedded; Theban and Tura limestone; greywacke, the dark stone of the Wadi
+// Hammamat; mud brick faced in courses (Kerma); kershef, salt blocks set in salty mud (Shali, Siwa).
+const STONES={
+  granite:{base:'#a47a6c',mot:[['#bb8d7e',.14],['#8a6458',.12]],pat:[['#cf8a72',1.7,0.9,2.1,0.95,1],['#e0aa94',0.6,0.7,1.5,0.9,1],['#968f94',1.0,0.6,1.4,0.85,1],['#f0e6e2',0.2,0.3,0.6,0.7,0],['#2a2022',0.7,0.2,0.45,0.85,0]],sheen:0.1,cry:1},
+  syenite:{base:'#7e7a78',mot:[['#918d88',.14],['#666260',.12]],pat:[['#a09a92',1.4,0.8,1.8,0.9,1],['#5f5a58',0.9,0.6,1.4,0.85,1],['#cfc8be',0.35,0.4,0.9,0.7,1],['#1f1c1d',0.8,0.2,0.45,0.85,0]],sheen:0.06,cry:1},
+  quartzite:{base:'#9a5f48',band:['#a86a52','#8a5440'],mot:[['#b27858',.16],['#7a4836',.14]],pat:[['#c88e70',0.6,0.4,0.9,0.5,0],['#6a3c2e',0.5,0.3,0.7,0.6,0]],sheen:0.12,cry:1},
+  sandstone:{base:'#c4a06e',band:['#d0ac7a','#b08a58','#dabb88'],mot:[['#d6b482',.18],['#a6824e',.14]],pat:[['#e4cc9a',0.5,0.4,0.9,0.5,0],['#8a6a40',0.4,0.25,0.6,0.6,0]],sheen:0},
+  limestone:{base:'#d6c8a6',mot:[['#e8ddc2',.2],['#baa983',.16]],pat:[['#f2ead6',0.5,0.4,1.0,0.6,0],['#a69676',0.5,0.25,0.55,0.55,0],['#c6b68e',0.25,0.6,1.2,0.4,1]],sheen:0.04},
+  greywacke:{base:'#4f5a50',mot:[['#606c5e',.18],['#3c453d',.16]],pat:[['#728070',0.5,0.3,0.7,0.5,0],['#2a302b',0.5,0.25,0.5,0.6,0]],sheen:0.14},
+  mudbrick:{base:'#8a5a3a',courses:1,mot:[['#9e6a46',.18],['#704830',.16]],pat:[['#c4a066',1.0,0.2,0.5,0.75,2],['#5a3822',0.4,0.3,0.7,0.5,0]],sheen:0},
+  kershef:{base:'#8c7a62',mot:[['#a08e74',.18],['#76644c',.16]],pat:[['#ebe5d8',0.8,0.6,1.8,0.85,1],['#d8d1c1',0.5,0.4,1.2,0.6,0],['#5e5040',0.4,0.3,0.6,0.5,0]],sheen:0}};
+// each theme's own stone (roof blocks and their slots); the portcullis's slab (granite where the kings used it; where no one would have:
+// Napata, Meroë, Kerma, the Garamantes and the wells in sandstone, Shali in limestone, Aksum its syenite, Hawara its quartzite); the plugs
+// (granite, as in the Great Pyramid; Aksum's syenite and Hawara's quartzite are their own builders' hard stones)
+const THEME_STONE={west:'limestone',blue:'limestone',osiris:'greywacke',nun:'granite',napata:'sandstone',meroe:'sandstone',deffufa:'mudbrick',aksum:'syenite',hawara:'quartzite',shali:'kershef',foggara:'sandstone',wells:'sandstone'};
+const SLAB_STONE={west:'granite',blue:'granite',osiris:'granite',nun:'granite',hawara:'quartzite',aksum:'syenite',napata:'sandstone',meroe:'sandstone',deffufa:'sandstone',foggara:'sandstone',wells:'sandstone',shali:'limestone'};
+const PLUG_STONE={aksum:'syenite',hawara:'quartzite'};
+function hexA(h,a){const n=parseInt(h.slice(1),16);return 'rgba('+(n>>16)+','+((n>>8)&255)+','+(n&255)+','+a+')';}
+const STX=new Map();
+function stoneTex(kind,W,H,motif){const key=kind+':'+W+'x'+H+':'+(motif||'');let c=STX.get(key);if(c)return c;
+  const S=4,sp=STONES[kind]||STONES.limestone;c=document.createElement('canvas');c.width=W*S;c.height=H*S;const g=c.getContext('2d');g.scale(S,S);
+  let hs=0;for(let i=0;i<key.length;i++)hs=hash2(hs,key.charCodeAt(i));const q=mulberry32(hs);
+  g.fillStyle=sp.base;g.fillRect(0,0,W,H);
+  if(sp.band){g.globalAlpha=0.3;for(let y=0;y<H;y+=2.4+q()*3.6){g.strokeStyle=sp.band[(q()*sp.band.length)|0];g.lineWidth=1.2+q()*2.4;g.beginPath();g.moveTo(-2,y);for(let x=0;x<=W+4;x+=4)g.lineTo(x,y+Math.sin(x*0.13+y)*0.7);g.stroke();}g.globalAlpha=1;}
+  for(const [col,a] of sp.mot){const n=Math.max(4,Math.round(W*H/55));for(let i=0;i<n;i++){const x=q()*W,y=q()*H,r=2.5+q()*5.5,gr=g.createRadialGradient(x,y,0,x,y,r);
+    gr.addColorStop(0,hexA(col,a));gr.addColorStop(1,hexA(col,0));g.fillStyle=gr;g.fillRect(x-r,y-r,2*r,2*r);}}
+  const crys=[],fillP=(pts,k,cx,cy)=>{g.beginPath();pts.forEach((p,j)=>{const x=cx+(p[0]-cx)*k,y=cy+(p[1]-cy)*k;j?g.lineTo(x,y):g.moveTo(x,y);});g.closePath();g.fill();};
+  for(const [col,den,r0,r1,al,shp] of sp.pat){const n=Math.round(den*W*H/10);g.fillStyle=col;g.strokeStyle=col;
+    for(let i=0;i<n;i++){const x=q()*W,y=q()*H,r=r0+q()*(r1-r0);
+      if(shp===1){const k=5+((q()*3)|0),a0=q()*6.2832,pts=[];for(let j=0;j<k;j++){const aa=a0+j/k*6.2832,rr=r*(0.65+q()*0.5);pts.push([x+Math.cos(aa)*rr,y+Math.sin(aa)*rr*0.85]);}
+        g.globalAlpha=al*0.35;fillP(pts,1.3,x,y);g.globalAlpha=al;fillP(pts,1,x,y);if(sp.cry&&r>1&&crys.length<300)crys.push([x,y]);}
+      else if(shp===2){g.globalAlpha=al;g.lineWidth=0.3;const a=q()*3;g.beginPath();g.moveTo(x,y);g.lineTo(x+Math.cos(a)*r*3,y+Math.sin(a)*r*3);g.stroke();}
+      else{g.globalAlpha=al*0.4;g.beginPath();g.arc(x,y,r*1.6,0,6.2832);g.fill();g.globalAlpha=al;g.beginPath();g.arc(x,y,r,0,6.2832);g.fill();}}}
+  g.globalAlpha=1;
+  if(sp.courses){g.strokeStyle='rgba(60,36,22,.55)';g.lineWidth=0.45;for(let y=3.2,k=0;y<H;y+=3.4,k++){g.beginPath();g.moveTo(0,y);g.lineTo(W,y);g.stroke();for(let x=(k%2)*3.5;x<W;x+=7){g.beginPath();g.moveTo(x,y-3.4);g.lineTo(x,y);g.stroke();}}}
+  if(sp.sheen){const gr=g.createLinearGradient(0,0,W,H);gr.addColorStop(0,'rgba(255,246,236,'+sp.sheen+')');gr.addColorStop(0.5,'rgba(255,246,236,0)');gr.addColorStop(1,'rgba(255,246,236,'+sp.sheen*0.6+')');g.fillStyle=gr;g.fillRect(0,0,W,H);}
+  if(motif)slabMotif(g,motif,8,38);
+  c.crys=crys;STX.set(key,c);return c;}
+// a theme's emblem cut in sunk relief on the portcullis's face (generated once with its stone): the cut's floor in shadow, its lower edge
+// catching the light, faint paint where the originals had colour. One per theme, after: the winged sun disc over temple and tomb doors
+// (Behdety); Osiris's djed pillar; a kheker frieze in faience blue (the Blue Chambers); the ram's head of Amun of Napata with the sun disc
+// (Jebel Barkal; Meroë); the disc and crescent of pre-Christian Aksum (its coins and stelae); the water ripples (N35) for Nun; Sobek's
+// crocodile for Hawara (Shedet, the crocodile cemeteries by the Labyrinth); a lion as on Kerma's faience inlays (the Eastern Deffufa's
+// façade); a giraffe of the Messak's engravings (Fezzan, the Garamantes' land); a date palm for the oasis wells; for Shali a plain carved
+// band of chevrons, the geometry of Siwan (Amazigh) needlework kept to a border, nothing of its meanings borrowed.
+function slabMotif(g,look,cx,cy){
+  const relief=(P,paint)=>{g.fillStyle='rgba(255,236,220,.5)';g.fill(P);g.save();g.translate(-0.45,-0.5);g.fillStyle='rgba(36,20,16,.62)';g.fill(P);g.restore();
+    if(paint){g.save();g.globalAlpha=0.42;g.translate(-0.1,-0.1);g.fillStyle=paint;g.fill(P);g.restore();}};
+  const P=new Path2D(),E=(x,y,rx,ry,r)=>{P.moveTo(x+rx*Math.cos(r||0),y+rx*Math.sin(r||0));P.ellipse(x,y,rx,ry,r||0,0,6.2832);},R=(x,y,w,h)=>P.rect(x,y,w,h);
+  switch(look){
+    case'west':{const D=new Path2D();D.arc(cx,cy,1.8,0,6.2832);for(const s of [-1,1]){P.moveTo(cx+s*1.7,cy-0.7);P.quadraticCurveTo(cx+s*4.6,cy-2.2,cx+s*7.4,cy-1.2);P.lineTo(cx+s*6.8,cy+0.1);P.lineTo(cx+s*7.2,cy+0.6);P.quadraticCurveTo(cx+s*4,cy+0.8,cx+s*1.7,cy+0.9);P.closePath();}
+      relief(P,'#3a64a0');relief(D,'#b8402c');return;}
+    case'osiris':R(cx-1,cy-2.6,2,8.2);P.moveTo(cx-2,cy+5.6);P.lineTo(cx+2,cy+5.6);P.lineTo(cx+1,cy+4.2);P.lineTo(cx-1,cy+4.2);P.closePath();for(let i=0;i<4;i++)R(cx-2.7,cy-5.6+i*1.2,5.4,0.7);R(cx-1.4,cy-6.8,2.8,0.9);relief(P,'#4f8a52');return;
+    case'blue':for(let i=0;i<5;i++){const x=cx-6+i*3;R(x-0.7,cy-2.6,1.4,5);E(x,cy-3.3,0.95,0.95);}R(cx-7.6,cy+2.9,15.2,0.9);relief(P,'#2f7fb0');return;
+    case'napata':case'meroe':{E(cx+0.6,cy+0.4,3.1,1.9,-0.25);P.moveTo(cx-2.2,cy-0.2);P.lineTo(cx-4.6,cy+1.2);P.lineTo(cx-4.4,cy+2.2);P.lineTo(cx-1.6,cy+2.1);P.closePath();
+      const H=new Path2D();H.arc(cx+1.2,cy+0.6,2.2,-2.2,1.6);H.arc(cx+1.2,cy+0.6,1.2,1.6,-2.2,true);H.closePath();E(cx+0.4,cy-4.6,1.5,1.5);relief(P,'#c8962a');relief(H,null);return;}
+    case'aksum':{P.arc(cx,cy+1.2,3,0,6.2832);P.moveTo(cx+2.6,cy-0.1);P.arc(cx,cy-0.1,2.6,0,6.2832,true);E(cx,cy-3.6,1.3,1.3);
+      g.fillStyle='rgba(255,236,220,.5)';g.fill(P,'evenodd');g.save();g.translate(-0.45,-0.5);g.fillStyle='rgba(36,20,16,.62)';g.fill(P,'evenodd');g.restore();return;}
+    case'nun':for(let i=0;i<3;i++){const y=cy-3+i*3;P.moveTo(cx-6.5,y);for(let k=0;k<=8;k++)P.lineTo(cx-6.5+k*1.625,y+(k%2?-0.9:0));for(let k=8;k>=0;k--)P.lineTo(cx-6.5+k*1.625,y+0.8+(k%2?-0.9:0));P.closePath();}relief(P,'#3a72a8');return;
+    case'hawara':P.moveTo(cx-7,cy+0.6);P.lineTo(cx-4,cy-0.6);P.quadraticCurveTo(cx,cy-1.5,cx+3,cy-0.7);P.quadraticCurveTo(cx+6,cy,cx+7.6,cy+1.6);P.quadraticCurveTo(cx+4,cy+1,cx+2,cy+1.2);P.lineTo(cx-3.6,cy+1.3);P.closePath();
+      for(const lx of [-2.6,1.4])R(cx+lx,cy+0.8,0.8,1.6);relief(P,'#4f7a4a');return;
+    case'shali':for(let i=0;i<4;i++){const y=cy-6+i*3.2;P.moveTo(cx-2.6,y+2.6);P.lineTo(cx,y);P.lineTo(cx+2.6,y+2.6);P.lineTo(cx+1.6,y+2.6);P.lineTo(cx,y+1.2);P.lineTo(cx-1.6,y+2.6);P.closePath();}relief(P,null);return;
+    case'deffufa':E(cx,cy+0.6,3.6,1.6);E(cx-3.8,cy-0.6,1.8,1.8);for(const lx of [-2.6,-1.2,1.6,2.8])R(cx+lx,cy+1.6,0.8,2.6);P.moveTo(cx+3.4,cy);P.quadraticCurveTo(cx+6,cy-2,cx+5.4,cy-3.4);P.lineTo(cx+5.9,cy-3.4);P.quadraticCurveTo(cx+6.6,cy-1.6,cx+3.6,cy+0.8);P.closePath();relief(P,'#3a8ab0');return;
+    case'foggara':E(cx+1,cy+1.2,2.8,1.4);P.moveTo(cx-1.2,cy+0.6);P.lineTo(cx-3.6,cy-5.6);P.lineTo(cx-2.6,cy-5.8);P.lineTo(cx-0.2,cy+0.2);P.closePath();E(cx-3.8,cy-6.1,1.2,0.7,-0.3);for(const lx of [-1.2,0.2,1.8,3])R(cx+lx,cy+2,0.6,3.4);relief(P,null);return;
+    case'wells':{R(cx-0.5,cy-2,1,8.4);for(let i=0;i<6;i++){const a=-Math.PI*0.95+i*Math.PI*0.38,ex=cx+Math.cos(a)*5.4,ey=cy-2.6+Math.sin(a)*3.2+2.2;P.moveTo(cx,cy-2.6);P.quadraticCurveTo((cx+ex)/2,(cy-2.6+ey)/2-1.8,ex,ey);P.quadraticCurveTo((cx+ex)/2,(cy-2.6+ey)/2-0.8,cx,cy-2);P.closePath();}relief(P,'#5a7a3a');return;}}}
+// crystals catching the lamps: the bright points sit on the stone's own crystals (stoneTex's list), each on its own beat, stronger near
+// a lamp; map takes a crystal's place in the texture to the screen and returns null where that part is not showing
+function stoneGlints(ctx,tx,map,seed){const cs=tx.crys;if(!cs||!cs.length)return;const t=gameTime,q=mulberry32(seed);let kl=null,n=0;ctx.save();ctx.globalCompositeOperation='lighter';
+  for(let i=0;i<cs.length&&n<12;i+=1+((q()*5)|0)){const p=map(cs[i][0],cs[i][1]);if(!p)continue;n++;const ph=q()*40,sp2=0.8+q()*1.6,tw=Math.sin(t*sp2+ph);if(tw<0.55)continue;
+    if(!kl)kl=keyLight(p[0],p[1]);const a=(tw-0.55)*2.2*(0.35+0.65*kl.k);ctx.globalAlpha=Math.min(1,a);ctx.drawImage(lightSprite(kl.col),p[0]-3,p[1]-3,6,6);ctx.fillStyle='#fff8f0';ctx.fillRect(p[0]-0.6,p[1]-0.6,1.2,1.2);}
+  ctx.restore();}
+// wear (the walls' own wearLevel, 0 kept to 3 ruined): corners broken off, a crack, chips; drawn over a face given as four corners
+// (top-left, top-right, bottom-right, bottom-left), deterministic from the stone's place
+function stoneWear(ctx,F,W,seed,dust){if(W<=0&&!dust)return;const q=mulberry32(seed),L2=(a,b,u)=>[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u],K='#0b0812';
+  const corner=(c,n1,n2,s)=>{const a=L2(c,n1,s*(0.6+q()*0.6)),b=L2(c,n2,s*(0.6+q()*0.6));ctx.fillStyle='rgba(8,5,10,.9)';ctx.beginPath();ctx.moveTo(c[0],c[1]);ctx.lineTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.closePath();ctx.fill();
+    ctx.fillStyle='rgba(255,236,214,.3)';ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.lineTo(L2(a,b,0.5)[0]+0.4,L2(a,b,0.5)[1]+0.4);ctx.closePath();ctx.fill();};
+  const nb=Math.min(4,W+(dust?1:0));for(let i=0;i<nb;i++){const k=(i+((q()*4)|0))%4;corner(F[k],F[(k+1)%4],F[(k+3)%4],(0.1+0.08*W)*(0.7+q()*0.6));}
+  if(W>=2){ctx.strokeStyle='rgba(10,6,12,.6)';ctx.lineWidth=0.55;ctx.beginPath();const v0=0.15+q()*0.4;let p=L2(L2(F[0],F[3],v0),L2(F[1],F[2],v0),0.15+q()*0.7);ctx.moveTo(p[0],p[1]);for(let i=1;i<=W;i++){const u=v0+i*0.09,b=L2(L2(F[0],F[3],u),L2(F[1],F[2],u),0.15+q()*0.7);ctx.lineTo(b[0],b[1]);}ctx.stroke();} // a short crack
+  if(W>=1){ctx.fillStyle='rgba(10,6,12,.5)';for(let i=0;i<3*W;i++){const p=L2(L2(F[0],F[3],q()),L2(F[1],F[2],q()),q());ctx.fillRect(p[0],p[1],0.8+q()*0.8,0.6+q()*0.6);}}
+  if(dust){ctx.fillStyle='rgba(236,218,180,.22)';ctx.beginPath();F.forEach((p,j)=>j?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fill();}}
+function wearRubble(ctx,x,y,w,W,seed){if(W<2)return;const q=mulberry32(seed);for(let i=0;i<W*2;i++){const px=x+(q()-0.5)*w,s=0.8+q()*1.6;ctx.fillStyle='#0b0812';ctx.fillRect(px-s/2-0.4,y-s-0.4,s+0.8,s+0.6);ctx.fillStyle=i%2?L.theme.wallB||L.theme.wall:L.theme.hi;ctx.fillRect(px-s/2,y-s,s,s);}}
+// The portcullis (round 12, owner: "check the perspective"): the game shows a block's front face, its right side face (drawn up and to
+// the right, DX across and DY up for the corridor's depth) and its top, never its underside or left side. The slab runs across the
+// corridor, T thick, from the floor's front edge (depth 0) to the back wall (depth 1): its front face is the narrow end toward us, its
+// broad face is the right side face, sheared with the depth; its top is in the ceiling. It slides in a slot across the floor and in a
+// groove up the back wall (Khufu's antechamber's grooves in its granite walls), both seen only where it is raised; it enters the ceiling at
+// the ceiling's front edge, where a dark slot opens and the ceiling's shadow falls on it. The log and ropes over it are gone: they would sit
+// inside the ceiling, out of sight.
+const T_SLAB=7;
+function egSlab(ctx,pl,drop,X,half){const K='#0b0812',T=T_SLAB,a=pl.L0,b=pl.R0,ya=pl.ce(a)-3,yb=pl.ce(b)-3,fa=pl.fl(a),fb=pl.fl(b),th=L.theme,lk=th.look||'west',kind=SLAB_STONE[lk]||'granite';
+  const S=4,yd=Math.min(72,drop+3),yA=ya+yd,yB=yb+yd,sl=(yb-ya)/(b-a),TX=stoneTex(kind,24,72,lk),v0=72-yd,Wr=EGP.wear!==undefined?EGP.wear:wearLevel(X+16,(pl.top+fa)/2),sd=hash2(Math.round(X),Math.round(pl.top));
   ctx.beginPath();ctx.rect(a-T/2-6,pl.top,b-a+T+12,Math.max(fa,fb)+6-pl.top);ctx.clip();ctx.beginPath();if(half)ctx.rect(X-40,-1e5,56,2e5);else ctx.rect(X+16,-1e5,60,2e5);ctx.clip();
-  // the groove in the back wall it runs in, seen below it when it is up
-  ctx.fillStyle='rgba(6,4,10,.8)';ctx.beginPath();ctx.moveTo(b+T/2-1,yb-4);ctx.lineTo(b+T/2+3,yb-6);ctx.lineTo(b+T/2+3,fb-2);ctx.lineTo(b+T/2-1,fb);ctx.closePath();ctx.fill();
-  ctx.fillStyle='rgba(255,230,210,.25)';ctx.fillRect(b+T/2+3,yb-6,0.8,fb-yb+4);
-  const yd=drop+3,q=mulberry32(hash2(Math.round(a),Math.round(ya)));
-  const side=()=>{ctx.beginPath();ctx.moveTo(a+T/2,ya);ctx.lineTo(b+T/2,yb);ctx.lineTo(b+T/2,yb+yd);ctx.lineTo(a+T/2,ya+yd);ctx.closePath();};
-  const front=()=>{ctx.beginPath();ctx.rect(a-T/2,ya,T,yd);};
-  ctx.fillStyle=K;ctx.beginPath();ctx.moveTo(a-T/2-1,ya);ctx.lineTo(b+T/2+1,yb);ctx.lineTo(b+T/2+1,yb+yd+1);ctx.lineTo(a+T/2+1,ya+yd+1.2);ctx.lineTo(a-T/2-1,ya+yd+1.2);ctx.closePath();ctx.fill();
-  side();ctx.fillStyle=GRAN.side;ctx.fill();front();ctx.fillStyle=GRAN.face;ctx.fill();
-  const spk=(n,x0,w,y0,dy,yh)=>{for(let i=0;i<n;i++){const u=q(),v=q()*yh,r=q(),sz=r<0.15?2.2:r<0.55?1.5:1;ctx.fillStyle=r<0.15?GRAN.pk:i%3?GRAN.dk:GRAN.wh;ctx.fillRect(x0+u*w,y0+dy*u+v,sz,sz*0.9);}};
-  spk(Math.min(160,drop*2),a+T/2,b-a-2.2,ya+1,yb-ya,yd-3.4);spk(Math.min(120,drop*1.4),a-T/2+0.4,T-2.6,ya+1,0,yd-3.4); // (placed inside each face: no clip)
-  ctx.fillStyle=GRAN.edge;ctx.fillRect(a-T/2,ya,0.9,yd);ctx.fillRect(a-T/2,ya+yd-1.4,T,1.4); // the arris catching the light, the dressed foot
-  ctx.fillStyle='rgba(255,236,220,.25)';ctx.beginPath();ctx.moveTo(a+T/2,ya+yd-1.4);ctx.lineTo(b+T/2,yb+yd-1.4);ctx.lineTo(b+T/2,yb+yd);ctx.lineTo(a+T/2,ya+yd);ctx.closePath();ctx.fill();
-  ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(a+T/2-0.6,ya,1.2,yd);
-  ctx.fillStyle='rgba(6,4,10,.85)';ctx.fillRect(a-T/2-3,pl.top,b-a+T+6,3); // the slot's mouth in the ceiling
-  graniteGlints(ctx,a-T/2,b+T/2,ya,ya+yd,hash2(Math.round(a),7));}
+  // the slot across the floor and the groove up the back wall, in the theme's own stone: dark, with the far lip catching the light
+  ctx.fillStyle='rgba(6,4,10,.8)';ctx.beginPath();ctx.moveTo(a-T/2,fa);ctx.lineTo(a+T/2,fa);ctx.lineTo(b+T/2,fb);ctx.lineTo(b-T/2,fb);ctx.closePath();ctx.fill();
+  ctx.fillStyle=th.hi;ctx.globalAlpha=0.55;ctx.beginPath();ctx.moveTo(a+T/2,fa);ctx.lineTo(b+T/2,fb);ctx.lineTo(b+T/2+0.7,fb);ctx.lineTo(a+T/2+0.7,fa);ctx.closePath();ctx.fill();ctx.globalAlpha=1;
+  ctx.fillStyle='rgba(6,4,10,.82)';ctx.fillRect(b-T/2-0.5,yb,T+1,fb-yb);ctx.fillStyle=th.wallB||th.wall;ctx.fillRect(b+T/2+0.5,yb,1,fb-yb);ctx.fillStyle=th.lo||K;ctx.fillRect(b-T/2-1.4,yb,0.9,fb-yb);
+  // the slab: its outline, the broad face (sheared with the depth, turned from the light, darker toward the back), the front face
+  ctx.fillStyle=K;ctx.beginPath();ctx.moveTo(a-T/2-0.8,ya);ctx.lineTo(b+T/2+0.8,yb);ctx.lineTo(b+T/2+0.8,yB+0.8);ctx.lineTo(a+T/2+0.8,yA+0.9);ctx.lineTo(a-T/2-0.8,yA+0.9);ctx.closePath();ctx.fill();
+  ctx.save();ctx.transform(1,sl,0,1,a+T/2,ya);ctx.drawImage(TX,0,v0*S,16*S,yd*S,0,0,b-a,yd);
+  const gs=ctx.createLinearGradient(0,0,b-a,0);gs.addColorStop(0,'rgba(24,12,18,.16)');gs.addColorStop(1,'rgba(24,12,18,.4)');ctx.fillStyle=gs;ctx.fillRect(0,0,b-a,yd);ctx.restore();
+  ctx.drawImage(TX,17*S,v0*S,T*S,yd*S,a-T/2,ya,T,yd);
+  ctx.fillStyle='rgba(255,242,230,.3)';ctx.fillRect(a-T/2,ya,0.7,yd);ctx.fillStyle='rgba(255,242,230,.2)';ctx.fillRect(a+T/2-0.5,ya,0.5,yd); // the arrises
+  stoneWear(ctx,[[a+T/2,ya],[b+T/2,yb],[b+T/2,yB],[a+T/2,yA]],Wr,sd,false);stoneWear(ctx,[[a-T/2,ya],[a+T/2,ya],[a+T/2,yA],[a-T/2,yA]],Math.max(0,Wr-1),sd+7,false);
+  if(drop>8)wearRubble(ctx,a+HX,pl.fl(a+HX)-0.5,T+10,Wr,sd+3);
+  ctx.fillStyle='rgba(6,4,10,.88)';ctx.fillRect(a-T/2-1.5,pl.top,T+3,2.2); // the slot's mouth at the ceiling's front edge
+  if(STONES[kind].cry)stoneGlints(ctx,TX,(u,v)=>{if(u<0.5||u>15.5)return null;const yy=v-v0;if(yy<1||yy>yd-1)return null;const x=u*(b-a)/16;return [a+T/2+x,ya+yy+sl*x];},sd);}
+// ---- sand (round 12, owner: "starts with slow trickles of sand, quickly increasing, exponentially, a large puff of sands"): one routine
+// for every trap that pours sand (the roof block, the sand-filled shaft under a slab, the plugs). sandK: the flow at time t of a pour
+// that takes `dur` to go from a trickle (k0) to the full flow, growing exponentially; sandFlow: k sets the number of strands (one to
+// three), their width and the beads' speed, the grains breaking off and the ones catching the light; sandBillow: the cloud as the stone
+// lets go or lands, lobes swelling and rising, drifting apart, fading; sandSettle: the dust hanging after it, sinking over two seconds.
+function sandK(t,dur,k0){return Math.min(1,k0*Math.exp(Math.max(0,t)/dur*Math.log(1/k0)));}
+function sandFlow(ctx,x,y0,y1,k,seed){if(y1<=y0+1||k<=0.01)return;const n=k<0.25?1:k<0.6?2:3,w=0.45+2.6*k;
+  ctx.globalAlpha=0.3+0.3*k;ctx.fillStyle=sandC().body;ctx.fillRect(x-w*0.3,y0,w*0.6,y1-y0);ctx.globalAlpha=1; // a continuous thread under the beads (sand, not drops)
+  for(let i=0;i<n;i++){const ox=(i-(n-1)/2)*(1.2+w*0.5)+Math.sin(seed*7+i*2.3)*0.4;sandStream(ctx,x+ox,y0,y1,w*(i===1?1:0.75),Math.min(1,0.25+k),seed+i*0.37);}}
+let BILLOWG=null;
+function sandBillow(ctx,x,y,age,sz,dur){dur=dur||1.1;if(age<0||age>dur)return;const k=age/dur;if(!BILLOWG){BILLOWG=ctx.createRadialGradient(0,0,0,0,0,1);BILLOWG.addColorStop(0,'rgba(255,244,214,1)');BILLOWG.addColorStop(0.5,'rgba(244,224,176,.7)');BILLOWG.addColorStop(1,'rgba(236,210,156,0)');}
+  ctx.save();ctx.fillStyle=BILLOWG;const e=1-Math.pow(1-k,2.2);for(let i=0;i<7;i++){const a=-Math.PI+(i+0.5)/7*Math.PI,r=(3+e*22)*sz,s=(5+e*14)*sz*(0.8+0.3*((i*37)%5)/5);ctx.globalAlpha=0.85*(1-k)*(1-k*0.2);
+    ctx.save();ctx.translate(x+Math.cos(a)*r,y+Math.sin(a)*r*0.45-e*10*sz);ctx.scale(s,s*0.62);ctx.beginPath();ctx.arc(0,0,1,0,6.2832);ctx.fill();ctx.restore();}ctx.restore();}
+function sandSettle(ctx,x,y,age,w){if(age<0||age>2.2)return;const k=age/2.2;ctx.save();ctx.globalAlpha=0.32*(1-k);ctx.fillStyle=BILLOWG||'rgba(240,220,170,.5)';ctx.translate(x,y-12+k*9);ctx.scale(w*(0.8+0.4*k),8);ctx.beginPath();ctx.arc(0,0,1,0,6.2832);ctx.fill();ctx.restore();}
+// grains sliding over a sinking floor toward its open seams (the sand under it draining away): short streaks running to the nearest seam
+function sandFunnel(ctx,xs,y,w,k,seed){if(k<=0.02)return;const t=gameTime;ctx.fillStyle=sandC().grain;for(let i=0;i<Math.round(4+10*k);i++){const u=((t*(0.6+k*1.4)+i*0.137+seed)%1),x0=xs[i%xs.length],dir=i%2?1:-1,px=x0+dir*(1-u)*w*0.5;
+  ctx.globalAlpha=0.8*Math.sin(u*Math.PI);ctx.fillRect(px-0.7,y-0.6+(i%3)*0.5,1.4,0.9);}ctx.globalAlpha=1;}
 // crystals of rose granite (feldspar, quartz, mica) catching the torchlight: a few bright points at a time, each on its own beat,
 // stronger near a lamp (the key light); drawn as added light, so they read in both modes
 function graniteGlints(ctx,x0,x1,y0,y1,seed){if(y1<=y0+2)return;const kl=keyLight((x0+x1)/2,y1),t=gameTime,q=mulberry32(seed),n=Math.min(10,Math.round((x1-x0)*(y1-y0)/180));ctx.save();ctx.globalCompositeOperation='lighter';
   const sp=lightSprite(kl.col);for(let i=0;i<n;i++){const px=x0+q()*(x1-x0),py=y0+q()*(y1-y0),ph=q()*40,sp2=0.8+q()*1.6,tw=Math.sin(t*sp2+ph);if(tw<0.55)continue;const a=(tw-0.55)*2.2*(0.35+0.65*kl.k);
     ctx.globalAlpha=Math.min(1,a);ctx.drawImage(sp,px-3,py-3,6,6);ctx.fillStyle='#fff8f0';ctx.fillRect(px-0.6,py-0.6,1.2,1.2);}ctx.restore();}
-// sand: streams of fine pale sand (dense, a lit edge, grains breaking off), the heap where they land, the puff when a floor gives
-const SANDC_EG={body:'rgba(244,224,172,.92)',lit:'#fff6dc',grain:'#f8e6b8',heap:'#d8bc84',heapLit:'#f4dcaa'};
-function sandStream(ctx,x,y0,y1,w,k,seed){if(y1<=y0+1)return;const t=gameTime,L1=y1-y0;
-  const per=9+seed*3,off=(t*70+seed*40)%per; // the stream runs in beads that slide down it, thinning and paling as it falls
-  for(let y=y0-off;y<y1;y+=per){const a=Math.max(y,y0),b=Math.min(y+per*0.78,y1);if(b<=a)continue;const u=(a-y0)/L1,ww=w*(1-0.35*u)*(0.85+0.15*Math.sin(y*0.7+seed*9));
-    ctx.globalAlpha=(0.5+0.4*k)*(1-0.45*u);ctx.fillStyle=SANDC_EG.body;ctx.fillRect(x-ww/2,a,ww,b-a);
-    ctx.globalAlpha=(0.9)*(1-0.4*u);ctx.fillStyle=SANDC_EG.lit;ctx.fillRect(x-ww/2,a,Math.max(0.5,ww*0.3),b-a);} // its lit edge
-  ctx.globalAlpha=1;
-  ctx.fillStyle='rgba(120,90,50,.25)';ctx.fillRect(x+w/2-0.6,y0,0.6,L1);
-  ctx.fillStyle=SANDC_EG.grain;for(let i=0;i<Math.ceil(L1/5)*k;i++){const u=((t*(1.6+0.3*(i%3))+i*0.37+seed)%1),yy=y0+u*L1;ctx.globalAlpha=0.9*(1-u*0.3);ctx.fillRect(x+Math.sin(i*1.7+seed)*(w*0.5+1.2*u)-0.6,yy,1.2,1.4);}ctx.globalAlpha=1;
-  ctx.save();ctx.globalCompositeOperation='lighter';ctx.fillStyle='#fff4d0';for(let i=0;i<Math.ceil(L1/14);i++){const u=((t*1.9+i*0.53+seed)%1),tw=Math.sin(t*9+i*2.3+seed*5);if(tw<0.6)continue;ctx.globalAlpha=(tw-0.6)*2;ctx.fillRect(x+Math.sin(i*2.9+seed)*w*0.6-0.7,y0+u*L1,1.4,1.4);}ctx.restore();} // (grains catching the light as they turn)
+// sand: streams of fine sand (dense, a lit edge, grains breaking off), the heap where they land. Round 12: each theme's own desert sand
+// (the pale sands of the Theban hills and Saqqara, the orange of the Nubian and Fezzan ergs, the reddish soil of the Aksum plateau, Siwa's
+// near-white), and a stream that is one body whose density swells down it, not a string of dashes; grains as round specks
+const SAND_LOOK={west:[232,210,164],blue:[234,216,172],osiris:[218,198,156],nun:[222,202,162],napata:[220,170,108],meroe:[216,162,102],deffufa:[214,164,116],aksum:[204,170,132],hawara:[228,202,152],shali:[232,216,178],foggara:[218,156,96],wells:[232,209,158]};
+let SANDC_K=null;
+function sandC(){const lk=L&&L.theme&&L.theme.look;if(SANDC_K&&SANDC_K.lk===lk)return SANDC_K;const c=SAND_LOOK[lk]||[244,224,172],m=k=>'rgb('+c.map(v=>Math.round(Math.min(255,v+(255-v)*k))).join(',')+')';
+  SANDC_K={lk,body:'rgb('+c.join(',')+')',lit:m(0.55),grain:m(0.25),heap:'rgb('+c.map(v=>Math.round(v*0.9)).join(',')+')'};return SANDC_K;}
+function sandStream(ctx,x,y0,y1,w,k,seed){if(y1<=y0+1)return;const t=gameTime,L1=y1-y0,C=sandC();
+  const per=10+seed*3,off=(t*70+seed*40)%per,n=Math.ceil(L1/per)+1; // its density rolls down it in soft swells
+  for(let i=0;i<n;i++){const a=y0+i*per-off,a0=Math.max(a,y0),b0=Math.min(a+per,y1);if(b0<=a0)continue;const u=(a0-y0)/L1,sw=0.82+0.18*Math.sin(i*1.9+seed*7),ww=w*(1-0.35*u)*sw;
+    ctx.globalAlpha=(0.45+0.4*k)*(1-0.4*u)*(0.85+0.15*sw);ctx.fillStyle=C.body;ctx.fillRect(x-ww/2,a0,ww,b0-a0+0.6);
+    ctx.globalAlpha=0.7*(1-0.4*u);ctx.fillStyle=C.lit;ctx.fillRect(x-ww/2,a0,Math.max(0.4,ww*0.28),b0-a0+0.6);} // its lit edge
+  ctx.globalAlpha=0.8;ctx.fillStyle=C.grain;ctx.beginPath();for(let i=0;i<Math.ceil(L1/5)*k;i++){const u=((t*(1.6+0.3*(i%3))+i*0.37+seed)%1),gx=x+Math.sin(i*1.7+seed)*(w*0.5+1.2*u),gy=y0+u*L1;ctx.moveTo(gx+0.55,gy);ctx.arc(gx,gy,0.55,0,6.2832);}ctx.fill();ctx.globalAlpha=1; // grains breaking off
+  ctx.save();ctx.globalCompositeOperation='lighter';ctx.fillStyle='#fff4d0';for(let i=0;i<Math.ceil(L1/14);i++){const u=((t*1.9+i*0.53+seed)%1),tw=Math.sin(t*9+i*2.3+seed*5);if(tw<0.6)continue;ctx.globalAlpha=(tw-0.6)*2;ctx.beginPath();ctx.arc(x+Math.sin(i*2.9+seed)*w*0.6,y0+u*L1,0.7,0,6.2832);ctx.fill();}ctx.restore();} // (grains catching the light as they turn)
 function egHeap(ctx,x,y,w,h){ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(x,y+0.8,w*0.62,1.6,0,0,6.2832);ctx.fill();
   const cone=(dw,dh)=>{ctx.beginPath();ctx.moveTo(x-w/2-dw,y+0.6);ctx.quadraticCurveTo(x,y-h*2-dh,x+w/2+dw,y+0.6);ctx.closePath();};
-  ctx.fillStyle='#4a3a22';cone(0.9,1);ctx.fill();ctx.fillStyle='#e6cc92';cone(0,0);ctx.fill(); // a dark rim so it parts from the floor, the pale sand
-  ctx.fillStyle=SANDC_EG.lit;ctx.beginPath();ctx.moveTo(x-w/2+1,y);ctx.quadraticCurveTo(x-w*0.15,y-h*1.85,x+w*0.08,y-h*0.95);ctx.closePath();ctx.fill();} // its lit slope
-let PUFFG=null; // (one soft pale disc, made once: the puff is that gradient moved and scaled, faded by alpha)
-function sandPuff(ctx,x,y,age){if(age>0.9)return;const k=age/0.9;if(!PUFFG){PUFFG=ctx.createRadialGradient(0,0,0,0,0,1);PUFFG.addColorStop(0,'rgba(255,244,214,1)');PUFFG.addColorStop(0.55,'rgba(246,226,176,.75)');PUFFG.addColorStop(1,'rgba(240,214,160,0)');}
-  ctx.save();ctx.fillStyle=PUFFG;for(let i=0;i<5;i++){const a=-Math.PI+(i+0.5)/5*Math.PI,r=4+k*24,sx=6+k*12,sy=3.6+k*6;ctx.globalAlpha=0.8*(1-k)*(1-k*0.3);
-    ctx.save();ctx.translate(x+Math.cos(a)*r,y+Math.sin(a)*r*0.4-k*7);ctx.scale(sx,sy);ctx.beginPath();ctx.arc(0,0,1,0,6.2832);ctx.fill();ctx.restore();}ctx.restore();}
-function egBlock(ctx){const K='#0b0812';ctx.fillStyle=K;ctx.fillRect(-15,-1,30,19);ctx.fillStyle='#c4b08a';ctx.fillRect(-14,0,28,16);ctx.fillStyle='#e8d8b2';ctx.fillRect(-14,0,28,1.8); // dressed limestone
-  ctx.strokeStyle='rgba(90,70,40,.5)';ctx.lineWidth=0.6;for(let i=0;i<9;i++){const x=-12+i*3;ctx.beginPath();ctx.moveTo(x,3);ctx.lineTo(x+1.4,13);ctx.stroke();} // chisel marks
-  ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(-14,12,28,4);}
-// the roof block hanging: sand runs from its seams to the floor (a thread while it waits, full streams once it shifts) and heaps there
-function egStone(ctx,f,fl){const run=f.s===1?1:0.45;egBlock(ctx);
-  for(const sx of [-14.5,14.5]){sandStream(ctx,sx,-1,fl,f.s===1?2.6:1.3,run,sx>0?0.5:0);egHeap(ctx,sx,fl,f.s===1?14:11,f.s===1?3.6:2.8);}
-  ctx.fillStyle=SANDC_EG.body;ctx.fillRect(-16,-2.2,5,1.6);ctx.fillRect(11,-2.2,5,1.6);}
+  ctx.fillStyle='#4a3a22';cone(0.9,1);ctx.fill();ctx.fillStyle=sandC().heap;cone(0,0);ctx.fill(); // a dark rim so it parts from the floor, the pale sand
+  ctx.fillStyle=sandC().lit;ctx.beginPath();ctx.moveTo(x-w/2+1,y);ctx.quadraticCurveTo(x-w*0.15,y-h*1.85,x+w*0.08,y-h*0.95);ctx.closePath();ctx.fill();} // its lit slope
+// a block of stone in the game's projection: its front face (x0..x0+w, yt..yt+h, at the front of its depth), its top face receding up
+// and to the right (o.top) and its right side face (o.side), for a depth o.d of the corridor (1: all of it). The stone's texture is one
+// cached canvas (stoneTex) drawn onto each face, sheared with it; o.u0 shifts it along (so a moving stone carries its own pattern).
+function stoneBox(ctx,kind,x0,yt,w,h,o){const K='#0b0812',S=4,TX=stoneTex(kind,72,72),d=o.d===undefined?1:o.d,dx=DX*d,dy=DY*d,u0=Math.max(0,Math.min(8,o.u0||0));
+  ctx.fillStyle=K;ctx.beginPath();ctx.moveTo(x0-0.8,yt+h+0.8);ctx.lineTo(x0-0.8,yt-0.8);if(o.top){ctx.lineTo(x0+dx-0.6,yt-dy-0.8);ctx.lineTo(x0+w+dx+0.8,yt-dy-0.8);}else ctx.lineTo(x0+w+0.8,yt-0.8);
+  if(o.side){if(!o.top)ctx.lineTo(x0+w+dx+0.8,yt-dy-0.8);ctx.lineTo(x0+w+dx+0.8,yt+h-dy+0.6);}ctx.lineTo(x0+w+0.8,yt+h+0.8);ctx.closePath();ctx.fill();
+  if(o.top){ctx.save();ctx.transform(1,0,dx,-dy,x0,yt);ctx.drawImage(TX,u0*S,0,w*S,12*S,0,0,w,1);ctx.fillStyle='rgba(255,240,220,.14)';ctx.fillRect(0,0,w,1);ctx.restore();}
+  ctx.drawImage(TX,u0*S,12*S,w*S,Math.min(60,h)*S,x0,yt,w,h);
+  if(o.side){ctx.save();ctx.transform(1,-dy/dx,0,1,x0+w,yt);ctx.drawImage(TX,56*S,12*S,Math.max(1,dx)*S,Math.min(60,h)*S,0,0,dx,h);ctx.fillStyle='rgba(20,10,16,.34)';ctx.fillRect(0,0,dx,h);ctx.restore();}
+  if(o.polish){ctx.fillStyle='rgba(255,244,234,.28)';ctx.fillRect(x0,yt,0.8,h);}
+  const F=[[x0,yt],[x0+w,yt],[x0+w,yt+h],[x0,yt+h]];stoneWear(ctx,F,o.wear||0,o.seed||1,o.dust);
+  if(o.side&&(o.wear||0)>=2)stoneWear(ctx,[[x0+w,yt],[x0+w+dx,yt-dy],[x0+w+dx,yt+h-dy],[x0+w,yt+h]],o.wear-1,(o.seed||1)+5,false);
+  return TX;}
+// The roof block (round 12, owner: "again the perspective, it is wrong"; "respect the level theme for the stone and the damage"). It is
+// a block of the ceiling's lowest course, its front face flush with the ceiling's front face (the walls' front plane, HX to the left of
+// the tile's middle), cut from the theme's own stone (THEME_STONE) and worn as the walls round it are (wearLevel); while it hangs only that
+// face shows, a hair proud of the ceiling, with sand in its joints. When it lets go its slot is a dark hole in the ceiling with its left
+// inner face showing (as a doorway's jamb does), and the falling block shows its front, top and right faces; it lands across the whole
+// depth of the corridor and lies there, chipped and dusty from the fall. The sand: thin slow trickles from its joints while it waits (the
+// warning), growing exponentially through the 0.3 s it shifts, a billow as it lets go and another as it lands, the dust settling after.
+// (gameplay, round 12, owner: "collapses to the floor, occupies the full width of the corridor and becomes an obstacle over which the prince
+// needs to jump"): lying, it is BLK_W across and BLK_H high, solid to him and to guards below its top (clampMove); his body's box stops 6 px
+// above his feet, so any jump that lifts his feet 4 px clears it: the standing and running jumps, the low leaps under a ceiling; a pair of
+// them side by side (a side passage's) takes a running jump (the full one clears 91 px at that height, the pair needs 66). One who lands on
+// it slides off to the nearer side. It stays where it fell; rewind and respawn restore it with the rest (dyn, rubble).
+const BLK_W=22,BLK_H=10;
+function stoneLying(c,r){const f=F(L,c,r);return !!f&&f.t==='stone'&&f.s>=2&&L.rubble.has(r*L.cols+c);}
+function roofStone(o){return {xc:o.c*TW+16-HX,cy:ceilingY(o.c,o.r),ys:SURF(o.r),kind:THEME_STONE[L.theme.look]||'limestone',W:EGP.wear!==undefined?EGP.wear:wearLevel(o.c*TW+16,ceilingY(o.c,o.r)-8),sd:hash2(o.c*7+3,o.r*11+5)};}
+function egRoofSlot(ctx,R){const x0=R.xc-BLK_W/2,y0=R.cy-BLK_H;ctx.save();ctx.beginPath();ctx.rect(x0,y0,BLK_W,BLK_H);ctx.clip();ctx.fillStyle='#07050b';ctx.fillRect(x0,y0,BLK_W,BLK_H);
+  ctx.fillStyle=L.theme.lo||'#2a2018';ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x0+DX,y0-DY);ctx.lineTo(x0+DX,R.cy-DY);ctx.lineTo(x0,R.cy);ctx.closePath();ctx.fill();ctx.fillStyle='rgba(0,0,0,.35)';ctx.fill();ctx.restore();
+  ctx.strokeStyle='#0b0812';ctx.lineWidth=0.9;ctx.strokeRect(x0,y0,BLK_W,BLK_H);}
+function egRoofHang(ctx,o,f){const R=roofStone(o),k=f.s===1?sandK(f.tm,0.3,0.06):0.05,sag=f.s===1?0.6+k*1.6:0.4,x0=R.xc-BLK_W/2,yt=R.cy-BLK_H+sag;
+  const TX=stoneBox(ctx,R.kind,x0,yt,BLK_W,BLK_H,{wear:R.W,seed:R.sd});
+  ctx.fillStyle='rgba(6,4,10,.75)';ctx.fillRect(x0-0.6,R.cy-0.4,BLK_W+1.2,0.8+sag*0.6); // its joint with the ceiling opening as it shifts
+  for(const sx of [-BLK_W/2,BLK_W/2]){const x=o.c*TW+16+sx;sandFlow(ctx,x,R.cy,R.ys,k,sx>0?0.5:0.1);if(k>0.2)egHeap(ctx,x,R.ys,6+10*k,1+2.4*k);}
+  if(STONES[R.kind].cry)stoneGlints(ctx,TX,(u,v)=>u<28&&v>12&&v<12+BLK_H?[x0+u,yt+v-12]:null,R.sd);}
+function egRoofFall(ctx,d){const o=L.dyn.find(q=>q.c===d.c&&q.f.t==='stone'&&(d.r===undefined||q.r===d.r));if(!o)return;const R=roofStone(o),y0=d.y0-14,p=clamp((d.y-d.y0)/Math.max(1,R.ys-d.y0),0,1),yt=lerp(R.cy-BLK_H,R.ys+HY-BLK_H,p),x0=R.xc-BLK_W/2,age=Math.sqrt(2*Math.max(0,d.y-d.y0)/GRAV);
+  for(const sx of [-BLK_W/2+2,BLK_W/2-2])sandFlow(ctx,o.c*TW+16+sx,R.cy,yt,0.8*(1-p),sx>0?0.5:0.1); // the sand still pouring from the slot behind it
+  stoneBox(ctx,R.kind,x0,yt,BLK_W,BLK_H,{top:true,side:true,wear:R.W,seed:R.sd});
+  sandBillow(ctx,o.c*TW+16,R.cy+3,age,0.8,0.9);}
+function egRoofLying(ctx,o,f){const R=roofStone(o),x0=R.xc-BLK_W/2,yt=R.ys+HY-BLK_H,age=f.land!==undefined?gameTime-f.land:9;
+  egHeap(ctx,o.c*TW+16-17,R.ys,12,2.6);egHeap(ctx,o.c*TW+16+18,R.ys,10,2.2);
+  stoneBox(ctx,R.kind,x0,yt,BLK_W,BLK_H,{top:true,side:true,wear:Math.min(3,R.W+1),seed:R.sd+1,dust:true}); // fresh chips and dust from the fall
+  wearRubble(ctx,o.c*TW+16,R.ys+HY-0.5,BLK_W+14,Math.max(2,R.W),R.sd+9);
+  if(age<2.4){sandBillow(ctx,o.c*TW+16,R.ys,age,1.25,1.2);sandSettle(ctx,o.c*TW+16,R.ys,age,22);}}
 // The chase drawn as granite plugs (owner, round 4: a plug is the size of the passage it slides down, not a wall). In every row of
 // the chase's span that has a floor at the front, a block one passage high (floor to ceiling, at most a storey) and two tiles long
 // fills the corridor's depth, its polished leading face at the front (ch.wx; the kill line, speed and rows are the storm's own); where
@@ -4827,18 +4973,24 @@ const PLUGL=64;
 function drawPlug(ctx,ch,x0,x1,y0,y1){const fx=ch.diss?ch.diss.bx:ch.wx,a=1-(ch.fade||0),K='#0b0812',t=gameTime;if(fx<x0-PLUGL-20||a<=0.01)return;ctx.save();ctx.globalAlpha=a;
   const top=ch.rTop*TH,bot=(ch.rBot+1)*TH,cf=Math.floor(fx/TW);
   ctx.fillStyle='rgba(236,214,166,.16)';ctx.fillRect(fx-10,Math.max(top,y0-10),26,Math.min(bot,y1+10)-Math.max(top,y0-10)); // the dust it throws up, marking the line in every row
+  // (round 12, owner: "same perspective, texture, shader, damage as for the others"): each plug a block in the corridor's projection, its long
+  // front face toward us, its top receding up and to the right where the ceiling leaves it in view, its polished leading face across the
+  // corridor's depth; granite from the cached stone (Aksum: syenite; Hawara: quartzite), the pattern carried with it; worn as the walls it
+  // passes; sand trickling off its leading top edge, grit scraped off the back wall, a dust billow rolling at its foot
+  const kind=PLUG_STONE[L.theme.look]||'granite',xl=fx-HX-PLUGL,xr=fx-HX;
   for(let r=ch.rTop;r<=ch.rBot;r++){const ys=SURF(r);if(ys<y0-80||ys-80>y1)continue;if(B(L,cf,r)===WALL||!solidBelow(L,cf,r))continue;
-    const cy=ceilingY(cf,r),h=Math.min(ys-cy,TH-4),tp=ys-h,xl=fx-HX-PLUGL,xr=fx-HX,q=mulberry32(hash2(r*13+7,ch.c0|0));
-    ctx.fillStyle=K;ctx.fillRect(xl,tp-1,PLUGL+1.5,h+HY+1); // its long side, toward us
-    ctx.fillStyle='#7e625c';ctx.fillRect(xl,tp,PLUGL,h+HY-0.5);
-    for(let i=0;i<110;i++){const u=q(),v=q(),r2=q(),sz=r2<0.15?2:r2<0.5?1.4:0.9;ctx.fillStyle=r2<0.15?'#c89484':i%3?'#2a201e':'#eadcd0';ctx.fillRect(xl+1+u*(PLUGL-3),tp+1+v*(h+HY-4),sz,sz*0.9);}
-    ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(xl+PLUGL*0.5,tp,1,h+HY-0.5); // the joint between its two stones
-    ctx.fillStyle=K;ctx.beginPath();ctx.moveTo(xr,tp-1);ctx.lineTo(xr+DX+1,tp-DY-1);ctx.lineTo(xr+DX+1,ys+HY-DY);ctx.lineTo(xr,ys+HY+1);ctx.closePath();ctx.fill(); // its leading face, across the corridor
-    ctx.fillStyle='#b88a7c';ctx.beginPath();ctx.moveTo(xr+0.5,tp);ctx.lineTo(xr+DX,tp-DY);ctx.lineTo(xr+DX,ys+HY-DY-0.5);ctx.lineTo(xr+0.5,ys+HY-0.5);ctx.closePath();ctx.fill();
-    for(let i=0;i<40;i++){const u=q(),v=q(),r2=q();ctx.fillStyle=r2<0.2?'#d8a494':i%3?'#3a2c2a':'#f4e8de';ctx.fillRect(xr+1+u*(DX-2.5),tp-DY*u+1+v*(h+HY-3),r2<0.3?1.4:0.9,1.1);}
-    ctx.fillStyle='rgba(255,240,226,.55)';ctx.fillRect(xr+0.5,tp,0.9,h+HY-0.5); // the polished arris catching the light
+    const cy=ceilingY(cf,r),h=Math.min(ys-cy,TH-4),tp=ys-h,hh=ys+HY-tp,top=tp-DY>cy-0.5,sd=hash2(r*13+7,ch.c0|0),W=EGP.wear!==undefined?EGP.wear:wearLevel(xl+PLUGL/2,ys-30);
+    ctx.save();ctx.beginPath();ctx.rect(xl-2,cy,PLUGL+DX+6,ys+HY+4-cy);ctx.clip();
+    const TX=stoneBox(ctx,kind,xl,tp,PLUGL,hh,{top:tp>cy+0.5,side:true,wear:W,seed:sd,u0:0});
+    ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(xl+PLUGL*0.5,tp,1,hh); // the joint between its two stones
+    ctx.save();ctx.transform(1,-DY/DX,0,1,xr,tp);const gl=ctx.createLinearGradient(0,0,DX,0);gl.addColorStop(0,'rgba(255,240,228,.3)');gl.addColorStop(1,'rgba(255,240,228,.06)');ctx.fillStyle=gl;ctx.fillRect(0,0,DX,hh);ctx.restore(); // its polished leading face
+    ctx.fillStyle='rgba(255,240,226,.55)';ctx.fillRect(xr-0.4,tp,0.9,hh); // the arris catching the light
+    ctx.restore();
+    if(STONES[kind].cry)stoneGlints(ctx,TX,(u,v)=>u<PLUGL&&v>12&&v<12+hh?[xl+u,tp+v-12]:null,sd);
+    if(tp>cy+2)sandFlow(ctx,xr+DX*0.5,tp-HY,ys,0.3,r*0.3); // sand running off its leading top edge
+    ctx.fillStyle='rgba(226,206,160,.85)';for(let i=0;i<8;i++){const u=(t*1.7+i/8)%1;ctx.globalAlpha=1-u;ctx.fillRect(xr+DX-1-u*6,tp-DY+u*(h-6)+Math.sin(i*2.1)*2,1.1,1.1);}ctx.globalAlpha=1; // grit ground off the back wall
     ctx.fillStyle='rgba(240,222,176,.9)';for(let i=0;i<12;i++){const u=(t*2.4+i/12)%1;ctx.fillRect(xr+DX*0.5+u*12,ys-1-Math.sin(u*Math.PI)*7-(i%3),1.3,1.3);} // sand and grit pushed ahead of it
-    egHeap(ctx,xr+DX*0.5+5,ys,12,2);graniteGlints(ctx,xl,xr+DX,tp,ys+HY,r*31+(ch.c0|0));}
+    egHeap(ctx,xr+DX*0.5+5,ys,12,2);for(let i=0;i<2;i++)sandBillow(ctx,xr+DX*0.5+6,ys+1,((t*0.8+i*0.5)%1)*0.9,0.55,0.9);}
   ctx.restore();}
 function drawLight(ctx,t,th){if(EGP.lamps&&drawLampEg(ctx,t,th))return;
   const free=lampFree(t),base=SURF(t.r)-HY+1.5,key=(t.r-1)*TH+11;
@@ -5484,12 +5636,12 @@ function drawVentFire(ctx,o,f){
 // dust now and then. Where the ceiling is the top of the screen the HUD's dark band lies over it, so drawHUD draws it again on top.
 const hudStones=[];
 function drawStone(ctx,o,f,again){
-  if(f.s>=2){if(EGP.traps&&L.rubble.has(o.r*L.cols+o.c)){const q=onFloor(o.c*TW+16,0.55,SURF(o.r));ctx.save();ctx.translate(q.x,q.y-16);egBlock(ctx);ctx.restore(); // fallen: the block on the floor in its own sand
-    egHeap(ctx,q.x-16,q.y,15,3.4);egHeap(ctx,q.x+16,q.y,13,3);}return;}
+  if(f.s>=2){if(EGP.traps){egRoofSlot(ctx,roofStone(o));if(L.rubble.has(o.r*L.cols+o.c))egRoofLying(ctx,o,f);} // fallen: its slot in the ceiling, the block lying across the corridor
+    return;}
   const x=o.c*TW+16,cy=ceilingY(o.c,o.r),sh=f.s===1?(Math.random()-0.5)*2:0,th=L.theme;
   if(!again)hudStones.push([o,f]);
   ctx.save();ctx.translate(x+sh,cy);
-  if(EGP.traps){egStone(ctx,f,SURF(o.r)-2-cy);ctx.restore();return;}
+  if(EGP.traps){ctx.restore();egRoofHang(ctx,o,f);return;}
   ctx.fillStyle='#0b0812';ctx.fillRect(-15,-1,30,19);ctx.fillStyle=th.wallB;ctx.fillRect(-14,0,28,16);ctx.fillStyle=th.hi;ctx.fillRect(-14,0,28,2);
   ctx.fillStyle='rgba(0,0,0,.28)';ctx.fillRect(-14,12,28,4);
   ctx.strokeStyle='#05030a';ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(-4,0);ctx.lineTo(-7,5);ctx.lineTo(-2,8);ctx.lineTo(-6,12);ctx.lineTo(-3,16);ctx.moveTo(-2,8);ctx.lineTo(5,7);ctx.lineTo(8,11);ctx.lineTo(6,16);ctx.moveTo(5,7);ctx.lineTo(9,2);ctx.lineTo(8,0);ctx.stroke();
@@ -5916,6 +6068,7 @@ function slots(ctx,pl){ctx.strokeStyle='#0b0812';ctx.lineWidth=2.4;ctx.beginPath
 function drawGate(ctx,f,X,Y,ys,half){
   const gg=gateGeom(X,Y,ys,f),pl=GATE_G.pl,pal=metalPal('gate');
   if(!half)slots(ctx,pl);
+  if(!gg&&EGP.traps&&!f.lg){ctx.save();egSlab(ctx,pl,0,X,half);ctx.restore();} // (raised: its foot in the slot, the grooves it runs in)
   if(gg){const drop=gg.drop;
   ctx.save();
   if(EGP.traps&&!f.lg)egSlab(ctx,pl,drop,X,half);else{planeClip(ctx,pl,X,half);
@@ -6218,7 +6371,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
       case'bar':drawBar(ctx,o,f);break;
       case'pend':drawPend(ctx,o,f);break;
       case'vent':drawVentBase(ctx,o,f);break;
-      case'loose':if(f.s<2&&f.plank){drawPlank(ctx,X,ys,f.s===1?(Math.random()-0.5)*1.6:0);break;}if(f.s<2){const sh=f.s===1&&f.tm>-0.7?(Math.random()-0.5)*1.6:0;ctx.save();ctx.translate(0,sh+0.8);dynSlab(ctx,o.c,o.r,X,ys,th);
+      case'loose':if(f.s<2&&f.plank){drawPlank(ctx,X,ys,f.s===1?(Math.random()-0.5)*1.6:0);break;}if(f.s<2){const sk=EGP.traps&&f.s===1?sandK(f.tm,0.5,0.06):0,sh=f.s===1&&f.tm>-0.7?(Math.random()-0.5)*(EGP.traps?0.8:1.6):0;ctx.save();ctx.translate(0,sh+0.8+sk*1.6);dynSlab(ctx,o.c,o.r,X,ys,th);
         // a tile that will give way: sunk a little, a shade off its neighbours, dark gaps where it has come away from them,
         // and cracks right through it. Nothing else on the floor cracks, so it reads at a glance.
         const fx=X-HX,ft=ys+HY;floorQuad(ctx,X,X+TW,0,1,ys,0);ctx.fillStyle=(o.c+o.r)%2?'rgba(255,240,210,.07)':'rgba(0,0,0,.08)';ctx.fill();
@@ -6227,8 +6380,9 @@ function drawDynamic(ctx,x0,x1,y0,y1){
         ctx.strokeStyle='rgba(0,0,0,.88)';ctx.lineWidth=1.9;ctx.beginPath();ctx.moveTo(X+7,ys-3);ctx.lineTo(X+10,ys+1);ctx.lineTo(X+15,ys-1);ctx.lineTo(X+14,ys+3);ctx.moveTo(X+21,ys-3);ctx.lineTo(X+22,ys+3.5);ctx.moveTo(X+15,ys-1);ctx.lineTo(X+19,ys-2.5);ctx.stroke();
         ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(fx+11,ft);ctx.lineTo(fx+12,ft+2.5);ctx.lineTo(fx+10.5,ft+5);ctx.moveTo(fx+24,ft);ctx.lineTo(fx+23,ft+5);ctx.stroke();
         if(EGP.traps){ctx.fillStyle='rgba(222,196,140,.9)';for(const ex of [fx,fx+TW]){ctx.fillRect(ex-0.6,ft,1.2,5);}const q2=onFloor(X+15,0.5,ys);ctx.fillRect(q2.x-3,q2.y-0.4,6,0.8); // sand in its seams
-          if(f.s===1){let rb=o.r+1;while(rb<L.rows&&!solidBelow(L,o.c,rb)&&rb-o.r<4)rb++;const yb=rb<L.rows&&rb-o.r<4?SURF(rb)-0.8-sh:ft+70;
-            for(let i=0;i<4;i++)sandStream(ctx,fx+7+i*6.5,ft+4,yb,i%2?2:2.8,1,i*0.3);if(yb<ft+69)egHeap(ctx,fx+16+DX*0.5,yb,22,3.4);}} // and pouring through as it gives, heaping on the floor below
+          if(f.s===1){let rb=o.r+1;while(rb<L.rows&&!solidBelow(L,o.c,rb)&&rb-o.r<4)rb++;const yb=rb<L.rows&&rb-o.r<4?SURF(rb)-0.8-sh:ft+70; // (round 12: the shared sand routine)
+            sandFunnel(ctx,[X+1,X+TW-1],ys,TW,sk,o.c*0.37); // grains running over it to its seams as the sand under it drains
+            for(let i=0;i<3;i++)sandFlow(ctx,fx+7+i*9,ft+4,yb,sk*(i===1?1:0.7),i*0.3);if(yb<ft+69&&sk>0.15)egHeap(ctx,fx+16+DX*0.5,yb,8+14*sk,1+2.4*sk);}} // and pouring through below, heaping on the floor there
         ctx.restore();}break;
       case'closer':{dynSlab(ctx,o.c,o.r,X,ys,th);const dn=f.jam||gameTime-f.press<0.12,lift=dn?1:2.4;
         ctx.save();ctx.translate(0,-lift);floorQuad(ctx,X+1,X+31,0.03,0.97,ys,lift);ctx.fillStyle='#8f2f2a';ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=0.7;ctx.stroke();
@@ -6272,9 +6426,9 @@ function drawDynamic(ctx,x0,x1,y0,y1){
   drawLooseFlasks(ctx);
   for(const d of L.debris){ctx.save();ctx.translate(d.x-16,d.y);
     if(EGP.traps&&(d.kind==='slab'||d.kind==='rock')){if(d.y0===undefined)d.y0=d.y;const age=Math.sqrt(2*Math.max(0,d.y-d.y0)/GRAV);ctx.restore();ctx.save(); // (re-skinned: a sand floor's slab, the roof block)
-      if(d.kind==='rock'){sandStream(ctx,d.x,d.y0-14,d.y-16,3.2,1,0.2);ctx.translate(d.x,d.y-16);egBlock(ctx);}
-      else{sandStream(ctx,d.x-6,d.y0+4,d.y-4,2.6,1,0.1);sandStream(ctx,d.x+5,d.y0+4,d.y-4,2,1,0.6);ctx.translate(d.x-16,d.y);slab(ctx,0,0,L.theme,true,true);}
-      ctx.restore();ctx.save();if(d.kind==='slab')sandPuff(ctx,d.x,d.y0+2,age);ctx.restore();ctx.save();}
+      if(d.kind==='rock')egRoofFall(ctx,d);
+      else{const k=Math.max(0.15,1-age);sandFlow(ctx,d.x-6,d.y0+4,d.y-4,k,0.1);sandFlow(ctx,d.x+6,d.y0+4,d.y-4,k*0.8,0.6);ctx.translate(d.x-16,d.y);slab(ctx,0,0,L.theme,true,true);}
+      ctx.restore();ctx.save();if(d.kind==='slab'){sandBillow(ctx,d.x,d.y0+2,age,1,1.1);sandSettle(ctx,d.x,d.y0+2,age,20);}ctx.restore();ctx.save();}
     else if(d.kind==='plank')drawPlank(ctx,0,0,0);
     else if(d.kind==='rock'){const rk=[[4,-11],[9,-15],[19,-14],[27,-10],[28,-2],[21,1],[8,1],[4,-4]];ctx.beginPath();rk.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();ctx.fillStyle=th.wallB;ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=1.4;ctx.stroke();
       ctx.fillStyle=th.hi;ctx.fillRect(9,-14,10,1.2);ctx.strokeStyle='rgba(0,0,0,.6)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(14,-14);ctx.lineTo(12,-7);ctx.lineTo(16,0);ctx.moveTo(22,-12);ctx.lineTo(20,-5);ctx.stroke();}
@@ -9008,6 +9162,7 @@ window.__HK={tapCloth,THEMES,progOf,themeName,hint,learn,HINTS,HINT_MOVE,get ban
   get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG};
 Object.assign(window.__HK,{guardBudget,snakeBudget}); // (the fighters' budgets, for guardscan.py)
 Object.defineProperty(window.__HK,'intro',{get(){return intro;},set(v){intro=v;}}); // (the floor's title banner, for egyptprop.py)
+Object.assign(window.__HK,{stoneTex,STONES,THEME_STONE,SLAB_STONE,stoneLying,BLK_W,BLK_H});
 Object.assign(window.__HK,{EGP,nutClock,conceptClock2,barqueClock,conceptClock,flaskBody,flaskR,heart,setHero,HERO_VAR,PAL_HERO,SCHED,floorsOf,BGART,bgArt,LFX,themeOf,get PF(){return PF;}}); // (the themes' backdrops and effects, for egyptshot.py and egyptfx.py)
 Object.assign(window.__HK,{hurt,HK,DISS,sandP,SAND_HP,GLFX,setClock:f=>{performance.now=f;}}); // S3-A (tests)
 Object.assign(window.__HK,{FLM,FLV,ventState,cyc}); // FL (flames: the sheets and the vent's look, for tests)
