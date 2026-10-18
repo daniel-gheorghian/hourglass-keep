@@ -2035,9 +2035,10 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
   {const w0=at(0.16),wa=[w0[0]-nx*4,w0[1]-ny*4];const st=trail(wa,2,2.6,wind,t+0.3,0.5,1.7);tcel(ctx,st,[2.2,1.8,1.2],D('sash',-0.2),shadeHex(D('sash',-0.2),-0.25),O);}
   const sheen=(a,b,w)=>{if(O.mono||!EG)return;const k=0.18+0.32*Math.min(1,O._lk||0);ctx.save();ctx.globalAlpha*=k;ctx.strokeStyle=litTint(shadeHex(C('skin'),0.42),O._lc,Math.max(0.3,O._lk||0));ctx.lineWidth=w||0.9;ctx.lineCap='round';
     ctx.beginPath();ctx.moveTo(a[0]+O._lx*0.9,a[1]+O._ly*0.9);ctx.lineTo(b[0]+O._lx*0.9,b[1]+O._ly*0.9);ctx.stroke();ctx.restore();}; // (the oiled skin's soft highlight, toward the light)
-  const arm=(sh,e,h,base,shade)=>{if(EG){const m=[sh[0]+(e[0]-sh[0])*0.42,sh[1]+(e[1]-sh[1])*0.42];tcel(ctx,[sh,m,e,h],[3.8,3.7,2.7,2.2],base,shade,O); // (a rounded upper arm, a slimmer forearm)
-      if(!O.mono){const dx=e[0]-sh[0],dy=e[1]-sh[1],d=Math.hypot(dx,dy)||1,px=-dy/d,py=dx/d,q=[sh[0]+dx*0.2,sh[1]+dy*0.2];ctx.strokeStyle=shade;ctx.globalAlpha*=0.8;ctx.lineWidth=0.55;ctx.beginPath();
-        ctx.moveTo(q[0]+px*1.7,q[1]+py*1.7);ctx.quadraticCurveTo(q[0]+dx*0.12,q[1]+dy*0.12,q[0]-px*1.5+dx*0.1,q[1]-py*1.5+dy*0.1);ctx.stroke();ctx.globalAlpha/=0.8;
+  const LN=EG&&pal.lean; // (the prince: a lean young athlete; the robbers are grown men, heavier)
+  const arm=(sh,e,h,base,shade)=>{if(EG){const m=[sh[0]+(e[0]-sh[0])*0.42,sh[1]+(e[1]-sh[1])*0.42];tcel(ctx,[sh,m,e,h],LN?[3.4,3.3,2.6,2.1]:[3.8,3.7,2.7,2.2],base,shade,O); // (a rounded upper arm, a slimmer forearm)
+      if(!O.mono){const dx=e[0]-sh[0],dy=e[1]-sh[1],d=Math.hypot(dx,dy)||1,px=-dy/d,py=dx/d,q=[sh[0]+dx*0.2,sh[1]+dy*0.2];ctx.strokeStyle=shade;ctx.globalAlpha*=LN?0.45:0.8;ctx.lineWidth=0.55;ctx.beginPath();
+        ctx.moveTo(q[0]+px*1.7,q[1]+py*1.7);ctx.quadraticCurveTo(q[0]+dx*0.12,q[1]+dy*0.12,q[0]-px*1.5+dx*0.1,q[1]-py*1.5+dy*0.1);ctx.stroke();ctx.globalAlpha/=LN?0.45:0.8;
         sheen([sh[0]+dx*0.08,sh[1]+dy*0.08],[sh[0]+dx*0.55,sh[1]+dy*0.55],1.0);}} // the deltoid's edge; the sheen on the upper arm
     else tcel(ctx,[sh,e,h],[3.5,2.9,2.2],base,shade,O);
     if(FULL&&!O.mono){const bd=(a,b,u,w)=>{const m=[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u],dx=b[0]-a[0],dy=b[1]-a[1],d=Math.hypot(dx,dy)||1;ctx.strokeStyle=pal.band;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(m[0]-dy/d*1.9,m[1]+dx/d*1.9);ctx.lineTo(m[0]+dy/d*1.9,m[1]-dx/d*1.9);ctx.stroke();};
@@ -2045,7 +2046,7 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
     const hp=new Path2D();hp.ellipse(h[0],h[1],1.35,1.2,0,0,Math.PI*2);if(O.mono){ctx.fillStyle=O.mono;ctx.fill(hp);}else{ctx.strokeStyle=O.out;ctx.lineWidth=1.1;ctx.stroke(hp);ctx.fillStyle=base;ctx.fill(hp);}};
   const leg=(f,k,base,shade,cuff,boot,X)=>{
     const mid=[k[0]+(f[0]-k[0])*0.55-0.6,k[1]+(f[1]-k[1])*0.55],ank=[k[0]+(f[0]-k[0])*0.9,k[1]+(f[1]-k[1])*0.9];
-    if(EG){tcel(ctx,[[0,0],k,mid,ank],[6.9,4.7,5.0,2.7],base,shade,O); // bare legs (the calf fuller than the knee); a sandal: a flat sole, a thong
+    if(EG){tcel(ctx,[[0,0],k,mid,ank],LN?[6.3,4.3,4.6,2.6]:[6.9,4.7,5.0,2.7],base,shade,O); // bare legs (the calf fuller than the knee); a sandal: a flat sole, a thong
       sheen([k[0]+(mid[0]-k[0])*0.3,k[1]+(mid[1]-k[1])*0.3],[k[0]+(mid[0]-k[0])*1.25,k[1]+(mid[1]-k[1])*1.25],1.0); // the calf's sheen
       const sp=new Path2D(),M=(dx,dy)=>sp.moveTo(...X(dx,dy)),Ln=(dx,dy)=>sp.lineTo(...X(dx,dy)),Q=(a,b,c,d)=>sp.quadraticCurveTo(...X(a,b),...X(c,d));
       M(-2.2,0.4);Q(-2.4,-2,0.2,-1.9);Q(3.4,-1.3,6.2,-0.5);Q(6.9,0.1,6.2,0.6);Ln(-1.4,0.6);sp.closePath();celAt(ctx,sp,base,shade,O,...X(2.6,-0.4));
@@ -2067,14 +2068,15 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
     const sc=new Path2D();sc.moveTo(0,-1.3);sc.quadraticCurveTo(7,-2.2,13,0.2);sc.lineTo(12.6,1.5);sc.quadraticCurveTo(7,0.2,0,1.3);sc.closePath();celAt(ctx,sc,o.pale?'#a98255':'#6b4a2a','#4a321c',O,6.5,0);
     ctx.fillStyle='#d8b04a';ctx.fillRect(-1.6,-1.8,1.6,3.6);ctx.restore();}
   // --- torso: vest over the chest, sash at the waist ---
-  const tp=[[0,0],at(0.38),at(0.78),at(1)],tw=EG?[8.6,7.6,12.0,11.0]:[9.2,8.2,11.2,9.6]; // (EG: a narrow waist under broad shoulders)
+  const tp=[[0,0],at(0.38),at(0.78),at(1)],tw=LN?[8.0,7.0,10.6,10.4]:EG?[8.6,7.6,12.0,11.0]:[9.2,8.2,11.2,9.6]; // (EG: a narrow waist under broad shoulders; LN: slimmer, a flatter chest)
   tcel(ctx,tp,tw,C('tunic'),D('tunic'),O);
   if(EG&&pal.bare&&!O.mono){const sd=shadeHex(C('skin'),-0.32),L2=(a,b,c)=>{ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.quadraticCurveTo(b[0],b[1],c[0],c[1]);ctx.stroke();},P2=(u,o2)=>{const q=at(u);return [q[0]+nx*o2,q[1]+ny*o2];};
-    ctx.strokeStyle=sd;ctx.lineWidth=0.6;ctx.globalAlpha*=0.75;
-    L2(P2(0.84,0.4),P2(0.7,2.4),P2(0.72,5.4)); // the chest's lower edge
+    ctx.strokeStyle=sd;ctx.lineWidth=0.6;ctx.globalAlpha*=LN?0.45:0.75;
+    if(LN){ctx.lineWidth=0.5;L2(P2(0.82,1.2),P2(0.74,2.6),P2(0.75,4.4));} // (the prince: one soft line under the chest, no more)
+    else{L2(P2(0.84,0.4),P2(0.7,2.4),P2(0.72,5.4)); // the chest's lower edge
     ctx.lineWidth=0.5;L2(P2(0.55,3.2),P2(0.53,4.3),P2(0.55,5.0));L2(P2(0.44,3.0),P2(0.42,4.1),P2(0.44,4.7)); // the belly
-    L2(P2(0.62,-0.6),P2(0.56,0.4),P2(0.5,0.0)); // the serratus under the arm
-    ctx.globalAlpha/=0.75;sheen(P2(0.95,-2.0),P2(0.97,2.6),1.2);sheen(P2(0.8,1.2),P2(0.76,3.6),1.0);} // the sheen on the shoulders and the chest
+    L2(P2(0.62,-0.6),P2(0.56,0.4),P2(0.5,0.0));} // the serratus under the arm
+    ctx.globalAlpha/=LN?0.45:0.75;sheen(P2(0.95,-2.0),P2(0.97,2.6),1.2);if(!LN)sheen(P2(0.8,1.2),P2(0.76,3.6),1.0);} // the sheen on the shoulders and the chest
   if(FULL&&!O.mono){ // the broad collar (wesekh): rows of faience beads round the neck, a drop row at the edge
     const cl=pal.coll;for(let i=0;i<3;i++){const o2=2.9-i*1.0,u0=0.99,u1=0.8+i*0.05;const a0=at(u0),a1=at(u1),a2=at(u0);
       tcel(ctx,[[a0[0]-nx*(3.6-i*0.3),a0[1]-ny*(3.6-i*0.3)],[a1[0]+nx*o2*0.3,a1[1]+ny*o2*0.3],[a2[0]+nx*(4.8-i*0.5),a2[1]+ny*(4.8-i*0.5)]],[2.1,2.5,2.1],cl[i],shadeHex(cl[i],-0.3),O);}
@@ -2139,16 +2141,16 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
       const bag=trail([hd[0]-hnx*r*1.15-hx*r*0.3,hd[1]-hny*r*1.15-hy*r*0.3],2,2.6,wind,t+0.6,0.5,3.1);tcel(ctx,bag,[4.4,4.0,3.0],shadeHex(pal.khat,-0.08),shadeHex(pal.khat,-0.3),O);
       celAt(ctx,hp,pal.khat,shadeHex(pal.khat,-0.28),O,hd[0]-hnx*r*0.2+hx*r*0.6,hd[1]-hny*r*0.2+hy*r*0.6);
       if(!O.mono){ctx.strokeStyle=pal.band;ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(hd[0]+hnx*r*0.85+hx*r*0.3,hd[1]+hny*r*0.85+hy*r*0.3);ctx.lineTo(hd[0]-hnx*r*0.25+hx*r*0.2,hd[1]-hny*r*0.25+hy*r*0.2);ctx.stroke();}}}
-  else if(!pal.bones&&(pal.hairStyle==='wig'||pal.hairStyle==='lock')){const r=LEN.hd,hp=new Path2D();
-    if(pal.hairStyle==='wig'){ // a short rounded wig, as the workmen wear it in the tomb paintings: over the crown and down behind to the jaw
-      hp.moveTo(hd[0]+hnx*r*0.85+hx*r*0.6,hd[1]+hny*r*0.85+hy*r*0.6);hp.bezierCurveTo(hd[0]+hnx*r*0.7+hx*r*1.6,hd[1]+hny*r*0.7+hy*r*1.6,hd[0]-hnx*r*1.6+hx*r*1.5,hd[1]-hny*r*1.6+hy*r*1.5,hd[0]-hnx*r*1.4-hx*r*0.9,hd[1]-hny*r*1.4-hy*r*0.9);
-      hp.lineTo(hd[0]-hnx*r*0.25-hx*r*0.8,hd[1]-hny*r*0.25-hy*r*0.8);hp.quadraticCurveTo(hd[0]-hnx*r*0.35+hx*r*0.3,hd[1]-hny*r*0.35+hy*r*0.3,hd[0]+hnx*r*0.85+hx*r*0.6,hd[1]+hny*r*0.85+hy*r*0.6);hp.closePath();
-      celAt(ctx,hp,C('hair'),shadeHex(C('hair'),-0.45),O,hd[0]-hnx*r*0.4+hx*r*0.5,hd[1]-hny*r*0.4+hy*r*0.5);
-      if(!O.mono){ctx.strokeStyle=shadeHex(C('hair'),0.3);ctx.lineWidth=0.5;for(let i=0;i<3;i++){const a=-0.6+i*0.5;ctx.beginPath();ctx.moveTo(hd[0]-hnx*r*(0.2+a)+hx*r*1.25,hd[1]-hny*r*(0.2+a)+hy*r*1.25);ctx.lineTo(hd[0]-hnx*r*(0.6+a)-hx*r*0.2,hd[1]-hny*r*(0.6+a)-hy*r*0.2);ctx.stroke();}}}
-    else{ // close-cropped, a single side lock
-      hp.moveTo(hd[0]+hnx*r*0.8+hx*r*0.45,hd[1]+hny*r*0.8+hy*r*0.45);hp.bezierCurveTo(hd[0]+hnx*r*0.55+hx*r*1.3,hd[1]+hny*r*0.55+hy*r*1.3,hd[0]-hnx*r*1.15+hx*r*1.2,hd[1]-hny*r*1.15+hy*r*1.2,hd[0]-hnx*r*1.08-hx*r*0.1,hd[1]-hny*r*1.08-hy*r*0.1);
-      hp.quadraticCurveTo(hd[0]-hnx*r*0.4+hx*r*0.35,hd[1]-hny*r*0.4+hy*r*0.35,hd[0]+hnx*r*0.8+hx*r*0.45,hd[1]+hny*r*0.8+hy*r*0.45);hp.closePath();celAt(ctx,hp,C('hair'),shadeHex(C('hair'),-0.4),O,hd[0]+hx*r*0.7,hd[1]+hy*r*0.7);
-      const tl=trail([hd[0]-hnx*r*0.45+hx*r*0.2,hd[1]-hny*r*0.45+hy*r*0.2],4,2.3,[wind[0]*0.6,wind[1]+0.4],t+0.6,0.4,3.1);tcel(ctx,tl,[2.3,2.1,1.9,1.7,1.5],C('hair'),shadeHex(C('hair'),-0.4),O);}}
+  else if(!pal.bones&&(pal.hairStyle==='crop'||pal.hairStyle==='curls'||pal.hairStyle==='bob')){const r=LEN.hd,hs=pal.hairStyle,hp=new Path2D(),H=(a,b)=>[hd[0]+hnx*r*a+hx*r*b,hd[1]+hny*r*a+hy*r*b];
+    if(hs==='bob'){ // an ear-length bob, cut straight: over the crown and down behind to the ear
+      hp.moveTo(...H(0.9,0.55));hp.bezierCurveTo(...H(0.75,1.5),...H(-1.45,1.45),...H(-1.3,-0.35));hp.lineTo(...H(-0.25,-0.4));hp.quadraticCurveTo(...H(-0.3,0.35),...H(0.9,0.55));hp.closePath();}
+    else{ // close to the skull: the crown and the back of the head, the hairline over the brow and in front of the ear (curls: a little fuller)
+      const g=hs==='curls'?1.12:1.0;hp.moveTo(...H(0.82,0.5));hp.bezierCurveTo(...H(0.62*g,1.38*g),...H(-1.2*g,1.3*g),...H(-1.1*g,-0.2));hp.quadraticCurveTo(...H(-0.85,-0.45),...H(-0.3,-0.2));hp.quadraticCurveTo(...H(-0.25,0.4),...H(0.82,0.5));hp.closePath();}
+    celAt(ctx,hp,C('hair'),shadeHex(C('hair'),-0.4),O,...H(-0.2,0.6));
+    if(hs==='curls'){for(const [a,b] of [[0.6,1.25],[0.1,1.45],[-0.45,1.42],[-0.95,1.12],[-1.22,0.55],[-1.2,0.0]]){const q=H(a,b);if(O.mono){ctx.fillStyle=O.mono;}else ctx.fillStyle=C('hair');ctx.beginPath();ctx.arc(q[0],q[1],r*0.32,0,6.2832);ctx.fill();}}
+    if(!O.mono){ctx.strokeStyle=shadeHex(C('hair'),0.3);ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(...H(-0.5,1.0));ctx.quadraticCurveTo(...H(0.05,1.15),...H(0.5,0.95));ctx.stroke(); // a soft highlight along the crown
+      if(hs==='curls'){ctx.fillStyle=shadeHex(C('hair'),0.35);for(const [a,b] of [[0.2,1.3],[-0.5,1.3],[-1.0,0.9]]){const q=H(a,b);ctx.fillRect(q[0]-0.3,q[1]-0.3,0.6,0.6);}}
+      if(hs==='bob'){ctx.strokeStyle=shadeHex(C('hair'),-0.5);ctx.lineWidth=0.45;for(let i=0;i<3;i++){const a=-0.2-i*0.4;ctx.beginPath();ctx.moveTo(...H(a,1.2));ctx.lineTo(...H(a-0.25,-0.3));ctx.stroke();}}}}
   else if(!pal.bones){ // hair: a swept mass over the crown, and a short tail that trails (long: a longer tail, tied back)
     const r=LEN.hd,hp=new Path2D();
     hp.moveTo(hd[0]+hnx*r*0.85+hx*r*0.55,hd[1]+hny*r*0.85+hy*r*0.55);
@@ -2177,6 +2179,7 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
         ctx.strokeStyle=shadeHex(C('pants'),-0.24);ctx.lineWidth=0.45;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();}
       ctx.fillStyle=shadeHex(C('pants'),-0.12);ctx.beginPath();ctx.moveTo(fp[0]-nx*1.2,fp[1]-ny*1.2);ctx.lineTo(F[0]-nx*0.4,F[1]-ny*0.4);ctx.lineTo(F[0]-nx*3,F[1]-ny*3);ctx.closePath();ctx.fill();} // the front tab
     if(!O.mono){const m=at(0.27);ctx.strokeStyle=O.out;ctx.lineWidth=3.2;ctx.beginPath();ctx.moveTo(m[0]-nx*4.9,m[1]-ny*4.9);ctx.lineTo(m[0]+nx*4.9,m[1]+ny*4.9);ctx.stroke();ctx.strokeStyle=C('sash');ctx.lineWidth=2;ctx.stroke();
+      if(pal.sashHi){ctx.strokeStyle=litTint(pal.sashHi,O._lc,O._lk||0);ctx.lineWidth=0.55;ctx.beginPath();ctx.moveTo(m[0]-nx*4.6+tx*0.6,m[1]-ny*4.6+ty*0.6);ctx.lineTo(m[0]+nx*4.6+tx*0.6,m[1]+ny*4.6+ty*0.6);ctx.stroke();} // the gold catching the light
       if(pal.pleat){const k0=[m[0]+nx*3.4,m[1]+ny*3.4],tie=trail(k0,2,2.4,[wind[0]*0.7,wind[1]],t+0.9,0.5,1.1);tcel(ctx,tie,[1.6,1.4,1.0],C('sash'),D('sash'),O);}}} // the belt over it (and the prince's tie)
   else leg(s.fF,s.kF,C('pants'),D('pants'),shadeHex(C('pants'),-0.42),C('boot'),footXf(p,s,s.fF,s.kF,p.hF,p.kF));
   if(o.sword&&o.smear&&!O.mono){const h=s.hF;for(const [f,al] of [[1,0.16],[0.5,0.3]]){const a=p.sw+o.smear*f,dx=Math.cos(a),dy=-Math.sin(a);ctx.globalAlpha=al*(o.alpha===undefined?1:o.alpha);
@@ -2312,7 +2315,10 @@ const HERO_VAR={
   // Round 8 (owner: "bare chest, only a loin cloth, darker skin", then "use the pleated Egyptian design"): P, bare-chested in a short
   // pleated shendyt of white linen tied with the orange sash, a warm deep brown skin, his own short black hair under a linen fillet;
   // R7 is round 7's plain prince (a tunic over a kilt). Hair options on the page: wig, lock, long (P with hairStyle changed).
-  P:{egy:'plain',bare:1,pleat:1,hairStyle:'fillet',fillet:'#f2ead6',skin:'#7c4a2c',skinD:'#5a331e',tunic:'#7c4a2c',tunicD:'#5a331e',pants:'#f2ead6',pantsD:'#cbbf9e',sash:'#ef7440',hair:'#1a1210',boot:'#5a331e'},
+  // Round 9 (owner: "the sash golden, the chest not that pronounced; not fond of the headband and the hair"): a gold sash, the lean build
+  // of a young athlete (lean:1, drawn slimmer than the grown robbers), close-cropped natural hair (hairStyle 'crop'; 'curls' and 'bob'
+  // on the page).
+  P:{egy:'plain',bare:1,pleat:1,lean:1,hairStyle:'crop',skin:'#7c4a2c',skinD:'#5a331e',tunic:'#7c4a2c',tunicD:'#5a331e',pants:'#f2ead6',pantsD:'#cbbf9e',sash:'#d9ae3c',sashD:'#9a7420',sashHi:'#f6dc84',hair:'#1a1210',boot:'#5a331e'},
   R7:{egy:'plain',skin:'#b98058',skinD:'#94603e',tunic:'#ece4cf',tunicD:'#c6bb9c',pants:'#ece4cf',pantsD:'#c6bb9c',sash:'#e4683b',hair:'#2b1b12',boot:'#94603e'},
   A:{egy:'lock',skin:'#b0703f',skinD:'#87522c',tunic:'#b0703f',tunicD:'#87522c',pants:'#efe7d2',pantsD:'#c8bd9f',sash:'#b5352a',hair:'#1a1210',boot:'#7a5230',coll:['#2f6fb0','#d8b04a','#b5352a'],band:'#d8b04a'},
   B:{egy:'khat',skin:'#b0703f',skinD:'#87522c',tunic:'#b0703f',tunicD:'#87522c',pants:'#efe7d2',pantsD:'#c8bd9f',sash:'#2f5d9f',hair:'#1a1210',boot:'#7a5230',coll:['#2f8f8c','#d8b04a','#2f5d9f'],band:'#d8b04a',khat:'#ece4cf'},
