@@ -72,8 +72,13 @@ service worker's cache to `hourglass-keep-vN`, which is what makes installed cop
 
 Speed: `?bench` in the game's URL (on the phone too) makes the bot (`bot.js`, fetched for the run; `botGen` steps it from the
 game's own frame loop) play six fixed floors live, 20 s each, and shows a table of frame times with a Copy button; the save is
-left untouched. `?bench=75`, `?bench=auto` (the game's own scaling and fall back), `?bench=classic`. `bench.py [arg]` runs the
+left untouched. `?bench=75`, `?bench=auto` (the game's own resolution scaling), `?bench=classic`. `bench.py [arg]` runs the
 same on this Mac's GPU (Chrome's costs differ from Safari's: compare Mac runs with Mac runs). `?prof` times each stage in place.
+The pause menu's Tools… screen (v63) has buttons that reload the page with `?bench`, `?bench=classic`, `?bench=auto` or `?prof`;
+the bench's table and the profiler each have a button back to the game.
+Lighting mode (v63, owner): only the player switches between Torchlight and Classic (Graphics). Slow frames only scale Torchlight's
+scene down (`GLP.rs` 1, .75, .5); they never switch to Classic. A missing or lost WebGL context still falls back to Classic (`glKill`),
+as the screen would otherwise be black; `glauto.py` checks this.
 
 Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chambershot.py` and `liftshot.py` do the same for chambers and lifts.
 

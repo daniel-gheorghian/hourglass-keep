@@ -51,9 +51,9 @@ body.panelOpen #pad,body.panelOpen .btn,body.panelOpen #bPause{visibility:hidden
 #app.overlay #pad{background:radial-gradient(circle at 50% 50%,rgba(232,196,127,.16) 0 24%,rgba(10,8,20,.32) 25% 100%)}
 .screen{position:fixed;inset:0;z-index:5;display:grid;place-items:center;background:var(--shade);padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));overflow:auto;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
 .panel{width:min(560px,100%);display:grid;gap:14px;padding-block:8px}
-#title .panel,#pause .panel{position:relative;padding-top:20px}
-#title .panel::before,#pause .panel::before{content:"";position:absolute;left:0;right:0;top:0;height:8px;background:linear-gradient(to bottom,rgba(232,196,127,.3),rgba(232,196,127,.04));clip-path:polygon(0 0,100% 0,98.5% 100%,1.5% 100%);pointer-events:none}
-#title .panel::after,#pause .panel::after{content:"";position:absolute;left:1.5%;right:1.5%;top:9px;height:2px;border-radius:2px;background:rgba(232,196,127,.5);pointer-events:none}
+#title .panel,#pause .panel,#tools .panel{position:relative;padding-top:20px}
+#title .panel::before,#pause .panel::before,#tools .panel::before{content:"";position:absolute;left:0;right:0;top:0;height:8px;background:linear-gradient(to bottom,rgba(232,196,127,.3),rgba(232,196,127,.04));clip-path:polygon(0 0,100% 0,98.5% 100%,1.5% 100%);pointer-events:none}
+#title .panel::after,#pause .panel::after,#tools .panel::after{content:"";position:absolute;left:1.5%;right:1.5%;top:9px;height:2px;border-radius:2px;background:rgba(232,196,127,.5);pointer-events:none}
 .eyebrow{margin:0;font:600 12px/1.2 var(--f-body);letter-spacing:.18em;text-transform:uppercase;color:var(--haze)}
 h1{font:400 clamp(44px,10vw,76px)/.92 var(--f-display);color:var(--sand);margin:0;text-wrap:balance;letter-spacing:.005em}
 h2{font:400 34px/1 var(--f-display);color:var(--sand);margin:0;text-wrap:balance}
@@ -184,6 +184,7 @@ body.portrait #rotate{display:flex}
           <button id="tLefty" type="button" aria-pressed="false">Pad on right</button>
           <button id="tCalm" type="button" aria-pressed="false">Softer flashes</button>
           <button id="bGfxP" type="button">Graphics…</button>
+          <button id="bToolsP" type="button">Tools…</button>
         </div>
         <div class="row">
           <button id="bRestart" type="button">Restart floor</button>
@@ -209,6 +210,20 @@ body.portrait #rotate{display:flex}
         </div>
         <p class="fine">If the game stutters, switch off Lighting first, then Atmosphere.</p>
         <div class="menu"><button id="bGfxClose" class="primary" type="button">Done</button></div>
+      </div>
+    </div>
+
+    <div id="tools" class="screen" hidden>
+      <div class="panel">
+        <h2>Tools</h2>
+        <div class="row gfxrow">
+          <button id="tBench" type="button">Benchmark<small>The bot plays six floors in Torchlight, 20 s each, and shows a table of frame times</small></button>
+          <button id="tBenchC" type="button">Benchmark (classic)<small>The same six floors in Classic lighting</small></button>
+          <button id="tBenchA" type="button">Benchmark (auto scale)<small>Torchlight with the game's own resolution scaling, as you play it</small></button>
+          <button id="tProf" type="button">Profiler<small>Times each stage of a frame as you play, leaving one effect out at a time</small></button>
+        </div>
+        <p class="fine">The page reloads to run them; your save is kept as it is. The benchmark needs a connection for its test bot.</p>
+        <div class="menu"><button id="bToolsClose" class="primary" type="button">Back</button></div>
       </div>
     </div>
 
@@ -2578,7 +2593,7 @@ function makeGuard(gd,i){const d=L.d,cap=gd.cap,sk=!!gd.skel,tr=cap?CAPT:TIERS[g
 function makeSnake(sp){return {x:sp.x,r:sp.r,y:SURF(sp.r),lo:sp.lo,hi:sp.hi,dir:sp.dir||-1,state:'slither',t:0,ph:Math.random()*6,alive:true,gone:false,cool:0,lunge:0,hitDone:false};}
 
 function startLevel(n,cpIdx){GLP.pend=null;GLP.now=true;GLP.quiet=performance.now()+3000;
-  if(S.set.torchRetry&&n>=S.set.torchRetry){delete S.set.torchRetry;if(S.set.lightMode==='classic'&&!GLP.dead){S.set.lightMode='torch';GLP.inSession=false;syncLightMode();writeSave();}} // (each floor starts with the scene at full resolution: glTime scales it down if frames run slow)
+  if(S.set.torchRetry){delete S.set.torchRetry;if(S.set.lightMode==='classic'&&!GLP.dead){S.set.lightMode='torch';GLP.inSession=false;syncLightMode();writeSave();}} // (v63: a save left in Classic by the old automatic switch (it set torchRetry) gets Torchlight back; a Classic chosen in Graphics stays) // (each floor starts with the scene at full resolution: glTime scales it down if frames run slow)
   quiet=false;if(hintFloor!==n){hintFloor=n;hintSeen={};}hintQ.length=0;L=genLevel(n,levelSeed(n),false,n===S.legacyFloor);REW.length=0;rw=null;if(cpIdx<0){S.sands=SANDS;S.cpPlates=[];}
   G=L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];
   P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;
@@ -7211,7 +7226,7 @@ const PF={upd:0,iv0:0,on:/[?&]prof\b/.test(location.search),t:0,gl:null,a:{},fa:
 // ?bench (owner, v53): the same test on the phone every time, without anyone driving it. The test bot (dev/tools/bot.js,
 // fetched for the run) plays six floors live, through the game's own loop and input, 20 s each, fixed seeds, one per theme
 // (1 Dungeon, 5 Sandstone, 10 Lapis, 14 Forge with a storm, 17 Crypt, 22 Dungeon at night with a storm), the prince unhurt.
-// Torchlight at full size with no fall back (?bench=75: at .75; ?bench=auto: the game's own scaling and fall back; ?bench=classic).
+// Torchlight at full size (?bench=75: at .75; ?bench=auto: the game's own resolution scaling, v63: it no longer falls back to Classic; ?bench=classic).
 // Per floor: frame times (mean, 95th percentile, worst, share over 20 ms, the worst 2 s average, which is what the fall back
 // judges), script time, rooms built, relief copies. The save is left as it was. The result is a table with a Copy button.
 const BENCH={on:/[?&]bench\b/.test(location.search),arg:(location.search.match(/[?&]bench=(\w+)/)||[])[1]||'',floors:((location.search.match(/[?&]floors=([\d,]+)/)||[])[1]||'1,5,10,14,17,22').split(',').map(Number),secs:20,tr:[],TR:{}, // (&floors=17,10: only those floors; TR: each floor's first 6 s, frame by frame)
@@ -7249,7 +7264,7 @@ function benchEnd(){BENCH.run=false;GLFX.wgl=WGL_DEF;BENCH.i=-1;S=JSON.parse(BEN
   const d=document.createElement('div');d.id='benchOut';d.style.cssText='position:fixed;inset:8px;z-index:99;background:rgba(8,6,14,.94);color:#9fffd2;font:10px/1.35 monospace;padding:10px;overflow:auto;border-radius:8px';
   const pre=document.createElement('pre');pre.textContent=txt;pre.style.cssText='margin:0 0 8px;white-space:pre;user-select:text;-webkit-user-select:text';
   const btn=(t,fn)=>{const b=document.createElement('button');b.textContent=t;b.style.cssText='margin-right:8px;padding:6px 12px;font:600 12px system-ui';b.onclick=fn;d.appendChild(b);};
-  d.appendChild(pre);btn('Copy',()=>{try{navigator.clipboard.writeText(txt);msg('Copied.',2);}catch(e){}});btn('Run again',()=>location.reload());btn('Close',()=>{d.remove();});
+  d.appendChild(pre);btn('Copy',()=>{try{navigator.clipboard.writeText(txt);msg('Copied.',2);}catch(e){}});btn('Run again',()=>location.reload());btn('Back to the game',()=>{location.href=location.pathname;});btn('Close',()=>{d.remove();});
   document.body.appendChild(d);}
 function pfApply(){const k=PF.cur=PF.al?'all':PF.steps[PF.ix][0];if(!PF.sv)PF.sv={...GLFX};Object.assign(GLFX,PF.sv);PF.off={};PF.rs=0;PF.img=false;PF.sync=false;
   GLS.ss=k==='msaa2'?Math.min(2,GLS.max):k==='msaa1'?1:0;
@@ -8854,7 +8869,7 @@ function glStorm(VZ,camD,camDY,w,h,lw,lh){
   gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.drawArrays(gl.TRIANGLES,0,3);gl.disable(gl.BLEND);gl.disable(gl.SCISSOR_TEST);GLST.on=true;}
 // is the shader pass in use this frame? (the setting, the Lighting switch of Graphics, and a working context)
 function shaderOn(){return S.set.lightMode==='torch'&&GFX().light&&glInit();}
-// frame-time bookkeeping, fed by the loop with the time since the previous drawn frame; drops back to Classic when slow
+// frame-time bookkeeping, fed by the loop with the time since the previous drawn frame; scales the scene copy down when slow
 function glTime(ms){
   GLP.sum+=ms;GLP.n++;if(GLP.sum>=500){GLP.ms=GLP.sum/GLP.n;GLP.sum=0;GLP.n=0;}
   GLP.wsum+=ms;GLP.wn++;
@@ -8865,10 +8880,10 @@ function glTime(ms){
     if(GLP.skip)GLP.skip=false; // the first window after switching on holds the shader compile
     else if(quiet||GLP.slowN<2){}
     else if(S.set.lightMode==='torch'&&GLP.used&&!window.__HKnoauto&&!PF.on&&avg>18.5&&GLP.rs>0.5){GLP.rs=GLP.rs>0.8?0.75:0.5;GLP.slowN=0;} // below about 54 fps: a smaller scene copy first
-    else if(S.set.lightMode==='torch'&&GLP.used&&!window.__HKnoauto&&!PF.on&&avg>22){S.set.lightMode='classic';GLP.inSession=false;S.set.torchRetry=(S.level|0)+TORCH_RETRY;syncLightMode(); // (owner, v55: Torchlight is tried again a few floors on)
-      if(!S.set.slowNote){S.set.slowNote=true;msg('Torchlight was too slow here, so lighting is back to Classic for a few floors.',4.5);}writeSave();}}
+    // (v63, owner: "disable the automatic disabling of the torchlight. Leave only manual control": slow frames only make the scene copy smaller,
+    // down to half size; they never switch to Classic. Only the Graphics menu does that, or a WebGL context that is missing or lost, glKill)
+  }
 }
-const TORCH_RETRY=3; // floors of Classic after Torchlight gave up, before it is tried again (a choice made in Graphics stays)
 function syncLightMode(){const b=document.getElementById('gShader');if(!b)return;const m=S.set.lightMode==='torch';b.setAttribute('aria-pressed',String(m));
   b.firstChild.nodeValue='Lighting: '+(m?'Torchlight':'Classic');b.querySelector('small').textContent=GLP.dead?'Not available on this device':m?'Lamps flicker and bloom, light falls off in the dark':'The lighting this game shipped with';}
 function render(){PF.s();
@@ -9135,7 +9150,7 @@ for(const ev of ['contextmenu','selectstart'])document.addEventListener(ev,e=>e.
 document.addEventListener('dblclick',e=>e.preventDefault());
 
 // ================= screens =================
-const screens=['title','pause','card','how','confirm','gfx'];
+const screens=['title','pause','card','how','confirm','gfx','tools'];
 let howReturn='title',gfxReturn='title';
 // while a panel is open the HUD and the touch controls are hidden (they showed faintly through the panel's backdrop)
 function panelOn(on){document.body.classList.toggle('panelOpen',on);if(L)try{render();}catch(e){}}
@@ -9171,6 +9186,11 @@ $('bHowClose').onclick=()=>show(howReturn);
 $('bGfxT').onclick=()=>{gfxReturn='title';syncGfx();show('gfx');};
 $('bGfxP').onclick=()=>{gfxReturn='pause';syncGfx();show('gfx');};
 $('bGfxClose').onclick=()=>show(gfxReturn);
+// Tools (v63, owner: "put some buttons under a menu that runs the benchmark and the profiler"): each reloads the page with its query, as typing it
+// would (the same path, so it works on Pages and from dev/); the benchmark leaves the save as it was; the profiler plays as usual
+const toolGo=q=>{try{writeSave();}catch(e){}location.href=location.pathname+q;};
+$('bToolsP').onclick=()=>show('tools');$('bToolsClose').onclick=()=>show('pause');
+$('tBench').onclick=()=>toolGo('?bench');$('tBenchC').onclick=()=>toolGo('?bench=classic');$('tBenchA').onclick=()=>toolGo('?bench=auto');$('tProf').onclick=()=>toolGo('?prof');
 $('bResume').onclick=resume;
 $('bRestart').onclick=()=>{hideAll();S.cp=-1;S.cpPlates=[];S.resume=null;S.floorTime=levelTime;startLevel(L.n,-1);wake(true);};
 $('bQuit').onclick=goTitle;
@@ -9243,6 +9263,7 @@ function start(data){
   if(data&&data.save&&data.save.v===1)S=data.save;
   previewTitle();refreshTitle();syncToggles();show('title');
   layout();if(BENCH.on)benchBoot();
+  if(PF.on){const b=document.createElement('button');b.id='profExit';b.textContent='Leave the profiler';b.style.cssText='position:fixed;right:10px;bottom:10px;z-index:99;padding:6px 12px;font:600 12px system-ui;opacity:.85';b.onclick=()=>{location.href=location.pathname;};document.body.appendChild(b);}
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{clearRooms();render();});
   requestAnimationFrame(loop);
 }
