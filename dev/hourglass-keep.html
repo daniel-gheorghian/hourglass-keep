@@ -278,9 +278,11 @@ const THEMES=[
  // Djoser's blue chambers under the step pyramid at Saqqara: faience tiles set like reed matting
  {name:'The Blue Chambers',style:'tile',look:'blue',mortar:'#0d1426',brick:'#1d2a46',brick2:'#16213b',wall:'#2d5288',wallA:'#345b94',wallB:'#284a7c',hi:'#4c74b4',lo:'#1a2f58',top:'#ddcfa0',front:'#7c6f48',trim:'#d8b04a',tileA:'#2a8a9c',tileB:'#cfc2a0',tileC:'#d8b04a',tileD:'#13285e',glass:'250,200,120',sky:'#0a1230',guard:'#9a4422',guard2:'#2a2f4a',glow:'235,205,150'},
  // the iron works of Meroë in Kush, with the royal pyramids beyond
- {name:'The Forges of Meroë',style:'forge',look:'meroe',mortar:'#1a0a0b',brick:'#381819',brick2:'#2e1415',wall:'#74352a',wallA:'#7f3c30',wallB:'#6a3026',hi:'#9d5640',lo:'#461c16',top:'#d09169',front:'#6d3a28',trim:'#b5674a',sky:'#2a0f12',guard:'#2b2b33',guard2:'#5a1f1a',glow:'255,125,60'},
+ {name:'The Forges of Meroë',style:'forge',look:'meroe',mortar:'#170d0d',brick:'#331d1e',brick2:'#2a1819',wall:'#683e36',wallA:'#72453d',wallB:'#5f3831',hi:'#8e5e50',lo:'#3e221e',top:'#bf957a',front:'#623f33',trim:'#a36f5c',sky:'#261315',guard:'#2b2b33',guard2:'#5a1f1a',glow:'255,156,107',
+  lk:{amb:'127,102,99',win:'255,156,107',top:'219,207,218',bot:'242,215,191',haze:'102,61,53',mist:'162,122,108'},gr:{sh:[1.047,0.960,0.933],hi:[1.067,0.993,0.933],sat:1.067}},
  // the hall of Osiris, green for rebirth, where the heart is weighed (Book of the Dead, spell 125; the Book of Gates' fifth hour)
- {name:'The Green Hall of Osiris',style:'crypt',look:'osiris',mortar:'#081411',brick:'#18302a',brick2:'#11241f',wall:'#2e6253',wallA:'#346b5b',wallB:'#295a4c',hi:'#4b8b76',lo:'#1a3b32',top:'#bdcda7',front:'#4f6b54',trim:'#9fbf9c',sky:'#071a1a',guard:'#5f2c6e',guard2:'#1f3832',glow:'190,255,210'},
+ {name:'The Green Hall of Osiris',style:'crypt',look:'osiris',mortar:'#0a1210',brick:'#1c2c28',brick2:'#14211e',wall:'#37594f',wallA:'#3d6257',wallB:'#315248',hi:'#568072',lo:'#203630',top:'#bcc7ad',front:'#546657',trim:'#a4b9a2',sky:'#0a1717',guard:'#5f2c6e',guard2:'#1f3832',glow:'210,255,224',
+  lk:{amb:'95,117,114',win:'205,255,238',top:'202,222,226',bot:'234,241,221',haze:'59,93,89',mist:'133,167,160'},gr:{sh:[0.933,1.040,1.000],hi:[0.980,1.040,0.993],sat:0.947}},
  // the Garamantes' foggaras in the Fezzan: water channels cut under the desert, a line of shafts above each
  {name:'The Foggaras of Garama',style:'dungeon',look:'foggara',mortar:'#1c140e',brick:'#3a2a1c',brick2:'#2c2016',wall:'#6b5238',wallA:'#755a3e',wallB:'#5f4932',hi:'#8f7250',lo:'#3e2f20',top:'#c2a27a',front:'#665036',trim:'#a88a62',sky:'#1a1830',guard:'#3c4f6a',guard2:'#3a2c1f',glow:'255,180,110',
   lk:{amb:'116,102,96',win:'176,182,240',top:'214,208,236',bot:'255,232,204',haze:'96,74,52',mist:'160,140,110'}},
@@ -2024,13 +2026,21 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
   const lean=p.lean,tx=Math.sin(lean),ty=-Math.cos(lean),nx=-ty,ny=tx; // torso axis and its forward normal
   const at=(u)=>[s.sh[0]*u,s.sh[1]*u];
   // --- back layer: scarf tail, sash tails, back arm, back leg ---
-  if(pal.hero){const nk=[s.sh[0]-nx*1.5+tx*1,s.sh[1]-ny*1.5+ty*1];const sc=trail(nk,5,3.2,wind,t,0.6+0.4*Math.min(1,Math.abs(vx)/90),0);
+  const EG=pal.egy;
+  if(pal.hero&&!EG){const nk=[s.sh[0]-nx*1.5+tx*1,s.sh[1]-ny*1.5+ty*1];const sc=trail(nk,5,3.2,wind,t,0.6+0.4*Math.min(1,Math.abs(vx)/90),0);
     tcel(ctx,sc,[3.0,2.8,2.5,2.1,1.6,1.0],C('sash'),D('sash'),O);}
   {const w0=at(0.16),wa=[w0[0]-nx*4,w0[1]-ny*4];const st=trail(wa,2,2.6,wind,t+0.3,0.5,1.7);tcel(ctx,st,[2.2,1.8,1.2],D('sash',-0.2),shadeHex(D('sash',-0.2),-0.25),O);}
   const arm=(sh,e,h,base,shade)=>{tcel(ctx,[sh,e,h],[3.5,2.9,2.2],base,shade,O);
+    if(EG&&!O.mono){const bd=(a,b,u,w)=>{const m=[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u],dx=b[0]-a[0],dy=b[1]-a[1],d=Math.hypot(dx,dy)||1;ctx.strokeStyle=pal.band;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(m[0]-dy/d*1.9,m[1]+dx/d*1.9);ctx.lineTo(m[0]+dy/d*1.9,m[1]-dx/d*1.9);ctx.stroke();};
+      bd(sh,e,0.42,1.1);bd(e,h,0.78,0.9);} // a gold armlet on the upper arm, a bracelet at the wrist
     const hp=new Path2D();hp.ellipse(h[0],h[1],1.35,1.2,0,0,Math.PI*2);if(O.mono){ctx.fillStyle=O.mono;ctx.fill(hp);}else{ctx.strokeStyle=O.out;ctx.lineWidth=1.1;ctx.stroke(hp);ctx.fillStyle=base;ctx.fill(hp);}};
   const leg=(f,k,base,shade,cuff,boot,X)=>{
     const mid=[k[0]+(f[0]-k[0])*0.55-0.6,k[1]+(f[1]-k[1])*0.55],ank=[k[0]+(f[0]-k[0])*0.9,k[1]+(f[1]-k[1])*0.9];
+    if(EG){tcel(ctx,[[0,0],k,mid,ank],[6.6,5.2,4.6,3.0],base,shade,O); // bare legs; a sandal: a flat sole, a thong
+      const sp=new Path2D(),M=(dx,dy)=>sp.moveTo(...X(dx,dy)),Ln=(dx,dy)=>sp.lineTo(...X(dx,dy)),Q=(a,b,c,d)=>sp.quadraticCurveTo(...X(a,b),...X(c,d));
+      M(-2.2,0.4);Q(-2.4,-2,0.2,-1.9);Q(3.4,-1.3,6.2,-0.5);Q(6.9,0.1,6.2,0.6);Ln(-1.4,0.6);sp.closePath();celAt(ctx,sp,base,shade,O,...X(2.6,-0.4));
+      if(!O.mono){ctx.strokeStyle=boot;ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(...X(-2.3,1.1));ctx.lineTo(...X(6.6,1.1));ctx.stroke();ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(...X(0.2,-1.8));ctx.lineTo(...X(4.4,0.4));ctx.stroke();}
+      return;}
     tcel(ctx,[[0,0],k,mid,ank],[8.2,6.8,6.2,3.6],base,shade,O);
     // cuff band and the slipper with its curled toe
     if(!O.mono){ctx.strokeStyle=cuff;ctx.lineWidth=1.3;const dx=f[0]-k[0],dy=f[1]-k[1],d=Math.hypot(dx,dy)||1;ctx.beginPath();ctx.moveTo(ank[0]-dy/d*1.9,ank[1]+dx/d*1.9);ctx.lineTo(ank[0]+dy/d*1.9,ank[1]-dx/d*1.9);ctx.stroke();}
@@ -2038,23 +2048,30 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
     M(-2.2,0.6);Q(-2.4,-2.2,0.2,-2.0);Q(3.4,-1.4,5.6,-0.2);Q(7.2,-0.6,7.0,-2.2);Q(7.8,0.4,5.2,1.0);Ln(-1.4,1.0);sp.closePath();
     celAt(ctx,sp,boot,shadeHex(boot,-0.35),O,...X(2.6,-0.4));};
   arm(s.sh,s.eB,s.hB,D('skin',-0.18),shadeHex(D('skin',-0.18),-0.22));
-  leg(s.fB,s.kB,D('pants',-0.12),shadeHex(D('pants',-0.12),-0.18),shadeHex(C('pants'),-0.45),shadeHex(C('boot'),-0.2),footXf(p,s,s.fB,s.kB,p.hB,p.kB));
+  if(EG)leg(s.fB,s.kB,D('skin',-0.18),shadeHex(D('skin',-0.18),-0.22),null,shadeHex(C('boot'),-0.2),footXf(p,s,s.fB,s.kB,p.hB,p.kB));
+  else leg(s.fB,s.kB,D('pants',-0.12),shadeHex(D('pants',-0.12),-0.18),shadeHex(C('pants'),-0.45),shadeHex(C('boot'),-0.2),footXf(p,s,s.fB,s.kB,p.hB,p.kB));
   // sheathed sword at the hip when not drawn
-  if(!o.sword&&o.hasSword&&!O.mono){ctx.save();const hp=at(0.12);ctx.translate(hp[0]-nx*1,hp[1]-ny*1);ctx.rotate(lean+1.95);
+  if(!o.sword&&o.hasSword&&!O.mono&&EG){ctx.save();const hp=at(0.24);ctx.translate(hp[0]+nx*1.5,hp[1]+ny*1.5);ctx.rotate(lean+1.2);ctx.scale(0.7,0.7);khopesh(ctx,[0,0],0,0,15,O,true);ctx.restore();} // (the khopesh tucked in the belt at the front)
+  else if(!o.sword&&o.hasSword&&!O.mono){ctx.save();const hp=at(0.12);ctx.translate(hp[0]-nx*1,hp[1]-ny*1);ctx.rotate(lean+1.95);
     const sc=new Path2D();sc.moveTo(0,-1.3);sc.quadraticCurveTo(7,-2.2,13,0.2);sc.lineTo(12.6,1.5);sc.quadraticCurveTo(7,0.2,0,1.3);sc.closePath();celAt(ctx,sc,o.pale?'#a98255':'#6b4a2a','#4a321c',O,6.5,0);
     ctx.fillStyle='#d8b04a';ctx.fillRect(-1.6,-1.8,1.6,3.6);ctx.restore();}
   // --- torso: vest over the chest, sash at the waist ---
   const tp=[[0,0],at(0.38),at(0.78),at(1)],tw=[9.2,8.2,11.2,9.6];
   tcel(ctx,tp,tw,C('tunic'),D('tunic'),O);
-  if(!O.mono){ // open collar and trim along the vest's front edge
+  if(EG&&!O.mono){ // the broad collar (wesekh): rows of faience beads round the neck, a drop row at the edge
+    const cl=pal.coll;for(let i=0;i<3;i++){const o2=2.9-i*1.0,u0=0.99,u1=0.8+i*0.05;const a0=at(u0),a1=at(u1),a2=at(u0);
+      tcel(ctx,[[a0[0]-nx*(3.6-i*0.3),a0[1]-ny*(3.6-i*0.3)],[a1[0]+nx*o2*0.3,a1[1]+ny*o2*0.3],[a2[0]+nx*(4.8-i*0.5),a2[1]+ny*(4.8-i*0.5)]],[2.1,2.5,2.1],cl[i],shadeHex(cl[i],-0.3),O);}
+    if(pal.egy==='kush'){const c0=at(0.97),c1=at(0.74);ctx.strokeStyle='#1a1210';ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(c0[0]+nx*3.6,c0[1]+ny*3.6);ctx.lineTo(c1[0]+nx*4.4,c1[1]+ny*4.4);ctx.stroke(); // the ram's head on its cord
+      ctx.fillStyle='#e0b64a';ctx.beginPath();ctx.arc(c1[0]+nx*4.4,c1[1]+ny*4.4,1.3,0,6.2832);ctx.fill();ctx.strokeStyle='#a87a20';ctx.lineWidth=0.5;ctx.beginPath();ctx.arc(c1[0]+nx*4.0,c1[1]+ny*4.0,0.9,0.3,2.6);ctx.stroke();}}
+  else if(!O.mono){ // open collar and trim along the vest's front edge
     const c0=at(0.98),c1=at(0.7);ctx.fillStyle=C('skin');ctx.beginPath();ctx.moveTo(c0[0]+nx*4.2,c0[1]+ny*4.2);ctx.lineTo(c1[0]+nx*5.3,c1[1]+ny*5.3);ctx.lineTo(c0[0]+nx*1.2,c0[1]+ny*1.2);ctx.closePath();ctx.fill();
     ctx.strokeStyle=pal.trim||'#d8b04a';ctx.lineWidth=0.9;ctx.beginPath();const e0=at(0.2),e1=at(0.72);ctx.moveTo(e0[0]+nx*4.4,e0[1]+ny*4.4);ctx.quadraticCurveTo(e1[0]+nx*5.8,e1[1]+ny*5.8,c1[0]+nx*5.2,c1[1]+ny*5.2);ctx.lineTo(c0[0]+nx*4.2,c0[1]+ny*4.2);ctx.stroke();}
-  {const a=at(0.08),b=at(0.27);tcel(ctx,[a,b],[10,9.2],C('sash'),D('sash'),O);
+  if(!EG){const a=at(0.08),b=at(0.27);tcel(ctx,[a,b],[10,9.2],C('sash'),D('sash'),O);
     if(!O.mono){ctx.strokeStyle=shadeHex(C('sash'),-0.35);ctx.lineWidth=0.7;ctx.beginPath();const m=at(0.17);ctx.moveTo(m[0]-nx*4.3,m[1]-ny*4.3);ctx.lineTo(m[0]+nx*4.3,m[1]+ny*4.3);ctx.stroke();}}
   // --- head ---
   const hd=s.hd,ha=lean+p.head,hx=Math.sin(ha),hy=-Math.cos(ha),hnx=-hy,hny=hx;
   {const n0=at(0.95),n1=[hd[0]-hx*3.6,hd[1]-hy*3.6];tcel(ctx,[n0,n1],[3.4,3.0],C('skin'),D('skin'),O);}
-  if(pal.hero){const nk=[s.sh[0]+tx*1.4,s.sh[1]+ty*1.4];tcel(ctx,[[nk[0]-nx*2.6,nk[1]-ny*2.6],[nk[0]+nx*2.6,nk[1]+ny*2.6]],[3.2,3.2],C('sash'),D('sash'),O);}
+  if(pal.hero&&!EG){const nk=[s.sh[0]+tx*1.4,s.sh[1]+ty*1.4];tcel(ctx,[[nk[0]-nx*2.6,nk[1]-ny*2.6],[nk[0]+nx*2.6,nk[1]+ny*2.6]],[3.2,3.2],C('sash'),D('sash'),O);}
   {const hp=new Path2D();const r=LEN.hd;
     // skull, with the jaw and nose pushed forward
     hp.moveTo(hd[0]-hnx*r*0.95+hx*r*0.2,hd[1]-hny*r*0.95+hy*r*0.2);
@@ -2070,6 +2087,26 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
       if(!O.mono){ctx.strokeStyle=shadeHex(pal.helm,0.35);ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(hd[0]-hnx*r*0.4+hx*r*1.05,hd[1]-hny*r*0.4+hy*r*1.05);ctx.quadraticCurveTo(hd[0]+hx*r*1.12,hd[1]+hy*r*1.12,hd[0]+hnx*r*0.5+hx*r*0.95,hd[1]+hny*r*0.5+hy*r*0.95);ctx.stroke();}
       const sp=[hd[0]+hx*(r+0.5),hd[1]+hy*(r+0.5)];ctx.fillStyle=O.mono||shadeHex(pal.helm,-0.2);ctx.beginPath();ctx.moveTo(sp[0]-hnx*0.9,sp[1]-hny*0.9);ctx.lineTo(sp[0]+hx*3.4,sp[1]+hy*3.4);ctx.lineTo(sp[0]+hnx*0.9,sp[1]+hny*0.9);ctx.fill();
       if(pal.plume){const pl=trail([sp[0]+hx*3,sp[1]+hy*3],4,2.6,[-1+wind[0],-0.8],t,0.5,2.2);tcel(ctx,pl,[2.6,2.8,2.4,1.8,1],pal.plume,shadeHex(pal.plume,-0.35),O);}}
+  else if(EG){const r=LEN.hd;
+    if(EG==='lock'||EG==='kush'){const hp=new Path2D(); // a shaven or close-cropped crown (the Kushite: a close cap with a gold band)
+      hp.moveTo(hd[0]+hnx*r*0.8+hx*r*0.45,hd[1]+hny*r*0.8+hy*r*0.45);
+      hp.bezierCurveTo(hd[0]+hnx*r*0.55+hx*r*1.3,hd[1]+hny*r*0.55+hy*r*1.3,hd[0]-hnx*r*1.15+hx*r*1.2,hd[1]-hny*r*1.15+hy*r*1.2,hd[0]-hnx*r*1.08-hx*r*0.1,hd[1]-hny*r*1.08-hy*r*0.1);
+      hp.quadraticCurveTo(hd[0]-hnx*r*0.4+hx*r*0.35,hd[1]-hny*r*0.4+hy*r*0.35,hd[0]+hnx*r*0.8+hx*r*0.45,hd[1]+hny*r*0.8+hy*r*0.45);hp.closePath();
+      celAt(ctx,hp,C('hair'),shadeHex(C('hair'),-0.4),O,hd[0]+hx*r*0.7,hd[1]+hy*r*0.7);
+      if(EG==='kush'&&!O.mono){ctx.strokeStyle=pal.band;ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(hd[0]+hnx*r*0.8+hx*r*0.5,hd[1]+hny*r*0.8+hy*r*0.5);ctx.quadraticCurveTo(hd[0]-hnx*r*0.2+hx*r*0.85,hd[1]-hny*r*0.2+hy*r*0.85,hd[0]-hnx*r*1.05+hx*r*0.2,hd[1]-hny*r*1.05+hy*r*0.2);ctx.stroke();
+        ctx.fillStyle=pal.band;ctx.beginPath();ctx.arc(hd[0]-hnx*r*0.2-hx*r*0.25,hd[1]-hny*r*0.2-hy*r*0.25,0.9,0,6.2832);ctx.fill();} // the band, an ear stud
+      if(EG==='lock'){const tl=trail([hd[0]-hnx*r*0.45+hx*r*0.2,hd[1]-hny*r*0.45+hy*r*0.2],4,2.3,[wind[0]*0.6,wind[1]+0.4],t+0.6,0.4,3.1); // the sidelock: a plait from the side of the head, curled at its end
+        tcel(ctx,tl,[2.3,2.1,1.9,1.7,1.5],C('hair'),shadeHex(C('hair'),-0.4),O);
+        if(!O.mono){ctx.strokeStyle=shadeHex(C('hair'),0.35);ctx.lineWidth=0.5;for(let i=1;i<tl.length;i++){const a=tl[i-1],b=tl[i];ctx.beginPath();ctx.moveTo(a[0]-0.8,a[1]+0.4);ctx.lineTo(b[0]+0.8,b[1]-0.2);ctx.stroke();}
+          const e=tl[tl.length-1];ctx.strokeStyle=C('hair');ctx.lineWidth=1.3;ctx.beginPath();ctx.arc(e[0]+1.1,e[1],1.1,Math.PI,Math.PI*2.6);ctx.stroke();}}}
+    else{const hp=new Path2D(); // the khat: a linen headcloth over the crown, gathered into a bag at the nape
+      hp.moveTo(hd[0]+hnx*r*0.85+hx*r*0.3,hd[1]+hny*r*0.85+hy*r*0.3);
+      hp.bezierCurveTo(hd[0]+hnx*r*0.6+hx*r*1.5,hd[1]+hny*r*0.6+hy*r*1.5,hd[0]-hnx*r*1.4+hx*r*1.35,hd[1]-hny*r*1.4+hy*r*1.35,hd[0]-hnx*r*1.3-hx*r*0.2,hd[1]-hny*r*1.3-hy*r*0.2);
+      hp.quadraticCurveTo(hd[0]-hnx*r*0.55-hx*r*0.1,hd[1]-hny*r*0.55-hy*r*0.1,hd[0]-hnx*r*0.25+hx*r*0.2,hd[1]-hny*r*0.25+hy*r*0.2);
+      hp.quadraticCurveTo(hd[0]+hnx*r*0.2+hx*r*0.45,hd[1]+hny*r*0.2+hy*r*0.45,hd[0]+hnx*r*0.85+hx*r*0.3,hd[1]+hny*r*0.85+hy*r*0.3);hp.closePath();
+      const bag=trail([hd[0]-hnx*r*1.15-hx*r*0.3,hd[1]-hny*r*1.15-hy*r*0.3],2,2.6,wind,t+0.6,0.5,3.1);tcel(ctx,bag,[4.4,4.0,3.0],shadeHex(pal.khat,-0.08),shadeHex(pal.khat,-0.3),O);
+      celAt(ctx,hp,pal.khat,shadeHex(pal.khat,-0.28),O,hd[0]-hnx*r*0.2+hx*r*0.6,hd[1]-hny*r*0.2+hy*r*0.6);
+      if(!O.mono){ctx.strokeStyle=pal.band;ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(hd[0]+hnx*r*0.85+hx*r*0.3,hd[1]+hny*r*0.85+hy*r*0.3);ctx.lineTo(hd[0]-hnx*r*0.25+hx*r*0.2,hd[1]-hny*r*0.25+hy*r*0.2);ctx.stroke();}}}
   else if(!pal.bones){ // hair: a swept mass over the crown, and a short tail that trails
     const r=LEN.hd,hp=new Path2D();
     hp.moveTo(hd[0]+hnx*r*0.85+hx*r*0.55,hd[1]+hny*r*0.85+hy*r*0.55);
@@ -2082,12 +2119,21 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
     if(!O.mono){ctx.strokeStyle=shadeHex(C('hair'),0.25);ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(hd[0]-hnx*r*0.4+hx*r*1.0,hd[1]-hny*r*0.4+hy*r*1.0);ctx.quadraticCurveTo(hd[0]+hx*r*1.12,hd[1]+hy*r*1.12,hd[0]+hnx*r*0.45+hx*r*0.85,hd[1]+hny*r*0.45+hy*r*0.85);ctx.stroke();}}
   if(!pal.bones&&!O.mono){ // eye and brow
     const r=LEN.hd,ex=hd[0]+hnx*r*0.48+hx*r*0.12,ey=hd[1]+hny*r*0.48+hy*r*0.12;ctx.fillStyle='#120c18';ctx.beginPath();ctx.ellipse(ex,ey,0.62,0.85,ha,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle=shadeHex(C(pal.helm?'skin':'hair'),-0.3);ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(ex-hnx*0.9+hx*1.4,ey-hny*0.9+hy*1.4);ctx.lineTo(ex+hnx*1.1+hx*1.2,ey+hny*1.1+hy*1.2);ctx.stroke();}
+    ctx.strokeStyle=shadeHex(C(pal.helm?'skin':'hair'),-0.3);ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(ex-hnx*0.9+hx*1.4,ey-hny*0.9+hy*1.4);ctx.lineTo(ex+hnx*1.1+hx*1.2,ey+hny*1.1+hy*1.2);ctx.stroke();
+    if(EG){ctx.strokeStyle='#120c18';ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(ex-hnx*1.9-hx*0.2,ey-hny*1.9-hy*0.2);ctx.stroke();}} // a line of kohl drawn back from the eye
   // --- front layer: leg, sword, arm ---
-  leg(s.fF,s.kF,C('pants'),D('pants'),shadeHex(C('pants'),-0.42),C('boot'),footXf(p,s,s.fF,s.kF,p.hF,p.kF));
+  if(EG){leg(s.fF,s.kF,C('skin'),D('skin'),null,C('boot'),footXf(p,s,s.fF,s.kF,p.hF,p.kF));
+    const lp=(k,u,o2)=>[k[0]*u+nx*o2,k[1]*u+ny*o2],w0=at(0.26),F=lp(s.kF,0.55,3.0),Bk=lp(s.kB,0.55,-3.0),H0=lp(s.kF,0.5,-1),H1=lp(s.kB,0.5,1); // the shendyt: a wrap of white linen from the waist to above the knee
+    const kp=new Path2D();kp.moveTo(w0[0]-nx*4.8,w0[1]-ny*4.8);kp.lineTo(w0[0]+nx*4.8,w0[1]+ny*4.8);kp.lineTo(F[0],F[1]);kp.quadraticCurveTo((H0[0]+H1[0])/2+tx*-1.2,(H0[1]+H1[1])/2+ty*-1.2,Bk[0],Bk[1]);kp.closePath();
+    celAt(ctx,kp,C('pants'),D('pants'),O,(w0[0]+F[0]+Bk[0])/3,(w0[1]+F[1]+Bk[1])/3);
+    if(!O.mono){ctx.strokeStyle=shadeHex(C('pants'),-0.22);ctx.lineWidth=0.5;for(let i=1;i<5;i++){const u=i/5,a=[w0[0]-nx*4.8+(nx*9.6)*u,w0[1]-ny*4.8+(ny*9.6)*u],b=[Bk[0]+(F[0]-Bk[0])*u,Bk[1]+(F[1]-Bk[1])*u];ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();} // pleats
+      ctx.fillStyle=shadeHex(C('pants'),-0.1);ctx.beginPath();ctx.moveTo(w0[0]+nx*2.4,w0[1]+ny*2.4);ctx.lineTo(F[0]-nx*0.4,F[1]-ny*0.4);ctx.lineTo(F[0]-nx*3,F[1]-ny*3);ctx.closePath();ctx.fill();} // the front tab
+    if(!O.mono){const m=at(0.27);ctx.strokeStyle=O.out;ctx.lineWidth=3.2;ctx.beginPath();ctx.moveTo(m[0]-nx*4.9,m[1]-ny*4.9);ctx.lineTo(m[0]+nx*4.9,m[1]+ny*4.9);ctx.stroke();ctx.strokeStyle=C('sash');ctx.lineWidth=2;ctx.stroke();}} // the belt over it
+  else leg(s.fF,s.kF,C('pants'),D('pants'),shadeHex(C('pants'),-0.42),C('boot'),footXf(p,s,s.fF,s.kF,p.hF,p.kF));
   if(o.sword&&o.smear&&!O.mono){const h=s.hF;for(const [f,al] of [[1,0.16],[0.5,0.3]]){const a=p.sw+o.smear*f,dx=Math.cos(a),dy=-Math.sin(a);ctx.globalAlpha=al*(o.alpha===undefined?1:o.alpha);
     ctx.fillStyle='#e8eef8';ctx.beginPath();ctx.moveTo(h[0],h[1]);ctx.lineTo(h[0]+Math.cos(p.sw)*18,h[1]-Math.sin(p.sw)*18);ctx.lineTo(h[0]+dx*18,h[1]+dy*18);ctx.closePath();ctx.fill();}ctx.globalAlpha=o.alpha===undefined?1:o.alpha;}
-  if(o.sword){const h=s.hF,a=p.sw,dx=Math.cos(a),dy=-Math.sin(a),nx2=-dy,ny2=dx,L2=o.swLen||18;
+  if(o.sword&&EG)khopesh(ctx,s.hF,p.sw,1,o.swLen||18,O,false);
+  else if(o.sword){const h=s.hF,a=p.sw,dx=Math.cos(a),dy=-Math.sin(a),nx2=-dy,ny2=dx,L2=o.swLen||18;
     const bl=new Path2D();bl.moveTo(h[0]+nx2*0.9,h[1]+ny2*0.9);bl.quadraticCurveTo(h[0]+dx*L2*0.6+nx2*1.6,h[1]+dy*L2*0.6+ny2*1.6,h[0]+dx*L2+nx2*2.6,h[1]+dy*L2+ny2*2.6);
     bl.quadraticCurveTo(h[0]+dx*L2*0.7-nx2*0.6,h[1]+dy*L2*0.7-ny2*0.6,h[0]-nx2*0.9,h[1]-ny2*0.9);bl.closePath();
     if(O.mono){ctx.fillStyle=O.mono;ctx.fill(bl);}else{msFig(ctx,MKID.steel,bl);ctx.strokeStyle=O.out;ctx.lineWidth=1.1;ctx.stroke(bl);ctx.fillStyle='#c9cfda';ctx.fill(bl);
@@ -2099,6 +2145,16 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
   if(o.flash>0&&!o.white&&!o.mono)drawFigureHD(ctx,x,y,face,p,pal,Object.assign({},o,{white:true,mono:'#ffffff',flash:0,alpha:Math.min(0.75,o.flash*3)*(o.alpha===undefined?1:o.alpha)}));
 }
 
+// the khopesh: a bronze sickle-sword, a straight neck from the grip, then the blade's crescent, its outer edge the cutting edge (two
+// in Tutankhamun's tomb). Drawn along angle a from the hand h (the straight sword's own frame and length: hit boxes are not drawn)
+function khopesh(ctx,h,a,flip,L2,O,hung){const dx=Math.cos(a),dy=-Math.sin(a),nx2=-dy,ny2=dx,P=(u,v)=>[h[0]+dx*u+nx2*v,h[1]+dy*u+ny2*v];
+  const bl=new Path2D();const p0=P(L2*0.32,0.8);bl.moveTo(...P(0,0.9));bl.lineTo(...p0);bl.quadraticCurveTo(...P(L2*0.62,5.4),...P(L2,2.6));bl.quadraticCurveTo(...P(L2*0.92,0.6),...P(L2*0.78,1.2));
+  bl.quadraticCurveTo(...P(L2*0.55,1.4),...P(L2*0.34,-0.8));bl.lineTo(...P(0,-0.9));bl.closePath();
+  if(O.mono){ctx.fillStyle=O.mono;ctx.fill(bl);return;}
+  if(!hung)msFig(ctx,MKID.bronze,bl);ctx.strokeStyle=O.out;ctx.lineWidth=1.1;ctx.stroke(bl);ctx.fillStyle='#c39350';ctx.fill(bl);
+  ctx.strokeStyle='#f2d9a0';ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(...P(L2*0.36,1.4));ctx.quadraticCurveTo(...P(L2*0.62,4.6),...P(L2*0.96,2.6));ctx.stroke(); // the bright cutting edge
+  ctx.strokeStyle='#3a2414';ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(...P(0,0));ctx.lineTo(...P(-3.2,0));ctx.stroke(); // the grip
+  ctx.fillStyle='#d8b04a';ctx.beginPath();ctx.arc(...P(-3.6,0),0.9,0,6.2832);ctx.fill();}
 // A keyed run cycle (contact, down, passing, up, then the same with legs and arms swapped), smoothed with
 // Catmull-Rom so it flows; the body dips on the down beat and floats on the up beat.
 const RUNK=[
@@ -2181,7 +2237,18 @@ function drawSkeletonHD(ctx,x,y,face,p,pal,o){
 }
 
 const PAL_WHITE={skin:'#fff',skinD:'#fff',tunic:'#fff',tunicD:'#fff',pants:'#fff',pantsD:'#fff',sash:'#fff',hair:'#fff',boot:'#fff'},PAL_WHITE_B=Object.assign({},PAL_WHITE,{bones:true});
+const PAL_GSIL={hero:true}; // (the guards' silhouettes: the old outline, trousers and all, not the prince's kilt)
 const PAL_SKEL={skin:'#e9e3cf',skinD:'#c3bb9f',pants:'#e9e3cf',pantsD:'#c3bb9f',boot:'#d9d1b8',bones:true};
+// The prince (owner, round 6): an Egyptian prince of the New Kingdom, after the reliefs and statues of royal sons: the sidelock of
+// youth (a plaited lock on the right of a shaven head, the mark of the 18th Dynasty's princes; Ramesses II's sons in their processions),
+// a pleated linen kilt (shendyt) with a belt and its hanging ends, bare chest under a broad collar (wesekh) of faience beads, armlets,
+// sandals, the red-brown of Egyptian painting's men, and the khopesh (two in Tutankhamun's tomb). Variants on the page: B the khat
+// headcloth, C a Kushite (Napatan) youth: close cap with a gold band, ear studs, a ram's-head amulet on a cord (as the Kushite kings
+// wore it), darker skin. The same skeleton, poses, hitboxes and timings; only the drawing changes (pal.egy in drawFigureHD).
+const HERO_VAR={
+  A:{egy:'lock',skin:'#b0703f',skinD:'#87522c',tunic:'#b0703f',tunicD:'#87522c',pants:'#efe7d2',pantsD:'#c8bd9f',sash:'#b5352a',hair:'#1a1210',boot:'#7a5230',coll:['#2f6fb0','#d8b04a','#b5352a'],band:'#d8b04a'},
+  B:{egy:'khat',skin:'#b0703f',skinD:'#87522c',tunic:'#b0703f',tunicD:'#87522c',pants:'#efe7d2',pantsD:'#c8bd9f',sash:'#2f5d9f',hair:'#1a1210',boot:'#7a5230',coll:['#2f8f8c','#d8b04a','#2f5d9f'],band:'#d8b04a',khat:'#ece4cf'},
+  C:{egy:'kush',skin:'#6b4026',skinD:'#4c2b18',tunic:'#6b4026',tunicD:'#4c2b18',pants:'#efe7d2',pantsD:'#c8bd9f',sash:'#c8952a',hair:'#141010',boot:'#6a4426',coll:['#b5352a','#d8b04a','#2f8f8c'],band:'#e0b64a'}};
 const PAL_HERO={skin:'#c98f60',skinD:'#a8734a',tunic:'#3b4aa6',tunicD:'#2c387e',pants:'#e6d9bf',pantsD:'#bfb093',sash:'#e4683b',hair:'#2b1b12',boot:'#5c3b22',hero:true};
 // guards dress by rank, one main hue each, no grey anywhere (rank reads by colour, not by an outline; the prince keeps blue and
 // white, so no guard is blue or white). Each rank: a ramp of three shades of its hue (tunic light, tunic shadow, dark trousers),
@@ -2193,6 +2260,9 @@ const GUARD_PAL={
   1:{skin:'#8c5c3c',skinD:'#6d4429',tunic:'#3fd03a',tunicD:'#1b8a3e',pants:'#17692f',pantsD:'#0b3d1e',sash:'#f4e9b0',trim:'#f0d060',helm:'#c4e08a',boot:'#1a120c'}, // soldier: vibrant green (light leans yellow, shadow leans teal), cream
   2:{skin:'#a67650',skinD:'#835836',tunic:'#ea3a52',tunicD:'#a31c34',pants:'#6c2038',pantsD:'#431224',sash:'#eec45a',trim:'#f4d878',helm:'#e0a090',plume:'#f6a53a',boot:'#1c120b'}, // veteran: crimson, wine, gold
   3:{skin:'#7e5036',skinD:'#613b26',tunic:'#b25cf0',tunicD:'#6c2eb0',pants:'#4a2a7c',pantsD:'#2c1650',sash:'#f0c040',trim:'#ffd76b',helm:'#e2b84a',plume:'#fbf6ea',boot:'#2a1a10'}}; // captain: violet, gold, white plume
+const PAL_HERO0=Object.assign({},PAL_HERO);let HERO_STYLE='A';
+function setHero(k){HERO_STYLE=k;for(const q of Object.keys(PAL_HERO))delete PAL_HERO[q];Object.assign(PAL_HERO,PAL_HERO0,k&&HERO_VAR[k]||{});}
+setHero('A');
 function guardPal(g){return GUARD_PAL[g.cap?3:Math.min(2,g.tier|0)];}
 function drawFigure(ctx,x,y,face,p,pal,o){
   const s=skel(p);
@@ -7679,7 +7749,7 @@ const GLGRADE={dungeon:{sh:[.93,.98,1.07],hi:[1.04,1.01,.96],sat:.96},palace:{sh
   forge:{sh:[1.07,.94,.9],hi:[1.1,.99,.9],sat:1.1},crypt:{sh:[.9,1.06,1.0],hi:[.97,1.06,.99],sat:.92}};
 const TODG=[null,{sh:[.96,.985,1.05],hi:[.96,.99,1.04],sat:.96},{sh:[1.05,1.0,.94],hi:[1.07,1.02,.9],sat:1.05}]; // the time of day's grade, over the theme's
 const gradeMemo=new Map(); // (made once per theme and time of day, not every frame)
-function gradeOf(style){const td=L&&L.prog?L.prog.tod:0,k=style+td;let o=gradeMemo.get(k);if(o)return o;const g=GLGRADE[style]||GLGRADE.dungeon,t=TODG[td]||null;o=t?{sh:g.sh.map((v,i)=>v*t.sh[i]),hi:g.hi.map((v,i)=>v*t.hi[i]),sat:g.sat*t.sat}:g;gradeMemo.set(k,o);return o;}
+function gradeOf(style){const td=L&&L.prog?L.prog.tod:0,tg=L&&L.theme&&L.theme.gr&&L.theme.style===style?L.theme:null,k=(tg?tg.look:style)+td;let o=gradeMemo.get(k);if(o)return o;const g=tg?tg.gr:GLGRADE[style]||GLGRADE.dungeon, /* (a theme's own grade over its style's: round 6) */t=TODG[td]||null;o=t?{sh:g.sh.map((v,i)=>v*t.sh[i]),hi:g.hi.map((v,i)=>v*t.hi[i]),sat:g.sat*t.sat}:g;gradeMemo.set(k,o);return o;}
 const GLNEUT=[1,1,1],GLSTRONG={torch:1,fire:1,door:1,win:1}; // lights that throw a shadow
 const GLCH=[],GLBODY=[[0,-50,20,20],[0,-37,34,30],[0,-21,32,30],[0,-8,28,26]];let stormStrip=null;
 // the soft shadow of one figure on the back wall: cast away from the nearest strong lights (up to two), longer the farther
@@ -7692,11 +7762,11 @@ const SIL={pool:[],m:new Map(),m2:new Map(),v:[]};
 function glSilhouette(e,d2){const M=d2&&GLP.gls?SIL.m2:SIL.m;let c=M.get(e);if(c!==undefined)return c; // (d2: a 2D canvas even when WebGL draws the masks)
   if(GLP.gls&&!d2){const i=SIL.m.size;if(i>=12){SIL.m.set(e,null);return null;} // (unit WGL) a 192 px slot of one target (4 x 3), drawn by WebGL
     const g=g2Mk('sil',768,576,[0,0,0,0]),x=(i&3)*192,y=(i>>2)*192;g.setTransform(1,0,0,1,0,0);g.save();g.beginPath();g.rect(x,y,192,192);g.clip();g.setTransform(2,0,0,2,x,y);
-    try{figDraw(g,48,80,e.face||1,e.pose,e.skel?PAL_SKEL:PAL_HERO,{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});c=SIL.v[i]||(SIL.v[i]={isView:true,tgt:GLS.sil,x,y,width:192,height:192});}catch(err){c=null;}
+    try{figDraw(g,48,80,e.face||1,e.pose,e.skel?PAL_SKEL:e===P?PAL_HERO:PAL_GSIL,{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});c=SIL.v[i]||(SIL.v[i]={isView:true,tgt:GLS.sil,x,y,width:192,height:192});}catch(err){c=null;}
     g.restore();SIL.m.set(e,c);return c;}
   c=SIL.pool[M.size+(M===SIL.m2?6:0)];if(!c){c=document.createElement('canvas');c.width=c.height=192;c._g=c.getContext('2d');SIL.pool.push(c);}
   const g=c._g;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,192,192);g.setTransform(2,0,0,2,0,0);
-  try{figDraw(g,48,80,e.face||1,e.pose,e.skel?PAL_SKEL:PAL_HERO,{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});}catch(err){c=null;}
+  try{figDraw(g,48,80,e.face||1,e.pose,e.skel?PAL_SKEL:e===P?PAL_HERO:PAL_GSIL,{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});}catch(err){c=null;}
   M.set(e,c);return c;}
 function glShadow(g,x,y,sc,lights,spr,e){
   const sil=e&&e.pose?glSilhouette(e):null;
@@ -8088,9 +8158,9 @@ const GLCSH={
         if(u_lx2.z>0.&&tl.r<.5&&tl.a<.25&&lr>.04){float n=vn(vec2(w.x*.33+u_t*.03,w.y*.31))*vn(vec2(w.x*.29-u_t*.05,w.y*.37+11.))*vn(vec2(w.x*.41,w.y*.23-u_t*.04+5.)); // granite: crystals catching the lamp, sparse points that wander (smooth noise in world space: no per-pixel jitter)
           o.rgb+=R*smoothstep(.36,.5,n)*.9*u_lx2.z;}
         if(u_lx2.y>0.&&tl.g>.5&&fy>55.5&&tl.r<.5){float n=vn(vec2(w.x*.11,floor(w.y/64.)*7.3+u_t*.05)),e=smoothstep(.6,.78,n)*(.55+.45*sin(u_t*1.1+n*20.)); // embers: slag glowing in the floor's cracks, its own light
-          o.rgb+=vec3(1.,.42,.12)*e*1.1*u_lx2.y;}
+          o.rgb+=vec3(1.,.5,.24)*e*.9*u_lx2.y;}
         if(u_lx2.x>0.&&tl.r<.5){float n=vn(vec2(w.x*.012-u_t*.06,w.y*.03)),b=sin(w.y*.11+n*4.+u_t*.15)*.5+.5; // incense: thin layers of smoke drifting across the hall
-          float d=smoothstep(.6,.92,b)*smoothstep(.35,.75,vn(vec2(w.x*.03+u_t*.04,w.y*.08)))*.5*u_lx2.x;o.rgb+=vec3(.62,.9,.72)*(R*.55+.12)*d;o.a=max(o.a,d*.35);}
+          float d=smoothstep(.6,.92,b)*smoothstep(.35,.75,vn(vec2(w.x*.03+u_t*.04,w.y*.08)))*.45*u_lx2.x;o.rgb+=vec3(.74,.88,.78)*(R*.55+.12)*d;o.a=max(o.a,d*.35);}
         if(u_lx2.w>0.&&tl.a>.25){float inA=inArch(w); // arch dust: warm dust hanging in the open arches, lit by the low sun (or the moon)
           float n=vn(vec2(w.x*.05+u_t*.08,w.y*.06-u_t*.05))*.6+vn(vec2(w.x*.13-u_t*.12,w.y*.15))*.4,d=smoothstep(.3,.8,n)*inA*.42*u_lx2.w;o.rgb+=u_lc*d;}}
       gl_FragColor=o;}`]};
@@ -8684,7 +8754,7 @@ window.__HK={tapCloth,THEMES,progOf,themeName,hint,learn,HINTS,HINT_MOVE,get ban
   get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG};
 Object.assign(window.__HK,{guardBudget,snakeBudget}); // (the fighters' budgets, for guardscan.py)
 Object.defineProperty(window.__HK,'intro',{get(){return intro;},set(v){intro=v;}}); // (the floor's title banner, for egyptprop.py)
-Object.assign(window.__HK,{EGP,SCHED,floorsOf,BGART,bgArt,LFX,themeOf,get PF(){return PF;}}); // (the themes' backdrops and effects, for egyptshot.py and egyptfx.py)
+Object.assign(window.__HK,{EGP,setHero,HERO_VAR,PAL_HERO,SCHED,floorsOf,BGART,bgArt,LFX,themeOf,get PF(){return PF;}}); // (the themes' backdrops and effects, for egyptshot.py and egyptfx.py)
 Object.assign(window.__HK,{hurt,HK,DISS,sandP,SAND_HP,GLFX,setClock:f=>{performance.now=f;}}); // S3-A (tests)
 Object.assign(window.__HK,{FLM,FLV,ventState,cyc}); // FL (flames: the sheets and the vent's look, for tests)
 Object.assign(window.__HK,{GLFX,GLREL,clearRooms,bgCache,bgLayers,solidBelow:(c,r)=>solidBelow(L,c,r),roomCanvas}); // (unit B's switches and caches, for its tests)
