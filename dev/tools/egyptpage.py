@@ -96,9 +96,12 @@ for t in shots['themes']:
     out.append('<a href="#t%d">%d. %s</a>' % (t['i'], t['i'] + 1, html.escape(t['name'])))
 import egyptround2
 R2, R2NAV = egyptround2.sections(D, REL, img)
-out.append(' · ' + ''.join('<a href="#%s"><b>%s</b></a>' % (k, l) for k, l in R2NAV + [('objects', 'Light on objects')]))
+out.append(' · ' + ''.join('<a href="#%s"><b>%s</b></a>' % (k, l) for k, l in R2NAV + [('objects', 'Light on objects'), ('tints', 'Softer tints'), ('prince', 'The prince')]))
 out.append('</nav>')
 out.extend(R2)
+import egyptround6
+R6, R6NAV = egyptround6.sections(D, REL, img)
+out.extend(R6)
 OB = fx.get('obj', [])
 if OB:
     out.append('<section class="card" id="objects"><h2>Light on the new objects</h2><p>Drawn with Canvas2D calls in the shared code (added light, no new pass, no clip), so they are the same in Classic and on the WebGL path: the water clock\'s water catches the nearest lamp (the key light the figures use) and its stream glints; the sand\'s grains catch the light as they turn; rose granite crystals in the portcullis and the plugs flash in the torchlight, more near a lamp (granite\'s feldspar and mica cleavage faces); the calcite lamps glow through their stone (the Osiris chalice\'s painted figures show through it, as in Tutankhamun\'s lit chalice); the rewind\'s cool wash now reads on the red and gold floors. Torchlight left, Classic right, 0.1 s a frame.</p>' +
