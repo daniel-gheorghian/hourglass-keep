@@ -77,7 +77,8 @@ game's own frame loop) play six fixed floors live, 20 s each, and shows a table 
 left untouched. `?bench=75`, `?bench=auto` (the game's own resolution scaling), `?bench=classic`. `bench.py [arg]` runs the
 same on this Mac's GPU (Chrome's costs differ from Safari's: compare Mac runs with Mac runs). `?prof` times each stage in place.
 The pause menu's Tools… screen (v63) has buttons that reload the page with `?bench`, `?bench=classic`, `?bench=auto` or `?prof`;
-the bench's table and the profiler each have a button back to the game.
+the bench's table and the profiler each have a button back to the game. Its Show FPS toggle (v64, `S.set.fps`, off by default) puts a small
+readout under the pause button: fps and frame time from glTime's half-second average, and the Torchlight scale when under 100%.
 Lighting mode (v63, owner): only the player switches between Torchlight and Classic (Graphics). Slow frames only scale Torchlight's
 scene down (`GLP.rs` 1, .75, .5); they never switch to Classic. It steps back up one level after three 2 s windows with no
 dropped frame (`UP_MS` 17.2 ms); a step up that turns slow again within 10 s doubles the windows the next try needs (up to 30), reset each floor. A missing or lost WebGL context still falls back to Classic (`glKill`),

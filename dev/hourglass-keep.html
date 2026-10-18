@@ -28,6 +28,8 @@ body{font-family:var(--f-body);overflow:hidden;overscroll-behavior:none;-webkit-
 #app.overlay #glc{border-radius:0}
 #bPause{appearance:none;display:grid;place-items:center;padding:0;border-radius:50%;border:1.5px solid var(--line-strong);background:rgba(10,8,20,.45);color:var(--bone);cursor:pointer;touch-action:manipulation;z-index:3}
 #bPause svg{width:50%;height:50%;pointer-events:none}
+#fpsOut{position:absolute;z-index:5;pointer-events:none;font:600 10px/1 ui-monospace,Menlo,monospace;color:rgba(232,226,210,.82);background:rgba(10,8,20,.4);padding:3px 5px;border-radius:4px;white-space:nowrap}
+body.panelOpen #fpsOut{visibility:hidden}
 #bPause::before{content:'';position:absolute;inset:-12px} /* a bigger target than it looks */
 #bPause:focus-visible{outline:2px solid var(--sand);outline-offset:2px}
 .ctl{position:absolute;touch-action:none;z-index:2}
@@ -114,6 +116,7 @@ body.portrait #rotate{display:flex}
     </div>
     <div id="bGrab" class="ctl btn dim" aria-hidden="true">Grab</div>
     <div id="bJump" class="ctl btn" aria-hidden="true">Jump</div>
+    <div id="fpsOut" hidden aria-hidden="true"></div>
     <button id="bPause" class="ctl" type="button" aria-label="Pause"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="5" y="4" width="3.4" height="12" rx="1" fill="currentColor"/><rect x="11.6" y="4" width="3.4" height="12" rx="1" fill="currentColor"/></svg></button>
 
     <div id="title" class="screen">
@@ -221,6 +224,7 @@ body.portrait #rotate{display:flex}
           <button id="tBenchC" type="button">Benchmark (classic)<small>The same six floors in Classic lighting</small></button>
           <button id="tBenchA" type="button">Benchmark (auto scale)<small>Torchlight with the game's own resolution scaling, as you play it</small></button>
           <button id="tProf" type="button">Profiler<small>Times each stage of a frame as you play, leaving one effect out at a time</small></button>
+          <button id="tFps" type="button" aria-pressed="false">Show FPS<small>Frames per second and frame time in a corner, as you play</small></button>
         </div>
         <p class="fine">The page reloads to run them; your save is kept as it is. The benchmark needs a connection for its test bot.</p>
         <div class="menu"><button id="bToolsClose" class="primary" type="button">Back</button></div>
@@ -8871,8 +8875,13 @@ function glStorm(VZ,camD,camDY,w,h,lw,lh){
 function shaderOn(){return S.set.lightMode==='torch'&&GFX().light&&glInit();}
 // frame-time bookkeeping, fed by the loop with the time since the previous drawn frame; scales the scene copy down when slow
 const UP_MS=17.2,UP_N=3,UP_BACK=10000,UP_MAX=30;
+// (v64, owner: "a button that enables displaying the current fps") the readout is a DOM label, its text set twice a second from the same
+// half-second average (in Battery saver the loop's times are per 60 Hz step: the frames shown are every other one)
+let fpsTxt='';
+function fpsShow(){const e=$('fpsOut'),on=!!S.set.fps;if(e.hidden===on)e.hidden=!on;if(!on||!GLP.ms)return;const f=GLP.ms*(S.set.saver?2:1),
+  t=Math.round(1000/f)+' fps · '+f.toFixed(1)+' ms'+(shaderOn()&&(GLP.rs||1)<1?' · '+Math.round(GLP.rs*100)+'%':'');if(t!==fpsTxt){fpsTxt=t;e.textContent=t;}}
 function glTime(ms){
-  GLP.sum+=ms;GLP.n++;if(GLP.sum>=500){GLP.ms=GLP.sum/GLP.n;GLP.sum=0;GLP.n=0;}
+  GLP.sum+=ms;GLP.n++;if(GLP.sum>=500){GLP.ms=GLP.sum/GLP.n;GLP.sum=0;GLP.n=0;if(S.set.fps)fpsShow();}
   GLP.wsum+=ms;GLP.wn++;
   if(GLP.wsum>=2000){const avg=GLP.wsum/GLP.wn;GLP.wsum=0;GLP.wn=0;
     // (v53) a window just after a floor starts, a respawn or a rewind (rooms drawn all at once) is not judged, and it takes two
@@ -9065,6 +9074,7 @@ function layout(){
   // so the button sits clear of it there.
   const pb=40,pTop=Math.max(portrait?6:30,ct-iT+6),pRight=Math.max(6,(iL+W)-(cl+cw)+6);
   bPause.style.top=pTop+'px';bPause.style.right=pRight+'px';bPause.style.width=bPause.style.height=pb+'px';
+  {const fo=$('fpsOut');fo.style.top=(pTop+pb+6)+'px';fo.style.right=pRight+'px';} // (the FPS readout: under the pause button, clear of the HUD and the controls)
   // HUD edges in world units, measured from the canvas origin
   hud.l=Math.max(0,iL-cl)/s+6;hud.t=Math.max(0,iT-ct)/s+3;
   hud.r=((iL+W-pRight-pb)-cl)/s-4;hud.over=!portrait;
@@ -9178,7 +9188,7 @@ const GFXB={gLight:'light',gAtmo:'atmo',gGrade:'grade',gHero:'hero',gFx:'fx',gHd
 function syncGfx(){const g=GFX();syncLightMode();for(const id in GFXB)$(id).setAttribute('aria-pressed',String(!!g[GFXB[id]]));}
 $('gShader').onclick=()=>{delete S.set.torchRetry;if(S.set.lightMode==='torch')S.set.lightMode='classic';else{S.set.lightMode='torch';if(!glInit()){S.set.lightMode='classic';}}writeSave();syncLightMode();render();};
 for(const id in GFXB)$(id).onclick=()=>{const g=GFX(),k=GFXB[id];g[k]=!g[k];if(k==='fx'){shakeA=0;zoom=1;}if(k==='bg')clearRooms();writeSave();syncGfx();render();};
-function syncToggles(){$('tSound').setAttribute('aria-pressed',String(S.set.sound));$('tSaver').setAttribute('aria-pressed',String(S.set.saver));$('tLefty').setAttribute('aria-pressed',String(S.set.lefty));$('tCalm').setAttribute('aria-pressed',String(!!S.set.calm));}
+function syncToggles(){$('tFps').setAttribute('aria-pressed',String(!!S.set.fps));fpsShow();$('tSound').setAttribute('aria-pressed',String(S.set.sound));$('tSaver').setAttribute('aria-pressed',String(S.set.saver));$('tLefty').setAttribute('aria-pressed',String(S.set.lefty));$('tCalm').setAttribute('aria-pressed',String(!!S.set.calm));}
 function pause(){if(mode!=='play')return;snapshotResume();mode='paused';clearInput();S.floorTime=levelTime;writeSave();
   $('pTitle').textContent='Floor '+L.n+' · '+themeName(L.n);$('pFloorTime').textContent=fmt(levelTime);$('pRunTime').textContent=fmt(S.time+levelTime);$('pDeaths').textContent=String(S.deaths);
   syncToggles();show('pause');wake(false);}
@@ -9208,6 +9218,7 @@ $('bNext').onclick=nextFloor;
 $('bCardMenu').onclick=goTitle;
 $('tSound').onclick=()=>{S.set.sound=!S.set.sound;writeSave();syncToggles();if(S.set.sound){Snd.unlock();Snd.play('cp');}};
 $('tSaver').onclick=()=>{S.set.saver=!S.set.saver;writeSave();syncToggles();layout();};
+$('tFps').onclick=()=>{S.set.fps=!S.set.fps;writeSave();syncToggles();};
 $('tLefty').onclick=()=>{S.set.lefty=!S.set.lefty;writeSave();syncToggles();layout();};
 $('tCalm').onclick=()=>{S.set.calm=!S.set.calm;writeSave();syncToggles();if(!S.set.calm)flashScreen('#ffffff',0.35,0.25);};
 
