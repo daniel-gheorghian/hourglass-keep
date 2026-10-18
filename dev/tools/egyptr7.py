@@ -53,58 +53,59 @@ def crop(im, xy, cw, ch):
     return im.crop((x0, y0, x0 + cw, y0 + ch))
 
 
-man = {}
-with sync_playwright() as p:
-    b = p.chromium.launch(args=['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'])
-    pt, pc = page(b, 'torch'), page(b, 'classic')
-    png(pt.evaluate(FIGS, [['old', 'A', 'P']])).save(os.path.join(OUT, 'r7_prince_compare.png'))
-    png(pt.evaluate(FIGS, [[0, 1, 2, 3]])).save(os.path.join(OUT, 'r7_robbers.png'))
-    for tier in (1, 3):
-        fr = [png(pt.evaluate(FIGHT, [tier, k])) for k in range(24)]
-        fr[0].save(os.path.join(OUT, 'r7_fight_%d.gif' % tier), save_all=True, append_images=fr[1:], duration=90, loop=0, optimize=True)
-    # the prince running, in the game
-    frames = []
-    for k in range(22):
-        if k == 0:
-            pt.evaluate("()=>{const H=__HK;H.setHero('P');const L=__P.load(9,951);__P.stand(Math.floor(L.start.x/32)+2,L.start.r,1);H.setKey('kb','r',true);}")
-        xy = pt.evaluate("()=>{const H=__HK;H.tick(4);H.P.inv=1e9;H.banner=null;H.render();return __P.scr(H.P.x,H.P.y-30);}")
-        frames.append(crop(Image.open(io.BytesIO(pt.screenshot())).convert('RGB'), xy, 480, 300).resize((360, 225), Image.LANCZOS))
-    pt.evaluate("()=>__HK.setKey('kb','r',false)")
-    frames[0].save(os.path.join(OUT, 'r7_prince_run.gif'), save_all=True, append_images=frames[1:], duration=67, loop=0, optimize=True)
-    # the timekeepers: concepts at HUD size (x1 and enlarged) and gate-clock size, and the barque clock draining / in the rewind
-    for kind in ('A', 'B', 'C'):
-        for f in (1.0, 0.5, 0.1):
-            png(pt.evaluate(CLOCKS, [kind, f, 4, False, 1.0])).save(os.path.join(OUT, 'r7_clock_%s_%d.png' % (kind, int(f * 10))))
-        png(pt.evaluate(CLOCKS, [kind, 0.6, 0.86, False, 1.0])).resize((78, 78), Image.NEAREST).save(os.path.join(OUT, 'r7_clock_%s_hud.png' % kind))
-        png(pt.evaluate(CLOCKS, [kind, 0.6, 0.64, False, 1.0])).resize((58, 58), Image.NEAREST).save(os.path.join(OUT, 'r7_clock_%s_gate.png' % kind))
-    fr = [png(pt.evaluate(CLOCKS, ['A', 1 - k / 23, 4, False, k * 0.08])) for k in range(24)] + [png(pt.evaluate(CLOCKS, ['A', k / 15, 4, True, k * 0.08])) for k in range(16)]
-    fr[0].save(os.path.join(OUT, 'r7_clock_run.gif'), save_all=True, append_images=fr[1:], duration=90, loop=0, optimize=True)
-    for lab, pg in (('torch', pt), ('classic', pc)):
-        xy = pg.evaluate(CP)
-        if xy:
-            crop(Image.open(io.BytesIO(pg.screenshot())).convert('RGB'), xy, 360, 260).save(os.path.join(OUT, 'r7_clock_game_%s.jpg' % lab), quality=90)
-    # the jars: stills, a GIF of one being drunk (level falling, tilting), and on the floor in the game
-    png(pt.evaluate(JARS, [1, 0, 3])).save(os.path.join(OUT, 'r7_jars.png'))
-    fr = [png(pt.evaluate(JARS, [1 - k / 19 if k > 3 else 1, min(0.9, k * 0.06), k * 0.4])) for k in range(20)]
-    fr[0].save(os.path.join(OUT, 'r7_jars_drink.gif'), save_all=True, append_images=fr[1:], duration=110, loop=0, optimize=True)
-    for lab, pg in (('torch', pt), ('classic', pc)):
-        xy = pg.evaluate(ITEM)
-        if xy:
-            crop(Image.open(io.BytesIO(pg.screenshot())).convert('RGB'), xy, 360, 240).save(os.path.join(OUT, 'r7_jar_game_%s.jpg' % lab), quality=90)
-    png(pt.evaluate(HEARTS)).save(os.path.join(OUT, 'r7_hearts.png'))
-    # the HUD and the panels
-    pt.evaluate("()=>{const H=__HK;const L=__P.load(13,971);__P.stand(Math.floor(L.start.x/32)+3,L.start.r,1);H.P.hp=2;H.render();H.render();}")
-    Image.open(io.BytesIO(pt.screenshot())).convert('RGB').crop((0, 0, 1704, 120)).save(os.path.join(OUT, 'r7_hud.png'))
-    pt.evaluate("()=>{document.getElementById('title').hidden=false;}")
-    pt.wait_for_timeout(300)
-    pt.screenshot(path=os.path.join(OUT, 'r7_title.png'))
-    pt.evaluate("()=>{document.getElementById('title').hidden=true;const q=document.getElementById('pause');q.hidden=false;document.getElementById('pTitle').textContent='Floor 13 · '+__HK.themeName(13);}")
-    pt.wait_for_timeout(300)
-    pt.screenshot(path=os.path.join(OUT, 'r7_pause.png'))
-    man['errors'] = (pt.errs + pc.errs)[:10]
-    b.close()
-for f in ('r7_title.png', 'r7_pause.png'):
-    Image.open(os.path.join(OUT, f)).convert('RGB').save(os.path.join(OUT, f[:-4] + '.jpg'), quality=86)
-    os.remove(os.path.join(OUT, f))
-json.dump(man, open(os.path.join(OUT, 'r7.json'), 'w'))
-print('errors', man['errors'][:3])
+if __name__ == '__main__':
+    man = {}
+    with sync_playwright() as p:
+        b = p.chromium.launch(args=['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'])
+        pt, pc = page(b, 'torch'), page(b, 'classic')
+        png(pt.evaluate(FIGS, [['old', 'A', 'P']])).save(os.path.join(OUT, 'r7_prince_compare.png'))
+        png(pt.evaluate(FIGS, [[0, 1, 2, 3]])).save(os.path.join(OUT, 'r7_robbers.png'))
+        for tier in (1, 3):
+            fr = [png(pt.evaluate(FIGHT, [tier, k])) for k in range(24)]
+            fr[0].save(os.path.join(OUT, 'r7_fight_%d.gif' % tier), save_all=True, append_images=fr[1:], duration=90, loop=0, optimize=True)
+        # the prince running, in the game
+        frames = []
+        for k in range(22):
+            if k == 0:
+                pt.evaluate("()=>{const H=__HK;H.setHero('P');const L=__P.load(9,951);__P.stand(Math.floor(L.start.x/32)+2,L.start.r,1);H.setKey('kb','r',true);}")
+            xy = pt.evaluate("()=>{const H=__HK;H.tick(4);H.P.inv=1e9;H.banner=null;H.render();return __P.scr(H.P.x,H.P.y-30);}")
+            frames.append(crop(Image.open(io.BytesIO(pt.screenshot())).convert('RGB'), xy, 480, 300).resize((360, 225), Image.LANCZOS))
+        pt.evaluate("()=>__HK.setKey('kb','r',false)")
+        frames[0].save(os.path.join(OUT, 'r7_prince_run.gif'), save_all=True, append_images=frames[1:], duration=67, loop=0, optimize=True)
+        # the timekeepers: concepts at HUD size (x1 and enlarged) and gate-clock size, and the barque clock draining / in the rewind
+        for kind in ('A', 'B', 'C'):
+            for f in (1.0, 0.5, 0.1):
+                png(pt.evaluate(CLOCKS, [kind, f, 4, False, 1.0])).save(os.path.join(OUT, 'r7_clock_%s_%d.png' % (kind, int(f * 10))))
+            png(pt.evaluate(CLOCKS, [kind, 0.6, 0.86, False, 1.0])).resize((78, 78), Image.NEAREST).save(os.path.join(OUT, 'r7_clock_%s_hud.png' % kind))
+            png(pt.evaluate(CLOCKS, [kind, 0.6, 0.64, False, 1.0])).resize((58, 58), Image.NEAREST).save(os.path.join(OUT, 'r7_clock_%s_gate.png' % kind))
+        fr = [png(pt.evaluate(CLOCKS, ['A', 1 - k / 23, 4, False, k * 0.08])) for k in range(24)] + [png(pt.evaluate(CLOCKS, ['A', k / 15, 4, True, k * 0.08])) for k in range(16)]
+        fr[0].save(os.path.join(OUT, 'r7_clock_run.gif'), save_all=True, append_images=fr[1:], duration=90, loop=0, optimize=True)
+        for lab, pg in (('torch', pt), ('classic', pc)):
+            xy = pg.evaluate(CP)
+            if xy:
+                crop(Image.open(io.BytesIO(pg.screenshot())).convert('RGB'), xy, 360, 260).save(os.path.join(OUT, 'r7_clock_game_%s.jpg' % lab), quality=90)
+        # the jars: stills, a GIF of one being drunk (level falling, tilting), and on the floor in the game
+        png(pt.evaluate(JARS, [1, 0, 3])).save(os.path.join(OUT, 'r7_jars.png'))
+        fr = [png(pt.evaluate(JARS, [1 - k / 19 if k > 3 else 1, min(0.9, k * 0.06), k * 0.4])) for k in range(20)]
+        fr[0].save(os.path.join(OUT, 'r7_jars_drink.gif'), save_all=True, append_images=fr[1:], duration=110, loop=0, optimize=True)
+        for lab, pg in (('torch', pt), ('classic', pc)):
+            xy = pg.evaluate(ITEM)
+            if xy:
+                crop(Image.open(io.BytesIO(pg.screenshot())).convert('RGB'), xy, 360, 240).save(os.path.join(OUT, 'r7_jar_game_%s.jpg' % lab), quality=90)
+        png(pt.evaluate(HEARTS)).save(os.path.join(OUT, 'r7_hearts.png'))
+        # the HUD and the panels
+        pt.evaluate("()=>{const H=__HK;const L=__P.load(13,971);__P.stand(Math.floor(L.start.x/32)+3,L.start.r,1);H.P.hp=2;H.render();H.render();}")
+        Image.open(io.BytesIO(pt.screenshot())).convert('RGB').crop((0, 0, 1704, 120)).save(os.path.join(OUT, 'r7_hud.png'))
+        pt.evaluate("()=>{document.getElementById('title').hidden=false;}")
+        pt.wait_for_timeout(300)
+        pt.screenshot(path=os.path.join(OUT, 'r7_title.png'))
+        pt.evaluate("()=>{document.getElementById('title').hidden=true;const q=document.getElementById('pause');q.hidden=false;document.getElementById('pTitle').textContent='Floor 13 · '+__HK.themeName(13);}")
+        pt.wait_for_timeout(300)
+        pt.screenshot(path=os.path.join(OUT, 'r7_pause.png'))
+        man['errors'] = (pt.errs + pc.errs)[:10]
+        b.close()
+    for f in ('r7_title.png', 'r7_pause.png'):
+        Image.open(os.path.join(OUT, f)).convert('RGB').save(os.path.join(OUT, f[:-4] + '.jpg'), quality=86)
+        os.remove(os.path.join(OUT, f))
+    json.dump(man, open(os.path.join(OUT, 'r7.json'), 'w'))
+    print('errors', man['errors'][:3])

@@ -71,7 +71,7 @@ BODY = ('Jost, the body and HUD face in all three: a geometric sans after the 19
         'OFL, variable weights; clear at 7-9 px. Replaces Vazirmatn.', [('Google Fonts: Jost', 'https://fonts.google.com/specimen/Jost/about'), ('github.com/indestructible-type/Jost', 'https://github.com/indestructible-type/Jost')])
 
 
-WATER = ('<section class="card" id="clock"><h2>The water clock</h2>'
+WATER = ('<section class="card" id="clock"><h2>Superseded: the water clock (round 4)</h2><p><b>Replaced</b> by the barque clock in round 7 and by the sky clock in round 8 (the owner: "anything that looks like a water glass or a hourglass is rejected"). The research below still stands as the basis of the hours.</p>'
  '<p>The hourglass is a medieval European object (the first sure pictures are 14th-century); Egypt measured the night\'s hours by the stars and by water. The oldest surviving water clock is the '
  '<b>Karnak clepsydra</b> of Amenhotep III (c. 1390-1350 BC; Cairo, JE 37525): an alabaster vessel wider at the mouth than the foot, its water running out through a spout near the base (lost, '
  'below a baboon of Thoth on a djed pillar). Inside, twelve columns of marks, one for each month, give the hours of the <i>night</i>: the scale was long in winter and short in summer. '

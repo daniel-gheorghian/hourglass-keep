@@ -67,11 +67,11 @@ Egyptian counterpart drawn where it was. The real losses are small:</p><ul>
   <li>the spikes: bronze-tipped stakes;</li>
   <li>the sandstorm chase: granite plugs, one passage high, in every corridor row of the chase.</li></ul>
   The hints, How to play and the death notices name them.</li>
-<li><b>The barque clock</b> (round 7: an invented Egyptian timekeeper, a lotus bowl over a basin between djed uprights, the sun's barque sinking with the water) for the hourglass:
-  <ul><li>the checkpoint fills, then drains into its basin;</li>
-  <li>the HUD's three measures and the gates' timers are small barque clocks;</li>
-  <li>the rewind turns the water back, in a cool grade with ripples;</li>
-  <li>every "hourglass" and "sands" in the text now says water clock or water.</li></ul></li>
+<li><b>The sky clock</b> (round 8: Nut arched over the earth, the sun disc travelling her body through the twelve hours; it replaced round 7's barque clock) for the hourglass:
+  <ul><li>the checkpoint lights, then its night runs out;</li>
+  <li>the HUD's three hours and the gates' timers are small sky clocks;</li>
+  <li>the rewind runs the sun back, in a cool grade with ripples ("The hours turn back");</li>
+  <li>every "hourglass" and "sands" in the text now says sky clock or hours.</li></ul></li>
 <li><b>Title and fonts:</b> Dawnward, on the title screen, the page title, the manifest, the home-screen title and the bench header. Rokkitt and Jost.</li>
 <li><b>Petals:</b> rose petals become lotus petals.</li>
 <li><b>Round 7:</b> the prince in plain white linen (the original figure); the guards as tomb robbers (kilts, head cloths and caps; club, axe, khopesh); the flasks as core-formed glass jars; the lives as faience ib hearts; a thin cornice over the title and pause panels.</li>
