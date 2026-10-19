@@ -2554,6 +2554,8 @@ const Snd={ctx:null,master:null,nb:null,
       case'hurt':T(320,0.22,{to:110,vol:0.09,type:'sawtooth'});break;
       case'spikes':for(let i=0;i<3;i++)N(0.03,{vol:0.08,f:4200,type:'highpass',at:i*0.025});break;
       case'creak':N(0.35,{vol:0.07,f:260,type:'bandpass',q:3});break;
+      case'swpump':N(0.2,{vol:0.05,f:950,type:'bandpass',to:420,q:1.4});break; // (round 16b) a pump: a low whoosh of air (not the sword's swish)
+      case'swready':T(784,0.32,{vol:0.05,type:'triangle'});T(1175,0.4,{vol:0.04,type:'triangle',at:0.07});T(1568,0.35,{vol:0.025,type:'sine',at:0.14});break; // (round 16b) the swing will carry him: a rising bright chime over the creak
       case'crumble':N(0.4,{vol:0.12,f:500,to:180});break;
       case'crash':N(0.35,{vol:0.22,f:900,to:200});T(70,0.2,{to:40,vol:0.1,type:'sine'});break;
       case'gate':for(let i=0;i<5;i++)N(0.025,{vol:0.05,f:2600,type:'bandpass',q:4,at:i*0.06});break;
@@ -3103,7 +3105,17 @@ function bannerAt(){const f=F(L,pCol(),rowOf(P.y-30));return !!(f&&f.t==='banner
 // throw that grows with his speed (normalised to the old fixed swing); from SW_CLEAR the throw clears the pit, and the grip creaks
 // and the bar glints to say so. The bar's chains (angle f.ps, speed f.pw, kept on the feature so a rewind restores them) are pulled
 // after him (SW_KAP) and swing free, dying down, after he lets go.
-const SW_A=0.95,SW_W=2*Math.PI/1.15,SW_TAU=2.2,SW_FR=0.8,SW_K=4.5,SW_MAX=1.0,SW_ETA=0.7,SW_CLEAR=0.55,SW_KAP=0.45;
+// (round 16b, owner: 'difficult to get the prince swinging enough') A pump is a press, not a held push. Before, holding a way was a
+// steady push (SW_K 4.5) that braked him for as long as the press came after the turn: a half swing is only 0.58 s, so a person
+// switching 0.2 s after each turn needed 5 s and 9 presses, at 0.35 s or with short taps never got there. Now a press of left or
+// right (the way he will swing next, or is swinging) arms one pump; it fires as he next passes the bottom going that way, within
+// SW_PRE of the press (or at once if the press comes just after the bottom, under SW_LATE rad, or he hangs still): a kick of
+// SW_KICK of amplitude spread over 0.12 s (the gymnast's tap at the bottom; seated pumping adds a fixed amount a cycle, Wirkus,
+// Rand and Ruina 1998). A press the wrong way or out of time does nothing, it never brakes; two opposite presses inside SW_MASH
+// cancel (mashing does not pump); holding a key gives one pump and then only leans him (SW_K). While he is pumping (a kick in the
+// last 1.2 s, a whole swing) the swing is damped less (SW_TAUP, SW_FRP): left alone it still dies down in about 4 s. Three timely
+// presses clear from a still hang.
+const SW_A=0.95,SW_W=2*Math.PI/1.15,SW_TAU=2.2,SW_TAUP=6,SW_FR=0.8,SW_FRP=0.25,SW_KICK=0.18,SW_K=1.5,SW_PRE=0.8,SW_LATE=0.35,SW_MASH=0.2,SW_MAX=1.0,SW_ETA=0.7,SW_CLEAR=0.55,SW_KAP=0.45;
 function barNear(){const hx=P.x,hy=P.y-HANG;for(const o of L.dyn){const f=o.f;if(f.t!=='bar'||(f===P.lastBar&&gameTime-P.barOff<0.5))continue;if(Math.abs(hx-f.x)<15&&Math.abs(hy-f.y)<20)return f;}return null;}
 // the bar's pivot height (the ceiling over it) and where the bar hangs now
 function barPv(f){if(f.pv===undefined){const o=L.dyn.find(q=>q.f===f);f.pv=o?ceilingY(o.c,o.r):f.y-44;}return f.pv;}
@@ -3113,17 +3125,28 @@ function barPos(f){const pv=barPv(f),lc=f.y-pv,a=f.ps||0;BARP.x=f.x+lc*Math.sin(
 function swAmp(th,om){const e=0.5*om*om/(SW_W*SW_W)+1-Math.cos(th);return e>=2?Math.PI:Math.acos(1-e);}
 function swingCatch(b){const bp=barPos(b),fc=P.face,th=Math.asin(clamp((P.x-bp.x)*fc/34,-0.9,0.9));
   P.swTh=th;P.swOm=SW_ETA*(P.vx*fc*Math.cos(th)-P.vy*Math.sin(th))/34;P.swRdy=swAmp(P.swTh,P.swOm)>=SW_CLEAR;P.swPump=0;
+  P.swIx=(I.r?1:0)-(I.l?1:0);P.swArm=0;P.swArmT=-9;P.swPT=-9;P.swPD=0;P.swKick=0;P.swKd=0;P.swKT=-9;P.swDn=0;
   P.bar=b;P.sw0=gameTime;P.vx=0;P.vy=0;setState('swing');swingPlace();}
 function swingPlace(){const bp=barPos(P.bar);P.x=bp.x+P.face*34*Math.sin(P.swTh);P.y=bp.y+34*Math.cos(P.swTh)+24.5;}
+function swingKick(d){P.swKick=0.12;P.swKd=d;P.swKT=gameTime;P.swArm=0;Snd.play('swpump');}
 function swingStep(dt,ix){const f=P.bar,fc=P.face,hd=ix*fc;let th=P.swTh,om=P.swOm;
-  let a=-SW_W*SW_W*Math.sin(th)-2/SW_TAU*om+SW_K*hd;
-  if(Math.abs(om)>1e-3)a-=SW_FR*Math.sign(om);else if(!hd&&Math.abs(SW_W*SW_W*Math.sin(th))<SW_FR){a=0;om=0;}
-  om+=a*dt;th+=om*dt;
-  if(!hd&&Math.abs(th)<0.02&&Math.abs(om)<0.1){th*=0.9;om=0;}
+  // a press arms a pump (see SW_KICK): fired now if he hangs still or has just passed the bottom going that way
+  if(ix&&ix!==P.swIx){const d=hd;if(P.swPD===-d&&gameTime-P.swPT<SW_MASH)P.swArm=0;else{P.swArm=d;P.swArmT=gameTime;
+      if(swAmp(th,om)<0.05||(Math.sign(om)===d&&th*d>=0&&th*d<SW_LATE))swingKick(d);}
+    P.swPT=gameTime;P.swPD=d;}
+  P.swIx=ix;
+  const pumping=gameTime-P.swKT<1.2,tau=pumping?SW_TAUP:SW_TAU,fr=pumping?SW_FRP:SW_FR;
+  let a=-SW_W*SW_W*Math.sin(th)-2/tau*om+(hd*om>=0?SW_K*hd:0); // (the lean never brakes him)
+  if(P.swKick>0){a+=P.swKd*SW_KICK*SW_W/0.12;P.swKick-=dt;}
+  if(Math.abs(om)>1e-3)a-=fr*Math.sign(om);else if(!hd&&Math.abs(SW_W*SW_W*Math.sin(th))<SW_FR){a=0;om=0;}
+  const th0=th;om+=a*dt;th+=om*dt;
+  if(P.swArm&&Math.sign(om)===P.swArm&&th0*P.swArm<0&&th*P.swArm>=0){if(gameTime-P.swArmT<=SW_PRE)swingKick(P.swArm);else P.swArm=0;} // the bottom, going the armed way
+  if(!hd&&P.swKick<=0&&Math.abs(th)<0.02&&Math.abs(om)<0.1){th*=0.9;om=0;}
   const A=swAmp(th,om);if(A>SW_MAX&&Math.abs(th)<SW_MAX){const e=1-Math.cos(SW_MAX)-(1-Math.cos(th));om=Math.sign(om)*SW_W*Math.sqrt(Math.max(0,2*e));}
   if(Math.sign(om)!==Math.sign(P.swOm)&&P.swOm!==0&&swAmp(th,om)>0.1)Snd.play('swing'); // the creak of the turn
-  P.swPump=hd&&hd*om>0?1:0;P.swTh=th;P.swOm=om;
-  const rdy=swAmp(th,om)>=SW_CLEAR;if(rdy&&!P.swRdy){Snd.play('creak');P.swGl=gameTime;}P.swRdy=rdy;
+  P.swPump=P.swKick>0||(hd&&hd*om>0)?1:0;P.swTh=th;P.swOm=om;
+  // (round 16b) once ready it stays so down to 0.5, which still clears from a release at -0.2 to 0.2 rad
+  const rdy=swAmp(th,om)>=(P.swRdy?SW_CLEAR-0.05:SW_CLEAR);if(rdy&&!P.swRdy){Snd.play('creak');Snd.play('swready');P.swGl=gameTime;}P.swRdy=rdy;
   // the chains, pulled after him (a stiff, damped spring toward a share of his angle)
   const wc=2*SW_W,ps=f.ps||0;let pw=f.pw||0;pw+=(wc*wc*(SW_KAP*th*fc-ps)-2*0.6*wc*pw)*dt;f.pw=pw;f.ps=ps+pw*dt;
   swingPlace();}
@@ -3231,7 +3254,8 @@ function updatePlayer(dt){
     case'swing':{swingStep(dt,ix);
       if(took('j')){learn('swing');const c=P.swOm/(SW_A*SW_W);setState('air');P.fallY=P.y;P.autoGrab=true;P.jumpKind='swing';
         if(c>0.15){P.vx=P.face*(40+165*c);P.vy=-(60+165*c);}else{P.vx=P.face*45*c;P.vy=-20;}Snd.play('jump');P.lastBar=P.bar;P.barOff=gameTime;P.bar=null;break;}
-      if(took('d')){setState('air');P.fallY=P.y;P.vx=0;P.vy=0;P.autoGrab=false;P.jumpKind=null;P.lastBar=P.bar;P.barOff=gameTime;P.bar=null;}break;}
+      took('d');P.swDn=I.d&&!ix?(P.swDn||0)+dt:0; // (round 16b) Down held 0.15 s with no side lets go: a thumb rocking left and right across the pad's lower sector used to drop him
+      if(P.swDn>=0.15){setState('air');P.fallY=P.y;P.vx=0;P.vy=0;P.autoGrab=false;P.jumpKind=null;P.lastBar=P.bar;P.barOff=gameTime;P.bar=null;}break;}
     case'air':stAir(dt);break;
     // riding a lift: carried at the platform's height; an end of the shaft hands him back (a cycling lift: while it rests)
     case'lift':{const f=P.lift;P.vx=0;
@@ -3614,7 +3638,7 @@ const HINTS={
   sandgate:'The sky clock on this gate means it will not stay open. Its plate is out of sight; find it, then race back before its sun sets.',
   wallrun:'Run at a wall and press Jump to run up it. You can reach a ledge two floors up and catch it.',
   walljump:'Kick off walls: press Jump each time you touch one. Bounce between close walls to climb a shaft.',
-  swing:'A swing bar. Push left and right in time with the swing to build it up (it creaks when it will carry you), then Jump as you swing forward. Down lets go.',
+  swing:'A swing bar. Press the way he swings, each time he turns, to pump it up (a tap is enough); when it chimes it will carry you: Jump as you swing forward. Hold Down to let go.',
   banner:'A long tapestry hangs down this shaft. Hold Grab as you fall to slide down it safely.',
   shaft:'A narrow shaft with a ledge at the top. Jump into a wall, then kick from wall to wall with Jump.',
   saw:'A saw blade runs along the floor. Jump it as it comes at you.',
@@ -5756,9 +5780,15 @@ function drawBar(ctx,o,f){
   {const [x,y]=at(-U);ctx.fillStyle=K;ctx.beginPath();ctx.ellipse(x,y,1.9,3,0,0,6.2832);ctx.fill();ctx.fillStyle=hp[2];ctx.beginPath();ctx.ellipse(x,y,1.2,2.3,0,0,6.2832);ctx.fill(); // the near end, seen end on
     ctx.fillStyle=hp[0];ctx.beginPath();ctx.arc(x,y,0.6,0,6.2832);ctx.fill();}
   chain(-13);                                                                                               // the near chain, in front of it
-  if(on&&P.swRdy){const k=clamp((gameTime-(P.swGl||0))/0.45,0,1),u=lerp(-U,U,k);if(k<1){const [x,y]=at(u);  // ready: a glint runs along the pole
-    ctx.save();ctx.globalCompositeOperation='lighter';const gg=ctx.createRadialGradient(x,y-1,0,x,y-1,6);gg.addColorStop(0,'rgba(255,240,200,.9)');gg.addColorStop(1,'rgba(255,240,200,0)');
-    ctx.fillStyle=gg;ctx.fillRect(x-6,y-7,12,12);ctx.restore();}}}
+  if(on&&P.swRdy){const k=clamp((gameTime-(P.swGl||0))/0.45,0,1),u=lerp(-U,U,k);ctx.save();ctx.globalCompositeOperation='lighter';
+    if(k<1){const [x,y]=at(u);  // ready: a glint runs along the pole
+      const gg=ctx.createRadialGradient(x,y-1,0,x,y-1,9);gg.addColorStop(0,'rgba(255,240,200,.95)');gg.addColorStop(1,'rgba(255,240,200,0)');
+      ctx.fillStyle=gg;ctx.fillRect(x-9,y-10,18,18);}
+    // (round 16b) and while it will carry him the grip keeps a warm glow round his hands, full as he swings forward (Jump now), a
+    // third of that on the way back: read at a glance on a phone, where the glint alone was a few pixels for under half a second
+    const fw=P.swOm>0?1:0.35,al=fw*(0.42+0.13*Math.sin(gameTime*11))*Math.min(1,0.4+k),R=12;
+    const gh=ctx.createRadialGradient(bx,by,0,bx,by,R);gh.addColorStop(0,'rgba(255,214,140,'+al.toFixed(3)+')');gh.addColorStop(0.45,'rgba(255,190,110,'+(al*0.45).toFixed(3)+')');gh.addColorStop(1,'rgba(255,190,110,0)');
+    ctx.fillStyle=gh;ctx.fillRect(bx-R,by-R,2*R,2*R);ctx.restore();}}
 function drawPend(ctx,o,f){
   const b=pendGeom(o,f),th=L.theme,pal=metalPal('pend');
   ctx.fillStyle='#0b0812';ctx.fillRect(b.px-4,b.py,8,4);ctx.fillStyle='#d8b04a';ctx.fillRect(b.px-3,b.py,6,2.6);

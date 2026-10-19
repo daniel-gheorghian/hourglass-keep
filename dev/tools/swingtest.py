@@ -3,7 +3,8 @@
 # standing catch (0.35) to 0.8 within 3.5 s and never past SW_MAX; a running catch (the bot's run-up) is already over SW_CLEAR (the
 # owner chose that a good run clears at once); letting go from 0.4 never reaches the far side, from SW_MAX at 0 to 0.3 rad going
 # forward he lands on the far floor (c+5 to c+7, never beyond); and a snapshot taken mid-swing (what the rewind keeps) brings back
-# his angle and speed and the chains' angle and speed. Ends with 'FAILURES n'.
+# his angle and speed and the chains' angle and speed. Round 16b (a press is a pump): from a still hang, a press each way 0.2 s after
+# each turn brings the cue (P.swRdy) within 2 s; mashing (a press every 0.1 s) never reaches SW_CLEAR. Ends with 'FAILURES n'.
 import os, sys
 from playwright.sync_api import sync_playwright
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -27,6 +28,12 @@ JS = r'''(n)=>{const H=__HK;window.__HKfreeze=true;window.__HKnoauto=true;for(co
  // pump
  hold(0,0.35*H.SW_W);k=0;let mx=0;while(k<600){const om=P().swOm;H.setKey('kb',FW,om>=0);H.setKey('kb',BK,om<0);H.tick(1);k++;const A=amp();mx=Math.max(mx,A);if(A>=0.8&&res.pump===undefined)res.pump=+(k/60).toFixed(2);}clr();
  res.pumpMax=+mx.toFixed(2);if(res.pump===undefined||res.pump>3.5)bad.push('pump to 0.8: '+res.pump);if(mx>H.SW_MAX+0.02)bad.push('pumped past the cap '+mx.toFixed(2));
+ // (round 16b) from a still hang, a press each way 0.2 s after each turn: the cue (P.swRdy) within 2 s; mashing (a press every 0.1 s) never gets there
+ {hold(0,0);k=0;let want=0,last=0,due=[[1,1]];while(k<300&&!P().swRdy){const om=P().swOm,sg=Math.abs(om)>0.05?Math.sign(om):0;if(sg&&sg!==last){last=sg;due.push([k+12,sg]);}
+   while(due.length&&due[0][0]<=k)want=due.shift()[1];H.setKey('kb',FW,want>0);H.setKey('kb',BK,want<0);H.tick(1);k++;}clr();
+  res.cue=P().swRdy?+(k/60).toFixed(2):null;if(res.cue===null||res.cue>2)bad.push('cue from a still hang: '+res.cue);}
+ {hold(0,0);let m2=0;for(let i=0;i<300;i++){const w=Math.floor(i/6)%2;H.setKey('kb',FW,!w);H.setKey('kb',BK,!!w);H.tick(1);m2=Math.max(m2,amp());}clr();
+  res.mash=+m2.toFixed(2);if(m2>=H.SW_CLEAR)bad.push('mashing reached '+m2.toFixed(2));}
  // running catch (the bot's run-up)
  {RL();clr();const p=P();p.x=(c-2*D)*32+16;p.y=(r+1)*64-4;p.fallY=p.y;p.state='stand';p.face=D;p.inv=1e9;f.ps=0;f.pw=0;H.tick(2);H.setKey('kb',FW,true);
   k=0;while(k<300&&!(p.state==='run'&&(p.x-(c*32+16-44*D))*D>=0)){H.tick(1);k++;}H.setKey('kb','j',true);H.tick(1);H.setKey('kb','j',false);

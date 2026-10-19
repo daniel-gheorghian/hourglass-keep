@@ -172,10 +172,18 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   The fire vent burns over its whole grate (`VJETS`: a jet per slot, back and front rows, merging into one sheet); its timing and
   hit test are unchanged.
 - The swing bar is a trapeze (v57, owner): his swing is a damped pendulum (`P.swTh`, `P.swOm`; `swingStep`) that dies down to a still
-  hang in about 4 s (`SW_TAU`, `SW_FR`); holding left or right pushes that way (`SW_K`), so alternating in step pumps it up (to `SW_MAX`) and
-  holding one way only leans him; the catch keeps `SW_ETA` of his speed (a running catch clears at once); Jump's throw grows with his speed,
-  and from `SW_CLEAR` it carries him over (the grip creaks, the bar glints). The chains swing too (`f.ps`, `f.pw` on the feature, so a rewind
-  restores them). The bot pumps to 0.8 and lets go moving forward at 0.15 to 0.3 rad. Check with `swingtest.py`.
+  hang in about 4 s (`SW_TAU`, `SW_FR`). A press is a pump (round 16b, owner: too hard to pump; it was a held push that braked him
+  whenever the switch came after the turn): a new press of left or right arms one pump (`P.swArm`) that fires as he next passes the bottom
+  going that way within `SW_PRE` (0.8 s) of the press, or at once just past the bottom (`SW_LATE`) or from a still hang: a kick of
+  `SW_KICK` amplitude over 0.12 s (`swingKick`). Wrong or late presses do nothing and never brake (the held lean `SW_K` only helps); two
+  opposite presses within `SW_MASH` cancel (mashing does not pump); holding one way gives one pump. Within 1.2 s of a kick the damping
+  is lighter (`SW_TAUP`, `SW_FRP`). From a still hang about 3 presses, 1.4 s, at human timing (`swingfeel.py` simulates touch players:
+  before 5 s, or never at 0.35 s reaction or with taps). The catch keeps `SW_ETA` of his speed (a running catch clears at once); Jump's
+  throw grows with his speed, and from `SW_CLEAR` it carries him over: a chime (`swready`), the glint, and a warm glow at his hands while
+  ready (full on the forward swing), with hysteresis down to 0.5. Each pump whooshes (`swpump`). Down lets go only held 0.15 s with no side
+  (a thumb crossing the pad's lower sector used to drop him). The chains swing too (`f.ps`, `f.pw` on the feature, so a rewind
+  restores them). The bot pumps to 0.8 and lets go moving forward at 0.15 to 0.3 rad. Check with `swingtest.py` (also: cue from a
+  still hang within 2 s, mashing never clears) and `swingfeel.py`; pictures `egyptr16b.py`.
 - Sky beams (v58, owner: they looked painted): the moon's light has depth (`SKYB.q`): it comes through an opening in the back wall
   toward the viewer and lands on the floor's top face in the opening's shape; the wall it comes through gets none. The shaft is haze
   (in-scatter: fades in at the opening, out over the floor, soft edges, shown against the dark only, motes inside it), never a flat
