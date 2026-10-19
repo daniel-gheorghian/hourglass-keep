@@ -521,7 +521,7 @@ const PUZ_FAM={slab:4,side:4,alcove:4,timed:6,double:7}, PUZ_OF={P2G1:'slab',P3G
 const OBS_FAM={spikes:3,loose:3,chomp:4,saw:5,tunnel:3}; // (a guard is not a trap: guards and snakes have their own budgets, guardBudget and snakeBudget)
 const FEAT_FLAGS=[['tower',3],['rotten',4],['barracks',4],['longway',6],['maze',4]]; // lift tower, rotten floors, barracks, the long way, gate maze
 const FLAG_P=0.12; // the chance a floor is flagged (never two in a row: about one floor in nine)
-const FLAG_TEXT={tower:'Counterweights and chains, everywhere.',rotten:'The floors here are rotten.',barracks:'The garrison is out in force.',longway:'Here the quick way is dear.',maze:'The gates here are thick.'};
+const FLAG_TEXT={tower:'Counterweights and ropes, everywhere.',rotten:'The floors here are rotten.',barracks:'The garrison is out in force.',longway:'Here the quick way is dear.',maze:'The gates here are thick.'};
 // Guards and snakes are fighters, not traps: each floor has a small budget of them, set here (Prince of Persia holds 0 to 6 guards a level,
 // 3.7 on average, and about eight times more traps than guards). A budget counts everything that fights on the floor: the guards, the
 // reinforcements they call, the ambush at a flask and the captain. x is a draw in [0,1) from the floor's own guard stream.
@@ -2582,7 +2582,8 @@ const Snd={ctx:null,master:null,nb:null,
       case'tick':T(1700,0.035,{vol:0.03,type:'square'});break;
       case'dart':N(0.09,{vol:0.07,f:2800,type:'bandpass',to:1400,q:3});break;
       case'storm':N(2.2,{vol:0.16,f:260,att:0.4,to:120});T(48,1.8,{vol:0.07,type:'sine',att:0.4});break;
-      case'swing':N(0.2,{vol:0.05,f:700,type:'bandpass',q:4});break;
+      case'swing':N(0.07,{vol:0.045,f:330,type:'bandpass',q:7});N(0.09,{vol:0.04,f:290,type:'bandpass',q:7,at:0.06});break; // (round 18b) the turn: the ropes creak on the log (two short stick-slip groans, not a chain's rattle)
+      case'ropecreak':for(let i=0;i<4;i++)N(0.06+0.02*i,{vol:0.06-0.008*i,f:250+30*i,type:'bandpass',q:8,at:i*0.075});break; // (round 18b) ready: the ropes take the strain, a run of fibrous creaks
     }},
   // (unit ST) the storm's low rumble while it chases: filtered noise and a deep hum, rising as it nears (k 0..1); k 0, the sound
   // setting off or a suspended context let it die away
@@ -3096,14 +3097,14 @@ function wallTouch(){if(inLiftShaft())return 0;for(const sd of [1,-1]){const fx=
   if(B(L,fx,rowOf(P.y-40))===WALL||B(L,fx,rowOf(P.y-12))===WALL)return sd;}return 0;}
 function inLiftShaft(){const c=pCol(),ra=rowOf(P.y-40),rb=rowOf(P.y-12);for(const f of L.lifts)if(c>=f.ca&&c<=f.cb&&rb>=f.rT&&ra<=f.rB)return true;return false;}
 function bannerAt(){const f=F(L,pCol(),rowOf(P.y-30));return !!(f&&f.t==='banner');}
-// ---- the swing bar is a trapeze: the bar hangs on its chains from the ceiling (a pendulum of its own) and he swings under it.
+// ---- the swing bar is a trapeze: the bar hangs on its ropes from the ceiling (a pendulum of its own) and he swings under it.
 // His swing is a damped pendulum (angle P.swTh, positive = forward of the bar; speed P.swOm), not a clock: left alone it dies down
 // to a still hang in about 4 s (SW_TAU, plus a little friction SW_FR); holding left or right pushes toward that side (SW_K), so
 // pushing in step with the swing, alternating as it turns, pumps it up (seated pumping: a fixed gain per half swing, it works from
 // rest), while holding one way only leans him (Donkey Kong Country's vines, Uncharted's ropes, Tarzan). The catch keeps SW_ETA of
 // his speed along the swing, so a running catch clears the pit at once and a standing one needs a few pumps. Jump lets go with a
-// throw that grows with his speed (normalised to the old fixed swing); from SW_CLEAR the throw clears the pit, and the grip creaks
-// and the bar glints to say so. The bar's chains (angle f.ps, speed f.pw, kept on the feature so a rewind restores them) are pulled
+// throw that grows with his speed (normalised to the old fixed swing); from SW_CLEAR the throw clears the pit, and the ropes creak
+// and a glint runs up the near rope to say so. The bar's ropes (angle f.ps, speed f.pw, kept on the feature so a rewind restores them) are pulled
 // after him (SW_KAP) and swing free, dying down, after he lets go.
 // (round 16b, owner: 'difficult to get the prince swinging enough') A pump is a press, not a held push. Before, holding a way was a
 // steady push (SW_K 4.5) that braked him for as long as the press came after the turn: a half swing is only 0.58 s, so a person
@@ -3146,11 +3147,11 @@ function swingStep(dt,ix){const f=P.bar,fc=P.face,hd=ix*fc;let th=P.swTh,om=P.sw
   if(Math.sign(om)!==Math.sign(P.swOm)&&P.swOm!==0&&swAmp(th,om)>0.1)Snd.play('swing'); // the creak of the turn
   P.swPump=P.swKick>0||(hd&&hd*om>0)?1:0;P.swTh=th;P.swOm=om;
   // (round 16b) once ready it stays so down to 0.5, which still clears from a release at -0.2 to 0.2 rad
-  const rdy=swAmp(th,om)>=(P.swRdy?SW_CLEAR-0.05:SW_CLEAR);if(rdy&&!P.swRdy){Snd.play('creak');Snd.play('swready');P.swGl=gameTime;}P.swRdy=rdy;
-  // the chains, pulled after him (a stiff, damped spring toward a share of his angle)
+  const rdy=swAmp(th,om)>=(P.swRdy?SW_CLEAR-0.05:SW_CLEAR);if(rdy&&!P.swRdy){Snd.play('ropecreak');Snd.play('swready');P.swGl=gameTime;}P.swRdy=rdy;
+  // the ropes, pulled after him (a stiff, damped spring toward a share of his angle)
   const wc=2*SW_W,ps=f.ps||0;let pw=f.pw||0;pw+=(wc*wc*(SW_KAP*th*fc-ps)-2*0.6*wc*pw)*dt;f.pw=pw;f.ps=ps+pw*dt;
   swingPlace();}
-// a bar nobody holds swings free on its chains and dies down
+// a bar nobody holds swings free on its ropes and dies down
 function barStep(f,dt){if(P.bar===f&&P.state==='swing')return;const ps=f.ps||0,pw=f.pw||0;if(!ps&&!pw)return;
   const lc=f.y-barPv(f),w2=GRAV/lc;let w=pw+(-w2*Math.sin(ps)-2/1.1*pw)*dt;const a=ps+w*dt;
   if(Math.abs(a)<0.004&&Math.abs(w)<0.02){f.ps=0;f.pw=0;}else{f.ps=a;f.pw=w;}}
@@ -4437,13 +4438,16 @@ function drawHanging(g,hg,ox,oy,th){const x=hg.x+ox,top=hg.top+oy,bot=hg.bot+oy,
   rod(0);}
 function drawHangings(g,rx,ry,th){if(!L.hangings||!L.hangings.length)return;const ox=-rx*ROOM_W,oy=-ry*ROOM_H;
   for(const hg of L.hangings){if(hg.x+24<rx*ROOM_W-8||hg.x-24>(rx+1)*ROOM_W+8||hg.bot+12<ry*ROOM_H||hg.top-8>(ry+1)*ROOM_H)continue;drawHanging(g,hg,ox,oy,th);}}
-// what's left on the wall where a lamp came down: the empty bracket or chain, and the soot it left
+// (round 18b) the theme's rope fibre (BARM, BARF), worn W; and a cut, frayed end of cord hanging from (x0,y0) to (x1,y1)
+function ropeOf(W){return BARF[(BARM[L.theme.look]||BARM.west)[0]][W||0];}
+function ropeEnd(g,x0,y0,x1,y1,w){const c=ropeOf();barRope(g,x0,y0,x1,y1,w,c,2,0,0);g.beginPath();for(let k=-1;k<=1;k++){g.moveTo(x1,y1-0.5);g.lineTo(x1+k*1.1,y1+2.2+Math.abs(k)*0.4);}g.strokeStyle=c[2];g.lineWidth=0.6;g.stroke();}
+// what's left on the wall where a lamp came down: the empty bracket or cord, and the soot it left
 function drawLampScar(g,t,ox,oy,th){const x=t.c*TW+16+ox,y=SURF(t.r)-38+oy,st=th.style,rq=mulberry32(hash2(t.c*5+1,t.r*9+2)),free=GFX().bg&&inOpening(t.c,t.r);
   const sg=g.createRadialGradient(x+2,y-14,1,x+2,y-12,16);sg.addColorStop(0,'rgba(0,0,0,.28)');sg.addColorStop(1,'rgba(0,0,0,0)');if(!free){g.fillStyle=sg;g.fillRect(x-16,y-30,36,34);}
-  if(free){const key=(t.r-1)*TH+11+oy;g.strokeStyle='#0b0812';g.lineWidth=1.6;g.setLineDash([1.8,1.1]);g.beginPath();g.moveTo(x,key);g.lineTo(x+1,key+6+rq()*8);g.stroke();g.setLineDash([]);return;}
+  if(free){const key=(t.r-1)*TH+11+oy;ropeEnd(g,x,key,x+1,key+6+rq()*8,1.3);return;} // (round 18b: was a chain) the cut cord it hung from
   if(st==='dungeon'){g.fillStyle='#16181e';g.fillRect(x-3,y+1,6,10);g.fillStyle='#3b404b';g.fillRect(x-3,y+1,6,1);g.strokeStyle='#14151a';g.lineWidth=1.5;g.beginPath();g.moveTo(x,y+7);g.lineTo(x+4.5,y+5.5);g.stroke();}
   else if(st==='palace'){g.fillStyle='#7c5c25';g.fillRect(x-4.4,y-2,3,11);g.fillStyle='#b48a3c';g.fillRect(x-4.4,y-2,3,1);g.strokeStyle='#8d6a2a';g.lineWidth=1.3;g.beginPath();g.moveTo(x-2.4,y+3);g.quadraticCurveTo(x-2.2,y-4,x+0.5,y-6.5);g.stroke();}
-  else if(st==='tile'){const top=B(L,t.c,t.r-1)===EMPTY?(t.r-1)*TH+oy:t.r*TH+oy;g.strokeStyle='#2a2016';g.lineWidth=0.8;g.beginPath();g.moveTo(x,top);g.lineTo(x+0.6,top+8+rq()*10);g.stroke();}
+  else if(st==='tile'){const top=B(L,t.c,t.r-1)===EMPTY?(t.r-1)*TH+oy:t.r*TH+oy;ropeEnd(g,x,top,x+0.6,top+8+rq()*10,1);}
   else if(st==='forge'){const by=y+2;g.strokeStyle='#120b08';g.lineWidth=1.6;g.beginPath();g.moveTo(x,by+12);g.lineTo(x,by+5);g.moveTo(x-4,by+10);g.lineTo(x-0.5,by+7);g.stroke();g.fillStyle='#120b08';g.fillRect(x-1.6,by+10,3.2,4);}}
 // a fallen lamp lying broken and cold on the floor below where it hung
 function drawFallenLamp(g,t,ox,oy,th){const st=th.style,rq=mulberry32(hash2(t.c*11+3,t.r*7+1)),ys=SURF(t.r)+oy,s=rq()<0.5?-1:1;
@@ -4457,9 +4461,10 @@ function drawFallenLamp(g,t,ox,oy,th){const st=th.style,rq=mulberry32(hash2(t.c*
       g.fillStyle='#8a6a2a';g.beginPath();g.moveTo(-5,-3);g.quadraticCurveTo(-4,-9,0,-9.5);g.quadraticCurveTo(4,-9,3.5,-4);g.closePath();g.fill();
       g.fillStyle='#1a1410';g.fillRect(-3.3,-2.4,6.6,6.6);g.fillStyle='rgba(255,240,210,.25)';g.fillRect(-3.3,-2.4,2,6.6);g.restore();
     for(let i=0;i<6;i++){const q=at(s*(-6+rq()*16),0.6+rq()*0.35);g.fillStyle='rgba(240,225,190,'+(0.35+0.3*rq())+')';g.beginPath();g.moveTo(q.x,q.y);g.lineTo(q.x+1.6,q.y-0.6);g.lineTo(q.x+0.6,q.y+0.5);g.closePath();g.fill();}}
-  else if(st==='tile'){const p=at(s*2,0.8),tr=th.trim||'#b08a46'; // a pierced-metal lantern on its side: a cap, glass panes (one cracked), a chain trailing off
+  else if(st==='tile'){const p=at(s*2,0.8),tr=th.trim||'#b08a46'; // a pierced-metal lantern on its side: a cap, glass panes (one cracked), its cord trailing off
     g.fillStyle='rgba(0,0,0,.3)';g.beginPath();g.ellipse(p.x,p.y+0.5,9,1.8,0,0,6.2832);g.fill();
-    g.fillStyle=tr;g.strokeStyle='#0b0812';g.lineWidth=0.8;for(let i=0;i<5;i++){const q=at(s*(10+i*2.6),0.8+0.04*(i%2));g.beginPath();g.ellipse(q.x,q.y-0.8,1.3,0.9,0,0,6.2832);g.fill();g.stroke();}
+    {const c=ropeOf(),q0=at(s*8,0.8),q1=at(s*14,0.86),q2=at(s*20,0.74);g.beginPath();g.moveTo(q0.x,q0.y-1);g.quadraticCurveTo(q1.x,q1.y+1.5,q2.x,q2.y-0.6); // (round 18b: was a chain) its cord trailing off, frayed
+      g.strokeStyle='#0b0812';g.lineWidth=1.8;g.stroke();g.strokeStyle=c[0];g.lineWidth=1.1;g.stroke();g.beginPath();for(let k=-1;k<=1;k++){g.moveTo(q2.x,q2.y-0.6);g.lineTo(q2.x+s*2.2,q2.y-0.6+k*0.9);}g.strokeStyle=c[2];g.lineWidth=0.5;g.stroke();}
     g.save();g.translate(p.x,p.y-4.5);g.rotate(s*0.35);
     g.fillStyle='#0b0812';g.fillRect(-8,-5,16,10);g.fillStyle=tr;g.fillRect(-7.2,-4.2,14.4,8.4);
     g.beginPath();g.moveTo(s*7,-5);g.lineTo(s*11,-2.5);g.lineTo(s*11,2.5);g.lineTo(s*7,5);g.closePath();g.fillStyle='#0b0812';g.fill();g.fillStyle=tr;g.fill();
@@ -4821,8 +4826,9 @@ function drawLampEg(ctx,t,th){const look=th.look,st=th.style,free=lampFree(t),x=
         else shelf(fx,fy+3,12);
         poly([[fx-5.6,fy-0.6],[fx+5.6,fy-0.6],[fx+3.2,fy+3],[fx-3.2,fy+3]],K);poly([[fx-5,fy-0.2],[fx+5,fy-0.2],[fx+3,fy+2.6],[fx-3,fy+2.6]],'#8a3a22');
         ctx.fillStyle='#1a1210';ctx.fillRect(fx-5,fy-0.4,10,1.4);ctx.fillStyle='rgba(255,220,180,.35)';ctx.fillRect(fx-4,fy+1.2,3,0.5);fl(fx+3.4,fy-1,8);}
-      else{ // Siwa: a pottery lamp in a niche cut in the kershef, or a bronze lamp hanging on three chains (Roman Egypt)
-        if(free){const key=(t.r-1)*TH+11;for(const dx of [-3,0,3]){ctx.strokeStyle=K;ctx.lineWidth=1.4;ctx.setLineDash([1.6,1]);ctx.beginPath();ctx.moveTo(fx,key);ctx.lineTo(fx+dx,fy-1);ctx.stroke();ctx.setLineDash([]);}
+      else{ // Siwa: a pottery lamp in a niche cut in the kershef, or a bronze lamp hanging on three cords of palm fibre from a peg (round 18b: were chains)
+        if(free){const key=(t.r-1)*TH+11,rc=ropeOf();barRope(ctx,fx,key,fx,fy-6,1.3,rc,3,0,0);for(const dx of [-3,0,3]){ctx.strokeStyle=K;ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(fx,fy-6);ctx.lineTo(fx+dx,fy-1);ctx.stroke();ctx.strokeStyle=rc[0];ctx.lineWidth=0.6;ctx.stroke();}
+          ell(fx,fy-6,1.4,1.1,K);ell(fx-0.2,fy-6.2,0.8,0.6,rc[1]);
           ctx.fillStyle=bronze[0];ctx.fillRect(fx-2,key-1.4,4,2);const [nx,ny]=roman(fx-2,fy+1.2,bronze);fl(nx,ny,8);}
         else{poly([[fx-7,fy+5],[fx+7,fy+5],[fx+7,fy-8],[fx+5,fy-10],[fx-5,fy-10],[fx-7,fy-8]],'rgba(0,0,0,.45)');ctx.fillStyle=th.top;ctx.fillRect(fx-7.6,fy+5,15.2,1.6);
           const [nx,ny]=roman(fx-3,fy+3,pot);fl(nx,ny,8);}}
@@ -5762,43 +5768,90 @@ function drawShooter(ctx,f){
       ctx.fillStyle='rgba(255,230,170,'+(0.85*tell)+')';ctx.beginPath();ctx.ellipse(11.6,0,1.1,0.5,0,0,T);ctx.fill();}
     ctx.restore();}
   ctx.restore();}
-// the swing bar: a forged pole across his way, so it runs front to back (the depth axis: drawn up and to the right, like the vent's
-// grate bars) and he grips its middle on the actors' line and swings in the picture's plane, as on a gymnast's high bar. It is in
-// the theme's own metal (the gates' metal; its end ferrules and the ceiling plates in the fittings' metal: steel and bronze, iron
-// in the Forge, gold on Lapis), its middle wrapped in leather worn dark and shiny where hands have held it, and hangs on two link
-// chains like the lifts', one at each end, from the ceiling straight above. While he swings it is pulled a little toward him (drawn only).
+// the swing bar (round 18b, owner: "replace the chains with rope, and make the whole thing Egyptian looking"): a wooden pole across his
+// way, so it runs front to back (the depth axis: drawn up and to the right, like the vent's grate bars), and he grips its middle on the
+// actors' line and swings in the picture's plane, as on a gymnast's high bar. It hangs on two laid ropes, one at each end, from a round
+// timber set across under the ceiling (the logs laid across the Great Pyramid's antechamber with ropes over them; the roof poles of
+// mud-brick houses; Aksum's beam ends, its "monkey heads"): the log's end stands a little proud of the lintel's face, end grain to us,
+// and runs back under the ceiling, so only its near part shows under the lintel's edge (the camera looks down: no ceiling's underside
+// is seen) and the far rope comes out from behind the lintel. The near rope is wound three turns round the log; each rope is lashed
+// round the pole's end with a frayed tail. Taut under his weight and the pole's, they stay straight; their lay is drawn as the strands'
+// diagonal grooves of an S-laid rope (Z-spun, S-plied: the common make of Egyptian cordage) with each strand lit on its left, from the
+// lamps' side. Fibre and timber follow the theme (BARM): papyrus, halfa grass or palm fibre; acacia, sycomore fig, imported cedar,
+// tamarisk in the Sahara, juniper at Aksum; the grip is bound in rawhide, dark and shiny where hands have held it. Nothing is metal
+// (no part goes to the metal mask). Worn (wearLevel): darker, greyer fibre, more loose fibres and a longer fray. While he swings the
+// pole is pulled a little toward him (drawn only). Ready (SW_CLEAR): a glint of light runs up the near rope's fibres to the log, and the
+// grip keeps its warm glow; the sound is the rope's creak (ropecreak).
+const BARW={acacia:['#3e2414','#6a3e22','#8e5a34','#b47e4e'],cedar:['#4a2418','#7a4028','#a05a38','#c88460'],sycomore:['#54422a','#7e6640','#a68a5c','#c8ae7c'],
+  tamarisk:['#463a2c','#6c5c46','#92806a','#b4a48a'],juniper:['#3a2016','#623624','#884e34','#ae7452']};
+const BARF={papyrus:[['#a88a54','#d6bc86','#6a5230'],['#9c8050','#c8ae7c','#625030'],['#8a7450','#b09c74','#58482e'],['#7a6a52','#9c8e74','#4e4434']], // body, lit side, groove
+  halfa:[['#a2884e','#d0b878','#66522c'],['#968050','#c0aa74','#5e4c2c'],['#86744e','#a8986e','#54462e'],['#766a54','#968a72','#4a4232']],
+  palm:[['#7a5232','#a8784c','#48301c'],['#704c30','#9a7048','#422c1c'],['#644832','#86684a','#3c2c1e'],['#5a4636','#78644e','#382c22']]};
+const BARM={nun:['papyrus','sycomore',2],west:['halfa','cedar',2],blue:['halfa','cedar',2],osiris:['papyrus','cedar',2],hawara:['papyrus','acacia',2],
+  meroe:['palm','acacia',3],napata:['palm','acacia',3],deffufa:['palm','acacia',3],shali:['palm','tamarisk',3],foggara:['palm','tamarisk',3],wells:['palm','tamarisk',3],aksum:['halfa','juniper',2]};
+// a taut laid rope from (x0,y0) down to (x1,y1), w wide, c = [body, lit, groove]; ply 2 or 3 (a three-strand rope shows its strands
+// closer together); the lay is counted from the top, so it stays put on the rope as the rope swings
+function barRope(ctx,x0,y0,x1,y1,w,c,ply,W,seed){const dx=x1-x0,dy=y1-y0,l=Math.hypot(dx,dy)||1,ux=dx/l,uy=dy/l,nx=uy,ny=-ux,h=w/2; // (n: toward his left as the rope runs down)
+  ctx.lineCap='butt';ctx.strokeStyle='#0b0812';ctx.lineWidth=w+1.3;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
+  ctx.strokeStyle=c[0];ctx.lineWidth=w;ctx.stroke();
+  const p=ply===3?2.0:2.6,a=p*0.75,P=(s,k)=>[x0+ux*s+nx*h*k,y0+uy*s+ny*h*k];
+  ctx.beginPath();for(let s=-a;s<l;s+=p){const q=P(Math.max(0,s),0.92),r=P(Math.min(l,s+a),-0.92);ctx.moveTo(q[0],q[1]);ctx.lineTo(r[0],r[1]);} // the grooves between strands (S: down to the right)
+  ctx.strokeStyle=c[2];ctx.lineWidth=0.55;ctx.stroke();
+  ctx.beginPath();for(let s=p*0.25;s<l-0.6;s+=p){const q=P(s,0.62),r=P(Math.min(l,s+p*0.42),0.05);ctx.moveTo(q[0],q[1]);ctx.lineTo(r[0],r[1]);} // each strand's crown, lit on its left
+  ctx.strokeStyle=c[1];ctx.lineWidth=0.75;ctx.stroke();
+  ctx.beginPath();{const q=P(0,-0.7),r=P(l,-0.7);ctx.moveTo(q[0],q[1]);ctx.lineTo(r[0],r[1]);}ctx.strokeStyle='rgba(8,5,10,.32)';ctx.lineWidth=0.6;ctx.stroke(); // its shaded right side
+  if(W){const rq=mulberry32(seed);ctx.beginPath();for(let i=0;i<W*3;i++){const s=2+rq()*(l-4),k=rq()<0.5?1:-1,q=P(s,k*1.05),e=0.6+rq()*0.8; // loose fibres standing out of the lay
+      ctx.moveTo(q[0],q[1]);ctx.lineTo(q[0]+nx*k*e+ux*e*0.6,q[1]+ny*k*e+uy*e*0.6);}ctx.strokeStyle=c[1];ctx.globalAlpha=0.55;ctx.lineWidth=0.4;ctx.stroke();ctx.globalAlpha=1;}}
 function drawBar(ctx,o,f){
-  const K='#0b0812',bp=metalPal('gate'),hp=metalPal('hub'),cp=metalPal('chain'),ty=ceilingY(o.c,o.r),U=16;
+  const K='#0b0812',ty=ceilingY(o.c,o.r),U=16,m=BARM[L.theme.look]||BARM.west;
+  if(f.wl===undefined||f.wn!==L.n){f.wn=L.n;f.wl=wearLevel(f.x,f.y);}
+  const W=f.wl,rc=BARF[m[0]][W],wd=BARW[m[1]].map(c=>W>=2?shadeHex(c,-0.08*(W-1)):c),ply=m[2];
   f.pv=ty;const bq=barPos(f),bx=bq.x,by=bq.y,on=P&&P.state==='swing'&&P.bar===f;
-  const at=(u)=>[bx+u*DX/(2*U),by-u*DY/(2*U)]; // u from -16 (front end) to 16 (back end)
-  const chain=(u)=>{const [x1,y1]=at(u),x0=f.x+u*DX/(2*U),yt=ty-u*DY/(2*U),n=Math.max(2,Math.round((y1-3.5-yt)/5.2)),sp=(y1-3.5-yt)/n;
-    ctx.fillStyle=K;ctx.fillRect(x0-3.6,yt-0.5,7.2,2.8);ctx.fillStyle=hp[1];ctx.fillRect(x0-3,yt,6,1.7);ctx.fillStyle=hp[3];ctx.fillRect(x0-3,yt,6,0.5); // ceiling plate
-    for(let k=0;k<n;k++){const x=lerp(x0,x1,(k+0.5)/n),y=yt+2+k*sp+sp/2,e=k%2,w=e?2:3.8,h=sp+1.6;
-      ctx.fillStyle=K;ctx.fillRect(x-w/2-0.6,y-h/2-0.6,w+1.2,h+1.2);ctx.fillStyle=e?cp[1]:cp[2];ctx.fillRect(x-w/2,y-h/2,w,h);
-      ctx.fillStyle=cp[3];ctx.fillRect(x-w/2,y-h/2,0.6,h);if(!e){ctx.fillStyle='#1b1626';ctx.fillRect(x-0.6,y-h/2+1.4,1.2,h-2.8);}}
-    ctx.strokeStyle=K;ctx.lineWidth=2.4;ctx.beginPath();ctx.arc(x1,y1-1.4,2.3,Math.PI*0.9,Math.PI*2.1);ctx.stroke();ctx.strokeStyle=hp[2];ctx.lineWidth=1;ctx.stroke();};
-  chain(13);                                                                                                // the far chain, behind the pole
+  const at=(u)=>[bx+u*DX/(2*U),by-u*DY/(2*U)];                       // u from -16 (front end) to 16 (back end)
+  const R=2.8,cx=(u)=>f.x+u*DX/(2*U),cy=(u)=>ty-HY-u*DY/(2*U)+R;     // the log: its axis at depth u, under the ceiling (at mid depth ty-HY)
+  ctx.save();ctx.beginPath();ctx.rect(f.x-80,ty,160,by+40-ty);ctx.clip(); // (the lintel's front face hides all that is above its edge)
+  // the log, from the back wall to 3 px proud of the lintel's face: its underside receding under the ceiling, then its end grain
+  {const a=-19,b=16;ctx.beginPath();ctx.moveTo(cx(a),cy(a)-R-0.6);ctx.lineTo(cx(b),cy(b)-R-0.6);ctx.lineTo(cx(b),cy(b)+R+0.6);ctx.lineTo(cx(a),cy(a)+R+0.6);ctx.closePath();ctx.fillStyle=K;ctx.fill();
+    ctx.beginPath();ctx.moveTo(cx(a),cy(a)-R);ctx.lineTo(cx(b),cy(b)-R);ctx.lineTo(cx(b),cy(b)+R);ctx.lineTo(cx(a),cy(a)+R);ctx.closePath();ctx.fillStyle=wd[1];ctx.fill();
+    ctx.beginPath();ctx.moveTo(cx(a),cy(a)+R*0.35);ctx.lineTo(cx(b),cy(b)+R*0.35);ctx.strokeStyle=wd[2];ctx.lineWidth=1.1;ctx.stroke();       // its rounded underside catching the lamps
+    ctx.beginPath();ctx.moveTo(cx(a),cy(a)+R*0.85);ctx.lineTo(cx(b),cy(b)+R*0.85);ctx.strokeStyle=wd[0];ctx.lineWidth=0.8;ctx.stroke();
+    const ex=cx(a),ey=cy(a);ctx.fillStyle=K;ctx.beginPath();ctx.arc(ex,ey,R+0.6,0,6.2832);ctx.fill();ctx.fillStyle=wd[2];ctx.beginPath();ctx.arc(ex,ey,R,0,6.2832);ctx.fill();
+    ctx.strokeStyle=wd[1];ctx.lineWidth=0.5;ctx.beginPath();ctx.arc(ex+0.2,ey+0.2,R*0.55,0,6.2832);ctx.stroke();                                 // a growth ring
+    ctx.fillStyle=wd[3];ctx.beginPath();ctx.arc(ex-0.6,ey-0.5,R*0.6,Math.PI*0.75,Math.PI*1.45);ctx.lineTo(ex-0.3,ey-0.3);ctx.fill();          // lit on the left
+    ctx.strokeStyle=wd[0];ctx.lineWidth=0.5;ctx.beginPath();ctx.moveTo(ex+0.3,ey);ctx.lineTo(ex+R-0.3,ey+0.8);ctx.stroke();}                // a drying check
+  const top=(u)=>[cx(u)+0.3,cy(u)+R+0.2];
+  const rope=(u,sd)=>{const [x1,y1]=at(u),[x0,y0]=top(u);barRope(ctx,x0,y0,x1,y1-2.6,2.5,rc,ply,W,hash2(o.c*3+sd,o.r));};
+  rope(13,1);                                                                                              // the far rope, behind the pole
   ctx.save();ctx.translate(bx,by);ctx.transform(DX/(2*U),-DY/(2*U),0,1,0,0);                               // the pole in its own frame: x along it, y up and down
   ctx.fillStyle=K;ctx.fillRect(-U-0.8,-2.9,2*U+1.6,5.8);
-  const g=ctx.createLinearGradient(0,-2.2,0,2.2);g.addColorStop(0,bp[3]);g.addColorStop(0.3,bp[2]);g.addColorStop(0.75,bp[1]);g.addColorStop(1,bp[0]);
+  const g=ctx.createLinearGradient(0,-2.2,0,2.2);g.addColorStop(0,wd[3]);g.addColorStop(0.3,wd[2]);g.addColorStop(0.75,wd[1]);g.addColorStop(1,wd[0]);
   ctx.fillStyle=g;ctx.fillRect(-U,-2.1,2*U,4.2);
-  for(const u of [-U,U-3]){ctx.fillStyle=K;ctx.fillRect(u-0.4,-3.1,3.8,6.2);ctx.fillStyle=hp[2];ctx.fillRect(u+0.2,-2.5,2.6,5);ctx.fillStyle=hp[3];ctx.fillRect(u+0.2,-2.5,2.6,0.7);} // ferrules
-  ctx.fillStyle='#2a1a12';ctx.fillRect(-6.5,-2.3,13,4.6);                                                   // the leather grip, its wraps and the shine of wear
-  ctx.strokeStyle='#130b08';ctx.lineWidth=0.7;ctx.beginPath();for(let i=-6;i<=5;i+=2.4){ctx.moveTo(i,-2.3);ctx.lineTo(i+1.2,2.3);}ctx.stroke();
+  ctx.strokeStyle=wd[0];ctx.globalAlpha=0.55;ctx.lineWidth=0.45;ctx.beginPath();ctx.moveTo(-U+1,-0.7);ctx.lineTo(-7,-0.5);ctx.moveTo(7,-0.6);ctx.lineTo(U-1,-0.9);ctx.moveTo(-U+3,0.9);ctx.lineTo(-8,1.1);ctx.moveTo(8,0.8);ctx.lineTo(U-4,1.0);ctx.stroke();ctx.globalAlpha=1; // grain
+  ctx.fillStyle='#2e1a10';ctx.fillRect(-6.5,-2.3,13,4.6);                                                   // the rawhide binding, its turns and the shine of wear
+  ctx.strokeStyle='#160c06';ctx.lineWidth=0.7;ctx.beginPath();for(let i=-6;i<=5;i+=2.2){ctx.moveTo(i,-2.3);ctx.lineTo(i+1.1,2.3);}ctx.stroke();
   ctx.fillStyle='rgba(214,170,120,.35)';ctx.fillRect(-6.5,-1.6,13,0.8);
+  for(const u of [-13,13]){ctx.beginPath();for(let k=-1;k<=1;k++){const x=u+k*1.5;ctx.moveTo(x-0.45,-2.9);ctx.lineTo(x+0.45,2.9);} // the rope's end lashed three turns round the pole
+    ctx.strokeStyle=K;ctx.lineWidth=1.55;ctx.stroke();ctx.strokeStyle=rc[0];ctx.lineWidth=1.0;ctx.stroke();
+    ctx.beginPath();for(let k=-1;k<=1;k++){const x=u+k*1.5;ctx.moveTo(x-0.5,-2.7);ctx.lineTo(x-0.2,-0.6);}ctx.strokeStyle=rc[1];ctx.lineWidth=0.45;ctx.stroke();}
   ctx.restore();
-  {const [x,y]=at(-U);ctx.fillStyle=K;ctx.beginPath();ctx.ellipse(x,y,1.9,3,0,0,6.2832);ctx.fill();ctx.fillStyle=hp[2];ctx.beginPath();ctx.ellipse(x,y,1.2,2.3,0,0,6.2832);ctx.fill(); // the near end, seen end on
-    ctx.fillStyle=hp[0];ctx.beginPath();ctx.arc(x,y,0.6,0,6.2832);ctx.fill();}
-  chain(-13);                                                                                               // the near chain, in front of it
-  if(on&&P.swRdy){const k=clamp((gameTime-(P.swGl||0))/0.45,0,1),u=lerp(-U,U,k);ctx.save();ctx.globalCompositeOperation='lighter';
-    if(k<1){const [x,y]=at(u);  // ready: a glint runs along the pole
-      const gg=ctx.createRadialGradient(x,y-1,0,x,y-1,9);gg.addColorStop(0,'rgba(255,240,200,.95)');gg.addColorStop(1,'rgba(255,240,200,0)');
-      ctx.fillStyle=gg;ctx.fillRect(x-9,y-10,18,18);}
+  {const [x,y]=at(-U);ctx.fillStyle=K;ctx.beginPath();ctx.arc(x,y,2.7,0,6.2832);ctx.fill();ctx.fillStyle=wd[2];ctx.beginPath();ctx.arc(x,y,2.1,0,6.2832);ctx.fill(); // the near end, end grain to us
+    ctx.fillStyle=wd[3];ctx.beginPath();ctx.arc(x-0.4,y-0.4,1.2,Math.PI*0.8,Math.PI*1.5);ctx.lineTo(x,y);ctx.fill();ctx.fillStyle=wd[0];ctx.beginPath();ctx.arc(x+0.2,y+0.2,0.45,0,6.2832);ctx.fill();}
+  rope(-13,2);                                                                                             // the near rope, in front of it
+  {const u=-13,[x0,y0]=top(u);ctx.beginPath();for(let k=-1;k<=1;k++){const x=x0+k*1.35,y=cy(u+k*2.7);ctx.moveTo(x-0.35,y-R-0.2);ctx.lineTo(x+0.35,y+R+0.3);} // wound three turns round the log
+    ctx.strokeStyle=K;ctx.lineWidth=1.7;ctx.stroke();ctx.strokeStyle=rc[0];ctx.lineWidth=1.1;ctx.stroke();
+    ctx.beginPath();for(let k=-1;k<=1;k++){const x=x0+k*1.35,y=cy(u+k*2.7);ctx.moveTo(x-0.5,y-R+0.3);ctx.lineTo(x-0.3,y);}ctx.strokeStyle=rc[1];ctx.lineWidth=0.5;ctx.stroke();}
+  {const [x,y]=at(-13),n=2+W;ctx.beginPath();for(let i=0;i<n;i++){const a=-0.5+i*0.9/(n-1),l=2.6+((i*7)%3)*0.7+W*0.4;ctx.moveTo(x-0.6,y+1.5);ctx.lineTo(x-0.6+Math.sin(a)*l,y+1.5+Math.cos(a)*l);} // the lashing's frayed tail
+    ctx.strokeStyle=rc[2];ctx.lineWidth=0.9;ctx.stroke();ctx.strokeStyle=rc[1];ctx.lineWidth=0.4;ctx.stroke();}
+  ctx.restore();
+  if(on&&P.swRdy){const k=clamp((gameTime-(P.swGl||0))/0.45,0,1);ctx.save();ctx.globalCompositeOperation='lighter';
+    if(k<1){const [x1,y1]=at(-13),[x0,y0]=top(-13),x=lerp(x1,x0,k),y=lerp(y1-2.6,y0,k); // ready: a glint runs up the near rope's fibres to the log
+      const gg=ctx.createRadialGradient(x,y,0,x,y,8);gg.addColorStop(0,'rgba(255,240,200,.9)');gg.addColorStop(0.3,'rgba(255,226,170,.35)');gg.addColorStop(1,'rgba(255,226,170,0)');
+      ctx.fillStyle=gg;ctx.fillRect(x-8,y-8,16,16);ctx.fillStyle='rgba(255,246,220,.9)';ctx.fillRect(x-0.35,y-2.4,0.7,4.8);ctx.fillRect(x-1.6,y-0.3,3.2,0.6);}
     // (round 16b) and while it will carry him the grip keeps a warm glow round his hands, full as he swings forward (Jump now), a
     // third of that on the way back: read at a glance on a phone, where the glint alone was a few pixels for under half a second
-    const fw=P.swOm>0?1:0.35,al=fw*(0.42+0.13*Math.sin(gameTime*11))*Math.min(1,0.4+k),R=12;
-    const gh=ctx.createRadialGradient(bx,by,0,bx,by,R);gh.addColorStop(0,'rgba(255,214,140,'+al.toFixed(3)+')');gh.addColorStop(0.45,'rgba(255,190,110,'+(al*0.45).toFixed(3)+')');gh.addColorStop(1,'rgba(255,190,110,0)');
-    ctx.fillStyle=gh;ctx.fillRect(bx-R,by-R,2*R,2*R);ctx.restore();}}
+    const fw=P.swOm>0?1:0.35,al=fw*(0.42+0.13*Math.sin(gameTime*11))*Math.min(1,0.4+k),Rg=12;
+    const gh=ctx.createRadialGradient(bx,by,0,bx,by,Rg);gh.addColorStop(0,'rgba(255,214,140,'+al.toFixed(3)+')');gh.addColorStop(0.45,'rgba(255,190,110,'+(al*0.45).toFixed(3)+')');gh.addColorStop(1,'rgba(255,190,110,0)');
+    ctx.fillStyle=gh;ctx.fillRect(bx-Rg,by-Rg,2*Rg,2*Rg);ctx.restore();}}
 function drawPend(ctx,o,f){
   const b=pendGeom(o,f),th=L.theme,pal=metalPal('pend');
   ctx.fillStyle='#0b0812';ctx.fillRect(b.px-4,b.py,8,4);ctx.fillStyle='#d8b04a';ctx.fillRect(b.px-3,b.py,6,2.6);
@@ -5807,7 +5860,8 @@ function drawPend(ctx,o,f){
   ctx.strokeStyle='#0b0812';ctx.lineWidth=4.4;ctx.beginPath();ctx.moveTo(b.px,b.py+2);ctx.lineTo(b.x,b.y);ctx.stroke(); // a 3 px steel arm in a dark outline, so it stays apart from the gold colonnettes
   ctx.strokeStyle=pal[1];ctx.lineWidth=2.6;ctx.stroke();                  // the arm is bevelled: a dark body, a lighter core, a thin lit edge on the left
   for(let k=0;k<2;k++){ctx.strokeStyle=k?pal[3]:pal[2];ctx.lineWidth=k?0.6:1.5;const dx=-0.45-0.4*k;ctx.beginPath();ctx.moveTo(b.px+dx,b.py+2);ctx.lineTo(b.x+dx,b.y);ctx.stroke();}
-  ctx.strokeStyle='#0b0812';ctx.lineWidth=2;ctx.setLineDash([2,2.2]);ctx.beginPath();ctx.moveTo(b.px,b.py+3);ctx.lineTo(b.px+(b.x-b.px)*0.22,b.py+3+(b.y-b.py)*0.22);ctx.stroke();ctx.setLineDash([]); // dark chain links near the pivot
+  {const c=ropeOf(),ux=(b.x-b.px)/b.Lp,uy=(b.y-b.py)/b.Lp;ctx.beginPath();for(let k=0;k<4;k++){const d=4+k*1.9,x=b.px+ux*d,y=b.py+2+uy*d;ctx.moveTo(x-uy*2.4-ux*0.5,y+ux*2.4-uy*0.5);ctx.lineTo(x+uy*2.4+ux*0.5,y-ux*2.4+uy*0.5);} // (round 18b: were chain links) the arm lashed to its pivot with rope, four turns
+    ctx.strokeStyle='#0b0812';ctx.lineWidth=1.7;ctx.stroke();ctx.strokeStyle=c[0];ctx.lineWidth=1.1;ctx.stroke();}
   ctx.save();ctx.translate(b.x,b.y);ctx.rotate(-b.th);
   pendBlade(ctx);ctx.fillStyle=pal[2];ctx.fill();
   ctx.save();ctx.clip();                                                    // bevel: the cutting (lower) edge dark, the upper edge lit
@@ -7248,14 +7302,14 @@ const BG_W=640,BG_H=210,BG_BASE=176;
 // (each theme's view: the sky's four stops and the layers far to near; `nostars`: no stars even at night, for a smoky sky)
 const BGART={
   nun:{sky:['#0b111c','#18263c','#22344e','#152438'],layers:[ // papyrus-bundle columns under their architraves, standing in the water
-    {f:0.06,kind:'pcolon',col:'#2a3852',gap:30,w:7,lift:-30},{f:0.15,kind:'pcolon',col:'#131c2c',gap:64,w:13,lift:-30},{f:0.15,kind:'water',col:'rgba(130,160,200,.16)',lift:-30},{f:0.32,kind:'chains',col:'#06090f',lift:0}]},
+    {f:0.06,kind:'pcolon',col:'#2a3852',gap:30,w:7,lift:-30},{f:0.15,kind:'pcolon',col:'#131c2c',gap:64,w:13,lift:-30},{f:0.15,kind:'water',col:'rgba(130,160,200,.16)',lift:-30},{f:0.32,kind:'ropes',col:'#06090f',lift:0,jar:1}]},
   west:{sky:['#1a2452','#363c78','#9a5a62','#3c2838'],layers:[ // the Theban hills with el-Qurn, a temple's pylons and flagstaffs, palms
     {f:0.015,kind:'stars',moon:'#f3e6c4'},{f:0.03,kind:'clouds',col:'rgba(170,140,180,.13)',drift:2.5},
     {f:0.05,kind:'qurn',col:'#463a62',lift:8},{f:0.16,kind:'pylons',col:'#2a2044',win:'#ffc070',lift:14},{f:0.3,kind:'palms',col:'#140f26',lift:26}]},
   blue:{sky:['#0e1c4c','#24398e','#5470bc','#22306c'],layers:[ // Saqqara: the step pyramid and its niched enclosure wall on the desert's edge
     {f:0.015,kind:'stars',moon:'#e6ecff'},{f:0.05,kind:'hills',col:'#2a3c78',lift:-4},{f:0.1,kind:'steppyr',col:'#22346a',lift:6},{f:0.18,kind:'niched',col:'#18264e',lift:12},{f:0.3,kind:'palms',col:'#0a1230',lift:24}]},
   meroe:{sky:['#140404','#3e0f08','#8a3010','#b8461a'],nostars:1,layers:[ // Meroë: the steep royal pyramids behind the smelting furnaces and their smoke
-    {f:0.04,kind:'kushpyr',col:'#4a1a10',lift:2},{f:0.08,kind:'chimneys',col:'#3a1c14',glow:'#ff7a30',lift:8},{f:0.16,kind:'furnaces',col:'#1e0b07',glow:'#ff8a3a',lift:16},{f:0.04,kind:'smoke',col:'rgba(30,18,16,.55)',drift:4},{f:0.32,kind:'chains',col:'#0a0403',lift:0}]},
+    {f:0.04,kind:'kushpyr',col:'#4a1a10',lift:2},{f:0.08,kind:'chimneys',col:'#3a1c14',glow:'#ff7a30',lift:8},{f:0.16,kind:'furnaces',col:'#1e0b07',glow:'#ff8a3a',lift:16},{f:0.04,kind:'smoke',col:'rgba(30,18,16,.55)',drift:4},{f:0.32,kind:'ropes',col:'#0a0403',lift:0}]},
   osiris:{sky:['#06120f','#14342c','#2a5a4c','#183c33'],layers:[ // obelisks and lit shrines under a cavetto cornice, trees
     {f:0.06,kind:'obelisks',col:'#1e4238',glow:'#7fffd0',lift:6},{f:0.16,kind:'shrines',col:'#0e221c',glow:'#8fffd8',lift:14},{f:0.05,kind:'clouds',col:'rgba(120,190,170,.12)',drift:3.5},{f:0.3,kind:'trees',col:'#050c0a',lift:24}]},
   foggara:{sky:['#141428','#2c2a4a','#7a5a5a','#3a2a26'],layers:[ // the Fezzan: an escarpment, and lines of shaft mounds running across the sand to the palms
@@ -7368,7 +7422,15 @@ function bgPaint(g,ly,rnd){const B=BG_BASE-(ly.lift||0),T=Math.PI*2,R=(a,b)=>a+r
     case'colonnade':{const gap=ly.gap,w=ly.w,top=10;g.fillRect(-2,top-6,BG_W+4,8);for(let x=0;x<BG_W;x+=gap){g.fillRect(x,top,w,B-top);g.fillRect(x-2,top,w+4,3);g.fillRect(x-2,B-4,w+4,4);
         g.beginPath();g.moveTo(x+w,top+gap*0.5);g.quadraticCurveTo(x+w+(gap-w)/2,top,x+gap,top+gap*0.5);g.lineTo(x+gap,top);g.lineTo(x+w,top);g.fill();}ground();break;}
     case'water':g.fillStyle='rgba(8,14,24,.65)';g.fillRect(-2,B,BG_W+4,BG_H-B+2);g.strokeStyle=ly.col;g.lineWidth=0.8;for(let i=0;i<40;i++){const x=R(0,BG_W),y=R(B+2,BG_H-2),w=R(8,26);g.beginPath();g.moveTo(x,y);g.lineTo(x+w,y);g.stroke();}break;
-    case'chains':g.strokeStyle=ly.col;g.lineWidth=1.6;for(let i=0;i<5;i++){const x=R(0,BG_W),len=R(30,90);g.setLineDash([2.2,1.4]);g.beginPath();g.moveTo(x,-2);g.lineTo(x,len);g.stroke();g.setLineDash([]);g.beginPath();g.arc(x,len+4,4,0,T);g.stroke();}break;
+    case'ropes': // (round 18b: were iron chains) laid ropes hanging from the vault, near and dark: some end in a knot and a frayed tail,
+      // some carry a water jar in a rope sling (the Cistern: jars slung in cord nets, as in the tomb paintings) or a basket (the Forge: ore and charcoal)
+      g.strokeStyle=ly.col;for(let i=0;i<5;i++){const x=R(0,BG_W),len=R(30,90),sw=R(-3,3);g.lineWidth=1.7;g.beginPath();g.moveTo(x,-2);g.quadraticCurveTo(x+sw*0.3,len*0.5,x+sw,len);g.stroke();
+        g.lineWidth=0.6;g.beginPath();for(let y=2;y<len-2;y+=2.6){const xx=x+sw*(y/len)*(y/len);g.moveTo(xx-0.9,y);g.lineTo(xx+0.9,y+1.3);}g.globalAlpha=0.5;g.strokeStyle='#000';g.stroke();g.globalAlpha=1;g.strokeStyle=ly.col; // its lay
+        const ex=x+sw;if(i%2){g.fillStyle=ly.col;g.beginPath();g.ellipse(ex,len+1.5,2.4,2.8,0,0,T);g.fill();g.lineWidth=0.8;g.beginPath(); // a knot and a frayed tail
+          for(let k=-2;k<=2;k++){g.moveTo(ex,len+3);g.lineTo(ex+k*1.3,len+8+R(0,3));}g.stroke();}
+        else{const jy=len+6;g.lineWidth=0.8;g.beginPath();for(const d of [-4,0,4]){g.moveTo(ex,len);g.lineTo(ex+d*1.1,jy+2);}g.stroke();g.fillStyle=ly.col;g.beginPath();
+          if(ly.jar){g.ellipse(ex,jy+8,5.2,6.6,0,0,T);g.fill();g.fillRect(ex-2,jy-1,4,4);g.beginPath();g.moveTo(ex-1.4,jy+14);g.lineTo(ex,jy+17);g.lineTo(ex+1.4,jy+14);g.fill();} // a jar, its round body and pointed foot
+          else{g.moveTo(ex-6,jy+1);g.lineTo(ex+6,jy+1);g.lineTo(ex+4.5,jy+10);g.lineTo(ex-4.5,jy+10);g.closePath();g.fill();}}}break; // a basket
     case'chimneys':ground();for(let i=0;i<9;i++){const x=R(0,BG_W),w=R(7,14),h=R(50,110);g.fillStyle=ly.col;g.beginPath();g.moveTo(x-w/2,B);g.lineTo(x-w*0.38,B-h);g.lineTo(x+w*0.38,B-h);g.lineTo(x+w/2,B);g.fill();g.fillRect(x-w*0.5,B-h-3,w,3);
         const gr=g.createRadialGradient(x,B-h-3,0,x,B-h-3,14);gr.addColorStop(0,'rgba(255,140,60,.55)');gr.addColorStop(1,'rgba(255,140,60,0)');g.fillStyle=gr;g.fillRect(x-14,B-h-17,28,28);}break;
     case'furnaces':ground();g.fillStyle=ly.col;{let x=0;while(x<BG_W){const w=R(30,60),h=R(24,46);g.fillRect(x,B-h,w,h);g.beginPath();g.moveTo(x-2,B-h);g.lineTo(x+w/2,B-h-R(8,16));g.lineTo(x+w+2,B-h);g.fill();
@@ -8401,7 +8463,7 @@ function msLift(g,f,half){if(LIFT_DBG.off||EGP.traps||f.sand)return; // (the Egy
 // is any metal in view? (so a frame without it does no canvas work and no upload)
 function msAny(c0,c1,r0,r1,x0,x1,y0,y1){if(MSF.n)return true;
   for(const lf of L.lifts)if(liftVisible(lf,x0,x1,y0,y1))return true;
-  for(const o of L.dyn){if(o.c<c0||o.c>c1||o.r<r0||o.r>r1)continue;const t=o.f.t;if(t==='gate'||t==='chomp'||t==='saw'||t==='pend'||t==='bar'||t==='grate')return true;}
+  for(const o of L.dyn){if(o.c<c0||o.c>c1||o.r<r0||o.r>r1)continue;const t=o.f.t;if(t==='gate'||t==='chomp'||t==='saw'||t==='pend'||t==='grate')return true;}
   return false;}
 function drawMetalMask(VZ,camD,camDY){
   const w=cv.width,h=cv.height,cx=camD/VZ,cy=camDY/VZ,x0=cx,x1=cx+w/VZ,y0=cy,y1=cy+h/VZ;
@@ -8431,9 +8493,7 @@ function drawMetalMask(VZ,camD,camDY){
         g.save();g.translate(b.x,b.y);g.rotate(-b.th);pendBlade(g);g.fillStyle=msCol(pid,MS_ANY);g.fill();g.restore();
         msDisc(g,b.x,b.y,3,MKID.gold);g.fillStyle=msCol(MKID.gold,MS_ANY);g.fillRect(b.px-3,b.py,6,2.6);
         msBox(Math.min(b.px,b.x)-18,b.py,Math.max(b.px,b.x)+18,b.y+16);break;}
-      case'bar':{const ty=ceilingY(o.c,o.r);f.pv=ty;const bq=barPos(f),bx=bq.x,by=bq.y,ch=msKind('chain'),ex=13*DX/32,ey=13*DY/32;msLine(g,bx-ex,by+ey-3,f.x-ex,ty+ey,3.4,ch);msLine(g,bx+ex,by-ey-3,f.x+ex,ty-ey,3.4,ch);
-        msLine(g,bx-DX/2,by+DY/2,bx+DX/2,by-DY/2,4.2,msKind('gate'));g.fillStyle=msCol(msKind('hub'),MS_ANY);g.fillRect(bx-DX/2-1.5,by+DY/2-2.6,3,5.2);
-        msBox(Math.min(bx,f.x)-18,ty,Math.max(bx,f.x)+18,by+6);break;}
+      // (round 18b: the swing bar is wood and rope, no metal)
       case'grate':{g.strokeStyle=msCol(gid,MS_ANY);g.lineWidth=2;g.beginPath();
         for(let i=0;i<6;i++){const a=onFloor(X+3+i*5.2,0.04,ys),b=onFloor(X+3+i*5.2,0.96,ys);g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);}
         for(const d of [0.04,0.5,0.96]){const a=onFloor(X,d,ys),b=onFloor(X+TW,d,ys);g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);}g.stroke();msBox(X-8,ys-12,X+TW+8,ys+12);break;}
