@@ -183,6 +183,12 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   from inside: a glow at the window, no shaft. Classic draws the same shapes from sprites (`ryBeams2D`). Check with `beamshot.py`.
   A figure in a beam (v59, owner: hard white stripes) gets only a weak, capped cool light on the side toward it (`RY_FIG`, `RY_FIGC`,
   feathered by the figures' mask); figures never bloom from the beam and the floor patch, pane and rim are not drawn on them.
+  (v66 round 15, owner: light round corners) No beam light, haze, footprint or rim lands on a wall block's front face (drawn HX left of
+  its cell): the shader takes the face's coverage across each quarter-size pixel, Classic (`ryBeams2D`) cuts the faces where they are
+  drawn, and a beam's bounce light is dropped when a wall stands between the opening and its landing. Check with `beamwall.py`.
+- Doors are drawn live, but Torchlight's relief reads the room's picture: the back wall's art is flattened under each doorway and its
+  frame (`drawRoomStatic`). `doorscan.py` checks every door (floors 1 to 48, both modes) for art over the opening. At the exit he
+  climbs the doorway's stairs tread by tread (`EX_*`, `P.exS`), cut by the posts and the ceiling's edge.
 - A dart shooter firing left sits on a wall's hidden left face: no head is drawn and its darts come from behind the front face.
 - Lifts (v60, owner): no wall plant or kick inside a lift's shaft (`inLiftShaft` in `wallTouch`; `liftkick.py`). Lift parts are cut
   out behind the walls' front faces in front of them (`liftOccl`), the counterweight runs in the back wall behind the platform, and

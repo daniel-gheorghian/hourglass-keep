@@ -3244,7 +3244,13 @@ function updatePlayer(dt){
     case'parry':if(P.t>=0.36)setState('garde');break;
     case'blocked':if(took('u')){setState('parry');break;}if(P.t>=0.3)setState('garde');break;
     case'hurt':if(P.t>=0.35)setState(P.foe&&P.foe.alive?'garde':'stand');break;
-    case'exit':P.x=approach(P.x,L.door.x,40*dt);if(P.t>1.0)levelComplete();break;
+    // (round 15, owner: "the prince should be animated correctly when climbing the stairs. Now it is marching in place") he walks to the
+    // doorway's middle, then climbs its stairs tread by tread (drawDoor's: EX_RS up and EX_SX across each, receding up and to the right),
+    // one footfall per tread, his body rising with each, the frame hiding him as he goes; as in PoP1, where the kid climbs the exit stairs
+    // with an animation of his own (SDLPoP seqtbl, the level door's climb) and fades into the light
+    case'exit':{const tx=L.door.x;P.x=approach(P.x,tx,40*dt);if(Math.abs(P.x-tx)<0.5)P.exS=(P.exS||0)+dt*EX_RATE;
+      const k=P.exS||0,i=Math.floor(k),f=k-i,e=f<0.55?0:sstep((f-0.55)/0.45);P.exY=-(i+e)*(EX_RS+EX_SY);P.exX=(i+e)*EX_SX*P.face;
+      if(k>=EX_N||P.t>2.4)levelComplete();break;}
     case'dead':break;
   }
   // pose
@@ -3252,7 +3258,7 @@ function updatePlayer(dt){
   switch(P.state){
     case'stand':tgt=P.sword&&P.foe?PS.garde:PS.stand;break;
     case'run':tgt=RP(P.ph);rate=40;break;
-    case'exit':tgt=RP(P.t*1.6,0.6);rate=40;break;
+    case'exit':tgt=P.exS>0?RP(0.25+(P.exS||0)*0.5,0.38):RP(P.t*1.6,0.6);rate=P.exS>0?30:40;break; // (on the stairs: half a stride a tread, the leading leg lifting onto the next one)
     case'stop':tgt=PS.skid;break;
     case'turn':tgt=PS.turn;rate=40;break;
     case'step':case'edgeWalk':tgt=lerpPose(PS.stand,PS.step,Math.sin(Math.PI*Math.min(1,P.t/0.3)),tmpP);break;
@@ -3739,6 +3745,7 @@ function update(dt){
     if(canRewind()){if(deadT>0.7&&took('g',0.3))startRewind();else if(deadT>0.7&&took('j',0.3))respawn();}
     else if(deadT>0.9&&(took('j',0.3)||took('g',0.3)))respawn();else if(deadT>3.2)respawn();}
 }
+const EX_N=5.2,EX_RATE=3.2,EX_RS=6.2,EX_SX=DX*0.22,EX_SY=DY*0.22; // (the exit stairs: drawDoor's treads, RS rise, SX and SY their depth)
 function levelComplete(){
   mode='card';
   const n=L.n,ft=levelTime,fd=S.floorDeaths||0;
@@ -3806,6 +3813,12 @@ function drawRoomStatic(g,rx,ry,stage){
     if(isArchTop(gc,gr))drawArch(g,cc*TW,rr*TH,th,bgOn&&isOpenArch(gc,gr),gc,gr,'frame');}
   for(const w of L.windows){if(Math.floor(w.c/RW)!==rx||Math.floor(w.r/RH)!==ry)continue;if(bgOn&&inOpening(w.c,w.r))continue;if(inBreach(w.c*TW+16,w.r*TH+38,true))continue;drawWindow(g,(w.c%RW)*TW+16,(w.r%RH)*TH+38,th,w.c,bgOn);}
   drawWallScars(g,rx,ry,th);drawHangings(g,rx,ry,th);
+  if(EGP.noart){g.fillStyle=th.wall;g.fillRect(-TW,-TH,ROOM_W+2*TW,ROOM_H+2*TH);} // (doorscan.py: the back wall without its art)
+  // (round 15, owner: "wall decoration over door") the doorways cut out of the back wall's art: the doors are drawn live over the room, but
+  // Torchlight's relief is taken from the room's picture, so the stone courses and friezes behind a doorway were embossed over the door
+  // and the lit stair. Under each doorway and its frame the back wall is one flat tone (the door covers it)
+  if(!EGP.nocut)for(const d of [{x:(L.start.door===undefined?1:L.start.door)*TW+16,r:L.start.r},L.door]){const c=Math.floor(d.x/TW);if(Math.floor(c/RW)!==rx&&Math.floor((c+1)/RW)!==rx||Math.floor(d.r/RH)!==ry)continue;
+    const ctop=d.r*TH+Math.max(ceilOff(c,d.r),ceilOff(c+1,d.r)),xc=d.x+HX-rx*ROOM_W,yb=SURF(d.r)-HY-ry*ROOM_H,y=ctop-ry*ROOM_H;g.fillStyle=th.wall;g.fillRect(xc-12-6,y,24+12,yb-y+1);}
   if(GLFX.ao)aoBack(g,rx,ry,B,solidBelow,isLow);
   }
   // neighbours one cell outside the room are drawn too, so faces that overhang a room edge don't leave seams
@@ -6563,7 +6576,8 @@ function drawDynamic(ctx,x0,x1,y0,y1){
       drawActor(ctx,P,P.x+(P.rdx||0),P.y+(P.rdy||0),P.face,P.pose,PAL_HERO,{yo:P.yo,hasSword:true,time:gameTime});ctx.restore();}
     ctx.save();{const lf=L.lifts.length?liftAround():null;if(lf)liftOccl(ctx,lf);} // (in a lift's shaft the walls' front faces round it are nearer than he is)
     figClip(ctx,P.hideMode,P.hideLg,P.state==='dead'?null:wallPress(P.x,P.y,P.face,P.pose));
-    drawActor(ctx,P,P.x+(P.rdx||0),P.y+(P.rdy||0),P.face,P.pose,PAL_HERO,{yo:P.yo,sword:(P.sword&&!!P.foe)||P.state==='lowStrike'||P.state==='poke'||(P.lowSword&&P.state==='crouch')||P.state==='slide',swLen:P.state==='slide'?SL_BLADE:0,hasSword:true,flash:P.flash,alpha:P.state==='exit'?Math.max(0,1-P.t*1.1):undefined,flutter:Math.min(1,Math.abs(P.vx)/90+(P.state==='air'?0.8:0)),time:gameTime});
+    const ex=P.state==='exit'&&P.exS>0;if(ex){const r=L.door.r,c=Math.floor(L.door.x/TW),ctop=r*TH+Math.max(ceilOff(c,r),ceilOff(c+1,r)),x0=L.door.x+HX-12;ctx.beginPath();ctx.rect(x0+0.5,ctop,23,SURF(r)-HY-ctop+40);ctx.clip();} // (on the stairs: inside the doorway, between its posts; the ceiling's front edge takes his head as he rises)
+    drawActor(ctx,P,P.x+(P.rdx||0)+(ex?P.exX:0),P.y+(P.rdy||0)+(ex?P.exY:0),P.face,P.pose,PAL_HERO,{yo:P.yo,sword:(P.sword&&!!P.foe)||P.state==='lowStrike'||P.state==='poke'||(P.lowSword&&P.state==='crouch')||P.state==='slide',swLen:P.state==='slide'?SL_BLADE:0,hasSword:true,flash:P.flash,alpha:P.state==='exit'?Math.max(0,1-Math.max(0,(P.exS||0)-2.6)/2.6):undefined,flutter:Math.min(1,Math.abs(P.vx)/90+(P.state==='air'?0.8:0)),time:gameTime});
     if(P.state==='drink'&&P.dkG&&!P.dkRel&&P.drinkIt)drawHeldFlask(ctx);
     ctx.restore();
   }
@@ -6623,7 +6637,8 @@ function gatherLights(x0,x1,y0,y1){
       // landing found in the room's depth, skyBeam; the v56 glow was wide and lit the wall round it), so the floor round the lit
       // footprint rises out of the dark a little instead of a patch cut out of black (a fill light, the film convention)
       if(bo&&!(o[4]&&own)){const w=false,fy=SURF(Math.floor((o[1]+o[3]-1)/TH)),cy=o[1]+o[3]*0.5,h=Math.max(0,Math.min(fy-4-cy,1/sb.q)),d=sb.per*h;
-        add(o[0]+o[2]/2+sb.dx*d,cy+sb.dy*d-4,Math.max(34,o[2]*0.6+22),w?lk.win:sb.col,0.55*(w?RY_OWN:sb.k),'sky');}}}
+        let blk=false;for(let t=0.15;t<=1.001&&!blk;t+=0.17){const bx=o[0]+o[2]/2+sb.dx*d*t,by=cy+sb.dy*d*t-4;blk=B(L,Math.floor((bx+HX)/TW),Math.floor(by/TH))===WALL;} // (round 15: not where a wall block stands between the opening and its landing)
+        if(!blk)add(o[0]+o[2]/2+sb.dx*d,cy+sb.dy*d-4,Math.max(34,o[2]*0.6+22),w?lk.win:sb.col,0.55*(w?RY_OWN:sb.k),'sky');}}}
   if(P&&!(P.state==='dead'&&P.y>L.rows*TH))add(P.x,P.y-26,84,'205,195,225',0.42,'fill');
   for(const g of G)if(g.alive&&!g.gone)add(g.x,g.y-26,56,'205,195,225',0.22,'fill');
   for(const sn of SN)if(sn.alive&&!sn.gone)add(sn.x,sn.y-4,34,'200,230,170',0.25,'fill');
@@ -6782,7 +6797,7 @@ function ryBeams2D(ctx,a){const sb=skyBeam(),VZ=renderXf.VZ,camD=renderXf.camD,c
     const p=rySprite(s,sb.col,o.fl-o.y),X=o.x+p.x,Y=o.y+p.y;if(X>x1||X+p.w<x0||Y>y1||Y+p.h<y0)continue;dr.push(o,p);}
   if(!dr.length)return;
   const one=(g,o,p)=>{const X=o.x+p.x,Y=o.y+p.y,c0=Math.floor(X/TW),c1=Math.floor((X+p.w)/TW),r0=Math.floor(Y/TH),r1=Math.floor((Y+p.h)/TH);let cut=false;
-    for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++)if(B(L,c,r)===WALL){if(!cut){g.save();g.beginPath();g.rect(X,Y,p.w,p.h);cut=true;}g.rect(c*TW,r*TH,TW,TH);}
+    for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1+1;c++)if(B(L,c,r)===WALL){if(!cut){g.save();g.beginPath();g.rect(X,Y,p.w,p.h);cut=true;}g.rect(c*TW-HX,r*TH,TW,TH);} // (round 15: a wall's front face is drawn HX to the left of its cell; the cut was 8 px off)
     if(cut)g.clip('evenodd');g.drawImage(p.c,X,Y,p.w,p.h);if(cut)g.restore();};
   const fig=e=>{if(!e||e.gone||e.state==='dead'||e.y>L.rows*TH)return;const fx=e.x-26,fy=e.y+(e.yo||0)-84,fw=52,fh=92;
     for(let i=0;i<dr.length;i+=2){const o=dr[i],p=dr[i+1],X=o.x+p.x,Y=o.y+p.y;if(fx<X+p.w&&fx+fw>X&&fy<Y+p.h&&fy+fh>Y){fg.push(e,fx,fy,fw,fh);return;}}};
@@ -8643,6 +8658,10 @@ const GLCSH={
           float cx=floor(xb/7.),vs=.12+.22*h21(vec2(cx,3.7)),av=sb/11.-u_t*vs,ca=floor(av);vec2 ce=vec2(cx,ca);float hm=h21(ce),mo=0.;
           if(hm>.5){vec2 mp=vec2((fract(xb/7.)-.3-.4*h21(ce+7.1)-.1*sin(u_t*.7+hm*40.))*7.,(fract(av)-.25-.5*h21(ce+3.3))*11.);mo=exp(-dot(mp,mp)*1.6)*(.55+.45*sin(u_t*1.3+hm*60.));}
           vec3 lm=texture2D(u_map,v_u).rgb*1.5;float dk=1.-.9*smoothstep(u_bq.y*1.5+.05,u_bq.y*3.5+.2,dot(lm,vec3(.3,.5,.2))); // it shows against the dark, hardly at all where lamps light the stone (the sky's own soft glows round the openings are let through)
+          // (round 15, owner: "the light beams are producing light around corners") a wall block's front face stands in front of the room's
+          // whole depth (it is drawn HX to the left of its cell): no beam, haze or patch reaches a pixel it covers. Taken at four columns
+          // across this quarter-resolution pixel, so the face's edge is a soft one-pixel ramp, not a step
+          float wf=0.;for(int k=0;k<4;k++)wf+=step(.5,tile(w+vec2(8.+(float(k)-1.5)*u_cam.z,0.)).r);T*=1.-.25*wf;
           o=aS*T*(1.-.75*inArch(w));oa=aA*T*u_sk.x*(.7+.6*nz+u_sk.z*mo)*dk*(tile(w).g>.5?.25+.75*smoothstep(0.,26.,-by):1.);}} // (and thins out just above a floor, where the footprint takes over)
       if(u_cau.x>0.){float px=texture2D(u_tm,w/vec2(32.,64.)/u_tsz).b; // water caustics thrown up from the cistern beyond the arches
         if(px>.02){vec2 p=w*vec2(.05,.085);float t=u_t*u_cau.y,c=min(vor(p,t),vor(p*1.37+vec2(7.1,3.3),-t*1.21)); // two layers at their own scale and speed, the lower of the two (Zucconi)
