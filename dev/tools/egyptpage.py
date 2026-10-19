@@ -96,9 +96,11 @@ for t in shots['themes']:
     out.append('<a href="#t%d">%d. %s</a>' % (t['i'], t['i'] + 1, html.escape(t['name'])))
 import egyptround2
 R2, R2NAV = egyptround2.sections(D, REL, img)
-out.append(' · ' + ''.join('<a href="#%s"><b>%s</b></a>' % (k, l) for k, l in R2NAV + [('r17', 'Round 17: sparkle'), ('r16b', 'Round 16b: swing'), ('r16', 'Round 16'), ('r15', 'Round 15'), ('r14', 'Round 14'), ('r13', 'Round 13'), ('rule12', 'Drawing rule'), ('gate12', 'Portcullis'), ('roof12', 'Roof block'), ('sand12', 'Sand shaft'), ('plug12', 'Plugs'), ('belt11', 'Seat and belt'), ('prince10', 'The prince'), ('prince9', 'Prince (round 9)'), ('flasks9', 'Flasks'), ('skyclock', 'Sky clock'), ('jars8', 'Jars (round 8)'), ('prince8', 'Prince (round 8)'), ('objects', 'Light on objects'), ('r7prince', 'Plain prince (round 7)'), ('robbers', 'Robbers'), ('barque', 'Barque clock (superseded)'), ('jars', 'Jars (round 7)'), ('hearts', 'Hearts, panels'), ('tints', 'Softer tints'), ('prince', 'Round 6 prince')]))
+out.append(' · ' + ''.join('<a href="#%s"><b>%s</b></a>' % (k, l) for k, l in R2NAV + [('r18', 'Round 18: jet stream'), ('r17', 'Round 17: sparkle'), ('r16b', 'Round 16b: swing'), ('r16', 'Round 16'), ('r15', 'Round 15'), ('r14', 'Round 14'), ('r13', 'Round 13'), ('rule12', 'Drawing rule'), ('gate12', 'Portcullis'), ('roof12', 'Roof block'), ('sand12', 'Sand shaft'), ('plug12', 'Plugs'), ('belt11', 'Seat and belt'), ('prince10', 'The prince'), ('prince9', 'Prince (round 9)'), ('flasks9', 'Flasks'), ('skyclock', 'Sky clock'), ('jars8', 'Jars (round 8)'), ('prince8', 'Prince (round 8)'), ('objects', 'Light on objects'), ('r7prince', 'Plain prince (round 7)'), ('robbers', 'Robbers'), ('barque', 'Barque clock (superseded)'), ('jars', 'Jars (round 7)'), ('hearts', 'Hearts, panels'), ('tints', 'Softer tints'), ('prince', 'Round 6 prince')]))
 out.append('</nav>')
 out.extend(R2)
+import egyptround18
+out.extend(egyptround18.sections(D, REL, img))
 import egyptround17
 out.extend(egyptround17.sections(D, REL, img))
 import egyptround16c

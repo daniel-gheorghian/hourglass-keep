@@ -5128,7 +5128,7 @@ function graniteGlints(ctx,x0,x1,y0,y1,seed){if(y1<=y0+2)return;const kl=keyLigh
 const SAND_LOOK={west:[232,210,164],blue:[234,216,172],osiris:[218,198,156],nun:[222,202,162],napata:[220,170,108],meroe:[216,162,102],deffufa:[214,164,116],aksum:[204,170,132],hawara:[228,202,152],shali:[232,216,178],foggara:[218,156,96],wells:[232,209,158]};
 let SANDC_K=null;
 function sandC(){const lk=L&&L.theme&&L.theme.look;if(SANDC_K&&SANDC_K.lk===lk)return SANDC_K;const c=SAND_LOOK[lk]||[244,224,172],m=k=>'rgb('+c.map(v=>Math.round(Math.min(255,v+(255-v)*k))).join(',')+')';
-  SANDC_K={lk,body:'rgb('+c.join(',')+')',lit:m(0.55),grain:m(0.25),heap:'rgb('+c.map(v=>Math.round(v*0.9)).join(',')+')'};return SANDC_K;}
+  SANDC_K={lk,body:'rgb('+c.join(',')+')',lit:m(0.55),hi:m(0.8),grain:m(0.25),heap:'rgb('+c.map(v=>Math.round(v*0.9)).join(',')+')'};return SANDC_K;}
 function sandStream(ctx,x,y0,y1,w,k,seed){if(y1<=y0+1)return;const t=gameTime,L1=y1-y0,C=sandC();
   const per=10+seed*3,off=(t*70+seed*40)%per,n=Math.ceil(L1/per)+1; // its density rolls down it in soft swells
   for(let i=0;i<n;i++){const a=y0+i*per-off,a0=Math.max(a,y0),b0=Math.min(a+per,y1);if(b0<=a0)continue;const u=(a0-y0)/L1,sw=0.82+0.18*Math.sin(i*1.9+seed*7),ww=w*(1-0.35*u)*sw;
@@ -6612,8 +6612,8 @@ function drawLiftChain(ctx,f,half){
   const below=fn=>{ctx.save();ctx.beginPath();ctx.rect(X0-40,top-80,2*TW+80,yS+1.6-(top-80));ctx.clip();fn();ctx.restore();}; // (drawn only down to the slot's lower lip)
   // the chain: a heavy link chain up the entry column, over the top, down the exit column and back along the bottom. Its links
   // are laid along the same path the slabs ride (chainPos with a made-up slab), alternate flat and edge-on, and travel with
-  // the chain, so the eye sees at once which strand climbs and which falls. Brass chevrons on the two upright strands point
-  // the way they go (up on the entry side, down on the exit side). A small sprocket sits in each corner of the loop, drawn
+  // the chain, so the eye sees at once which strand climbs and which falls (round 18, owner: the brass chevrons that pointed the
+  // way on the two upright strands are gone; the travelling links or rope lay and the slabs themselves show it). A small sprocket sits in each corner of the loop, drawn
   // behind everyone, so no wheel fills the space he stands in.
   const cp=metalPal('chain'),per=f.per,H=f.yB-f.yT,V=CHAIN_V*gameTime,nl=Math.round(per/6),sp=per/nl,at=s=>chainPos(f,0,(s-f.off)/CHAIN_V);
   const vert=s=>{s=((s%per)+per)%per;return s<H||(s>=H+32&&s<2*H+32);};
@@ -6626,10 +6626,6 @@ function drawLiftChain(ctx,f,half){
     ctx.fillStyle=e?cp[1]:cp[2];ctx.fillRect(q.x-w/2,ly,w,h);ctx.fillStyle=cp[3];ctx.fillRect(q.x-w/2,ly,w,0.7);ctx.fillRect(q.x-w/2,ly,0.7,h); // (a lit top and left edge)
     if(rust&&(k*7)%5<W){ctx.fillStyle=rust;ctx.fillRect(q.x-w/2,ly+h*0.4,w,h*0.6);}
     if(e){ctx.fillStyle='#1b1626';if(v)ctx.fillRect(q.x-0.8,ly+1.6,1.6,h-3.2);else ctx.fillRect(q.x-w/2+1.6,ly+h/2-0.8,w-3.2,1.6);}}
-  const nc=Math.max(2,Math.round(per/56)),sc=per/nc;
-  for(let k=0;k<nc;k++){const s=V+k*sc;if(!vert(s))continue;const q=at(s),d=((s%per)+per)%per<H?-1:1;ctx.save();ctx.translate(q.x,q.y+3);
-    ctx.beginPath();ctx.moveTo(-6,-d*2.5);ctx.lineTo(0,d*3.5);ctx.lineTo(6,-d*2.5);ctx.lineJoin='miter';
-    ctx.strokeStyle='#0b0812';ctx.lineWidth=5;ctx.stroke();ctx.strokeStyle=W>=2?'#c8a060':'#f0c878';ctx.lineWidth=2.4;ctx.stroke();ctx.restore();}
   for(const xx of [xE,xX]){liftWheel(ctx,xx,f.yT+3,7.5,8,CHAIN_V*gameTime/6*f.dx,W);liftWheel(ctx,xx,yS+1,7.5,8,CHAIN_V*gameTime/6*f.dx,W);}});
   for(let i=0;i<f.n;i++){const q=chainPos(f,i,gameTime);
     if(EGP.traps){ctx.fillStyle='#0b0812';ctx.beginPath();ctx.ellipse(q.x,q.y+HY+3,2.6,2,0,0,6.2832);ctx.fill();ctx.fillStyle=ROPE[W][0];ctx.beginPath();ctx.ellipse(q.x,q.y+HY+3,1.7,1.2,0,0,6.2832);ctx.fill();} // lashed to the rope
@@ -6667,6 +6663,97 @@ function drawSecretCue(ctx,x0,x1,y0,y1){const Q=secretCues();if(!Q.length)return
       ctx.beginPath();ctx.moveTo(px2,py-R);ctx.lineTo(px2+R*0.2,py-R*0.2);ctx.lineTo(px2+R,py);ctx.lineTo(px2+R*0.2,py+R*0.2);ctx.lineTo(px2,py+R);ctx.lineTo(px2-R*0.2,py+R*0.2);ctx.lineTo(px2-R,py);ctx.lineTo(px2-R*0.2,py-R*0.2);ctx.closePath();ctx.fill();
       ctx.fillStyle='#fff6d6';ctx.globalAlpha=k;ctx.beginPath();ctx.arc(px2,py,0.3+0.18*R,0,6.2832);ctx.fill();} // (a white-hot core)
     ctx.globalAlpha=1;}}
+// round 18 (owner: "when doing wall jumps from side to side there is also a arrow hint, maybe we can change it to a wind hint, some
+// particles clearly visible, like sand in a jet stream fashion flowing from the entry towards the exit ... think of a chimney and how
+// smoke would look like ... and we should use this kind of jet stream hint in other places like for the swing jump"). The JET STREAM
+// HINT: one routine (jetStream) that blows a thin stream of the theme's sand along a path (a polyline built from arcs, jsPath) with
+// a strength 0..1. What it is made of (sources on the page, round 18):
+//  - a chimney's draft (the stack effect: warm light air rises and pulls the room's air in at the foot): the grains are drawn in
+//    at the entry, slow, and speed up along the shaft (continuity: the flow quickens through a narrowing; JS_ACC);
+//  - a rising plume leaves its source laminar and turns turbulent further up: the sideways wander grows along the path, a few
+//    grains curl in small eddies (wisps) where the flow meets a wall, and at the exit the jet fans out and fades (a free jet spreads);
+//  - saltation streamers: wind-blown sand travels in narrow ribbons and pulses (each comes up quickly and dwindles slowly):
+//    the grains ride in gusts that run down the path (JS_GUST), which is what tells which way it flows without an arrow head;
+//  - a moving grain is drawn as a short streak along its motion (a velocity-stretched particle), longer where it is faster.
+// Each grain is a pure function of the clock and its index (no state, nothing allocated a frame, the same after a rewind); the
+// grains are gathered into four alpha bands, each one path, in three passes (below) in the floor's sand colour (sandC), so a
+// stream is at most twelve strokes. Drawn with the same calls in Torchlight (G2D) and Classic;
+// only when its box is in view. Look only: the generator, the floors, the moves and the bot are unchanged.
+const JS_MAX=96,JS_NP=64,JS_ACC=0.9,JS_GUST=1.7;
+function jsPath(){return {x:new Float32Array(JS_MAX),y:new Float32Array(JS_MAX),s:new Float32Array(JS_MAX),n:0,len:0,bx0:0,bx1:0,by0:0,by1:0};}
+function jsReset(p){p.n=0;p.len=0;p.bx0=p.by0=1e9;p.bx1=p.by1=-1e9;return p;}
+function jsAdd(p,x,y){if(p.n>=JS_MAX)return p;const i=p.n;if(i&&Math.abs(x-p.x[i-1])+Math.abs(y-p.y[i-1])<0.05)return p;p.x[i]=x;p.y[i]=y;p.s[i]=i?p.s[i-1]+Math.hypot(x-p.x[i-1],y-p.y[i-1]):0;p.n++;p.len=p.s[i];
+  if(x<p.bx0)p.bx0=x;if(x>p.bx1)p.bx1=x;if(y<p.by0)p.by0=y;if(y>p.by1)p.by1=y;return p;}
+function jsQuad(p,cx,cy,bx,by,m){const ax=p.x[p.n-1],ay=p.y[p.n-1];for(let k=1;k<=m;k++){const u=k/m,v=1-u;jsAdd(p,v*v*ax+2*u*v*cx+u*u*bx,v*v*ay+2*u*v*cy+u*u*by);}return p;}
+const JSQ={x:0,y:0,tx:0,ty:1};
+function jsAt(p,s){let i=1;const n=p.n;if(s<=0)s=0;else if(s>p.len)s=p.len;while(i<n-1&&p.s[i]<s)i++;
+  const a=i-1,sg=p.s[i]-p.s[a]||1,u=(s-p.s[a])/sg;JSQ.tx=(p.x[i]-p.x[a])/sg;JSQ.ty=(p.y[i]-p.y[a])/sg;JSQ.x=p.x[a]+(p.x[i]-p.x[a])*u;JSQ.y=p.y[a]+(p.y[i]-p.y[a])*u;return JSQ;}
+const JSB=new Float32Array(JS_NP*5);
+// p: the path (jsPath); str: 0..1; v: the grains' speed, px/s; w: the stream's half width, px; seed; the view's box
+function jetStream(ctx,p,str,v,w,seed,x0,x1,y0,y1){
+  if(str<0.02||p.n<2||p.len<10||p.bx1<x0-24||p.bx0>x1+24||p.by1<y0-24||p.by0>y1+24)return;
+  const C=sandC(),t=gameTime,L0=p.len,N=Math.min(JS_NP,Math.max(10,Math.round(L0/3.6*(0.55+0.45*str))));
+  for(let i=0;i<N;i++){const h=hash2(i*131+seed,seed*7+3),r1=(h&255)/255,r2=((h>>>8)&255)/255,r3=((h>>>16)&255)/255,r4=(h>>>24)/255;
+    const vi=v*(0.75+0.55*r1),ph=t*vi/L0+r2,u=ph-Math.floor(ph),s=L0*(u*(1-JS_ACC/2)+u*u*JS_ACC/2),sp=vi*(1-JS_ACC/2+JS_ACC*u); // (it speeds up along the way)
+    const q=jsAt(p,s),hx=q.x,hy=q.y,nx=-q.ty,ny=q.tx,ex=Math.max(0,u-0.72)/0.28,
+      lat=w*((r3-0.5)*(1.3+2.6*ex*ex)+(0.15+0.85*u)*0.6*Math.sin(t*(2.2+3*r4)+u*(5+6*r3)+r2*6.283)); // (laminar at the entry, wandering further on, fanning out at the exit)
+    let ox=nx*lat,oy=ny*lat+ex*ex*w*1.2*(r4-0.6);
+    if(r4<0.3){const cr=w*0.75*Math.sin(Math.PI*u),a=t*(6+4*r1)+r2*9;ox+=Math.cos(a)*cr;oy+=Math.sin(a)*cr;} // (a wisp curling in an eddy)
+    const g=((t/JS_GUST-s/Math.max(60,L0)*1.3+r1*0.45)%1+1)%1,gust=g<0.18?g/0.18:1-(g-0.18)/0.82; // (gusts run down the stream: a quick rise, a slow dwindle)
+    const a=Math.min(1,u/0.14)*Math.min(1,(1-u)/0.24)*(0.6+0.4*gust)*(0.75+0.25*r1)*Math.min(1,str*1.15),
+      sl=clamp(sp*0.075,3,13),tq=jsAt(p,s-sl),i5=i*5;
+    JSB[i5]=hx+ox;JSB[i5+1]=hy+oy;JSB[i5+2]=tq.x+ox*0.85;JSB[i5+3]=tq.y+oy*0.85;JSB[i5+4]=a;}
+  // three passes, each one fill of streaks shaped like a grain's motion blur (a long lens: fine at both ends, widest a third of the
+  // way back from the head; not an arrow head): a soft added glow round each one (so it reads in a dark room), the streak in the
+  // sand's colour, and a small bright grain at its head
+  ctx.save();
+  for(let pass=0;pass<3;pass++){
+    ctx.globalCompositeOperation=pass?'source-over':'lighter';ctx.fillStyle=pass===2?C.hi:pass===1?C.grain:C.lit;const wh=pass===0?1.5:pass===1?0.62:0.5;
+    for(let b=0;b<4;b++){const lo=b*0.25,hi=lo+0.25;let any=false;ctx.beginPath();
+      for(let i=0;i<N;i++){const i5=i*5,a=JSB[i5+4];if(a<=lo||a>hi||a<0.03)continue;any=true;
+        const hx=JSB[i5],hy=JSB[i5+1];let tx=JSB[i5+2],ty=JSB[i5+3],dx=hx-tx,dy=hy-ty;const d=Math.hypot(dx,dy)||1;dx/=d;dy/=d;
+        let L1=d;if(pass===2){L1=Math.min(d,2.4);tx=hx-dx*L1;ty=hy-dy*L1;}else if(pass===0){L1=d+2;tx-=dx*2;ty-=dy*2;}
+        const mx=hx-dx*L1*0.33,my=hy-dy*L1*0.33,hx2=hx+dx*wh*0.8,hy2=hy+dy*wh*0.8;
+        ctx.moveTo(tx,ty);ctx.lineTo(mx-dy*wh,my+dx*wh);ctx.lineTo(hx-dy*wh*0.55,hy+dx*wh*0.55);ctx.lineTo(hx2,hy2);ctx.lineTo(hx+dy*wh*0.55,hy-dx*wh*0.55);ctx.lineTo(mx+dy*wh,my-dx*wh);ctx.closePath();}
+      if(any){ctx.globalAlpha=(pass===0?0.3:1)*(lo+0.25);ctx.fill();}}}
+  ctx.restore();}
+// the places it is used, found once per floor from the tiles (L._jet); the swing's path is made each frame in one kept path
+function jetPlaces(){if(L._jet)return L._jet;const out={shafts:[],jg:[]};
+  for(const d of L.dyn){if(d.f.t!=='shaftfoot')continue;const c=d.c,r=d.r;let tr=r-1,sd=0;
+    for(;tr>0&&r-tr<6;tr--){if(B(L,c+1,tr)===FLOOR){sd=1;break;}if(B(L,c-1,tr)===FLOOR){sd=-1;break;}}
+    if(!sd)continue;const p=jsPath(),ys=SURF(r),ly=SURF(tr),X=c*TW,xs=X+16+sd*6,xo=X+16-sd*6,hb=30; // (his hips plant 9.5 px off the cell's middle; the stream keeps inside the light down the shaft's back wall)
+    jsReset(p);jsAdd(p,X+16,ys-4);                                   // drawn in at the foot
+    const y1=ys-11-hb,yN=ly+21-hb,R=y1-yN,nl=Math.max(2,2*Math.round(R/96));
+    jsQuad(p,X+16,y1+20,xs,y1,6);                                    // up into the wall on the ledge's side
+    for(let k=1;k<=nl;k++){const ax=p.x[p.n-1],bx=k%2?xo:xs,by=y1-R*k/nl;jsQuad(p,ax+(bx-ax)*0.15,by,bx,by,8);} // kick to kick, each arc topping out at the far wall
+    jsQuad(p,xs,ly-hb-8,xs+sd*16,ly-hb,6);jsAdd(p,xs+sd*34,ly-hb+2);   // over the lip and out onto the ledge
+    out.shafts.push({p,c,r0:tr,r1:r,seed:hash2(c,r)&1023});}
+  for(const a of L.path){if(a.a!=='jgrab')continue;const d=a.to>a.from?1:-1;let r=-1;
+    for(let rr=1;rr<L.rows-1&&r<0;rr++){const f=F(L,a.from+d,rr);if(f&&f.t==='jgrab')r=rr;}
+    if(r<1)continue;const ys=SURF(r),ly=SURF(r-1),xe=d>0?a.to*TW-HX+2:(a.to+1)*TW-HX-2,x0=a.from*TW+16+d*14,p=jsPath();jsReset(p);
+    jsAdd(p,x0-d*30,ys-22);jsAdd(p,x0,ys-26);                     // the run-up
+    jsQuad(p,(x0+xe)/2,ly-62,xe-d*6,ly+12,12);                     // the leap, caught at the ledge's edge (Grab held)
+    jsQuad(p,xe-d*4,ly-28,xe+d*16,ly-30,6);jsAdd(p,xe+d*32,ly-28);   // pulled up onto it
+    out.jg.push({p,seed:hash2(a.from,r)&1023});}
+  return (L._jet=out);}
+const JS_SW=jsPath();
+// the swing's throw: from the back of his swing through the bottom, then the flight his Jump would give at the bottom at this
+// amplitude (the same numbers as the 'swing' state's release), down to where he lands or meets a wall
+function jsSwingPath(){const p=jsReset(JS_SW),f=P.bar,bp=barPos(f),fc=P.face,A=Math.min(swAmp(P.swTh,P.swOm),SW_MAX),hb=30,R=34;
+  for(let k=0;k<=8;k++){const th=-A*0.7*(1-k/8);jsAdd(p,bp.x+fc*R*Math.sin(th),bp.y+R*Math.cos(th)+24.5-hb);}
+  const c=2*Math.sin(A/2)/SW_A;let x=bp.x,y=bp.y+R+24.5,vx=fc*(40+165*c),vy=-(60+165*c);const dt=1/30;
+  for(let k=0;k<70;k++){const y0=y;vy=Math.min(vy+GRAV*dt,480);x+=vx*dt;y+=vy*dt;const cc=Math.floor(x/TW),rr=Math.floor((y0+4)/TH);
+    if(B(L,cc,Math.floor((y-20)/TH))===WALL){break;}
+    if(vy>0&&y0<=SURF(rr)&&y>=SURF(rr)&&solidBelow(L,cc,rr)){jsAdd(p,x,SURF(rr)-hb);jsAdd(p,x+fc*14,SURF(rr)-hb+6);break;}
+    if(k%2===1)jsAdd(p,x,y-hb);}
+  return p;}
+function drawJetHints(x0,x1,y0,y1,ctx){const J=jetPlaces(),pc=P?pCol():-1,pr=P?pRow():-1;
+  for(const q of J.shafts){if(q.p.bx1<x0-24||q.p.bx0>x1+24||q.p.by1<y0-24||q.p.by0>y1+24)continue;
+    const inIt=P&&pc===q.c&&pr>=q.r0&&pr<=q.r1&&P.state!=='stand';
+    jetStream(ctx,q.p,(S.learned.shaft?0.65:1)*(inIt?0.85:1),90,3,q.seed,x0,x1,y0,y1);}
+  if(!S.learned.jgrab)for(const q of J.jg)jetStream(ctx,q.p,0.85,95,3.6,q.seed,x0,x1,y0,y1);
+  if(P&&P.state==='swing'&&P.bar&&P.swRdy){const k=clamp((gameTime-(P.swGl||0))/0.4,0,1),fw=P.swOm>0?1:0.5; // (stronger while he swings forward: Jump now)
+    jetStream(ctx,jsSwingPath(),k*fw*(S.learned.swing?0.75:1),125,4,517,x0,x1,y0,y1);}}
 function drawDynamic(ctx,x0,x1,y0,y1){
   hudStones.length=0;
   const th=L.theme,c0=Math.floor(x0/TW)-1,c1=Math.floor(x1/TW)+1,r0=Math.floor(y0/TH)-1,r1=Math.floor(y1/TH)+1;
@@ -6683,10 +6770,9 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     if(cut){ctx.save();ctx.beginPath();ctx.rect(X-200,Y-200,TW-HX+200,TH+400);ctx.clip();}
     switch(f.t){
       case'stone':drawStone(ctx,o,f);break;
-      case'shaftfoot':{let tr=o.r-1;while(tr>0&&B(L,o.c+1,tr)!==FLOOR&&o.r-tr<5)tr--;const yt=SURF(tr)-HY-2,yb=Y+2; // a kick shaft: light falling down its back wall, chipped grips on both sides, a pulse of chevrons pointing up
-        if(B(L,o.c+1,tr)===FLOOR&&yb-yt>20){const gl=ctx.createLinearGradient(0,yt,0,yb);gl.addColorStop(0,'rgba(236,228,200,.34)');gl.addColorStop(1,'rgba(236,228,200,.04)');ctx.fillStyle=gl;ctx.fillRect(X+8,yt,16,yb-yt);
-          for(let yy=yt+10,i=0;yy<yb-6;yy+=14,i++){const sd=i%2?1:-1;ctx.fillStyle='#0b0812';ctx.fillRect(X+(sd<0?3:25),yy,4.4,3.4);ctx.fillStyle='rgba(235,226,200,.7)';ctx.fillRect(X+(sd<0?3.6:25.6),yy+0.4,3.2,1.2);}
-          const ph=(gameTime*1.2)%1;ctx.strokeStyle='rgba(255,236,170,'+(0.55*(1-ph))+')';ctx.lineWidth=1.6;ctx.lineCap='round';ctx.beginPath();for(const q of [0,10]){const cy=yb-18-q-ph*14;ctx.moveTo(X+10,cy+4);ctx.lineTo(X+16,cy-2);ctx.lineTo(X+22,cy+4);}ctx.stroke();ctx.lineCap='butt';}
+      case'shaftfoot':{let tr=o.r-1,sd=0;for(;tr>0&&o.r-tr<5;tr--){if(B(L,o.c+1,tr)===FLOOR){sd=1;break;}if(B(L,o.c-1,tr)===FLOOR){sd=-1;break;}}const yt=SURF(tr)-HY-2,yb=Y+2; // a kick shaft: light falling down its back wall and chipped grips on both sides (round 18: the pulse of chevrons pointing up is now the jet stream hint, drawJetHints; and a shaft whose ledge is on the left is drawn too)
+        if(sd&&yb-yt>20){const gl=ctx.createLinearGradient(0,yt,0,yb);gl.addColorStop(0,'rgba(236,228,200,.34)');gl.addColorStop(1,'rgba(236,228,200,.04)');ctx.fillStyle=gl;ctx.fillRect(X+8,yt,16,yb-yt);
+          for(let yy=yt+10,i=0;yy<yb-6;yy+=14,i++){const sd=i%2?1:-1;ctx.fillStyle='#0b0812';ctx.fillRect(X+(sd<0?3:25),yy,4.4,3.4);ctx.fillStyle='rgba(235,226,200,.7)';ctx.fillRect(X+(sd<0?3.6:25.6),yy+0.4,3.2,1.2);}}
         break;}
       case'sanctum':{const ch=L.ext.chase,glow=ch&&ch.done?0.25:0.6+0.25*Math.sin(gameTime*3);ctx.strokeStyle='rgba(255,226,160,'+glow+')';ctx.lineWidth=2;
         ctx.beginPath();ctx.moveTo(X+4,ys-2);ctx.lineTo(X+4,Y+10);ctx.quadraticCurveTo(X+16,Y-6,X+28,Y+10);ctx.lineTo(X+28,ys-2);ctx.stroke();break;}
@@ -6768,6 +6854,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     for(let i=0;i<3;i++){const a=gameTime*1.1+i*2.1,k=(Math.sin(a)+1)/2,px=sx+Math.cos(i*2.1+gameTime*0.3)*9,py=sy+Math.sin(i*1.3+gameTime*0.4)*7,R=1.5+3.6*k;
       ctx.fillStyle='rgba(255,230,150,'+(0.35+0.6*k)+')';ctx.beginPath();ctx.moveTo(px,py-R);ctx.lineTo(px+R*0.22,py-R*0.22);ctx.lineTo(px+R,py);ctx.lineTo(px+R*0.22,py+R*0.22);ctx.lineTo(px,py+R);ctx.lineTo(px-R*0.22,py+R*0.22);ctx.lineTo(px-R,py);ctx.lineTo(px-R*0.22,py-R*0.22);ctx.closePath();ctx.fill();}}
   drawSecretCue(ctx,x0,x1,y0,y1);
+  drawJetHints(x0,x1,y0,y1,ctx);
   for(const it of L.items)if(!it.taken&&inRoom(it.c,it.r))drawFlask(ctx,it);
   drawLooseFlasks(ctx);
   if(EGP.traps)for(const o of L.dyn){if(o.f.t!=='loose'||o.f.plank||!inRoom(o.c,o.r))continue;const k=looseWell(o);if(k)drawWellSand(ctx,o,o.f,k);}
@@ -9550,7 +9637,7 @@ addEventListener('orientationchange',()=>setTimeout(layout,120));
 if(window.claude&&window.claude.hot&&window.claude.hot.snapshot){try{window.claude.hot.snapshot(()=>({save:S}));}catch(e){}}
 
 // test hooks
-window.__HK={tapCloth,THEMES,progOf,themeName,hint,learn,HINTS,HINT_MOVE,get banner(){return banner;},set banner(v){banner=v;},genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
+window.__HK={jetPlaces,jsSwingPath,jetStream,tapCloth,THEMES,progOf,themeName,hint,learn,HINTS,HINT_MOVE,get banner(){return banner;},set banner(v){banner=v;},genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
   load(n,seed,test){clearInput();quiet=!!test;L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;mode="play";intro=0;FX.length=0;STORMG.length=0;clearRooms();cam.snap=true;updateCamera(0);return L;},
   loadMap(spec){return spec;},
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},

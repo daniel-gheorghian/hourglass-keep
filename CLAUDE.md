@@ -140,6 +140,15 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   floor from the tiles and kept in `L._scue`; `drawSecretCue` in `drawDynamic`): an ascent on the ledge he grabs, lifting a little; a
   descent on the floor edge he hangs from, slipping toward the hole. Gone once the flask is taken. Look only, both modes, no allocation a
   frame; the hint is `secret` (up) or `secretdn` (down). Pictures: `egyptr17.py`.
+- No arrows in the world (round 18, owner): the paternoster's brass chevrons are gone, and the kick shaft's chevrons became the jet
+  stream hint: `jetStream(ctx,path,strength,speed,width,seed,view)` blows grains of the floor's sand (`sandC()`: grain, hi, lit) along a
+  path built once with `jsPath`/`jsAdd`/`jsQuad` (a chimney's draft: drawn in slowly at the entry, quickening, wandering more further on,
+  wisps curling, fanning out and fading at the exit; gusts with a quick rise and slow fade run down it). Grains are a pure function of the
+  clock (no state, no allocation a frame, rewind-safe), four alpha bands, three fills (glow, lens-shaped streak, bright head); only in view.
+  Used by `drawJetHints` (in `drawDynamic`, places found once per floor in `L._jet` by `jetPlaces`): every kick shaft, either side (full
+  until `shaft` is learned, then 0.65); the swing's throw while `P.swRdy` (`jsSwingPath`, the release's own numbers: lands within ~7 px);
+  the jgrab jump only until `jgrab` is learned. Not on gap jumps, lifts, banners, hurtdrops or secrets (clutter, or against their look).
+  A new place is one entry in `jetPlaces` and one call. Pictures: `egyptr18.py`.
 - Fighters (unit GB): guards and snakes are not traps; each floor has a small budget (`guardBudget(n,x,barracks)`, `snakeBudget`, own
   stream `gbrng`, seed constant 8317). Guards per floor: floor 1: 1, floor 2: 0, floors 3-5: 2, 6-11: 3-4, 12-19: 4-5, 20 on: 5-6; the
   budget counts the guards, the reinforcements they call, the ambush at a secret passage's flask and the captain. A barracks floor
