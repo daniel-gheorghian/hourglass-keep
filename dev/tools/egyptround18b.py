@@ -42,7 +42,7 @@ def sections(D, REL, img):
             '<li><b>Kept, not seen in play</b>: the iron chains of the lifts and the chained lanterns of the palace and tile lamps are still in the code behind the debugging switches EGP.traps and EGP.lamps (off, they draw the v61 looks for comparison); with the switches on, as shipped, none is drawn. '
             'Not chains: the Meroë lamp hangs on its own bronze hook from a bracket (Boston MFA 24.959); the gates\' and lifts\' gratings are stone slabs; the guards wear no mail; there are no shackles, chandeliers or chains in the HUD or the menus. The word "chain" survives only in code names (the paternoster is <code>t:\'chain\'</code>, the hidden passage\'s "crumbling chain" of floor tiles).</li></ul>'
             '<h3>Pictures</h3>' +
-            fig(img, 'r18b_swing.png', 'The swing, round 18a and 18b: the Halls of the West and the Green Hall of Osiris, Torchlight and Classic, 1:1 (above) and the anchor at 2x (below)') +
+            '<p class="meta">The still sheet of the swing is retired (the film above shows it): its figure had the hump on the back that round 19 took out (r19_pose.png).</p>' +
             fig(img, 'r18b_swing.gif', 'Pumping and the throw, 18a (left) and 18b (right), Torchlight, 0.1 s a frame: the ropes swing with the bar from the log') +
             fig(img, 'r18b_rigs.png', 'The rig in the twelve themes\' fibres and timbers, Torchlight, 1:1 (floors: %s)' % rigs) +
             fig(img, 'r18b_chains.png', 'The other chains, before and after, Torchlight and Classic, 2x: the pendulum\'s pivot, a fallen lamp\'s scar in an opening, the fallen lantern (tile style), Siwa\'s hanging lamp') +

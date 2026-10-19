@@ -2090,9 +2090,9 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
     const sp=(u,o2)=>{const a=1-u;let gx=2*a*cp[0]+2*u*(E[0]-cp[0]),gy=2*a*cp[1]+2*u*(E[1]-cp[1]);const g=Math.hypot(gx,gy)||1;gx/=g;gy/=g;return [2*a*u*cp[0]+u*u*E[0]-gy*o2,2*a*u*cp[1]+u*u*E[1]+gx*o2];};
     const TS=U.map(u=>{const a=1-u;let gx=2*a*cp[0]+2*u*(E[0]-cp[0]),gy=2*a*cp[1]+2*u*(E[1]-cp[1]);const g=Math.hypot(gx,gy)||1;gx/=g;gy/=g;return [2*a*u*cp[0]+u*u*E[0],2*a*u*cp[1]+u*u*E[1],-gy,gx];});
     const fo=U.map((u,i)=>Fo[i]+ra*(u>0.5&&u<0.85?0.35:u>0.2&&u<0.5?-0.3:0)+tw2*0.5*sstep((u-0.55)/0.2)-(u>0.25&&u<0.55?Math.max(0,fl)*0.3:0)),
-      bo=U.map((u,i)=>Bo[i]+ra*0.9*sstep((u-0.65)/0.2)-tw2*0.3*sstep((u-0.55)/0.2)+(u>0.3&&u<0.7?Math.max(0,fl)*0.4:0)+(u<0.2?Math.max(0,fl)*0.5:0)); // (a flexed hip rounds the seat)
+      bo=U.map((u,i)=>Bo[i]-ra*1.3*sstep((u-0.74)/0.22)-tw2*0.3*sstep((u-0.55)/0.2)+(u>0.3&&u<0.7?Math.max(0,fl)*0.4:0)+(u<0.2?Math.max(0,fl)*0.5:0)); // (a flexed hip rounds the seat)
     const iv=(A,u)=>{let i=0;while(i<U.length-2&&u>U[i+1])i++;const k=clamp((u-U[i])/(U[i+1]-U[i]),0,1);return A[i]+(A[i+1]-A[i])*k;};
-    TG={U,TS,fo,bo,sp,F:u=>iv(fo,u),B:u=>iv(bo,u),fl};}
+    TG={U,TS,fo,bo,sp,F:u=>iv(fo,u),B:u=>iv(bo,u),fl,ra};}
   if(pal.hero&&!EG){const nk=[s.sh[0]-nx*1.5+tx*1,s.sh[1]-ny*1.5+ty*1];const sc=trail(nk,5,3.2,wind,t,0.6+0.4*Math.min(1,Math.abs(vx)/90),0);
     tcel(ctx,sc,[3.0,2.8,2.5,2.1,1.6,1.0],C('sash'),D('sash'),O);}
   if(!pal.pleat){const w0=at(0.16),wa=TG?TG.sp(0.28,-TG.B(0.28)):[w0[0]-nx*4,w0[1]-ny*4];const st=trail(wa,2,2.6,wind,t+0.3,0.5,1.7);tcel(ctx,st,[2.2,1.8,1.2],D('sash',-0.2),shadeHex(D('sash',-0.2),-0.25),O);}
@@ -2110,7 +2110,8 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
   const BT=(path,pts,ws,base,shadow)=>{if(O.mono)return;ctx.fillStyle=shadow;ctx.fill(path);const ux=O._lx,uy=O._ly; // (tcel's fills)
     ctx.fillStyle=base;ctx.fill(tubePath(pts.map(q=>[q[0]+ux*0.38,q[1]+uy*0.38]),ws.map(w=>Math.max(0.5,w-1.0))));
     if(O._lk>0.05){ctx.fillStyle=litTint(base,O._lc,O._lk);ctx.fill(tubePath(pts.map(q=>[q[0]+ux*1.0,q[1]+uy*1.0]),ws.map(w=>Math.max(0.4,w-2.3))));}};
-  const armG=(sh,e,h,a,fist)=>{const k=clamp(Math.sin(a),-1,1)*0.9,r0=[sh[0]+nx*k-tx*0.7,sh[1]+ny*k-ty*0.7], // (the shoulder goes forward and back with the arm's swing)
+  const armG=(sh,e,h,a,fist)=>{const k=clamp(Math.sin(a),-1,1)*0.9-(TG?TG.ra*sstep((Math.abs(a)-1.7)/0.9)*0.8:0),r0=[sh[0]+nx*k-tx*0.7,sh[1]+ny*k-ty*0.7], // (round 19: a raised arm rises from the back of the shoulder, the scapula turned up under it)
+      // (the shoulder goes forward and back with the arm's swing)
       dx=e[0]-r0[0],dy=e[1]-r0[1],d=Math.hypot(dx,dy)||1,fx=dy/d,fy=-dx/d,ex=h[0]-e[0],ey=h[1]-e[1],de=Math.hypot(ex,ey)||1,gx=ey/de,gy=-ex/de,
       U=(u,o2)=>[r0[0]+dx*u+fx*o2,r0[1]+dy*u+fy*o2],V=(u,o2)=>[e[0]+ex*u+gx*o2,e[1]+ey*u+gy*o2];
     const pts=[r0,U(0.22,0.25),U(0.56,0.35),e,V(0.3,0.2),V(0.86,0)],ws=LN?[5.2,4.4,3.9,2.8,3.2,2.0]:[5.8,5.0,4.5,3.1,3.6,2.3]; // deltoid, biceps, elbow, forearm, wrist
@@ -4304,10 +4305,26 @@ function settleLevel(LL){const sv=L;L=LL;try{settleLights();L.hangings=planHangi
 function lightWear(t){const x=t.c*TW+16,y=SURF(t.r)-38;return inBreach(x,y,true)||inBreach(x,y-14,true)||inBreach(x,y+10,true)?3:wearLevel(x,y);}
 function lampSpot(c,r){if(c<1||c>=L.cols-1||r<1||r>=L.rows)return false;if(L.base[r*L.cols+c]!==FLOOR||F(L,c,r))return false;
   if(L.door&&L.door.r===r&&Math.abs(L.door.c-c)<=2)return false;if(L.start&&L.start.r===r&&Math.abs((L.start.door===undefined?1:L.start.door)-c)<=1)return false;return true;}
-function settleLights(){const add=[];
+// (round 19, owner: "sometimes lamps or torches are placed just like that, I would avoid them": a lamp at the end of a run, against
+// the front face of the step up, sat half over the face, which stands HX in front of its cell) a lamp burns only where both cells
+// beside it are plain floor: no wall face or step, no ledge, no gate, banner, bar, pendulum, lift or its plate, no lift shaft beside
+// it, no water clock or door near. One that is not is moved along its row to the nearest such place (never nearer than 3 columns
+// to another lamp), so each stretch keeps its light; only one with no place within 6 columns is put out. No generator stream is read.
+const LAMP_NEXT=new Set(['gate','lift','sandcol','chain','banner','shaftfoot','bar','pend','lplate']);
+function lampClear(c,r){if(!lampSpot(c,r))return false;
+  for(const d of [-1,1]){const b=L.base[r*L.cols+c+d];if(b===WALL||!solidBelow(L,c+d,r))return false;const f=F(L,c+d,r);if(f&&LAMP_NEXT.has(f.t))return false;}
+  for(const lf of L.lifts)if(c>=lf.ca-1&&c<=lf.cb+1&&r>=lf.rT&&r<=lf.rB)return false;
+  return !L.cps.some(q=>q.r===r&&Math.abs(Math.floor(q.x/TW)-c)<=1);}
+function lampsClear(){const out=[];
+  for(const t of L.torches){if(lampClear(t.c,t.r)){out.push(t);continue;}
+    for(const k of [1,-1,2,-2,3,-3,4,-4,5,-5,6,-6]){const q={c:t.c+k,r:t.r};
+      if(!lampClear(q.c,q.r)||out.concat(L.torches).some(o=>o!==t&&o.r===q.r&&Math.abs(o.c-q.c)<3))continue;
+      t.c=q.c;out.push(t);break;}}
+  L.torches=out;}
+function settleLights(){const add=[];lampsClear();
   for(const t of L.torches){if(lightWear(t)<2)continue;t.broken=true;
-    for(const k of [1,-1,2,-2,3,-3,4,-4]){const q={c:t.c+k,r:t.r};
-      if(!lampSpot(q.c,q.r)||lightWear(q)>=2)continue;
+    for(const k of [1,-1,2,-2,3,-3,4,-4,5,-5,6,-6]){const q={c:t.c+k,r:t.r};
+      if(!lampClear(q.c,q.r)||lightWear(q)>=2)continue;
       if(L.torches.concat(add).some(o=>!o.broken&&o.r===q.r&&Math.abs(o.c-q.c)<4))continue;
       add.push(q);break;}}
   L.torches.push(...add);
@@ -5157,7 +5174,7 @@ function stoneBox(ctx,kind,x0,yt,w,h,o){const K='#0b0812',S=4,TX=stoneTex(kind,7
   if(o.side){ctx.save();ctx.transform(1,-dy/dx,0,1,x0+w,yt);ctx.drawImage(TX,56*S,12*S,Math.max(1,dx)*S,Math.min(60,h)*S,0,0,dx,h);ctx.fillStyle='rgba(20,10,16,.34)';ctx.fillRect(0,0,dx,h);ctx.restore();}
   if(o.polish){ctx.fillStyle='rgba(255,244,234,.28)';ctx.fillRect(x0,yt,0.8,h);}
   const F=[[x0,yt],[x0+w,yt],[x0+w,yt+h],[x0,yt+h]];stoneWear(ctx,F,o.wear||0,o.seed||1,o.dust);
-  if(o.near){ctx.strokeStyle=K;ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(x0+dx-0.4,yt-dy-0.4);ctx.lineTo(x0-0.4,yt-0.4);ctx.lineTo(x0-0.4,yt+h+0.4);ctx.lineTo(x0+w+0.4,yt+h+0.4);ctx.lineTo(x0+w+dx+0.4,yt+h-dy+0.4);ctx.stroke();}
+  if(o.near&&!o.nostroke){ctx.strokeStyle=K;ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(x0+dx-0.4,yt-dy-0.4);ctx.lineTo(x0-0.4,yt-0.4);ctx.lineTo(x0-0.4,yt+h+0.4);ctx.lineTo(x0+w+0.4,yt+h+0.4);ctx.lineTo(x0+w+dx+0.4,yt+h-dy+0.4);ctx.stroke();}
   if(o.side&&(o.wear||0)>=2)stoneWear(ctx,[[x0+w,yt],[x0+w+dx,yt-dy],[x0+w+dx,yt+h-dy],[x0+w,yt+h]],o.wear-1,(o.seed||1)+5,false);
   return TX;}
 // The roof block (round 12, owner: "again the perspective, it is wrong"; "respect the level theme for the stone and the damage"). It is
@@ -6646,14 +6663,34 @@ function drawLiftCounterweight(ctx,f,half){
 // wall the outlet it drains through (seen once the sand is gone). Drawn inside the walls' front faces (liftOccl) like the other lifts.
 function drawSandLift(ctx,f,half){if(half)return;const th=L.theme,ys=f.y,bot=SURF(f.rB),W=liftWear(f),X=f.sc*TW,top=f.rT*TH,h=ys-f.yT;
   ctx.save();liftOccl(ctx,f);
-  ctx.save();liftOcclSide(ctx,f);liftShaftBack(ctx,X,TW,top,bot,W);
+  ctx.save();liftOcclSide(ctx,f);ctx.beginPath();ctx.rect(X-HX,f.yT-HY,TW,bot-f.yT+HY);ctx.clip(); // (round 19) seen through the hole only: under the top slab's back edge, between the front planes of the cells beside it (its right groove lay over the next floor tile's top and lip)
+  liftShaftBack(ctx,X,TW,top,bot,W);
   const ox=X+16+HX;ctx.fillStyle='rgba(6,4,10,.92)';ctx.beginPath();ctx.moveTo(ox-5,bot-HY+0.5);ctx.lineTo(ox-5,bot-HY-5);ctx.quadraticCurveTo(ox,bot-HY-7.5,ox+5,bot-HY-5);ctx.lineTo(ox+5,bot-HY+0.5);ctx.closePath();ctx.fill(); // the outlet
   ctx.restore();
   if(ys<bot-0.5)sandCut(ctx,X-HX,ys+HY+5,bot+HY,f.yT+HY+5,h,f.s===1&&f.tm>=SAND_LW,f.sc*131+f.rT*7);
   if(f.s===1&&f.tm<SAND_LW+0.3){const k=Math.max(0,1-Math.abs(f.tm-SAND_LW)/0.3);if(k>0.02)dustCloud(ctx,X+16-HX,ys+HY+3,0.12+0.2*(1-k),0.6,0.55,0);} // a puff as it first gives
   if(f.s===1&&f.tm>=SAND_LW&&ys>f.yT+2)for(const ex of [X-HX+1.6,X+TW-HX-1.6])sandFlow(ctx,ex,f.yT+HY+5,ys+HY+1,0.16,ex*0.07); // grains left on the shaft's sides running down the gap after it (they stop when it does)
-  liftSlab(ctx,X,ys,th,W,hash2(f.sc,f.rB));
+  // (round 19) the cells on the shaft's right are nearer than the slab's back right corner once it has left a landing: a wall's
+  // front face, or a floor tile's lip and top (whose left edge is the hole's right edge, the depth diagonal); cut away from it
+  ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);const xr=X+TW-HX;
+  for(let r=f.rT;r<=f.rB;r++){if(B(L,f.sc+1,r)===WALL)ctx.rect(xr,r*TH,TW,TH);
+    else if(solidBelow(L,f.sc+1,r)){const sy=SURF(r);ctx.moveTo(xr,sy+HY+9);ctx.lineTo(xr+TW+DX,sy+HY+9);ctx.lineTo(xr+TW+DX,sy-HY);ctx.lineTo(xr+DX,sy-HY);ctx.lineTo(xr,sy+HY);ctx.closePath();}}
+  ctx.clip('evenodd');
+  sandSlab(ctx,X,ys,th,W,hash2(f.sc,f.rB));
   ctx.restore();}
+// (round 19, owner: the sand lift's platform "doesn't respect perspective") the slab is a floor tile of the theme's stone, cut to
+// the shaft: its lip (front face) on the front plane over the whole cell, X-HX to X+TW-HX, exactly where the floor tiles' lips are,
+// its top running back DX right and DY up from the lip like theirs. It was drawn as a free box: its right side face and a black
+// outline round all of it lay over the next floor tile's top and lip (at the top and the bottom of the shaft) and its lip stopped half
+// a pixel short of each edge. Now no side face (beside it there is always either floor it abuts or a wall whose front face is nearer)
+// and no outline over the top; only the slab's left edge and the lip's foot are inked, where it meets the open shaft and its shadow.
+function sandSlab(ctx,X,ys,th,W,seed){
+  if(!EGP.traps){liftSlab(ctx,X,ys,th,W,seed);return;}
+  const fx=X-HX,ft=ys+HY,K='#0b0812';
+  ctx.fillStyle='rgba(0,0,0,.28)';ctx.fillRect(fx,ft+5,TW,3); // the lip's shadow, as under a floor tile's
+  stoneBox(ctx,THEME_STONE[th.look]||'limestone',fx,ft,TW,5,{top:true,side:false,near:true,wear:W,seed,nostroke:true});
+  ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(fx,ft,TW,0.8); // the arris between top and lip, as the floor's
+  ctx.strokeStyle=K;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(fx+DX,ys-HY);ctx.lineTo(fx+0.5,ft);ctx.lineTo(fx+0.5,ft+5.5);ctx.lineTo(fx+TW,ft+5.5);ctx.stroke();}
 // 2. the chain-loop lift: a bronze gear at the top and the bottom, an endless chain round them, and slabs fixed to the chain.
 // The bottom run turns in a slot along the floor of the shaft's foot (the floor the slabs ride over there): only the upper
 // halves of its gears and the links in the slot show, not a chain lying on the stone.
@@ -6989,12 +7026,11 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     if(!g.alive&&DISS.on&&g.t>DISS.t0)dissolveGuard(ctx,g,(g.t-DISS.t0)/DISS.dur,c=>drawActor(c,g,g.x,g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:false,hasSword:!g.skel,pale:true,flash:g.flash})); // S3-A: crumbles into sand
     else{if(g.dz)g.dz.on=false;drawActor(ctx,g,g.x+(wc?wc.dx:0),g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:(g.alive&&g.state!=='idle'&&g.state!=='drop'),hasSword:!g.skel,pale:true,flash:g.flash,alpha:g.alive||DISS.on?undefined:clamp(1-(g.t-1.1)/0.8,0,1)});}ctx.restore();}
   if(P&&!(P.state==='dead'&&P.cause==='fall'&&P.y>L.rows*TH)&&!LIFT_DBG.rider){
-    // behind the wall's face he is dimmed while he moves (jumping up, climbing), so a climb reads as one continuous move;
-    // once he hangs still the wall covers him as in PoP1, where a wall's front is drawn over the Kid (SDLPoP draw_tile_fore)
-    const dimA=P.state==='hang'?0.4*Math.max(0,1-P.t/0.3):0.4;
-    if(P.hideMode>0&&P.hideLg&&dimA>0.01){
-      const lg=P.hideLg;ctx.save();ctx.beginPath();if(P.hideMode===2)ctx.rect(-1e5,lg.ys+1.5,2e5,1e5);else ctx.rect(lg.xe-HX,lg.ys+1.5,TW,HANG+16);ctx.clip();ctx.globalAlpha=dimA;
-      drawActor(ctx,P,P.x+(P.rdx||0),P.y+(P.rdy||0),P.face,P.pose,PAL_HERO,{yo:P.yo,hasSword:true,time:gameTime});ctx.restore();}
+    // behind a wall's face (jumping up to, hanging from, climbing onto or down from a ledge on the wall's near side) the wall covers
+    // him as in PoP1: SDLPoP draws every wall's front piece over the Kid (draw_tile_fore: tiles_20_wall into the foretable) and
+    // clip_char cuts his sprite at the wall's edge while he hangs or climbs facing left; the Apple II draws block fronts on the
+    // foreground layer after the characters (FRAMEADV.S drawfrnt, addfore). Only his hands show above the ledge. (Round 19, owner:
+    // "the prince is visible when hanging by a ledge": until now a 0.4 ghost of him was drawn through the wall while he moved.)
     ctx.save();{const lf=L.lifts.length?liftAround():null;if(lf)liftOccl(ctx,lf);} // (in a lift's shaft the walls' front faces round it are nearer than he is)
     figClip(ctx,P.hideMode,P.hideLg,P.state==='dead'?null:wallPress(P.x,P.y,P.face,P.pose));
     const ex=P.state==='exit'&&P.exS>0;if(ex){const r=L.door.r,c=Math.floor(L.door.x/TW),ctop=r*TH+Math.max(ceilOff(c,r),ceilOff(c+1,r)),x0=L.door.x+HX-12;ctx.beginPath();ctx.rect(x0+0.5,ctop,23,SURF(r)-HY-ctop+40);ctx.clip();} // (on the stairs: inside the doorway, between its posts; the ceiling's front edge takes his head as he rises)
@@ -8761,13 +8797,21 @@ function glMask(lights,VZ,camD,camDY){
     const red=lightSprite('255,0,0');GLCH.length=0;
     if(P.state!=='dead'&&P.state!=='dying'&&P.state!=='exit'&&!(P.y>L.rows*TH))GLCH.push(P);
     for(const e of G)if(e.alive&&!e.gone&&e.x>cx-50&&e.x<cx+vw+50)GLCH.push(e);
-    for(const e of GLCH){const low=e.state==='crouch'||e.state==='slide'||e.state==='lowStrike';sh+=glShadow(g,e.x,e.y+(e.yo||0),low?.62:1,lights,red,e);}
+    for(const e of GLCH){const low=e.state==='crouch'||e.state==='slide'||e.state==='lowStrike',hid=e===P&&P.hideMode>0&&P.hideLg;if(hid){g.save();figClip(g,P.hideMode,P.hideLg,null);} // (round 19: what the wall hides of him casts no shadow either)
+      sh+=glShadow(g,e.x,e.y+(e.yo||0),low?.62:1,lights,red,e);if(hid)g.restore();}
     if(sh){ // carve the figures themselves out, and the solid blocks and slabs in front of the wall: the shadow falls on the back wall only
       const cyan=lightSprite('0,255,255');g.globalCompositeOperation='multiply';g.globalAlpha=.85;
       for(const e of GLCH)g.drawImage(cyan,e.x-16,e.y-60,32,60);
       g.globalAlpha=1;g.fillStyle='#0ff';
       const c0=Math.max(0,Math.floor(cx/TW)-1),c1=Math.min(L.cols-1,Math.ceil((cx+vw)/TW)),r0=Math.max(0,Math.floor(cy/TH)-1),r1=Math.min(L.rows-1,Math.ceil((cy+vh)/TH));
-      for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++){const b=B(L,c,r);if(b===WALL)g.fillRect(c*TW,r*TH,TW,TH);else if(b===FLOOR){const ys=SURF(r);g.fillRect(c*TW,ys-DY,TW+DX,DY+9);}}
+      // (round 19) as they are drawn: a wall's front face HX left of its cell, its top and right side faces up and to the right; a
+      // floor's lip and its top face. (They were carved at the cell, so the left HX px of every wall's face took the shadow: a dark
+      // figure on the lit face of the block under the ledge he hung from, with a lamp beside it.)
+      g.beginPath();
+      for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++){const b=B(L,c,r),bx=c*TW-HX;
+        if(b===WALL){const by=r*TH;g.moveTo(bx,by+TH);g.lineTo(bx,by);g.lineTo(bx+DX,by-DY);g.lineTo(bx+TW+DX,by-DY);g.lineTo(bx+TW+DX,by+TH-DY);g.lineTo(bx+TW,by+TH);g.closePath();}
+        else if(b===FLOOR){const ys=SURF(r),ft=ys+HY;g.moveTo(bx,ft+8);g.lineTo(bx,ft);g.lineTo(bx+DX,ys-HY);g.lineTo(bx+TW+DX,ys-HY);g.lineTo(bx+TW,ft);g.lineTo(bx+TW,ft+8);g.closePath();}}
+      g.fill();
       g.globalCompositeOperation='lighter';any=1;}}
   if(GLFX.heat){
     const green=lightSprite('0,255,0'),forge=L.theme.style==='forge',hk=S.set.calm?0.3:1; // (calm: a third of the shimmer)
