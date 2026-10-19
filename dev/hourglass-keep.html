@@ -3648,6 +3648,7 @@ const HINTS={
   block:'A loose block. Hold Grab and press toward it to push, away to pull. Its weight holds a plate down for good, and you can climb over it.',
   chase:'A granite plug is sliding down the corridor behind you. Keep running and jump everything in your way; the arch at the far end stops it.',
   secret:'Something glints up there. Side passages without gates hide gold flasks.',
+  secretdn:'Something glints at the edge of that drop. Side passages without gates hide gold flasks.',
   fork1:'Two ways on. Drop through the hole and fight a guard, or jump it and take the long way with its traps.',
   fork3:'Two ways on. The hole is short but crowded with traps; the long way round is quieter.',
   fork4:'A grating over a deep shaft. There is no way through. Crouch on it and hold Down to look: something waits below, behind a violet gate.',
@@ -3698,7 +3699,7 @@ function checkHints(){
     for(const o of L.dyn)if(o.f.t==='pend'&&o.r===r&&Math.abs(o.c*TW+16-P.x)<110)hint('pend');
     for(const o of L.dyn){if(o.r!==r)continue;const dx=Math.abs(o.c*TW+16-P.x);if(o.f.t==='saw'&&dx<120)hint('saw');if(o.f.t==='darter'&&dx<200)hint('darts');}
     for(const bl of L.ext.blocks)if(bl.r===r&&Math.abs(bl.c*TW+16-P.x)<90)hint('block');
-    if(L.secret&&Math.abs(L.secret.c*TW+16-P.x)<120&&Math.abs(L.secret.r-r)<=1&&L.items.some(it=>it.hidden&&!it.taken))hint('secret');
+    if(L.secret&&Math.abs(L.secret.c*TW+16-P.x)<120&&Math.abs(L.secret.r-r)<=1&&L.items.some(it=>it.hidden&&!it.taken))hint(L.secret.gal?'secret':'secretdn');
     if(L.door.r===r&&Math.abs(L.door.x-P.x)<120){if(L.door.open<0.95)hint('door');else hint('enter');}
   }
   if(hintQ.length&&intro>0)hintQ[0].t=gameTime; // the floor's title comes first
@@ -6637,6 +6638,35 @@ function drawLiftChain(ctx,f,half){
     ctx.fillStyle='rgba(6,4,10,.5)';ctx.fillRect(q.x-16-HX+1,q.y+HY+6,30,2);} // a dark underside, so the platform stands out from the wall
   ctx.restore();
 }
+// round 17 (owner: "add the sparkling hint somewhere on the corridor when there is an ascent or descent for getting a yellow life
+// up potion"): where the climb or the drop to the gold flask starts, a few small gold four-point stars (the hidden flask's own) twinkle on
+// the lip's top face, along its edge in depth: for an ascent on the ledge to grab, rising; for a descent on the edge he hangs from,
+// slipping over it into the hole. The cue is found once per floor from the tiles (L.secret, or a gold flask on an alcove's ledge) and
+// dies with the flask. Look only: nothing is placed by the generator. Drawn with the same calls in both modes; no allocation a frame.
+const SCUE_N=5,SCUE_T=2.6;
+function secretCues(){if(L._scue)return L._scue;const out=[],C=L.cols,b=(c,r)=>c<0||c>=C||r<0||r>=L.rows?WALL:L.base[r*C+c];
+  const life=L.items.find(it=>it.type==='life'&&(it.hidden||it.alc));
+  if(life){let c,r,dn;
+    if(life.hidden&&L.secret){c=L.secret.c;r=L.secret.r;dn=!L.secret.gal;}else if(life.alc){c=life.c;r=life.r;dn=false;}
+    if(c!==undefined){let s=0;
+      if(dn){for(const k of [-1,1])if(!s&&b(c+k,r)===FLOOR&&!L.feat[r*C+c+k])s=k;}            // the floor beside the hole he hangs from
+      else{for(const k of [1,-1])if(!s&&b(c+k,r)===EMPTY&&b(c+k,r+1)!==EMPTY)s=k;}           // the open side of the ledge, over the corridor
+      if(s){const cc=dn?c+s:c;out.push({it:life,dn,s:dn?-s:s,x:dn?(s>0?cc*TW:(cc+1)*TW):(s>0?(cc+1)*TW:cc*TW),ys:SURF(r)});}}}
+  return (L._scue=out);}
+function drawSecretCue(ctx,x0,x1,y0,y1){const Q=secretCues();if(!Q.length)return;
+  for(let qi=0;qi<Q.length;qi++){const q=Q[qi];if(q.it.taken||q.x<x0-24||q.x>x1+24||q.ys<y0-24||q.ys>y1+24)continue;
+    const s=q.s,spr=lightSprite('255,210,110');
+    for(let i=0;i<SCUE_N;i++){const ph=gameTime/SCUE_T+i/SCUE_N,cy=Math.floor(ph),u=ph-cy,h=hash2(cy*7+i,q.x),k=Math.sin(Math.PI*u);if(k<0.05)continue;
+      const d=0.12+0.76*((h&255)/255),ins=1.5+7*(((h>>>8)&255)/255),dr=((h>>>16)&255)/255,
+        px=q.x-s*ins+(d-0.5)*DX,py0=q.ys+(0.5-d)*DY;let px2=px,py=py0;
+      if(q.dn){const f=Math.max(0,u-0.4)/0.6;px2=px+s*f*f*(ins+2);py=py0-1+f*f*(4+4*dr);} // (s points into the hole: slips over the edge and down)
+      else py=py0-1-u*(2+3*dr);                                                                // lifts a little off the ledge's lip
+      const R=(1.1+2.6*k*k)*(0.8+0.4*dr),gl=R*2.4;
+      ctx.globalCompositeOperation='lighter';ctx.globalAlpha=0.55*k;ctx.drawImage(spr,px2-gl,py-gl,gl*2,gl*2); // its glow (light, so it reads gold on any stone)
+      ctx.globalCompositeOperation='source-over';ctx.globalAlpha=0.3+0.7*k*k;ctx.fillStyle='#ffd65e';
+      ctx.beginPath();ctx.moveTo(px2,py-R);ctx.lineTo(px2+R*0.2,py-R*0.2);ctx.lineTo(px2+R,py);ctx.lineTo(px2+R*0.2,py+R*0.2);ctx.lineTo(px2,py+R);ctx.lineTo(px2-R*0.2,py+R*0.2);ctx.lineTo(px2-R,py);ctx.lineTo(px2-R*0.2,py-R*0.2);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#fff6d6';ctx.globalAlpha=k;ctx.beginPath();ctx.arc(px2,py,0.3+0.18*R,0,6.2832);ctx.fill();} // (a white-hot core)
+    ctx.globalAlpha=1;}}
 function drawDynamic(ctx,x0,x1,y0,y1){
   hudStones.length=0;
   const th=L.theme,c0=Math.floor(x0/TW)-1,c1=Math.floor(x1/TW)+1,r0=Math.floor(y0/TH)-1,r1=Math.floor(y1/TH)+1;
@@ -6737,6 +6767,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     const sx=it.x,sy=SURF(it.r)-16;
     for(let i=0;i<3;i++){const a=gameTime*1.1+i*2.1,k=(Math.sin(a)+1)/2,px=sx+Math.cos(i*2.1+gameTime*0.3)*9,py=sy+Math.sin(i*1.3+gameTime*0.4)*7,R=1.5+3.6*k;
       ctx.fillStyle='rgba(255,230,150,'+(0.35+0.6*k)+')';ctx.beginPath();ctx.moveTo(px,py-R);ctx.lineTo(px+R*0.22,py-R*0.22);ctx.lineTo(px+R,py);ctx.lineTo(px+R*0.22,py+R*0.22);ctx.lineTo(px,py+R);ctx.lineTo(px-R*0.22,py+R*0.22);ctx.lineTo(px-R,py);ctx.lineTo(px-R*0.22,py-R*0.22);ctx.closePath();ctx.fill();}}
+  drawSecretCue(ctx,x0,x1,y0,y1);
   for(const it of L.items)if(!it.taken&&inRoom(it.c,it.r))drawFlask(ctx,it);
   drawLooseFlasks(ctx);
   if(EGP.traps)for(const o of L.dyn){if(o.f.t!=='loose'||o.f.plank||!inRoom(o.c,o.r))continue;const k=looseWell(o);if(k)drawWellSand(ctx,o,o.f,k);}
@@ -9525,7 +9556,7 @@ window.__HK={tapCloth,THEMES,progOf,themeName,hint,learn,HINTS,HINT_MOVE,get ban
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
   get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,ryOps,ryShape,ryProfile,skyBeam,RY,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,plantPose,legIK,mk,drawDynamic,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
-  get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG};
+  get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG,secretCues};
 Object.assign(window.__HK,{guardBudget,snakeBudget}); // (the fighters' budgets, for guardscan.py)
 Object.defineProperty(window.__HK,'intro',{get(){return intro;},set(v){intro=v;}}); // (the floor's title banner, for egyptprop.py)
 Object.assign(window.__HK,{windowPath,gateGeom,stoneTex,STONES,THEME_STONE,SLAB_STONE,stoneLying,BLK_W,BLK_H,looseWell,WELL_V,blockStep});
