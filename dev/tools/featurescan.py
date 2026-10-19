@@ -10,7 +10,7 @@ f=sys.argv[1] if len(sys.argv)>1 and sys.argv[1] else '/Users/dan/Documents/Proj
 ns=int(sys.argv[2]) if len(sys.argv)>2 else 20
 lo,hi=(int(sys.argv[3]),int(sys.argv[4])) if len(sys.argv)>4 else (3,27)
 JS=r'''([lo,hi,ns])=>{
-  const MF={plain:['down','drop2','up'],collapse:['collapse'],jumps:['jumpdown','jumpup'],banners:['banner3','banner4','shaft2','shaft3'],lifts:['lift2d','lift3d','lift2u','lift3u','chn2d','chn3d','chn2u','chn3u']};
+  const MF={plain:['down','drop2','up'],collapse:['collapse'],jumps:['jumpdown','jumpup'],banners:['banner3','banner4','sand3','sand4','shaft2','shaft3'],lifts:['lift2d','lift3d','lift2u','lift3u','chn2d','chn3d','chn2u','chn3u']};
   const PF=n=>n.startsWith('P2')||n.startsWith('P3')?'slab':n.startsWith('P1')?'side':n.startsWith('P5')?'alcove':n.startsWith('P4')?'timed':n==='double'?'double':'other';
   const OBS=['spikes','loose','chomp','saw','tunnel'];
   const MOV=new Set(['flat','up','down','drop2']);const isTrap=q=>!MOV.has(q.k)&&!/^(turn-|loop-|fork-)/.test(q.k)&&q.k!=='guard'&&q.k!=='skel';
@@ -33,7 +33,7 @@ def mvfam(mv):
     t={}
     for m,c in mv.items(): t[fam_of.get(m,'other')]=t.get(fam_of.get(m,'other'),0)+c
     return t
-DOWNM={'down','drop2','banner3','banner4','collapse','jumpdown','lift2d','lift3d','chn2d','chn3d'}
+DOWNM={'down','drop2','banner3','banner4','sand3','sand4','collapse','jumpdown','lift2d','lift3d','chn2d','chn3d'}
 OBSF=['spikes','loose','chomp','saw','tunnel']
 def vec(x):
     keys=['plain','collapse','jumps','banners','lifts','other']

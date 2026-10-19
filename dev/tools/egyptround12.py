@@ -67,8 +67,8 @@ def sections(D, REL, img):
              'The bot runs under the blocks before they fall, so on the main route it never has to jump one. The generator is unchanged apart from the side passage\'s return.</li></ul>' +
              '<h3>Before and after: hanging and lying, both modes (1:1)</h3>' + fig(img, 'r12_roof_persp.png', 'Roof block, before and after') +
              '<h3>In four themes (Halls of the West, Napata, Kerma, Aksum), clean and worn</h3>' + fig(img, 'r12_roof_themes.png', 'Roof block by theme and wear') +
-             '<div class="g4" style="margin-top:8px">%s%s%s%s</div>' % (fig(img, 'r12_roof_pour.gif', 'The pour: trickle, the exponential rise, letting go, the fall, the landing billow'), fig(img, 'r12_roof_jump.gif', 'The prince jumping a fallen block'),
-                                                                     fig(img, 'r12_sandfloor.gif', 'The sand-filled shaft under a slab: trickles, the drain, the collapse, the billow'), fig(img, 'r12_plug.gif', 'The plugs in the chase')) +
+             '<div class="g2" style="margin-top:8px">%s%s</div>' % (fig(img, 'r12_roof_pour.gif', 'The pour: trickle, the exponential rise, letting go, the fall, the landing billow'), fig(img, 'r12_plug.gif', 'The plugs in the chase')) +
+             '<p class="meta">(The GIFs of the prince jumping a fallen block and of the sand shaft giving way were retired in round 16a: both are superseded, see Round 16.)</p>' +
              links([('Hawara: the pyramid of Amenemhat III (its quartzite burial chamber)', 'https://en.wikipedia.org/wiki/Hawara'),
                     ('Vacek (2013): building stones of Meroë (Nubian sandstone; bricks)', 'https://publikace.nm.cz/file/1a15d29aea90c2f60e2ee6f206cd1410/17849/182-2013-29-Vacek-Sudan.pdf'),
                     ('Shali: kershef, salt blocks in salty mud (Rovero et al.)', 'https://flore.unifi.it/handle/2158/359981'),

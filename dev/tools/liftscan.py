@@ -17,7 +17,7 @@ SEEDS = nums[2] if len(nums) >= 3 else 3
 MODES = ['classic', 'torch'] if 'both' in a or not ('classic' in a or 'torch' in a) else (['classic'] if 'classic' in a else ['torch'])
 CASES = r'''([lo,hi,seeds])=>{const H=__HK,out=[];
   for(let n=lo;n<=hi;n++)for(let s=0;s<seeds;s++){const seed=40000+n*131+s*7919,L=H.genLevel(n,seed,true);
-    const seen={};L.lifts.forEach((f,i)=>{const k=f.t+(f.y===f.yT?'T':'B')+(f.sT||0);if(seen[k])return;seen[k]=1;out.push([n,seed,i,f.t]);});}
+    const seen={};L.lifts.forEach((f,i)=>{const k=f.t+(f.sand?'S':'')+(f.y===f.yT?'T':'B')+(f.sT||0);if(seen[k])return;seen[k]=1;out.push([n,seed,i,f.t]);});}
   return out;}'''
 RUN = r'''([n,seed,i,pos,mode])=>{const H=__HK;window.__HKfreeze=true;for(const id in H.HINTS)H.S.hints[id]=1;H.S.set.lightMode=mode;
   const L=H.load(n,seed,true);H.banner=null;const f=L.lifts[i],P=H.P;P.inv=1e9;

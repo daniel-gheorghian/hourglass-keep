@@ -14,7 +14,7 @@ JS='''()=>{const H=__HK,out={};const MOV=new Set(['flat','up','down','drop2']),V
   const SIDE=new Set(['detour','double','secret','puzzle']); // the side passage's own seg spans its corridor: not an obstacle in it
   for(let n=1;n<=27;n++){const acc=[];for(let s=0;s<20;s++){const L=H.genLevel(n,30000+s*101+n*7,true);
     const tr=L.segs.filter(isTrap);
-    const turnsV=L.segs.filter(q=>/turn-(banner|shaft|wallrun)/.test(q.k)).length;
+    const turnsV=L.segs.filter(q=>/turn-(banner|sand|shaft|wallrun)/.test(q.k)).length;
     let gaps=[];for(let i=1;i<tr.length;i++){const a=tr[i-1],b2=tr[i],d=b2.dir||1;if((a.dir||1)!==d||Math.abs(a.r1-b2.r0)>1)continue;const g=(b2.c0-a.c1)*d;if(g>=0&&g<60)gaps.push(g);}
     let route;if(L.runsInfo){route=0;for(const ri of L.runsInfo)route+=Math.abs(ri.c1-ri.c0);const lr=L.runsInfo[L.runsInfo.length-1];route+=Math.abs(L.door.c-lr.c1);}else route=L.door.c-L.start.x/32;
     // bare: for each gate side passage, the longest stretch of its corridor (columns under/over the branch) with no obstacle

@@ -326,6 +326,13 @@ function* botGen(n, seed, opts) {
         }
         else if (ph === 4) { if (goto(cx(ins.to))) next(); }
         break; }
+      case 'sandlift': { // (round 16a) the sand lift: walk onto its slab (stopping on it starts it), ride it down, walk off
+        const sc = ins.from + dir;
+        if (ph === 0) { r0 = row(); ins._lf = H.L.lifts.find(q => q.sand && q.sc === sc && q.rT === row()); if (!ins._lf) return fail(ins, 'no sand lift here'); ph = 1; }
+        else if (ph === 1) { if (p.state === 'lift') ph = 2; else if (goto(cx(sc)) && frames - f0 > 60 * 6) return fail(ins, 'sand lift did not start'); }
+        else if (ph === 2) { allOff(); if (p.state === 'stand' && row() > r0) ph = 3; else if (frames - f0 > 60 * 30) return fail(ins, 'sand lift ride never ended'); }
+        else if (ph === 3) { if (goto(cx(ins.to))) next(); }
+        break; }
       case 'drink':
         if (ph === 0) { allOff(); if (p.state === 'stand') { press('g'); ph = 1; } }
         else if (ph === 1) { if (p.state === 'stand') next(); }

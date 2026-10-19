@@ -11,7 +11,7 @@ from playwright.sync_api import sync_playwright
 import sys,json,os
 PER=int(sys.argv[1]) if len(sys.argv)>1 and sys.argv[1].isdigit() else 3
 SRC=next((x for x in sys.argv[1:] if x.endswith('.html')),os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','hourglass-keep.html'))
-KINDS=['lift2d','lift3d','lift2u','lift3u','chn2d','chn3d','chn2u','chn3u']
+KINDS=['lift2d','lift3d','lift2u','lift3u','chn2d','chn3d','chn2u','chn3u','sand3','sand4']
 FIND='''([kind,per])=>{const H=__HK,out=[];const lo=kind.startsWith('chn')?8:3;
  for(let n=lo;n<=27&&out.length<per;n+=2)for(let s=0;s<80;s++){const seed=60000+s*137+n*19,L=H.genLevel(n,seed,true);if(L.segs.some(q=>q.k==='turn-'+kind)){out.push([n,seed]);break;}}return out;}'''
 RUN='''([n,seed,kind])=>{window.__hurts=[];let rode=0;const r=runBot(n,seed,{stop:H=>{if(H.P.state==='lift')rode++;return false;}});r.h=window.__hurts;r.rode=rode;return r;}'''
@@ -34,7 +34,7 @@ with sync_playwright() as p:
     fl=pg.evaluate('''()=>{const H=__HK,out=[];for(const kind of ['lift2d','lift3d','lift2u','lift3u'])for(let n=3;n<=20;n++){let hit=false;for(let s=0;s<80&&!hit;s++){const seed=61000+s*139+n*23,L=H.genLevel(n,seed,true);if(L.segs.some(q=>q.k==='turn-'+kind)){out.push([kind,n,seed]);hit=true;}}if(hit)break;}return out;}''')
     for kind,n,seed in fl:
         r=pg.evaluate('''([n,seed,kind])=>{const H=__HK,L=H.load(n,seed,true);const sg=L.segs.find(q=>q.k==='turn-'+kind);
-          const f=L.lifts.find(q=>q.t==='lift'&&q.sc>=Math.min(sg.c0,sg.c1)&&q.sc<=Math.max(sg.c0,sg.c1)&&q.rT>=Math.min(sg.r0,sg.r1)&&q.rB<=Math.max(sg.r0,sg.r1));
+          const f=L.lifts.find(q=>q.t==='lift'&&!q.sand&&q.sc>=Math.min(sg.c0,sg.c1)&&q.sc<=Math.max(sg.c0,sg.c1)&&q.rT>=Math.min(sg.r0,sg.r1)&&q.rB<=Math.max(sg.r0,sg.r1));
           // the platform rests at the entry end: go the other way, from the exit landing (its plate is under his feet), so the plate must call it
           const up=f.y===f.yT, rr=up?f.rB:f.rT, s=up?f.sB:f.sT, from=f.sc+s, to=f.sc+(up?f.sT:f.sB);
           const ins={a:'lift',from,to,k:f.k,up:up,dir:-s};let rode=0,called=false,y0=f.y;
@@ -44,6 +44,21 @@ with sync_playwright() as p:
         good=r.get('ok')=='path done' and r['called'] and r['rode']>30 and r['end'] and not r.get('hurt')
         if not good: bad+=1
         print(' call %-6s n=%d seed=%d: %s'%(kind,n,seed,'ok' if good else r))
+    # (h) round 16a, the sand lift: stepping onto its slab starts it with no key held; it sinks to the bottom, he stands there unhurt,
+    # it stays down (the top of the shaft open, its slab no longer at the top landing) and does not move again
+    for kind in ['sand3','sand4']:
+        fl=pg.evaluate(FIND,[kind,1])
+        if not fl: bad+=1; print(' sand %s: no floor'%kind); continue
+        n,seed=fl[0]
+        r=pg.evaluate('''([n,seed,kind])=>{const H=__HK,L=H.load(n,seed,true),sg=L.segs.find(q=>q.k==='turn-'+kind);
+          const f=L.lifts.find(q=>q.sand&&q.sc>=Math.min(sg.c0,sg.c1)&&q.sc<=Math.max(sg.c0,sg.c1)&&q.rT>=Math.min(sg.r0,sg.r1)&&q.rB<=Math.max(sg.r0,sg.r1));
+          const P=H.P,hp=P.hp;P.inv=0;P.x=f.sc*32+16;P.y=f.yT;P.fallY=P.y;P.vx=0;P.state='stand';let rode=0,t=0;
+          while(t++<60*12&&!(P.state==='stand'&&rode>10)){H.tick(1);if(P.state==='lift')rode++;}
+          const st=P.state,atB=Math.abs(P.y-f.yB)<0.5,y=f.y;for(let i=0;i<120;i++)H.tick(1);
+          return {rode,st,atB,hp:P.hp===hp,still:f.y===y&&f.y===f.yB,top:L.base[f.rT*L.cols+f.sc],secs:+(rode/60).toFixed(2)};}''',[n,seed,kind])
+        good=r['rode']>30 and r['st']=='stand' and r['atB'] and r['hp'] and r['still'] and r['top']==0
+        if not good: bad+=1
+        print(' sand %-6s n=%d: %s'%(kind,n,'ok '+str(r['secs'])+' s' if good else r))
     # (c) a step into the empty shaft of a cycling lift
     fl=pg.evaluate('''()=>{const H=__HK,out=[];for(const kind of ['chn2d','chn3d'])for(let n=8;n<=27;n++){let hit=false;for(let s=0;s<80&&!hit;s++){const seed=62000+s*149+n*29,L=H.genLevel(n,seed,true);if(L.segs.some(q=>q.k==='turn-'+kind)){out.push([kind,n,seed]);hit=true;}}if(hit)break;}return out;}''')
     for kind,n,seed in fl:
@@ -76,7 +91,7 @@ with sync_playwright() as p:
         if not fl: bad+=1; print(' stand %s: no floor'%kind); continue
         n,seed=fl[0]
         r=pg.evaluate('''([n,seed,kind])=>{const H=__HK,L=H.load(n,seed,true);const sg=L.segs.find(q=>q.k==='turn-'+kind);
-          const f=L.lifts.find(q=>q.t==='lift'&&q.sc>=Math.min(sg.c0,sg.c1)&&q.sc<=Math.max(sg.c0,sg.c1)&&q.rT>=Math.min(sg.r0,sg.r1)&&q.rB<=Math.max(sg.r0,sg.r1));
+          const f=L.lifts.find(q=>q.t==='lift'&&!q.sand&&q.sc>=Math.min(sg.c0,sg.c1)&&q.sc<=Math.max(sg.c0,sg.c1)&&q.rT>=Math.min(sg.r0,sg.r1)&&q.rB<=Math.max(sg.r0,sg.r1));
           const P=H.P,down=f.y===f.yT,key=down?'d':'u';P.x=f.sc*32+16;P.y=f.y;P.fallY=P.y;P.state='stand';P.vx=0;P.inv=1e9;
           H.setKey('kb',key,true);let rode=0,t=0;while(t++<60*12&&!(P.state==='stand'&&rode>10&&Math.abs(f.y-(down?f.yB:f.yT))<0.01)){H.tick(1);if(P.state==='lift')rode++;}
           const arrived=P.state;let crouched=false;for(let i=0;i<40;i++){H.tick(1);if(P.state!=='stand')crouched=P.state;}
@@ -119,7 +134,7 @@ with sync_playwright() as p:
     for kind in ['lift2d','lift3u']:
         fl=pg.evaluate(FIND,[kind,1]);n,seed=fl[0]
         r=pg.evaluate('''([n,seed,kind])=>{const H=__HK,L=H.load(n,seed,true),sg=L.segs.find(q=>q.k==='turn-'+kind);
-          const f=L.lifts.find(q=>q.t==='lift'&&q.sc>=Math.min(sg.c0,sg.c1)&&q.sc<=Math.max(sg.c0,sg.c1)&&q.rT>=Math.min(sg.r0,sg.r1)&&q.rB<=Math.max(sg.r0,sg.r1));
+          const f=L.lifts.find(q=>q.t==='lift'&&!q.sand&&q.sc>=Math.min(sg.c0,sg.c1)&&q.sc<=Math.max(sg.c0,sg.c1)&&q.rT>=Math.min(sg.r0,sg.r1)&&q.rB<=Math.max(sg.r0,sg.r1));
           const P=H.P;P.inv=1e9;f.y=Math.round((f.yT+f.yB)/2);f.py=f.y;L.base[f.rT*L.cols+f.sc]=0;f.gT=0;f.gB=0;
           P.x=f.sc*32+16;P.y=f.y-50;P.fallY=P.y;P.vx=0;P.vy=0;P.state='air';P.jumpKind=null;P.autoGrab=false;const hp=P.hp;
           for(let t=0;t<120;t++)H.tick(1);return {state:P.state,on:Math.abs(P.y-f.y)<0.5,hp:P.hp===hp};}''',[n,seed,kind])
