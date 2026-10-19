@@ -38,10 +38,7 @@ def sections(D, REL, img):
             '<li><b>The jump up to a ledge</b> (jgrab: run, jump across the pit, hold Grab to catch a ledge a storey up): the run-up, the leap and the catch at the ledge\'s edge, then up onto it. Shown only until the move is learned: it is the one jump whose landing is not on his own level, so the plain gap jump\'s reading (PoP\'s "run and jump") does not carry over.</li>'
             '<li><b>Not used</b> on: the gap jumps (read from the floor itself, and there are many: a stream on each would be clutter); the lifts (a straight ride up or down a shaft you can see; the call plate and its hint carry it); the banner slide (the cloth is the path); the damaging drop (its look must say "this hurts", owner\'s rule, and a guiding stream would say "go"); the secret passage (round 17\'s sparkle is its cue: a stream would give the secret away).</li></ul>' % (', '.join(str(n) for n in sorted({q['n'] for q in sw})), err) +
             '<h3>Pictures</h3>' +
-            fig(img, 'r18_shaft.png', 'The kick shaft mid-climb: the Halls of the West and the Green Hall of Osiris, Torchlight and Classic, 1:1 and 2x') +
-            '<div class="g2" style="margin-top:8px">%s%s</div>' % (fig(img, 'r18_shaft.gif', 'The climb, Torchlight, 0.1 s a frame'), fig(img, 'r18_swing.gif', 'Pumping the swing until it will carry him, then the throw, Torchlight')) +
-            fig(img, 'r18_swing.png', 'The swing once it will carry him: two themes, both modes, 1:1 (above) and 2x (below)') +
-            fig(img, 'r18_jgrab.png', 'The jump up to a ledge, until learned: two themes, both modes, 1:1') +
+            '<p class="meta">The pictures of round 18a\'s stream (the shaft, the swing, the jump up to a ledge) are retired: round 18c made it organic; its videos show 18a and 18c side by side.</p>' +
             fig(img, 'r18_chain.png', 'The paternoster: round 17 with its chevrons and round 18 without, Torchlight and Classic') +
             links([('Stack effect (chimney draft)', 'https://en.wikipedia.org/wiki/Stack_effect'),
                    ('Plume (fluid dynamics): laminar near the source, turbulent further on', 'https://en.wikipedia.org/wiki/Plume_(fluid_dynamics)'),

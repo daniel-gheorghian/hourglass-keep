@@ -6720,56 +6720,113 @@ function drawSecretCue(ctx,x0,x1,y0,y1){const Q=secretCues();if(!Q.length)return
 // round 18 (owner: "when doing wall jumps from side to side there is also a arrow hint, maybe we can change it to a wind hint, some
 // particles clearly visible, like sand in a jet stream fashion flowing from the entry towards the exit ... think of a chimney and how
 // smoke would look like ... and we should use this kind of jet stream hint in other places like for the swing jump"). The JET STREAM
-// HINT: one routine (jetStream) that blows a thin stream of the theme's sand along a path (a polyline built from arcs, jsPath) with
-// a strength 0..1. What it is made of (sources on the page, round 18):
-//  - a chimney's draft (the stack effect: warm light air rises and pulls the room's air in at the foot): the grains are drawn in
-//    at the entry, slow, and speed up along the shaft (continuity: the flow quickens through a narrowing; JS_ACC);
-//  - a rising plume leaves its source laminar and turns turbulent further up: the sideways wander grows along the path, a few
-//    grains curl in small eddies (wisps) where the flow meets a wall, and at the exit the jet fans out and fades (a free jet spreads);
-//  - saltation streamers: wind-blown sand travels in narrow ribbons and pulses (each comes up quickly and dwindles slowly):
-//    the grains ride in gusts that run down the path (JS_GUST), which is what tells which way it flows without an arrow head;
-//  - a moving grain is drawn as a short streak along its motion (a velocity-stretched particle), longer where it is faster.
-// Each grain is a pure function of the clock and its index (no state, nothing allocated a frame, the same after a rewind); the
-// grains are gathered into four alpha bands, each one path, in three passes (below) in the floor's sand colour (sandC), so a
-// stream is at most twelve strokes. Drawn with the same calls in Torchlight (G2D) and Classic;
-// only when its box is in view. Look only: the generator, the floors, the moves and the bot are unchanged.
-const JS_MAX=96,JS_NP=64,JS_ACC=0.9,JS_GUST=1.7;
+// HINT: one routine (jetStream) that blows the theme's sand along a path (a polyline built from arcs, jsPath) with a strength 0..1.
+// Round 18c (owner on 18a's blades: "needs to be more organic; check how games are doing something similar"; sources on the page,
+// round 18c): 18a drew large leaf-shaped streaks of one size in one neat wavy column. Now, after Ghost of Tsushima's guiding wind
+// (one steady direction, only its strength gusts; small things carried by summed vortex particles, "vorticles"), Bridson's curl
+// noise (a divergence-free flow: grains swirl round eddies instead of wobbling on a sine), incense and chimney plumes (laminar at the
+// source, rolling into counter-rotating Kelvin-Helmholtz curls further up, puffing), saltation streamers (narrow ribbons that come up
+// quickly and dwindle slowly, a fine dust haze above them), Journey's sand (glitter: now and then one grain catches the light) and the
+// stretched, eroding smoke billboards of stylised VFX:
+//  - many fine grains of mixed size (1 to 2.5 px), each a soft sprite stretched along its own motion (blur in proportion to speed),
+//    the motion taken from two moments of its flow, so a grain caught in an eddy draws a curved streak;
+//  - two layers: a dense core of grains, and fainter, finer, slower dust spread wider round it (the haze over a streamer);
+//  - the flow: the draft quickens up the path (JS_ACC), a long slow sway of the whole thread, and counter-rotating eddies that drift
+//    along at about half the stream's speed (a vortex street; JS_EDK). Each eddy twirls the grains near it round its centre, weakly at
+//    the entry (laminar) and strongly further on (turbulent); grains overtake the eddies, curl round them and go on;
+//  - puffs: the grains ride in clumps (JS_PUFF) whose head is dense and whose tail stretches out behind as it travels (the fast grains
+//    ahead, the slow ones behind), each pass a little different (thick or thin, wide or narrow): what shows the way without an arrow;
+//  - a soft haze of overlapping faint added blobs (wisps), growing as they go, carried by the same eddies;
+//  - each grain lives and dies (fades in at the entry, out before or at the exit: some disperse early), and at the exit the jet fans
+//    out, slows and rises a little (a free jet spreads, warm air rises);
+//  - in a shaft the grains are kept off the walls by a soft clamp: thrown wide by an eddy they pile along the wall and slide up it,
+//    then peel off where the path turns away (the Coanda effect, wall: the shaft's inner faces);
+//  - now and then a grain glints (a short bright flash, added).
+// Each grain, eddy and wisp is a pure function of the clock and its index (no state, nothing allocated a frame, the same after a
+// rewind). Three sprite batches a stream (added haze and glows; the grains; the glints): one drawImage per grain or wisp, which
+// G2D gathers into one draw per batch; the same calls in Torchlight and Classic; only when its box is in view. Look only: the
+// generator, the floors, the moves and the bot are unchanged.
+const JS_MAX=96,JS_NP=200,JS_ACC=0.9,JS_GUST=1.7,JS_PUFF=7,JS_EDK=12,JS_DT=0.05;
 function jsPath(){return {x:new Float32Array(JS_MAX),y:new Float32Array(JS_MAX),s:new Float32Array(JS_MAX),n:0,len:0,bx0:0,bx1:0,by0:0,by1:0};}
 function jsReset(p){p.n=0;p.len=0;p.bx0=p.by0=1e9;p.bx1=p.by1=-1e9;return p;}
 function jsAdd(p,x,y){if(p.n>=JS_MAX)return p;const i=p.n;if(i&&Math.abs(x-p.x[i-1])+Math.abs(y-p.y[i-1])<0.05)return p;p.x[i]=x;p.y[i]=y;p.s[i]=i?p.s[i-1]+Math.hypot(x-p.x[i-1],y-p.y[i-1]):0;p.n++;p.len=p.s[i];
   if(x<p.bx0)p.bx0=x;if(x>p.bx1)p.bx1=x;if(y<p.by0)p.by0=y;if(y>p.by1)p.by1=y;return p;}
 function jsQuad(p,cx,cy,bx,by,m){const ax=p.x[p.n-1],ay=p.y[p.n-1];for(let k=1;k<=m;k++){const u=k/m,v=1-u;jsAdd(p,v*v*ax+2*u*v*cx+u*u*bx,v*v*ay+2*u*v*cy+u*u*by);}return p;}
 const JSQ={x:0,y:0,tx:0,ty:1};
-function jsAt(p,s){let i=1;const n=p.n;if(s<=0)s=0;else if(s>p.len)s=p.len;while(i<n-1&&p.s[i]<s)i++;
+function jsAt(p,s){const n=p.n;if(s<=0)s=0;else if(s>p.len)s=p.len;let i=1,hi=n-1;while(i<hi){const m=(i+hi)>>1;if(p.s[m]<s)i=m+1;else hi=m;}
   const a=i-1,sg=p.s[i]-p.s[a]||1,u=(s-p.s[a])/sg;JSQ.tx=(p.x[i]-p.x[a])/sg;JSQ.ty=(p.y[i]-p.y[a])/sg;JSQ.x=p.x[a]+(p.x[i]-p.x[a])*u;JSQ.y=p.y[a]+(p.y[i]-p.y[a])*u;return JSQ;}
-const JSB=new Float32Array(JS_NP*5);
-// p: the path (jsPath); str: 0..1; v: the grains' speed, px/s; w: the stream's half width, px; seed; the view's box
-function jetStream(ctx,p,str,v,w,seed,x0,x1,y0,y1){
-  if(str<0.02||p.n<2||p.len<10||p.bx1<x0-24||p.bx0>x1+24||p.by1<y0-24||p.by0>y1+24)return;
-  const C=sandC(),t=gameTime,L0=p.len,N=Math.min(JS_NP,Math.max(10,Math.round(L0/3.6*(0.55+0.45*str))));
-  for(let i=0;i<N;i++){const h=hash2(i*131+seed,seed*7+3),r1=(h&255)/255,r2=((h>>>8)&255)/255,r3=((h>>>16)&255)/255,r4=(h>>>24)/255;
-    const vi=v*(0.75+0.55*r1),ph=t*vi/L0+r2,u=ph-Math.floor(ph),s=L0*(u*(1-JS_ACC/2)+u*u*JS_ACC/2),sp=vi*(1-JS_ACC/2+JS_ACC*u); // (it speeds up along the way)
-    const q=jsAt(p,s),hx=q.x,hy=q.y,nx=-q.ty,ny=q.tx,ex=Math.max(0,u-0.72)/0.28,
-      lat=w*((r3-0.5)*(1.3+2.6*ex*ex)+(0.15+0.85*u)*0.6*Math.sin(t*(2.2+3*r4)+u*(5+6*r3)+r2*6.283)); // (laminar at the entry, wandering further on, fanning out at the exit)
-    let ox=nx*lat,oy=ny*lat+ex*ex*w*1.2*(r4-0.6);
-    if(r4<0.3){const cr=w*0.75*Math.sin(Math.PI*u),a=t*(6+4*r1)+r2*9;ox+=Math.cos(a)*cr;oy+=Math.sin(a)*cr;} // (a wisp curling in an eddy)
-    const g=((t/JS_GUST-s/Math.max(60,L0)*1.3+r1*0.45)%1+1)%1,gust=g<0.18?g/0.18:1-(g-0.18)/0.82; // (gusts run down the stream: a quick rise, a slow dwindle)
-    const a=Math.min(1,u/0.14)*Math.min(1,(1-u)/0.24)*(0.6+0.4*gust)*(0.75+0.25*r1)*Math.min(1,str*1.15),
-      sl=clamp(sp*0.075,3,13),tq=jsAt(p,s-sl),i5=i*5;
-    JSB[i5]=hx+ox;JSB[i5+1]=hy+oy;JSB[i5+2]=tq.x+ox*0.85;JSB[i5+3]=tq.y+oy*0.85;JSB[i5+4]=a;}
-  // three passes, each one fill of streaks shaped like a grain's motion blur (a long lens: fine at both ends, widest a third of the
-  // way back from the head; not an arrow head): a soft added glow round each one (so it reads in a dark room), the streak in the
-  // sand's colour, and a small bright grain at its head
-  ctx.save();
-  for(let pass=0;pass<3;pass++){
-    ctx.globalCompositeOperation=pass?'source-over':'lighter';ctx.fillStyle=pass===2?C.hi:pass===1?C.grain:C.lit;const wh=pass===0?1.5:pass===1?0.62:0.5;
-    for(let b=0;b<4;b++){const lo=b*0.25,hi=lo+0.25;let any=false;ctx.beginPath();
-      for(let i=0;i<N;i++){const i5=i*5,a=JSB[i5+4];if(a<=lo||a>hi||a<0.03)continue;any=true;
-        const hx=JSB[i5],hy=JSB[i5+1];let tx=JSB[i5+2],ty=JSB[i5+3],dx=hx-tx,dy=hy-ty;const d=Math.hypot(dx,dy)||1;dx/=d;dy/=d;
-        let L1=d;if(pass===2){L1=Math.min(d,2.4);tx=hx-dx*L1;ty=hy-dy*L1;}else if(pass===0){L1=d+2;tx-=dx*2;ty-=dy*2;}
-        const mx=hx-dx*L1*0.33,my=hy-dy*L1*0.33,hx2=hx+dx*wh*0.8,hy2=hy+dy*wh*0.8;
-        ctx.moveTo(tx,ty);ctx.lineTo(mx-dy*wh,my+dx*wh);ctx.lineTo(hx-dy*wh*0.55,hy+dx*wh*0.55);ctx.lineTo(hx2,hy2);ctx.lineTo(hx+dy*wh*0.55,hy-dx*wh*0.55);ctx.lineTo(mx+dy*wh,my-dx*wh);ctx.closePath();}
-      if(any){ctx.globalAlpha=(pass===0?0.3:1)*(lo+0.25);ctx.fill();}}}
+const jsSm=(a,b,x)=>{x=(x-a)/(b-a);return x<=0?0:x>=1?1:x*x*(3-2*x);};
+// the grains (x, y, direction x, y, length, width, alpha, glint) and the eddies (along, across, strength) of the stream being drawn
+const JSB=new Float32Array(JS_NP*8),JSE=new Float32Array(JS_EDK*3),JSP={s:0,n:0};
+// a point (along s, across n) carried round the eddies (a twirl about each centre, its angle falling off as a Gaussian: the
+// displacement of a vortex blob, divergence-free, so the grains swirl without bunching)
+function jsTwirl(s,n,K,R2){for(let k=0;k<K;k++){const k3=k*3,dx=s-JSE[k3],dy=n-JSE[k3+1],d2=dx*dx+dy*dy;if(d2>R2*6)continue;
+    const th=JSE[k3+2]*Math.exp(-d2/R2),c=Math.cos(th),sn=Math.sin(th);s=JSE[k3]+dx*c-dy*sn;n=JSE[k3+1]+dx*sn+dy*c;}
+  JSP.s=s;JSP.n=n;return JSP;}
+// two sprites a look: a grain (the sand's colour, a lit core, soft all round, so a stretched one is a soft-ended streak) and a glow
+let JSS=null;
+function jsSprites(){const C=sandC();if(JSS&&JSS.lk===C.lk)return JSS;const lk=L&&L.theme&&L.theme.look,c=SAND_LOOK[lk]||[244,224,172],
+    tint=k=>c.map(v=>Math.round(Math.min(255,v+(255-v)*k))).join(','),g=document.createElement('canvas');g.width=g.height=32;
+  const x=g.getContext('2d'),gr=x.createRadialGradient(16,16,0,16,16,16);gr.addColorStop(0,'rgba('+tint(0.75)+',1)');gr.addColorStop(0.3,'rgba('+tint(0.4)+',0.95)');
+  gr.addColorStop(0.62,'rgba('+tint(0.25)+',0.45)');gr.addColorStop(1,'rgba('+tint(0.25)+',0)');x.fillStyle=gr;x.fillRect(0,0,32,32);
+  return (JSS={lk:C.lk,g,l:lightSprite(tint(0.6))});}
+// one sprite drawn from (x,y) back along (dx,dy) (a unit vector) over len, width wd: a transform and its exact inverse, so nothing is
+// allocated and the state is left as it was
+function jsStamp(ctx,img,x,y,dx,dy,len,wd){const a=dx*len,b=dy*len,c=-dy*wd,d=dx*wd,e=x-dx*len*0.5,f=y-dy*len*0.5,det=len*wd;
+  ctx.transform(a,b,c,d,e,f);ctx.drawImage(img,-0.5,-0.5,1,1);ctx.transform(d/det,-b/det,-c/det,a/det,(c*f-d*e)/det,(b*e-a*f)/det);}
+// p: the path (jsPath); str: 0..1; v: the grains' speed, px/s; w: the stream's half width, px; seed; the view's box; wall: in a shaft
+// {wx0,wx1,wy} (the inner faces and the ledge's surface over which the walls end), else null
+function jetStream(ctx,p,str,v,w,seed,x0,x1,y0,y1,wall){
+  if(str<0.02||p.n<2||p.len<10||p.bx1<x0-30||p.bx0>x1+30||p.by1<y0-30||p.by0>y1+30)return;
+  const S2=jsSprites(),t=gameTime,L0=p.len,N=Math.min(JS_NP,Math.max(24,Math.round(L0/1.8*(0.55+0.45*str)))),A=JS_ACC,
+    vp=v*0.95,R=2.2*w+5,R2=R*R,ST=L0+2*R,K=Math.min(JS_EDK,Math.max(2,Math.round(L0/48))),sa=Math.min(1,str*1.15);
+  // the eddies: they drift along at about half the stream's speed, turning each way in turn (a vortex street), weak near the entry
+  for(let k=0;k<K;k++){const h=hash2(k*977+seed,41),q1=(h&255)/255,q2=((h>>>8)&255)/255,q3=((h>>>16)&255)/255,sg=k&1?1:-1,
+      se=((t*v*(0.4+0.18*q1)+(k+0.6*q2)/K*ST)%ST)-R,ue=se/L0;
+    JSE[k*3]=se;JSE[k*3+1]=sg*w*(0.35+0.7*q3);JSE[k*3+2]=sg*(1.5+1.6*q2)*(0.1+0.9*jsSm(0.06,0.5,ue))*(1-0.5*jsSm(0.8,1.05,ue));}
+  // the grains, each at two moments (now and JS_DT before: its streak follows its own curved motion)
+  for(let i=0;i<N;i++){const h=hash2(i*131+seed,seed*7+3),r1=(h&255)/255,r2=((h>>>8)&255)/255,r5=((h>>>16)&255)/255,r8=(h>>>24)/255,
+      far=r5<0.3,pk=i%JS_PUFF,i8=i*8;let ok=true;
+    for(let m=0;m<2;m++){const tt=t-m*JS_DT,pp=tt*vp/L0+pk/JS_PUFF+(r5<0.8&&!far?0:r1*0.37),cyc=Math.floor(pp),u0=pp-cyc, // (most ride in puffs; some run steady)
+        h2=hash2(i*71+seed*3,cyc*13+pk),r3=(h2&255)/255,r4=((h2>>>8)&255)/255,r6=((h2>>>16)&255)/255,r7=(h2>>>24)/255,
+        hp=hash2(cyc*31+pk,seed),dens=0.6+0.4*((hp&255)/255),wid=0.7+0.6*(((hp>>>8)&255)/255),
+        u=u0-r2*r2*(0.03+0.16*u0)*(far?1.6:1); // (a puff's tail stretches out behind its head as it goes)
+      if(m===0&&(u<=0||r6>dens+0.15)){ok=false;break;}
+      const uc=Math.max(0,u),ex=Math.max(0,uc-0.8)/0.2,s=L0*(uc*(1-A/2)+uc*uc*A/2)*(1-0.06*ex*ex), // (it quickens up the draft, slows as it fans out)
+        spread=(0.35+1.05*jsSm(0.08,0.7,uc)+2.4*ex*ex)*wid*(far?1.9:1),
+        n=w*(r3-0.5)*2*spread+w*0.55*jsSm(0.04,0.45,uc)*Math.sin(s*0.075-tt*2.6+seed*0.37)+w*0.25*jsSm(0.3,0.8,uc)*Math.sin(s*0.21-tt*4.3+r4*6.28),
+        P2=jsTwirl(s,n,K,R2),q=jsAt(p,P2.s);
+      let x=q.x-q.ty*P2.n,y=q.y+q.tx*P2.n-ex*ex*w*(1.5+3*r4); // (the warm draft rises as it leaves)
+      if(wall&&y>wall.wy){const lo=wall.wx0+2,hi=wall.wx1-2; // (thrown at a wall it hugs it and slides along, then peels off)
+        if(x<lo+2)x=lo+2*Math.exp((x-lo-2)/2);else if(x>hi-2)x=hi-2*Math.exp((hi-2-x)/2);}
+      if(m===0){const life=0.72+0.3*r7,gp=((t/JS_GUST-s/Math.max(60,L0)*1.3)%1+1)%1,gust=gp<0.18?gp/0.18:1-(gp-0.18)/0.82;
+        JSB[i8]=x;JSB[i8+1]=y;
+        JSB[i8+5]=far?0.75+0.5*r8:1.1+1.4*r8*r8;
+        JSB[i8+6]=jsSm(0,0.07,u)*(1-jsSm(life-0.2,life,u))*(0.7+0.3*gust)*(0.65+0.35*dens)*(far?0.5:1)*sa;
+        JSB[i8+7]=!far&&r8>0.55?Math.max(0,Math.sin(t*(3+4*r1)+i*1.7))**12:0;} // (now and then one catches the light)
+      else{let dx=JSB[i8]-x,dy=JSB[i8+1]-y;const d=Math.hypot(dx,dy);if(d>0.01){dx/=d;dy/=d;}else{dx=q.tx;dy=q.ty;}
+        JSB[i8+2]=dx;JSB[i8+3]=dy;JSB[i8+4]=Math.min(d,14);}}
+    if(!ok)JSB[i8+6]=0;}
+  ctx.save();ctx.imageSmoothingEnabled=true;
+  // 1. added light: the haze (wisps growing as they go, carried by the same eddies) and a faint glow round the larger grains
+  ctx.globalCompositeOperation='lighter';
+  const M=Math.min(26,Math.max(6,Math.round(L0/15)));
+  for(let j=0;j<M;j++){const h=hash2(j*577+seed,seed+11),q1=(h&255)/255,q2=((h>>>8)&255)/255,q3=((h>>>16)&255)/255,
+      pp=t*vp*0.72/L0+j/M+q1*0.05,cyc=Math.floor(pp),u=pp-cyc,hq=hash2(cyc*17+j,seed),ex=Math.max(0,u-0.8)/0.2,
+      s=L0*(u*(1-A/2)+u*u*A/2),n=w*((hq&255)/255-0.5)*(0.8+1.6*u)+w*0.55*jsSm(0.04,0.45,u)*Math.sin(s*0.075-t*2.6+seed*0.37),
+      P2=jsTwirl(s,n,K,R2),q=jsAt(p,P2.s),a=0.22*jsSm(0,0.12,u)*(1-jsSm(0.62,1,u))*(0.5+0.5*((hq>>>8)&255)/255)*sa;
+    if(a<0.004)continue;const x=q.x-q.ty*P2.n,y=q.y+q.tx*P2.n-ex*ex*w*3,r=w*(1.5+2.6*u)*(0.8+0.4*q2);
+    ctx.globalAlpha=a;jsStamp(ctx,S2.l,x,y,q.tx,q.ty,r*(2.2+0.8*q3),r*2);}
+  for(let i=0;i<N;i++){const i8=i*8,a=JSB[i8+6],sz=JSB[i8+5];if(a<0.03||sz<1.5)continue;
+    ctx.globalAlpha=a*0.34;jsStamp(ctx,S2.l,JSB[i8],JSB[i8+1],JSB[i8+2],JSB[i8+3],JSB[i8+4]*0.6+sz*4,sz*4);}
+  // 2. the grains: each stretched along its motion (a little longer than the way it went in a frame and a half)
+  ctx.globalCompositeOperation='source-over';
+  for(let i=0;i<N;i++){const i8=i*8,a=JSB[i8+6];if(a<0.02)continue;const sz=JSB[i8+5];
+    ctx.globalAlpha=Math.min(1,a);jsStamp(ctx,S2.g,JSB[i8],JSB[i8+1],JSB[i8+2],JSB[i8+3],sz*1.4+JSB[i8+4]*0.55,sz*1.4);}
+  // 3. glints
+  ctx.globalCompositeOperation='lighter';
+  for(let i=0;i<N;i++){const i8=i*8,g=JSB[i8+7]*JSB[i8+6];if(g<0.05)continue;const r=2.5+3*g;
+    ctx.globalAlpha=Math.min(1,g*1.4);jsStamp(ctx,S2.l,JSB[i8],JSB[i8+1],1,0,r,r);}
   ctx.restore();}
 // the places it is used, found once per floor from the tiles (L._jet); the swing's path is made each frame in one kept path
 function jetPlaces(){if(L._jet)return L._jet;const out={shafts:[],jg:[]};
@@ -6781,7 +6838,7 @@ function jetPlaces(){if(L._jet)return L._jet;const out={shafts:[],jg:[]};
     jsQuad(p,X+16,y1+20,xs,y1,6);                                    // up into the wall on the ledge's side
     for(let k=1;k<=nl;k++){const ax=p.x[p.n-1],bx=k%2?xo:xs,by=y1-R*k/nl;jsQuad(p,ax+(bx-ax)*0.15,by,bx,by,8);} // kick to kick, each arc topping out at the far wall
     jsQuad(p,xs,ly-hb-8,xs+sd*16,ly-hb,6);jsAdd(p,xs+sd*34,ly-hb+2);   // over the lip and out onto the ledge
-    out.shafts.push({p,c,r0:tr,r1:r,seed:hash2(c,r)&1023});}
+    out.shafts.push({p,c,r0:tr,r1:r,seed:hash2(c,r)&1023,wall:{wx0:X,wx1:X+TW,wy:ly}});}
   for(const a of L.path){if(a.a!=='jgrab')continue;const d=a.to>a.from?1:-1;let r=-1;
     for(let rr=1;rr<L.rows-1&&r<0;rr++){const f=F(L,a.from+d,rr);if(f&&f.t==='jgrab')r=rr;}
     if(r<1)continue;const ys=SURF(r),ly=SURF(r-1),xe=d>0?a.to*TW-HX+2:(a.to+1)*TW-HX-2,x0=a.from*TW+16+d*14,p=jsPath();jsReset(p);
@@ -6804,10 +6861,10 @@ function jsSwingPath(){const p=jsReset(JS_SW),f=P.bar,bp=barPos(f),fc=P.face,A=M
 function drawJetHints(x0,x1,y0,y1,ctx){const J=jetPlaces(),pc=P?pCol():-1,pr=P?pRow():-1;
   for(const q of J.shafts){if(q.p.bx1<x0-24||q.p.bx0>x1+24||q.p.by1<y0-24||q.p.by0>y1+24)continue;
     const inIt=P&&pc===q.c&&pr>=q.r0&&pr<=q.r1&&P.state!=='stand';
-    jetStream(ctx,q.p,(S.learned.shaft?0.65:1)*(inIt?0.85:1),90,3,q.seed,x0,x1,y0,y1);}
-  if(!S.learned.jgrab)for(const q of J.jg)jetStream(ctx,q.p,0.85,95,3.6,q.seed,x0,x1,y0,y1);
+    jetStream(ctx,q.p,(S.learned.shaft?0.65:1)*(inIt?0.85:1),90,3,q.seed,x0,x1,y0,y1,q.wall);}
+  if(!S.learned.jgrab)for(const q of J.jg)jetStream(ctx,q.p,0.85,95,3.6,q.seed,x0,x1,y0,y1,null);
   if(P&&P.state==='swing'&&P.bar&&P.swRdy){const k=clamp((gameTime-(P.swGl||0))/0.4,0,1),fw=P.swOm>0?1:0.5; // (stronger while he swings forward: Jump now)
-    jetStream(ctx,jsSwingPath(),k*fw*(S.learned.swing?0.75:1),125,4,517,x0,x1,y0,y1);}}
+    jetStream(ctx,jsSwingPath(),k*fw*(S.learned.swing?0.75:1),125,4,517,x0,x1,y0,y1,null);}}
 function drawDynamic(ctx,x0,x1,y0,y1){
   hudStones.length=0;
   const th=L.theme,c0=Math.floor(x0/TW)-1,c1=Math.floor(x1/TW)+1,r0=Math.floor(y0/TH)-1,r1=Math.floor(y1/TH)+1;
