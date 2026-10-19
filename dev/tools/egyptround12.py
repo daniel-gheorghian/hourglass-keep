@@ -38,7 +38,7 @@ def sections(D, REL, img):
              '<li>Shali: a plain carved band of chevrons, kept to geometry; nothing of the meanings of Siwan (Amazigh) needlework is borrowed.</li></ul></li></ul>' +
              '<h3>Raised, half-way and closed, before and after, both modes (1:1); below, the closed slab at 3x</h3>' + fig(img, 'r12_gate_persp.png', 'Portcullis, before and after') +
              '<h3>The stones as generated (granite, syenite, quartzite, sandstone, limestone, greywacke, mud brick, kershef) and each theme\'s carved slab</h3>' + fig(img, 'r12_stones.png', 'Stones and carvings') +
-             '<h3>Each theme\'s slab at gate size, closed (Torchlight above, Classic below)</h3>' + fig(img, 'r12_gate_themes.png', 'Slabs by theme') +
+             '<h3>Each theme\'s slab at gate size, closed (Torchlight above, Classic below)</h3>' + '<p class="meta">(Retired: every theme\'s slab as built is in round 16c\'s <a href="#r16c">r16c_gate.png</a>.)</p>' +
              links([('UCL Digital Egypt: granite (Aswan: ~50% pink potassium feldspar, 25% grey quartz, biotite and hornblende)', 'https://www.ucl.ac.uk/museums-static/digitalegypt/stone/granite.html'),
                     ('Hall of Maat: monumental red granite, coarse-grained, porphyritic, phenocrysts up to ~4 cm', 'https://www.hallofmaat.com/granite-hornblende-biotite-granite-monumental-red-granite-red-granite-rose-granite-pink-granite-monumental-black-granite-black-granite-grey-granite-syenite-pyrrhopoecilon/'),
                     ('MDPI (2021): the Aswan Monumental Granite', 'https://www.mdpi.com/2076-3417/11/14/6471'),

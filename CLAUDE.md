@@ -196,7 +196,12 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   drawn, and a beam's bounce light is dropped when a wall stands between the opening and its landing. Check with `beamwall.py`.
 - Doors are drawn live, but Torchlight's relief reads the room's picture: the back wall's art is flattened under each doorway and its
   frame (`drawRoomStatic`). `doorscan.py` checks every door (floors 1 to 48, both modes) for art over the opening. At the exit he
-  climbs the doorway's stairs tread by tread (`EX_*`, `P.exS`), cut by the posts and the ceiling's edge.
+  climbs the doorway's stairs tread by tread (`EX_*`, `P.exS`), cut by the posts and the ceiling's edge. (round 16c) The stairs are the
+  same in every style; his first step also lifts him `EX_UP` (from the floor's middle depth onto the tread, which starts inside the
+  doorway), and his stride moves only while he rises (`P.exQ`), so a planted foot stays put; `stairscan.py` measures feet against the
+  drawn treads on floors 1 to 48. Stone slabs (portcullis, lift mouths) are rubbed out of the relief whenever they are down
+  (`glRelSlab`: the back wall's courses and friezes were embossed on them); `openscan.py` checks windows, gates and lift mouths for
+  wall art over the opening (floors 1 to 48, both modes; `EGP.noover` leaves out the hangings and lamp scars drawn after windows).
 - A dart shooter firing left sits on a wall's hidden left face: no head is drawn and its darts come from behind the front face.
 - Lifts (v60, owner): no wall plant or kick inside a lift's shaft (`inLiftShaft` in `wallTouch`; `liftkick.py`). Lift parts are cut
   out behind the walls' front faces in front of them (`liftOccl`), the counterweight runs in the back wall behind the platform, and
@@ -204,6 +209,10 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   the air (`liftAir`); a slab coming down on him at the foot steps him aside, never hurts. A ride held on Down ends standing (`P.liftHold`).
   A mouth grating on a shaft's right edge is drawn after the shaft's contents, the rider is cut by `liftOccl` too, and the shaft's
   back-wall parts are cut by the side faces beside it (v61); `liftscan.py` checks every lift for pixels over walls and gratings.
+  Mouth slabs (round 16c): a slab on the shaft's left edge is drawn after the shaft's back plane (shade, channel, counterweight) and
+  before the ropes, beam and platform (its broad face is the shaft's side); the call plate's cell is cut round the slab (`liftMouthCut`)
+  instead of the slab's foot being drawn again; a slab's cast floor shadow falls only on floor, not into the shaft; wear chips on a
+  slab are capped in px (`stoneWear` cap: a share of its height made a slit that sheared it).
 - A ceiling at his height (a WALL, or an upper floor's slab, `ceilY`) makes any floor jump the low leap (v60, owner), and the head
   clamp holds every frame; a saw that would sit under such a ceiling becomes spikes in place (the low leap cannot clear it).
   Check with `lowceil.py`.
@@ -215,7 +224,8 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   windows are post and lintel (the dungeon style's vaults stay round). No churches, crosses or the Ark, no living peoples as enemies
   or decoration. Pictures and sources: `egyptshot.py`, `egyptfx.py`, `egyptpage.py` (egypt_themes.html).
   Built in (owner, round 4): the themes' lamps (`drawLampEg`) and the re-skinned traps are on by default: granite portcullis
-  (`egSlab`; lift gates keep their bars; no metal mask), sliding roof block with sand (`egStone`, `egBlock`), sand floor, bronze-
+  (`egSlab`; lift gates keep their bars; no metal mask; modelled by the key light: lit narrow face, a crisp arris, a core-shadow band and
+  dark far edge on the broad face, a cast shadow on floor and wall, raised in round 16c so the edge reads in every theme), sliding roof block with sand (`egStone`, `egBlock`), sand floor, bronze-
   tipped stakes, and the chase drawn as a granite plug (`drawPlug`; the storm shader, veil and Classic bakes are off behind it).
   Look only: hit boxes, timing, generator and bot unchanged. `EGP={lamps,traps,plug}` turns them off for debugging (metaltest's
   gate scene and stormfair test the iron gate and the storm that way). The plug is one passage-sized block per corridor row of the
