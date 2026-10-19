@@ -7438,12 +7438,20 @@ const PF={upd:0,iv0:0,on:/[?&]prof\b/.test(location.search),t:0,gl:null,a:{},fa:
 // fetched for the run) plays six floors live, through the game's own loop and input, 20 s each, fixed seeds, one per theme
 // (1 Dungeon, 5 Sandstone, 10 Lapis, 14 Forge with a storm, 17 Crypt, 22 Dungeon at night with a storm), the prince unhurt.
 // Torchlight at full size (?bench=75: at .75; ?bench=auto: the game's own resolution scaling, v63: it no longer falls back to Classic; ?bench=classic).
-// Per floor: frame times (mean, 95th percentile, worst, share over 20 ms, the worst 2 s average, which is what the fall back
+// Per floor: frame times (mean, 95th percentile, worst, share of dropped frames, the worst 2 s average, which is what the fall back
 // judges), script time, rooms built, relief copies. The save is left as it was. The result is a table with a Copy button.
+// (round 16d, owner) A dropped frame is one over 1.2 refresh intervals of this screen, not a fixed 20 ms (v53's 60 Hz figure, which on a
+// 120 Hz ProMotion iPhone missed every drop to 60 fps): benchHz times 40 rAF callbacks before the first floor, takes the median interval
+// and snaps it to 30, 60, 90, 120 or 144 Hz (30: iOS Low Power Mode throttles rAF, WebKit bug 215745; 60: Safari tabs on ProMotion while
+// the default-on flag 'Prefer Page Rendering Updates near 60fps' is set, and home-screen web apps as reported in 2024, WebKit bugs 280183,
+// 272226; 120: home-screen web apps on iOS 26, same bug). The column's header names the threshold and the rate, e.g. '>10 ms @120Hz'.
+// Only the bench reads it: the game's own scaling (38 ms down, UP_MS up) does not.
 const BENCH={on:/[?&]bench\b/.test(location.search),arg:(location.search.match(/[?&]bench=(\w+)/)||[])[1]||'',floors:((location.search.match(/[?&]floors=([\d,]+)/)||[])[1]||'1,5,10,14,17,22').split(',').map(Number),secs:20,tr:[],TR:{}, // (&floors=17,10: only those floors; TR: each floor's first 6 s, frame by frame)
-  i:-1,g:null,run:false,t0:0,iv:[],wk:[],iv0:0,rb:0,ru:0,out:[],save:null,fb:null,done:null};
+  i:-1,g:null,run:false,t0:0,iv:[],wk:[],iv0:0,rb:0,ru:0,out:[],save:null,fb:null,done:null,hz:60,rif:1000/60,thr:20};
+function benchHz(cb){const ts=[],f=t=>{ts.push(t);if(ts.length<41){requestAnimationFrame(f);return;}const d=[];for(let i=1;i<ts.length;i++)d.push(ts[i]-ts[i-1]);d.sort((a,b)=>a-b);
+  const med=d[d.length>>1]||1000/60,hz=[30,60,90,120,144].reduce((a,b)=>Math.abs(1000/med-b)<Math.abs(1000/med-a)?b:a);BENCH.rif=med;BENCH.hz=hz;BENCH.thr=Math.round(1200/hz*10)/10;cb();};requestAnimationFrame(f);}
 function benchBoot(){const tries=['dev/tools/bot.js','tools/bot.js'],load=i=>{if(i>=tries.length){msg('Benchmark: the test bot could not be loaded (it needs a connection).',6);return;}
-  const t=document.createElement('script');t.src=tries[i]+'?v='+APP_VERSION;t.onload=()=>setTimeout(benchStart,600);t.onerror=()=>{t.remove();load(i+1);};document.head.appendChild(t);};load(0);}
+  const t=document.createElement('script');t.src=tries[i]+'?v='+APP_VERSION;t.onload=()=>setTimeout(()=>benchHz(benchStart),600);t.onerror=()=>{t.remove();load(i+1);};document.head.appendChild(t);};load(0);}
 function benchStart(){if(!window.botGen)return;BENCH.save=JSON.stringify(S);BENCH.run=true;BENCH.out=[];
   for(const id in HINTS)S.hints[id]=1;for(const id of HINT_MOVE)S.learned[id]=1;
   S.set.lightMode=BENCH.arg==='classic'?'classic':'torch';window.__HKnoauto=BENCH.arg!=='auto';if(BENCH.arg==='saver'){S.set.saver=true;layout();}if(BENCH.arg==='2d')GLFX.wgl=false;hideAll();benchFloor(0);} // (?bench=saver: Battery saver on, as the owner plays it: every other frame, 1x resolution; ?bench=2d: the scene drawn in 2D and copied, as up to v60, to compare on the same phone)
@@ -7459,18 +7467,18 @@ function benchCheck(){if(!BENCH.run||BENCH.i<0)return;const el=BENCH.t0?(perform
   const iv=BENCH.iv,n=iv.length,srt=Float64Array.from(iv).sort(),sum=iv.reduce((a,b)=>a+b,0),q=k=>n?srt[Math.min(n-1,Math.floor(k*n))]:0;
   let w2=0;for(let a=0,b=0,acc=0;b<n;b++){acc+=iv[b];while(acc-iv[a]>=2000&&a<b){acc-=iv[a];a++;}if(acc>=2000)w2=Math.max(w2,acc/(b-a+1));}
   const L0=L;BENCH.out.push({n:BENCH.floors[BENCH.i],th:L0?L0.theme.style:'',s:el,fps:n?1000*n/sum:0,mean:n?sum/n:0,p95:q(0.95),max:n?srt[n-1]:0,
-    slow:n?iv.filter(v=>v>20).length/n:0,w2,wk:BENCH.wk.length?BENCH.wk.reduce((a,b)=>a+b,0)/BENCH.wk.length:0,rb:roomBuilds-BENCH.rb,ru:(GLREL.ups||0)-BENCH.ru,
+    slow:n?iv.filter(v=>v>BENCH.thr).length/n:0,w2,wk:BENCH.wk.length?BENCH.wk.reduce((a,b)=>a+b,0)/BENCH.wk.length:0,rb:roomBuilds-BENCH.rb,ru:(GLREL.ups||0)-BENCH.ru,
     sc:GLP.rs,fb:BENCH.fb,bot:BENCH.done?(BENCH.done.ok===true?'done':String(BENCH.done.why||BENCH.done.ok)):''});
   BENCH.g=null;if(BENCH.i+1<BENCH.floors.length)benchFloor(BENCH.i+1);else benchEnd();}
 function benchEnd(){BENCH.run=false;GLFX.wgl=WGL_DEF;BENCH.i=-1;S=JSON.parse(BENCH.save);window.__HKnoauto=false;mode='title';previewTitle();show('title');if(BENCH.arg==='saver')layout();
-  const f=(v,d=1,w=5)=>v.toFixed(d).padStart(w),gl=GLP.gl,ri=gl&&gl.getExtension('WEBGL_debug_renderer_info');
+  const f=(v,d=1,w=5)=>v.toFixed(d).padStart(w),gl=GLP.gl,ri=gl&&gl.getExtension('WEBGL_debug_renderer_info'),dh=' >'+BENCH.thr+' ms @'+BENCH.hz+'Hz',dw=dh.length;
   const rows=['Dawnward v'+APP_VERSION+' bench: '+(BENCH.arg==='saver'?'Battery saver (torch, every other frame drawn, 1x; times per 60 Hz step)':BENCH.arg==='2d'?'torch with the scene drawn in 2D and copied (v60 path)':BENCH.arg||'torch, full size, no fall back'),
-    navigator.userAgent.replace(/^Mozilla\/5\.0 /,'').slice(0,110),'canvas '+cv.width+'x'+cv.height+'  dpr '+(window.devicePixelRatio||1)+(ri?'  '+gl.getParameter(ri.UNMASKED_RENDERER_WEBGL):''),
-    'fl theme      s   fps  mean   p95   max >20ms  w2s  work rooms relf scale'+(BENCH.arg==='auto'?'  off@':'')];
+    navigator.userAgent.replace(/^Mozilla\/5\.0 /,'').slice(0,110),'canvas '+cv.width+'x'+cv.height+'  dpr '+(window.devicePixelRatio||1)+'  rAF '+BENCH.rif.toFixed(2)+' ms ('+BENCH.hz+' Hz)'+(ri?'  '+gl.getParameter(ri.UNMASKED_RENDERER_WEBGL):''),
+    'fl theme      s   fps  mean   p95   max'+dh+'  w2s  work rooms relf scale'+(BENCH.arg==='auto'?'  off@':'')];
   let T={s:0,fr:0,sum:0,slow:0,w2:0,wk:0,rb:0,ru:0};
   for(const o of BENCH.out){const fr=o.mean?o.s*1000/o.mean:0;T.s+=o.s;T.fr+=fr;T.sum+=o.mean*fr;T.slow+=o.slow*fr;T.w2=Math.max(T.w2,o.w2);T.wk+=o.wk*fr;T.rb+=o.rb;T.ru+=o.ru;
-    rows.push(String(o.n).padStart(2)+' '+o.th.padEnd(8)+f(o.s,0,4)+f(o.fps,1,6)+f(o.mean)+f(o.p95,1,6)+f(o.max,0,6)+(Math.round(o.slow*100)+'%').padStart(6)+f(o.w2)+f(o.wk)+String(o.rb).padStart(6)+String(o.ru).padStart(5)+f(o.sc,2,6)+(BENCH.arg==='auto'?(o.fb===null?'    -':f(o.fb,0,5)+'s'):'')+(o.bot&&o.bot!=='done'?'  bot: '+o.bot:''));}
-  if(T.fr)rows.push('all '+' '.repeat(10)+f(T.s,0,2)+f(1000*T.fr/T.sum,1,6)+f(T.sum/T.fr)+' '.repeat(12)+(Math.round(T.slow/T.fr*100)+'%').padStart(6)+f(T.w2)+f(T.wk/T.fr)+String(T.rb).padStart(6)+String(T.ru).padStart(5));
+    rows.push(String(o.n).padStart(2)+' '+o.th.padEnd(8)+f(o.s,0,4)+f(o.fps,1,6)+f(o.mean)+f(o.p95,1,6)+f(o.max,0,6)+(Math.round(o.slow*100)+'%').padStart(dw)+f(o.w2)+f(o.wk)+String(o.rb).padStart(6)+String(o.ru).padStart(5)+f(o.sc,2,6)+(BENCH.arg==='auto'?(o.fb===null?'    -':f(o.fb,0,5)+'s'):'')+(o.bot&&o.bot!=='done'?'  bot: '+o.bot:''));}
+  if(T.fr)rows.push('all '+' '.repeat(10)+f(T.s,0,2)+f(1000*T.fr/T.sum,1,6)+f(T.sum/T.fr)+' '.repeat(12)+(Math.round(T.slow/T.fr*100)+'%').padStart(dw)+f(T.w2)+f(T.wk/T.fr)+String(T.rb).padStart(6)+String(T.ru).padStart(5));
   const txt=rows.join('\n');window.__BENCH_TRACE=BENCH.TR;window.__BENCH_RESULT=txt;console.log(txt);
   const d=document.createElement('div');d.id='benchOut';d.style.cssText='position:fixed;inset:8px;z-index:99;background:rgba(8,6,14,.94);color:#9fffd2;font:10px/1.35 monospace;padding:10px;overflow:auto;border-radius:8px';
   const pre=document.createElement('pre');pre.textContent=txt;pre.style.cssText='margin:0 0 8px;white-space:pre;user-select:text;-webkit-user-select:text';
