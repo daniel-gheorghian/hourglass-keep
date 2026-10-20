@@ -2003,6 +2003,11 @@ function lerpPose(a,b,t,out){out=out||mk({});for(const k of PK)out[k]=a[k]+(b[k]
 // of the shoulder (ANSUR: chin 94 mm over the acromion, a head 228 mm), C7 just under the chin, the neck 0.6 of the head's depth. Until
 // v69 the trunk was 15 and the neck 2.5: the chin 1.8 px over the shoulder joint, the shoulders crowding the head (the hump the owner
 // saw). The crown stands where it stood (27.7 px over the hip), the legs, the feet and the arms' length are unchanged.
+// (round 22c, owner: "the neck is too long, not in harmony with the rest of the body": the audit found the skeleton right in the body's
+// scale (shoulder joint 13, trunk/leg 0.58 against ANSUR's 0.59) and 22b's "0.41 h over the acromion" measured to the joint, not the
+// acromion; the drawn chin-to-acromion was 2.3 px, about the body's 2.5. What read as long was the drawing: the neck's tube ran down to
+// the shoulder joint and its back edge straight on to the shoulder blades, so C7 sat 4.2 px under the chin (ANSUR: 15 mm, 0.4 px). The
+// neck is now measured chin to the acromion's top in the body's scale and drawn to end where the trunk begins: see NJ.)
 const LEN={th:12,sh:12,to:13,nk:4.9,hd:4.4,ua:8.3,fa:9.2};
 // Hands that hold something keep their place (round 22b). Ledges, floors, hilts, the flask and the sword's place in a fight were set for
 // v69's arm (shoulder 15 px up the spine, arm 9 + 8.5), and gameplay's numbers (HANG, the climb's offsets) were tuned to it. The pose
@@ -2010,6 +2015,12 @@ const LEN={th:12,sh:12,to:13,nk:4.9,hd:4.4,ua:8.3,fa:9.2};
 // and both arms are solved again (two bones, the elbow bending the way it bent). In the air a grip out of reach lifts the body just
 // enough (the shorter trunk hangs higher under the same grip). mh moves the hand with the mouth (the drink: the head is drawn anew).
 const F69={to:15,nk:2.5,hd:4.6,ua:9,fa:8.5};
+// The neck's junction with the trunk (round 22c), in px along the neck's axis from the shoulder joint (up) and across it (positive: toward
+// the back): th the pit of the neck (suprasternale, level with the acromion's top as in ANSUR II, 1432 against 1431 mm), c7 the vertebra
+// prominens 0.8 px under the chin (ANSUR: 15 mm), bk the trunk's outline up the back to C7 on the line from the shoulder blades (no shelf,
+// no hump), km the nape's concave curve, tp the neck's top (offset back, width: 0.59 of the head's height deep), dq how far under the
+// joint the arm's root sits, so the deltoid's cap (the acromion's top) is 2.5 px under the chin: ANSUR's 94 mm at 3.7 cm a px.
+const NJ={th:[1.7,-1.3],bk:[[3.0,0.3],[4.0,3.62],[2.6,3.85],[1.2,4.05]],c7:[4.0,3.62],km:[5.6,3.2],nb:[2.0,0.9,5.2],tp:[0.8,3.8],dq:0.9};
 function skel(p){
   const sin=Math.sin,cos=Math.cos;
   const kF=[LEN.th*sin(p.hF),LEN.th*cos(p.hF)], fF=[kF[0]+LEN.sh*sin(p.hF-p.kF),kF[1]+LEN.sh*cos(p.hF-p.kF)];
@@ -2136,7 +2147,7 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
   const BT=(path,pts,ws,base,shadow)=>{if(O.mono)return;ctx.fillStyle=shadow;ctx.fill(path);const ux=O._lx,uy=O._ly; // (tcel's fills)
     ctx.fillStyle=base;ctx.fill(tubePath(pts.map(q=>[q[0]+ux*0.38,q[1]+uy*0.38]),ws.map(w=>Math.max(0.5,w-1.0))));
     if(O._lk>0.05){ctx.fillStyle=litTint(base,O._lc,O._lk);ctx.fill(tubePath(pts.map(q=>[q[0]+ux*1.0,q[1]+uy*1.0]),ws.map(w=>Math.max(0.4,w-2.3))));}};
-  const armG=(sh,e,h,a,fist)=>{const k=clamp(Math.sin(a),-1,1)*0.9-(TG?TG.ra*sstep((Math.abs(a)-1.7)/0.9)*0.8:0),r0=[sh[0]+nx*k-tx*0.7,sh[1]+ny*k-ty*0.7], // (round 19: a raised arm rises from the back of the shoulder, the scapula turned up under it)
+  const armG=(sh,e,h,a,fist)=>{const k=clamp(Math.sin(a),-1,1)*0.9-(TG?TG.ra*sstep((Math.abs(a)-1.7)/0.9)*0.8:0),dq=0.7+(EG?(NJ.dq-0.7)*(1-sstep(Math.abs(a)-1)):0),r0=[sh[0]+nx*k-tx*dq,sh[1]+ny*k-ty*dq], // (round 19: a raised arm rises from the back of the shoulder, the scapula turned up under it)
       // (the shoulder goes forward and back with the arm's swing)
       dx=e[0]-r0[0],dy=e[1]-r0[1],d=Math.hypot(dx,dy)||1,fx=dy/d,fy=-dx/d,ex=h[0]-e[0],ey=h[1]-e[1],de=Math.hypot(ex,ey)||1,gx=ey/de,gy=-ex/de,
       U=(u,o2)=>[r0[0]+dx*u+fx*o2,r0[1]+dy*u+fy*o2],V=(u,o2)=>[e[0]+ex*u+gx*o2,e[1]+ey*u+gy*o2];
@@ -2200,17 +2211,31 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
     // skull), leans forward about 14 degrees (its base 1.6 px behind the spine's axis, its top 0.5): its back edge is the slope from the nape
     // down to C7, then the back runs on nearly straight to the shoulder blades on the wall line (BQ 4.25 at the shoulder, 4.5 at u 0.76). Round
     // 22's lower arm roots are not needed: the deltoid's top is 5 px under the chin)
+    // (round 22c: that note measured to the shoulder joint; the deltoid's top was 2.3 px under the chin, and the neck read long because its
+    // tube went on 1.9 px under the shoulder's top in front and its back edge ran straight to the shoulder blades: C7 4.2 px under the chin.
+    // Now the trunk's outline rises up the back to C7 (NJ.bk) and the neck is one shape cut from C7 down to the pit of the neck (NKP))
     const ha1=lean+p.head,ux=Math.sin(ha1),uy=-Math.cos(ha1),tw1=1-TG.ra,T0=[E[0]+TS[n8][3]*1.1,E[1]-TS[n8][2]*1.1],
       NB=(up,o2)=>[T0[0]+(E[0]+ux*up+uy*o2-T0[0])*tw1,T0[1]+(E[1]+uy*up-ux*o2-T0[1])*tw1]; // (o2 toward the back of the neck)
-    for(let i=0;i<=n8;i++)ring.push(pt(i,fo[i]));ring.push(NB(0.9,-1.7),NB(2.8,3.5));for(let i=n8;i>=0;i--)ring.push(pt(i,-bo[i]));
-    const TP=smoothLoop(ring),n0=at(0.95),hd0=s.hd,ha0=lean+p.head,nq=1-TG.ra,nk=[[n0[0]-nx*1.6*nq,n0[1]-ny*1.6*nq],[hd0[0]-Math.sin(ha0)*3.6-Math.cos(ha0)*0.5*nq,hd0[1]+Math.cos(ha0)*3.6-Math.sin(ha0)*0.5*nq]],nw=[4.0+1.5*nq,3.0+1.6*nq],NP=tubePath(nk,nw);
+    for(let i=0;i<=n8;i++)ring.push(pt(i,fo[i]));ring.push(NB(NJ.th[0],NJ.th[1]));for(const q of NJ.bk)ring.push(NB(q[0],q[1]));for(let i=n8;i>=0;i--)ring.push(pt(i,-bo[i]));
+    const nq=1-TG.ra,nbU=NJ.nb[0]*nq-0.05*LEN.to*(1-nq),nbB=NJ.nb[1]*nq,n0=[E[0]+tx*nbU,E[1]+ty*nbU],TP=smoothLoop(ring),hd0=s.hd,ha0=lean+p.head,nk=[[n0[0]-nx*nbB,n0[1]-ny*nbB],[hd0[0]-Math.sin(ha0)*3.6-Math.cos(ha0)*NJ.tp[0]*nq,hd0[1]+Math.cos(ha0)*3.6-Math.sin(ha0)*NJ.tp[0]*nq]],nw=[4.0+(NJ.nb[2]-4.0)*nq,3.0+(NJ.tp[1]-3.0)*nq],
+      // (round 22c: the neck ends where the trunk begins, its base tilted from C7 (high, at the back) down to the pit of the neck (low, in front,
+      // level with the shoulder's top): the fills and outline are one shape cut along that line, not a tube running down to the shoulder joint)
+      nA=[nk[1][0]-nk[0][0],nk[1][1]-nk[0][1]],nL=Math.hypot(nA[0],nA[1])||1,ax2=nA[0]/nL,ay2=nA[1]/nL,pfx=-ay2,pfy=ax2,
+      RB=(q)=>[E[0]+ux*q[0]+uy*q[1],E[1]+uy*q[0]-ux*q[1]],lp=(a,b,k)=>[a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k],
+      bF=RB(NJ.th),bK=RB(NJ.c7),cF=lp([nk[0][0]+pfx*nw[0]/2,nk[0][1]+pfy*nw[0]/2],bF,nq),cK=lp([nk[0][0]-pfx*nw[0]/2,nk[0][1]-pfy*nw[0]/2],bK,nq),
+      tc=[nk[1][0]+ax2*1.5,nk[1][1]+ay2*1.5],TF=[tc[0]+pfx*nw[1]/2,tc[1]+pfy*nw[1]/2],TK=[tc[0]-pfx*nw[1]/2,tc[1]-pfy*nw[1]/2],
+      NKP=(sx,sy,d)=>{const In=(a,b)=>{const L2=Math.hypot(b[0]-a[0],b[1]-a[1])||1,k=Math.min(0.45,d/2/L2);return lp(a,b,k);},S2=q=>[q[0]+sx,q[1]+sy],
+        f0=In(cF,cK),k0=In(cK,cF),f1=S2(In(TF,TK)),k1=S2(In(TK,TF)),fm=lp(S2(f0),f1,0.5),kq=S2(lp(lp(cK,TK,0.5),RB(NJ.km),nq)),km=In(kq,fm),bm=[(f0[0]+k0[0])/2-ax2*0.5,(f0[1]+k0[1])/2-ay2*0.5];
+        const kd=lp([-ax2*0.8,-ay2*0.8],[(RB(NJ.bk[2])[0]-bK[0])*0.6,(RB(NJ.bk[2])[1]-bK[1])*0.6],nq),k2=[k0[0]+kd[0],k0[1]+kd[1]]; // (k2: the back edge runs on a little past C7, along the trunk's line, so the corner is not rounded in)
+        return smoothLoop([f0,fm,f1,S2([tc[0]+ax2*2,tc[1]+ay2*2]),k1,km,k0,k2,bm]);},NP=NKP(0,0,0);
     FA=armG(s.sh,s.eF,s.hF,p.aF,!!o.sword);BS(TP);BS(NP);BS(FA.path);BS(FA.hp);
     if(!O.mono){const base=C('tunic'),sd=D('tunic'),sg=O._lx>=0?1:-1,Lo=i=>sg>0?fo[i]:-bo[i],Do=i=>sg>0?-bo[i]:fo[i];
       ctx.fillStyle=base;ctx.fill(TP);
       const shp=[];for(let i=1;i<=n8;i++)shp.push(pt(i,Do(i)));for(let i=n8;i>=1;i--)shp.push(pt(i,Do(i)+(Lo(i)-Do(i))*0.34));ctx.fillStyle=sd;ctx.fill(smoothLoop(shp)); // the shaded plane
       const kk=[0,0,0,0,0.2,0.36,0.42,0.38,0.3],lp2=[];for(let i=3;i<=n8;i++)lp2.push(pt(i,Lo(i)));for(let i=n8;i>=3;i--)lp2.push(pt(i,Lo(i)+(Do(i)-Lo(i))*kk[i]));
       ctx.fillStyle=O._lk>0.05?litTint(shadeHex(base,0.1),O._lc,O._lk):shadeHex(base,0.14);ctx.fill(smoothLoop(lp2)); // the lit plane
-      BT(NP,nk,nw,C('skin'),D('skin'));}}
+      ctx.fillStyle=D('skin');ctx.fill(NP);ctx.fillStyle=C('skin');ctx.fill(NKP(O._lx*0.38,O._ly*0.38,1.0)); // (BT's fills, on the cut shape)
+      if(O._lk>0.05){ctx.fillStyle=litTint(C('skin'),O._lc,O._lk);ctx.fill(NKP(O._lx,O._ly,2.3));}}}
   else tcel(ctx,tp,tw,C('tunic'),D('tunic'),O);
   if(EG&&pal.bare&&!O.mono){const P2=(u,o2)=>{const q=at(u);return [q[0]+nx*o2,q[1]+ny*o2];};sheen(P2(0.95,-1.2),P2(0.97,2.6),1.2);} // the sheen on the shoulders (round 21a: not past the trapezius slope)
   if(FULL&&!O.mono){ // the broad collar (wesekh): rows of faience beads round the neck, a drop row at the edge

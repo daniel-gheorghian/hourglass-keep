@@ -79,9 +79,6 @@ def sections(D, REL, img):
             'the body\'s.</p>'
             '<h3>The proportions (1 px is about 3.7 cm of the body; the head 1.6 times that)</h3>' +
             table(('Measure', 'Research', 'At the figure\'s scale', 'v69 and round 22', 'Round 22b'), PROP) +
-            fig(img, 'r22b_guide.png', 'Standing at 10x: v69, round 22 and after, lit from his back, and each silhouette with head heights counted from the crown, '
-                'the chin and the shoulder joint and the measure between them (px and heads), the wall line; right, the research\'s figure as a ruler at the after '
-                'figure\'s size') +
             fig(img, 'r22b_games.png', 'The proportions other games use, as my own schematic profiles (heads tall; the chin-to-shoulder gap in heads), and '
                 'Dawnward before and after') +
             '<h3>What changed</h3><ul>'
@@ -125,11 +122,7 @@ def sections(D, REL, img):
             '<p><b>Tests</b>: figscan ok (80 poses); lowceil ALL OK; lifttest 0 failures (its paternoster case passes); swingtest ok on floors 6 to 9; stairscan ALL '
             'OK (feet on the treads); run2 3 to 6, two seeds, 8/8 passed, no damage; run2 fight on 6, 7 and 12, all passed, no damage; rendersmoke 7 to 9 both '
             'modes, no errors (0.54 ms a frame against v69\'s 0.51 on this Mac).</p>' +
-            fig(img, 'r22b_poses.png', 'Every pose at 4x, v69 (left of each pair) and after (right), lit from his back, and a robber') +
-            fig(img, 'r22b_game.png', 'Standing in the game: Torchlight at GLP.rs 1 and 0.5 and Classic, facing both ways on floors 7 and 14, before and after; '
-                'then the Torchlight crops at 3x') +
-            fig(img, 'r22b_moves.png', 'In the game, Torchlight and Classic, before and after: hanging on a wall\'s near face (only the hands show), climbing onto '
-                'it, crawling in a tunnel, a low leap under stone, the exit stairs, swinging') +
+            '<p class="meta">(Round 22c: this round\'s guide, every-pose, game and moves sheets retired; round 22c\'s supersede them. Round 22c found that the "0.41 h over the acromion" above was measured to the shoulder joint, see there.)</p>' +
             '<p class="meta">Retired to stay at 505 files: round 22\'s three sheets (the guide, every pose, the game: superseded by this round\'s), round 21a\'s '
             'picture of the prince and round 19\'s arms-up sheet.</p>' +
             links([('ANSUR II anthropometric survey: the public data (Penn State OpenLab)', 'https://www.openlab.psu.edu/ansur2/'),
