@@ -70,7 +70,7 @@ J += [('liftscan', ['liftscan.py', str(n), str(n + 5), '3', 'both'], tail_check(
 J += [('lowceil', ['lowceil.py'], tail_check(r'ALL OK'))] # under a ceiling at his height a jump is the low leap and never goes through the stone
 J += [('gratepeek', ['gratepeek.py', '6', '27', '6'], tail_check(r'tested [1-9]\d* bad 0 '))] # crouching on a grating shows the flask below
 # longest jobs first so the tail of the run isn't one slow floor
-RANK = {'featbot fight': 0, 'run2 fight': 1, 'rendersmoke': 2, 'puzzlescan': 3, 'primtest': 3, 'lifttest': 3, 'featbot': 3, 'metrics40': 4, 'featurescan': 4, 'forktest': 5, 'run2': 6}
+RANK = {'liftscan': 0, 'featbot fight': 0, 'run2 fight': 1, 'rendersmoke': 2, 'puzzlescan': 3, 'primtest': 3, 'lifttest': 3, 'featbot': 3, 'metrics40': 4, 'featurescan': 4, 'forktest': 5, 'run2': 6}
 def floor_of(a): return max([int(x) for x in a[1:] if x.isdigit() and int(x) < 100] or [0]) # (the run2 seed base is not a floor)
 J.sort(key=lambda j: (RANK.get(j[0], 7), -floor_of(j[1])))
 TIMEOUT = 1500 # seconds a single job may take (the slowest healthy ones take under 5 min); a job over it fails and its worker is replaced
@@ -131,15 +131,34 @@ def go(j, w):
         if rc != 0: ok = False; s = s if isinstance(s, tuple) else (out.strip().splitlines()[-1][:160] if out.strip() else 'exit %d' % rc)
     return g, a, ok, s, time.time() - t, out
 
-t0 = time.time(); res = []; Q = queue.Queue()
-for j in J: Q.put(j)
+# Jobs that draw Torchlight (software WebGL in headless Chromium, which spreads each frame over several cores) run at most
+# GPU_JOBS at a time; the other workers take bot jobs meanwhile. Eight of them at once took four times as long each and no
+# less in total, which pushed rendersmoke past its wall budget (v67: 1 alone 53 s, 4 at once 137 s each, 8 at once 300 s each).
+HEAVY = ('rendersmoke', 'liftscan')
+GPU_JOBS = int(os.environ.get('HK_GPU_JOBS', '3'))
+t0 = time.time(); res = []; QL = queue.Queue(); QH = queue.Queue(); GPU = threading.Semaphore(GPU_JOBS)
+for j in J: (QH if j[0] in HEAVY else QL).put(j)
+def take():
+    """-> (job, holds_gpu) or (None, False) when both queues are empty."""
+    while True:
+        if not QH.empty() and GPU.acquire(blocking=False):
+            try: return QH.get_nowait(), True
+            except queue.Empty: GPU.release()
+        try: return QL.get_nowait(), False
+        except queue.Empty: pass
+        if QH.empty(): return None, False
+        if GPU.acquire(timeout=1):     # only heavy jobs are left: wait for a slot
+            try: return QH.get_nowait(), True
+            except queue.Empty: GPU.release()
 def loop():
     w = Worker()
     try:
         while True:
-            try: j = Q.get_nowait()
-            except queue.Empty: return
-            res.append(go(j, w))
+            j, gpu = take()
+            if j is None: return
+            try: res.append(go(j, w))
+            finally:
+                if gpu: GPU.release()
     finally: w.stop()
 ths = [threading.Thread(target=loop) for _ in range(min(jobs, len(J)))]
 for t in ths: t.start()

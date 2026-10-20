@@ -31,7 +31,7 @@ main's file, not the branch: run them from a copy of `dev/` with that path rewri
 
 ## Build
 
-From the repo root, with N the release number (current release v66, next v67):
+From the repo root, with N the release number (current release v67, next v68):
 
 ```
 python3 dev/tools/build.py dev/hourglass-keep.html index.html sw.js N
@@ -47,7 +47,7 @@ service worker's cache to `hourglass-keep-vN`, which is what makes installed cop
    machine's cores and prints one line per test, ending in `ALL OK` or `FAILURES`, then the five slowest jobs. The bot and render
    runs are split one floor (and seed) per job; each of the N workers (`suiteworker.py`) starts ONE Chromium and runs its jobs
    in turn, each in a fresh browser context, so nothing leaks between jobs. The test scripts are unchanged and still run
-   standalone. A job over its 25-minute limit, or one that kills its browser, fails with a message and the worker is replaced.
+   standalone. Jobs that draw Torchlight (`rendersmoke`, `liftscan`: software WebGL in headless Chromium, several cores a frame) run at most three at a time (`HK_GPU_JOBS`); eight at once took four times as long each for no gain and tripped rendersmoke's 240 s wall budget (v67). A job over its 25-minute limit, or one that kills its browser, fails with a message and the worker is replaced.
    `run2`, `featbot`, `p4bot`, `forktest` and `rendersmoke` also fail a run whose page CPU time per game frame is over budget
    (`slowguard.py`, 0.3 ms/frame; healthy runs are 0.02 to 0.1), naming the floor and seed: a leak like v41's particles shows
    up as a failure, not as a long wait. `HK_MS_PER_FRAME` and `HK_RUN_WALL` override the budgets.
