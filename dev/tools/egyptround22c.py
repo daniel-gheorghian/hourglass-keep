@@ -82,10 +82,6 @@ def sections(D, REL, img):
             'cervicale 81 mm over acromion in both). The back of the neck, nape to C7, has no ANSUR landmark: about 86 mm, from the mastoid\'s level about 25 mm '
             'under tragion, an estimate.</p>' +
             table(('Measure', 'ANSUR II, body scale', 'v69', 'Round 22b', 'Shorter (-0.5)', 'After (recommended)', 'Longer (+0.5)'), rows) +
-            fig(img, 'r22c_variants.png', 'Standing, v69 | 22b | 0.5 px shorter | recommended | 0.5 px longer: at 10x lit from his back, the silhouette with the '
-                'landmarks (px over the hip), the measures against ANSUR, and in the game on floor 7 (Torchlight and Classic, game px doubled, then 1:1)') +
-            fig(img, 'r22c_guide.png', 'The corrected guide at 10x: v69, 22b and after, lit and as silhouettes with the crown, nape, chin, C7, pit of the neck, '
-                'acromion top, shoulder joint and hip; right, ANSUR II\'s youth as a ruler in the body\'s scale from the same hip') +
             (('<h3>What changed</h3><ul>'
             '<li>The skeleton is unchanged from 22b (trunk 13, neck 4.9, head 4.4: the crown, height, hands that hold, hit boxes as they were); the head stays the '
             'style\'s size but no longer sets the neck.</li>'
@@ -100,9 +96,7 @@ def sections(D, REL, img):
             'at the chin, the shoulder 2.0 px under it) starts to crowd the jaw as v69 did; the longer one is 22b\'s front with a short back. The recommended one '
             'matches ANSUR\'s chin to acromion and C7.</li>'
             '<li>Robbers share the outline. Skeleton enemies are unchanged.</li></ul>') % (a['c7_under_chin'], a['chin_acr'], a['R_neckD_chest'], a['R_neckD_head'])) +
-            fig(img, 'r22c_poses.png', 'Every pose at 4x, v69 | 22b | after, lit from his back, and a robber') +
-            fig(img, 'r22c_game.png', 'In the game: standing on floors 7 and 14, Torchlight at GLP.rs 1 and 0.5 and Classic, v69 | 22b | after, and the 3x crops; '
-                'hanging on a near face (only the hands show), climbing onto it, crawling, swinging and in a fight, 22b | after') +
+            '<p class="meta">Round 22d retired this round\'s four sheets (variants, guide, poses, game): superseded by round 22d\'s comparison with the 1989 kid.</p>'
             '<h3>Tests</h3><p>' + E(TESTS) + '</p>'
             '<p class="meta">Retired to stay at 505 files: round 22b\'s guide, every-pose and game sheets and its moves sheet (superseded by this round\'s four). '
             'Round 22b\'s games schematic stays.</p>' +

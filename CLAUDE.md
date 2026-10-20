@@ -182,23 +182,21 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   wall's art on it. `wellscan.py` (floors 3-30, 3 seeds: slope, volume, break timing, rewind) must print `ok`; pictures `egyptr21b.py`.
 - Arms up (round 19, owner: "a hump"): `torsoG` narrows the back near the shoulders (up to 1.3 px) and the raised arm rises from the
   back of the shoulder, so the back line runs from the waist into the arm. Pictures for round 19: `egyptr19.py`.
-- The figure follows the researched proportions (round 22b, owner: "that must be the rule"; corrected in round 22c, owner: "the neck is
-  too long ... double check your measurements"; ANSUR II men aged 17-20, Drillis and Contini). The body below the chin is a youth's at
-  ~3.7 cm a px (legs 24, shoulder joint 13 px over the hip, trunk/leg 0.58 against ANSUR's 0.59, arm to mid-hand 17.5); the head is the
-  style's (~1.6x, 10.4 px chin to crown, ~4.8 heads) and does NOT set the neck. Landmarks: the neck is measured chin (menton) to the
-  acromion's top (the visible top of the shoulder, the deltoid's cap) in the BODY's scale: 94 mm = 2.5 px; the shoulder JOINT (the arm's
-  pivot, `skel`'s `sh`) is ~40 mm (1.1 px) under the acromion's top and is not a neck landmark (22b measured to it by mistake); the pit of
-  the neck (suprasternale) is level with the acromion's top; C7 is 15 mm (~0.8 px as drawn) under the chin; the nape is where the skull's
-  curve meets the neck. Drawn (`NJ`, `NKP` in drawFigureHD): the neck is one shape cut along the line from C7 down to the pit of the neck,
-  the trunk's outline rises up the back to C7 on the line from the shoulder blades (one smooth, slightly concave back line from skull to
-  blades: no shelf, no hump), the arm's root `NJ.dq` 0.9 px under the joint so the deltoid's cap is 2.5 px under the chin. Measure with
-  `r22cmeasure.py` (chin, pit, C7, nape, acromion, joint, the ratios against ANSUR). `LEN={th:12,sh:12,to:13,nk:4.9,hd:4.4,ua:8.3,fa:9.2}`
-  (v69: to 15, nk 2.5, hd 4.6, ua 9, fa 8.5: the shoulders at the chin, the hump). The crown stays at 27.7 px over the hip. Hands that hold
-  something (ledge, floor, hilt, flask, the fight's sword) keep v69's places: pose keys `hold` (front hand), `hb` (back), `mh` (follow the
-  mouth) make `skel` solve the arms to v69's hand (`F69`), lifting an airborne body when a grip is out of reach; the swing's lift adds the
-  difference in reach. A new holding pose sets `hold`/`hb`; a new head-up pose near low stone must keep the crown under v69's. Robbers share
-  it. Check with `figscan.py` (every pose before/after: held hands, crown, feet, bar, mouth; must print `figscan: ok`); pictures
-  `egyptr22b.py`, `egyptr22c.py` (variants, guide with landmarks, poses, game).
+- The prince's proportions follow the 1989 Prince of Persia kid (DOS) (round 22d, owner: "I like best the proportions in the original PoP
+  sprite. Replicate the proportions from there in our prince"; rounds 22b/22c's ANSUR II youth is background only, `dev/FIGURE_SPEC.md`).
+  The kid, measured from his frames (`dev/tools/ref/pop_kid.png`/`.json`, PrinceJS assets; frame numbers as SDLPoP's `types.h`; DOS pixels
+  are 1.2x taller than wide: horizontal measures divided by 1.2): 41 rows, head 7 = 5.86 heads; chin 0.83 of the height; the deltoid's top
+  one row (0.024) under the chin, the shirt's shoulder line level with it (sloping shoulders, a slim neck 0.08 deep, one row of throat);
+  shoulder joint 0.77, elbow 0.60, fingertips 0.39; trunk 0.15-0.16 deep with a straight back (head, back and seat on one line); foot 0.14.
+  Ours (52.75 px): `LEN={th:12,sh:12,to:15,nk:4.66,hd:3.52,ua:8.9,fa:8.6}` (head 9.0 px, 5.86 heads; v69's trunk 15 and arm 17.5, so held
+  hands and overhead reach are v69's); `NJ` puts the pit of the neck and the deltoid's top ~1.2 px under the chin, C7 just under it,
+  `NJ.hn` scales the neck's top with the head; the outline is slim (`BQ`/`Fo`/`Bo`, limb widths, foot 0.78 long). Legs are gameplay's
+  (knee 0.25 against the kid's 0.28). The crown stays at 27.7 px over the hip and never rises above v69's. Hands that hold something (ledge,
+  floor, hilt, flask, the fight's sword) keep v69's places: pose keys `hold` (front hand), `hb` (back), `mh` (follow the mouth) make `skel`
+  solve the arms to v69's hand (`F69`), lifting an airborne body when a grip is out of reach. A new holding pose sets `hold`/`hb`; a new
+  head-up pose near low stone must keep the crown under v69's. Robbers share the skeleton with their own heavier build. Measure with
+  `r22dmeasure.py` (the kid and our figure side by side; `r22cmeasure.py` has the neck landmarks); check with `figscan.py` (must print
+  `figscan: ok`); pictures `egyptr22d.py` (the kid beside v69/22c/after, every pose, in game).
 - Lift ropes (round 21a, owner: "holes in the slab with the rope threaded through"): all lift ropes are `barRope` in the theme's fibre
   (`liftRope`; `barRope`'s `ph` makes the lay travel with a running rope). The counterweight platform hangs on two bridles (`liftSling`: an
   eye seized `LS_J` above the slab, legs down through two holes near the front and back edges along the depth diagonal, `ropeHole` drawn in

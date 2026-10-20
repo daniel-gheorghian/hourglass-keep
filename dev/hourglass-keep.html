@@ -2008,7 +2008,15 @@ function lerpPose(a,b,t,out){out=out||mk({});for(const k of PK)out[k]=a[k]+(b[k]
 // acromion; the drawn chin-to-acromion was 2.3 px, about the body's 2.5. What read as long was the drawing: the neck's tube ran down to
 // the shoulder joint and its back edge straight on to the shoulder blades, so C7 sat 4.2 px under the chin (ANSUR: 15 mm, 0.4 px). The
 // neck is now measured chin to the acromion's top in the body's scale and drawn to end where the trunk begins: see NJ.)
-const LEN={th:12,sh:12,to:13,nk:4.9,hd:4.4,ua:8.3,fa:9.2};
+// (round 22d, owner: "that is still slightly off. I like best the proportions in the original PoP sprite. Replicate the proportions from
+// there in our prince": the rule is now the 1989 Prince of Persia kid (DOS), measured from his frames in r22dmeasure.py, see
+// dev/FIGURE_SPEC.md. Standing he is 41 rows, the head 7 (5.86 heads), the chin at 0.83 of his height, the deltoid's top one row (0.024)
+// under the chin with the shirt's shoulder line level with it (a slim neck, one row of throat, sloping shoulders), the shoulder joint at
+// 0.77, elbow 0.60, fingertips 0.39, a slim straight-backed trunk 0.15-0.16 deep, a foot 0.14 long. So: the head smaller (hd 3.52: 9.0 px
+// of 52.75, 5.86 heads), the trunk back to v69's 15 and the arm to v69's 17.5 (8.9 + 8.6: the held hands, the overhead reach and every
+// grip as v69's), the neck 4.66 to the head's centre with the crown no higher than before; the outline slimmer (BQ, Fo, Bo, the limbs'
+// widths, the foot 0.78 as long) and the neck's junction (NJ) moved up with the shoulders.)
+const LEN={th:12,sh:12,to:15,nk:4.66,hd:3.52,ua:8.9,fa:8.6};
 // Hands that hold something keep their place (round 22b). Ledges, floors, hilts, the flask and the sword's place in a fight were set for
 // v69's arm (shoulder 15 px up the spine, arm 9 + 8.5), and gameplay's numbers (HANG, the climb's offsets) were tuned to it. The pose
 // angles stay in that frame; where a pose holds something (hold: the front hand, hb: the back one, 0..1, blended with the pose), the hands go to where v69's arm put them
@@ -2020,7 +2028,9 @@ const F69={to:15,nk:2.5,hd:4.6,ua:9,fa:8.5};
 // prominens 0.8 px under the chin (ANSUR: 15 mm), bk the trunk's outline up the back to C7 on the line from the shoulder blades (no shelf,
 // no hump), km the nape's concave curve, tp the neck's top (offset back, width: 0.59 of the head's height deep), dq how far under the
 // joint the arm's root sits, so the deltoid's cap (the acromion's top) is 2.5 px under the chin: ANSUR's 94 mm at 3.7 cm a px.
-const NJ={th:[1.7,-1.3],bk:[[3.0,0.3],[4.0,3.62],[2.6,3.85],[1.2,4.05]],c7:[4.0,3.62],km:[5.6,3.2],nb:[2.0,0.9,5.2],tp:[0.8,3.8],dq:0.9};
+// (round 22d: the pit of the neck and the deltoid's top 1.2 px under the chin (the kid's one row), C7 just under the chin, the neck 4.7 px
+// deep under the jaw (the kid's 4 DOS px across, 0.081 of his height), its top hn heads under the head's centre)
+const NJ={th:[2.1,-0.7],bk:[[3.6,0.4],[3.8,2.6],[2.6,2.9],[1.4,3.15]],c7:[3.8,2.6],km:[5.0,2.4],nb:[2.4,0.7,3.3],tp:[0.6,2.1],dq:0.25,hn:0.82};
 function skel(p){
   const sin=Math.sin,cos=Math.cos;
   const kF=[LEN.th*sin(p.hF),LEN.th*cos(p.hF)], fF=[kF[0]+LEN.sh*sin(p.hF-p.kF),kF[1]+LEN.sh*cos(p.hF-p.kF)];
@@ -2123,7 +2133,7 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
   let TG=null;
   if(EG){const lnX=pal.lean,ra=(sstep((Math.abs(p.aF)-1.7)/0.9)+sstep((Math.abs(p.aB)-1.7)/0.9))/2,fl=clamp((p.hF+p.hB)/2-lean,-0.6,1.4),tw2=clamp((Math.sin(p.aF)-Math.sin(p.aB))/2,-1,1);
     const c=-1.1*fl+0.9*ra,m=at(0.5),cp=[m[0]+nx*c,m[1]+ny*c],E=s.sh,U=[0,0.14,0.3,0.46,0.62,0.76,0.88,0.96,1];
-    const BQ=lnX?[4.6,4.1,3.2,3.5,4.2,4.5,4.45,4.35,4.25]:[5.1,4.6,3.8,4.1,4.8,5.1,5.0,4.9,4.75],Fo=lnX?[3.9,3.6,3.2,3.6,4.2,4.7,4.5,3.8,2.5]:[4.4,4.2,3.9,4.2,4.8,5.4,5.2,4.2,2.7],Bo=lnX?[4.6,4.1,3.2,3.5,4.1,4.6,4.6,4.0,2.8]:[5.1,4.6,3.8,4.1,4.7,5.2,5.2,4.5,3.0];
+    const BQ=lnX?[4.0,3.6,2.9,3.1,3.5,3.7,3.65,3.55,3.4]:[4.6,4.2,3.4,3.6,4.2,4.5,4.4,4.3,4.15],Fo=lnX?[3.4,3.2,2.9,3.1,3.5,3.8,3.65,3.1,2.1]:[4.0,3.8,3.5,3.7,4.3,4.8,4.6,3.7,2.4],Bo=lnX?[4.0,3.6,2.9,3.1,3.4,3.75,3.75,3.3,2.3]:[4.6,4.2,3.4,3.6,4.1,4.6,4.6,4.0,2.7];
     const sp=(u,o2)=>{const a=1-u;let gx=2*a*cp[0]+2*u*(E[0]-cp[0]),gy=2*a*cp[1]+2*u*(E[1]-cp[1]);const g=Math.hypot(gx,gy)||1;gx/=g;gy/=g;return [2*a*u*cp[0]+u*u*E[0]-gy*o2,2*a*u*cp[1]+u*u*E[1]+gx*o2];};
     const TS=U.map(u=>{const a=1-u;let gx=2*a*cp[0]+2*u*(E[0]-cp[0]),gy=2*a*cp[1]+2*u*(E[1]-cp[1]);const g=Math.hypot(gx,gy)||1;gx/=g;gy/=g;return [2*a*u*cp[0]+u*u*E[0],2*a*u*cp[1]+u*u*E[1],-gy,gx];});
     const fo=U.map((u,i)=>Fo[i]+ra*(u>0.5&&u<0.85?0.35:u>0.2&&u<0.5?-0.3:0)+tw2*0.5*sstep((u-0.55)/0.2)-(u>0.25&&u<0.55?Math.max(0,fl)*0.3:0)),
@@ -2151,7 +2161,7 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
       // (the shoulder goes forward and back with the arm's swing)
       dx=e[0]-r0[0],dy=e[1]-r0[1],d=Math.hypot(dx,dy)||1,fx=dy/d,fy=-dx/d,ex=h[0]-e[0],ey=h[1]-e[1],de=Math.hypot(ex,ey)||1,gx=ey/de,gy=-ex/de,
       U=(u,o2)=>[r0[0]+dx*u+fx*o2,r0[1]+dy*u+fy*o2],V=(u,o2)=>[e[0]+ex*u+gx*o2,e[1]+ey*u+gy*o2];
-    const pts=[r0,U(0.22,0.25),U(0.56,0.35),e,V(0.3,0.2),V(0.86,0)],ws=LN?[5.2,4.4,3.9,2.8,3.2,2.0]:[5.8,5.0,4.5,3.1,3.6,2.3]; // deltoid, biceps, elbow, forearm, wrist
+    const pts=[r0,U(0.22,0.25),U(0.56,0.35),e,V(0.3,0.2),V(0.86,0)],ws=LN?[4.4,3.6,3.2,2.4,2.7,1.8]:[5.2,4.5,4.0,2.8,3.2,2.1]; // deltoid, biceps, elbow, forearm, wrist
     const hp=new Path2D();if(fist)hp.ellipse(h[0],h[1],1.5,1.35,0,0,Math.PI*2);else hp.ellipse(h[0]+ex/de*0.45,h[1]+ey/de*0.45,1.65,1.2,Math.atan2(ey,ex),0,Math.PI*2); // a hand along the forearm; a fist round a weapon
     return {pts,ws,path:tubePath(pts,ws),hp,hc:[h[0]+ex/de*0.3,h[1]+ey/de*0.3]};};
   const arm=(sh,e,h,base,shade,a,G)=>{if(EG){const pre=!!G;G=G||armG(sh,e,h,a,false);if(!pre){BS(G.path);BS(G.hp);}
@@ -2162,13 +2172,13 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
       bd(sh,e,0.42,1.1);bd(e,h,0.78,0.9);} // a gold armlet on the upper arm, a bracelet at the wrist
     if(!EG){const hp=new Path2D();hp.ellipse(h[0],h[1],1.35,1.2,0,0,Math.PI*2);if(O.mono){ctx.fillStyle=O.mono;ctx.fill(hp);}else{ctx.strokeStyle=O.out;ctx.lineWidth=1.1;ctx.stroke(hp);ctx.fillStyle=base;ctx.fill(hp);}}};
   const legG=(f,k)=>{const d=Math.hypot(k[0],k[1])||1,qx=k[1]/d,qy=-k[0]/d,sx=f[0]-k[0],sy=f[1]-k[1],sd=Math.hypot(sx,sy)||1,bx=-sy/sd,by=sx/sd,S=(u,o2)=>[k[0]+sx*u+bx*o2,k[1]+sy*u+by*o2];
-    const pts=[[0,0],[k[0]*0.45+qx*0.4,k[1]*0.45+qy*0.4],[k[0]*0.8+qx*0.3,k[1]*0.8+qy*0.3],k,S(0.3,0.9),S(0.62,0.3),S(0.9,0)],ws=LN?[6.6,6.2,5.0,4.0,4.9,3.5,2.6]:[7.2,6.8,5.6,4.4,5.5,3.9,2.8]; // the thigh (fuller in front), the knee, the calf (fuller behind), the ankle
+    const pts=[[0,0],[k[0]*0.45+qx*0.4,k[1]*0.45+qy*0.4],[k[0]*0.8+qx*0.3,k[1]*0.8+qy*0.3],k,S(0.3,0.9),S(0.62,0.3),S(0.9,0)],ws=LN?[5.0,5.1,4.4,3.6,4.4,3.2,2.4]:[6.4,6.1,5.0,4.0,5.0,3.6,2.6]; // the thigh (fuller in front), the knee, the calf (fuller behind), the ankle
     return {pts,ws,path:tubePath(pts,ws)};};
   const leg=(f,k,base,shade,cuff,boot,X)=>{
     const mid=[k[0]+(f[0]-k[0])*0.55-0.6,k[1]+(f[1]-k[1])*0.55],ank=[k[0]+(f[0]-k[0])*0.9,k[1]+(f[1]-k[1])*0.9];
     if(EG){const G=legG(f,k); // bare legs; the foot under the leg's fill, so the ankle has no seam; a sandal: a flat sole, a thong
       const sp=new Path2D(),M=(dx,dy)=>sp.moveTo(...X(dx,dy)),Ln=(dx,dy)=>sp.lineTo(...X(dx,dy)),Q=(a,b,c,d)=>sp.quadraticCurveTo(...X(a,b),...X(c,d));
-      M(-2.2,0.4);Q(-2.5,-2.1,-0.2,-2.3);Q(2.4,-1.6,5.8,-0.6);Q(6.8,0.0,6.0,0.6);Ln(-1.4,0.6);sp.closePath();
+      {const fk=LN?0.78:0.88;M(-2.2*fk,0.4);Q(-2.5*fk,-2.1,-0.2*fk,-2.3);Q(2.4*fk,-1.6,5.8*fk,-0.6);Q(6.8*fk,0.0,6.0*fk,0.6);Ln(-1.4*fk,0.6);}sp.closePath();
       BS(G.path);BS(sp);celAt(ctx,sp,base,shade,O,...X(2.6,-0.4),1);BT(G.path,G.pts,G.ws,base,shade);
       sheen(G.pts[4],G.pts[5],1.0); // the calf's sheen
       if(FULL&&!O.mono){ctx.strokeStyle=boot;ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(...X(-2.3,1.1));ctx.lineTo(...X(6.6,1.1));ctx.stroke();ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(...X(0.2,-1.8));ctx.lineTo(...X(4.4,0.4));ctx.stroke();}
@@ -2217,7 +2227,7 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
     const ha1=lean+p.head,ux=Math.sin(ha1),uy=-Math.cos(ha1),tw1=1-TG.ra,T0=[E[0]+TS[n8][3]*1.1,E[1]-TS[n8][2]*1.1],
       NB=(up,o2)=>[T0[0]+(E[0]+ux*up+uy*o2-T0[0])*tw1,T0[1]+(E[1]+uy*up-ux*o2-T0[1])*tw1]; // (o2 toward the back of the neck)
     for(let i=0;i<=n8;i++)ring.push(pt(i,fo[i]));ring.push(NB(NJ.th[0],NJ.th[1]));for(const q of NJ.bk)ring.push(NB(q[0],q[1]));for(let i=n8;i>=0;i--)ring.push(pt(i,-bo[i]));
-    const nq=1-TG.ra,nbU=NJ.nb[0]*nq-0.05*LEN.to*(1-nq),nbB=NJ.nb[1]*nq,n0=[E[0]+tx*nbU,E[1]+ty*nbU],TP=smoothLoop(ring),hd0=s.hd,ha0=lean+p.head,nk=[[n0[0]-nx*nbB,n0[1]-ny*nbB],[hd0[0]-Math.sin(ha0)*3.6-Math.cos(ha0)*NJ.tp[0]*nq,hd0[1]+Math.cos(ha0)*3.6-Math.sin(ha0)*NJ.tp[0]*nq]],nw=[4.0+(NJ.nb[2]-4.0)*nq,3.0+(NJ.tp[1]-3.0)*nq],
+    const nq=1-TG.ra,nbU=NJ.nb[0]*nq-0.05*LEN.to*(1-nq),nbB=NJ.nb[1]*nq,n0=[E[0]+tx*nbU,E[1]+ty*nbU],TP=smoothLoop(ring),hd0=s.hd,ha0=lean+p.head,nk=[[n0[0]-nx*nbB,n0[1]-ny*nbB],[hd0[0]-Math.sin(ha0)*NJ.hn*LEN.hd-Math.cos(ha0)*NJ.tp[0]*nq,hd0[1]+Math.cos(ha0)*NJ.hn*LEN.hd-Math.sin(ha0)*NJ.tp[0]*nq]],nw=[4.0+(NJ.nb[2]-4.0)*nq,3.0+(NJ.tp[1]-3.0)*nq],
       // (round 22c: the neck ends where the trunk begins, its base tilted from C7 (high, at the back) down to the pit of the neck (low, in front,
       // level with the shoulder's top): the fills and outline are one shape cut along that line, not a tube running down to the shoulder joint)
       nA=[nk[1][0]-nk[0][0],nk[1][1]-nk[0][1]],nL=Math.hypot(nA[0],nA[1])||1,ax2=nA[0]/nL,ay2=nA[1]/nL,pfx=-ay2,pfy=ax2,
@@ -2351,7 +2361,7 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
     // fitted over the seat at the back: in from the waist, out round the buttocks, into the back of the thigh, one curve with no corner;
     // at the front the pleated panel hangs a little forward to the hem above the knee
     const sp=TG.sp,lr=(a,b,u)=>[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u],tb=(k,u,o2)=>{const d=Math.hypot(k[0],k[1])||1,ux=k[0]/d,uy=k[1]/d;return [k[0]*u+uy*o2,k[1]*u-ux*o2];}, // (a point on a thigh, o2 to its front)
-      dn=q=>q[0]*nx+q[1]*ny,wB=sp(0.3,-(TG.B(0.3)+0.3)),wF=sp(0.245,TG.F(0.245)+0.3),f1=tb(s.kF,0.55,3.3),f2=tb(s.kB,0.55,3.3),b1=tb(s.kF,0.55,-3.4),b2k=tb(s.kB,0.55,-3.4);
+      dn=q=>q[0]*nx+q[1]*ny,wB=sp(0.3,-(TG.B(0.3)+0.3)),wF=sp(0.245,TG.F(0.245)+0.3),f1=tb(s.kF,0.55,LN?2.9:3.1),f2=tb(s.kB,0.55,LN?2.9:3.1),b1=tb(s.kF,0.55,LN?-3.0:-3.2),b2k=tb(s.kB,0.55,LN?-3.0:-3.2);
     const F0=dn(f1)>=dn(f2)?f1:f2,F=[F0[0]+nx*0.4,F0[1]+ny*0.4],Bk=dn(b1)<=dn(b2k)?b1:b2k,H0=tb(s.kF,0.5,0),H1=tb(s.kB,0.5,0),Hc=[(H0[0]+H1[0])/2-tx*1.2,(H0[1]+H1[1])/2-ty*1.2];
     const Bt=sp(-0.03,-(TG.B(0)+0.3)),Bu=sp(0.14,-(TG.B(0.14)+0.3)),BL0=lr(Bt,Bk,0.55),BL=[BL0[0]+nx*0.45,BL0[1]+ny*0.45]; // (under the seat the linen follows the fold into the thigh)
     // (round 20b, owner: "the prince's ass showing" on all fours) the thighs' round tops (drawn round the hip joint, the origin: RS with
@@ -2359,7 +2369,7 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
     // taut over the buttocks there, so a seat point goes in at the hip's place along that line, out far enough that the drawn curve
     // (midpoint quadratics: it reaches 3/4 of the way to a point) clears the round by 0.4 px. Elsewhere the outline is as it was
     let KS=null;{const ex=Bk[0]-Bt[0],ey=Bk[1]-Bt[1],el=Math.hypot(ex,ey)||1;let qx=ey/el,qy=-ex/el;if(qx*(wF[0]-Bt[0])+qy*(wF[1]-Bt[1])>0){qx=-qx;qy=-qy;} // (q: outward)
-      const g=-(qx*Bt[0]+qy*Bt[1]),RS=LN?3.9:4.3,k=(RS+g)*4/3*sstep((Math.min(p.hF,p.hB)+lean-0.8)/0.4),tO=clamp(-(ex*Bt[0]+ey*Bt[1])/(el*el),0.12,0.5); // (g: how far inside the line the hip joint is)
+      const g=-(qx*Bt[0]+qy*Bt[1]),RS=LN?3.1:3.8,k=(RS+g)*4/3*sstep((Math.min(p.hF,p.hB)+lean-0.8)/0.4),tO=clamp(-(ex*Bt[0]+ey*Bt[1])/(el*el),0.12,0.5); // (g: how far inside the line the hip joint is)
       if(k>0.05){const pr=[Bt[0]+ex*tO,Bt[1]+ey*tO];KS=[pr[0]+qx*k,pr[1]+qy*k];}}
     const kp=smoothLoop(KS?[wF,wF,F,F,Hc,Bk,BL,KS,Bt,Bu,wB,wB]:[wF,wF,F,F,Hc,Bk,BL,Bt,Bu,wB,wB]),w0=lr(wB,wF,0.5);
     celAt(ctx,kp,C('pants'),D('pants'),O,(w0[0]+F[0]+Bk[0])/3,(w0[1]+F[1]+Bk[1])/3);
