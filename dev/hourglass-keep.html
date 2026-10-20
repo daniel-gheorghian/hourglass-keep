@@ -2086,11 +2086,11 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
   let TG=null;
   if(EG){const lnX=pal.lean,ra=(sstep((Math.abs(p.aF)-1.7)/0.9)+sstep((Math.abs(p.aB)-1.7)/0.9))/2,fl=clamp((p.hF+p.hB)/2-lean,-0.6,1.4),tw2=clamp((Math.sin(p.aF)-Math.sin(p.aB))/2,-1,1);
     const c=-1.1*fl+0.9*ra,m=at(0.5),cp=[m[0]+nx*c,m[1]+ny*c],E=s.sh,U=[0,0.14,0.3,0.46,0.62,0.76,0.88,0.96,1];
-    const Fo=lnX?[3.9,3.6,3.2,3.6,4.2,4.7,4.5,3.8,2.5]:[4.4,4.2,3.9,4.2,4.8,5.4,5.2,4.2,2.7],Bo=lnX?[4.6,4.1,3.2,3.5,4.1,4.6,4.6,4.0,2.8]:[5.1,4.6,3.8,4.1,4.7,5.2,5.2,4.5,3.0];
+    const TRAP=[0,0,0,0,0,0.15,0.5,0.95,1.2],Fo=lnX?[3.9,3.6,3.2,3.6,4.2,4.7,4.5,3.8,2.5]:[4.4,4.2,3.9,4.2,4.8,5.4,5.2,4.2,2.7],Bo=lnX?[4.6,4.1,3.2,3.5,4.1,4.6,4.6,4.0,2.8]:[5.1,4.6,3.8,4.1,4.7,5.2,5.2,4.5,3.0];
     const sp=(u,o2)=>{const a=1-u;let gx=2*a*cp[0]+2*u*(E[0]-cp[0]),gy=2*a*cp[1]+2*u*(E[1]-cp[1]);const g=Math.hypot(gx,gy)||1;gx/=g;gy/=g;return [2*a*u*cp[0]+u*u*E[0]-gy*o2,2*a*u*cp[1]+u*u*E[1]+gx*o2];};
     const TS=U.map(u=>{const a=1-u;let gx=2*a*cp[0]+2*u*(E[0]-cp[0]),gy=2*a*cp[1]+2*u*(E[1]-cp[1]);const g=Math.hypot(gx,gy)||1;gx/=g;gy/=g;return [2*a*u*cp[0]+u*u*E[0],2*a*u*cp[1]+u*u*E[1],-gy,gx];});
     const fo=U.map((u,i)=>Fo[i]+ra*(u>0.5&&u<0.85?0.35:u>0.2&&u<0.5?-0.3:0)+tw2*0.5*sstep((u-0.55)/0.2)-(u>0.25&&u<0.55?Math.max(0,fl)*0.3:0)),
-      bo=U.map((u,i)=>Bo[i]-ra*1.3*sstep((u-0.74)/0.22)-tw2*0.3*sstep((u-0.55)/0.2)+(u>0.3&&u<0.7?Math.max(0,fl)*0.4:0)+(u<0.2?Math.max(0,fl)*0.5:0)); // (a flexed hip rounds the seat)
+      bo=U.map((u,i)=>Bo[i]-ra*1.3*sstep((u-0.74)/0.22)-tw2*0.3*sstep((u-0.55)/0.2)+(u>0.3&&u<0.7?Math.max(0,fl)*0.4:0)+(u<0.2?Math.max(0,fl)*0.5:0)-(1-ra)*TRAP[i]); // (a flexed hip rounds the seat; round 21a: the trapezius slopes the back's top into the nape)
     const iv=(A,u)=>{let i=0;while(i<U.length-2&&u>U[i+1])i++;const k=clamp((u-U[i])/(U[i+1]-U[i]),0,1);return A[i]+(A[i+1]-A[i])*k;};
     TG={U,TS,fo,bo,sp,F:u=>iv(fo,u),B:u=>iv(bo,u),fl,ra};}
   if(pal.hero&&!EG){const nk=[s.sh[0]-nx*1.5+tx*1,s.sh[1]-ny*1.5+ty*1];const sc=trail(nk,5,3.2,wind,t,0.6+0.4*Math.min(1,Math.abs(vx)/90),0);
@@ -2160,7 +2160,13 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
     // light, a lit plane over the chest and shoulder toward it, both tapering into the waist; then the neck.
     const U=TG.U,TS=TG.TS,fo=TG.fo,bo=TG.bo,E=s.sh;
     const pt=(i,o2)=>{const q=TS[i];return [q[0]+q[2]*o2,q[1]+q[3]*o2];},n8=U.length-1,ring=[];
-    for(let i=0;i<=n8;i++)ring.push(pt(i,fo[i]));ring.push([E[0]+TS[n8][3]*1.1,E[1]-TS[n8][2]*1.1]);for(let i=n8;i>=0;i--)ring.push(pt(i,-bo[i]));
+    // (round 21a, owner: "a hump when standing straight": the torso's top was a flat shelf from the neck to a rounded back corner, a square
+    // block the neck rose out of. Seen from the side the back's line runs from the nape down the trapezius in one long, nearly straight slope
+    // to the shoulder blades, the upper back's gentle convexity, and the front of the neck meets the chest lower, at the jugular notch: the
+    // torso's top runs up into the neck's base along the neck's own axis, behind (Np) and in front (Nf), less so as the arms rise)
+    const ha1=lean+p.head,ux=Math.sin(ha1),uy=-Math.cos(ha1),tw1=1-TG.ra,T0=[E[0]+TS[n8][3]*1.1,E[1]-TS[n8][2]*1.1],
+      NB=(up,o2)=>[T0[0]+(E[0]+ux*up+uy*o2-T0[0])*tw1,T0[1]+(E[1]+uy*up-ux*o2-T0[1])*tw1]; // (o2 toward the back of the neck)
+    for(let i=0;i<=n8;i++)ring.push(pt(i,fo[i]));ring.push(NB(0.9,-1.7),NB(2.6,1.9));for(let i=n8;i>=0;i--)ring.push(pt(i,-bo[i]));
     const TP=smoothLoop(ring),n0=at(0.95),hd0=s.hd,ha0=lean+p.head,nk=[n0,[hd0[0]-Math.sin(ha0)*3.6,hd0[1]+Math.cos(ha0)*3.6]],nw=[4.0,3.0],NP=tubePath(nk,nw);
     FA=armG(s.sh,s.eF,s.hF,p.aF,!!o.sword);BS(TP);BS(NP);BS(FA.path);BS(FA.hp);
     if(!O.mono){const base=C('tunic'),sd=D('tunic'),sg=O._lx>=0?1:-1,Lo=i=>sg>0?fo[i]:-bo[i],Do=i=>sg>0?-bo[i]:fo[i];
@@ -2170,7 +2176,7 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
       ctx.fillStyle=O._lk>0.05?litTint(shadeHex(base,0.1),O._lc,O._lk):shadeHex(base,0.14);ctx.fill(smoothLoop(lp2)); // the lit plane
       BT(NP,nk,nw,C('skin'),D('skin'));}}
   else tcel(ctx,tp,tw,C('tunic'),D('tunic'),O);
-  if(EG&&pal.bare&&!O.mono){const P2=(u,o2)=>{const q=at(u);return [q[0]+nx*o2,q[1]+ny*o2];};sheen(P2(0.95,-2.0),P2(0.97,2.6),1.2);} // the sheen on the shoulders
+  if(EG&&pal.bare&&!O.mono){const P2=(u,o2)=>{const q=at(u);return [q[0]+nx*o2,q[1]+ny*o2];};sheen(P2(0.95,-1.2),P2(0.97,2.6),1.2);} // the sheen on the shoulders (round 21a: not past the trapezius slope)
   if(FULL&&!O.mono){ // the broad collar (wesekh): rows of faience beads round the neck, a drop row at the edge
     const cl=pal.coll;for(let i=0;i<3;i++){const o2=2.9-i*1.0,u0=0.99,u1=0.8+i*0.05;const a0=at(u0),a1=at(u1),a2=at(u0);
       tcel(ctx,[[a0[0]-nx*(3.6-i*0.3),a0[1]-ny*(3.6-i*0.3)],[a1[0]+nx*o2*0.3,a1[1]+ny*o2*0.3],[a2[0]+nx*(4.8-i*0.5),a2[1]+ny*(4.8-i*0.5)]],[2.1,2.5,2.1],cl[i],shadeHex(cl[i],-0.3),O);}
@@ -5827,14 +5833,15 @@ const BARF={papyrus:[['#a88a54','#d6bc86','#6a5230'],['#9c8050','#c8ae7c','#6250
 const BARM={nun:['papyrus','sycomore',2],west:['halfa','cedar',2],blue:['halfa','cedar',2],osiris:['papyrus','cedar',2],hawara:['papyrus','acacia',2],
   meroe:['palm','acacia',3],napata:['palm','acacia',3],deffufa:['palm','acacia',3],shali:['palm','tamarisk',3],foggara:['palm','tamarisk',3],wells:['palm','tamarisk',3],aksum:['halfa','juniper',2]};
 // a taut laid rope from (x0,y0) down to (x1,y1), w wide, c = [body, lit, groove]; ply 2 or 3 (a three-strand rope shows its strands
-// closer together); the lay is counted from the top, so it stays put on the rope as the rope swings
-function barRope(ctx,x0,y0,x1,y1,w,c,ply,W,seed){const dx=x1-x0,dy=y1-y0,l=Math.hypot(dx,dy)||1,ux=dx/l,uy=dy/l,nx=uy,ny=-ux,h=w/2; // (n: toward his left as the rope runs down)
+// closer together); the lay is counted from the top, so it stays put on the rope as the rope swings; ph (round 21a, the lifts' ropes) shifts
+// it down the rope by that many px, so a rope that runs over a sheave carries its lay with it (ph = its length: the lay fixed to its lower end)
+function barRope(ctx,x0,y0,x1,y1,w,c,ply,W,seed,ph){const dx=x1-x0,dy=y1-y0,l=Math.hypot(dx,dy)||1,ux=dx/l,uy=dy/l,nx=uy,ny=-ux,h=w/2; // (n: toward his left as the rope runs down)
   ctx.lineCap='butt';ctx.strokeStyle='#0b0812';ctx.lineWidth=w+1.3;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
   ctx.strokeStyle=c[0];ctx.lineWidth=w;ctx.stroke();
-  const p=ply===3?2.0:2.6,a=p*0.75,P=(s,k)=>[x0+ux*s+nx*h*k,y0+uy*s+ny*h*k];
-  ctx.beginPath();for(let s=-a;s<l;s+=p){const q=P(Math.max(0,s),0.92),r=P(Math.min(l,s+a),-0.92);ctx.moveTo(q[0],q[1]);ctx.lineTo(r[0],r[1]);} // the grooves between strands (S: down to the right)
+  const p=ply===3?2.0:2.6,a=p*0.75,o=ph?((ph%p)+p)%p-p:0,P=(s,k)=>[x0+ux*s+nx*h*k,y0+uy*s+ny*h*k];
+  ctx.beginPath();for(let s=-a+o;s<l;s+=p){if(s+a<=0)continue;const q=P(Math.max(0,s),0.92),r=P(Math.min(l,s+a),-0.92);ctx.moveTo(q[0],q[1]);ctx.lineTo(r[0],r[1]);} // the grooves between strands (S: down to the right)
   ctx.strokeStyle=c[2];ctx.lineWidth=0.55;ctx.stroke();
-  ctx.beginPath();for(let s=p*0.25;s<l-0.6;s+=p){const q=P(s,0.62),r=P(Math.min(l,s+p*0.42),0.05);ctx.moveTo(q[0],q[1]);ctx.lineTo(r[0],r[1]);} // each strand's crown, lit on its left
+  ctx.beginPath();for(let s=p*0.25+o;s<l-0.6;s+=p){if(s<0)continue;const q=P(s,0.62),r=P(Math.min(l,s+p*0.42),0.05);ctx.moveTo(q[0],q[1]);ctx.lineTo(r[0],r[1]);} // each strand's crown, lit on its left
   ctx.strokeStyle=c[1];ctx.lineWidth=0.75;ctx.stroke();
   ctx.beginPath();{const q=P(0,-0.7),r=P(l,-0.7);ctx.moveTo(q[0],q[1]);ctx.lineTo(r[0],r[1]);}ctx.strokeStyle='rgba(8,5,10,.32)';ctx.lineWidth=0.6;ctx.stroke(); // its shaded right side
   if(W){const rq=mulberry32(seed);ctx.beginPath();for(let i=0;i<W*3;i++){const s=2+rq()*(l-4),k=rq()<0.5?1:-1,q=P(s,k*1.05),e=0.6+rq()*0.8; // loose fibres standing out of the lay
@@ -6564,11 +6571,9 @@ function liftAround(){if(P.state==='lift'&&P.lift)return P.lift;const c=pCol(),r
 // paternoster's gears wooden wheels with peg teeth (the saqiya's, Ptolemaic Egypt); the platforms, slabs and counterweights in the
 // theme's stone with its texture; the mouths closed by stone slabs like the portcullis, plain. The geometry, occlusion (liftOccl,
 // liftOcclSide), wear (liftWear) and gameplay are the lifts' own, unchanged.
-const ROPE=[['#a07a48','#c8a470','#6a4e2c'],['#957046','#b99868','#624a2c'],['#856444','#a88a60','#56422a'],['#77593e','#977a56','#4c3a26']];
-function liftRope(ctx,x0,y0,x1,y1,W,off){const c=ROPE[W||0],dx=x1-x0,dy=y1-y0,l=Math.hypot(dx,dy)||1,nx=-dy/l*0.42,ny=dx/l*0.42;
-  ctx.strokeStyle='#0b0812';ctx.lineWidth=2.8;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();ctx.strokeStyle=c[0];ctx.lineWidth=1.7;ctx.stroke();
-  ctx.lineWidth=0.7;ctx.setLineDash([1.3,1.3]);for(const [k,col,o] of [[1,c[1],0],[-1,c[2],1.3]]){ctx.strokeStyle=col;ctx.lineDashOffset=o+(off||0);ctx.beginPath();ctx.moveTo(x0+nx*k,y0+ny*k);ctx.lineTo(x1+nx*k,y1+ny*k);ctx.stroke();}
-  ctx.setLineDash([]);ctx.lineDashOffset=0;}
+// (round 21a) the lifts' ropes are the swing's laid rope (barRope) in the theme's fibre (ropeOf, BARM's ply), 2 px, the lay travelling with
+// the rope (ph); round 13's two dashed rows (ROPE) are gone
+function liftRope(ctx,x0,y0,x1,y1,W,ph,w){barRope(ctx,x0,y0,x1,y1,w||2,ropeOf(W||0),(BARM[L.theme.look]||BARM.west)[2],0,0,ph||0);}
 function liftWheelWood(ctx,cx,cy,rad,teeth,spin,W){W=W||0;const body=['#7c5832','#70502e','#62482c','#56442f'][W],hi=['#a07a48','#8f6c40','#7c6040','#6c5a44'][W];ctx.save();ctx.translate(cx,cy);ctx.rotate(spin);
   if(teeth){ctx.fillStyle='#0b0812';for(let i=0;i<teeth;i++){const a=i/teeth*6.2832;ctx.save();ctx.rotate(a);ctx.fillRect(rad-2.2,-1.5,3.6,3);ctx.restore();}
     ctx.fillStyle=hi;for(let i=0;i<teeth;i++){const a=i/teeth*6.2832;ctx.save();ctx.rotate(a);ctx.fillRect(rad-1.6,-0.9,2.6,1.8);ctx.restore();}} // peg teeth
@@ -6578,7 +6583,7 @@ function liftWheelWood(ctx,cx,cy,rad,teeth,spin,W){W=W||0;const body=['#7c5832',
   ctx.strokeStyle=hi;ctx.lineWidth=0.5;ctx.beginPath();for(const y of [-rad*0.62,0,rad*0.62]){const h=Math.sqrt(Math.max(0,(rad-2)*(rad-2)-y*y))*0.8;ctx.moveTo(-h,y-0.4);ctx.quadraticCurveTo(0,y+0.6,h,y-0.3);}ctx.stroke(); // grain
   ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(-0.9,-rad+1.6,1.8,2*rad-3.2); // a batten across the planks
   ctx.fillStyle='#0b0812';ctx.beginPath();ctx.arc(0,0,2,0,6.2832);ctx.fill();ctx.fillStyle=hi;ctx.beginPath();ctx.arc(-0.3,-0.3,1.1,0,6.2832);ctx.fill();ctx.restore();} // the axle peg
-function liftChainLine(ctx,x0,y0,x1,y1,W){if(EGP.traps)return liftRope(ctx,x0,y0,x1,y1,W,(y0+y1)*0.02);ctx.strokeStyle='#0b0812';ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
+function liftChainLine(ctx,x0,y0,x1,y1,W){if(EGP.traps)return liftRope(ctx,x0,y0,x1,y1,W,y1-y0);ctx.strokeStyle='#0b0812';ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
   const pal=metalPal('chain');ctx.strokeStyle=pal[1];ctx.lineWidth=1.4;ctx.setLineDash([2.2,1.6]);ctx.stroke();      // links: a body, and a thin lit edge up and to the left
   if(W){ctx.strokeStyle='rgba(122,58,26,'+(0.22*W)+')';ctx.setLineDash([1.4,2.4]);ctx.lineDashOffset=1.1;ctx.stroke();ctx.lineDashOffset=0;} // rust on the links
   ctx.strokeStyle=pal[3];ctx.globalAlpha=1-0.2*(W||0);ctx.lineWidth=0.5;ctx.setLineDash([2.2,1.6]);ctx.beginPath();ctx.moveTo(x0-0.45,y0-0.45);ctx.lineTo(x1-0.45,y1-0.45);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;}
@@ -6620,9 +6625,28 @@ function liftSlab(ctx,X,ys,th,W,seed){
     ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=0.7;ctx.beginPath();const cx=fx+11+rq()*8;ctx.moveTo(cx,ft);ctx.lineTo(cx+1.2,ft+2.4);ctx.lineTo(cx+0.4,ft+5);ctx.stroke();}
   if(W>=3){ctx.strokeStyle='rgba(0,0,0,.42)';ctx.lineWidth=0.7;ctx.beginPath();const a=onFloor(X+8,0.1,ys),b=onFloor(X+13,0.55,ys),c=onFloor(X+11,0.9,ys);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(c.x,c.y);ctx.stroke();
     const st=th.style;ctx.fillStyle=st==='dungeon'||st==='crypt'?'rgba(70,110,60,.45)':st==='forge'?'rgba(10,6,4,.45)':'rgba(150,130,100,.35)';const p=onFloor(X+4,0.92,ys);ctx.fillRect(p.x,p.y-0.6,TW-6,1.5);}}
+// Round 21a (owner: "lift rope ends look off, need a more realistic representation ... holes in the slab with the rope threaded through them"):
+// each rope ended in a short stick lying across the slab's top from its middle to the lip and a round blob on the lip. Now each rope is a
+// two-leg bridle, as stones were hung for lifting: the rope's end is seized into an eye LS_J above the slab, and a sling runs from it down
+// through a hole drilled through the slab near its front edge, under the slab and up through a second hole near its back edge (perforated
+// stone anchors and weights of the Bronze Age, Wadi Gawasis' Egyptian anchors with their rope hole; the U-shaped rope holes and channels
+// of early Greek blocks): the legs part in depth, the front one down to the left and the back one up to the right along the depth
+// diagonal, so the slab hangs level both ways. Each hole is a circle on the top face seen in this view (squashed along the depth
+// diagonal, ropeHole: a dark mouth and its lit far wall).
+const LS_J=8,LS_K=0.62;
+function ropeHole(ctx,x,y,r){ctx.save();ctx.translate(x,y);ctx.transform(1,0,DX/TW,-DY/TW,0,0); // (a circle on a top face: x across, depth up the diagonal)
+  ctx.fillStyle='rgba(255,240,210,.22)';ctx.beginPath();ctx.arc(0,0.35,r+0.45,0,6.2832);ctx.fill(); // (the drilled lip, worn bright)
+  ctx.fillStyle='#0b0812';ctx.beginPath();ctx.arc(0,0,r,0,6.2832);ctx.fill();ctx.restore();}
+// a seizing: a few tight turns of cord round the rope at (x,y) where its eye is made, w the rope's width
+function ropeSeize(ctx,x,y,w,c){ctx.fillStyle='#0b0812';ctx.fillRect(x-w/2-0.75,y-1.5,w+1.5,3.0);ctx.fillStyle=c[2];ctx.fillRect(x-w/2-0.15,y-0.9,w+0.3,1.8);
+  ctx.fillStyle=c[1];ctx.fillRect(x-w/2-0.15,y-0.9,w+0.3,0.5);ctx.fillRect(x-w/2-0.15,y+0.1,w+0.3,0.45);}
+function liftSling(ctx,x,ys,W){const c=ropeOf(W||0),ply=(BARM[L.theme.look]||BARM.west)[2],jy=ys-LS_J,fx=x-HX*LS_K,fy=ys+HY*LS_K,bx=x+HX*LS_K,by=ys-HY*LS_K;
+  ropeHole(ctx,bx,by,2.3);barRope(ctx,x+0.4,jy+1,bx+0.25,by-0.45,1.5,c,ply,0,0,0); // the back leg (behind); each leg goes into its hole's far side, so
+  ropeHole(ctx,fx,fy,2.3);barRope(ctx,x-0.4,jy+1,fx+0.25,fy-0.45,1.5,c,ply,0,0,0); // the hole's near side shows dark in front of it; the front leg
+  ropeSeize(ctx,x,jy,2,c);}
 // an iron strap and eye where a chain holds the slab (x: the chain, at mid depth on the top face); rusty with wear
 function liftEye(ctx,x,ys,W){
-  if(EGP.traps){const c=ROPE[W||0];liftRope(ctx,x,ys-1.5,x-HX,ys+HY+2,W,0);ctx.fillStyle='#0b0812';ctx.beginPath();ctx.ellipse(x-HX,ys+HY+2.4,2.2,1.6,0,0,6.2832);ctx.fill();ctx.fillStyle=c[0];ctx.beginPath();ctx.ellipse(x-HX,ys+HY+2.4,1.4,0.9,0,0,6.2832);ctx.fill();return;} // the rope through a hole in the slab, knotted under its lip
+  if(EGP.traps){liftSling(ctx,x,ys,W);return;}
   ctx.fillStyle='#0b0812';ctx.fillRect(x-HX-2.4,ys+HY-1.5,4.8,7);ctx.fillStyle=W>=2?'#7a4a2c':W?'#9a7444':'#b98a4a';ctx.fillRect(x-HX-1.4,ys+HY-0.5,2.8,5);
   ctx.strokeStyle='#0b0812';ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(x,ys-1.2,1.5,0,6.2832);ctx.stroke();}
 // 1. the counterweight lift: a hoist beam over the shaft (bedded in the wall on the shaft's far side from the top landing,
@@ -6653,9 +6677,12 @@ function drawLiftCounterweight(ctx,f,half){
   liftShaftBack(ctx,X,TW,R.top,bot,W);
   // the channel the counterweight runs in, cut into the back wall behind the platform
   ctx.fillStyle='rgba(0,0,0,.38)';ctx.fillRect(R.cx-5,R.hy,10,bot-R.hy);ctx.fillStyle='rgba(255,255,255,.09)';ctx.fillRect(R.cx+5,R.hy,0.8,bot-R.hy);ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(R.cx-5,R.hy,1.2,bot-R.hy);
-  liftChainLine(ctx,R.cx,R.hy,R.cx,R.wt-2,W);
+  liftChainLine(ctx,R.cx,R.hy,R.cx,R.wt-(EGP.traps?4:2),W);
   if(EGP.traps){const w=8,h=20,x=R.cx-w/2,y=R.wt;stoneBox(ctx,THEME_STONE[th.look]||'limestone',x,y,w,h,{side:true,d:0.35,wear:W,seed:hash2(f.sc,f.rT+5)});
-    ctx.fillStyle='#0b0812';ctx.beginPath();ctx.ellipse(R.cx,y-1.2,2.4,1.7,0,0,6.2832);ctx.fill();ctx.fillStyle=ROPE[W][0];ctx.beginPath();ctx.ellipse(R.cx,y-1.2,1.5,0.9,0,0,6.2832);ctx.fill();} // (a stone counterweight, the rope knotted through it)
+    // (round 21a: a stone counterweight hung as the perforated anchors and weights were: a hole drilled through it below its top, the rope's
+    // end seized into an eye with its sling passing in front of the top edge into the hole; the other leg behind the stone)
+    const hc=ropeOf(W);ctx.fillStyle='rgba(255,240,210,.2)';ctx.beginPath();ctx.arc(R.cx,y+4.3,2.1,0,6.2832);ctx.fill();ctx.fillStyle='#0b0812';ctx.beginPath();ctx.arc(R.cx,y+4,1.6,0,6.2832);ctx.fill();
+    barRope(ctx,R.cx,y-3,R.cx,y+3.6,1.5,hc,(BARM[L.theme.look]||BARM.west)[2],0,0,0);ropeSeize(ctx,R.cx,y-4,2,hc);}
   else{const w=8,h=20,x=R.cx-w/2,y=R.wt,rq=mulberry32(hash2(f.sc,f.rT+5)); // the counterweight: a dressed stone hung from an iron eye
     ctx.fillStyle='#0b0812';ctx.fillRect(x-1.2,y-1.2,w+2.4,h+2.4);ctx.fillStyle=th.wallB;ctx.fillRect(x,y,w,h);ctx.fillStyle=th.wallA;ctx.fillRect(x+1.5,y+1.5,w-3,h-3);ctx.fillStyle=th.hi;ctx.fillRect(x,y,w,1.2);ctx.fillStyle=th.lo;ctx.fillRect(x,y+h-1.8,w,1.8);
     ctx.strokeStyle='rgba(0,0,0,.45)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(x+1.5,y+h*0.5);ctx.lineTo(x+w-1.5,y+h*0.5);ctx.stroke();
@@ -6671,7 +6698,7 @@ function drawLiftCounterweight(ctx,f,half){
   liftTimber(ctx,xw,R.by+3,xo,R.by+3,6,W,true);
   liftTimber(ctx,ws>0?X+TW+4:X-4,R.by+21,ws>0?X+TW-15:X+15,R.by+5,3.2,Math.min(W,2),false);
   if(EGP.traps)liftTimber(ctx,R.cx,R.by+4,R.cx,R.hy,3,Math.min(W,2),false);else{ctx.fillStyle='#0b0812';ctx.fillRect(R.cx-1.6,R.by+5,3.2,R.hy-R.by-5);} // the sheave's hanger (a timber in the Egyptian themes)
-  liftChainLine(ctx,R.ca,R.hy,R.ca,ys-1,W);liftChainLine(ctx,R.cb,R.hy,R.cb,ys-1,W);
+  const ye=EGP.traps?ys-LS_J:ys-1;liftChainLine(ctx,R.ca,R.hy,R.ca,ye,W);liftChainLine(ctx,R.cb,R.hy,R.cb,ye,W); // (round 21a: to the bridle's eye)
   liftWheel(ctx,R.cx,R.hy,7,0,-(ys*0.05),W);
   // the platform: the same floor slab as the ledges, held at mid depth by an iron eye under each chain
   liftSlab(ctx,X,ys,th,W,hash2(f.sc,f.rB));liftEye(ctx,R.ca,ys,W);liftEye(ctx,R.cb,ys,W);
@@ -6729,9 +6756,10 @@ function drawLiftChain(ctx,f,half){
   const cp=metalPal('chain'),per=f.per,H=f.yB-f.yT,V=CHAIN_V*gameTime,nl=Math.round(per/6),sp=per/nl,at=s=>chainPos(f,0,(s-f.off)/CHAIN_V);
   const vert=s=>{s=((s%per)+per)%per;return s<H||(s>=H+32&&s<2*H+32);};
   const rust=W>=2?'rgba(122,58,26,'+(0.2*W)+')':null;
-  below(()=>{if(EGP.traps){const c=ROPE[W],P0=[];for(let s=0;s<=per;s+=3){const q=at(s);P0.push([q.x,Math.min(q.y+3,yS)]);} // the rope loop, laid round the wheels
+  below(()=>{if(EGP.traps){const c=ropeOf(W),P0=[];for(let s=0;s<=per;s+=3){const q=at(s);P0.push([q.x,Math.min(q.y+3,yS)]);} // the rope loop, laid round the wheels
       const path=()=>{ctx.beginPath();P0.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();};path();ctx.strokeStyle='#0b0812';ctx.lineWidth=3.6;ctx.stroke();ctx.strokeStyle=c[0];ctx.lineWidth=2.2;ctx.stroke();
-      ctx.lineWidth=0.8;ctx.setLineDash([1.5,1.5]);ctx.lineDashOffset=-V;ctx.strokeStyle=c[1];ctx.stroke();ctx.lineDashOffset=-V+1.5;ctx.strokeStyle=c[2];ctx.globalAlpha=0.7;ctx.stroke();ctx.globalAlpha=1;ctx.setLineDash([]);ctx.lineDashOffset=0;} // its lay, travelling with it
+      ctx.lineWidth=0.8;ctx.setLineDash([1.5,1.5]);ctx.lineDashOffset=-V;ctx.strokeStyle=c[1];ctx.stroke();ctx.lineDashOffset=-V+1.5;ctx.strokeStyle=c[2];ctx.globalAlpha=0.7;ctx.stroke();ctx.globalAlpha=1;ctx.setLineDash([]);ctx.lineDashOffset=0; // its lay, travelling with it
+      liftRope(ctx,xE,f.yT+3,xE,yS,W,-V);liftRope(ctx,xX,f.yT+3,xX,yS,W,V);} // (round 21a: its upright runs the swing's laid rope in the theme's fibre, the entry run rising, the exit run falling)
     else for(let k=0;k<nl;k++){const s=V+k*sp,q=at(s),v=vert(s),e=k%2,w=v?(e?4.6:2.4):(e?7.4:5),h=v?(e?7.4:5):(e?4.6:2.4),ly=q.y>=yS-0.5?yS-h/2+0.6:q.y+3-h/2; // (in the slot the links ride at its level)
     ctx.fillStyle='#0b0812';ctx.fillRect(q.x-w/2-0.6,ly-0.6,w+1.2,h+1.2);
     ctx.fillStyle=e?cp[1]:cp[2];ctx.fillRect(q.x-w/2,ly,w,h);ctx.fillStyle=cp[3];ctx.fillRect(q.x-w/2,ly,w,0.7);ctx.fillRect(q.x-w/2,ly,0.7,h); // (a lit top and left edge)
@@ -6739,9 +6767,13 @@ function drawLiftChain(ctx,f,half){
     if(e){ctx.fillStyle='#1b1626';if(v)ctx.fillRect(q.x-0.8,ly+1.6,1.6,h-3.2);else ctx.fillRect(q.x-w/2+1.6,ly+h/2-0.8,w-3.2,1.6);}}
   for(const xx of [xE,xX]){liftWheel(ctx,xx,f.yT+3,7.5,8,CHAIN_V*gameTime/6*f.dx,W);liftWheel(ctx,xx,yS+1,7.5,8,CHAIN_V*gameTime/6*f.dx,W);}});
   for(let i=0;i<f.n;i++){const q=chainPos(f,i,gameTime);
-    if(EGP.traps){ctx.fillStyle='#0b0812';ctx.beginPath();ctx.ellipse(q.x,q.y+HY+3,2.6,2,0,0,6.2832);ctx.fill();ctx.fillStyle=ROPE[W][0];ctx.beginPath();ctx.ellipse(q.x,q.y+HY+3,1.7,1.2,0,0,6.2832);ctx.fill();} // lashed to the rope
-    else{ctx.fillStyle='#0b0812';ctx.fillRect(q.x-3,q.y+HY,6,6);ctx.fillStyle=W>=2?'#7a4a2c':'#b98a4a';ctx.fillRect(q.x-2,q.y+HY+0.5,4,4);}
+    if(!EGP.traps){ctx.fillStyle='#0b0812';ctx.fillRect(q.x-3,q.y+HY,6,6);ctx.fillStyle=W>=2?'#7a4a2c':'#b98a4a';ctx.fillRect(q.x-2,q.y+HY+0.5,4,4);}
     liftSlab(ctx,q.x-16,q.y,th,W,hash2(f.c0*7+i,f.rT));
+    // (round 21a: the rope runs through a hole drilled through the slab's middle, a seized stopper on it above the hole (and one under it,
+    // unseen) holding the slab; while the rope runs upright its part from the hole up over the slab's back half is drawn again in front of the
+    // top. Was a dark blob on the lip)
+    if(EGP.traps){const s=(((CHAIN_V*gameTime+f.off+i*f.pitch)%per)+per)%per,up=vert(s),c=ropeOf(W);
+      if(up){ropeHole(ctx,q.x,q.y,2.3);barRope(ctx,q.x,q.y-HY-2,q.x,q.y-0.45,2,c,(BARM[L.theme.look]||BARM.west)[2],0,0,(s<H?-V:V));ropeSeize(ctx,q.x,q.y-2.3,2,c);}} // (over the wheels, where the rope runs level through it, nothing shows on top)
     ctx.fillStyle='rgba(6,4,10,.5)';ctx.fillRect(q.x-16-HX+1,q.y+HY+6,30,2);} // a dark underside, so the platform stands out from the wall
   ctx.restore();
 }
@@ -9915,7 +9947,7 @@ window.__HK={keyLight,get frameLights(){return frameLights;},jetPlaces,jsSwingPa
   get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,ryOps,ryShape,ryProfile,skyBeam,RY,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,plantPose,legIK,mk,drawDynamic,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
   get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG,secretCues};
-Object.assign(window.__HK,{guardBudget,snakeBudget}); // (the fighters' budgets, for guardscan.py)
+Object.assign(window.__HK,{guardBudget,snakeBudget,RP,drinkFrame}); // (the fighters' budgets, for guardscan.py; RP and drinkFrame, the run cycle's and the drink's poses, for egyptr21a.py)
 Object.defineProperty(window.__HK,'intro',{get(){return intro;},set(v){intro=v;}}); // (the floor's title banner, for egyptprop.py)
 Object.assign(window.__HK,{windowPath,gateGeom,stoneTex,STONES,THEME_STONE,SLAB_STONE,stoneLying,BLK_W,BLK_H,looseWell,WELL_V,blockStep});
 Object.assign(window.__HK,{EGP,nutClock,conceptClock2,barqueClock,conceptClock,flaskBody,flaskR,heart,setHero,HERO_VAR,PAL_HERO,SCHED,floorsOf,BGART,bgArt,LFX,themeOf,get PF(){return PF;}}); // (the themes' backdrops and effects, for egyptshot.py and egyptfx.py)

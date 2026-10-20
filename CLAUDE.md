@@ -172,6 +172,14 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   side face or outline; the next column's nearer stone cuts it once it leaves a landing; the shaft's back is seen through the hole only.
 - Arms up (round 19, owner: "a hump"): `torsoG` narrows the back near the shoulders (up to 1.3 px) and the raised arm rises from the
   back of the shoulder, so the back line runs from the waist into the arm. Pictures for round 19: `egyptr19.py`.
+- No hump standing (round 21a, owner): the torso's top runs up into the neck's base along the neck's axis (nape and throat points in the
+  ring) and `TRAP` takes the back's depth in over the top quarter, so the nape-to-shoulder-blade line is one trapezius slope (it fades as the
+  arms rise; round 19's arch unchanged). Robbers share it. Pictures: `egyptr21a.py` (every pose before/after).
+- Lift ropes (round 21a, owner: "holes in the slab with the rope threaded through"): all lift ropes are `barRope` in the theme's fibre
+  (`liftRope`; `barRope`'s `ph` makes the lay travel with a running rope). The counterweight platform hangs on two bridles (`liftSling`: an
+  eye seized `LS_J` above the slab, legs down through two holes near the front and back edges along the depth diagonal, `ropeHole` drawn in
+  the view's oblique); the counterweight by a hole through its top; a paternoster slab on its rope through a hole in its middle with a seized
+  stopper (drawn while the rope runs upright). The sand lift has no rope. Look only, inside `liftOccl`. Check with `liftscan.py`.
 - On all fours (round 20b, owner: "the prince's ass showing"): once both hips flex (`lean+h` 0.8 to 1.2) the shendyt gets a seat point
   (`KS`) on its back edge at the hip, out until the curve clears the thighs' round tops by 0.4 px, and a faint tension fold; other poses
   unchanged. The prince's straight blade (round 20b, owner: "transparent sword": a 1.5 px sliver in the floor's own tan, only its outline
