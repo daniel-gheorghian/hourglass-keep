@@ -172,6 +172,16 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   side face or outline; the next column's nearer stone cuts it once it leaves a landing; the shaft's back is seen through the hole only.
 - Arms up (round 19, owner: "a hump"): `torsoG` narrows the back near the shoulders (up to 1.3 px) and the raised arm rises from the
   back of the shoulder, so the back line runs from the waist into the arm. Pictures for round 19: `egyptr19.py`.
+- On all fours (round 20b, owner: "the prince's ass showing"): once both hips flex (`lean+h` 0.8 to 1.2) the shendyt gets a seat point
+  (`KS`) on its back edge at the hip, out until the curve clears the thighs' round tops by 0.4 px, and a faint tension fold; other poses
+  unchanged. The prince's straight blade (round 20b, owner: "transparent sword": a 1.5 px sliver in the floor's own tan, only its outline
+  read) is a leaf-shaped bronze blade about 3 px wide drawn as two bevels, the upper one lit, the lower dark bronze, a bright lit edge and
+  a pommel: it reads on pale floors and dark walls at every scale. Pictures: `egyptr20b.py`.
+- The key light (`keyLight`, round 20b, owner: the slab flicked between lit faces): not the nearest lamp within its flickering radius but
+  the balance of all lamps in reach, each weighed by a smooth falloff over its steady radius (`r0`, `a0` on torches) with a weak pull from
+  the left (the old default): `sx` -1..1, continuous and still in time; `dir` is its sign, `m` how much a lamp carries it. Figures take
+  `sx` as their lit side; `egSlab`'s faces and cast shadow cross-fade by it (`uL`). Never key a look on a flickering radius or on one
+  nearest light.
 - Fighters (unit GB): guards and snakes are not traps; each floor has a small budget (`guardBudget(n,x,barracks)`, `snakeBudget`, own
   stream `gbrng`, seed constant 8317). Guards per floor: floor 1: 1, floor 2: 0, floors 3-5: 2, 6-11: 3-4, 12-19: 4-5, 20 on: 5-6; the
   budget counts the guards, the reinforcements they call, the ambush at a secret passage's flask and the captain. A barracks floor
@@ -249,7 +259,10 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   (`beamBlockers`, quads from drawJaws'/egSlab's geometry): Torchlight tests them exactly in the shader (`u_bk`, `blkC`: up to four; the
   march softens them over at least its step, or a thin blade leaves a staircase), so the beam behind them is shaded and only the near half
   of the haze lies over them, no footprint, no figure light; Classic clips them and their shadow (`ryHull`: the
-  quad swept along the light to the floor, a clip; only for one in a beam's haze, `ryBlkLit`) out of haze and footprint. Pictures and numbers: `egyptr20a.py`.
+  quad swept along the light, a clip; only for one in a beam's haze, `ryBlkLit`) out of haze and footprint. Pictures and numbers: `egyptr20a.py`.
+  Round 20b (owner: the wedge to the floor read crude): Classic draws such a beam `RY_SH` (5) times at a fifth of its strength, each cut by
+  its own hull (the quad swept 12 to 72% of the way to the floor and spread 8 to 70%), so the shadow is whole at the blade and fades and
+  widens to nothing short of the floor (an area light's penumbra); clips only, never a scratch canvas.
 - Doors are drawn live, but Torchlight's relief reads the room's picture: the back wall's art is flattened under each doorway and its
   frame (`drawRoomStatic`). `doorscan.py` checks every door (floors 1 to 48, both modes) for art over the opening. At the exit he
   climbs the doorway's stairs tread by tread (`EX_*`, `P.exS`), cut by the posts and the ceiling's edge. (round 16c) The stairs are the

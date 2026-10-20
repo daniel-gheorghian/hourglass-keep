@@ -40,11 +40,10 @@ def sections(D, REL, img):
                 ('Animation Obsessive: How the Little Guy Moved', 'https://animationobsessive.substack.com/p/how-the-little-guy-moved'),
                 ('J. Mechner, The Making of Prince of Persia: Journals 1985-1993 (Stripe Press, 2020)', 'https://www.thevideogamelibrary.org/book/the-making-of-prince-of-persia-journals-1985-1993')]) +
          '<p class="meta">The 1989 frames are not copied here. Follow the Boing Boing and Ubisoft links for the footage and the game\'s frames.</p>'
-         '<h3>In the game at the phone\'s resolution (crops of the 1704 px canvas, shown at the phone\'s size; click for 1:1): round 9, round 10 (round 20a: v62\'s two crops retired)</h3>' +
-         row([('r10_1x_r9_torch.png', 'Round 9, Torchlight'), ('r10_1x_r10_torch.png', 'Round 10')], 150) +
-         row([('r10_1x_r9_classic.png', 'Round 9, Classic'), ('r10_1x_r10_classic.png', 'Round 10')], 150) +
-         '<h3>A fight at the phone\'s resolution: round 9, round 10 (round 20a: round 9\'s Classic crop retired)</h3>' +
-         row([('r10_1x_fight_r9_torch.png', 'Round 9, Torchlight'), ('r10_1x_fight_r10_torch.png', 'Round 10, Torchlight'), ('r10_1x_fight_r10_classic.png', 'Round 10, Classic')], 210) +
+         '<h3>In the game at the phone\'s resolution (crops of the 1704 px canvas, shown at the phone\'s size; click for 1:1): round 10 (round 20a: v62\'s two crops retired; round 20b: round 9\'s two)</h3>' +
+         row([('r10_1x_r10_torch.png', 'Round 10, Torchlight'), ('r10_1x_r10_classic.png', 'Round 10, Classic')], 150) +
+         '<h3>A fight at the phone\'s resolution: round 10 (round 20a: round 9\'s Classic crop retired; round 20b: its Torchlight crop)</h3>' +
+         row([('r10_1x_fight_r10_torch.png', 'Round 10, Torchlight'), ('r10_1x_fight_r10_classic.png', 'Round 10, Classic')], 210) +
          '<h3>Running and fighting, round 10, at the phone\'s resolution</h3>' +
          row([('r10_run.gif', 'Running (Torchlight)'), ('r10_fight.gif', 'A fight with a robber (Torchlight, the bot playing)')], 210) +
          '<h3>At 3x: v62\'s figure, the prince, the robbers (recruit, soldier, captain); round 9 above, round 10 below</h3>' +

@@ -2287,8 +2287,16 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
       dn=q=>q[0]*nx+q[1]*ny,wB=sp(0.3,-(TG.B(0.3)+0.3)),wF=sp(0.245,TG.F(0.245)+0.3),f1=tb(s.kF,0.55,3.3),f2=tb(s.kB,0.55,3.3),b1=tb(s.kF,0.55,-3.4),b2k=tb(s.kB,0.55,-3.4);
     const F0=dn(f1)>=dn(f2)?f1:f2,F=[F0[0]+nx*0.4,F0[1]+ny*0.4],Bk=dn(b1)<=dn(b2k)?b1:b2k,H0=tb(s.kF,0.5,0),H1=tb(s.kB,0.5,0),Hc=[(H0[0]+H1[0])/2-tx*1.2,(H0[1]+H1[1])/2-ty*1.2];
     const Bt=sp(-0.03,-(TG.B(0)+0.3)),Bu=sp(0.14,-(TG.B(0.14)+0.3)),BL0=lr(Bt,Bk,0.55),BL=[BL0[0]+nx*0.45,BL0[1]+ny*0.45]; // (under the seat the linen follows the fold into the thigh)
-    const kp=smoothLoop([wF,wF,F,F,Hc,Bk,BL,Bt,Bu,wB,wB]),w0=lr(wB,wF,0.5);
+    // (round 20b, owner: "the prince's ass showing" on all fours) the thighs' round tops (drawn round the hip joint, the origin: RS with
+    // their outline) stand out past the line from the seat to the back of the thigh once both hips flex to about 90 degrees (lean+h over 0.8 to 1.2); the linen is pulled
+    // taut over the buttocks there, so a seat point goes in at the hip's place along that line, out far enough that the drawn curve
+    // (midpoint quadratics: it reaches 3/4 of the way to a point) clears the round by 0.4 px. Elsewhere the outline is as it was
+    let KS=null;{const ex=Bk[0]-Bt[0],ey=Bk[1]-Bt[1],el=Math.hypot(ex,ey)||1;let qx=ey/el,qy=-ex/el;if(qx*(wF[0]-Bt[0])+qy*(wF[1]-Bt[1])>0){qx=-qx;qy=-qy;} // (q: outward)
+      const g=-(qx*Bt[0]+qy*Bt[1]),RS=LN?3.9:4.3,k=(RS+g)*4/3*sstep((Math.min(p.hF,p.hB)+lean-0.8)/0.4),tO=clamp(-(ex*Bt[0]+ey*Bt[1])/(el*el),0.12,0.5); // (g: how far inside the line the hip joint is)
+      if(k>0.05){const pr=[Bt[0]+ex*tO,Bt[1]+ey*tO];KS=[pr[0]+qx*k,pr[1]+qy*k];}}
+    const kp=smoothLoop(KS?[wF,wF,F,F,Hc,Bk,BL,KS,Bt,Bu,wB,wB]:[wF,wF,F,F,Hc,Bk,BL,Bt,Bu,wB,wB]),w0=lr(wB,wF,0.5);
     celAt(ctx,kp,C('pants'),D('pants'),O,(w0[0]+F[0]+Bk[0])/3,(w0[1]+F[1]+Bk[1])/3);
+    if(KS&&!O.mono){const a2=lr(KS,w0,0.22),b2=lr(KS,F,0.62),m2=lr(KS,lr(w0,F,0.5),0.5);ctx.strokeStyle=shadeHex(C('pants'),-0.16);ctx.lineWidth=0.45;ctx.beginPath();ctx.moveTo(a2[0],a2[1]);ctx.quadraticCurveTo(m2[0],m2[1],b2[0],b2[1]);ctx.stroke();} // (a tension fold from the seat toward the front of the hem, where the stretched linen pulls)
     if(!O.mono&&(pal.pleat||FULL)){const fp=lr(wB,wF,0.86),up=[tx*0.35,ty*0.35]; // the pleated front panel: fine lines fanning from the belt's front to the hem, soft shade bands between
       for(let i=0;i<6;i++){const u=(i+0.5)/6,b0=lr(Bk,F,0.3+0.7*u),b=[b0[0]+up[0],b0[1]+up[1]],a=lr(wB,wF,0.3+0.62*u);
         if(i%2){ctx.fillStyle=shadeHex(C('pants'),-0.07);const u2=(i+1.5)/6,b20=lr(Bk,F,0.3+0.7*Math.min(1,u2)),b2=[b20[0]+up[0],b20[1]+up[1]];ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.lineTo(b2[0],b2[1]);ctx.closePath();ctx.fill();}
@@ -2308,13 +2316,20 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
     ctx.fillStyle='#e8eef8';ctx.beginPath();ctx.moveTo(h[0],h[1]);ctx.lineTo(h[0]+Math.cos(p.sw)*18,h[1]-Math.sin(p.sw)*18);ctx.lineTo(h[0]+dx*18,h[1]+dy*18);ctx.closePath();ctx.fill();}ctx.globalAlpha=o.alpha===undefined?1:o.alpha;}
   if(o.sword&&(FULL||pal.weapon==='khopesh'))khopesh(ctx,s.hF,p.sw,1,o.swLen||18,O,false);
   else if(o.sword&&(pal.weapon==='club'||pal.weapon==='axe'))robWeapon(ctx,s.hF,p.sw,o.swLen||18,O,pal.weapon);
-  else if(o.sword){const h=s.hF,a=p.sw,dx=Math.cos(a),dy=-Math.sin(a),nx2=-dy,ny2=dx,L2=o.swLen||18;
-    const bl=new Path2D();bl.moveTo(h[0]+nx2*0.9,h[1]+ny2*0.9);bl.quadraticCurveTo(h[0]+dx*L2*0.6+nx2*1.6,h[1]+dy*L2*0.6+ny2*1.6,h[0]+dx*L2+nx2*2.6,h[1]+dy*L2+ny2*2.6);
-    bl.quadraticCurveTo(h[0]+dx*L2*0.7-nx2*0.6,h[1]+dy*L2*0.7-ny2*0.6,h[0]-nx2*0.9,h[1]-ny2*0.9);bl.closePath();
-    if(O.mono){ctx.fillStyle=O.mono;ctx.fill(bl);}else{msFig(ctx,EG?MKID.bronze:MKID.steel,bl);ctx.strokeStyle=O.out;ctx.lineWidth=1.1;ctx.stroke(bl);ctx.fillStyle=EG?'#cda26a':'#c9cfda';ctx.fill(bl);
-      ctx.strokeStyle=EG?'#f4dcaa':'#f6f8fc';ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(h[0]+dx*3+nx2*1.1,h[1]+dy*3+ny2*1.1);ctx.quadraticCurveTo(h[0]+dx*L2*0.6+nx2*1.9,h[1]+dy*L2*0.6+ny2*1.9,h[0]+dx*(L2-1)+nx2*2.4,h[1]+dy*(L2-1)+ny2*2.4);ctx.stroke();
-      ctx.strokeStyle='#d8b04a';ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(h[0]+nx2*3,h[1]+ny2*3);ctx.lineTo(h[0]-nx2*3,h[1]-ny2*3);ctx.stroke();
-      ctx.strokeStyle='#4a321c';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(h[0],h[1]);ctx.lineTo(h[0]-dx*3,h[1]-dy*3);ctx.stroke();}}
+  else if(o.sword){const h=s.hF,a=p.sw,dx=Math.cos(a),dy=-Math.sin(a),nx2=-dy,ny2=dx,L2=o.swLen||18,Q=(u,v)=>[h[0]+dx*u+nx2*v,h[1]+dy*u+ny2*v];
+    // (round 20b, owner: "transparent sword") the straight bronze blade as the period's: a leaf-shaped blade with a midrib (the New Kingdom's
+    // long bronze swords and dirks), its two bevels as two facets: the one turned to the light bright, the other dark (polished metal is
+    // mostly what it reflects: the dark room, a sharp light), so it reads on a pale floor and a dark wall alike. Was one thin curved
+    // sliver about 1.5 px wide in the floor's own tan, which at the phone's scale left only its outline
+    const W=L2<12?1.15:1.45,up=ny2<0?1:-1,bl=new Path2D(),lt=new Path2D(); // (up: the side of the blade facing up, toward the light)
+    bl.moveTo(...Q(0,W*0.9));bl.lineTo(...Q(L2*0.38,W));bl.quadraticCurveTo(...Q(L2*0.82,W*0.95),...Q(L2+0.9,0));bl.quadraticCurveTo(...Q(L2*0.82,-W*0.95),...Q(L2*0.38,-W));bl.lineTo(...Q(0,-W*0.9));bl.closePath();
+    lt.moveTo(...Q(0,up*W*0.9));lt.lineTo(...Q(L2*0.38,up*W));lt.quadraticCurveTo(...Q(L2*0.82,up*W*0.95),...Q(L2+0.9,0));lt.lineTo(...Q(0,0));lt.closePath();
+    if(O.mono){ctx.fillStyle=O.mono;ctx.fill(bl);}else{msFig(ctx,EG?MKID.bronze:MKID.steel,bl);ctx.strokeStyle=O.out;ctx.lineWidth=1.1;ctx.stroke(bl);ctx.fillStyle=EG?'#7a4e26':'#6c7484';ctx.fill(bl); // the shaded bevel
+      ctx.fillStyle=O._lk>0.05?litTint(EG?'#d8aa62':'#c9cfda',O._lc,O._lk*0.5):EG?'#d8aa62':'#c9cfda';ctx.fill(lt); // the lit bevel
+      ctx.strokeStyle=EG?'#fbe6b4':'#f6f8fc';ctx.lineWidth=0.55;ctx.beginPath();ctx.moveTo(...Q(2.5,up*W*0.62));ctx.lineTo(...Q(L2*0.38,up*W*0.7));ctx.quadraticCurveTo(...Q(L2*0.8,up*W*0.62),...Q(L2,up*0.15));ctx.stroke(); // the edge catching the light
+      ctx.strokeStyle='#d8b04a';ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(...Q(0,2.8));ctx.lineTo(...Q(0,-2.8));ctx.stroke();
+      ctx.strokeStyle='#4a321c';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(h[0],h[1]);ctx.lineTo(h[0]-dx*3,h[1]-dy*3);ctx.stroke();
+      ctx.fillStyle='#d8b04a';ctx.beginPath();ctx.arc(...Q(-3.5,0),0.95,0,6.2832);ctx.fill();}} // the guard, the grip, the pommel
   arm(s.sh,s.eF,s.hF,C('skin'),D('skin'),p.aF,FA);
   ctx.restore();
   if(o.flash>0&&!o.white&&!o.mono)drawFigureHD(ctx,x,y,face,p,pal,Object.assign({},o,{white:true,mono:'#ffffff',flash:0,alpha:Math.min(0.75,o.flash*3)*(o.alpha===undefined?1:o.alpha)}));
@@ -5016,30 +5031,32 @@ function egSlab(ctx,pl,drop,X,half,plain){const c=Math.floor((X+1)/TW),r=Math.fl
   egSlabBody(ctx,pl,drop,X,plain,false);}
 function egSlabBody(ctx,pl,drop,X,plain,top){const K='#0b0812',T=T_SLAB,a=pl.L0,b=pl.R0,ya=pl.ce(a)-3,yb=pl.ce(b)-3,fa=pl.fl(a),fb=pl.fl(b),th=L.theme,lk=th.look||'west',kind=plain?THEME_STONE[lk]||'limestone':SLAB_STONE[lk]||'granite';
   const S=4,yd=Math.min(72,drop+3),yA=ya+yd,yB=yb+yd,sl=(yb-ya)/(b-a),TX=stoneTex(kind,24,72,plain?null:lk),v0=72-yd,Wr=EGP.wear!==undefined?EGP.wear:wearLevel(X+16,(pl.top+fa)/2),sd=hash2(Math.round(X),Math.round(pl.top));
-  const kl=keyLight(a+HX,(pl.top+fa)/2),lw=0.45+0.55*kl.k,fromL=kl.dir<0;
+  const kl=keyLight(a+HX,(pl.top+fa)/2),lw=0.45+0.55*kl.k,uL=sstep((0.35-kl.sx)/0.7),uR=1-uL,fromL=uL>=0.5; // (round 20b: uL, how much the light comes from the left, eased over the balance of the lamps (keyLight's sx -0.35..0.35); the faces' light and shade cross-fade by it instead of switching, so lamps in balance light both faces alike and the shadow shrinks to nothing)
   // the slot across the floor and the groove up the back wall, in the theme's own stone: dark, with the far lip catching the light
   ctx.fillStyle='rgba(6,4,10,.8)';ctx.beginPath();ctx.moveTo(a-T/2,fa);ctx.lineTo(a+T/2,fa);ctx.lineTo(b+T/2,fb);ctx.lineTo(b-T/2,fb);ctx.closePath();ctx.fill();
   ctx.fillStyle=th.hi;ctx.globalAlpha=0.55;ctx.beginPath();ctx.moveTo(a+T/2,fa);ctx.lineTo(b+T/2,fb);ctx.lineTo(b+T/2+0.7,fb);ctx.lineTo(a+T/2+0.7,fa);ctx.closePath();ctx.fill();ctx.globalAlpha=1;
   if(!top){ctx.fillStyle='rgba(6,4,10,.82)';ctx.fillRect(b-T/2-0.5,yb,T+1,fb-yb);ctx.fillStyle=th.wallB||th.wall;ctx.fillRect(b+T/2+0.5,yb,1,fb-yb);ctx.fillStyle=th.lo||K;ctx.fillRect(b-T/2-1.4,yb,0.9,fb-yb);
     // its shadow, on the far side from the light: across the floor along its foot, and down the back wall beside its back edge
-    const sh=(4+10*yd/60)*(fromL?1:-1),ex=fromL?T/2:-T/2,yf=Math.min(yA,fa),ybk=Math.min(yB,fb);ctx.fillStyle='rgba(6,4,12,'+(0.5*lw).toFixed(3)+')';
+    const sh=(4+10*yd/60)*(uL-uR),ex=fromL?T/2:-T/2,yf=Math.min(yA,fa),ybk=Math.min(yB,fb);ctx.fillStyle='rgba(6,4,12,'+(0.5*lw).toFixed(3)+')';
     const fc=Math.floor((a+HX+(fromL?1:-1)*(T/2+3))/TW),fr=Math.floor((pl.top+1)/TH); // (round 16c: only where floor lies on that side: beside a lift's mouth the shaft is open and the shadow hung in it as a tilted plank)
-    if(yd>6){if(B(L,fc,fr)===FLOOR){ctx.beginPath();ctx.moveTo(a+ex,fa);ctx.lineTo(b+ex,fb);ctx.lineTo(b+ex+sh,fb);ctx.lineTo(a+ex+sh,fa);ctx.closePath();ctx.fill();}
+    if(yd>6&&Math.abs(sh)>0.3){if(B(L,fc,fr)===FLOOR){ctx.beginPath();ctx.moveTo(a+ex,fa);ctx.lineTo(b+ex,fb);ctx.lineTo(b+ex+sh,fb);ctx.lineTo(a+ex+sh,fa);ctx.closePath();ctx.fill();}
       const gw=ctx.createLinearGradient(b+ex,0,b+ex+sh*0.6,0);gw.addColorStop(0,'rgba(6,4,12,'+(0.46*lw).toFixed(3)+')');gw.addColorStop(1,'rgba(6,4,12,0)');ctx.fillStyle=gw;ctx.fillRect(Math.min(b+ex,b+ex+sh*0.6),yb,Math.abs(sh*0.6),fb-yb);}}
   // the slab: its outline, the broad face (sheared with the depth, turned from the light, darker toward the back), the front face
   ctx.fillStyle=K;ctx.beginPath();ctx.moveTo(a-T/2-0.8,ya);ctx.lineTo(b+T/2+0.8,yb);ctx.lineTo(b+T/2+0.8,yB+0.8);ctx.lineTo(a+T/2+0.8,yA+0.9);ctx.lineTo(a-T/2-0.8,yA+0.9);ctx.closePath();ctx.fill();
   ctx.save();ctx.transform(1,sl,0,1,a+T/2,ya);ctx.drawImage(TX,0,v0*S,16*S,yd*S,0,0,b-a,yd);
-  const gs=ctx.createLinearGradient(0,0,b-a,0); // the broad face: in shade with the light on the left, lit with it on the right; darker toward the back
-  if(fromL){gs.addColorStop(0,'rgba(20,10,18,'+(0.38+0.14*lw).toFixed(3)+')');gs.addColorStop(1,'rgba(20,10,18,'+(0.52+0.12*lw).toFixed(3)+')');}
-  else{gs.addColorStop(0,'rgba(255,236,214,'+(0.2*lw).toFixed(3)+')');gs.addColorStop(1,'rgba(20,10,18,.22)');}
-  ctx.fillStyle=gs;ctx.fillRect(0,0,b-a,yd);ctx.restore();
+  // the broad face: in shade with the light on the left, lit with it on the right; darker toward the back (round 20b: the two looks
+  // weighed by uL and uR, so one with lamps on both sides fades between them as he walks instead of switching)
+  if(uL>0.004){const gs=ctx.createLinearGradient(0,0,b-a,0);gs.addColorStop(0,'rgba(20,10,18,'+((0.38+0.14*lw)*uL).toFixed(3)+')');gs.addColorStop(1,'rgba(20,10,18,'+((0.52+0.12*lw)*uL).toFixed(3)+')');ctx.fillStyle=gs;ctx.fillRect(0,0,b-a,yd);}
+  if(uR>0.004){const gs=ctx.createLinearGradient(0,0,b-a,0);gs.addColorStop(0,'rgba(255,236,214,'+(0.2*lw*uR).toFixed(3)+')');gs.addColorStop(1,'rgba(20,10,18,'+(0.22*uR).toFixed(3)+')');ctx.fillStyle=gs;ctx.fillRect(0,0,b-a,yd);}
+  ctx.restore();
   ctx.drawImage(TX,17*S,v0*S,T*S,yd*S,a-T/2,ya,T,yd);
-  ctx.fillStyle=fromL?'rgba(255,236,214,'+(0.18+0.22*lw).toFixed(3)+')':'rgba(20,10,18,'+(0.46+0.12*lw).toFixed(3)+')';ctx.fillRect(a-T/2,ya,T,yd); // the narrow face: lit from the left, in shade from the right
-  ctx.fillStyle=fromL?'rgba(255,244,232,'+(0.4*lw).toFixed(3)+')':'rgba(0,0,0,.35)';ctx.fillRect(a-T/2,ya,0.7,yd); // its outer edge
+  if(uR>0.004){ctx.fillStyle='rgba(20,10,18,'+((0.46+0.12*lw)*uR).toFixed(3)+')';ctx.fillRect(a-T/2,ya,T,yd);ctx.fillStyle='rgba(0,0,0,'+(0.35*uR).toFixed(3)+')';ctx.fillRect(a-T/2,ya,0.7,yd);} // the narrow face: in shade from the right,
+  if(uL>0.004){ctx.fillStyle='rgba(255,236,214,'+((0.18+0.22*lw)*uL).toFixed(3)+')';ctx.fillRect(a-T/2,ya,T,yd);ctx.fillStyle='rgba(255,244,232,'+(0.4*lw*uL).toFixed(3)+')';ctx.fillRect(a-T/2,ya,0.7,yd);} // lit from the left; its outer edge
   ctx.fillStyle='rgba(255,246,234,'+(0.7+0.3*lw).toFixed(3)+')';ctx.fillRect(a+T/2-0.9,ya,1.25,yd); // the arris between the two faces, crisp: the edge that shows its thickness
   // (round 16c, owner: the edge was barely visible) the shaded face's darkest band beside the arris (the core shadow of a cube's turned face) and
   // a dark line along its far edge and its foot (contact): the granite's busy grain no longer swallows the change of plane
-  ctx.save();ctx.transform(1,sl,0,1,a+T/2,ya);const gk=ctx.createLinearGradient(0.3,0,4.2,0);gk.addColorStop(0,fromL?'rgba(10,6,12,'+(0.3+0.3*lw).toFixed(3)+')':'rgba(255,240,224,'+(0.18*lw).toFixed(3)+')');gk.addColorStop(1,'rgba(10,6,12,0)');ctx.fillStyle=gk;ctx.fillRect(0.3,0,4,yd);
+  ctx.save();ctx.transform(1,sl,0,1,a+T/2,ya);if(uL>0.004){const gk=ctx.createLinearGradient(0.3,0,4.2,0);gk.addColorStop(0,'rgba(10,6,12,'+((0.3+0.3*lw)*uL).toFixed(3)+')');gk.addColorStop(1,'rgba(10,6,12,0)');ctx.fillStyle=gk;ctx.fillRect(0.3,0,4,yd);}
+  if(uR>0.004){const gk=ctx.createLinearGradient(0.3,0,4.2,0);gk.addColorStop(0,'rgba(255,240,224,'+(0.18*lw*uR).toFixed(3)+')');gk.addColorStop(1,'rgba(10,6,12,0)');ctx.fillStyle=gk;ctx.fillRect(0.3,0,4,yd);}
   ctx.fillStyle='rgba(8,5,10,.55)';ctx.fillRect(b-a-0.8,0,0.8,yd);ctx.fillRect(0,yd-1,b-a,1);ctx.restore();ctx.fillStyle='rgba(8,5,10,.5)';ctx.fillRect(a-T/2,yA-1,T,1);
   stoneWear(ctx,[[a+T/2,ya],[b+T/2,yb],[b+T/2,yB],[a+T/2,yA]],Wr,sd,false,3.2);stoneWear(ctx,[[a-T/2,ya],[a+T/2,ya],[a+T/2,yA],[a-T/2,yA]],Math.max(0,Wr-1),sd+7,false,2.4);
   if(drop>8&&!plain&&!top)wearRubble(ctx,a+HX-T/2,a+HX+T/2,pl.fl(a+HX),Wr,sd+3); // (not at a lift's mouth: its foot is at the shaft's edge)
@@ -5577,8 +5594,8 @@ function drawDoor(ctx,x,r,open,isExit){
 const SNK={back:'#5f8a2e',shade:'#3a571a',belly:'#d9cf8a',mark:'#26380f',eye:'#f2cf5a'};
 function drawSnakeHD(ctx,sn){
   const dead=!sn.alive,a=dead?Math.max(0,1-sn.t/0.9):1,coil=dead?0:sn.state==='coil'?Math.min(1,sn.t/0.2):sn.state==='strike'?Math.max(0,1-sn.t/0.3):0,lung=sn.lunge||0;
-  const kl=GFX().hero?keyLight(sn.x,sn.y):null,ldx=kl?kl.dir*sn.dir:1,lln=Math.hypot(ldx,0.8);
-  const O={out:'#120c18',_lx:ldx/lln,_ly:-0.8/lln,_lk:kl?(kl.lamp?kl.k:kl.k*0.4):0,_lc:kl?kl.col:null};
+  const kl=GFX().hero?keyLight(sn.x,sn.y):null,ldx=kl?kl.sx*sn.dir:1,lln=Math.hypot(ldx,0.8);
+  const O={out:'#120c18',_lx:ldx/lln,_ly:-0.8/lln,_lk:kl?kl.k*(0.4+0.6*kl.m):0,_lc:kl?kl.col:null};
   ctx.save();ctx.globalAlpha=a;
   if(!dead&&GFX().hero){ctx.fillStyle='rgba(0,0,0,.38)';ctx.beginPath();ctx.ellipse(sn.x-sn.dir*4,sn.y+0.6,15,1.8,0,0,Math.PI*2);ctx.fill();}
   ctx.translate(sn.x,sn.y-2.4);ctx.scale(sn.dir,1);ctx.lineCap='round';ctx.lineJoin='round';
@@ -7084,7 +7101,7 @@ function stripCanvas(key,stops){let c=spriteCache.get(key);if(c)return c;c=docum
 function gatherLights(x0,x1,y0,y1){
   const th=L.theme,lk=lookOf(th.style),out=[],t=gameTime,add=(x,y,r,col,a,kind,bloom)=>{if(x+r>x0&&x-r<x1&&y+r>y0&&y-r<y1)out.push({x,y,r,col,a,kind,bloom});};
   for(const tc of L.torches){if(tc.broken)continue;const sd=(tc.c*7+tc.r*13)%10,fl=0.92+flK(sd,t),lo=th.style==='palace'&&lampFree(tc)?[0,0]:LAMP[th.style]||LAMP.dungeon,x=tc.c*TW+16+lo[0],y=SURF(tc.r)-38+lo[1]-((th.style==='palace'||th.style==='tile')&&lampFree(tc)?28:0);
-    const gc=warmLamp(tc)?'255,188,100':th.glow;add(x,y,150*fl,gc,0.95,'torch',{r:26,a:0.42});add(x,y+22,70,gc,0.45*fl,'torch');}
+    const gc=warmLamp(tc)?'255,188,100':th.glow;add(x,y,150*fl,gc,0.95,'torch',{r:26,a:0.42});if(out.length&&out[out.length-1].x===x)out[out.length-1].r0=150;add(x,y+22,70,gc,0.45*fl,'torch');if(out.length&&out[out.length-1].y===y+22)out[out.length-1].a0=0.45;} // (r0, a0: the steady flame, for keyLight)
   {const ow=th.style==='forge'||th.style==='crypt',wc=ow?lk.win:skyBeam().col; // the windows that are drawn (ryOps), in the colour of the light through them
     // (v58b) the forge's and the crypt's windows are lit from within (the furnace, the tomb's lamps) and cast no shaft: a warm
     // glow at the pane, a soft halo round it and the light spilling down the wall onto the floor under it (a near light in the
@@ -7271,20 +7288,25 @@ function beamBlockers(x0,x1,y0,y1){BLK.n=0;for(const o of L.dyn){const t=o.f.t;i
     else{const gg=gateGeom(X,Y,ys,o.f);if(!gg)continue;const pl=GATE_G.pl,dr=GATE_G.drop,a=pl.L0-T_SLAB/2,b=pl.R0+T_SLAB/2;
       blkQuad(a,pl.top,b,pl.top,b,Math.max(pl.top,pl.ce(b)+dr),a,pl.ce(a)+dr,ys+HY);}} // (the slab's foot runs with the ceiling's line, gateGeom)
   return BLK.n;}
-// (Classic) blocker i's shadow down the beam: the convex hull of its quad and the quad moved along the light (dx,dy) to the floor under it
-// (monotone chain over the 8 corners, into RYF.hp; no allocation)
-function ryHull(i,dx,dy){const q=BLK.q,j=i*8,P=RYF.pp,H=RYF.hp,h0=i*20;let ymin=1e9;for(let k=0;k<4;k++)ymin=Math.min(ymin,q[j+2*k+1]);const t=Math.max(0,(BLK.fy[i]-ymin)/dy);
-  for(let k=0;k<4;k++){P[4*k]=q[j+2*k];P[4*k+1]=q[j+2*k+1];P[4*k+2]=q[j+2*k]+dx*t;P[4*k+3]=q[j+2*k+1]+dy*t;}
+// (Classic) blocker i's shadow down the beam: the convex hull of its quad and the quad moved along the light (dx,dy) (monotone chain over
+// the 8 corners, into RYF.hp slot sl; no allocation). Round 20b (owner: the wedge to the floor read crude): RY_SH layers, each the quad moved
+// a share f of the way to the floor and spread by s about its middle; the beam is drawn once per layer at 1/RY_SH strength, each cut by its
+// own layer's hull, so the shadow is whole at the blade and fades and widens along its length to nothing short of the floor, as the
+// penumbra of a thin blade lit by a broad opening does (the umbra ends a few blade widths behind it; the penumbra widens with distance)
+const RY_SH=5,RY_SHF=[0.12,0.24,0.38,0.54,0.72],RY_SHS=[0.08,0.2,0.34,0.5,0.7];
+function ryHull(i,dx,dy,sl,f,sp){const q=BLK.q,j=i*8,P=RYF.pp,H=RYF.hp,h0=sl*20;let ymin=1e9,cx=0,cy=0;for(let k=0;k<4;k++){ymin=Math.min(ymin,q[j+2*k+1]);cx+=q[j+2*k]/4;cy+=q[j+2*k+1]/4;}const t=Math.max(0,(BLK.fy[i]-ymin)/dy)*f;
+  for(let k=0;k<4;k++){P[4*k]=q[j+2*k];P[4*k+1]=q[j+2*k+1];P[4*k+2]=cx+(q[j+2*k]-cx)*(1+sp)+dx*t;P[4*k+3]=cy+(q[j+2*k+1]-cy)*(1+sp)+dy*t;}
   const o=RYF.po;for(let k=0;k<8;k++)o[k]=k;for(let a=1;a<8;a++){const v=o[a];let b=a-1;while(b>=0&&(P[2*o[b]]>P[2*v]||P[2*o[b]]===P[2*v]&&P[2*o[b]+1]>P[2*v+1])){o[b+1]=o[b];b--;}o[b+1]=v;}
   const st=RYF.ps;let n=0;
   for(let k=0;k<8;k++){while(n>=2&&ryCr(P,st[n-2],st[n-1],o[k])<=0)n--;st[n++]=o[k];}
   for(let k=6,lo=n+1;k>=0;k--){while(n>=lo&&ryCr(P,st[n-2],st[n-1],o[k])<=0)n--;st[n++]=o[k];}n--;
-  for(let k=0;k<n;k++){H[h0+2*k]=P[2*st[k]];H[h0+2*k+1]=P[2*st[k]+1];}RYF.hn[i]=n;return n;}
+  for(let k=0;k<n;k++){H[h0+2*k]=P[2*st[k]];H[h0+2*k+1]=P[2*st[k]+1];}RYF.hn[sl]=n;return n;}
 // (Classic) the blockers' hulls (the blade or slab and its shadow down the beam) clipped out of what is drawn next in box (x,y,w,h): one
 // even-odd clip each (box less hull), so they never cancel where they overlap a wall's cut or each other. Saves first unless saved (sv);
 // returns whether it saved. A clip, not a scratch canvas: one union box round a figure and a blade far apart cost 4 ms a frame here
-function ryBlkClip(g,x,y,w,h,sv,bk){let s=sv;for(let k=0;k<bk.length;k+=5){if(bk[k+1]>x+w||bk[k+3]<x||bk[k+2]>y+h||bk[k+4]<y)continue;if(!s){g.save();s=true;}
-    g.beginPath();g.rect(x-1,y-1,w+2,h+2);const H=RYF.hp,h0=bk[k]*20,hn=RYF.hn[bk[k]];g.moveTo(H[h0],H[h0+1]);for(let j=1;j<hn;j++)g.lineTo(H[h0+2*j],H[h0+2*j+1]);g.closePath();g.clip('evenodd');}
+function ryBlkAny(x,y,w,h,bk){for(let k=0;k<bk.length;k+=5)if(!(bk[k+1]>x+w||bk[k+3]<x||bk[k+2]>y+h||bk[k+4]<y))return true;return false;}
+function ryBlkClip(g,x,y,w,h,sv,bk,ly){let s=sv;for(let k=0;k<bk.length;k+=5){if(bk[k+1]>x+w||bk[k+3]<x||bk[k+2]>y+h||bk[k+4]<y)continue;if(!s){g.save();s=true;}
+    g.beginPath();g.rect(x-1,y-1,w+2,h+2);const sl=bk[k]*RY_SH+ly,H=RYF.hp,h0=sl*20,hn=RYF.hn[sl];g.moveTo(H[h0],H[h0+1]);for(let j=1;j<hn;j++)g.lineTo(H[h0+2*j],H[h0+2*j+1]);g.closePath();g.clip('evenodd');}
   return s&&!sv;}
 // is blocker i in beam o's haze at all (its corners, its middle and the middle of each side)? Only then is it cut out of that beam
 function ryBlkLit(i,o,sb){const q=BLK.q,j=i*8,s=o.sh,nx=sb.dy,ny=-sb.dx;for(let k=0;k<9;k++){const a=k&3,b=(k+1)&3,m=k>=4?(k===8?-1:1):0;
@@ -7292,7 +7314,7 @@ function ryBlkLit(i,o,sb){const q=BLK.q,j=i*8,s=o.sh,nx=sb.dy,ny=-sb.dx;for(let 
     x-=o.x;y-=o.y;if(ryAir(s,x*nx+y*ny-s.umin,x*sb.dx+y*sb.dy-s.smin,sb.lq,sb.ln)>0.01)return true;}
   return false;}
 function ryCr(P,a,b,c){return (P[2*b]-P[2*a])*(P[2*c+1]-P[2*a+1])-(P[2*b+1]-P[2*a+1])*(P[2*c]-P[2*a]);}
-const RYF={c:null,g:null,dr:[],fg:[],bk:[],pp:new Float32Array(16),hp:new Float32Array(BLKMAX*20),hn:new Int8Array(BLKMAX),po:new Int8Array(8),ps:new Int8Array(20)};
+const RYF={c:null,g:null,dr:[],fg:[],bk:[],pp:new Float32Array(16),hp:new Float32Array(BLKMAX*RY_SH*20),hn:new Int8Array(BLKMAX*RY_SH),po:new Int8Array(8),ps:new Int8Array(20)};
 function ryBeams2D(ctx,a){const sb=skyBeam(),VZ=renderXf.VZ,camD=renderXf.camD,camDY=renderXf.camDY,x0=camD/VZ,y0=camDY/VZ,x1=x0+cv.width/VZ,y1=y0+cv.height/VZ,dr=RYF.dr,fg=RYF.fg;dr.length=0;fg.length=0;
   const al=Math.min(1,2*a*sb.k),up=sb.dx>0?-1:1,bk=RYF.bk;bk.length=0; // (up: the side the light comes from)
   for(const o of ryOps()){const s=o.sh;if(s.own)continue;const r=(o.fl-o.y0)*1.4;if(o.x1+Math.max(0,sb.dx)*r<x0||o.x0+Math.min(0,sb.dx)*r>x1||o.fl+4<y0||o.y0>y1)continue;
@@ -7300,11 +7322,14 @@ function ryBeams2D(ctx,a){const sb=skyBeam(),VZ=renderXf.VZ,camD=renderXf.camD,c
   if(!dr.length)return;
   const one=(g,o,p)=>{const X=o.x+p.x,Y=o.y+p.y,c0=Math.floor(X/TW),c1=Math.floor((X+p.w)/TW),r0=Math.floor(Y/TH),r1=Math.floor((Y+p.h)/TH);let cut=false;
     for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1+1;c++){const lh=B(L,c,r)===WALL?TH:ryLow(c,r,up);if(!lh)continue;if(!cut){g.save();g.beginPath();g.rect(X,Y,p.w,p.h);cut=true;}g.rect(c*TW-HX,r*TH,TW,lh);} // (round 15: a wall's front face is drawn HX to the left of its cell; the cut was 8 px off. Round 20a: and a low ceiling's)
-    if(cut)g.clip('evenodd');const bc=ryBlkClip(g,X,Y,p.w,p.h,cut,bk);g.drawImage(p.c,X,Y,p.w,p.h);if(cut||bc)g.restore();};
+    if(cut)g.clip('evenodd');
+    if(ryBlkAny(X,Y,p.w,p.h,bk)){const ga=g.globalAlpha;g.globalAlpha=ga/RY_SH;for(let ly=0;ly<RY_SH;ly++){g.save();ryBlkClip(g,X,Y,p.w,p.h,true,bk,ly);g.drawImage(p.c,X,Y,p.w,p.h);g.restore();}g.globalAlpha=ga;} // (round 20b: the soft shadow, in layers)
+    else g.drawImage(p.c,X,Y,p.w,p.h);if(cut)g.restore();};
   const fig=e=>{if(!e||e.gone||e.state==='dead'||e.y>L.rows*TH)return;const fx=e.x-26,fy=e.y+(e.yo||0)-84,fw=52,fh=92;
     for(let i=0;i<dr.length;i+=2){const o=dr[i],p=dr[i+1],X=o.x+p.x,Y=o.y+p.y;if(fx<X+p.w&&fx+fw>X&&fy<Y+p.h&&fy+fh>Y){fg.push(e,fx,fy,fw,fh);return;}}};
   fig(P);for(const e of G)if(e.alive)fig(e);
-  if(beamBlockers(x0,x1,y0,y1))for(let i=0;i<BLK.n;i++){const hn=ryHull(i,sb.dx,sb.dy),H=RYF.hp,h0=i*20;let bx0=1e9,by0=1e9,bx1=-1e9,by1=-1e9; // (round 20a) the blades and slabs in a beam, with their shadows
+  if(beamBlockers(x0,x1,y0,y1))for(let i=0;i<BLK.n;i++){for(let ly=0;ly<RY_SH-1;ly++)ryHull(i,sb.dx,sb.dy,i*RY_SH+ly,RY_SHF[ly],RY_SHS[ly]);
+    const hn=ryHull(i,sb.dx,sb.dy,i*RY_SH+RY_SH-1,RY_SHF[RY_SH-1],RY_SHS[RY_SH-1]),H=RYF.hp,h0=(i*RY_SH+RY_SH-1)*20;let bx0=1e9,by0=1e9,bx1=-1e9,by1=-1e9; // (round 20a) the blades and slabs in a beam, with their shadows (20b: the box round the longest layer)
     for(let k=0;k<hn;k++){bx0=Math.min(bx0,H[h0+2*k]);bx1=Math.max(bx1,H[h0+2*k]);by0=Math.min(by0,H[h0+2*k+1]);by1=Math.max(by1,H[h0+2*k+1]);}
     for(let j=0;j<dr.length;j+=2){const o=dr[j],p=dr[j+1],X=o.x+p.x,Y=o.y+p.y;if(bx0<X+p.w&&bx1>X&&by0<Y+p.h&&by1>Y&&ryBlkLit(i,o,sb)){bk.push(i,bx0,by0,bx1,by1);break;}}}
   // (figlight) the figures' boxes as one: two that overlap (a sword fight) had their beams drawn twice there and the evenodd
@@ -7322,7 +7347,7 @@ function ryBeams2D(ctx,a){const sb=skyBeam(),VZ=renderXf.VZ,camD=renderXf.camD,c
   // and knees as a pale band): over the figures' boxes they are drawn in the scratch canvas with the silhouettes cut out
   const fp=(g,ov)=>{for(let i=0;i<dr.length;i+=2){const o=dr[i],p=dr[i+1],X=o.x+p.x,r=Math.round((o.fl+4)/TH)-1;let any=false;g.beginPath();
       for(let c=Math.floor(X/TW);c<=Math.floor((X+p.w)/TW);c++)if(B(L,c,r)!==WALL&&solidBelow(L,c,r)&&ryLow(c,r,up)<TH){g.rect(c*TW,o.fl-4,TW,8);any=true;} // (round 20a: not under a low ceiling the light cannot get under)
-      if(any){g.save();g.clip();ryBlkClip(g,X,o.y+p.fy,p.w,p.fh,true,bk);g.drawImage(p.f,X,o.y+p.fy,p.w,p.fh);if(ov){g.globalCompositeOperation='lighter';g.globalAlpha=Math.min(1,a*sb.k*1.2);g.drawImage(p.f,X,o.y+p.fy,p.w,p.fh);}g.restore();}}};
+      if(any){g.save();g.clip();ryBlkClip(g,X,o.y+p.fy,p.w,p.fh,true,bk,2);g.drawImage(p.f,X,o.y+p.fy,p.w,p.fh);if(ov){g.globalCompositeOperation='lighter';g.globalAlpha=Math.min(1,a*sb.k*1.2);g.drawImage(p.f,X,o.y+p.fy,p.w,p.fh);}g.restore();}}};
   ctx.save();ctx.globalCompositeOperation='overlay';ctx.globalAlpha=Math.min(1,a*sb.k*3);
   if(sep){ctx.beginPath();ctx.rect(x0-1,y0-1,x1-x0+2,y1-y0+2);ctx.rect(ux0,uy0,ux1-ux0,uy1-uy0);ctx.clip('evenodd');}
   fp(ctx,true);ctx.restore();
@@ -7369,8 +7394,21 @@ function hazePass(ctx){const lk=lookOf(L.theme.style);
 // characters: a contact shadow and a rim of light on the side facing the nearest lamp (a silhouette in the light's
 // colour, nudged toward it and drawn behind the figure, so only its edge shows)
 let frameLights=[];
-function keyLight(x,y){let best=null,bd=1e9;for(const q of frameLights){if(q.kind==='fill'||q.kind==='trap'||q.kind==='sky')continue;const d=Math.hypot(q.x-x,q.y-(y-26));if(d<bd&&d<q.r*1.6){bd=d;best=q;}}
-  if(!best)return {dir:-1,col:lookOf(L.theme.style).win,k:0.35,lamp:false};return {dir:Math.sign(best.x-x)||1,col:best.col,k:clamp(1-bd/(best.r*1.6),0.3,1),lamp:true};}
+// The key light at a point: which side the strongest lamps light it from, how strongly, in what colour. Round 20b (owner: "the door slab
+// was flicking between highlighted back and side"): this picked the nearest lamp within 1.6 times its radius, and a lamp's radius
+// flickers (150 px times 0.92 + flK), so a slab or a figure near the edge of a lamp's reach flipped every few frames between that lamp
+// (lit from the right) and none (the default, from the left), and between two lamps at about the same distance. Now every lamp in
+// reach adds its pull, weighed by a smooth falloff of its distance over its steady radius (r0: the flame's flicker stays in the light
+// map, not in which side is lit), toward its side (dx/d: one straight overhead pulls neither way), with a weak constant pull from the
+// left (the old default); sx in -1..1 is that balance, continuous in the lamps' places and steady in time, and dir its sign. m: how
+// much a lamp (not the default) carries it, 0..1. As in games that light sprites from the nearest lights (a weighted sum, never the
+// one nearest, so a light coming into reach fades in rather than switching: Unreal's light-environment capture, Unity's light
+// probes; and Sprite Lamp's normal-mapped sprites, lit by several lights at once)
+function keyLight(x,y){let S=-0.05,W=0.05,M=0,bw=0,best=null;
+  for(const q of frameLights){if(q.kind==='fill'||q.kind==='trap'||q.kind==='sky')continue;const dx=q.x-x,dy=q.y-(y-26),d=Math.hypot(dx,dy),R=(q.r0||q.r)*1.6;if(d>=R)continue;
+    const u=1-d/R,w=(q.a0||q.a)*u*u;S+=w*dx/Math.max(d,8);W+=w;M+=u;if(w>bw){bw=w;best=q;}}
+  const sx=clamp(S/W,-1,1),m=clamp(M/0.15,0,1),k=0.35+(clamp(M,0.3,1)-0.35)*m;
+  return {dir:sx<0?-1:1,sx,m,col:best&&m>0.5?best.col:lookOf(L.theme.style).win,k,lamp:m>0.5};}
 const softCol=(c,m)=>c.split(',').map(v=>Math.round(+v+(255-v)*m)).join(',');
 const AIRY=['air','hang','climb','climbDown','jumpUp','swing','wallrun','slide','fall','drop','exit'];
 function drawActor(ctx,e,x,y,face,pose,pal,o){
@@ -7380,9 +7418,9 @@ function drawActor(ctx,e,x,y,face,pose,pal,o){
   const solid=!(o.alpha<1);
   if(solid&&!AIRY.includes(e.state)){ctx.save();ctx.fillStyle='rgba(0,0,0,.42)';ctx.beginPath();ctx.ellipse(x,y+0.6,11,2.4,0,0,Math.PI*2);ctx.fill();ctx.restore();}
   const kl=keyLight(x,y);
-  if(GFX().hd){figDraw(ctx,x,y,face,pose,pal,Object.assign({},o,{lt:{dir:kl.dir,col:L&&L.theme.style==='forge'?softCol(kl.col,0.4):kl.col,k:kl.lamp?kl.k:kl.k*0.4}}));return;} // (forge light mixed toward white so it does not wash the outline red)
+  if(GFX().hd){figDraw(ctx,x,y,face,pose,pal,Object.assign({},o,{lt:{dir:kl.sx,col:L&&L.theme.style==='forge'?softCol(kl.col,0.4):kl.col,k:kl.k*(0.4+0.6*kl.m)}}));return;} // (forge light mixed toward white so it does not wash the outline red)
   if(solid&&e===P){ctx.save();ctx.globalAlpha=0.5+0.5*kl.k; // (the prince only: on guards it read as an outline; their rank colours carry them, owner 2026-10-16)
-figDraw(ctx,x+kl.dir*1.3,y-0.5,face,pose,pal,Object.assign({},o,{mono:'rgb('+kl.col+')',flash:0,smear:0}));ctx.restore();}
+figDraw(ctx,x+kl.sx*1.3,y-0.5,face,pose,pal,Object.assign({},o,{mono:'rgb('+kl.col+')',flash:0,smear:0}));ctx.restore();}
   figDraw(ctx,x,y,face,pose,pal,o);
 }
 // the pose as drawn: the simulated pose plus breathing at rest and a sway after sudden stops (looks only)
@@ -9870,7 +9908,7 @@ addEventListener('orientationchange',()=>setTimeout(layout,120));
 if(window.claude&&window.claude.hot&&window.claude.hot.snapshot){try{window.claude.hot.snapshot(()=>({save:S}));}catch(e){}}
 
 // test hooks
-window.__HK={jetPlaces,jsSwingPath,jetStream,tapCloth,THEMES,progOf,themeName,hint,learn,HINTS,HINT_MOVE,get banner(){return banner;},set banner(v){banner=v;},genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
+window.__HK={keyLight,get frameLights(){return frameLights;},jetPlaces,jsSwingPath,jetStream,tapCloth,THEMES,progOf,themeName,hint,learn,HINTS,HINT_MOVE,get banner(){return banner;},set banner(v){banner=v;},genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
   load(n,seed,test){clearInput();quiet=!!test;L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;mode="play";intro=0;FX.length=0;STORMG.length=0;clearRooms();cam.snap=true;updateCamera(0);return L;},
   loadMap(spec){return spec;},
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
