@@ -40,8 +40,5 @@ def sections(D, REL, img):
                 ('Animation Obsessive: How the Little Guy Moved', 'https://animationobsessive.substack.com/p/how-the-little-guy-moved'),
                 ('J. Mechner, The Making of Prince of Persia: Journals 1985-1993 (Stripe Press, 2020)', 'https://www.thevideogamelibrary.org/book/the-making-of-prince-of-persia-journals-1985-1993')]) +
          '<p class="meta">The 1989 frames are not copied here. Follow the Boing Boing and Ubisoft links for the footage and the game\'s frames.</p>'
-         '<h3>Fighting, round 10, at the phone\'s resolution (round 20a: v62\'s two crops and round 9\'s Classic fight crop retired; round 20b: round 9\'s two and its Torchlight fight crop; round 21a: the Classic crops; round 21b: round 10\'s two Torchlight crops and the running clip)</h3>' +
-         row([('r10_fight.gif', 'A fight with a robber (Torchlight, the bot playing)')], 210) +
-         '<h3>At 3x: v62\'s figure, the prince, the robbers (recruit, soldier, captain), round 10 (round 21a: round 9\'s sheet retired)</h3>' +
-         '<div class="g2">%s</div></section>' % fig(img, 'r10_sheet3x_r10.png', 'Round 10')]
+         '<p class="meta">Pictures retired to keep the page\'s size: round 20a: v62\'s two crops and round 9\'s Classic fight crop; round 20b: round 9\'s two and its Torchlight fight crop; round 21a: the Classic crops and round 9\'s 3x sheet; round 21b: round 10\'s two Torchlight crops and the running clip; round 22: the fight clip and round 10\'s 3x sheet. Rounds 21a and 22 show the figure as it is now.</p></section>']
     return o

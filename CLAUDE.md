@@ -182,9 +182,13 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   wall's art on it. `wellscan.py` (floors 3-30, 3 seeds: slope, volume, break timing, rewind) must print `ok`; pictures `egyptr21b.py`.
 - Arms up (round 19, owner: "a hump"): `torsoG` narrows the back near the shoulders (up to 1.3 px) and the raised arm rises from the
   back of the shoulder, so the back line runs from the waist into the arm. Pictures for round 19: `egyptr19.py`.
-- No hump standing (round 21a, owner): the torso's top runs up into the neck's base along the neck's axis (nape and throat points in the
-  ring) and `TRAP` takes the back's depth in over the top quarter, so the nape-to-shoulder-blade line is one trapezius slope (it fades as the
-  arms rise; round 19's arch unchanged). Robbers share it. Pictures: `egyptr21a.py` (every pose before/after).
+- The back in profile (round 22, owner: "still looks off", after round 21a's nape points; research on athletic youths): back of the skull,
+  shoulder blades and seat on one wall line (wall test), the plumb line through ear, shoulder joint and hip, a hand's gap (~1.5 px) at the
+  waist; C7 a little under the chin and ~2 px in front of the wall line; from it one trapezius slope (20-30 degrees) into the nearly vertical
+  shoulder blades, deepest at u ~0.75 (1 px is ~2 cm). `BQ` holds the standing back offsets (round 19's arms-up `Bo` blended in by `ra`),
+  the torso's nape point is `NB(1.3,2.6)`, the neck is 5 px at its base and set back 0.5 px (both fade as the arms rise), the arms' roots sit
+  0.8 px lower while hanging or swinging (out by 2 rad) so the deltoid stays inside the back and below the chin. Robbers share it. Check with
+  `egyptr22.py` (guides over the silhouette, every pose, in-game crops).
 - Lift ropes (round 21a, owner: "holes in the slab with the rope threaded through"): all lift ropes are `barRope` in the theme's fibre
   (`liftRope`; `barRope`'s `ph` makes the lay travel with a running rope). The counterweight platform hangs on two bridles (`liftSling`: an
   eye seized `LS_J` above the slab, legs down through two holes near the front and back edges along the depth diagonal, `ropeHole` drawn in
