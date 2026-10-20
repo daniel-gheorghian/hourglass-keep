@@ -182,13 +182,17 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   wall's art on it. `wellscan.py` (floors 3-30, 3 seeds: slope, volume, break timing, rewind) must print `ok`; pictures `egyptr21b.py`.
 - Arms up (round 19, owner: "a hump"): `torsoG` narrows the back near the shoulders (up to 1.3 px) and the raised arm rises from the
   back of the shoulder, so the back line runs from the waist into the arm. Pictures for round 19: `egyptr19.py`.
-- The back in profile (round 22, owner: "still looks off", after round 21a's nape points; research on athletic youths): back of the skull,
-  shoulder blades and seat on one wall line (wall test), the plumb line through ear, shoulder joint and hip, a hand's gap (~1.5 px) at the
-  waist; C7 a little under the chin and ~2 px in front of the wall line; from it one trapezius slope (20-30 degrees) into the nearly vertical
-  shoulder blades, deepest at u ~0.75 (1 px is ~2 cm). `BQ` holds the standing back offsets (round 19's arms-up `Bo` blended in by `ra`),
-  the torso's nape point is `NB(1.3,2.6)`, the neck is 5 px at its base and set back 0.5 px (both fade as the arms rise), the arms' roots sit
-  0.8 px lower while hanging or swinging (out by 2 rad) so the deltoid stays inside the back and below the chin. Robbers share it. Check with
-  `egyptr22.py` (guides over the silhouette, every pose, in-game crops).
+- The figure follows the researched proportions (round 22b, owner: "that must be the rule"; ANSUR II men aged 17-20, Drillis and Contini,
+  Loomis; other games surveyed). The body below the chin is a youth's at ~3.7 cm a px (legs 24, shoulder joint to hip 13.3, arm to mid-hand
+  17.4); the head is the style's (~1.6x, 10.4 px chin to crown, ~5.1 heads in all); what joins head and trunk follows the head's scale: chin
+  0.41 of a head (4.2 px) over the shoulder, C7 just under the chin, the neck 0.6 of the head's depth (5.5 px at its base) leaning ~14 degrees,
+  the back nearly straight from C7 to the shoulder blades on the wall line (skull, blades and seat on one line, a ~1.5 px hand gap at the
+  waist). `LEN={th:12,sh:12,to:13,nk:4.9,hd:4.4,ua:8.3,fa:9.2}` (v69: to 15, nk 2.5, hd 4.6, ua 9, fa 8.5: the chin 1.8 px over the
+  shoulder, the hump). The crown stays at 27.7 px over the hip. Hands that hold something (ledge, floor, hilt, flask, the fight's sword) keep
+  v69's places: pose keys `hold` (front hand), `hb` (back), `mh` (follow the mouth) make `skel` solve the arms to v69's hand (`F69`), lifting
+  an airborne body when a grip is out of reach; the swing's lift adds the difference in reach. A new holding pose sets `hold`/`hb`; a new
+  head-up pose near low stone must keep the crown under v69's. Robbers share it. Check with `figscan.py` (every pose before/after: held
+  hands, crown, feet, bar, mouth; must print `figscan: ok`); pictures `egyptr22b.py`.
 - Lift ropes (round 21a, owner: "holes in the slab with the rope threaded through"): all lift ropes are `barRope` in the theme's fibre
   (`liftRope`; `barRope`'s `ph` makes the lay travel with a running rope). The counterweight platform hangs on two bridles (`liftSling`: an
   eye seized `LS_J` above the slab, legs down through two holes near the front and back edges along the depth diagonal, `ropeHole` drawn in

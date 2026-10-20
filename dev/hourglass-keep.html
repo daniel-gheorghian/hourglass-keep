@@ -1863,8 +1863,8 @@ function buildLevel(n,seed,test,legacy,att){
 }
 
 // ================= pose & figure =================
-const PK=['lean','head','aF','eF','aB','eB','hF','kF','hB','kB','air','hy','sw','rot','kn'];
-const mk=o=>Object.assign({lean:0.02,head:0,aF:0.08,eF:0.15,aB:-0.06,eB:0.12,hF:0.04,kF:0.03,hB:-0.04,kB:0.03,air:0,hy:24,sw:0.25,rot:0,kn:0},o); // kn: 1 when he is down on his knees (footXf)
+const PK=['lean','head','aF','eF','aB','eB','hF','kF','hB','kB','air','hy','sw','rot','kn','hold','hb','mh'];
+const mk=o=>Object.assign({lean:0.02,head:0,aF:0.08,eF:0.15,aB:-0.06,eB:0.12,hF:0.04,kF:0.03,hB:-0.04,kB:0.03,air:0,hy:24,sw:0.25,rot:0,kn:0,hold:0,hb:0,mh:0},o); // kn: 1 when he is down on his knees (footXf); hold, hb, mh: see skel
 const PS={
   stand:mk({}),
   crouch:mk({lean:0.45,hF:1.15,kF:2.0,hB:0.85,kB:1.8,aF:0.4,eF:0.5,aB:0.25,eB:0.5}),
@@ -1873,28 +1873,29 @@ const PS={
   jumpR:mk({lean:0.32,hF:0.95,kF:0.85,hB:-0.75,kB:1.1,aF:1.25,eF:0.2,aB:-0.95,eB:0.3,air:1,hy:26}),
   jumpS:mk({lean:0.25,hF:0.85,kF:1.45,hB:0.45,kB:1.55,aF:1.45,eF:0.2,aB:0.95,eB:0.3,air:1,hy:24}),
   fall:mk({lean:-0.05,hF:0.25,kF:0.5,hB:-0.2,kB:0.7,aF:2.55,eF:0.4,aB:2.25,eB:0.5,air:1,hy:25}),
-  hang:mk({lean:-0.08,head:0.15,hF:0.08,kF:0.12,hB:-0.06,kB:0.2,aF:Math.PI-0.42,eF:0,aB:Math.PI-0.36,eB:0,air:1,hy:24.5}),
-  pull:mk({lean:0.2,hF:0.75,kF:1.5,hB:0.25,kB:1.1,aF:2.0,eF:-1.3,aB:1.9,eB:-1.2,air:1,hy:20}),
-  reach:mk({lean:0,hF:0.05,kF:0.05,hB:-0.05,kB:0.1,aF:Math.PI-0.42,eF:0,aB:Math.PI-0.3,eB:0,air:1,hy:24}),
-  garde:mk({lean:0.06,hF:0.38,kF:0.42,hB:-0.4,kB:0.25,aF:0.95,eF:0.55,aB:-0.4,eB:0.9,sw:0.22}),
-  windup:mk({lean:-0.1,hF:0.32,kF:0.45,hB:-0.42,kB:0.3,aF:0.25,eF:1.6,aB:-0.6,eB:0.9,sw:1.15}),
-  lunge:mk({lean:0.32,hF:0.8,kF:0.6,hB:-0.6,kB:0.15,aF:1.5,eF:0.05,aB:-0.95,eB:0.4,sw:-0.03}),
-  parry:mk({lean:-0.06,hF:0.3,kF:0.42,hB:-0.42,kB:0.3,aF:1.25,eF:1.05,aB:-0.5,eB:0.9,sw:1.5}),
+  hang:mk({hold:1,hb:1,lean:-0.08,head:0.15,hF:0.08,kF:0.12,hB:-0.06,kB:0.2,aF:Math.PI-0.42,eF:0,aB:Math.PI-0.36,eB:0,air:1,hy:24.5}),
+  pull:mk({hold:1,hb:1,lean:0.2,hF:0.75,kF:1.5,hB:0.25,kB:1.1,aF:2.0,eF:-1.3,aB:1.9,eB:-1.2,air:1,hy:20}),
+  reach:mk({hold:1,hb:1,lean:0,hF:0.05,kF:0.05,hB:-0.05,kB:0.1,aF:Math.PI-0.42,eF:0,aB:Math.PI-0.3,eB:0,air:1,hy:24}),
+  garde:mk({hold:1,lean:0.06,hF:0.38,kF:0.42,hB:-0.4,kB:0.25,aF:0.95,eF:0.55,aB:-0.4,eB:0.9,sw:0.22}),
+  windup:mk({hold:1,lean:-0.1,hF:0.32,kF:0.45,hB:-0.42,kB:0.3,aF:0.25,eF:1.6,aB:-0.6,eB:0.9,sw:1.15}),
+  lunge:mk({hold:1,lean:0.32,hF:0.8,kF:0.6,hB:-0.6,kB:0.15,aF:1.5,eF:0.05,aB:-0.95,eB:0.4,sw:-0.03}),
+  parry:mk({hold:1,lean:-0.06,hF:0.3,kF:0.42,hB:-0.42,kB:0.3,aF:1.25,eF:1.05,aB:-0.5,eB:0.9,sw:1.5}),
   hurt:mk({lean:-0.38,head:-0.3,hF:0.2,kF:0.4,hB:-0.42,kB:0.5,aF:0.5,eF:0.6,aB:-0.6,eB:0.4}),
   dead:mk({lean:0,head:0.25,hF:0.12,kF:0.3,hB:-0.1,kB:0.45,aF:2.1,eF:0.4,aB:1.7,eB:0.6,rot:-1.5,air:1,hy:3}),
   step:mk({lean:0.1,hF:0.4,kF:0.15,hB:-0.28,kB:0.3,aF:-0.1,eF:0.35,aB:0.25,eB:0.35}),
   turn:mk({lean:-0.05,hF:0.12,kF:0.2,hB:0.1,kB:0.2,aF:0.45,eF:1.25,aB:0.45,eB:1.25}),
-  lowStrike:mk({lean:0.62,head:-0.2,hF:1.0,kF:1.15,hB:-0.45,kB:0.35,aF:1.15,eF:0.25,aB:-0.8,eB:0.5,sw:-0.62}),
+  lowStrike:mk({hold:1,lean:0.62,head:-0.2,hF:1.0,kF:1.15,hB:-0.45,kB:0.35,aF:1.15,eF:0.25,aB:-0.8,eB:0.5,sw:-0.62}),
 };
 // ---- poses added for climbing, wall running and low leaps ----
 Object.assign(PS,{
   // the low leap under a beam: ducked well forward, the leading knee driven up, the back leg trailing
-  jumpLow:mk({lean:0.82,head:-0.5,hF:1.35,kF:1.55,hB:-0.55,kB:1.45,aF:1.3,eF:0.3,aB:-0.85,eB:0.5,air:1,hy:22}),
-  jumpLowS:mk({lean:0.78,head:-0.5,hF:1.25,kF:1.9,hB:0.75,kB:1.9,aF:1.2,eF:0.35,aB:0.6,eB:0.45,air:1,hy:21}),
+  // (round 22b: the low leaps and the crawl hold the head 0.1 to 0.3 rad less far back: on the longer neck the crown would otherwise rise past v69's)
+  jumpLow:mk({lean:0.82,head:-0.39,hF:1.35,kF:1.55,hB:-0.55,kB:1.45,aF:1.3,eF:0.3,aB:-0.85,eB:0.5,air:1,hy:22}),
+  jumpLowS:mk({lean:0.78,head:-0.39,hF:1.25,kF:1.9,hB:0.75,kB:1.9,aF:1.2,eF:0.35,aB:0.6,eB:0.45,air:1,hy:21}),
   // climbing onto a ledge: hands pressing down on the floor, then one knee set on it
-  press:mk({lean:0.38,head:-0.1,hF:0.12,kF:0.25,hB:-0.05,kB:0.3,aF:0.55,eF:-0.35,aB:0.45,eB:-0.3,air:1,hy:22}),
-  kneelUp:mk({lean:0.48,head:-0.1,hF:1.4,kF:2.3,hB:-0.2,kB:0.3,aF:0.45,eF:-0.25,aB:0.35,eB:-0.2,air:1,hy:20,kn:1}),
-  kneel:mk({lean:0.5,head:-0.05,hF:0.58,kF:2.16,hB:-0.75,kB:0.55,aF:0.35,eF:-0.2,aB:0.2,eB:-0.15,air:1,hy:20,kn:1}),
+  press:mk({hold:1,hb:1,lean:0.38,head:-0.1,hF:0.12,kF:0.25,hB:-0.05,kB:0.3,aF:0.55,eF:-0.35,aB:0.45,eB:-0.3,air:1,hy:22}),
+  kneelUp:mk({hold:1,hb:1,lean:0.48,head:-0.1,hF:1.4,kF:2.3,hB:-0.2,kB:0.3,aF:0.45,eF:-0.25,aB:0.35,eB:-0.2,air:1,hy:20,kn:1}),
+  kneel:mk({hold:1,hb:1,lean:0.5,head:-0.05,hF:0.58,kF:2.16,hB:-0.75,kB:0.55,aF:0.35,eF:-0.2,aB:0.2,eB:-0.15,air:1,hy:20,kn:1}),
   // kicking up a shaft (see KICK_VX): the push, the push leg stretched back to the wall he leaves, the other knee driven
   // up and the arms swinging toward the next wall; the tuck, both knees up; the reach, the leading foot out for the wall
   kickPush:mk({lean:0.3,head:-0.3,hF:1.4,kF:1.9,hB:-1.25,kB:0.15,aF:1.35,eF:0.35,aB:-0.7,eB:0.45,air:1,hy:25}),
@@ -1902,7 +1903,7 @@ Object.assign(PS,{
   kickReach:mk({lean:-0.22,head:-0.15,hF:1.45,kF:0.55,hB:0.85,kB:1.75,aF:1.2,eF:0.5,aB:-0.15,eB:0.6,air:1,hy:25}),
   // sliding down a hanging on the blade (see SL_V): both hands on the hilt above his head where the blade is in the
   // cloth, knees drawn up together ready for the floor, head down watching for it
-  slide:mk({lean:0.06,head:0.32,aF:Math.PI-0.12,eF:0.05,aB:Math.PI-0.4,eB:0.42,hF:0.6,kF:1.1,hB:0.38,kB:0.95,air:1,hy:24.5,sw:0.46}),
+  slide:mk({hold:1,hb:1,lean:0.06,head:0.32,aF:Math.PI-0.12,eF:0.05,aB:Math.PI-0.4,eB:0.42,hF:0.6,kF:1.1,hB:0.38,kB:0.95,air:1,hy:24.5,sw:0.46}),
 });
 // planted on a wall between kicks, facing it: both soles on the stone (two-bone IK), knees folded to the chest, the body
 // leaning away from the wall, head up the shaft, arms drawn back ready to swing
@@ -1974,14 +1975,14 @@ function climbFrame(cs,k){let x,y,p;
 // drinkpotion sequence (SDLPoP seqtbl.c: reach, sound, head back, hold, effect, lower), timed 0.9 times a PoP1-at-12fps drink.
 // Each key: [time, pose, flask tilt (negative = neck swings back toward the mouth), liquid left 0..1].
 const DR_T=1.3,DR_GRASP=0.306,DR_SIP=0.74,DR_FX=0.9,DR_REL=1.152,DR_G=0.27,DR_BACK=0.99;
-const DK=(()=>{const G=mk({lean:0.85,head:-0.4,hF:1.0,kF:1.7,hB:0.5,kB:1.5,aF:0.45,eF:0.1,aB:0.1,eB:0.3});
+const DK=(()=>{const G=mk({hold:1,lean:0.85,head:-0.32,hF:1.0,kF:1.7,hB:0.5,kB:1.5,aF:0.45,eF:0.1,aB:0.1,eB:0.3});
   return [[0,mk({}),0,1],[DR_G,G,0,1],[0.36,G,0,1],
   [0.495,mk({lean:0.5,head:-0.2,hF:0.6,kF:1.0,hB:0.1,kB:0.8,aF:0.8,eF:1.0,aB:0.2,eB:0.3}),0,1],
-  [0.63,mk({lean:0.1,head:-0.3,hF:0.1,kF:0.15,hB:-0.1,kB:0.2,aF:1.45,eF:2.0,aB:0,eB:0.2}),-0.5,1],
-  [0.72,mk({lean:0,head:-0.35,aF:1.5,eF:2.5,aB:-0.05,eB:0.2}),-1.1,1],
-  [0.855,mk({lean:-0.12,head:-0.6,aF:1.7,eF:2.5,aB:-0.15,eB:0.2}),-1.9,0.5],
-  [0.9,mk({lean:-0.09,head:-0.5,aF:1.7,eF:2.5,aB:-0.15,eB:0.2}),-1.9,0.45],
-  [DR_BACK,mk({lean:-0.14,head:-0.7,aF:1.9,eF:2.4,aB:-0.15,eB:0.2}),-2.3,0],
+  [0.63,mk({hold:1,mh:0.15,lean:0.1,head:-0.3,hF:0.1,kF:0.15,hB:-0.1,kB:0.2,aF:1.45,eF:2.0,aB:0,eB:0.2}),-0.5,1],
+  [0.72,mk({hold:1,mh:1,lean:0,head:-0.35,aF:1.5,eF:2.5,aB:-0.05,eB:0.2}),-1.1,1],
+  [0.855,mk({hold:1,mh:1,lean:-0.12,head:-0.6,aF:1.7,eF:2.5,aB:-0.15,eB:0.2}),-1.9,0.5],
+  [0.9,mk({hold:1,mh:1,lean:-0.09,head:-0.5,aF:1.7,eF:2.5,aB:-0.15,eB:0.2}),-1.9,0.45],
+  [DR_BACK,mk({hold:1,mh:1,lean:-0.14,head:-0.7,aF:1.9,eF:2.4,aB:-0.15,eB:0.2}),-2.3,0],
   [DR_REL,mk({lean:0.04,head:-0.1,aF:0.9,eF:1.2,aB:0,eB:0.2}),-0.4,0],
   [DR_T,mk({}),-0.4,0]];})();
 const dkOut={p:mk({}),tilt:0,fill:1};
@@ -1989,13 +1990,26 @@ function drinkFrame(t){let i=1;while(i<DK.length-1&&t>DK[i][0])i++;
   const a=DK[i-1],b=DK[i],u=clamp((t-a[0])/(b[0]-a[0]),0,1),e=u*0.5+ease(u)*0.5;
   lerpPose(a[1],b[1],e,dkOut.p);dkOut.tilt=lerp(a[2],b[2],e);dkOut.fill=lerp(a[3],b[3],u);return dkOut;}
 function crawlPose(ph){const a=ph*6.2832,s=Math.sin(a);
-  return mk({lean:1.36,head:-0.95,hF:0.28+0.22*s,kF:1.78+0.1*s,hB:0.1-0.22*s,kB:1.66-0.1*s,aF:0.06-0.28*s,eF:-0.25,aB:-0.02+0.28*s,eB:-0.2,kn:1});}
+  return mk({hold:1,hb:1,lean:1.36,head:-0.66,hF:0.28+0.22*s,kF:1.78+0.1*s,hB:0.1-0.22*s,kB:1.66-0.1*s,aF:0.06-0.28*s,eF:-0.25,aB:-0.02+0.28*s,eB:-0.2,kn:1});} // (round 22b: hold, the hands on the floor where they were)
 function RP(ph,amp=1){return GFX().hd?runPoseHD(ph,amp):runPose(ph,amp);}
 function runPose(ph,amp=1){const a=ph*6.2832,s=Math.sin(a),c=Math.cos(a);
   return mk({lean:0.2*amp,hF:0.62*s*amp,hB:-0.62*s*amp,kF:0.15+1.1*Math.max(0,c)*amp,kB:0.15+1.1*Math.max(0,-c)*amp,aF:-0.55*s*amp,aB:0.55*s*amp,eF:0.7,eB:0.7});}
 const tmpP=mk({});
 function lerpPose(a,b,t,out){out=out||mk({});for(const k of PK)out[k]=a[k]+(b[k]-a[k])*t;return out;}
-const LEN={th:12,sh:12,to:15,nk:2.5,hd:4.6,ua:9,fa:8.5};
+// The skeleton (round 22b, owner: "redo according to the research to match the proportions, that must be the rule"). Hip at the origin,
+// lengths in px. The body below the chin is a youth's at about 3.7 cm a px (ANSUR II, the 422 men aged 17-20: trochanter 900 mm, the legs
+// 24 px; shoulder joint to hip 13.3 px; arm to the middle of the hand 17.4 px); the head is the style's, about 1.6 times that (10.4 px
+// chin to crown, 5.1 heads in all); and what joins the head to the trunk is drawn at the head's scale: chin 0.41 of a head over the top
+// of the shoulder (ANSUR: chin 94 mm over the acromion, a head 228 mm), C7 just under the chin, the neck 0.6 of the head's depth. Until
+// v69 the trunk was 15 and the neck 2.5: the chin 1.8 px over the shoulder joint, the shoulders crowding the head (the hump the owner
+// saw). The crown stands where it stood (27.7 px over the hip), the legs, the feet and the arms' length are unchanged.
+const LEN={th:12,sh:12,to:13,nk:4.9,hd:4.4,ua:8.3,fa:9.2};
+// Hands that hold something keep their place (round 22b). Ledges, floors, hilts, the flask and the sword's place in a fight were set for
+// v69's arm (shoulder 15 px up the spine, arm 9 + 8.5), and gameplay's numbers (HANG, the climb's offsets) were tuned to it. The pose
+// angles stay in that frame; where a pose holds something (hold: the front hand, hb: the back one, 0..1, blended with the pose), the hands go to where v69's arm put them
+// and both arms are solved again (two bones, the elbow bending the way it bent). In the air a grip out of reach lifts the body just
+// enough (the shorter trunk hangs higher under the same grip). mh moves the hand with the mouth (the drink: the head is drawn anew).
+const F69={to:15,nk:2.5,hd:4.6,ua:9,fa:8.5};
 function skel(p){
   const sin=Math.sin,cos=Math.cos;
   const kF=[LEN.th*sin(p.hF),LEN.th*cos(p.hF)], fF=[kF[0]+LEN.sh*sin(p.hF-p.kF),kF[1]+LEN.sh*cos(p.hF-p.kF)];
@@ -2004,9 +2018,21 @@ function skel(p){
   const hd=[sh[0]+(LEN.nk+LEN.hd)*sin(p.lean+p.head),sh[1]-(LEN.nk+LEN.hd)*cos(p.lean+p.head)];
   const eF=[sh[0]+LEN.ua*sin(p.aF),sh[1]+LEN.ua*cos(p.aF)], hF=[eF[0]+LEN.fa*sin(p.aF+p.eF),eF[1]+LEN.fa*cos(p.aF+p.eF)];
   const eB=[sh[0]+LEN.ua*sin(p.aB),sh[1]+LEN.ua*cos(p.aB)], hB=[eB[0]+LEN.fa*sin(p.aB+p.eB),eB[1]+LEN.fa*cos(p.aB+p.eB)];
-  const low=Math.max(fF[1],fB[1]);
-  return {kF,fF,kB,fB,sh,hd,eF,hF,eB,hB,hipH:lerp(low,p.hy,p.air)};
+  const low=Math.max(fF[1],fB[1]);let lift=0;
+  if(p.hold>0||p.hb>0){const A=F69,w=p.hold,wb=p.hb,ua=LEN.ua,fa=LEN.fa,R=(ua+fa)*0.9995,s0x=A.to*sin(p.lean),s0y=-A.to*cos(p.lean);
+    let fx=s0x+A.ua*sin(p.aF)+A.fa*sin(p.aF+p.eF),fy=s0y+A.ua*cos(p.aF)+A.fa*cos(p.aF+p.eF),bx=s0x+A.ua*sin(p.aB)+A.fa*sin(p.aB+p.eB),by=s0y+A.ua*cos(p.aB)+A.fa*cos(p.aB+p.eB);
+    if(p.mh){const ha=p.lean+p.head,hx=sin(ha),hc=cos(ha),d0=LEN.nk+LEN.hd-A.nk-A.hd,dr=LEN.hd-A.hd; // (the mouth: 0.8 r in front of the head's centre, 0.62 r under it)
+      fx+=(sh[0]-s0x+d0*hx+dr*(0.8*hc-0.62*hx))*p.mh;fy+=(sh[1]-s0y-d0*hc+dr*(0.8*hx+0.62*hc))*p.mh;}
+    fx=hF[0]+(fx-hF[0])*w;fy=hF[1]+(fy-hF[1])*w;bx=hB[0]+(bx-hB[0])*wb;by=hB[1]+(by-hB[1])*wb;
+    if(p.air>0){for(let i=0;i<2;i++){const dx=(i?bx:fx)-sh[0],dy=(i?by:fy)-sh[1];if(dx*dx+dy*dy>R*R&&dy<0&&Math.abs(dx)<R)lift=Math.max(lift,-dy-Math.sqrt(R*R-dx*dx));}
+      lift*=p.air;fy+=lift;by+=lift;}
+    arm2(sh,fx,fy,p.eF,eF,hF);arm2(sh,bx,by,p.eB,eB,hB);}
+  return {kF,fF,kB,fB,sh,hd,eF,hF,eB,hB,hipH:lerp(low,p.hy+lift,p.air)};
 }
+// two bones from the shoulder sh to (tx,ty), the elbow bending the way e bends; writes the elbow E and the hand H
+function arm2(sh,tx,ty,e,E,H){const ua=LEN.ua,fa=LEN.fa,R=(ua+fa)*0.9995,dx=tx-sh[0],dy=ty-sh[1],D=Math.hypot(dx,dy),a0=Math.atan2(dx,dy);let a=a0,ee=0;
+  if(D<R){const be=Math.acos(clamp((ua*ua+D*D-fa*fa)/(2*ua*D),-1,1)),ga=Math.acos(clamp((ua*ua+fa*fa-D*D)/(2*ua*fa),-1,1));if(e>=0){a=a0-be;ee=Math.PI-ga;}else{a=a0+be;ee=ga-Math.PI;}}
+  E[0]=sh[0]+ua*Math.sin(a);E[1]=sh[1]+ua*Math.cos(a);H[0]=E[0]+fa*Math.sin(a+ee);H[1]=E[1]+fa*Math.cos(a+ee);}
 // A foot is drawn flat and pointing forward, which is right while he stands on it. Kneeling or crawling, the shin lies on the
 // floor trailing back from the knee and the foot lies behind it, instep down and toes pointing back. So where the shin trails
 // back near level (from 57 degrees past straight down), the knee is low and that foot is on the floor (the lowest one, give or
@@ -2086,7 +2112,7 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
   let TG=null;
   if(EG){const lnX=pal.lean,ra=(sstep((Math.abs(p.aF)-1.7)/0.9)+sstep((Math.abs(p.aB)-1.7)/0.9))/2,fl=clamp((p.hF+p.hB)/2-lean,-0.6,1.4),tw2=clamp((Math.sin(p.aF)-Math.sin(p.aB))/2,-1,1);
     const c=-1.1*fl+0.9*ra,m=at(0.5),cp=[m[0]+nx*c,m[1]+ny*c],E=s.sh,U=[0,0.14,0.3,0.46,0.62,0.76,0.88,0.96,1];
-    const BQ=lnX?[4.6,4.1,3.2,3.5,4.2,4.5,4.25,3.65,3.1]:[5.1,4.6,3.8,4.1,4.8,5.1,4.8,4.15,3.5],Fo=lnX?[3.9,3.6,3.2,3.6,4.2,4.7,4.5,3.8,2.5]:[4.4,4.2,3.9,4.2,4.8,5.4,5.2,4.2,2.7],Bo=lnX?[4.6,4.1,3.2,3.5,4.1,4.6,4.6,4.0,2.8]:[5.1,4.6,3.8,4.1,4.7,5.2,5.2,4.5,3.0];
+    const BQ=lnX?[4.6,4.1,3.2,3.5,4.2,4.5,4.45,4.35,4.25]:[5.1,4.6,3.8,4.1,4.8,5.1,5.0,4.9,4.75],Fo=lnX?[3.9,3.6,3.2,3.6,4.2,4.7,4.5,3.8,2.5]:[4.4,4.2,3.9,4.2,4.8,5.4,5.2,4.2,2.7],Bo=lnX?[4.6,4.1,3.2,3.5,4.1,4.6,4.6,4.0,2.8]:[5.1,4.6,3.8,4.1,4.7,5.2,5.2,4.5,3.0];
     const sp=(u,o2)=>{const a=1-u;let gx=2*a*cp[0]+2*u*(E[0]-cp[0]),gy=2*a*cp[1]+2*u*(E[1]-cp[1]);const g=Math.hypot(gx,gy)||1;gx/=g;gy/=g;return [2*a*u*cp[0]+u*u*E[0]-gy*o2,2*a*u*cp[1]+u*u*E[1]+gx*o2];};
     const TS=U.map(u=>{const a=1-u;let gx=2*a*cp[0]+2*u*(E[0]-cp[0]),gy=2*a*cp[1]+2*u*(E[1]-cp[1]);const g=Math.hypot(gx,gy)||1;gx/=g;gy/=g;return [2*a*u*cp[0]+u*u*E[0],2*a*u*cp[1]+u*u*E[1],-gy,gx];});
     const fo=U.map((u,i)=>Fo[i]+ra*(u>0.5&&u<0.85?0.35:u>0.2&&u<0.5?-0.3:0)+tw2*0.5*sstep((u-0.55)/0.2)-(u>0.25&&u<0.55?Math.max(0,fl)*0.3:0)),
@@ -2110,7 +2136,7 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
   const BT=(path,pts,ws,base,shadow)=>{if(O.mono)return;ctx.fillStyle=shadow;ctx.fill(path);const ux=O._lx,uy=O._ly; // (tcel's fills)
     ctx.fillStyle=base;ctx.fill(tubePath(pts.map(q=>[q[0]+ux*0.38,q[1]+uy*0.38]),ws.map(w=>Math.max(0.5,w-1.0))));
     if(O._lk>0.05){ctx.fillStyle=litTint(base,O._lc,O._lk);ctx.fill(tubePath(pts.map(q=>[q[0]+ux*1.0,q[1]+uy*1.0]),ws.map(w=>Math.max(0.4,w-2.3))));}};
-  const armG=(sh,e,h,a,fist)=>{const k=clamp(Math.sin(a),-1,1)*0.9-(TG?TG.ra*sstep((Math.abs(a)-1.7)/0.9)*0.8:0),dq=0.7+0.8*(1-sstep(Math.abs(a)-1)),r0=[sh[0]+nx*k-tx*dq,sh[1]+ny*k-ty*dq], // (round 19: a raised arm rises from the back of the shoulder, the scapula turned up under it; round 22: a hanging or swinging arm's root 0.8 px lower, the shoulder's top under the chin)
+  const armG=(sh,e,h,a,fist)=>{const k=clamp(Math.sin(a),-1,1)*0.9-(TG?TG.ra*sstep((Math.abs(a)-1.7)/0.9)*0.8:0),r0=[sh[0]+nx*k-tx*0.7,sh[1]+ny*k-ty*0.7], // (round 19: a raised arm rises from the back of the shoulder, the scapula turned up under it)
       // (the shoulder goes forward and back with the arm's swing)
       dx=e[0]-r0[0],dy=e[1]-r0[1],d=Math.hypot(dx,dy)||1,fx=dy/d,fy=-dx/d,ex=h[0]-e[0],ey=h[1]-e[1],de=Math.hypot(ex,ey)||1,gx=ey/de,gy=-ex/de,
       U=(u,o2)=>[r0[0]+dx*u+fx*o2,r0[1]+dy*u+fy*o2],V=(u,o2)=>[e[0]+ex*u+gx*o2,e[1]+ey*u+gy*o2];
@@ -2169,10 +2195,15 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
     // nape point was 2.6 px up the neck, over the chin, with a notch under it the back arm's deltoid stuck out of: a mound behind the jaw); the
     // neck wider at its base and set back so its back runs straight from under the skull into the trapezius slope, as Bridgman's flat back of
     // the neck overhung by the skull; both fade as the arms rise)
+    // (round 22b: the cause was the skeleton, the chin 1.8 px over the shoulder joint; now LEN puts it 4.2 px over (0.41 of a head, ANSUR II).
+    // C7 sits 1.4 px under the chin (NB(2.8,3.5)) on the neck's back edge; the neck, 0.6 of the head's depth (5.5 px at its base, 4.6 under the
+    // skull), leans forward about 14 degrees (its base 1.6 px behind the spine's axis, its top 0.5): its back edge is the slope from the nape
+    // down to C7, then the back runs on nearly straight to the shoulder blades on the wall line (BQ 4.25 at the shoulder, 4.5 at u 0.76). Round
+    // 22's lower arm roots are not needed: the deltoid's top is 5 px under the chin)
     const ha1=lean+p.head,ux=Math.sin(ha1),uy=-Math.cos(ha1),tw1=1-TG.ra,T0=[E[0]+TS[n8][3]*1.1,E[1]-TS[n8][2]*1.1],
       NB=(up,o2)=>[T0[0]+(E[0]+ux*up+uy*o2-T0[0])*tw1,T0[1]+(E[1]+uy*up-ux*o2-T0[1])*tw1]; // (o2 toward the back of the neck)
-    for(let i=0;i<=n8;i++)ring.push(pt(i,fo[i]));ring.push(NB(0.9,-1.7),NB(1.3,2.6));for(let i=n8;i>=0;i--)ring.push(pt(i,-bo[i]));
-    const TP=smoothLoop(ring),n0=at(0.95),hd0=s.hd,ha0=lean+p.head,nq=1-TG.ra,nk=[[n0[0]-nx*0.5*nq,n0[1]-ny*0.5*nq],[hd0[0]-Math.sin(ha0)*3.6-Math.cos(ha0)*0.3*nq,hd0[1]+Math.cos(ha0)*3.6-Math.sin(ha0)*0.3*nq]],nw=[4.0+nq,3.0+0.7*nq],NP=tubePath(nk,nw);
+    for(let i=0;i<=n8;i++)ring.push(pt(i,fo[i]));ring.push(NB(0.9,-1.7),NB(2.8,3.5));for(let i=n8;i>=0;i--)ring.push(pt(i,-bo[i]));
+    const TP=smoothLoop(ring),n0=at(0.95),hd0=s.hd,ha0=lean+p.head,nq=1-TG.ra,nk=[[n0[0]-nx*1.6*nq,n0[1]-ny*1.6*nq],[hd0[0]-Math.sin(ha0)*3.6-Math.cos(ha0)*0.5*nq,hd0[1]+Math.cos(ha0)*3.6-Math.sin(ha0)*0.5*nq]],nw=[4.0+1.5*nq,3.0+1.6*nq],NP=tubePath(nk,nw);
     FA=armG(s.sh,s.eF,s.hF,p.aF,!!o.sword);BS(TP);BS(NP);BS(FA.path);BS(FA.hp);
     if(!O.mono){const base=C('tunic'),sd=D('tunic'),sg=O._lx>=0?1:-1,Lo=i=>sg>0?fo[i]:-bo[i],Do=i=>sg>0?-bo[i]:fo[i];
       ctx.fillStyle=base;ctx.fill(TP);
@@ -2181,7 +2212,7 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
       ctx.fillStyle=O._lk>0.05?litTint(shadeHex(base,0.1),O._lc,O._lk):shadeHex(base,0.14);ctx.fill(smoothLoop(lp2)); // the lit plane
       BT(NP,nk,nw,C('skin'),D('skin'));}}
   else tcel(ctx,tp,tw,C('tunic'),D('tunic'),O);
-  if(EG&&pal.bare&&!O.mono){const P2=(u,o2)=>{const q=at(u);return [q[0]+nx*o2,q[1]+ny*o2];};sheen(P2(0.9,-1.4),P2(0.92,2.4),1.2);} // the sheen on the shoulders (round 21a: not past the trapezius slope; round 22: lowered with the arms' roots, off the neck)
+  if(EG&&pal.bare&&!O.mono){const P2=(u,o2)=>{const q=at(u);return [q[0]+nx*o2,q[1]+ny*o2];};sheen(P2(0.95,-1.2),P2(0.97,2.6),1.2);} // the sheen on the shoulders (round 21a: not past the trapezius slope)
   if(FULL&&!O.mono){ // the broad collar (wesekh): rows of faience beads round the neck, a drop row at the edge
     const cl=pal.coll;for(let i=0;i<3;i++){const o2=2.9-i*1.0,u0=0.99,u1=0.8+i*0.05;const a0=at(u0),a1=at(u1),a2=at(u0);
       tcel(ctx,[[a0[0]-nx*(3.6-i*0.3),a0[1]-ny*(3.6-i*0.3)],[a1[0]+nx*o2*0.3,a1[1]+ny*o2*0.3],[a2[0]+nx*(4.8-i*0.5),a2[1]+ny*(4.8-i*0.5)]],[2.1,2.5,2.1],cl[i],shadeHex(cl[i],-0.3),O);}
@@ -2419,7 +2450,8 @@ function drawSkeletonHD(ctx,x,y,face,p,pal,o){
   else{const q=at(0.7);ctx.fillStyle=O.mono;ctx.beginPath();ctx.ellipse(q[0]+nx*2.4,q[1]+ny*2.4,4.2,5.6,lean,0,Math.PI*2);ctx.fill();}
   // skull and jaw
   const hd=s.hd,ha=lean+p.head,hx=Math.sin(ha),hy=-Math.cos(ha),hnx=-hy,hny=hx,r=LEN.hd;
-  {const n0=at(1.02),n1=[hd[0]-hx*r*0.7,hd[1]-hy*r*0.7];tcel(ctx,[n0,n1],[1.8,1.6],BONE.shade,BONE.dark,O);}
+  {const n0=at(1.02),n1=[hd[0]-hx*r*0.7,hd[1]-hy*r*0.7];tcel(ctx,[n0,n1],[1.8,1.6],BONE.shade,BONE.dark,O);
+    knob([n0[0]+(n1[0]-n0[0])*0.3,n0[1]+(n1[1]-n0[1])*0.3],1.0,tint(BONE.base));knob([n0[0]+(n1[0]-n0[0])*0.65,n0[1]+(n1[1]-n0[1])*0.65],1.0,tint(BONE.base));} // (round 22b: the longer neck's cervical vertebrae)
   {const sk=new Path2D();sk.moveTo(hd[0]-hnx*r*1.0+hx*r*0.1,hd[1]-hny*r*1.0+hy*r*0.1);
     sk.bezierCurveTo(hd[0]-hnx*r*1.1+hx*r*1.45,hd[1]-hny*r*1.1+hy*r*1.45,hd[0]+hnx*r*1.0+hx*r*1.4,hd[1]+hny*r*1.0+hy*r*1.4,hd[0]+hnx*r*1.08+hx*r*0.1,hd[1]+hny*r*1.08+hy*r*0.1);
     sk.lineTo(hd[0]+hnx*r*0.95-hx*r*0.5,hd[1]+hny*r*0.95-hy*r*0.5);sk.lineTo(hd[0]+hnx*r*0.1-hx*r*0.55,hd[1]+hny*r*0.1-hy*r*0.55);
@@ -3200,7 +3232,9 @@ function swingPose(th,om,pump){const p=SWP,ph=(Math.atan2(th,om/SW_W)+6.2832)%6.
   p.hF=h+0.08;p.kF=k*0.8;p.hB=h-0.1;p.kB=k+0.12;p.lean=L1(3)*k0;p.head=L1(4)*k0+0.15*(1-Math.min(1,k0));p.rot=-th;p.sw=0.25;
   // the swing holds his hip 34 px from the bar and straight arms reach 32.5: the figure is drawn a little higher (hy) and the arms
   // are solved for where the bar (pulled toward him) then lies in his own turned frame, so the hands stay on its grip
-  const c=Math.cos(th),sn=Math.sin(th),lift=1.8/Math.max(0.55,c);p.hy=24.5+lift;
+  const c=Math.cos(th),sn=Math.sin(th),S1=34-LEN.to,S0=34-F69.to,R1=LEN.ua+LEN.fa,R0=F69.ua+F69.fa,lift=1.8/Math.max(0.55,c)+(S1*c-Math.sqrt(Math.max(0,S1*S1*c*c-S1*S1+R1*R1)))-(S0*c-Math.sqrt(Math.max(0,S0*S0*c*c-S0*S0+R0*R0)));p.hy=24.5+lift;
+  // (round 22b: the shorter trunk is drawn nearer the bar, by the difference between the lifts that bring the bar into the arms' reach,
+  // now and in v69: the bar lies at (-lift sin th, lift cos th - 34) in his turned frame, the shoulder S px under it)
   const wx=-34*sn,wy=-34*c+lift,tx=wx*c-wy*sn,ty=wx*sn+wy*c;
   const sx=LEN.to*Math.sin(p.lean),sy=-LEN.to*Math.cos(p.lean),dx=tx-sx,dy=ty-sy,D=Math.hypot(dx,dy),R=LEN.ua+LEN.fa;let a0=Math.atan2(dx,dy);if(a0<0)a0+=6.2832; // (overhead is near pi: kept on one side of the wrap, as the pose is blended)
   if(D>=R){p.aF=a0;p.eF=0;}else{const be=Math.acos(clamp((LEN.ua*LEN.ua+D*D-LEN.fa*LEN.fa)/(2*LEN.ua*D),-1,1)),ga=Math.acos(clamp((LEN.ua*LEN.ua+LEN.fa*LEN.fa-D*D)/(2*LEN.ua*LEN.fa),-1,1));p.aF=a0+be;p.eF=-(Math.PI-ga);}
@@ -6560,7 +6594,7 @@ function figReach(face,pose){const s=skel(pose),hd=GFX().hd;let mx=-1e9,top=1e9;
   // the new bodies are fuller: slipper toes reach well past the foot, the pants and vest are wider
   const pad=hd?[[s.kF,4],[s.fF,7.5],[s.kB,4],[s.fB,7.5],[s.sh,5],[s.hd,5.5],[s.eF,2],[s.hF,1.6],[s.eB,2],[s.hB,1.6]]:[[s.kF,0],[s.fF,0],[s.kB,0],[s.fB,0],[s.sh,0],[s.hd,0],[s.eF,0],[s.hF,0],[s.eB,0],[s.hB,0]];
   for(const [j,m] of pad){const x=j[0]*face+(face>0?m:m*0.4);if(x>mx)mx=x;if(j[1]<top)top=j[1];}
-  return {right:mx+(hd?1:3),top:top-s.hipH-5};}
+  return {right:mx+(hd?1:3),top:top-s.hipH-5*LEN.hd/4.6};} // (the head's top; round 22b: by the head's size)
 // Pressed against the front face of a wall (or block, or low ceiling) on its right: how far to draw the figure to the
 // left so it doesn't sink into the face, and the face itself, to cut off anything still poking in (a lowered sword).
 function wallPress(x,y,face,pose){
@@ -10043,6 +10077,7 @@ window.__HK={keyLight,get frameLights(){return frameLights;},jetPlaces,jsSwingPa
   levelCompleteHook:null,render,layout,startLevel,
   get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG,secretCues};
 Object.assign(window.__HK,{guardBudget,snakeBudget,RP,drinkFrame}); // (the fighters' budgets, for guardscan.py; RP and drinkFrame, the run cycle's and the drink's poses, for egyptr21a.py)
+Object.assign(window.__HK,{LEN,skel,crawlPose}); // (the skeleton, for egyptr22b.py)
 Object.defineProperty(window.__HK,'intro',{get(){return intro;},set(v){intro=v;}}); // (the floor's title banner, for egyptprop.py)
 Object.assign(window.__HK,{windowPath,gateGeom,stoneTex,STONES,THEME_STONE,SLAB_STONE,stoneLying,BLK_W,BLK_H,looseWell,WELL_V,blockStep,wellGroup,wellSolve,wellTip,sandTex});
 Object.assign(window.__HK,{EGP,nutClock,conceptClock2,barqueClock,conceptClock,flaskBody,flaskR,heart,setHero,HERO_VAR,PAL_HERO,SCHED,floorsOf,BGART,bgArt,LFX,themeOf,get PF(){return PF;}}); // (the themes' backdrops and effects, for egyptshot.py and egyptfx.py)

@@ -32,8 +32,7 @@ def sections(D, REL, img):
             'profile (the shoulders turned to the front, the back one smooth line from the nape), and the 1989 prince, traced from film of David Mechner, has the '
             'same sloping neck and flat upper back. Checked in every pose at 4x and 10x, and in the game at GLP.rs 1 and 0.5 in both modes: stand, the run cycle, '
             'step, turn, crouch, the jumps, hang, pull, climb, the fight stances, hurt, drink, death, and the robbers (who share the torso).</p>' +
-            fig(img, 'r21a_prince.png', 'Standing in the game (Torchlight at rs 1 and 0.5, Classic, facing both ways), the upper body at 10x lit from his back and front and '
-                'as a silhouette, and every pose at 4x: before (v68) and after') +
+            '<p class="meta">(Round 22b: this round\'s picture of the prince retired to keep the page\'s size; rounds 22 and 22b show the figure as it is now.)</p>' +
             # ---- 2
             '<h3>2. "Lift rope ends look off ... holes in the slab with the rope threaded through them"</h3>'
             '<p><b>Which lifts</b>: the counterweight lift\'s platform (the owner\'s picture) and the paternoster\'s slabs hang on ropes; the sand lift has no rope. '

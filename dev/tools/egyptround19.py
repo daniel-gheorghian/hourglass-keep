@@ -76,7 +76,7 @@ def sections(D, REL, img):
             'and the raised arm rose from the middle of the shoulder, so the torso\'s back corner stood out behind the arm as a round bump. '
             '<b>Fix</b>: with the arms up the back near the shoulders is drawn up to 1.3 px narrower, easing in from three quarters of the way up, and the raised arm rises from the back of the shoulder (0.8 px), '
             'so the back line flows into the arm. Checked on every pose with the arms raised: hang, reach (the jump up), pull, fall, slide and the swing both ways; the climb blends these.</p>' +
-            fig(img, 'r19_pose.png', 'The arms-up poses alone at 6x, before (above) and after (below); the swing in the game, Torchlight and Classic, before and after, 2x') +
+            '<p class="meta">(Round 22b: the arms-up poses sheet retired to keep the page\'s size; round 22b\'s every-pose sheet and the swing in the game show them now.)</p>' +
             links([('SDLPoP seg008.c: draw_tile_fore (wall fronts into the foretable)', 'https://github.com/NagyD/SDLPoP/blob/master/src/seg008.c'),
                    ('SDLPoP seg006.c: clip_char (the Kid cut at walls while hanging and climbing)', 'https://github.com/NagyD/SDLPoP/blob/master/src/seg006.c'),
                    ('Prince of Persia Apple II source: FRAMEADV.S (drawfrnt, addfore)', 'https://github.com/jmechner/Prince-of-Persia-Apple-II/blob/master/01%20POP%20Source/Source/FRAMEADV.S'),

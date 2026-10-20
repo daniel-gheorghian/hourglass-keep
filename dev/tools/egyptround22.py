@@ -58,12 +58,7 @@ def sections(D, REL, img):
             '<li>The arms\' roots are 0.8 px lower while the arm hangs or swings (fading out from 1 to 2 rad, so raised arms are as before), so the shoulder caps sit '
             'below the chin and the back arm\'s deltoid stays inside the back; the shoulders\' sheen follows them down (it had shown as a grey fleck under the chin).</li>'
             '<li>The robbers share all of it (their offsets 0.4 to 0.6 px deeper).</li></ul>' +
-            fig(img, 'r22_guide.png', 'Standing at 10x, before (v69) and after: lit from his back, from his front, and the silhouette with the guides (blue the wall line, '
-                'orange the plumb line through the ear, shoulder joint and hip, purple C7 and the lumbar hand gap; the back\'s edge measured row by row, before red, after '
-                'green). Below: the silhouettes in motion laid over each other (red only before, green only after)') +
-            fig(img, 'r22_poses.png', 'Every pose at 4x, lit from his back: before (v69) above, after below, and a robber') +
-            fig(img, 'r22_game.png', 'In the game: Torchlight at GLP.rs 1 and 0.5 and Classic, facing both ways on floors 7 and 14, before and after; then the '
-                'Torchlight crops at 3x') +
+            '<p class="meta">(Round 22b: this round\'s three sheets (the guide, every pose, the game) retired; round 22b\'s supersede them. Round 22 changed only the outline; round 22b found the cause in the skeleton.)</p>' +
             '<p><b>Tests</b>: <code>run2.py</code> 5 to 6, two seeds (all passed, no damage), <code>rendersmoke.py</code> 7 to 8 both modes (no errors). Retired from the page to '
             'stay at 505 files: round 10\'s fight clip and its 3x sheet, and round 9\'s running clip.</p>' +
             links([('Mayo Clinic: posture, the wall test (head, shoulder blades and buttocks on the wall, a hand behind the lower back)', 'https://newsnetwork.mayoclinic.org/discussion/mayo-clinic-q-and-a-proper-posture-and-body-alignment/'),
