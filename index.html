@@ -415,7 +415,7 @@ const skyOf=th=>todSkyCol(th.sky,L&&L.prog?L.prog.tod:0);
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=9;
-const APP_VERSION='68'; // set by the build; shown on the title and pause screens
+const APP_VERSION='69'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},learned:prev?prev.learned:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(!s.learned){s.learned={};if(s.level>2){s.learned.gap=s.learned.climb=s.learned.drop=1;}if(s.maxHp>3)s.learned.potion=1;} // an old save: whoever got past floor 2 can run, jump, climb and let go; the rest of the moves come back as hints until done
@@ -2097,11 +2097,11 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
   let TG=null;
   if(EG){const lnX=pal.lean,ra=(sstep((Math.abs(p.aF)-1.7)/0.9)+sstep((Math.abs(p.aB)-1.7)/0.9))/2,fl=clamp((p.hF+p.hB)/2-lean,-0.6,1.4),tw2=clamp((Math.sin(p.aF)-Math.sin(p.aB))/2,-1,1);
     const c=-1.1*fl+0.9*ra,m=at(0.5),cp=[m[0]+nx*c,m[1]+ny*c],E=s.sh,U=[0,0.14,0.3,0.46,0.62,0.76,0.88,0.96,1];
-    const Fo=lnX?[3.9,3.6,3.2,3.6,4.2,4.7,4.5,3.8,2.5]:[4.4,4.2,3.9,4.2,4.8,5.4,5.2,4.2,2.7],Bo=lnX?[4.6,4.1,3.2,3.5,4.1,4.6,4.6,4.0,2.8]:[5.1,4.6,3.8,4.1,4.7,5.2,5.2,4.5,3.0];
+    const TRAP=[0,0,0,0,0,0.15,0.5,0.95,1.2],Fo=lnX?[3.9,3.6,3.2,3.6,4.2,4.7,4.5,3.8,2.5]:[4.4,4.2,3.9,4.2,4.8,5.4,5.2,4.2,2.7],Bo=lnX?[4.6,4.1,3.2,3.5,4.1,4.6,4.6,4.0,2.8]:[5.1,4.6,3.8,4.1,4.7,5.2,5.2,4.5,3.0];
     const sp=(u,o2)=>{const a=1-u;let gx=2*a*cp[0]+2*u*(E[0]-cp[0]),gy=2*a*cp[1]+2*u*(E[1]-cp[1]);const g=Math.hypot(gx,gy)||1;gx/=g;gy/=g;return [2*a*u*cp[0]+u*u*E[0]-gy*o2,2*a*u*cp[1]+u*u*E[1]+gx*o2];};
     const TS=U.map(u=>{const a=1-u;let gx=2*a*cp[0]+2*u*(E[0]-cp[0]),gy=2*a*cp[1]+2*u*(E[1]-cp[1]);const g=Math.hypot(gx,gy)||1;gx/=g;gy/=g;return [2*a*u*cp[0]+u*u*E[0],2*a*u*cp[1]+u*u*E[1],-gy,gx];});
     const fo=U.map((u,i)=>Fo[i]+ra*(u>0.5&&u<0.85?0.35:u>0.2&&u<0.5?-0.3:0)+tw2*0.5*sstep((u-0.55)/0.2)-(u>0.25&&u<0.55?Math.max(0,fl)*0.3:0)),
-      bo=U.map((u,i)=>Bo[i]-ra*1.3*sstep((u-0.74)/0.22)-tw2*0.3*sstep((u-0.55)/0.2)+(u>0.3&&u<0.7?Math.max(0,fl)*0.4:0)+(u<0.2?Math.max(0,fl)*0.5:0)); // (a flexed hip rounds the seat)
+      bo=U.map((u,i)=>Bo[i]-ra*1.3*sstep((u-0.74)/0.22)-tw2*0.3*sstep((u-0.55)/0.2)+(u>0.3&&u<0.7?Math.max(0,fl)*0.4:0)+(u<0.2?Math.max(0,fl)*0.5:0)-(1-ra)*TRAP[i]); // (a flexed hip rounds the seat; round 21a: the trapezius slopes the back's top into the nape)
     const iv=(A,u)=>{let i=0;while(i<U.length-2&&u>U[i+1])i++;const k=clamp((u-U[i])/(U[i+1]-U[i]),0,1);return A[i]+(A[i+1]-A[i])*k;};
     TG={U,TS,fo,bo,sp,F:u=>iv(fo,u),B:u=>iv(bo,u),fl,ra};}
   if(pal.hero&&!EG){const nk=[s.sh[0]-nx*1.5+tx*1,s.sh[1]-ny*1.5+ty*1];const sc=trail(nk,5,3.2,wind,t,0.6+0.4*Math.min(1,Math.abs(vx)/90),0);
@@ -2171,7 +2171,13 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
     // light, a lit plane over the chest and shoulder toward it, both tapering into the waist; then the neck.
     const U=TG.U,TS=TG.TS,fo=TG.fo,bo=TG.bo,E=s.sh;
     const pt=(i,o2)=>{const q=TS[i];return [q[0]+q[2]*o2,q[1]+q[3]*o2];},n8=U.length-1,ring=[];
-    for(let i=0;i<=n8;i++)ring.push(pt(i,fo[i]));ring.push([E[0]+TS[n8][3]*1.1,E[1]-TS[n8][2]*1.1]);for(let i=n8;i>=0;i--)ring.push(pt(i,-bo[i]));
+    // (round 21a, owner: "a hump when standing straight": the torso's top was a flat shelf from the neck to a rounded back corner, a square
+    // block the neck rose out of. Seen from the side the back's line runs from the nape down the trapezius in one long, nearly straight slope
+    // to the shoulder blades, the upper back's gentle convexity, and the front of the neck meets the chest lower, at the jugular notch: the
+    // torso's top runs up into the neck's base along the neck's own axis, behind (Np) and in front (Nf), less so as the arms rise)
+    const ha1=lean+p.head,ux=Math.sin(ha1),uy=-Math.cos(ha1),tw1=1-TG.ra,T0=[E[0]+TS[n8][3]*1.1,E[1]-TS[n8][2]*1.1],
+      NB=(up,o2)=>[T0[0]+(E[0]+ux*up+uy*o2-T0[0])*tw1,T0[1]+(E[1]+uy*up-ux*o2-T0[1])*tw1]; // (o2 toward the back of the neck)
+    for(let i=0;i<=n8;i++)ring.push(pt(i,fo[i]));ring.push(NB(0.9,-1.7),NB(2.6,1.9));for(let i=n8;i>=0;i--)ring.push(pt(i,-bo[i]));
     const TP=smoothLoop(ring),n0=at(0.95),hd0=s.hd,ha0=lean+p.head,nk=[n0,[hd0[0]-Math.sin(ha0)*3.6,hd0[1]+Math.cos(ha0)*3.6]],nw=[4.0,3.0],NP=tubePath(nk,nw);
     FA=armG(s.sh,s.eF,s.hF,p.aF,!!o.sword);BS(TP);BS(NP);BS(FA.path);BS(FA.hp);
     if(!O.mono){const base=C('tunic'),sd=D('tunic'),sg=O._lx>=0?1:-1,Lo=i=>sg>0?fo[i]:-bo[i],Do=i=>sg>0?-bo[i]:fo[i];
@@ -2181,7 +2187,7 @@ function drawFigureHD(ctx,x,y,face,p,pal,o){
       ctx.fillStyle=O._lk>0.05?litTint(shadeHex(base,0.1),O._lc,O._lk):shadeHex(base,0.14);ctx.fill(smoothLoop(lp2)); // the lit plane
       BT(NP,nk,nw,C('skin'),D('skin'));}}
   else tcel(ctx,tp,tw,C('tunic'),D('tunic'),O);
-  if(EG&&pal.bare&&!O.mono){const P2=(u,o2)=>{const q=at(u);return [q[0]+nx*o2,q[1]+ny*o2];};sheen(P2(0.95,-2.0),P2(0.97,2.6),1.2);} // the sheen on the shoulders
+  if(EG&&pal.bare&&!O.mono){const P2=(u,o2)=>{const q=at(u);return [q[0]+nx*o2,q[1]+ny*o2];};sheen(P2(0.95,-1.2),P2(0.97,2.6),1.2);} // the sheen on the shoulders (round 21a: not past the trapezius slope)
   if(FULL&&!O.mono){ // the broad collar (wesekh): rows of faience beads round the neck, a drop row at the edge
     const cl=pal.coll;for(let i=0;i<3;i++){const o2=2.9-i*1.0,u0=0.99,u1=0.8+i*0.05;const a0=at(u0),a1=at(u1),a2=at(u0);
       tcel(ctx,[[a0[0]-nx*(3.6-i*0.3),a0[1]-ny*(3.6-i*0.3)],[a1[0]+nx*o2*0.3,a1[1]+ny*o2*0.3],[a2[0]+nx*(4.8-i*0.5),a2[1]+ny*(4.8-i*0.5)]],[2.1,2.5,2.1],cl[i],shadeHex(cl[i],-0.3),O);}
@@ -5110,9 +5116,54 @@ function looseWell(o){const f=o.f;if(f.wl!==undefined)return f.wl;let wl=false;
   if(!f.plank){let k=1;while(o.r+k<L.rows&&!solidBelow(L,o.c,o.r+k)&&k<4)k++;
     if(k<4&&o.r+k<L.rows){wl=k;for(let rr=o.r+1;rr<=o.r+k&&wl;rr++)for(const sd of [-1,1]){if(B(L,o.c+sd,rr)===WALL)continue;const nf=F(L,o.c+sd,o.r);if(nf&&nf.t==='loose'&&!nf.plank)continue;wl=false;break;}}}
   return f.wl=wl;} // (k, the storeys down to its floor, or false)
-function wellGeo(o,k){const X=o.c*TW,ys=SURF(o.r),yf=SURF(o.r+k);return {X,ys,yf,xa:X-HX,xb:X+TW-HX,yt:ys+HY+5,yb:yf+HY};}
-function wellDrained(f,G){return f.s===0?0:Math.min(G.yb-G.yt,WELL_V*Math.max(0,f.tm));}
-function wellSag(o,f,k){const G=wellGeo(o,k);return clamp((wellDrained(f,G)-6)/45,0,1)*0.14;}
+// ---- round 21b, owner: "when multiple tiles on sand exist the edge between them cannot be vertical; the sand doesn't hold up like
+// that ... sand draining from the entire volume, not one column at a time". A row of cracked slabs over one pit is one body of sand
+// (wellGroup: the slabs side by side whose looseWell holds, found once and kept on each slab's feature, f.wg). Dry sand cannot stand
+// steeper than its angle of repose (about 34 degrees: WELL_SL, its tangent); a flat-floored silo emptying through an outlet runs in
+// funnel flow: a crater opens over the outlet with its walls at the angle of repose, the flat surface of the whole volume sinks as its
+// edges avalanche into it, and the sand that lies below the angle of repose from the outlet (the stagnant zones by the walls) stays.
+// Each slab that gives way opens the outlet under it at the moment it is triggered (as in round 16a); every open outlet runs at the
+// same steady rate (Beverloo: WELL_V over one cell's width), whatever stands above it. wellSolve finds the surface from the slabs'
+// own clocks alone (f.s, f.tm, which the rewind and respawn restore): the crater under each open outlet (its throat sinking at WELL_VT),
+// at most the angle of repose from it; the residual heaps; and the level of the rest, set so the sand left equals the sand there was
+// less what has run out (bisection over 2 px samples). Look only: no tile falls sooner, every hit box and timing is as before.
+const WELL_SL=0.67,WELL_VT=WELL_V*1.6,WELL_CD=36,WELL_DX=2;
+function wellGroup(o){const f=o.f;if(f.wg!==undefined)return f.wg;if(!looseWell(o))return f.wg=null;
+  const at=c=>{const q=F(L,c,o.r);if(!q||q.t!=='loose'||q.plank)return null;const oo=L.dyn.find(d=>d.f===q);return oo&&looseWell(oo)?oo:null;};
+  let a=o.c,b=o.c;while(at(a-1))a--;while(at(b+1))b++;const os=[];for(let c=a;c<=b;c++)os.push(at(c));const n=os.length,yt=SURF(o.r)+HY+5;
+  const g={r:o.r,c0:a,n,os,xa:a*TW-HX,yt,top:yt+1.5,yb:new Float32Array(n),th:new Float32Array(n),S:new Float32Array(n*TW/WELL_DX+1),key:NaN,fl:0,ybm:0};
+  for(let j=0;j<n;j++){g.yb[j]=SURF(o.r+looseWell(os[j]))+HY;g.ybm=Math.max(g.ybm,g.yb[j]);}
+  for(const q of os)q.f.wg=g;return g;}
+// the surface at sample i for a level yg (y grows downward): no higher than the crater of each open outlet, no lower than its residual heap
+function wellAt(g,i,yg){const x=i*WELL_DX,j0=Math.min(g.n-1,(x/TW)|0),yb=g.yb[j0];let C=-1e9,R=-1e9;
+  for(let j=0;j<g.n;j++){const tj=g.th[j];if(tj<0)continue;const d=Math.max(0,Math.abs(x-(j*TW+16))-4)*WELL_SL;C=Math.max(C,Math.min(g.yb[j],yg+tj)-d);R=Math.max(R,g.yb[j]-d);}
+  return clamp(Math.min(Math.max(yg,C),R),g.top,yb);}
+function wellArea(g,yg){const M=g.n*TW/WELL_DX;let A=0;for(let i=0;i<=M;i++)A+=g.yb[Math.min(g.n-1,(i*WELL_DX/TW)|0)]-wellAt(g,i,yg);return A*WELL_DX;}
+function wellSolve(g){let key=gameTime,open=0,Q=0;for(let j=0;j<g.n;j++){const f=g.os[j].f;key+=f.s*7.31+f.tm*(j+1.37);}
+  if(key===g.key)return g;g.key=key;const M=g.n*TW/WELL_DX,S=g.S;
+  let T=0;for(let j=0;j<g.n;j++){const f=g.os[j].f,tau=f.s&&f.tm>0?f.tm:-1; // (a slab of a chain counts down from below zero before it starts)
+  g.th[j]=tau<0?-1:Math.min(WELL_CD,WELL_VT*tau);if(tau>=0){open++;T+=tau;}}
+  if(!open){S.fill(g.top);g.fl=0;return g;}
+  let A0=0;for(let j=0;j<g.n;j++)A0+=(g.yb[j]-g.top)*TW;const Ar=wellArea(g,1e9),At=Math.max(Ar,A0-(A0-Ar)*T/((g.ybm-g.top)/WELL_V*1.15));let yg;
+  if(wellArea(g,g.top-WELL_CD-1)<=At)yg=g.top-WELL_CD-1;else{let lo=g.top-WELL_CD-1,hi=g.ybm;for(let k=0;k<16;k++){const m=(lo+hi)/2;if(wellArea(g,m)>At)lo=m;else hi=m;}yg=hi;}
+  for(let i=0;i<=M;i++)S[i]=wellAt(g,i,yg);
+  g.fl=clamp((At-Ar)/(TW*12),0,1); // (still running out: grains streaming down the slopes)
+  return g;}
+function wellY(g,x){const u=clamp((x-g.xa)/WELL_DX,0,g.n*TW/WELL_DX),i=Math.min(Math.floor(u),g.n*TW/WELL_DX-1);return lerp(g.S[i],g.S[i+1],u-i);}
+// how far the sand under one slab of a group has gone; and which way the slab tips, and how far (radians, signed: + its right edge
+// down). A slab whose neighbour opened before it has lost the sand on that side and leans into the hole on its far edge, which still
+// rests on the next slab or the wall: at most WELL_TIP0 while it is still walkable floor (its own trigger has not come), then over
+// the half second before it gives way it tips on (to WELL_TIP1) and falls turning into the hole: the domino runs toward the first hole
+// at the pace he crosses the slabs, as the game has always let them fall. The first slab of a row has sand on both sides: it sags
+// and folds in two over its crater as before (round 16a)
+const WELL_TIP0=0.08,WELL_TIP1=0.22;
+function wellSunk(g,j){return wellY(g,g.xa+j*TW+16)-g.top;}
+function wellTip(o,f){const g=wellGroup(o);if(!g||g.n<2)return 0;wellSolve(g);const j=o.c-g.c0,own=f.s&&f.tm>0?f.tm:-1,fl=j>0?g.os[j-1].f:null,fr=j<g.n-1?g.os[j+1].f:null,
+  tl=fl&&fl.s&&fl.tm>0?fl.tm:-1,tr=fr&&fr.s&&fr.tm>0?fr.tm:-1;let sd=tl>own||tr>own?(tl>=tr?-1:1):0;
+  const eL=wellY(g,g.xa+j*TW+3)-g.top,eR=wellY(g,g.xa+j*TW+TW-3)-g.top;
+  if(!sd){if(own>=0)return 0;if(Math.max(eL,eR)<2)return 0;sd=eL>=eR?-1:1;}
+  let a=WELL_TIP0*clamp(((sd<0?eL:eR)-2)/14,0,1);if(own>=0){const u=clamp(own/0.5,0,1);a+=(WELL_TIP1-a)*u*u;}
+  return sd*a;}
 // the slab in two halves, each turned about its outer edge (a: radians; its middle goes down), split along its crack
 function slabHalves(ctx,X,ys,a,body){const fx=X-HX,ft=ys+HY,xm=fx+15,yb=ys-HY;
   for(const sd of [-1,1]){const px=sd<0?fx+HX:fx+TW+HX;ctx.save();ctx.translate(px,ys);ctx.rotate(-sd*a);ctx.translate(-px,-ys);
@@ -5143,34 +5194,66 @@ function dustCloud(ctx,x,y,age,dur,sz,mode){if(age<0||age>dur)return;const k=age
     else{px=x+(h*2-1)*13*sz*(0.6+0.6*e);py=y+(4+20*((i*0.381966)%1))*sz*e;r=(4.5+6*h)*sz*(0.5+0.9*e);}
     ctx.globalAlpha=(mode?0.5:0.62)*Math.pow(1-k,1.6)*(0.7+0.3*h);ctx.save();ctx.translate(px,py);ctx.scale(r,r*0.72);ctx.beginPath();ctx.arc(0,0,1,0,6.2832);ctx.fill();ctx.restore();}
   ctx.restore();}
-// a column of sand cut by the front plane, xa..xa+TW, from its top Ls down to yb (y0: where it was full; h: how far it has sunk, which
-// carries its courses down with it); flowing: the core over the outlet moving
+// (round 21b) Sand reads as sand, not as the wall: a cut face of packed sand is grains (pale quartz, darker lithic and iron-stained
+// grains, a few dark heavy minerals) in faint, broken, nearly level laminae where it settled as it was poured (thin and irregular, never
+// the even courses of masonry: round 16a's ruled lines across each cell, and a seam at each cell's edge, read as wall courses), with
+// a soft mottling of packing. One tile per theme (64 px of the world at 4 px each, so it stays smooth when the view is scaled up), drawn
+// in place over the cut and darkened toward the shaft's floor by one cached ramp (SANDSH): no gradient or allocation per frame. Its
+// grains stay put (the stagnant sand of a draining well does not move); the sand lift's column sinks whole with its slab (oy).
+const SANDT={};let SANDSH=null;
+function sandTex(){const C=sandC(),k=C.lk||'_';if(SANDT[k])return SANDT[k];const N=64,S=4,cv=document.createElement('canvas');cv.width=cv.height=N*S;const g=cv.getContext('2d'),q=mulberry32(9071);
+  g.fillStyle=C.body;g.fillRect(0,0,N*S,N*S);g.scale(S,S);
+  const wrap=(fn,x,y,r)=>{for(const ox of [-N,0,N])for(const oy of [-N,0,N])if(x+ox>-r&&x+ox<N+r&&y+oy>-r&&y+oy<N+r)fn(x+ox,y+oy);};
+  for(let i=0;i<70;i++){const x=q()*N,y=q()*N,rx=3+q()*7,ry=1.2+q()*2.5,dk=q()<0.5;g.fillStyle=dk?'rgba(70,46,24,.05)':'rgba(255,246,226,.05)';wrap((x,y)=>{g.beginPath();g.ellipse(x,y,rx,ry,0,0,6.2832);g.fill();},x,y,rx);} // packing
+  let y=1+q()*3;while(y<N-1){const dk=q()<0.72,w=0.3+q()*0.5,a=0.07+q()*0.1,ph=q()*6.28,k2=1+((q()*2)|0),amp=0.25+q()*0.45; // laminae: dark fine-grained, a few pale
+    g.lineWidth=w;g.strokeStyle=dk?'rgba(60,38,20,1)':'rgba(255,244,222,1)';
+    for(let s=0;s<16;s++){const x0=s*4,on=0.5+0.5*Math.sin(s*0.9+ph*3);if(on<0.3)continue;g.globalAlpha=a*on;g.beginPath();
+      for(let x=x0;x<=x0+4.01;x+=1){const yy=y+amp*Math.sin(x/N*6.2832*k2+ph);x===x0?g.moveTo(x,yy):g.lineTo(x,yy);}g.stroke();}
+    g.globalAlpha=1;y+=2.2+q()*5.5;}
+  const GR=[[C.hi,0.42,0.5],[C.lit,0.32,0.55],['rgb(120,92,62)',0.24,0.45],['rgb(150,96,58)',0.22,0.45],['rgb(40,30,24)',0.36,0.3]];
+  for(let i=0;i<2600;i++){const u=q(),t=u<0.4?0:u<0.62?1:u<0.85?2:u<0.95?3:4,x=q()*N,y=q()*N,r=(0.2+q()*0.3)*GR[t][2]/0.5;g.fillStyle=GR[t][0];g.globalAlpha=GR[t][1]*(0.5+0.5*q());
+    wrap((x,y)=>{g.beginPath();g.arc(x,y,r,0,6.2832);g.fill();},x,y,r);}
+  g.globalAlpha=1;return SANDT[k]=cv;}
+function sandShade(){if(SANDSH)return SANDSH;const c=document.createElement('canvas');c.width=2;c.height=64;const g=c.getContext('2d'),gr=g.createLinearGradient(0,0,0,64);
+  gr.addColorStop(0,'rgba(28,18,10,.36)');gr.addColorStop(1,'rgba(14,8,6,.64)');g.fillStyle=gr;g.fillRect(0,0,2,64);return SANDSH=c;}
+function sandTile(ctx,x0,y0,x1,y1,oy){const T=sandTex(),N=64;for(let x=Math.floor(x0/N)*N;x<x1;x+=N)for(let y=oy+Math.floor((y0-oy)/N)*N;y<y1;y+=N)ctx.drawImage(T,x,y,N,N);}
+// the sand lift's column of sand cut by the front plane, xa..xa+TW, from its top Ls down to yb (y0: where it was full; h: how far it
+// has sunk, carrying its grain down with it: it sinks whole under its slab); flowing: the core over the outlet moving
 function sandCut(ctx,xa,Ls,yb,y0,h,flowing,seed){if(yb<=Ls)return;const C=sandC(),rem=yb-Ls,cx=xa+16,t=gameTime;
-  const g2=ctx.createLinearGradient(0,Ls,0,yb);g2.addColorStop(0,C.body);g2.addColorStop(1,C.heap);ctx.fillStyle=g2;ctx.fillRect(xa,Ls,TW,rem);
-  const g3=ctx.createLinearGradient(0,y0,0,yb);g3.addColorStop(0,'rgba(28,18,10,.38)');g3.addColorStop(1,'rgba(14,8,6,.62)');ctx.fillStyle=g3;ctx.fillRect(xa,Ls,TW,rem); // (in the shaft, out of the lamps' reach)
-  {const q=mulberry32(seed);ctx.fillStyle='rgba(255,240,210,.09)';const n=Math.round(TW*(yb-y0)/40);for(let i=0;i<n;i++){const x=xa+q()*TW,y=y0+h+q()*(yb-y0),r=0.45+q()*0.4;if(y<Ls||y>yb)continue;ctx.beginPath();ctx.arc(x,y,r,0,6.2832);ctx.fill();}} // its grain, sinking with it
-  ctx.lineWidth=0.7;for(let i=0;i<Math.ceil(rem/9)+1;i++){const y=Ls+3+i*9-(Ls-y0-h)%9;if(y<Ls+1)continue;if(y>yb-1)break;ctx.strokeStyle=i%2?'rgba(255,240,210,.07)':'rgba(0,0,0,.1)';ctx.beginPath();ctx.moveTo(xa,y);ctx.bezierCurveTo(xa+10,y+0.8,xa+TW-10,y-0.6,xa+TW,y+0.3);ctx.stroke();} // the courses it was laid in
+  ctx.save();ctx.beginPath();ctx.rect(xa,Ls,TW,rem);ctx.clip();sandTile(ctx,xa,Ls,xa+TW,yb,y0+h);ctx.drawImage(sandShade(),xa,y0,TW,yb-y0);
   if(flowing){ctx.fillStyle='rgba(255,244,220,.10)';for(let i=0;i<4;i++){const y=Ls+((t*WELL_V*0.7+i*rem/4)%Math.max(1,rem));ctx.fillRect(cx-3+i*2,y,0.9,Math.min(4,yb-y));}} // the flowing core
-  ctx.fillStyle=C.lit;ctx.globalAlpha=0.55;ctx.fillRect(xa,Ls-0.3,TW,0.8);ctx.globalAlpha=1;}
-// the well's sand, seen where the corridor's front is cut away: its cut face from the slab down to the shaft's floor, and once it
-// drains, its top: the crater over the outlet (the far slope lit, grains running down it to the middle), the level falling at WELL_V,
-// and the outlet in the foot of the back wall it runs out through
-function drawWellSand(ctx,o,f,k){const G=wellGeo(o,k),D=G.yb-G.yt,h=wellDrained(f,G),C=sandC(),cx=G.X+16,t=gameTime;
-  ctx.save();ctx.beginPath();ctx.rect(G.xa,G.yt-DY-4,TW,D+DY+8);ctx.clip();
-  if(h>0.5){ctx.fillStyle='rgba(6,4,10,.92)';ctx.beginPath();ctx.moveTo(cx+HX-5,G.yf-HY+0.5);ctx.lineTo(cx+HX-5,G.yf-HY-5);ctx.quadraticCurveTo(cx+HX,G.yf-HY-7.5,cx+HX+5,G.yf-HY-5);ctx.lineTo(cx+HX+5,G.yf-HY+0.5);ctx.closePath();ctx.fill();} // the outlet
-  if(h<D-0.3){const Ls=G.yt+h,rem=D-h,dc=Math.min(1,h/8)*Math.min(1,rem/10);
-    if(h>0.5){ // its top: a flat rim round a crater as wide as the shaft
-      ctx.fillStyle=C.heap;ctx.beginPath();ctx.moveTo(G.xa,Ls);ctx.lineTo(G.xb,Ls);ctx.lineTo(G.xb+DX,Ls-DY);ctx.lineTo(G.xa+DX,Ls-DY);ctx.closePath();ctx.fill();ctx.fillStyle='rgba(20,12,8,.3)';ctx.fill();
-      if(dc>0.02){const ey=Ls-HY,rx=14.5,ry=HY*0.95;
-        ctx.globalAlpha=dc;ctx.fillStyle='rgba(58,42,24,1)';ctx.beginPath();ctx.ellipse(cx,ey,rx,ry,0,0,6.2832);ctx.fill(); // the crater: its near slope faces away, in shadow
-        const gr=ctx.createLinearGradient(0,ey-ry,0,ey+ry*0.4);gr.addColorStop(0,C.lit);gr.addColorStop(1,C.heap);ctx.fillStyle=gr; // its far slope, facing us and the light
-        ctx.beginPath();ctx.ellipse(cx,ey,rx,ry,0,Math.PI,2*Math.PI);ctx.ellipse(cx,ey+ry*0.45,rx*0.42,ry*0.35,0,2*Math.PI,Math.PI,true);ctx.closePath();ctx.fill();
-        ctx.fillStyle='rgba(18,12,8,.85)';ctx.beginPath();ctx.ellipse(cx,ey+ry*0.5,3.2,1.3,0,0,6.2832);ctx.fill(); // the throat over the outlet
-        ctx.fillStyle=C.grain;for(let i=0;i<10;i++){const a=Math.PI*(1.06+0.88*((i*0.618)%1)),u=(t*2.6+i*0.37)%1,x0=cx+Math.cos(a)*rx*0.92,y0=ey+Math.sin(a)*ry*0.9,x1=cx,y1=ey+ry*0.5;
-          ctx.globalAlpha=0.9*dc*Math.sin(u*Math.PI);ctx.beginPath();ctx.arc(lerp(x0,x1,u*u),lerp(y0,y1,u*u),0.55,0,6.2832);ctx.fill();} // grains sliding down its slope, faster as they near the throat
-        ctx.globalAlpha=0.6*dc;ctx.strokeStyle=C.lit;ctx.lineWidth=0.7;ctx.beginPath();ctx.ellipse(cx,ey,rx,ry,0,0.15,Math.PI-0.15);ctx.stroke();ctx.globalAlpha=1;}} // the near rim's lip
-    sandCut(ctx,G.xa,Ls,G.yb,G.yt,h,f.s>0,o.c*131+o.r*7);}
+  ctx.restore();ctx.fillStyle=C.lit;ctx.globalAlpha=0.55;ctx.fillRect(xa,Ls-0.3,TW,0.8);ctx.globalAlpha=1;}
+// a well's sand (a row of slabs over one pit: one body), seen where the corridor's front is cut away: the outlet in the foot of the back
+// wall under each slab that has given way; the surface (seen from above along the depth diagonal: a slope rising to the right faces
+// the lamps on the left and is lit, one falling to the right is in shade, darker as damp-looking shadowed sand is; the flat sand just
+// under a slab in its shadow), grains running down the crater walls toward each throat while it runs; the cut face from the surface
+// down to the shaft's floor, its flowing core over each open outlet; the lit edge where the two meet. Drawn once for the group.
+function drawWellGroup(ctx,g){wellSolve(g);const C=sandC(),n=g.n,S=g.S,M=n*TW/WELL_DX,xa=g.xa,xb=xa+n*TW,yt=g.yt,t=gameTime,D=WELL_DX;
+  ctx.save();ctx.beginPath();for(let j=0;j<n;j++){const y0=g.os[j].f.s===2?yt-DY-4:yt;ctx.rect(xa+j*TW,y0,TW,g.yb[j]-y0+1);}ctx.clip();
+  ctx.fillStyle='rgba(6,4,10,.92)';for(let j=0;j<n;j++){if(g.th[j]<0||wellSunk(g,j)<0.5)continue;const ox=xa+j*TW+16+HX,yf=g.yb[j]-HY; // the outlets
+    ctx.beginPath();ctx.moveTo(ox-5,yf-HY+0.5);ctx.lineTo(ox-5,yf-HY-5);ctx.quadraticCurveTo(ox,yf-HY-7.5,ox+5,yf-HY-5);ctx.lineTo(ox+5,yf-HY+0.5);ctx.closePath();ctx.fill();}
+  // its top
+  ctx.fillStyle=C.top;ctx.beginPath();ctx.moveTo(xa,S[0]);for(let i=1;i<=M;i++)ctx.lineTo(xa+i*D,S[i]);for(let i=M;i>=0;i--)ctx.lineTo(xa+i*D+DX,S[i]-DY);ctx.closePath();ctx.fill();
+  for(let lit=1;lit>=0;lit--){ctx.beginPath();let any=false;for(let i=0;i<M;i++){const dy=S[i+1]-S[i];if(lit?dy>-0.15:dy<0.15)continue;any=true;
+      ctx.moveTo(xa+i*D,S[i]);ctx.lineTo(xa+i*D+D,S[i+1]);ctx.lineTo(xa+i*D+D+DX,S[i+1]-DY);ctx.lineTo(xa+i*D+DX,S[i]-DY);ctx.closePath();}
+    if(any){ctx.fillStyle=lit?C.slopeL:C.slopeD;ctx.fill();}}
+  {let sh=false;for(let i=0;i<=M;i++)if(S[i]-yt<14){sh=true;break;}if(sh){ctx.save();ctx.beginPath();ctx.moveTo(xa,S[0]);for(let i=1;i<=M;i++)ctx.lineTo(xa+i*D,S[i]);for(let i=M;i>=0;i--)ctx.lineTo(xa+i*D+DX,S[i]-DY);ctx.closePath();ctx.clip();
+    ctx.globalAlpha=0.8;ctx.drawImage(sandShadeTop(),xa,yt-DY,xb-xa+DX,DY+14);ctx.restore();}} // (in the slabs' shadow)
+  if(g.fl>0.02){ctx.fillStyle=C.grain;for(let j=0;j<n;j++){if(g.th[j]<0)continue;const xc=xa+j*TW+16;
+    for(let i=0;i<8;i++){const sd=i%2?1:-1,x0=xc+sd*(6+((i*0.618+j*0.31)%1)*30),u=(t*(2.1+0.3*(i%3))+i*0.37+j*0.53)%1,x=lerp(x0,xc+sd*3,u*u),d=0.2+((i*0.382)%1)*0.6;
+      if(x<xa+1||x>xb-1)continue;ctx.globalAlpha=0.85*g.fl*Math.sin(u*Math.PI);ctx.beginPath();ctx.arc(x+d*DX,wellY(g,x)-d*DY,0.55,0,6.2832);ctx.fill();}}ctx.globalAlpha=1;} // grains running down to the throat
+  // its cut face
+  ctx.save();ctx.beginPath();ctx.moveTo(xa,S[0]);for(let i=1;i<=M;i++)ctx.lineTo(xa+i*D,S[i]);for(let j=n-1;j>=0;j--){ctx.lineTo(xa+(j+1)*TW,g.yb[j]);ctx.lineTo(xa+j*TW,g.yb[j]);}ctx.closePath();ctx.clip();
+  let sm=g.ybm;for(let i=0;i<=M;i++)sm=Math.min(sm,S[i]);
+  if(sm<g.ybm-0.3){sandTile(ctx,xa,sm,xb,g.ybm,0);ctx.drawImage(sandShade(),xa,yt,xb-xa,g.ybm-yt);
+    ctx.fillStyle='rgba(255,244,220,.10)';for(let j=0;j<n;j++){if(g.th[j]<0||g.fl<=0.02)continue;const xc=xa+j*TW+16,Ls=wellY(g,xc),rem=g.yb[j]-Ls;if(rem<1)continue; // the flowing core
+      for(let i=0;i<4;i++){const y=Ls+((t*WELL_V*0.7+i*rem/4)%rem);ctx.fillRect(xc-3+i*2,y,0.9,Math.min(4,g.yb[j]-y));}}}
+  ctx.restore();
+  ctx.strokeStyle=C.lit;ctx.globalAlpha=0.5;ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(xa,S[0]);for(let i=1;i<=M;i++)ctx.lineTo(xa+i*D,S[i]);ctx.stroke();ctx.globalAlpha=1; // the lit edge
   ctx.restore();}
+let SANDST=null;
+function sandShadeTop(){if(SANDST)return SANDST;const c=document.createElement('canvas');c.width=2;c.height=64;const g=c.getContext('2d'),gr=g.createLinearGradient(0,0,0,64);
+  gr.addColorStop(0,'rgba(10,6,4,.85)');gr.addColorStop(0.45,'rgba(10,6,4,.5)');gr.addColorStop(1,'rgba(10,6,4,0)');g.fillStyle=gr;g.fillRect(0,0,2,64);return SANDST=c;}
 // crystals of rose granite (feldspar, quartz, mica) catching the torchlight: a few bright points at a time, each on its own beat,
 // stronger near a lamp (the key light); drawn as added light, so they read in both modes
 function graniteGlints(ctx,x0,x1,y0,y1,seed){if(y1<=y0+2)return;const kl=keyLight((x0+x1)/2,y1),t=gameTime,q=mulberry32(seed),n=Math.min(10,Math.round((x1-x0)*(y1-y0)/180));ctx.save();ctx.globalCompositeOperation='lighter';
@@ -5182,7 +5265,8 @@ function graniteGlints(ctx,x0,x1,y0,y1,seed){if(y1<=y0+2)return;const kl=keyLigh
 const SAND_LOOK={west:[232,210,164],blue:[234,216,172],osiris:[218,198,156],nun:[222,202,162],napata:[220,170,108],meroe:[216,162,102],deffufa:[214,164,116],aksum:[204,170,132],hawara:[228,202,152],shali:[232,216,178],foggara:[218,156,96],wells:[232,209,158]};
 let SANDC_K=null;
 function sandC(){const lk=L&&L.theme&&L.theme.look;if(SANDC_K&&SANDC_K.lk===lk)return SANDC_K;const c=SAND_LOOK[lk]||[244,224,172],m=k=>'rgb('+c.map(v=>Math.round(Math.min(255,v+(255-v)*k))).join(',')+')';
-  SANDC_K={lk,body:'rgb('+c.join(',')+')',lit:m(0.55),hi:m(0.8),grain:m(0.25),heap:'rgb('+c.map(v=>Math.round(v*0.9)).join(',')+')'};return SANDC_K;}
+  const sc=(kr,kg,kb)=>'rgb('+Math.round(c[0]*kr)+','+Math.round(c[1]*kg)+','+Math.round(c[2]*kb)+')';
+  SANDC_K={lk,body:'rgb('+c.join(',')+')',lit:m(0.55),hi:m(0.8),grain:m(0.25),heap:sc(0.9,0.9,0.9),top:sc(0.6,0.58,0.55),slopeL:sc(0.84,0.82,0.78),slopeD:sc(0.4,0.34,0.28)};return SANDC_K;}
 function sandStream(ctx,x,y0,y1,w,k,seed){if(y1<=y0+1)return;const t=gameTime,L1=y1-y0,C=sandC();
   const per=10+seed*3,off=(t*70+seed*40)%per,n=Math.ceil(L1/per)+1; // its density rolls down it in soft swells
   for(let i=0;i<n;i++){const a=y0+i*per-off,a0=Math.max(a,y0),b0=Math.min(a+per,y1);if(b0<=a0)continue;const u=(a0-y0)/L1,sw=0.82+0.18*Math.sin(i*1.9+seed*7),ww=w*(1-0.35*u)*sw;
@@ -5838,14 +5922,15 @@ const BARF={papyrus:[['#a88a54','#d6bc86','#6a5230'],['#9c8050','#c8ae7c','#6250
 const BARM={nun:['papyrus','sycomore',2],west:['halfa','cedar',2],blue:['halfa','cedar',2],osiris:['papyrus','cedar',2],hawara:['papyrus','acacia',2],
   meroe:['palm','acacia',3],napata:['palm','acacia',3],deffufa:['palm','acacia',3],shali:['palm','tamarisk',3],foggara:['palm','tamarisk',3],wells:['palm','tamarisk',3],aksum:['halfa','juniper',2]};
 // a taut laid rope from (x0,y0) down to (x1,y1), w wide, c = [body, lit, groove]; ply 2 or 3 (a three-strand rope shows its strands
-// closer together); the lay is counted from the top, so it stays put on the rope as the rope swings
-function barRope(ctx,x0,y0,x1,y1,w,c,ply,W,seed){const dx=x1-x0,dy=y1-y0,l=Math.hypot(dx,dy)||1,ux=dx/l,uy=dy/l,nx=uy,ny=-ux,h=w/2; // (n: toward his left as the rope runs down)
+// closer together); the lay is counted from the top, so it stays put on the rope as the rope swings; ph (round 21a, the lifts' ropes) shifts
+// it down the rope by that many px, so a rope that runs over a sheave carries its lay with it (ph = its length: the lay fixed to its lower end)
+function barRope(ctx,x0,y0,x1,y1,w,c,ply,W,seed,ph){const dx=x1-x0,dy=y1-y0,l=Math.hypot(dx,dy)||1,ux=dx/l,uy=dy/l,nx=uy,ny=-ux,h=w/2; // (n: toward his left as the rope runs down)
   ctx.lineCap='butt';ctx.strokeStyle='#0b0812';ctx.lineWidth=w+1.3;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
   ctx.strokeStyle=c[0];ctx.lineWidth=w;ctx.stroke();
-  const p=ply===3?2.0:2.6,a=p*0.75,P=(s,k)=>[x0+ux*s+nx*h*k,y0+uy*s+ny*h*k];
-  ctx.beginPath();for(let s=-a;s<l;s+=p){const q=P(Math.max(0,s),0.92),r=P(Math.min(l,s+a),-0.92);ctx.moveTo(q[0],q[1]);ctx.lineTo(r[0],r[1]);} // the grooves between strands (S: down to the right)
+  const p=ply===3?2.0:2.6,a=p*0.75,o=ph?((ph%p)+p)%p-p:0,P=(s,k)=>[x0+ux*s+nx*h*k,y0+uy*s+ny*h*k];
+  ctx.beginPath();for(let s=-a+o;s<l;s+=p){if(s+a<=0)continue;const q=P(Math.max(0,s),0.92),r=P(Math.min(l,s+a),-0.92);ctx.moveTo(q[0],q[1]);ctx.lineTo(r[0],r[1]);} // the grooves between strands (S: down to the right)
   ctx.strokeStyle=c[2];ctx.lineWidth=0.55;ctx.stroke();
-  ctx.beginPath();for(let s=p*0.25;s<l-0.6;s+=p){const q=P(s,0.62),r=P(Math.min(l,s+p*0.42),0.05);ctx.moveTo(q[0],q[1]);ctx.lineTo(r[0],r[1]);} // each strand's crown, lit on its left
+  ctx.beginPath();for(let s=p*0.25+o;s<l-0.6;s+=p){if(s<0)continue;const q=P(s,0.62),r=P(Math.min(l,s+p*0.42),0.05);ctx.moveTo(q[0],q[1]);ctx.lineTo(r[0],r[1]);} // each strand's crown, lit on its left
   ctx.strokeStyle=c[1];ctx.lineWidth=0.75;ctx.stroke();
   ctx.beginPath();{const q=P(0,-0.7),r=P(l,-0.7);ctx.moveTo(q[0],q[1]);ctx.lineTo(r[0],r[1]);}ctx.strokeStyle='rgba(8,5,10,.32)';ctx.lineWidth=0.6;ctx.stroke(); // its shaded right side
   if(W){const rq=mulberry32(seed);ctx.beginPath();for(let i=0;i<W*3;i++){const s=2+rq()*(l-4),k=rq()<0.5?1:-1,q=P(s,k*1.05),e=0.6+rq()*0.8; // loose fibres standing out of the lay
@@ -6575,11 +6660,9 @@ function liftAround(){if(P.state==='lift'&&P.lift)return P.lift;const c=pCol(),r
 // paternoster's gears wooden wheels with peg teeth (the saqiya's, Ptolemaic Egypt); the platforms, slabs and counterweights in the
 // theme's stone with its texture; the mouths closed by stone slabs like the portcullis, plain. The geometry, occlusion (liftOccl,
 // liftOcclSide), wear (liftWear) and gameplay are the lifts' own, unchanged.
-const ROPE=[['#a07a48','#c8a470','#6a4e2c'],['#957046','#b99868','#624a2c'],['#856444','#a88a60','#56422a'],['#77593e','#977a56','#4c3a26']];
-function liftRope(ctx,x0,y0,x1,y1,W,off){const c=ROPE[W||0],dx=x1-x0,dy=y1-y0,l=Math.hypot(dx,dy)||1,nx=-dy/l*0.42,ny=dx/l*0.42;
-  ctx.strokeStyle='#0b0812';ctx.lineWidth=2.8;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();ctx.strokeStyle=c[0];ctx.lineWidth=1.7;ctx.stroke();
-  ctx.lineWidth=0.7;ctx.setLineDash([1.3,1.3]);for(const [k,col,o] of [[1,c[1],0],[-1,c[2],1.3]]){ctx.strokeStyle=col;ctx.lineDashOffset=o+(off||0);ctx.beginPath();ctx.moveTo(x0+nx*k,y0+ny*k);ctx.lineTo(x1+nx*k,y1+ny*k);ctx.stroke();}
-  ctx.setLineDash([]);ctx.lineDashOffset=0;}
+// (round 21a) the lifts' ropes are the swing's laid rope (barRope) in the theme's fibre (ropeOf, BARM's ply), 2 px, the lay travelling with
+// the rope (ph); round 13's two dashed rows (ROPE) are gone
+function liftRope(ctx,x0,y0,x1,y1,W,ph,w){barRope(ctx,x0,y0,x1,y1,w||2,ropeOf(W||0),(BARM[L.theme.look]||BARM.west)[2],0,0,ph||0);}
 function liftWheelWood(ctx,cx,cy,rad,teeth,spin,W){W=W||0;const body=['#7c5832','#70502e','#62482c','#56442f'][W],hi=['#a07a48','#8f6c40','#7c6040','#6c5a44'][W];ctx.save();ctx.translate(cx,cy);ctx.rotate(spin);
   if(teeth){ctx.fillStyle='#0b0812';for(let i=0;i<teeth;i++){const a=i/teeth*6.2832;ctx.save();ctx.rotate(a);ctx.fillRect(rad-2.2,-1.5,3.6,3);ctx.restore();}
     ctx.fillStyle=hi;for(let i=0;i<teeth;i++){const a=i/teeth*6.2832;ctx.save();ctx.rotate(a);ctx.fillRect(rad-1.6,-0.9,2.6,1.8);ctx.restore();}} // peg teeth
@@ -6589,7 +6672,7 @@ function liftWheelWood(ctx,cx,cy,rad,teeth,spin,W){W=W||0;const body=['#7c5832',
   ctx.strokeStyle=hi;ctx.lineWidth=0.5;ctx.beginPath();for(const y of [-rad*0.62,0,rad*0.62]){const h=Math.sqrt(Math.max(0,(rad-2)*(rad-2)-y*y))*0.8;ctx.moveTo(-h,y-0.4);ctx.quadraticCurveTo(0,y+0.6,h,y-0.3);}ctx.stroke(); // grain
   ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(-0.9,-rad+1.6,1.8,2*rad-3.2); // a batten across the planks
   ctx.fillStyle='#0b0812';ctx.beginPath();ctx.arc(0,0,2,0,6.2832);ctx.fill();ctx.fillStyle=hi;ctx.beginPath();ctx.arc(-0.3,-0.3,1.1,0,6.2832);ctx.fill();ctx.restore();} // the axle peg
-function liftChainLine(ctx,x0,y0,x1,y1,W){if(EGP.traps)return liftRope(ctx,x0,y0,x1,y1,W,(y0+y1)*0.02);ctx.strokeStyle='#0b0812';ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
+function liftChainLine(ctx,x0,y0,x1,y1,W){if(EGP.traps)return liftRope(ctx,x0,y0,x1,y1,W,y1-y0);ctx.strokeStyle='#0b0812';ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
   const pal=metalPal('chain');ctx.strokeStyle=pal[1];ctx.lineWidth=1.4;ctx.setLineDash([2.2,1.6]);ctx.stroke();      // links: a body, and a thin lit edge up and to the left
   if(W){ctx.strokeStyle='rgba(122,58,26,'+(0.22*W)+')';ctx.setLineDash([1.4,2.4]);ctx.lineDashOffset=1.1;ctx.stroke();ctx.lineDashOffset=0;} // rust on the links
   ctx.strokeStyle=pal[3];ctx.globalAlpha=1-0.2*(W||0);ctx.lineWidth=0.5;ctx.setLineDash([2.2,1.6]);ctx.beginPath();ctx.moveTo(x0-0.45,y0-0.45);ctx.lineTo(x1-0.45,y1-0.45);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;}
@@ -6631,9 +6714,28 @@ function liftSlab(ctx,X,ys,th,W,seed){
     ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=0.7;ctx.beginPath();const cx=fx+11+rq()*8;ctx.moveTo(cx,ft);ctx.lineTo(cx+1.2,ft+2.4);ctx.lineTo(cx+0.4,ft+5);ctx.stroke();}
   if(W>=3){ctx.strokeStyle='rgba(0,0,0,.42)';ctx.lineWidth=0.7;ctx.beginPath();const a=onFloor(X+8,0.1,ys),b=onFloor(X+13,0.55,ys),c=onFloor(X+11,0.9,ys);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(c.x,c.y);ctx.stroke();
     const st=th.style;ctx.fillStyle=st==='dungeon'||st==='crypt'?'rgba(70,110,60,.45)':st==='forge'?'rgba(10,6,4,.45)':'rgba(150,130,100,.35)';const p=onFloor(X+4,0.92,ys);ctx.fillRect(p.x,p.y-0.6,TW-6,1.5);}}
+// Round 21a (owner: "lift rope ends look off, need a more realistic representation ... holes in the slab with the rope threaded through them"):
+// each rope ended in a short stick lying across the slab's top from its middle to the lip and a round blob on the lip. Now each rope is a
+// two-leg bridle, as stones were hung for lifting: the rope's end is seized into an eye LS_J above the slab, and a sling runs from it down
+// through a hole drilled through the slab near its front edge, under the slab and up through a second hole near its back edge (perforated
+// stone anchors and weights of the Bronze Age, Wadi Gawasis' Egyptian anchors with their rope hole; the U-shaped rope holes and channels
+// of early Greek blocks): the legs part in depth, the front one down to the left and the back one up to the right along the depth
+// diagonal, so the slab hangs level both ways. Each hole is a circle on the top face seen in this view (squashed along the depth
+// diagonal, ropeHole: a dark mouth and its lit far wall).
+const LS_J=8,LS_K=0.62;
+function ropeHole(ctx,x,y,r){ctx.save();ctx.translate(x,y);ctx.transform(1,0,DX/TW,-DY/TW,0,0); // (a circle on a top face: x across, depth up the diagonal)
+  ctx.fillStyle='rgba(255,240,210,.22)';ctx.beginPath();ctx.arc(0,0.35,r+0.45,0,6.2832);ctx.fill(); // (the drilled lip, worn bright)
+  ctx.fillStyle='#0b0812';ctx.beginPath();ctx.arc(0,0,r,0,6.2832);ctx.fill();ctx.restore();}
+// a seizing: a few tight turns of cord round the rope at (x,y) where its eye is made, w the rope's width
+function ropeSeize(ctx,x,y,w,c){ctx.fillStyle='#0b0812';ctx.fillRect(x-w/2-0.75,y-1.5,w+1.5,3.0);ctx.fillStyle=c[2];ctx.fillRect(x-w/2-0.15,y-0.9,w+0.3,1.8);
+  ctx.fillStyle=c[1];ctx.fillRect(x-w/2-0.15,y-0.9,w+0.3,0.5);ctx.fillRect(x-w/2-0.15,y+0.1,w+0.3,0.45);}
+function liftSling(ctx,x,ys,W){const c=ropeOf(W||0),ply=(BARM[L.theme.look]||BARM.west)[2],jy=ys-LS_J,fx=x-HX*LS_K,fy=ys+HY*LS_K,bx=x+HX*LS_K,by=ys-HY*LS_K;
+  ropeHole(ctx,bx,by,2.3);barRope(ctx,x+0.4,jy+1,bx+0.25,by-0.45,1.5,c,ply,0,0,0); // the back leg (behind); each leg goes into its hole's far side, so
+  ropeHole(ctx,fx,fy,2.3);barRope(ctx,x-0.4,jy+1,fx+0.25,fy-0.45,1.5,c,ply,0,0,0); // the hole's near side shows dark in front of it; the front leg
+  ropeSeize(ctx,x,jy,2,c);}
 // an iron strap and eye where a chain holds the slab (x: the chain, at mid depth on the top face); rusty with wear
 function liftEye(ctx,x,ys,W){
-  if(EGP.traps){const c=ROPE[W||0];liftRope(ctx,x,ys-1.5,x-HX,ys+HY+2,W,0);ctx.fillStyle='#0b0812';ctx.beginPath();ctx.ellipse(x-HX,ys+HY+2.4,2.2,1.6,0,0,6.2832);ctx.fill();ctx.fillStyle=c[0];ctx.beginPath();ctx.ellipse(x-HX,ys+HY+2.4,1.4,0.9,0,0,6.2832);ctx.fill();return;} // the rope through a hole in the slab, knotted under its lip
+  if(EGP.traps){liftSling(ctx,x,ys,W);return;}
   ctx.fillStyle='#0b0812';ctx.fillRect(x-HX-2.4,ys+HY-1.5,4.8,7);ctx.fillStyle=W>=2?'#7a4a2c':W?'#9a7444':'#b98a4a';ctx.fillRect(x-HX-1.4,ys+HY-0.5,2.8,5);
   ctx.strokeStyle='#0b0812';ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(x,ys-1.2,1.5,0,6.2832);ctx.stroke();}
 // 1. the counterweight lift: a hoist beam over the shaft (bedded in the wall on the shaft's far side from the top landing,
@@ -6664,9 +6766,12 @@ function drawLiftCounterweight(ctx,f,half){
   liftShaftBack(ctx,X,TW,R.top,bot,W);
   // the channel the counterweight runs in, cut into the back wall behind the platform
   ctx.fillStyle='rgba(0,0,0,.38)';ctx.fillRect(R.cx-5,R.hy,10,bot-R.hy);ctx.fillStyle='rgba(255,255,255,.09)';ctx.fillRect(R.cx+5,R.hy,0.8,bot-R.hy);ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(R.cx-5,R.hy,1.2,bot-R.hy);
-  liftChainLine(ctx,R.cx,R.hy,R.cx,R.wt-2,W);
+  liftChainLine(ctx,R.cx,R.hy,R.cx,R.wt-(EGP.traps?4:2),W);
   if(EGP.traps){const w=8,h=20,x=R.cx-w/2,y=R.wt;stoneBox(ctx,THEME_STONE[th.look]||'limestone',x,y,w,h,{side:true,d:0.35,wear:W,seed:hash2(f.sc,f.rT+5)});
-    ctx.fillStyle='#0b0812';ctx.beginPath();ctx.ellipse(R.cx,y-1.2,2.4,1.7,0,0,6.2832);ctx.fill();ctx.fillStyle=ROPE[W][0];ctx.beginPath();ctx.ellipse(R.cx,y-1.2,1.5,0.9,0,0,6.2832);ctx.fill();} // (a stone counterweight, the rope knotted through it)
+    // (round 21a: a stone counterweight hung as the perforated anchors and weights were: a hole drilled through it below its top, the rope's
+    // end seized into an eye with its sling passing in front of the top edge into the hole; the other leg behind the stone)
+    const hc=ropeOf(W);ctx.fillStyle='rgba(255,240,210,.2)';ctx.beginPath();ctx.arc(R.cx,y+4.3,2.1,0,6.2832);ctx.fill();ctx.fillStyle='#0b0812';ctx.beginPath();ctx.arc(R.cx,y+4,1.6,0,6.2832);ctx.fill();
+    barRope(ctx,R.cx,y-3,R.cx,y+3.6,1.5,hc,(BARM[L.theme.look]||BARM.west)[2],0,0,0);ropeSeize(ctx,R.cx,y-4,2,hc);}
   else{const w=8,h=20,x=R.cx-w/2,y=R.wt,rq=mulberry32(hash2(f.sc,f.rT+5)); // the counterweight: a dressed stone hung from an iron eye
     ctx.fillStyle='#0b0812';ctx.fillRect(x-1.2,y-1.2,w+2.4,h+2.4);ctx.fillStyle=th.wallB;ctx.fillRect(x,y,w,h);ctx.fillStyle=th.wallA;ctx.fillRect(x+1.5,y+1.5,w-3,h-3);ctx.fillStyle=th.hi;ctx.fillRect(x,y,w,1.2);ctx.fillStyle=th.lo;ctx.fillRect(x,y+h-1.8,w,1.8);
     ctx.strokeStyle='rgba(0,0,0,.45)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(x+1.5,y+h*0.5);ctx.lineTo(x+w-1.5,y+h*0.5);ctx.stroke();
@@ -6682,7 +6787,7 @@ function drawLiftCounterweight(ctx,f,half){
   liftTimber(ctx,xw,R.by+3,xo,R.by+3,6,W,true);
   liftTimber(ctx,ws>0?X+TW+4:X-4,R.by+21,ws>0?X+TW-15:X+15,R.by+5,3.2,Math.min(W,2),false);
   if(EGP.traps)liftTimber(ctx,R.cx,R.by+4,R.cx,R.hy,3,Math.min(W,2),false);else{ctx.fillStyle='#0b0812';ctx.fillRect(R.cx-1.6,R.by+5,3.2,R.hy-R.by-5);} // the sheave's hanger (a timber in the Egyptian themes)
-  liftChainLine(ctx,R.ca,R.hy,R.ca,ys-1,W);liftChainLine(ctx,R.cb,R.hy,R.cb,ys-1,W);
+  const ye=EGP.traps?ys-LS_J:ys-1;liftChainLine(ctx,R.ca,R.hy,R.ca,ye,W);liftChainLine(ctx,R.cb,R.hy,R.cb,ye,W); // (round 21a: to the bridle's eye)
   liftWheel(ctx,R.cx,R.hy,7,0,-(ys*0.05),W);
   // the platform: the same floor slab as the ledges, held at mid depth by an iron eye under each chain
   liftSlab(ctx,X,ys,th,W,hash2(f.sc,f.rB));liftEye(ctx,R.ca,ys,W);liftEye(ctx,R.cb,ys,W);
@@ -6740,9 +6845,10 @@ function drawLiftChain(ctx,f,half){
   const cp=metalPal('chain'),per=f.per,H=f.yB-f.yT,V=CHAIN_V*gameTime,nl=Math.round(per/6),sp=per/nl,at=s=>chainPos(f,0,(s-f.off)/CHAIN_V);
   const vert=s=>{s=((s%per)+per)%per;return s<H||(s>=H+32&&s<2*H+32);};
   const rust=W>=2?'rgba(122,58,26,'+(0.2*W)+')':null;
-  below(()=>{if(EGP.traps){const c=ROPE[W],P0=[];for(let s=0;s<=per;s+=3){const q=at(s);P0.push([q.x,Math.min(q.y+3,yS)]);} // the rope loop, laid round the wheels
+  below(()=>{if(EGP.traps){const c=ropeOf(W),P0=[];for(let s=0;s<=per;s+=3){const q=at(s);P0.push([q.x,Math.min(q.y+3,yS)]);} // the rope loop, laid round the wheels
       const path=()=>{ctx.beginPath();P0.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();};path();ctx.strokeStyle='#0b0812';ctx.lineWidth=3.6;ctx.stroke();ctx.strokeStyle=c[0];ctx.lineWidth=2.2;ctx.stroke();
-      ctx.lineWidth=0.8;ctx.setLineDash([1.5,1.5]);ctx.lineDashOffset=-V;ctx.strokeStyle=c[1];ctx.stroke();ctx.lineDashOffset=-V+1.5;ctx.strokeStyle=c[2];ctx.globalAlpha=0.7;ctx.stroke();ctx.globalAlpha=1;ctx.setLineDash([]);ctx.lineDashOffset=0;} // its lay, travelling with it
+      ctx.lineWidth=0.8;ctx.setLineDash([1.5,1.5]);ctx.lineDashOffset=-V;ctx.strokeStyle=c[1];ctx.stroke();ctx.lineDashOffset=-V+1.5;ctx.strokeStyle=c[2];ctx.globalAlpha=0.7;ctx.stroke();ctx.globalAlpha=1;ctx.setLineDash([]);ctx.lineDashOffset=0; // its lay, travelling with it
+      liftRope(ctx,xE,f.yT+3,xE,yS,W,-V);liftRope(ctx,xX,f.yT+3,xX,yS,W,V);} // (round 21a: its upright runs the swing's laid rope in the theme's fibre, the entry run rising, the exit run falling)
     else for(let k=0;k<nl;k++){const s=V+k*sp,q=at(s),v=vert(s),e=k%2,w=v?(e?4.6:2.4):(e?7.4:5),h=v?(e?7.4:5):(e?4.6:2.4),ly=q.y>=yS-0.5?yS-h/2+0.6:q.y+3-h/2; // (in the slot the links ride at its level)
     ctx.fillStyle='#0b0812';ctx.fillRect(q.x-w/2-0.6,ly-0.6,w+1.2,h+1.2);
     ctx.fillStyle=e?cp[1]:cp[2];ctx.fillRect(q.x-w/2,ly,w,h);ctx.fillStyle=cp[3];ctx.fillRect(q.x-w/2,ly,w,0.7);ctx.fillRect(q.x-w/2,ly,0.7,h); // (a lit top and left edge)
@@ -6750,9 +6856,13 @@ function drawLiftChain(ctx,f,half){
     if(e){ctx.fillStyle='#1b1626';if(v)ctx.fillRect(q.x-0.8,ly+1.6,1.6,h-3.2);else ctx.fillRect(q.x-w/2+1.6,ly+h/2-0.8,w-3.2,1.6);}}
   for(const xx of [xE,xX]){liftWheel(ctx,xx,f.yT+3,7.5,8,CHAIN_V*gameTime/6*f.dx,W);liftWheel(ctx,xx,yS+1,7.5,8,CHAIN_V*gameTime/6*f.dx,W);}});
   for(let i=0;i<f.n;i++){const q=chainPos(f,i,gameTime);
-    if(EGP.traps){ctx.fillStyle='#0b0812';ctx.beginPath();ctx.ellipse(q.x,q.y+HY+3,2.6,2,0,0,6.2832);ctx.fill();ctx.fillStyle=ROPE[W][0];ctx.beginPath();ctx.ellipse(q.x,q.y+HY+3,1.7,1.2,0,0,6.2832);ctx.fill();} // lashed to the rope
-    else{ctx.fillStyle='#0b0812';ctx.fillRect(q.x-3,q.y+HY,6,6);ctx.fillStyle=W>=2?'#7a4a2c':'#b98a4a';ctx.fillRect(q.x-2,q.y+HY+0.5,4,4);}
+    if(!EGP.traps){ctx.fillStyle='#0b0812';ctx.fillRect(q.x-3,q.y+HY,6,6);ctx.fillStyle=W>=2?'#7a4a2c':'#b98a4a';ctx.fillRect(q.x-2,q.y+HY+0.5,4,4);}
     liftSlab(ctx,q.x-16,q.y,th,W,hash2(f.c0*7+i,f.rT));
+    // (round 21a: the rope runs through a hole drilled through the slab's middle, a seized stopper on it above the hole (and one under it,
+    // unseen) holding the slab; while the rope runs upright its part from the hole up over the slab's back half is drawn again in front of the
+    // top. Was a dark blob on the lip)
+    if(EGP.traps){const s=(((CHAIN_V*gameTime+f.off+i*f.pitch)%per)+per)%per,up=vert(s),c=ropeOf(W);
+      if(up){ropeHole(ctx,q.x,q.y,2.3);barRope(ctx,q.x,q.y-HY-2,q.x,q.y-0.45,2,c,(BARM[L.theme.look]||BARM.west)[2],0,0,(s<H?-V:V));ropeSeize(ctx,q.x,q.y-2.3,2,c);}} // (over the wheels, where the rope runs level through it, nothing shows on top)
     ctx.fillStyle='rgba(6,4,10,.5)';ctx.fillRect(q.x-16-HX+1,q.y+HY+6,30,2);} // a dark underside, so the platform stands out from the wall
   ctx.restore();
 }
@@ -6972,7 +7082,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
       case'pend':drawPend(ctx,o,f);break;
       case'vent':drawVentBase(ctx,o,f);break;
       case'loose':if(f.s<2&&f.plank){drawPlank(ctx,X,ys,f.s===1?(Math.random()-0.5)*1.6:0);break;}if(f.s<2){const sk=EGP.traps&&f.s===1?sandK(f.tm,0.25,0.06):0,sh=f.s===1&&f.tm>-0.7?(Math.random()-0.5)*(EGP.traps?0.8:1.6):0;
-        const wl=EGP.traps&&looseWell(o),fx=X-HX,ft=ys+HY,sag=wl&&f.s===1?wellSag(o,f,wl):0;
+        const wl=EGP.traps&&looseWell(o),fx=X-HX,ft=ys+HY,wg=wl?wellSolve(wellGroup(o)):null,tip=wg?wellTip(o,f):0,sag=wl&&f.s===1&&!tip?clamp((wellSunk(wg,o.c-wg.c0)-6)/45,0,1)*0.14:0; // (round 21b: tip, a slab of a row leaning into the hole beside it)
         // a tile that will give way: sunk a little, a shade off its neighbours, dark gaps where it has come away from them,
         // and cracks right through it. Nothing else on the floor cracks, so it reads at a glance.
         const body=()=>{dynSlab(ctx,o.c,o.r,X,ys,th);
@@ -6983,9 +7093,10 @@ function drawDynamic(ctx,x0,x1,y0,y1){
         ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(fx+11,ft);ctx.lineTo(fx+12,ft+2.5);ctx.lineTo(fx+10.5,ft+5);ctx.moveTo(fx+24,ft);ctx.lineTo(fx+23,ft+5);ctx.stroke();
         if(EGP.traps){ctx.fillStyle='rgba(222,196,140,.9)';for(const ex of [fx,fx+TW]){ctx.fillRect(ex-0.6,ft,1.2,5);}const q2=onFloor(X+15,0.5,ys);ctx.fillRect(q2.x-3,q2.y-0.4,6,0.8);}}; // sand in its seams
         ctx.save();ctx.translate(0,sh+0.8+sk*(wl?0.6:1.6));
-        if(sag>0.004)slabHalves(ctx,X,ys,sag,body);else body();
+        if(tip){const px=tip<0?X+TW:X;ctx.save();ctx.translate(px,ys);ctx.rotate(tip);ctx.translate(-px,-ys);body();ctx.restore();}else if(sag>0.004)slabHalves(ctx,X,ys,sag,body);else body();
+        if(wl&&tip&&wg.fl>0.02){const ex=tip<0?fx+1.5:fx+TW-1.5,y0=ft+5+Math.abs(tip)*TW;sandFlow(ctx,ex,y0,Math.max(y0+1,wellY(wg,ex)),0.2*wg.fl*Math.min(1,Math.abs(tip)/WELL_TIP0),ex*0.07);} // (sand running off its open edge while the volume drains)
         if(EGP.traps&&f.s===1){
-          if(wl){const G=wellGeo(o,wl),Ls=G.yt+wellDrained(f,G),kk=Math.max(0,0.7-f.tm*1.4); // (round 16a) the sand lying in its seams runs down into the crater opening under it, and is gone as it breaks
+          if(wl){const Ls=wellY(wg,fx+16),kk=f.tm>0&&!tip?Math.max(0,0.7-f.tm*1.4):0; // (round 16a) the sand lying in its seams runs down into the crater opening under it, and is gone as it breaks
             sandFunnel(ctx,[X+1,X+15,X+TW-1],ys,TW,sk,o.c*0.37);if(kk>0.02)for(const ex of [fx+1.5,fx+15,fx+TW-1.5])sandFlow(ctx,ex,ft+5,Math.max(ft+6,Ls),kk*(ex===fx+15?1:0.6),ex*0.07);}
           else{let rb=o.r+1;while(rb<L.rows&&!solidBelow(L,o.c,rb)&&rb-o.r<4)rb++;const yb=rb<L.rows&&rb-o.r<4?SURF(rb)-0.8-sh:ft+70; // (round 16a: no sand under it, a corridor: only grit sifting from its cracks)
             for(const ex of [fx+1,fx+15,fx+TW-1])sandFlow(ctx,ex,ft+4,Math.min(yb,ft+6+30*sk),sk*0.22,ex*0.07);}} // (short: a sifting, not a pour)
@@ -7036,7 +7147,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
   drawJetHints(x0,x1,y0,y1,ctx);
   for(const it of L.items)if(!it.taken&&inRoom(it.c,it.r))drawFlask(ctx,it);
   drawLooseFlasks(ctx);
-  if(EGP.traps)for(const o of L.dyn){if(o.f.t!=='loose'||o.f.plank||!inRoom(o.c,o.r))continue;const k=looseWell(o);if(k)drawWellSand(ctx,o,o.f,k);}
+  if(EGP.traps)for(const o of L.dyn){if(o.f.t!=='loose'||o.f.plank)continue;const g=wellGroup(o);if(!g||g.os[0]!==o||!(inRoom(g.c0,g.r)||inRoom(g.c0+g.n-1,g.r)))continue;drawWellGroup(ctx,g);} // (round 21b: once for a row of slabs over one pit)
   for(let i=DUSTC.length-1;i>=0;i--){const q=DUSTC[i],age=gameTime-q.t;if(age<0||age>0.7){DUSTC.splice(i,1);continue;}dustCloud(ctx,q.x,q.y,age,0.7,q.sz,1);}
   for(const d of L.debris){ctx.save();ctx.translate(d.x-16,d.y);
     if(EGP.traps&&(d.kind==='slab'||d.kind==='rock')){if(d.y0===undefined)d.y0=d.y;const age=debAge(d);ctx.restore();ctx.save(); // (re-skinned: a sand floor's slab, the roof block)
@@ -7044,8 +7155,11 @@ function drawDynamic(ctx,x0,x1,y0,y1){
       else{ // (round 13, owner: "after the tile falls, the sand still trickles in two columns". Round 16a: no sand follows it down at all;
         // over a well its two halves fold into the emptied shaft, over a corridor it parts in four pieces in a billow of dust)
         const X=d.x-16,bd=()=>slab(ctx,X,d.y,L.theme,true,true);
-        if(d.wl){if(d.y-d.y0>3){ctx.beginPath();ctx.rect(X-HX,d.y0-60,TW,999);ctx.clip();} // (in the shaft: behind the walls' front faces)
-          slabHalves(ctx,X,d.y,Math.min(0.8,0.14+age*4),bd);}else slabChunks(ctx,X,d.y,age,bd);}
+        if(d.wl){const ff=F(L,d.c,Math.round((d.y0+4)/TH)-1),g=ff&&ff.wg;let sd=0; // (round 21b) one whose neighbour went first falls turning into its hole, as one piece, on from its tip
+          if(g&&g.n>1){const j=d.c-g.c0,fl=j>0?g.os[j-1].f:null,fr=j<g.n-1?g.os[j+1].f:null,tl=fl&&fl.s===2?fl.tm:-1,tr=fr&&fr.s===2?fr.tm:-1;if(tl>ff.tm||tr>ff.tm)sd=tl>=tr?-1:1;}
+          if(sd){if(d.y-d.y0>3){ctx.beginPath();ctx.rect(g.xa,d.y0-60,g.n*TW,999);ctx.clip();}const px=sd<0?X+TW:X;ctx.translate(px,d.y);ctx.rotate(sd*Math.min(0.7,WELL_TIP1+age*2.5));ctx.translate(-px,-d.y);bd();}
+          else{if(d.y-d.y0>3){ctx.beginPath();ctx.rect(X-HX,d.y0-60,TW,999);ctx.clip();} // (in the shaft: behind the walls' front faces)
+          slabHalves(ctx,X,d.y,Math.min(0.8,0.14+age*4),bd);}}else slabChunks(ctx,X,d.y,age,bd);}
       ctx.restore();ctx.save();if(d.kind==='slab'&&!d.wl)dustCloud(ctx,d.x,d.y0+HY+3,age,0.45,1.25,0);ctx.restore();ctx.save();}
     else if(d.kind==='plank')drawPlank(ctx,0,0,0);
     else if(d.kind==='rock'){const rk=[[4,-11],[9,-15],[19,-14],[27,-10],[28,-2],[21,1],[8,1],[4,-4]];ctx.beginPath();rk.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();ctx.fillStyle=th.wallB;ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=1.4;ctx.stroke();
@@ -8988,6 +9102,12 @@ function glRelEx(n,x,y,hx,hy,VZ,camD,camDY){if(n>=64)return n;const sx=x*VZ-camD
 function glRelSlab(n,X,Y,ys,open,VZ,camD,camDY){if(n>=64)return n;gateGeom(X,Y,ys,{open});const pl=GATE_G.pl,dr=GATE_G.drop;if(dr<2)return n;
   const x0=(pl.L0-T_SLAB/2-1)*VZ-camD,x1=(pl.R0+T_SLAB/2+1)*VZ-camD,y0=(pl.top-DY)*VZ-camDY,y1=(pl.ce(pl.L0)+Math.min(72,dr+3)+1)*VZ-camDY;
   if(x1<0||x0>cv.width||y1<0||y0>cv.height)return n;glRelQuad(n,x0,y0,x1,y1,-0.4,0.4,0.4,-0.4);return n+1;}
+// (round 21b, owner: "sand has wall motif") the sand of a well or a sand lift is drawn over the shaft's back wall, so the relief, which
+// reads the room's picture, embossed the wall's courses and friezes on it: rubbed back over the sand in view, cell by cell from its
+// surface (and the top's depth) down to the shaft's floor, like a stone slab (glRelSlab)
+function glRelBox(n,x0,y0,x1,y1,VZ,camD,camDY){if(n>=64||y1-y0<1.5)return n;const a=x0*VZ-camD,b=x1*VZ-camD,c=y0*VZ-camDY,d=y1*VZ-camDY;if(b<0||a>cv.width||d<0||c>cv.height)return n;glRelQuad(n,a,c,b,d,-0.4,0.4,0.4,-0.4);return n+1;}
+function glRelWell(n,g,VZ,camD,camDY){wellSolve(g);const per=TW/WELL_DX;for(let j=0;j<g.n;j++){let m=g.yb[j];for(let i=j*per;i<=(j+1)*per;i++)m=Math.min(m,g.S[i]);
+  n=glRelBox(n,g.xa+j*TW,m-DY-1,g.xa+(j+1)*TW+(j===g.n-1?DX:0),g.yb[j],VZ,camD,camDY);}return n;}
 function glRelief(lights,VZ,camD,camDY){
   const R=GLREL,gl=GLP.gl,w=cv.width,h=cv.height;R.on=0;if(!GLFX.relief)return;
   let lit=false;for(const q of lights)if(GLSTRONG[q.kind]||q.kind==='fire'){lit=true;break;} // no lamp near: nothing to rake, skip the pass
@@ -9014,6 +9134,8 @@ function glRelief(lights,VZ,camD,camDY){
   for(const d of L.debris)n=glRelEx(n,d.x,d.y-8,20,16,VZ,camD,camDY);
   for(const o of L.dyn)if(o.f.t==='gate'&&o.f.open<1){if(EGP.traps)n=glRelSlab(n,o.c*TW,o.r*TH,SURF(o.r),o.f.open,VZ,camD,camDY);else if(o.f.open>0)n=glRelEx(n,o.c*TW+16-HX,o.r*TH+30,14,38,VZ,camD,camDY);} // (a gate on the move; round 16c: a stone slab whenever it is down)
   if(EGP.traps)for(const f of L.lifts)if(f.t==='lift'&&!f.sand)for(let e=0;e<2;e++){const op=e?f.gB:f.gT,s=e?f.sB:f.sT,rr=e?f.rB:f.rT;if(op<1)n=glRelSlab(n,(s<0?f.sc*TW-T_SLAB/2:(f.sc+1)*TW+T_SLAB/2)-16,rr*TH,SURF(rr),op,VZ,camD,camDY);} // (the lifts' mouth slabs)
+  if(EGP.traps){for(const o of L.dyn){const g=o.f.wg;if(o.f.t!=='loose'||!g||g.os[0]!==o)continue;n=glRelWell(n,g,VZ,camD,camDY);} // (round 21b) sand is not embossed with the wall's art behind it
+    for(const f of L.lifts)if(f.sand&&f.y<SURF(f.rB)-0.5)n=glRelBox(n,f.sc*TW-HX,f.y+HY+5-DY,f.sc*TW-HX+TW,SURF(f.rB)+HY,VZ,camD,camDY);}
   gl.bindFramebuffer(gl.FRAMEBUFFER,R.fb.f);gl.viewport(0,0,fw,fh);gl.clearColor(.5,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);
   if(!nr)return;
   gl.bindBuffer(gl.ARRAY_BUFFER,R.buf);gl.bufferSubData(gl.ARRAY_BUFFER,0,R.V,0,n*24);
@@ -9926,9 +10048,9 @@ window.__HK={keyLight,get frameLights(){return frameLights;},jetPlaces,jsSwingPa
   get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,ryOps,ryShape,ryProfile,skyBeam,RY,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,plantPose,legIK,mk,drawDynamic,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
   get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG,secretCues};
-Object.assign(window.__HK,{guardBudget,snakeBudget}); // (the fighters' budgets, for guardscan.py)
+Object.assign(window.__HK,{guardBudget,snakeBudget,RP,drinkFrame}); // (the fighters' budgets, for guardscan.py; RP and drinkFrame, the run cycle's and the drink's poses, for egyptr21a.py)
 Object.defineProperty(window.__HK,'intro',{get(){return intro;},set(v){intro=v;}}); // (the floor's title banner, for egyptprop.py)
-Object.assign(window.__HK,{windowPath,gateGeom,stoneTex,STONES,THEME_STONE,SLAB_STONE,stoneLying,BLK_W,BLK_H,looseWell,WELL_V,blockStep});
+Object.assign(window.__HK,{windowPath,gateGeom,stoneTex,STONES,THEME_STONE,SLAB_STONE,stoneLying,BLK_W,BLK_H,looseWell,WELL_V,blockStep,wellGroup,wellSolve,wellTip,sandTex});
 Object.assign(window.__HK,{EGP,nutClock,conceptClock2,barqueClock,conceptClock,flaskBody,flaskR,heart,setHero,HERO_VAR,PAL_HERO,SCHED,floorsOf,BGART,bgArt,LFX,themeOf,get PF(){return PF;}}); // (the themes' backdrops and effects, for egyptshot.py and egyptfx.py)
 Object.assign(window.__HK,{hurt,HK,DISS,sandP,SAND_HP,GLFX,setClock:f=>{performance.now=f;}}); // S3-A (tests)
 Object.assign(window.__HK,{FLM,FLV,ventState,cyc}); // FL (flames: the sheets and the vent's look, for tests)
