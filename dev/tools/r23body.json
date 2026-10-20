@@ -1,0 +1,291 @@
+{
+ "body": {
+  "th": 11.424,
+  "sh": 13.826,
+  "to": 14.018,
+  "nk": 4.518,
+  "hd": 3.365,
+  "ua": 8.231,
+  "fa": 7.656
+ },
+ "widths": {
+  "chest": 6.522,
+  "waist": 5.351,
+  "seat": 5.769,
+  "neck": 3.238,
+  "neckB": 3.575,
+  "thigh": 5.252,
+  "knee": 3.504,
+  "calf": 3.353,
+  "ankle": 1.934,
+  "arm": 2.959,
+  "fore": 2.63,
+  "wrist": 1.499,
+  "foot": 7.497,
+  "c7": 0.557,
+  "pit": 2.69,
+  "jc": 4.013
+ },
+ "info": {
+  "mocap_cm": {
+   "lfemur": 41.920484555555554,
+   "ltibia": 43.734989999999996,
+   "lhumerus": 30.20147488888889,
+   "lradius": 20.47203311111111,
+   "lowerback": 11.539996111111112,
+   "upperback": 11.579577777777777,
+   "thorax": 11.725401999999999
+  },
+  "trunk_cm": 51.43723745079983,
+  "px_per_mm": 0.02787053493203835,
+  "cm_per_px": 3.588018681516077,
+  "headH": 8.076923076923077,
+  "leg_scale": 0.2725225332830885
+ },
+ "ansur": {
+  "stature": 1764.5,
+  "cervicaleheight": 1516.5,
+  "suprasternaleheight": 1440.0,
+  "acromialheight": 1432.5,
+  "trochanterionheight": 906.0,
+  "lateralmalleolusheight": 70.0,
+  "chestdepth": 217.0,
+  "waistdepth": 192.0,
+  "buttockdepth": 207.0,
+  "neckcircumference": 365.0,
+  "neckcircumferencebase": 403.0,
+  "thighcircumference": 539.5,
+  "lowerthighcircumference": 364.5,
+  "calfcircumference": 355.0,
+  "anklecircumference": 218.0,
+  "bicepscircumferenceflexed": 305.5,
+  "forearmcircumferenceflexed": 280.0,
+  "wristcircumference": 169.0,
+  "handlength": 190.5,
+  "footlength": 269.0,
+  "n": 124,
+  "chestdepth_all": 234.0,
+  "thighcircumference_all": 592.0,
+  "lowerthighcircumference_all": 395.0,
+  "calfcircumference_all": 378.0,
+  "bicepscircumferenceflexed_all": 333.5,
+  "forearmcircumferenceflexed_all": 296.5
+ },
+ "src": {
+  "stand": {
+   "clip": "79_38",
+   "frame": 30,
+   "w": 20,
+   "why": "an actor standing at ease before drinking"
+  },
+  "crouch": {
+   "clip": "16_05",
+   "frame": 110,
+   "w": 2,
+   "why": "standing broad jump: the deepest crouch before take-off"
+  },
+  "land": {
+   "clip": "16_05",
+   "frame": 203,
+   "w": 2,
+   "why": "the landing of a standing broad jump, knees taking the weight"
+  },
+  "skid": {
+   "clip": "16_08",
+   "frame": 114,
+   "w": 2,
+   "why": "run/jog, sudden stop: the braking step"
+  },
+  "jumpR": {
+   "clip": "49_04",
+   "frame": 176,
+   "w": 1,
+   "why": "run, leap: the split at the top of the leap"
+  },
+  "jumpS": {
+   "clip": "16_05",
+   "frame": 150,
+   "w": 2,
+   "why": "standing broad jump in flight, knees drawn up"
+  },
+  "fall": {
+   "clip": "90_16",
+   "frame": 356,
+   "w": 2,
+   "why": "in the air, arms up"
+  },
+  "hang": {
+   "clip": "01_03",
+   "frame": 1765,
+   "w": 6,
+   "why": "playground: holding a bar overhead, body straight (the video shows his feet still on the ground: a hang's shape; 01_09 f1700, a real hang, leans 0.8 rad back)",
+   "fix": []
+  },
+  "pull": {
+   "clip": "01_09",
+   "frame": 1745,
+   "w": 3,
+   "why": "playground: hanging, the knees drawn up as the climb starts (no clip pulls up onto a ledge)",
+   "fix": [
+    "pull: lean -0.29 -> 0.12 to keep v69's grip"
+   ]
+  },
+  "reach": {
+   "clip": "14_07",
+   "frame": 1624,
+   "w": 2,
+   "why": "jump up to grab: arms overhead at the top",
+   "fix": []
+  },
+  "garde": {
+   "clip": "02_07",
+   "frame": 1348,
+   "w": 4,
+   "why": "swordplay: on guard, the lead (left) leg forward",
+   "fix": [
+    "garde: lean -0.16 -> 0.15 to keep v69's grip"
+   ]
+  },
+  "windup": {
+   "clip": "02_07",
+   "frame": 90,
+   "w": 3,
+   "why": "swordplay: the blade raised",
+   "fix": []
+  },
+  "lunge": {
+   "clip": "02_08",
+   "frame": 1174,
+   "w": 2,
+   "why": "swordplay: the step and thrust, the lead knee bent",
+   "fix": [
+    "lunge: lean 0.04 -> 0.50 to keep v69's grip"
+   ]
+  },
+  "parry": {
+   "clip": "02_07",
+   "frame": 1320,
+   "w": 3,
+   "why": "swordplay: the blade across",
+   "fix": [
+    "parry: lean -0.16 -> -0.09 to keep v69's grip"
+   ]
+  },
+  "hurt": {
+   "clip": "16_08",
+   "frame": 100,
+   "w": 2,
+   "why": "derived: the sudden stop braced back (no clip of a blow)"
+  },
+  "dead": {
+   "clip": "90_16",
+   "frame": 600,
+   "w": 10,
+   "why": "fall on face: lying"
+  },
+  "step": {
+   "clip": "139_29",
+   "frame": 560,
+   "w": 0,
+   "why": "sneaking: a careful step"
+  },
+  "turn": {
+   "clip": "16_08",
+   "frame": 150,
+   "w": 4,
+   "why": "derived: the settle after the sudden stop (a turn is not in the side view)"
+  },
+  "lowStrike": {
+   "clip": "02_07",
+   "frame": 204,
+   "w": 2,
+   "why": "swordplay: the chop at its lowest",
+   "fix": [
+    "lowStrike: lean 0.84 -> 0.94 to keep v69's grip"
+   ]
+  },
+  "jumpLow": {
+   "clip": "49_04",
+   "frame": 164,
+   "w": 1,
+   "why": "derived: the leap's legs at take-off, the trunk pitched forward under the ceiling (lean 0.29 -> 0.79)"
+  },
+  "jumpLowS": {
+   "clip": "16_05",
+   "frame": 150,
+   "w": 1,
+   "why": "derived: the standing jump's tuck, pitched forward under the ceiling (lean -0.05 -> 0.31)"
+  },
+  "press": {
+   "clip": "81_14",
+   "frame": 1745,
+   "w": 3,
+   "why": "climb backwards off a ledge, played backwards (a low ledge, on hands and knees): chest over the lip, one leg still hanging",
+   "fix": []
+  },
+  "kneelUp": {
+   "clip": "81_14",
+   "frame": 1560,
+   "w": 3,
+   "why": "climb backwards off a ledge, played backwards: the second knee coming onto the floor",
+   "fix": []
+  },
+  "kneel": {
+   "clip": "81_14",
+   "frame": 1430,
+   "w": 3,
+   "why": "climb backwards off a ledge, played backwards: on both knees, hands on the floor",
+   "fix": []
+  },
+  "kickPush": {
+   "clip": "49_04",
+   "frame": 160,
+   "w": 1,
+   "why": "derived: the leap's push-off (no clip of a wall kick)"
+  },
+  "kickTuck": {
+   "clip": "16_05",
+   "frame": 152,
+   "w": 1,
+   "why": "derived: the standing jump's tuck"
+  },
+  "kickReach": {
+   "clip": "16_05",
+   "frame": 182,
+   "w": 1,
+   "why": "derived: the standing jump reaching for the floor"
+  },
+  "slide": {
+   "clip": "01_09",
+   "frame": 1750,
+   "w": 3,
+   "why": "playground: hanging with the knees drawn up",
+   "fix": []
+  },
+  "run": {
+   "clip": "09_01",
+   "frame": "42-130 (16 keys; right foot down at 42)",
+   "why": "run"
+  },
+  "walk": {
+   "clip": "16_15",
+   "frame": "80-211 (16 keys)",
+   "why": "walk"
+  },
+  "drink": {
+   "clip": "79_38, 81_14",
+   "frame": "79_38:30 81_14:1300 81_14:1300 81_14:1255 79_38:180 79_38:220 79_38:300 79_38:320 79_38:360 79_38:440 79_38:520",
+   "why": "drinking water; the flask picked up from a crouch"
+  },
+  "crawl": {
+   "clip": "111_03",
+   "frame": "760-990 (8 keys, mirrored for the other half)",
+   "why": "crawling (limb timing)"
+  },
+  "swing": {
+   "clip": "43_02",
+   "frame": "228-480 (one cycle, 12 phase bins)",
+   "why": "grip bar, swing body"
+  }
+ }
+}

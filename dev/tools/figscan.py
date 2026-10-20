@@ -8,8 +8,12 @@
 #   contact  hands in poses where they hold something (a ledge, the floor, a hilt, the bar, a sword, the flask) within 0.35 px of before
 #            (both hands on a ledge, the floor or the hilt; the sword hand in a fight, 0.75 px for the lunges' straight arms; the climb until
 #            he stands up from his knees)
-#   crown    the drawn head no higher than before (0.25 px), in every pose (low ceilings, crawl tunnels, behind a wall's face)
-#   feet     on the ground (air 0), feet and the hip where they were (the legs are unchanged; in the air a held grip may lift the body)
+#   crown    the drawn head no higher than before (0.25 px): round 23, no higher than v69's standing crown in any pose (a storey he can
+#            stand in holds all of them), and no higher than v69's own in the poses used under a low ceiling: the crawl, the low leaps,
+#            the slide (lowceil.py checks the jumps in rooms one storey tall)
+#   feet     on the ground (air 0): the sole's lowest pixel on the floor as before (round 23: the legs are the clips', so the feet and the
+#            hip are no longer where v69's were; only the sole on the floor is gameplay's)
+#   crawl    (round 23) the hands at the floor while crawling (the palm's centre 0 to 3 px over it), not v69's places
 #   swing    hands on the bar: no further from it than before (0.25 px; v69's straight arms fell 0.7 px short, inside the hand)
 #   drink    the hand at the mouth while he drinks (within 0.6 px of before's hand-to-mouth offset)
 # It also lists every place in the source that reads the skeleton (skel(), LEN), so a reader can see none of them is a hit box.
@@ -24,7 +28,7 @@ if not os.path.exists(_old):
     _old = os.path.join(HERE, '..', '..', '..', '..', '..', 'dev', 'tools', 'hk_v69_release.html')  # (from a worktree: the main checkout's)
 OLD = os.path.abspath(a[1] if len(a) > 1 and a[1] else _old)
 OUTJ = a[2] if len(a) > 2 else os.path.join(HERE, 'figscan.json')
-EXPORT = 'window.__FS={skel,LEN,PS,mk,lerpPose,crawlPose,swingPose,wallRunIK,wallRunPose,climbFrame,drinkFrame,RP,plantPose,figReach,swordTip,figDraw,PAL_HERO,guardPal,GFX};'
+EXPORT = 'window.__FS={walkPose:typeof walkPose==="function"?walkPose:null,skel,LEN,PS,mk,lerpPose,crawlPose,swingPose,wallRunIK,wallRunPose,climbFrame,drinkFrame,RP,plantPose,figReach,swordTip,figDraw,PAL_HERO,guardPal,GFX};'
 CONTACT = {'hang', 'reach', 'pull', 'press', 'kneelUp', 'kneel', 'slide', 'garde', 'windup', 'lunge', 'parry', 'lowStrike'}
 SCAN = r'''()=>{const F=__FS,out=[];F.GFX().hd=true;
  const add=(name,p,ox,oy,kind,extra)=>{const s=F.skel(p),O=[ox||0,(oy||0)-s.hipH],P=q=>[+(q[0]+O[0]).toFixed(3),+(q[1]+O[1]).toFixed(3)];
@@ -40,6 +44,7 @@ SCAN = r'''()=>{const F=__FS,out=[];F.GFX().hd=true;
      crown:+(t/S-Y).toFixed(3),sole:+((b+1)/S-Y).toFixed(3),front:+((rr+1)/S-X).toFixed(3),back:+(l/S-X).toFixed(3),hy:p.hy,air:p.air,head:p.head},extra||{}));};
  for(const k of Object.keys(F.PS))add('PS.'+k,F.mk(F.PS[k]),0,0,{k:k,sw:['garde','windup','lunge','parry','lowStrike','slide'].includes(k)});
  for(let i=0;i<8;i++)add('run '+i/8,F.mk(F.RP(i/8)),0,0,{k:'run'});
+ for(let i=0;i<8;i++)add('walk '+i/8,F.mk(F.walkPose?F.walkPose(i/8):F.RP(i/8,0.6)),0,0,{k:'walk'});
  for(let i=0;i<4;i++)add('crawl '+i/4,F.crawlPose(i/4),0,0,{k:'crawl'});
  for(const t of [0.27,0.36,0.5,0.63,0.72,0.8,0.855,0.9,0.95,0.99,1.15])add('drink '+t,F.mk(F.drinkFrame(t).p),0,0,{k:t>=0.7&&t<=0.99?'sip':'drink'});
  // climbing onto a ledge: the ledge's surface at y 0, its lip at x 0; he hangs at y 57 (HANG) a little out from it, and stands at 10 in
@@ -108,8 +113,8 @@ if __name__ == '__main__':
         if not o:
             continue
         kd = n['kind']
-        contact = kd in CONTACT or kd in ('crawl', 'swing', 'sip') or (kd == 'climb' and n['k'] < 0.76)
-        both = kd in ('hang', 'reach', 'pull', 'press', 'kneelUp', 'kneel', 'slide', 'crawl', 'climb')
+        contact = kd in CONTACT or kd in ('swing', 'sip')
+        both = kd in ('hang', 'reach', 'pull', 'press', 'kneelUp', 'kneel', 'slide', 'climb')
         d = {j: D(n[j], o[j]) for j in ('hF', 'hB', 'fF', 'fB', 'hip', 'sh', 'hd', 'mouth', 'swT')}
         line = []
         for j, v in d.items():
@@ -123,12 +128,18 @@ if __name__ == '__main__':
         tol = 0.75 if kd in ('lunge', 'lowStrike') else 0.35  # (the lunge's straight arm cannot reach quite as far from the lower shoulder)
         if contact and kd not in ('swing', 'sip') and (d['hF'] if not both else max(d['hF'], d['hB'])) > tol:
             bad.append('hands moved (contact)')
-        if n['crown'] < o['crown'] - 0.25 and kd != 'swing':  # (swinging he is turned on the rope, in open air under the bar)
-            bad.append('crown higher by %.2f' % (o['crown'] - n['crown']))
-        if n['air'] == 0 and max(d['fF'], d['fB']) > 0.05:
-            bad.append('feet moved')
-        if n['air'] == 0 and d['hip'] > 0.05:
-            bad.append('hip moved')
+        lim = o['crown'] if kd in ('crawl', 'jumpLow', 'jumpLowS', 'slide') else min(o['crown'], O['PS.stand']['crown'])
+        if n['crown'] < lim - 0.25 and kd != 'swing':  # (swinging he is turned on the rope, in open air under the bar)
+            bad.append('crown higher by %.2f' % (lim - n['crown']))
+        if o['air'] == 0 and n['air'] == 0 and (abs(n['sole'] - o['sole']) > 0.5 if kd != 'crawl' else not -0.25 <= n['sole'] <= max(o['sole'], 2.5)):
+            bad.append('sole off the floor %+.2f' % (n['sole'] - o['sole']))
+        if kd == 'climb' and n['k'] < 0.7:  # (round 23: on the lip while pulling up (v69's hanging hand), then on the floor inside it until he kneels up)
+            lip = O['climb 0.00']['hF']
+            ok = all(D(n[h], lip) < 2.2 for h in ('hF', 'hB')) if n['k'] <= 0.36 else all(-3.2 <= n[h][1] <= 0.5 and n[h][0] >= lip[0] - 0.5 for h in ('hF', 'hB'))
+            if not ok:
+                bad.append('hands off the ledge %s %s' % (n['hF'], n['hB']))
+        if kd == 'crawl' and not all(-3.2 <= n[h][1] <= 0.3 for h in ('hF', 'hB')):
+            bad.append('hands off the floor %.2f %.2f' % (n['hF'][1], n['hB'][1]))
         if kd == 'swing':
             line.append('bar %.2f (before %.2f)' % (n['bar'], o['bar']))
             if n['bar'] > o['bar'] + 0.25:

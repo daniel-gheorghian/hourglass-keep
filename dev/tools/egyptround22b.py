@@ -79,8 +79,7 @@ def sections(D, REL, img):
             'the body\'s.</p>'
             '<h3>The proportions (1 px is about 3.7 cm of the body; the head 1.6 times that)</h3>' +
             table(('Measure', 'Research', 'At the figure\'s scale', 'v69 and round 22', 'Round 22b'), PROP) +
-            fig(img, 'r22b_games.png', 'The proportions other games use, as my own schematic profiles (heads tall; the chin-to-shoulder gap in heads), and '
-                'Dawnward before and after') +
+            '<p class="meta">The games schematic (r22b_games) was retired in round 23.</p>' +
             '<h3>What changed</h3><ul>'
             '<li><b>The skeleton</b> (<code>LEN</code>): the trunk from the hip to the shoulder joint 13 px (was 15), the neck 4.9 (was 2.5), the head\'s radius 4.4 '
             '(was 4.6), the upper arm 8.3 and the forearm 9.2 (were 9 and 8.5: the same reach, the elbow at the waist). The crown stands where it stood (27.7 px '

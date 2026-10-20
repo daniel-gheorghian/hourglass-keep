@@ -1,1 +1,5 @@
 .venv/
+# CMU mocap downloads (447 MB of videos, 47 MB of AMC): local reference, fetched again with dev/tools/ref/cmu/index.tsv
+dev/tools/ref/cmu/*.mpg
+dev/tools/ref/cmu/*.amc
+dev/tools/ref/cmu/*.asf

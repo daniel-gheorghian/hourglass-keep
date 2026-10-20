@@ -82,12 +82,7 @@ def sections(D, REL, img):
             '<li><b>Not matched</b>: the knee (0.25 against the kid\'s 0.28: the legs are gameplay\'s and stay) and the crotch as read along a straight leg '
             '(%.2f against 0.44: our thighs are round tubes about the hip joint under the kilt, the kid\'s baggy trousers split low); the waist depth is the '
             'kid\'s shirt blousing.</li></ul>' % (a['chin_acr_H'] * a['height'], a['neck_depth_H'] * a['height'], a['h_crotch']) +
-            fig(img, 'r22d_compare.png', 'The 1989 kid (DOS frames, nearest neighbour, aspect-corrected) beside our prince at the same height: v69 | 22c | after, '
-                'standing with the kid\'s landmarks as guide lines (crown, chin, shoulder, waist, hip, crotch, knee, sole), then running, stepping, crouching, '
-                'hanging, climbing and en garde') +
-            fig(img, 'r22d_poses.png', 'Every pose at 4x, 22c | after, lit from his back, and a robber standing and en garde') +
-            fig(img, 'r22d_game.png', 'In the game, 22c | after: standing and running (Torchlight at GLP.rs 1 and 0.5, Classic), hanging and climbing, crawling, '
-                'swinging, and in a fight') +
+            '<p class="meta">Round 22d\'s three sheets (r22d_compare, r22d_poses, r22d_game) were retired in round 23, which rebuilt the body from motion capture.</p>' +
             '<h3>Tests</h3><p>' + E(TESTS) + '</p>'
             '<p class="meta">Retired to stay under 505 files: round 22c\'s variants, guide, poses and game sheets (superseded by this round\'s three).</p>' +
             links([('PrinceJS (oklemenz): the DOS sprites, assets/gfx/kid.png and kid.json, guard.png', 'https://github.com/oklemenz/PrinceJS/tree/master/assets/gfx'),

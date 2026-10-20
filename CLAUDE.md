@@ -182,21 +182,25 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   wall's art on it. `wellscan.py` (floors 3-30, 3 seeds: slope, volume, break timing, rewind) must print `ok`; pictures `egyptr21b.py`.
 - Arms up (round 19, owner: "a hump"): `torsoG` narrows the back near the shoulders (up to 1.3 px) and the raised arm rises from the
   back of the shoulder, so the back line runs from the waist into the arm. Pictures for round 19: `egyptr19.py`.
-- The prince's proportions follow the 1989 Prince of Persia kid (DOS) (round 22d, owner: "I like best the proportions in the original PoP
-  sprite. Replicate the proportions from there in our prince"; rounds 22b/22c's ANSUR II youth is background only, `dev/FIGURE_SPEC.md`).
-  The kid, measured from his frames (`dev/tools/ref/pop_kid.png`/`.json`, PrinceJS assets; frame numbers as SDLPoP's `types.h`; DOS pixels
-  are 1.2x taller than wide: horizontal measures divided by 1.2): 41 rows, head 7 = 5.86 heads; chin 0.83 of the height; the deltoid's top
-  one row (0.024) under the chin, the shirt's shoulder line level with it (sloping shoulders, a slim neck 0.08 deep, one row of throat);
-  shoulder joint 0.77, elbow 0.60, fingertips 0.39; trunk 0.15-0.16 deep with a straight back (head, back and seat on one line); foot 0.14.
-  Ours (52.75 px): `LEN={th:12,sh:12,to:15,nk:4.66,hd:3.52,ua:8.9,fa:8.6}` (head 9.0 px, 5.86 heads; v69's trunk 15 and arm 17.5, so held
-  hands and overhead reach are v69's); `NJ` puts the pit of the neck and the deltoid's top ~1.2 px under the chin, C7 just under it,
-  `NJ.hn` scales the neck's top with the head; the outline is slim (`BQ`/`Fo`/`Bo`, limb widths, foot 0.78 long). Legs are gameplay's
-  (knee 0.25 against the kid's 0.28). The crown stays at 27.7 px over the hip and never rises above v69's. Hands that hold something (ledge,
-  floor, hilt, flask, the fight's sword) keep v69's places: pose keys `hold` (front hand), `hb` (back), `mh` (follow the mouth) make `skel`
-  solve the arms to v69's hand (`F69`), lifting an airborne body when a grip is out of reach. A new holding pose sets `hold`/`hb`; a new
-  head-up pose near low stone must keep the crown under v69's. Robbers share the skeleton with their own heavier build. Measure with
-  `r22dmeasure.py` (the kid and our figure side by side; `r22cmeasure.py` has the neck landmarks); check with `figscan.py` (must print
-  `figscan: ok`); pictures `egyptr22d.py` (the kid beside v69/22c/after, every pose, in game).
+- The prince's body and poses come from motion capture (round 23, owner: "Start from those clips and build the athletic teen prince body
+  and scrap the current skeleton and proportions"; rule and tables in `dev/FIGURE_SPEC.md`; rounds 22b-22d's ANSUR fit and PoP-kid fit are
+  superseded). The CMU Graphics Lab Motion Capture Database (mocap.cs.cmu.edu; cite "The data used in this project was obtained from
+  mocap.cs.cmu.edu. The database was created with funding from NSF EIA-0196217.") gives the bones (subjects 09, 13, 14, 16) and every
+  pose; ANSUR II's 17-20 year old men give the trunk's lengths and depths (BMI under 23) and the limbs' girths (all 422); the head is 1/6.5
+  of his height (6.57 measured, 7.98 px; real is 7.7 heads, the 1989 kid 5.86) so the face reads at 52 px. `dev/tools/r23poses.py`
+  generates the source's block between `// <R23-MOCAP>` and `// </R23-MOCAP>`: `R23B` (LEN: th 11.4, sh 13.8, to 14.0, nk 4.5, hd 3.37,
+  ua 8.2, fa 7.7; standing 52.4 px against v69's 53.0), `R23D` (the drawing's widths: BQ/Fo/Bo, NJ, limbs, foot, kilt; robbers 1.15 times
+  as broad), `MCP` (single poses) and `MCK` (16-key run and walk cycles with each key's foot clearance `cl`, the crawl, the drink's
+  keys, the swing's 12 phase bins). Never edit the block by hand. A pose is the game's angles measured from one clip frame in the side
+  view of the body's facing (`dev/tools/mocap.py`: ASF/AMC parser, forward kinematics, `sheet`/`strip`/`video` to look at a clip); its
+  placement (air, hy, sw, rot, kn) and timing are gameplay's and unchanged. Hands that hold something (ledge, floor, hilt, flask, the
+  fight's sword) go to v69's places (`hold`/`hb`/`mh` with the grips `gFx,gFy,gBx,gBy,gMx,gMy` from `r23grips.json`, read from v69 by
+  `r23grips.py`); where the new arm cannot reach, r23poses.py turns the trunk toward the grip and logs it; `climbFrame` puts the hands
+  on the lip and then on the floor. To add or change a move: find a clip in `dev/tools/ref/cmu/index.tsv`, fetch its .amc/.asf into
+  `ref/cmu/` (gitignored), look with `mocap.py sheet`, add its line to `SEL` (or a cycle in `build()`), run `r23poses.py`, then
+  `figscan.py` (must print `figscan: ok`: held hands, no crown over v69's standing crown, nor over v69's own in the crawl and low leaps,
+  soles on the floor, hands on the bar and at the mouth) and `egyptr23.py moves` (clip | new | v69). Pictures `egyptr23.py`
+  (body, moves, game, clips).
 - Lift ropes (round 21a, owner: "holes in the slab with the rope threaded through"): all lift ropes are `barRope` in the theme's fibre
   (`liftRope`; `barRope`'s `ph` makes the lay travel with a running rope). The counterweight platform hangs on two bridles (`liftSling`: an
   eye seized `LS_J` above the slab, legs down through two holes near the front and back edges along the depth diagonal, `ropeHole` drawn in

@@ -112,7 +112,8 @@ OPEN = {'open_stand': (59, -7), 'open_run': (195, -16), 'open_gap_run': (265, -1
 bad = []
 for name, r in res.items():
     if name in OPEN:
-        if r['low'] or (r['dist'], r['peak']) != OPEN[name] or r['state'] != 'stand': bad.append('%s: open jump changed (dist %s peak %s low %s)' % (name, r['dist'], r['peak'], r['low']))
+        if r['low'] or r['dist'] != OPEN[name][0] or r['peak'] < OPEN[name][1] or r['state'] != 'stand':  # (round 23: the drawn peak may be lower, never higher)
+            bad.append('%s: open jump changed (dist %s peak %s low %s)' % (name, r['dist'], r['peak'], r['low']))
     else:
         if not r['low']: bad.append('%s: not the low leap' % name)
         if r['pen'] > 0 or r['headPen'] > 0: bad.append('%s: drawn %.1f px (head %.1f) into the ceiling at %s' % (name, r['pen'], r['headPen'], r['penAt']))
