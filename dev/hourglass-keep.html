@@ -2820,6 +2820,9 @@ function tryDown(){
   setState('crouch');
 }
 const CRAWL=42;
+// (round 20a) is world point (x,y) inside stone that stands across the room's whole depth, as drawn: a wall block (its front face HX left
+// of its cell) or a low ceiling's block (the top LOW_H px of its cell)
+function solidFront(x,y){const c=Math.floor((x+HX)/TW),r=Math.floor(y/TH);if(B(L,c,r)===WALL)return true;const f=r>=0&&r<L.rows?F(L,c,r):null;return !!(f&&f.t==='low'&&y-r*TH<TH-34);}
 function lowAt(x,r){const f=F(L,Math.floor(x/TW),r);return !!(f&&f.t==='low');}
 function underLow(){const r=pRow();return lowAt(P.x-8,r)||lowAt(P.x,r)||lowAt(P.x+8,r);}
 function snakeNear(range){for(const sn of SN){if(!sn.alive||sn.r!==pRow())continue;const dx=(sn.x-P.x)*P.face;if(dx>-4&&dx<range)return sn;}return null;}
@@ -7094,7 +7097,7 @@ function gatherLights(x0,x1,y0,y1){
       // landing found in the room's depth, skyBeam; the v56 glow was wide and lit the wall round it), so the floor round the lit
       // footprint rises out of the dark a little instead of a patch cut out of black (a fill light, the film convention)
       if(bo&&!(o[4]&&own)){const w=false,fy=SURF(Math.floor((o[1]+o[3]-1)/TH)),cy=o[1]+o[3]*0.5,h=Math.max(0,Math.min(fy-4-cy,1/sb.q)),d=sb.per*h;
-        let blk=false;for(let t=0.15;t<=1.001&&!blk;t+=0.17){const bx=o[0]+o[2]/2+sb.dx*d*t,by=cy+sb.dy*d*t-4;blk=B(L,Math.floor((bx+HX)/TW),Math.floor(by/TH))===WALL;} // (round 15: not where a wall block stands between the opening and its landing)
+        let blk=false;for(let t=0.15;t<=1.001&&!blk;t+=0.17){const bx=o[0]+o[2]/2+sb.dx*d*t,by=cy+sb.dy*d*t-4;blk=solidFront(bx,by);} // (round 15: not where a wall block stands between the opening and its landing; round 20a: or a low ceiling)
         if(!blk)add(o[0]+o[2]/2+sb.dx*d,cy+sb.dy*d-4,Math.max(34,o[2]*0.6+22),w?lk.win:sb.col,0.55*(w?RY_OWN:sb.k),'sky');}}}
   if(P&&!(P.state==='dead'&&P.y>L.rows*TH))add(P.x,P.y-26,84,'205,195,225',0.42,'fill');
   for(const g of G)if(g.alive&&!g.gone)add(g.x,g.y-26,56,'205,195,225',0.22,'fill');
@@ -7247,37 +7250,83 @@ function rySprite(s,col,dfl){const key=col+':'+dfl;if(!s.spr)s.spr=new Map();let
 // front of a wall's face is not there); over a figure only the haze in front of it is drawn (its silhouette, cut out
 // to RY_FIG2D in one scratch canvas over all the figures, glSilhouette); the forge's and the crypt's own-light windows cast no beam (they
 // glow at the pane: gatherLights). Then the dust motes in the beams (ryMotes2D).
-const RYF={c:null,g:null,dr:[],fg:[]};
+// (round 20a, owner: "light beams through ... guillotines") a slicer's blades and a granite portcullis that is down stand across the corridor's
+// whole depth (plane(): from the floor's front edge at L0 to the back wall at R0), so they are solid to the sky's light like a wall: the
+// light behind them (down the beam) is gone, and over them only the haze in front of the blade is seen, as for a figure. Their outlines this
+// frame as quads (BLK.q: four corners each, world px; BLK.fy: the floor under them, where their shadow ends), made from the same geometry
+// as drawJaws and egSlab (the jaw's edge taken half way down its teeth). Torchlight hands them to the shafts' shader (glcBlk, u_bk: tested
+// exactly, not through the eighth-size figures' mask, whose texels left steps along the blade), whose march shades the beam behind them
+// and which leaves only the near half of the haze over them, and no footprint; Classic (ryBeams2D), only for one in a beam's haze
+// (ryBlkLit), clips the blade and its shadow, the quad swept along the light to the floor (ryHull), out of the haze and the footprint.
+// (round 20a) Classic: how much of cell (c,r) a low ceiling takes from a beam, from the top (0 none): its block (the top LOW_H px), and the
+// space under it too where the light would have to come in under the ceiling from a cell that is also low (up: -1, the light comes from the left)
+function ryLow(c,r,up){const f=F(L,c,r);if(!f||f.t!=='low'||B(L,c,r)===WALL)return 0;const u=F(L,c+up,r);return u&&u.t==='low'?TH:LOW_H;}
+const BLKMAX=12,BLK={n:0,q:new Float32Array(BLKMAX*8),fy:new Float32Array(BLKMAX)};
+function blkQuad(x0,y0,x1,y1,x2,y2,x3,y3,fy){if(BLK.n>=BLKMAX)return;const q=BLK.q,i=BLK.n*8;q[i]=x0;q[i+1]=y0;q[i+2]=x1;q[i+3]=y1;q[i+4]=x2;q[i+5]=y2;q[i+6]=x3;q[i+7]=y3;BLK.fy[BLK.n++]=fy;}
+function beamBlockers(x0,x1,y0,y1){BLK.n=0;for(const o of L.dyn){const t=o.f.t;if(t!=='chomp'&&!(t==='gate'&&EGP.traps))continue;const X=o.c*TW,Y=o.r*TH;
+    if(X+TW+8<x0||X-8>x1||Y+TH<y0||Y-8>y1)continue;const ys=SURF(o.r);
+    if(t==='chomp'){const k=chompK(o.f),pl=plane(X,Y,ys,o.c,o.r),up=lerp(pl.co?2:7,31-pl.co,k)+5,lo=lerp(3,21,k)+5; // (drawJaws' upOff and loOff, and half the teeth)
+      blkQuad(pl.L0,pl.top,pl.R0,pl.top,pl.R0,Math.max(pl.top,pl.ce(pl.R0)+up),pl.L0,pl.ce(pl.L0)+up,ys+HY); // the upper blade, from the ceiling's front edge
+      blkQuad(pl.L0,pl.fl(pl.L0)-lo,pl.R0,pl.fl(pl.R0)-lo,pl.R0,pl.fl(pl.R0),pl.L0,pl.fl(pl.L0),ys+HY);} // the lower, on the floor
+    else{const gg=gateGeom(X,Y,ys,o.f);if(!gg)continue;const pl=GATE_G.pl,dr=GATE_G.drop,a=pl.L0-T_SLAB/2,b=pl.R0+T_SLAB/2;
+      blkQuad(a,pl.top,b,pl.top,b,Math.max(pl.top,pl.ce(b)+dr),a,pl.ce(a)+dr,ys+HY);}} // (the slab's foot runs with the ceiling's line, gateGeom)
+  return BLK.n;}
+// (Classic) blocker i's shadow down the beam: the convex hull of its quad and the quad moved along the light (dx,dy) to the floor under it
+// (monotone chain over the 8 corners, into RYF.hp; no allocation)
+function ryHull(i,dx,dy){const q=BLK.q,j=i*8,P=RYF.pp,H=RYF.hp,h0=i*20;let ymin=1e9;for(let k=0;k<4;k++)ymin=Math.min(ymin,q[j+2*k+1]);const t=Math.max(0,(BLK.fy[i]-ymin)/dy);
+  for(let k=0;k<4;k++){P[4*k]=q[j+2*k];P[4*k+1]=q[j+2*k+1];P[4*k+2]=q[j+2*k]+dx*t;P[4*k+3]=q[j+2*k+1]+dy*t;}
+  const o=RYF.po;for(let k=0;k<8;k++)o[k]=k;for(let a=1;a<8;a++){const v=o[a];let b=a-1;while(b>=0&&(P[2*o[b]]>P[2*v]||P[2*o[b]]===P[2*v]&&P[2*o[b]+1]>P[2*v+1])){o[b+1]=o[b];b--;}o[b+1]=v;}
+  const st=RYF.ps;let n=0;
+  for(let k=0;k<8;k++){while(n>=2&&ryCr(P,st[n-2],st[n-1],o[k])<=0)n--;st[n++]=o[k];}
+  for(let k=6,lo=n+1;k>=0;k--){while(n>=lo&&ryCr(P,st[n-2],st[n-1],o[k])<=0)n--;st[n++]=o[k];}n--;
+  for(let k=0;k<n;k++){H[h0+2*k]=P[2*st[k]];H[h0+2*k+1]=P[2*st[k]+1];}RYF.hn[i]=n;return n;}
+// (Classic) the blockers' hulls (the blade or slab and its shadow down the beam) clipped out of what is drawn next in box (x,y,w,h): one
+// even-odd clip each (box less hull), so they never cancel where they overlap a wall's cut or each other. Saves first unless saved (sv);
+// returns whether it saved. A clip, not a scratch canvas: one union box round a figure and a blade far apart cost 4 ms a frame here
+function ryBlkClip(g,x,y,w,h,sv,bk){let s=sv;for(let k=0;k<bk.length;k+=5){if(bk[k+1]>x+w||bk[k+3]<x||bk[k+2]>y+h||bk[k+4]<y)continue;if(!s){g.save();s=true;}
+    g.beginPath();g.rect(x-1,y-1,w+2,h+2);const H=RYF.hp,h0=bk[k]*20,hn=RYF.hn[bk[k]];g.moveTo(H[h0],H[h0+1]);for(let j=1;j<hn;j++)g.lineTo(H[h0+2*j],H[h0+2*j+1]);g.closePath();g.clip('evenodd');}
+  return s&&!sv;}
+// is blocker i in beam o's haze at all (its corners, its middle and the middle of each side)? Only then is it cut out of that beam
+function ryBlkLit(i,o,sb){const q=BLK.q,j=i*8,s=o.sh,nx=sb.dy,ny=-sb.dx;for(let k=0;k<9;k++){const a=k&3,b=(k+1)&3,m=k>=4?(k===8?-1:1):0;
+    let x,y;if(m<0){x=(q[j]+q[j+2]+q[j+4]+q[j+6])/4;y=(q[j+1]+q[j+3]+q[j+5]+q[j+7])/4;}else if(m){x=(q[j+2*a]+q[j+2*b])/2;y=(q[j+2*a+1]+q[j+2*b+1])/2;}else{x=q[j+2*a];y=q[j+2*a+1];}
+    x-=o.x;y-=o.y;if(ryAir(s,x*nx+y*ny-s.umin,x*sb.dx+y*sb.dy-s.smin,sb.lq,sb.ln)>0.01)return true;}
+  return false;}
+function ryCr(P,a,b,c){return (P[2*b]-P[2*a])*(P[2*c+1]-P[2*a+1])-(P[2*b+1]-P[2*a+1])*(P[2*c]-P[2*a]);}
+const RYF={c:null,g:null,dr:[],fg:[],bk:[],pp:new Float32Array(16),hp:new Float32Array(BLKMAX*20),hn:new Int8Array(BLKMAX),po:new Int8Array(8),ps:new Int8Array(20)};
 function ryBeams2D(ctx,a){const sb=skyBeam(),VZ=renderXf.VZ,camD=renderXf.camD,camDY=renderXf.camDY,x0=camD/VZ,y0=camDY/VZ,x1=x0+cv.width/VZ,y1=y0+cv.height/VZ,dr=RYF.dr,fg=RYF.fg;dr.length=0;fg.length=0;
-  const al=Math.min(1,2*a*sb.k);
+  const al=Math.min(1,2*a*sb.k),up=sb.dx>0?-1:1,bk=RYF.bk;bk.length=0; // (up: the side the light comes from)
   for(const o of ryOps()){const s=o.sh;if(s.own)continue;const r=(o.fl-o.y0)*1.4;if(o.x1+Math.max(0,sb.dx)*r<x0||o.x0+Math.min(0,sb.dx)*r>x1||o.fl+4<y0||o.y0>y1)continue;
     const p=rySprite(s,sb.col,o.fl-o.y),X=o.x+p.x,Y=o.y+p.y;if(X>x1||X+p.w<x0||Y>y1||Y+p.h<y0)continue;dr.push(o,p);}
   if(!dr.length)return;
   const one=(g,o,p)=>{const X=o.x+p.x,Y=o.y+p.y,c0=Math.floor(X/TW),c1=Math.floor((X+p.w)/TW),r0=Math.floor(Y/TH),r1=Math.floor((Y+p.h)/TH);let cut=false;
-    for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1+1;c++)if(B(L,c,r)===WALL){if(!cut){g.save();g.beginPath();g.rect(X,Y,p.w,p.h);cut=true;}g.rect(c*TW-HX,r*TH,TW,TH);} // (round 15: a wall's front face is drawn HX to the left of its cell; the cut was 8 px off)
-    if(cut)g.clip('evenodd');g.drawImage(p.c,X,Y,p.w,p.h);if(cut)g.restore();};
+    for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1+1;c++){const lh=B(L,c,r)===WALL?TH:ryLow(c,r,up);if(!lh)continue;if(!cut){g.save();g.beginPath();g.rect(X,Y,p.w,p.h);cut=true;}g.rect(c*TW-HX,r*TH,TW,lh);} // (round 15: a wall's front face is drawn HX to the left of its cell; the cut was 8 px off. Round 20a: and a low ceiling's)
+    if(cut)g.clip('evenodd');const bc=ryBlkClip(g,X,Y,p.w,p.h,cut,bk);g.drawImage(p.c,X,Y,p.w,p.h);if(cut||bc)g.restore();};
   const fig=e=>{if(!e||e.gone||e.state==='dead'||e.y>L.rows*TH)return;const fx=e.x-26,fy=e.y+(e.yo||0)-84,fw=52,fh=92;
     for(let i=0;i<dr.length;i+=2){const o=dr[i],p=dr[i+1],X=o.x+p.x,Y=o.y+p.y;if(fx<X+p.w&&fx+fw>X&&fy<Y+p.h&&fy+fh>Y){fg.push(e,fx,fy,fw,fh);return;}}};
   fig(P);for(const e of G)if(e.alive)fig(e);
+  if(beamBlockers(x0,x1,y0,y1))for(let i=0;i<BLK.n;i++){const hn=ryHull(i,sb.dx,sb.dy),H=RYF.hp,h0=i*20;let bx0=1e9,by0=1e9,bx1=-1e9,by1=-1e9; // (round 20a) the blades and slabs in a beam, with their shadows
+    for(let k=0;k<hn;k++){bx0=Math.min(bx0,H[h0+2*k]);bx1=Math.max(bx1,H[h0+2*k]);by0=Math.min(by0,H[h0+2*k+1]);by1=Math.max(by1,H[h0+2*k+1]);}
+    for(let j=0;j<dr.length;j+=2){const o=dr[j],p=dr[j+1],X=o.x+p.x,Y=o.y+p.y;if(bx0<X+p.w&&bx1>X&&by0<Y+p.h&&by1>Y&&ryBlkLit(i,o,sb)){bk.push(i,bx0,by0,bx1,by1);break;}}}
   // (figlight) the figures' boxes as one: two that overlap (a sword fight) had their beams drawn twice there and the evenodd
   // clip let the main pass through the overlap too, a bright block over both
   let ux0=1e9,uy0=1e9,ux1=-1e9,uy1=-1e9;for(let i=0;i<fg.length;i+=5){ux0=Math.min(ux0,fg[i+1]);uy0=Math.min(uy0,fg[i+2]);ux1=Math.max(ux1,fg[i+1]+fg[i+3]);uy1=Math.max(uy1,fg[i+2]+fg[i+4]);}
+  const sep=fg.length; // (figures: their box is drawn apart, in the scratch canvas)
   const X0=Math.floor(ux0*VZ-camD),Y0=Math.floor(uy0*VZ-camDY),w=Math.ceil((ux1-ux0)*VZ)+2,h=Math.ceil((uy1-uy0)*VZ)+2; // (on whole device pixels: the clip below leaves exactly the scratch canvas's box, no seam drawn twice)
   ux0=(X0+camD)/VZ;uy0=(Y0+camDY)/VZ;ux1=ux0+w/VZ;uy1=uy0+h/VZ;
   ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=al;
-  if(fg.length){ctx.beginPath();ctx.rect(x0-1,y0-1,x1-x0+2,y1-y0+2);ctx.rect(ux0,uy0,ux1-ux0,uy1-uy0);ctx.clip('evenodd');}
+  if(sep){ctx.beginPath();ctx.rect(x0-1,y0-1,x1-x0+2,y1-y0+2);ctx.rect(ux0,uy0,ux1-ux0,uy1-uy0);ctx.clip('evenodd');}
   for(let i=0;i<dr.length;i+=2)one(ctx,dr[i],dr[i+1]);
   ctx.restore();
   // the footprints, only on the floor that is there (a beam cut at a floor that covers part of it), lighting the stone in its own
   // colour (overlay), then a little light of their own; (figlight) not on a figure standing or kneeling on it (it lit his shins
   // and knees as a pale band): over the figures' boxes they are drawn in the scratch canvas with the silhouettes cut out
   const fp=(g,ov)=>{for(let i=0;i<dr.length;i+=2){const o=dr[i],p=dr[i+1],X=o.x+p.x,r=Math.round((o.fl+4)/TH)-1;let any=false;g.beginPath();
-      for(let c=Math.floor(X/TW);c<=Math.floor((X+p.w)/TW);c++)if(B(L,c,r)!==WALL&&solidBelow(L,c,r)){g.rect(c*TW,o.fl-4,TW,8);any=true;}
-      if(any){g.save();g.clip();g.drawImage(p.f,X,o.y+p.fy,p.w,p.fh);if(ov){g.globalCompositeOperation='lighter';g.globalAlpha=Math.min(1,a*sb.k*1.2);g.drawImage(p.f,X,o.y+p.fy,p.w,p.fh);}g.restore();}}};
+      for(let c=Math.floor(X/TW);c<=Math.floor((X+p.w)/TW);c++)if(B(L,c,r)!==WALL&&solidBelow(L,c,r)&&ryLow(c,r,up)<TH){g.rect(c*TW,o.fl-4,TW,8);any=true;} // (round 20a: not under a low ceiling the light cannot get under)
+      if(any){g.save();g.clip();ryBlkClip(g,X,o.y+p.fy,p.w,p.fh,true,bk);g.drawImage(p.f,X,o.y+p.fy,p.w,p.fh);if(ov){g.globalCompositeOperation='lighter';g.globalAlpha=Math.min(1,a*sb.k*1.2);g.drawImage(p.f,X,o.y+p.fy,p.w,p.fh);}g.restore();}}};
   ctx.save();ctx.globalCompositeOperation='overlay';ctx.globalAlpha=Math.min(1,a*sb.k*3);
-  if(fg.length){ctx.beginPath();ctx.rect(x0-1,y0-1,x1-x0+2,y1-y0+2);ctx.rect(ux0,uy0,ux1-ux0,uy1-uy0);ctx.clip('evenodd');}
+  if(sep){ctx.beginPath();ctx.rect(x0-1,y0-1,x1-x0+2,y1-y0+2);ctx.rect(ux0,uy0,ux1-ux0,uy1-uy0);ctx.clip('evenodd');}
   fp(ctx,true);ctx.restore();
-  if(fg.length){SIL.m.clear();SIL.m2.clear();if(!RYF.c){RYF.c=document.createElement('canvas');RYF.g=RYF.c.getContext('2d');RYF.c._glv=1;} /* (_glv: redrawn every frame) */const g=RYF.g;
+  if(sep){SIL.m.clear();SIL.m2.clear();if(!RYF.c){RYF.c=document.createElement('canvas');RYF.g=RYF.c.getContext('2d');RYF.c._glv=1;} /* (_glv: redrawn every frame) */const g=RYF.g;
     if(RYF.c.width<w||RYF.c.height<h){RYF.c.width=Math.max(RYF.c.width,w);RYF.c.height=Math.max(RYF.c.height,h);}
     g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='source-over';g.globalAlpha=1;g.clearRect(0,0,w,h);
     g.save();g.beginPath();g.rect(0,0,w,h);g.clip();g.setTransform(VZ,0,0,VZ,-camD-X0,-camDY-Y0);g.globalCompositeOperation='lighter';
@@ -8810,7 +8859,12 @@ function glMask(lights,VZ,camD,camDY){
       g.beginPath();
       for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++){const b=B(L,c,r),bx=c*TW-HX;
         if(b===WALL){const by=r*TH;g.moveTo(bx,by+TH);g.lineTo(bx,by);g.lineTo(bx+DX,by-DY);g.lineTo(bx+TW+DX,by-DY);g.lineTo(bx+TW+DX,by+TH-DY);g.lineTo(bx+TW,by+TH);g.closePath();}
-        else if(b===FLOOR){const ys=SURF(r),ft=ys+HY;g.moveTo(bx,ft+8);g.lineTo(bx,ft);g.lineTo(bx+DX,ys-HY);g.lineTo(bx+TW+DX,ys-HY);g.lineTo(bx+TW,ft);g.lineTo(bx+TW,ft+8);g.closePath();}}
+        else if(b===FLOOR){const ys=SURF(r),ft=ys+HY;g.moveTo(bx,ft+8);g.lineTo(bx,ft);g.lineTo(bx+DX,ys-HY);g.lineTo(bx+TW+DX,ys-HY);g.lineTo(bx+TW,ft);g.lineTo(bx+TW,ft+8);g.closePath();}
+        // (round 20a, owner: "shadow cast on the front facing wall") a low ceiling's block: its front face (the top LOW_H px of the cell, HX to
+        // the left, as lowCeil draws it) and, at the tunnel's right end, its side face. It is a block's near face like a wall's: a lamp on the
+        // back wall behind him does not light it, so his shadow cannot fall on it (the shadow still falls on the back wall under it)
+        const f=b!==WALL?F(L,c,r):null;if(f&&f.t==='low'){const by=r*TH,yb=by+LOW_H,rf=F(L,c+1,r),sd=B(L,c+1,r)!==WALL&&!(rf&&rf.t==='low');
+          g.moveTo(bx,yb);g.lineTo(bx,by);g.lineTo(bx+TW,by);if(sd){g.lineTo(bx+TW+DX,by-DY);g.lineTo(bx+TW+DX,yb-DY);}g.lineTo(bx+TW,yb);g.closePath();}}
       g.fill();
       g.globalCompositeOperation='lighter';any=1;}}
   if(GLFX.heat){
@@ -8953,7 +9007,14 @@ function glScene(w,h){const gl=GLP.gl;let src=GLP.sceneC;if(GLP.dOk)src=GLP.dC;
 function glcPre(VZ,camD,camDY,th){GLC.pns=0;GLC.ocAny=0;if(!GLC.on||!L)return;
   const caus=GLFX.caustics&&!!lfx().caus&&GFX().bg;
   GLC.pns=GLFX.shafts||caus?glcSources(VZ,camD,camDY,GLFX.shafts,caus):0;
-  if(GLC.pns){glcOcc(VZ,camD,camDY);GLC.ocAny=1;}}
+  if(GLC.pns){glcOcc(VZ,camD,camDY);GLC.ocAny=1;}GLC.nb=GLC.pns?glcBlk(VZ,camD,camDY):0;}
+// (round 20a) the blades and slabs near the beams in view, for the shafts' shader (u_bk): solid across the corridor's depth, they shade the
+// beam behind them like a wall and, like a figure, take only the near half of the haze over them; tested exactly in the shader
+const GLCBK=new Float32Array(32);
+function glcBlk(VZ,camD,camDY){const vx=camD/VZ,vy=camDY/VZ,bb=GLCBB;let n=0;if(!beamBlockers(vx-8,vx+cv.width/VZ+8,vy-8,vy+cv.height/VZ+8))return 0;
+  for(let i=0;i<BLK.n&&n<4;i++){const q=BLK.q,j=i*8,sx0=(q[j]*VZ-camD)/4,sx1=(q[j+2]*VZ-camD)/4,sy=(q[j+1]*VZ-camDY)/4,sy1=(q[j+7]*VZ-camDY)/4;if(sx1<bb[0]||sx0>bb[2]||sy1<bb[1]||sy>bb[3])continue;
+    const k=n*8;GLCBK[k]=q[j];GLCBK[k+1]=q[j+2];GLCBK[k+2]=q[j+1];GLCBK[k+3]=q[j+3];GLCBK[k+4]=q[j+7];GLCBK[k+5]=q[j+5];GLCBK[k+6]=0;GLCBK[k+7]=0;n++;}
+  return n;}
 // the mask atlas (texture unit 3, and 4 and 5 where the beams and the metal read it): the effect mask (quarter resolution) at
 // the top left, the figures in the beams (eighth) beside it, and below them only the part of the metal mask (half) that holds
 // metal; 2 px of black between them, and every read clamped inside its own part. Sizes are rounded up to 32 px so the canvas
@@ -9056,7 +9117,7 @@ function glFrame(lights,VZ,camD,camDY,th){
 //    beam lands, a figure in it, a window's pane, the caustics) and the haze as light of its own, faded where the scene is lit.
 //  M (glcM): what lies in the air or on the floor's skin: low mist on the floors and the sheen of wet flagstones; the composite
 //    veils the scene by its alpha and adds its colour.
-// Both read one tiny texture of the level's tiles (glcTiles: r wall, g floor, b near water, a open arch; one texel per tile,
+// Both read one tiny texture of the level's tiles (glcTiles: r wall (LOW_R a low ceiling), g floor, b near water, a open arch; one texel per tile,
 // built once per floor and refreshed now and then for floors that fall), so they know where walls, floors and openings are
 // without any per-frame upload; the shafts also read a small mask of the figures (glcOcc, eighth resolution, only drawn and
 // uploaded while a figure stands near a beam).
@@ -9076,6 +9137,7 @@ function glFrame(lights,VZ,camD,camDY,th){
 // tiles, so their shadows across a beam have soft edges that widen with distance; dust motes drift in the haze (RY_MOTE); a
 // breach's haze is thin until the light leaves its edge; an own-light window (forge, crypt) is a glow at its pane, no shaft.
 Object.assign(GLFX,{shafts:true,mist:true,caustics:true,sheen:true});
+const LOW_H=TH-34,LOW_R=40; // (round 20a) a low ceiling's block: the top LOW_H px of its cell (lowCeil); LOW_R its value in the tile map's r (walls 255), under .5 so the mist and the looks' tests read it as open
 const GLC={on:false,lv:null,tk:0,key:'',tm:null,td:null,tw:0,th:0,ocC:null,ocG:null,oct:null,ocHad:false,ow:0,oh:0,fs:null,fm:null,fw:0,fh:0,max:4096};
 // (unit RY) each source is an opening in view: where its profile starts (ryProfile), which row of the profile texture holds it,
 // the texel width, its colour times strength and the profile's length along the light (negative: an opening whose sky is not lit, less 1e4 for a breach; plus 1e4: an own-light window)
@@ -9099,10 +9161,16 @@ const GLCSH={
     float vor(vec2 p,float t){vec2 i=floor(p),f=fract(p);float d1=8.,d2=8.; // distance to the second-nearest minus the nearest moving point: bright ridges along the cell edges
       for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){vec2 g=vec2(float(x),float(y)),h=vec2(h21(i+g),h21(i+g+17.3)),r=g+.5+.42*sin(t+6.283*h)-f;float d=dot(r,r);if(d<d1){d2=d1;d1=d;}else if(d<d2)d2=d;}
       float e=1.-smoothstep(0.,.5,sqrt(d2)-sqrt(d1));return e*e;}
+    // (round 20a) the slicers' blades and the granite slabs that are down (beamBlockers), up to four, exactly: u_bk[2i] (x0, x1, top at x0, top at
+    // x1), u_bk[2i+1] (foot at x0, foot at x1); how much of a disc of radius e round p lies in one (a soft edge, no mask texels)
+    uniform vec4 u_bk[8];uniform float u_nb;
+    float blkC(vec2 p,float e){float c=0.;for(int i=0;i<4;i++){if(float(i)>=u_nb)break;vec4 a=u_bk[2*i],b=u_bk[2*i+1];float t=clamp((p.x-a.x)/(a.y-a.x),0.,1.);
+      c=max(c,smoothstep(-e,e,p.x-a.x)*smoothstep(-e,e,a.y-p.x)*smoothstep(-e,e,p.y-mix(a.z,a.w,t))*smoothstep(-e,e,mix(b.x,b.y,t)-p.y));}return c;}
+    float lowC(vec2 p){float r=tile(p).r;return step(.08,r)*step(r,.3);} // (round 20a) a low ceiling's cell (LOW_R in the tile map)
     void main(){vec2 w=wpos(v_u);vec3 o=vec3(0.),oa=vec3(0.);
       if(u_ns>0.){vec2 nn=vec2(u_dir.y,-u_dir.x);float lq=u_bq.x,sw=0.,tm=0.;vec3 aS=vec3(0.),aA=vec3(0.); // (v58) aS: light on what it touches (the floor where it lands, a figure in it, a window's pane); aA: light in the air
         float fy=floor(w.y/64.)*64.+60.,by=w.y-fy+4.,fb=(by>=0.&&by<=8.&&tile(w).g>.5)?1.:0.; // on a floor's top face: by 0 at its back edge (by the wall), 8 at its front
-        float fcv=texture2D(u_oc,ocUV(v_u)).r,fc=smoothstep(.15,.6,fcv);bool fig=fcv>.4;vec3 aF=vec3(0.);vec2 du=vec2(-u_dir.x,u_dir.y)*u_cam.w/u_res; // (a figure here; du: up the beam, in screen uv per world px)
+        float fcv=texture2D(u_oc,ocUV(v_u)).r,ff=smoothstep(.15,.6,fcv),fk=blkC(w,2.*u_cam.z),fc=max(ff,fk);bool fig=fcv>.4,inB=fk>.5;vec3 aF=vec3(0.);vec2 du=vec2(-u_dir.x,u_dir.y)*u_cam.w/u_res; // (a figure here; du: up the beam, in screen uv per world px)
         for(int i=0;i<${GLCMAX};i++){if(float(i)>=u_ns)break;vec4 r=u_src[i],cl=u_scol[i]; // (unit RY) the opening's own shape, from its profile
           bool own=cl.w>5e3,brc=cl.w<-5e3; // (own: the forge's and the crypt's windows, their own light: a glow at the pane, no shaft; brc: a breach)
           vec2 q=w-r.xy;float tx=dot(q,nn)/r.w*u_rys.x,s=dot(q,u_dir),sr=own||brc?abs(cl.w)-1e4:abs(cl.w);if(tx<0.||tx>=1.||s<-1.||s>sr+lq+2.)continue; // across the beam: which line along the light the pixel is on
@@ -9123,7 +9191,7 @@ const GLCSH={
             for(int k=0;k<4;k++){float oy=(float(k)-1.5)*u_cam.z,b2=by+oy;if(b2<0.||b2>8.)continue;float dl=b2*.125*lq,sg=s+u_dir.y*oy-dl;
               float e=smoothstep(si-1.5,si+1.5,sg)*smoothstep(so+1.5,so-1.5,sg)*exp(-dl/(u_ln*3.));f+=e;dm+=dl*e;}
             f*=.25*c*u_bq.w*(1.-fc);ms+=f;ts+=dm*.25*c*u_bq.w*(1.-fc);} // (not on a figure standing on it: the light there is the figure's, aF)
-          if(fc>0.){float fl=max(s-.75*lq,si),fh=min(s-.25*lq,so),f=c*max(fh-fl,0.)/max(1.,min(.5*lq,so-si))*u_bq.z*fc; // a figure (its body from .25 to .75 of the depth) in the light (figlight: its own share, weak and capped below)
+          if(ff>0.){float fl=max(s-.75*lq,si),fh=min(s-.25*lq,so),f=c*max(fh-fl,0.)/max(1.,min(.5*lq,so-si))*u_bq.z*ff; // a figure (its body from .25 to .75 of the depth) in the light (figlight: its own share, weak and capped below)
             aF+=cl.rgb*f;sw+=f;ts+=(s-(fl+fh)*.5)*f;}
           if(cl.w>0.&&tc<0.)ms+=1.6*c*smoothstep(si-1.,si+1.,s)*(1.-fc); // (a window's pane glows; an opening's sky is left alone; a figure in front of it does not)
           if(own)ma=c*u_sk.w*(tc<0.?smoothstep(si-1.,si+1.,s):exp(-tc/5.)); // (an own-light window: its glow in the air over the pane, spilling a hand's breadth, no shaft)
@@ -9134,8 +9202,10 @@ const GLCSH={
           float st=(tm-4.)/12.,n0=.5; // (v61b: the same steps for every pixel: a jitter per quarter-size pixel made a staircase of squares along the shadow edges that crawled as the view moved (owner, floor 1); the walls and figures read between texels, so no bands show)
           bool inside=fig; // (a figure in the beam is lit; it shades what lies behind it; the march stops at the opening)
           if(T>0.&&st>0.)for(int j=0;j<12;j++){float ts=4.+(float(j)+n0)*st;vec2 q=w-u_dir*ts;float d=1.-(tm-ts)/lq; // the light's depth at this step
-            float e=.07+ts*.0022,wl=smoothstep(.5-e,.5+e,texture2D(u_tm,(q-vec2((d-.5)*16.,0.))/vec2(32.,64.)/u_tsz).r); // (a wall block at that depth: its front face is drawn half a step to the left; read between the tiles, so its shadow has a soft edge that widens away from the block)
+            vec2 qd=q-vec2((d-.5)*16.,0.);float e=.07+ts*.0022,wl=smoothstep(.5-e,.5+e,texture2D(u_tm,qd/vec2(32.,64.)/u_tsz).r),qy=qd.y-floor(qd.y/64.)*64.; // (a wall block at that depth: its front face is drawn half a step to the left; read between the tiles, so its shadow has a soft edge that widens away from the block)
+            if(qy<${LOW_H+2}.)wl=max(wl,(lowC(qd-vec2(e*32.,0.))+lowC(qd)+lowC(qd+vec2(e*32.,0.)))/3.*(1.-smoothstep(${LOW_H-1.5},${LOW_H+1.5},qy))); // (round 20a) a low ceiling's block (the top LOW_H px of its cell, the room's whole depth): read exactly, three taps across for a soft end that widens with distance
             float ch=texture2D(u_oc,ocUV(v_u+du*ts)).r;if(inside){if(ch>.4)ch=0.;else inside=false;}
+            float cb=blkC(q,max(.6+ts*.02,.6*st));if(inB){if(cb>.4)cb=0.;else inB=false;}ch=max(ch,cb); // (round 20a) a blade or slab between the pixel and the opening: soft over at least the march's step (a thin blade between two samples left a staircase of hits and misses), and more with distance
             T*=1.-max(wl,ch*.9);if(T<.02)break;} // walls, and the figures
           if(fc>0.)aS+=min(aF*(.45+.9*(1.-smoothstep(.2,.7,texture2D(u_oc,ocUV(v_u+du*5.)).r))),vec3(${RY_FIGC.toFixed(3)})); // (figlight) the side of a figure that faces the light: a weak cool light, capped (the composite multiplies it by the figure's own colour, so it never turns it white), feathered by the mask's soft edge
           float xb=dot(w,nn),sb=dot(w,u_dir),nz=.62*vn(vec2(xb*.07,sb*.02-u_t*.22))+.38*vn(vec2(xb*.19+5.3,sb*.05-u_t*.5)); // haze drifting slowly down the beam
@@ -9147,7 +9217,9 @@ const GLCSH={
           // (round 15, owner: "the light beams are producing light around corners") a wall block's front face stands in front of the room's
           // whole depth (it is drawn HX to the left of its cell): no beam, haze or patch reaches a pixel it covers. Taken at four columns
           // across this quarter-resolution pixel, so the face's edge is a soft one-pixel ramp, not a step
-          float wf=0.;for(int k=0;k<4;k++)wf+=step(.5,tile(w+vec2(8.+(float(k)-1.5)*u_cam.z,0.)).r);T*=1.-.25*wf;
+          // (round 20a, owner: "light beams through low wall") a low ceiling's front face (the top LOW_H px of its cell, also HX to the left) stands
+          // there too: it was not in the tile map, so the beam lay on it in a band. Its lower edge is taken as the share of the pixel's height above it
+          float wf=0.,ly=clamp((${LOW_H}.-(w.y-floor(w.y/64.)*64.))/(4.*u_cam.z)+.5,0.,1.);for(int k=0;k<4;k++){vec2 p=w+vec2(8.+(float(k)-1.5)*u_cam.z,0.);wf+=step(.5,tile(p).r)+ly*lowC(p);}T*=1.-.25*wf;
           o=aS*T*(1.-.75*inArch(w));oa=aA*T*u_sk.x*(.7+.6*nz+u_sk.z*mo)*dk*(tile(w).g>.5?.25+.75*smoothstep(0.,26.,-by):1.);}} // (and thins out just above a floor, where the footprint takes over)
       if(u_cau.x>0.){float px=texture2D(u_tm,w/vec2(32.,64.)/u_tsz).b; // water caustics thrown up from the cistern beyond the arches
         if(px>.02){vec2 p=w*vec2(.05,.085);float t=u_t*u_cau.y,c=min(vor(p,t),vor(p*1.37+vec2(7.1,3.3),-t*1.21)); // two layers at their own scale and speed, the lower of the two (Zucconi)
@@ -9191,7 +9263,7 @@ const GLCSH={
       gl_FragColor=o;}`]};
 const glcRGB=col=>{let c=GLCOL.get(col);if(!c){c=col.split(',').map(Number);GLCOL.set(col,c);}return c;}; // (parsed once)
 function glcInit(gl,P){
-  const mk=src=>{const p=glMake(gl,src);gl.bindAttribLocation(p,0,'a_p');return glLink(gl,p,['u_cam','u_res','u_tsz','u_tm','u_map','u_t','u_src','u_scol','u_ns','u_dir','u_oc','u_cau','u_sky','u_mist','u_mcol','u_sc','u_ln','u_rys','u_ry','u_ocT','u_ocC','u_bq','u_sk','u_lx','u_lx2','u_lc']);};
+  const mk=src=>{const p=glMake(gl,src);gl.bindAttribLocation(p,0,'a_p');return glLink(gl,p,['u_cam','u_res','u_tsz','u_tm','u_map','u_t','u_src','u_scol','u_ns','u_dir','u_oc','u_cau','u_sky','u_mist','u_mcol','u_sc','u_ln','u_rys','u_ry','u_ocT','u_ocC','u_bq','u_sk','u_lx','u_lx2','u_lc','u_bk','u_nb']);};
   GLC.S=mk(GLCSH.s);GLC.M=mk(GLCSH.m);
   for(const n of ['u_cs','u_cm','u_cfx'])P.final.u[n]=gl.getUniformLocation(P.final.p,n);
   GLC.max=gl.getParameter(gl.MAX_TEXTURE_SIZE)||4096;GLC.tm=null;GLC.lv=null;GLC.oct=null;GLC.fs=null;GLC.ry=null;GLC.on=true;}
@@ -9210,7 +9282,7 @@ function glcTiles(gl){
   if(GLC.lv===L&&GLC.key===key&&(GLC.tk++%40))return true;
   const C=L.cols,R=L.rows;if(C>GLC.max||R>GLC.max)return false;
   if(!GLC.td||GLC.td.length<C*R*4)GLC.td=new Uint8Array(C*R*4);const d=GLC.td,wet=!!lfx().caus;d.fill(0,0,C*R*4);
-  for(let r=0;r<R;r++)for(let c=0;c<C;c++){const i=(r*C+c)*4,b=B(L,c,r);d[i]=b===WALL?255:0;d[i+1]=b!==WALL&&solidBelow(L,c,r)?255:0;
+  for(let r=0;r<R;r++)for(let c=0;c<C;c++){const i=(r*C+c)*4,b=B(L,c,r),lf=b!==WALL&&L.feat[r*C+c];d[i]=b===WALL?255:lf&&lf.t==='low'?LOW_R:0;d[i+1]=b!==WALL&&solidBelow(L,c,r)?255:0; // (round 20a: LOW_R, a low ceiling: solid in its top LOW_H px, read exactly, never between tiles)
     if(bg&&isOpenArch(c,r)){d[i+3]=255;if(r+1<R)d[i+4*C+3]=128;
       if(wet)for(let rr=r-1;rr<=r+1;rr++)for(let dc=-3;dc<=3;dc++){const cc=c+dc;if(rr<0||rr>=R||cc<0||cc>=C)continue;const v=Math.round(255*(1-Math.abs(dc)/4)*(rr<r?0.6:1)),j=(rr*C+cc)*4+2;if(d[j]<v)d[j]=v;}}}
   gl.activeTexture(gl.TEXTURE5);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
@@ -9268,7 +9340,7 @@ function glAtmo(VZ,camD,camDY,th,lw,lh){
       gl.enable(gl.SCISSOR_TEST);gl.scissor(x0,lh-y1,Math.max(0,x1-x0),Math.max(0,y1-y0));} // only around the beams and the arches (GL's y runs up)
     gl.useProgram(GLC.S.p);com(U);gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,GLP.mt);gl.uniform1i(U.u_oc,4);gl.uniform4fv(U.u_ocT,GLA.oT);gl.uniform4fv(U.u_ocC,GLA.oC);
     if(ns)glcRy(gl);else{gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,GLC.ry||GLC.tm);}const sb=skyBeam(); // (unit RY) the profiles on unit 2 (the composite binds its own there later)
-    gl.uniform4fv(U.u_src,GLCSRC);gl.uniform4fv(U.u_scol,GLCCOL);gl.uniform1f(U.u_ns,ns);gl.uniform2f(U.u_dir,sb.dx,sb.dy);gl.uniform1f(U.u_ln,sb.ln);gl.uniform1i(U.u_ry,2);{const am=glcRGB(lk.amb),A=glAmbK(st,lk)*(am[0]*.3+am[1]*.5+am[2]*.2)/255;gl.uniform4f(U.u_bq,sb.lq,A,RY_FIG,RY_FLOOR);gl.uniform4f(U.u_sk,RY_AIR,RY_RIM,RY_MOTE*(fx.motes||1),RY_OWNG);}gl.uniform2f(U.u_rys,1/RYW,1/(GLC.ryh||RYH0));
+    gl.uniform4fv(U.u_src,GLCSRC);gl.uniform4fv(U.u_scol,GLCCOL);gl.uniform1f(U.u_ns,ns);gl.uniform4fv(U.u_bk,GLCBK);gl.uniform1f(U.u_nb,GLC.nb||0);gl.uniform2f(U.u_dir,sb.dx,sb.dy);gl.uniform1f(U.u_ln,sb.ln);gl.uniform1i(U.u_ry,2);{const am=glcRGB(lk.amb),A=glAmbK(st,lk)*(am[0]*.3+am[1]*.5+am[2]*.2)/255;gl.uniform4f(U.u_bq,sb.lq,A,RY_FIG,RY_FLOOR);gl.uniform4f(U.u_sk,RY_AIR,RY_RIM,RY_MOTE*(fx.motes||1),RY_OWNG);}gl.uniform2f(U.u_rys,1/RYW,1/(GLC.ryh||RYH0));
     const sr=glcRGB(bgArt(L.theme)['glow'+tod]||lk.win);
     gl.uniform3f(U.u_sky,sr[0]/255,sr[1]/255,sr[2]/255);gl.uniform4f(U.u_cau,cs?0.3:0,S.set.calm?0.35:0.8,0,0);
     gl.drawArrays(gl.TRIANGLES,0,3);gl.disable(gl.SCISSOR_TEST);f|=1;}
