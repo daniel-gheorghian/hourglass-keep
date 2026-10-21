@@ -4099,7 +4099,7 @@ function brickBond(st){const big=st==='palace'||st==='crypt',bh=big?16:8,bw=big?
   return {bh,bw,joint:(k,R)=>k*bw+(R%2)*(bw/2)+((hash2(k*7+5,R*3+1)%1000)/1000-0.5)*jit};}
 function breaches(){if(L.breaches)return L.breaches;const out=[],st=L.theme.style,bd=brickBond(st),sd=(L.seed|0)&0xffff;
   // (not where an open arcade already looks out, nor right beside one)
-  const okCell=(c,r)=>{if(!solidBelowD(c,r)||D0(c,r)===WALL||D0(c,r-1)!==EMPTY||wearLevel(c*TW+16,r*TH+20)!==3||inOpening(c-1,r)||inOpening(c,r)||inOpening(c+1,r))return false;
+  const okCell=(c,r)=>{if(!solidBelowD(c,r)||D0(c,r)===WALL||D0(c,r-1)!==EMPTY||wearLevel(c*TW+16,r*TH+20)!==3||liftNear(c,r)||inOpening(c-1,r)||inOpening(c,r)||inOpening(c+1,r))return false;
     for(const rr of [r,r-1]){const f=F(L,c,rr);if(f&&(f.t==='gate'||f.t==='chomp'||f.t==='low'||f.t==='banner'||f.t==='bar'))return false;}return true;};
   for(let r=1;r<L.rows;r++){let c=2;
     while(c<L.cols-2){if(!okCell(c,r)){c++;continue;}let e=c;while(e+1<L.cols-2&&okCell(e+1,r))e++;
@@ -4659,7 +4659,16 @@ function cornice(g,X,Y,th,gc,gr){
 }
 // arches along a floor; with the background on they open onto it, above a low parapet
 const PARAPET=18;
-function isArchTop(gc,gr){return gr>=0&&D0(gc,gr)===EMPTY&&D0(gc,gr+1)===FLOOR&&!(D0(gc-1,gr)===WALL&&D0(gc+1,gr)===WALL)&&hash2(Math.floor(gc/RW)+17,Math.floor(gr/RH)+3)%4!==0;}
+function isArchTop(gc,gr){return gr>=0&&D0(gc,gr)===EMPTY&&D0(gc,gr+1)===FLOOR&&!(D0(gc-1,gr)===WALL&&D0(gc+1,gr)===WALL)&&!liftCell(gc,gr)&&hash2(Math.floor(gc/RW)+17,Math.floor(gr/RH)+3)%4!==0;}
+// (round 26a, owner: "windows or walls or wall trims are drawn over the lift mechanisms") a cell of a lift's shaft (a paternoster's two
+// columns, a counterweight or sand lift's one, from its top row to its foot): no arch, recess or opening is set in the back wall there. The
+// arch at a shaft's foot (its posts and lintel two storeys high, an opening to the sky one time in four) stood right behind the slabs' bottom run;
+// Torchlight's relief embossed its posts and the opening's edges on the slabs, and the opening's sky light and beam lay over them. Look only:
+// the arches are a hash of the cell, no generator stream
+// (and no breach in a shaft's back or in the cells beside it: its ragged hole runs up to a cell into its neighbours)
+function liftNear(c,r){for(let rr=r-1;rr<=r;rr++)for(let cc=c-1;cc<=c+1;cc++)if(liftCell(cc,rr))return true;return false;}
+function liftCell(c,r){let S=L._lsc;if(!S||S.lv!==L.lifts||S.n!==L.lifts.length){S=L._lsc=new Set();S.lv=L.lifts;S.n=L.lifts.length;for(const f of L.lifts)for(let rr=f.rT;rr<=f.rB;rr++)for(let cc=f.ca;cc<=f.cb;cc++)S.add(rr*L.cols+cc);}
+  return c>=0&&c<L.cols&&S.has(r*L.cols+c);}
 // only some stretches of arches open onto the view; the rest stay closed, so the keep keeps its walls
 function isOpenArch(gc,gr){if(!isArchTop(gc,gr))return false;const b=Math.floor(gc/4),op=k=>hash2(k*7+3,gr*13+5)%100<40;return op(b)&&!op(b-1);} // never two open stretches in a row
 function inOpening(gc,gr){return isOpenArch(gc,gr)||isOpenArch(gc,gr-1);}
@@ -5136,7 +5145,12 @@ const T_SLAB=7;
 // (2) The key light (keyLight: the nearest lamp or the scene's light, its side) models it: the face toward the light lit, the one turned from it
 // in shade, a crisp bright arris between them, and its shadow cast on the floor and the back wall on the far side; both modes, no pass.
 function egSlab(ctx,pl,drop,X,half,plain){const c=Math.floor((X+1)/TW),r=Math.floor((pl.top+1)/TH),xe=(c+1)*TW-HX; // (round 16c: xe from the cell, as a lift's mouth slab is not on the grid)
-  if(!half&&r>0&&B(L,c,r-1)===WALL&&B(L,c+1,r-1)!==WALL&&pl.R0+T_SLAB/2>xe){ /* (round 16c: a lift's left mouth too, the shaft open above it) */ctx.save();ctx.beginPath();ctx.rect(xe,pl.top-DY-4,pl.R0+T_SLAB/2+2-xe,DY+4);ctx.clip();egSlabBody(ctx,pl,drop,X,plain,true);ctx.restore();}
+  if(!half&&r>0&&B(L,c,r-1)===WALL&&B(L,c+1,r-1)!==WALL&&pl.R0+T_SLAB/2>xe){ /* (round 16c: a lift's left mouth too, the shaft open above it) */ctx.save();ctx.beginPath();ctx.rect(xe,pl.top-DY-4,pl.R0+T_SLAB/2+2-xe,DY+4);ctx.clip();egSlabBody(ctx,pl,drop,X,plain,true);
+    // (round 26a, owner: "part of the door slab doesn't respect the shadow") this piece of the broad face, above the ceiling's front edge, is
+    // further into the ceiling's shade than the band just under that edge, where ceilShade starts at .92; it was drawn in full light, a bright
+    // wedge over the dark band. Shaded as deep as the shade's start
+    const ya=pl.ce(pl.L0)-3,yb=pl.ce(pl.R0)-3,a=pl.L0+T_SLAB/2,b=pl.R0+T_SLAB/2+1.5;ctx.fillStyle='rgba(6,4,10,.9)';ctx.beginPath();ctx.moveTo(a-1,ya-1);ctx.lineTo(b,yb-1);ctx.lineTo(b,pl.top+0.5);ctx.lineTo(a-1,pl.top+0.5);ctx.closePath();ctx.fill();
+    ctx.restore();}
   ctx.beginPath();ctx.rect(pl.L0-T_SLAB/2-6,pl.top,pl.W+T_SLAB+12,Math.max(pl.fl(pl.L0),pl.fl(pl.R0))+6-pl.top);ctx.clip();ctx.beginPath();if(half)ctx.rect(X-40,-1e5,56,2e5);else ctx.rect(X+16,-1e5,60,2e5);ctx.clip(); // (left in force: the ceiling's shade is drawn in it after)
   egSlabBody(ctx,pl,drop,X,plain,false);}
 function egSlabBody(ctx,pl,drop,X,plain,top){const K='#0b0812',T=T_SLAB,a=pl.L0,b=pl.R0,ya=pl.ce(a)-3,yb=pl.ce(b)-3,fa=pl.fl(a),fb=pl.fl(b),th=L.theme,lk=th.look||'west',kind=plain?THEME_STONE[lk]||'limestone':SLAB_STONE[lk]||'granite';
@@ -6744,6 +6758,21 @@ function liftOcclSide(ctx,f){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);
   for(let r=f.rT-2;r<=f.rB+1;r++)for(let c=f.ca-2;c<=f.cb+2;c++){if(c<0||c+1>=L.cols||r<0||r>=L.rows||B(L,c,r)!==WALL||B(L,c+1,r)===WALL)continue;
     const x=(c+1)*TW-HX,y=r*TH;ctx.moveTo(x,y);ctx.lineTo(x,y+TH);ctx.lineTo(x+DX,y+TH-DY);ctx.lineTo(x+DX,y-DY);ctx.closePath();}
   ctx.clip('evenodd');}
+// (round 26a, owner: "at the top the lift slab is drawn in front of the wall"; "when at the bottom the slab digs into the tile floor") what stands
+// nearer than everything in the shaft beside it, cut out of the whole lift drawing (cc<0: only the foot) (ctx in world space; save/restore round it): (1) in column cc, the one right of the
+// shaft, the walls' front faces whole (their top strip too, under a floor's lip) and each floor tile's top and lip, whose left edge is the
+// shaft's right edge along the depth: a slab level with a landing on its right showed its right side face over that floor's top and lip and
+// the wall's top under it (liftOccl leaves that strip open, and floor cells were never cut); its side face abuts the landing, it is never
+// seen there. The shaft's back wall (its shade, grooves and streaks, TW wide from the cell's back edge) reached HX past the front plane into
+// that column the same way, darkening the landing's lip and the strip. (2) foot: a paternoster's slabs ride their bottom run level with the shaft's foot, in a pit across it, so the foot floor's lip
+// stands in front of a slab's lip there; drawn over it, the slab's lip and dark underside covered the floor's lip and border and it seemed sunk
+// into the tile. The slab rises out of the pit behind that lip. The sand lift's slab has had (1) since round 19
+function liftNearCut(ctx,f,cc,foot){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);const xr=cc*TW-HX;
+  for(let r=f.rT-1;r<=f.rB+1;r++){if(r<0||r>=L.rows||cc<0||cc>=L.cols)continue;
+    if(B(L,cc,r)===WALL){const lip=r>0&&B(L,cc,r-1)!==WALL?9:0;ctx.rect(xr,r*TH+lip,TW,TH-lip);} // (the strip under a floor's lip: that floor's shape below covers it)
+    else if(solidBelow(L,cc,r)){const sy=SURF(r);ctx.moveTo(xr,sy+HY+9);ctx.lineTo(xr+TW+DX,sy+HY+9);ctx.lineTo(xr+TW+DX,sy-HY);ctx.lineTo(xr+DX,sy-HY);ctx.lineTo(xr,sy+HY);ctx.closePath();}}
+  if(foot)ctx.rect(f.ca*TW-HX,f.yB+HY,(f.cb-f.ca+1)*TW,10);
+  ctx.clip('evenodd');}
 // the lift whose shaft he is in (riding it, or standing or falling inside it), or null
 function liftAround(){if(P.state==='lift'&&P.lift)return P.lift;const c=pCol(),ra=rowOf(P.y-40),rb=rowOf(P.y-1);for(const f of L.lifts)if(c>=f.ca&&c<=f.cb&&rb>=f.rT&&ra<=f.rB)return f;return null;}
 // The Egyptian lifts (round 13, owner: "egyptianise the lifts: rope instead of chain, stone slabs instead of grates, wooden wheels";
@@ -6854,7 +6883,7 @@ function drawLiftCounterweight(ctx,f,half){
   // plate is drawn beyond it; the gate's plane for play (liftGx) is unchanged
   const gate=(e,h)=>liftMouth(ctx,f,e,h);
   if(half||LIFT_DBG.gatesR){for(let e=0;e<2;e++)if((e?f.sB:f.sT)>0)gate(e,half?1:0);return;}
-  ctx.save();liftOccl(ctx,f);
+  ctx.save();liftOccl(ctx,f);liftNearCut(ctx,f,f.sc+1,false);
   ctx.save();liftOcclSide(ctx,f);
   liftShaftBack(ctx,X,TW,R.top,bot,W);
   // the channel the counterweight runs in, cut into the back wall behind the platform
@@ -6874,7 +6903,7 @@ function drawLiftCounterweight(ctx,f,half){
   // (round 16c) a slab on the shaft's left edge: its broad face is the shaft's left side, from the front plane to the back wall, so it stands in
   // front of the back wall's shade, channel and counterweight (drawn before it, they had darkened its back half: the sheared look) and
   // behind the ropes, beam and platform in the shaft
-  ctx.restore();for(let e=0;e<2;e++)if((e?f.sB:f.sT)<0){gate(e,0);gate(e,1);}ctx.save();liftOccl(ctx,f);
+  ctx.restore();for(let e=0;e<2;e++)if((e?f.sB:f.sT)<0){gate(e,0);gate(e,1);}ctx.save();liftOccl(ctx,f);liftNearCut(ctx,f,f.sc+1,false);
   // the hoist beam: from inside the wall on side ws out over the shaft to the mouth's edge, a brace under it into the same wall
   const ws=R.ws,xw=ws>0?X+TW+10:X-10,xo=ws>0?X-3:X+TW+3;
   liftTimber(ctx,xw,R.by+3,xo,R.by+3,6,W,true);
@@ -6926,7 +6955,7 @@ function sandSlab(ctx,X,ys,th,W,seed){
 function drawLiftChain(ctx,f,half){
   if(half)return;
   const th=L.theme,xE=f.c0*TW+16,xX=f.c1*TW+16,X0=f.ca*TW,top=f.rT*TH,W=liftWear(f),yS=f.yB;
-  ctx.save();liftOccl(ctx,f);
+  ctx.save();liftOccl(ctx,f);liftNearCut(ctx,f,f.cb+1,false);
   ctx.save();liftOcclSide(ctx,f);liftShaftBack(ctx,X0,2*TW,top,f.yB,W);ctx.restore();
   {const x0=Math.min(xE,xX)-9,x1=Math.max(xE,xX)+9;ctx.fillStyle='rgba(4,3,8,.85)';ctx.fillRect(x0,yS-1.6,x1-x0,3.2);ctx.fillStyle='rgba(255,255,255,.1)';ctx.fillRect(x0,yS+1.6,x1-x0,0.6);} // the slot
   const below=fn=>{ctx.save();ctx.beginPath();ctx.rect(X0-40,top-80,2*TW+80,yS+1.6-(top-80));ctx.clip();fn();ctx.restore();}; // (drawn only down to the slot's lower lip)
@@ -6948,6 +6977,7 @@ function drawLiftChain(ctx,f,half){
     if(rust&&(k*7)%5<W){ctx.fillStyle=rust;ctx.fillRect(q.x-w/2,ly+h*0.4,w,h*0.6);}
     if(e){ctx.fillStyle='#1b1626';if(v)ctx.fillRect(q.x-0.8,ly+1.6,1.6,h-3.2);else ctx.fillRect(q.x-w/2+1.6,ly+h/2-0.8,w-3.2,1.6);}}
   for(const xx of [xE,xX]){liftWheel(ctx,xx,f.yT+3,7.5,8,CHAIN_V*gameTime/6*f.dx,W);liftWheel(ctx,xx,yS+1,7.5,8,CHAIN_V*gameTime/6*f.dx,W);}});
+  ctx.save();liftNearCut(ctx,f,-1,true);
   for(let i=0;i<f.n;i++){const q=chainPos(f,i,gameTime);
     if(!EGP.traps){ctx.fillStyle='#0b0812';ctx.fillRect(q.x-3,q.y+HY,6,6);ctx.fillStyle=W>=2?'#7a4a2c':'#b98a4a';ctx.fillRect(q.x-2,q.y+HY+0.5,4,4);}
     liftSlab(ctx,q.x-16,q.y,th,W,hash2(f.c0*7+i,f.rT));
@@ -6957,7 +6987,7 @@ function drawLiftChain(ctx,f,half){
     if(EGP.traps){const s=(((CHAIN_V*gameTime+f.off+i*f.pitch)%per)+per)%per,up=vert(s),c=ropeOf(W);
       if(up){ropeHole(ctx,q.x,q.y,2.3);barRope(ctx,q.x,q.y-HY-2,q.x,q.y-0.45,2,c,(BARM[L.theme.look]||BARM.west)[2],0,0,(s<H?-V:V));ropeSeize(ctx,q.x,q.y-2.3,2,c);}} // (over the wheels, where the rope runs level through it, nothing shows on top)
     ctx.fillStyle='rgba(6,4,10,.5)';ctx.fillRect(q.x-16-HX+1,q.y+HY+6,30,2);} // a dark underside, so the platform stands out from the wall
-  ctx.restore();
+  ctx.restore();ctx.restore();
 }
 // round 17 (owner: "add the sparkling hint somewhere on the corridor when there is an ascent or descent for getting a yellow life
 // up potion"): where the climb or the drop to the gold flask starts, a few small gold four-point stars (the hidden flask's own) twinkle on
@@ -9303,6 +9333,12 @@ function glRelSlab(n,X,Y,ys,open,VZ,camD,camDY){if(n>=64)return n;gateGeom(X,Y,y
 function glRelBox(n,x0,y0,x1,y1,VZ,camD,camDY){if(n>=64||y1-y0<1.5)return n;const a=x0*VZ-camD,b=x1*VZ-camD,c=y0*VZ-camDY,d=y1*VZ-camDY;if(b<0||a>cv.width||d<0||c>cv.height)return n;glRelQuad(n,a,c,b,d,-0.4,0.4,0.4,-0.4);return n+1;}
 function glRelWell(n,g,VZ,camD,camDY){wellSolve(g);const per=TW/WELL_DX;for(let j=0;j<g.n;j++){let m=g.yb[j];for(let i=j*per;i<=(j+1)*per;i++)m=Math.min(m,g.S[i]);
   n=glRelBox(n,g.xa+j*TW,m-DY-1,g.xa+(j+1)*TW+(j===g.n-1?DX:0),g.yb[j],VZ,camD,camDY);}return n;}
+function glRelLifts(n,VZ,camD,camDY){const cx=camD/VZ,cy=camDY/VZ,vw=cv.width/VZ,vh=cv.height/VZ;
+  for(const f of L.lifts){if(f.sand||!liftVisible(f,cx,cx+vw,cy,cy+vh))continue;
+    const slab=(X,ys)=>{n=glRelBox(n,X-HX,ys-HY-1,X-HX+TW+DX,ys+HY+8,VZ,camD,camDY);},wheel=(x,y,r)=>{n=glRelBox(n,x-r-1,y-r-1,x+r+1,y+r+1,VZ,camD,camDY);};
+    if(f.t==='chain'){for(let i=0;i<f.n;i++){const q=chainPos(f,i,gameTime);slab(q.x-16,q.y);}for(const xx of [f.c0*TW+16,f.c1*TW+16]){wheel(xx,f.yT+3,8.5);wheel(xx,f.yB+1,8.5);}}
+    else{const R=liftRig(f);slab(R.X,f.y);wheel(R.cx,R.hy,8);n=glRelBox(n,R.cx-5,R.wt-5,R.cx+5+DX*0.35,R.wt+21,VZ,camD,camDY);}}
+  return n;}
 function glRelief(lights,VZ,camD,camDY){
   const R=GLREL,gl=GLP.gl,w=cv.width,h=cv.height;R.on=0;if(!GLFX.relief)return;
   let lit=false;for(const q of lights)if(GLSTRONG[q.kind]||q.kind==='fire'){lit=true;break;} // no lamp near: nothing to rake, skip the pass
@@ -9329,6 +9365,10 @@ function glRelief(lights,VZ,camD,camDY){
   for(const d of L.debris)n=glRelEx(n,d.x,d.y-8,20,16,VZ,camD,camDY);
   for(const o of L.dyn)if(o.f.t==='gate'&&o.f.open<1){if(EGP.traps)n=glRelSlab(n,o.c*TW,o.r*TH,SURF(o.r),o.f.open,VZ,camD,camDY);else if(o.f.open>0)n=glRelEx(n,o.c*TW+16-HX,o.r*TH+30,14,38,VZ,camD,camDY);} // (a gate on the move; round 16c: a stone slab whenever it is down)
   if(EGP.traps)for(const f of L.lifts)if(f.t==='lift'&&!f.sand)for(let e=0;e<2;e++){const op=e?f.gB:f.gT,s=e?f.sB:f.sT,rr=e?f.rB:f.rT;if(op<1)n=glRelSlab(n,(s<0?f.sc*TW-T_SLAB/2:(f.sc+1)*TW+T_SLAB/2)-16,rr*TH,SURF(rr),op,VZ,camD,camDY);} // (the lifts' mouth slabs)
+  // (round 26a, owner: "the wall art of the shaft's back is drawn over the slabs") a lift's moving stone and wood stand in front of the shaft's
+  // back wall: the relief, read from the room's picture, embossed the back wall's courses, posts and friezes on the paternoster's slabs, the
+  // platform, the counterweight and the wheels as they passed. Rubbed back over each of them in view (their boxes, as a mouth slab's)
+  n=glRelLifts(n,VZ,camD,camDY);
   if(EGP.traps){for(const o of L.dyn){const g=o.f.wg;if(o.f.t!=='loose'||!g||g.os[0]!==o)continue;n=glRelWell(n,g,VZ,camD,camDY);} // (round 21b) sand is not embossed with the wall's art behind it
     for(const f of L.lifts)if(f.sand&&f.y<SURF(f.rB)-0.5)n=glRelBox(n,f.sc*TW-HX,f.y+HY+5-DY,f.sc*TW-HX+TW,SURF(f.rB)+HY,VZ,camD,camDY);}
   gl.bindFramebuffer(gl.FRAMEBUFFER,R.fb.f);gl.viewport(0,0,fw,fh);gl.clearColor(.5,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);
@@ -10246,7 +10286,7 @@ window.__HK={keyLight,get frameLights(){return frameLights;},jetPlaces,jsSwingPa
 Object.assign(window.__HK,{guardBudget,snakeBudget,RP,drinkFrame}); // (the fighters' budgets, for guardscan.py; RP and drinkFrame, the run cycle's and the drink's poses, for egyptr21a.py)
 Object.assign(window.__HK,{LEN,skel,crawlPose,walkPose,climbFrame,swingPose,MCP,MCK,R23B,R23D,R23MUS,setMus,musNow:()=>RD.mus||1,mk,figReach}); // (the skeleton and the poses, for egyptr23.py and figscan.py)
 Object.defineProperty(window.__HK,'intro',{get(){return intro;},set(v){intro=v;}}); // (the floor's title banner, for egyptprop.py)
-Object.assign(window.__HK,{windowPath,gateGeom,stoneTex,STONES,THEME_STONE,SLAB_STONE,stoneLying,BLK_W,BLK_H,looseWell,WELL_V,blockStep,wellGroup,wellSolve,wellTip,sandTex});
+Object.assign(window.__HK,{GATE_G,liftCell,windowPath,gateGeom,stoneTex,STONES,THEME_STONE,SLAB_STONE,stoneLying,BLK_W,BLK_H,looseWell,WELL_V,blockStep,wellGroup,wellSolve,wellTip,sandTex});
 Object.assign(window.__HK,{EGP,nutClock,conceptClock2,barqueClock,conceptClock,flaskBody,flaskR,heart,setHero,HERO_VAR,PAL_HERO,SCHED,floorsOf,BGART,bgArt,LFX,themeOf,get PF(){return PF;}}); // (the themes' backdrops and effects, for egyptshot.py and egyptfx.py)
 Object.assign(window.__HK,{hurt,HK,DISS,sandP,SAND_HP,GLFX,setClock:f=>{performance.now=f;}}); // S3-A (tests)
 Object.assign(window.__HK,{FLM,FLV,ventState,cyc}); // FL (flames: the sheets and the vent's look, for tests)

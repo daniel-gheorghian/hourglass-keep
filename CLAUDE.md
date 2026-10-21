@@ -381,6 +381,16 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   lift, so the shut top slab stood free in the hall); it still draws their random number, so nothing else moves. The sheave turns in a slot
   in the lintel (`liftRig` by = top-9). `slabscan.py` (floors 1-48, 3 seeds, every portcullis and lift mouth) must print `slabscan: ok`;
   pictures `egyptr25d.py`.
+- Lifts drawn clean (round 26a, owner: "windows or walls or wall trims are drawn over the lift mechanisms", "at the top the lift slab is
+  drawn in front of the wall", "when at the bottom the slab digs into the tile floor", "part of the door slab doesn't respect the shadow"):
+  no arch (recess or opening) and no breach in a lift shaft's back wall, nor a breach in the cells beside one (`liftCell`, `liftNear`:
+  every cell of a shaft from its top row to its foot; look only, hashes, no generator stream). Torchlight's relief is rubbed back over
+  every lift part that moves (`glRelLifts`: slabs, platform, counterweight, wheels), as over mouth slabs and sand. Everything a lift draws
+  is cut by what stands nearer in the column right of its shaft (`liftNearCut`: walls' whole front faces, strip under a floor's lip
+  included, and each floor tile's top and lip); a paternoster's bottom run is a pit: the foot floor's lip stands in front of a slab there
+  (it shows only its top, flush). An egSlab's piece above the ceiling's edge (round 14's top pass) is in the ceiling's shade (0.9).
+  `liftscan.py` also checks these (near, foot, wedge, relief, and arches/breaches in shafts on the tiles; the paternoster at a slab on its
+  bottom run and at the top beside the right landing); pictures `egyptr26a.py`.
 - A ceiling at his height (a WALL, or an upper floor's slab, `ceilY`) makes any floor jump the low leap (v60, owner), and the head
   clamp holds every frame; a saw that would sit under such a ceiling becomes spikes in place (the low leap cannot clear it).
   Check with `lowceil.py`.
