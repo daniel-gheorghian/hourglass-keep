@@ -69,7 +69,8 @@ lunge 0.46, parry 0.07, lowStrike 0.10). The low leaps keep their legs and are p
 | skid (stop) | 16_08 f114 | run/jog, sudden stop |
 | turn | 16_08 f150 | derived: the settle after the stop (a turn is not in the side view) |
 | step (careful) | 139_29 f560 | sneaking |
-| crouch | 16_05 f110 | the deepest crouch before a standing broad jump |
+| crouch | 16_05 f110 | the deepest crouch before a standing broad jump (jumpUp, bonk, landHurt, the climb's end) |
+| jumpCrouch | 13_11 f196 | round 25f: the crouch before a standing jump (jumpPrep), both arms swung back |
 | land | 16_05 f203 | the broad jump's landing |
 | jumpS | 13_11 f252 | forward jump in flight, both arms swung forward (round 25b; was 16_05 f150) |
 | kickTuck | 16_05 f152 | the broad jump in flight |
@@ -89,7 +90,7 @@ lunge 0.46, parry 0.07, lowStrike 0.10). The low leaps keep their legs and are p
 | lunge | 02_08 f1174 | swordplay: the step and thrust |
 | hurt | 16_08 f100 | derived: braced back (no clip of a blow) |
 | dead | 90_16 f600 | fall on face: lying (rot from the trunk's angle) |
-| crawl (16 keys) | 111_03 f760-990 | weak: a pregnant woman crawling, limb timing only; half a cycle mirrored; round 25b: the neck line 0.80 rad from up (CRAWL_NECK, the clip's nod kept) and the skull turned up on it (hp = CRAWL_HP -0.45): the face looks ahead |
+| crawl (16 keys) | 111_03 f760-990 | weak: a pregnant woman crawling, limb timing only; half a cycle mirrored; round 25b: the neck line 0.80 rad from up (CRAWL_NECK, the clip's nod kept) and the skull turned up on it (hp = CRAWL_HP -0.45); round 25f: 0.64 and -0.52, the face 7 deg under the horizontal |
 | drink (DK's 11 keys) | 81_14 f1300, f1255; 79_38 f180-520 | the flask picked up from a crouch, then drinking water |
 
 Kept procedural (no clip): the wall run and the kick-shaft plant (two-bone IK on the new legs), the blade slide's shudder, the push and
@@ -261,6 +262,45 @@ weird"; "nobody crawls with their head pointing down, should be pointing forward
   (crawlers with a neutral neck face the floor and crane up to see ahead: Kretch, Franchak, Adolph 2014). The sword held low and the poke
   use the crawl's keys. The crown rises 2.4 px, still 4.1 to 5.3 px under v69's crawl crown.
 - Checks: figscan ok, lowceil ALL OK; pictures `egyptr25b.py` (r25b_poses.png, r25b_game.png).
+
+## No stiff moves (round 25f): overlap, settles, measured follow-through
+
+Owner: "I ment a stiff prince in the broader sense: check all his movements for stiffness and make adjustments based on research". The audit (every
+move, what the side view drops, where it is rigid between keys, what should trail) is on the page (egypt_themes.html, round 25f) and in
+`egyptround25f.py` (AUDIT). Three things made him stiff: every part eased to a new pose at one rate (lockstep), landings, stops, hangs and falls
+were single held frames, and nothing trailed a turn, stop or landing.
+
+**The rule (every move from now on):** (1) overlap: parts arrive at different rates, the trunk and legs first, the upper arms, then the forearms
+and head (followPose, PKR); (2) anticipation and settle around events, measured from a clip where one is local (a settle: g toward the clip's
+peak by the hip's height, plus each angle's residual against that blend), else a pure function of the time since the event; (3) the extra
+degrees of freedom of round 25a (two-part trunk, shoulder girdle, foot roll) where the clip shows them. Never a timer, transition, grip, hit box or
+contact; nothing that accumulates state outside the pose filter and the look state (`e.lk`).
+
+| Part | How | Values |
+|---|---|---|
+| overlap | `followPose(cur, tgt, dt, rate, LAGM[state])`: each key at rate x PKR | upper arms 0.7, forearms 0.55, head and hp 0.75, sb 0.85; in the air (mode 2) also thighs 0.75, knees 0.7. Only held poses and short transitions; the clip cycles (run, walk, crawl, climb, drink, swing) and the wall's IK poses at one rate as before; held hands (gF/gB) always at the full rate |
+| land settle | `MCK.set_land`, 16_05 f187-270, peak f203 (= PS.land); arms follow the blend | deepest 0.13 s after touchdown, standing by 0.5 s; strength (impact speed - 60)/240, 0.3 to 1; landHurt: from its peak into stand |
+| stop settle | `MCK.set_stop`, 16_08 f112-222, peak f114 (= PS.skid) | braking 0.2 s, elbows +38 / -40 deg of follow-through over 0.9 s; strength abs(vx)/RUN, 0.35 to 1 |
+| turn | `turnSettle(t)` (no clip turns on the spot in profile) | arms -0.32/-0.28 e^(-t/0.18) cos 9t, forearms +0.25/+0.2 e^(-t/0.18), knees +0.2 and hips +0.1 sin over 0.32 s; 0.7 s. Cloth: the wind spring set to -face x 55 at the flip |
+| hang | `livePose`: the body turned about the hands' midpoint by HG_A e^(-t/HG_TAU) sin(HG_W t) (rot, plus the offset ox/oy so the hands stay) | HG_W 3.9 rad/s (a rod of 70 px under the game's 700 px/s^2: T 1.6 s), HG_TAU 0.75 s, legs HG_LAG 0.09 s behind; HG_A jumpUp 0.045, from the air 0.075, climbDown 0.1; fades over the climb's first 0.18 s |
+| breathing | `livePose` (stand, garde, drink) | 0.37 Hz; arms 0.5 rad and head 0.3 rad behind the chest; sb -0.015; weight shift 0.012 rad at 0.05-0.08 Hz, the head against it |
+| fall | `livePose` (air, no jump kind) | from 0.15 s: arms +-0.12/0.1, thighs +-0.07 rad at 0.65-0.9 Hz |
+| kilt | `updActorLook`: the hem trails the thighs outside the run (lk.kf/kb) | 0.8 of each thigh move, spring 22 rad/s, damping 0.55, +-0.4 rad |
+| run start | target lean | +0.12 x (1 - abs(vx)/RUN) while accelerating |
+| jumpPrep | PS.jumpCrouch, 13_11 f196 | both arms back (-43/-46 deg), knees 74 deg |
+| crawl | CRAWL_NECK 0.64, CRAWL_HP -0.52 | the face 7 deg under the horizontal (25b: 20); 67 deg of cervical extension in all |
+| squash | updActorLook | land 0.96 (was 0.87), landHurt 0.92 (0.80), take-off 1.3 (2.6): the knees carry the landing now |
+
+State: `P.stK`, `P.stT`, `P.stS` (the settle: kind, start, strength; set in setState and land, cleared by any state but stand), `P.hgT`, `P.hgA`
+(the hang's start and size), `P.state0` (the state before the last change). All look only; rewind copies them with P.
+
+Research (sources on the page): Thomas and Johnston, Williams (overlap, drag, successive breaking of joints, the moving hold); Cooper, Game Anim
+(follow-through carries the weight in games, anticipation costs responsiveness); Rosen GDC 2014; McIntosh GDC 2010 (additive layers); Dead Cells,
+Ori; Chou and Holden on springs; DeVita and Skelly 1992 and PMC5243232 on landing; Hodges 2002, Yamamoto 2015 on breathing and sway; the
+pendulum. Checks: figscan ok (the crawl's crown 3.4-4.5 px under v69's crawl crown), lowceil, primtest, swingtest, lifttest, stairscan, run2,
+rendersmoke. Pictures: `egyptr25f.py` (r25f_moves.png, r25f_moves1.gif, r25f_moves2.gif).
+
+Not yet: round 25a's sb, soF/soB and fpF/fpB for the landing, stop and jump keys (the settles carry the ten angles only); a measured turn.
 
 ## The neck (round 23c): 2 px shorter (superseded by round 23d: 1 px)
 

@@ -205,7 +205,11 @@ SEL = {
     'kickTuck': ('16_05', 152, {'w': 1}, 'derived: the standing jump\'s tuck'),
     'kickReach': ('16_05', 182, {'w': 1}, 'derived: the standing jump reaching for the floor'),
     'slide':    ('01_09', 1750, {'w': 3}, 'playground: hanging with the knees drawn up'),
+    # (round 25f: the crouch before a standing jump swings both arms back, as 13_11 does at f180-200 before they come forward through
+    # take-off; jumpUp, bonk, landHurt and the climb's end keep 'crouch')
+    'jumpCrouch': ('13_11', 196, {'w': 2}, 'forward jump: the crouch with both arms swung back (round 25f)'),
 }
+GA = {'jumpCrouch': 'crouch'}   # (round 25f) a new pose takes its flags (air, hy, sw...) from v69's pose of the same use
 
 # poses that hold something (round 22b's hold/hb, kept): their hands go to v69's places (r23grips.json)
 HOLD = {'hang': (1, 1), 'pull': (1, 1), 'reach': (1, 1), 'press': (1, 1), 'kneelUp': (1, 1), 'kneel': (1, 1), 'slide': (1, 1),
@@ -320,7 +324,34 @@ def extras(n, x, f, flat, pxm, front='r'):
     return {k: A[k] + (Bq[k] - A[k]) * u for k in X25}
 
 
-CRAWL_NECK, CRAWL_HP = 0.80, -0.45   # round 25b: the crawl's neck line (rad from straight up) and the skull's pitch on it
+CRAWL_NECK, CRAWL_HP = 0.64, -0.52   # round 25f (owner: the face "should be pointing forward"; 25b's 0.80, -0.45 left it 20 degrees under the
+                                     # horizontal): the neck line (rad from straight up) and the skull's pitch on it; the face 7 degrees under the
+                                     # horizontal, 67 degrees of cervical extension in all (base 37, atlas 30: within the normal 60-75)
+
+
+# ---------------- round 25f: settles (follow-through measured, not drawn) ----------------
+# Owner: "check all his movements for stiffness". The game eased every state to one fixed pose: a landing reached its crouch at once and
+# snapped back up in 0.1 s; a stop was one frozen braking frame. The clips show the body taking the impact over time: 16_05's landing
+# reaches its deepest 0.13 s after touchdown and is standing again by 0.5 s; 16_08's sudden stop brakes for 0.3 s and its forearms swing on
+# for another 0.5 s. A settle is keyed by time from the event: g, how far from standing toward the clip's peak frame (by the hip's height),
+# and the residual of every angle against that blend (what a plain blend misses: the overshoot, the forearm's swing, the head's nod). The
+# game draws stand + (peak - stand) g s + residual s, s the event's strength.
+# (the landing's arms are not 16_05's: round 25b dropped that subject's bent-elbow arm action for 13_11's; the arms follow the blend only)
+SETTLE = {'land': ('16_05', 187, 203, 2, (264, 288), 270, 'land', ('aF', 'eF', 'aB', 'eB')),
+          'stop': ('16_08', 112, 114, 2, (206, 230), 222, 'skid', ())}
+
+
+def settle_seq(n, t0, pk, pw, end, t1, drop=(), step=4):
+    c = clip(n)
+    P0 = at(n, pk, w=pw)
+    E = [at(n, i) for i in range(end[0], end[1] + 1, 2)]
+    Pe = {k: sum(e[k] for e in E) / len(E) for k in ANG + ['_hipY']}
+    out = []
+    for i in range(t0, t1 + 1, step):
+        p = at(n, i, w=1)
+        g = max(0.0, min(1.0, (Pe['_hipY'] - p['_hipY']) / (Pe['_hipY'] - P0['_hipY'])))
+        out.append([round((i - t0) / 120.0, 4), round(g, 3)] + [0 if k in drop else round(p[k] - (Pe[k] + (P0[k] - Pe[k]) * g), 3) for k in ANG])
+    return out
 
 
 def build():
@@ -330,7 +361,7 @@ def build():
     MCP = {}
     src = {}
     for name, (n, i, o, why) in SEL.items():
-        v = G['PS.' + name]['p']
+        v = G['PS.' + GA.get(name, name)]['p']
         if name == 'step':
             n, i = '139_29', 560
         if o.get('lying'):
@@ -455,6 +486,12 @@ def build():
         SWK.append([round(b * 2 * math.pi / 12, 3), round((m('hF') + m('hB')) / 2, 3), round((m('kF') + m('kB')) / 2, 3), round(m('lean'), 3), round(m('head'), 3)])
     SWK.append([6.2832] + SWK[0][1:])
     MCK['swing'] = SWK
+    # --- round 25f: the settles after a landing and a stop (see SETTLE) ---
+    for k, (n, t0, pk, pw, end, t1, peak, drop) in SETTLE.items():
+        MCK['set_' + k] = settle_seq(n, t0, pk, pw, end, t1, drop)
+        r = MCK['set_' + k]
+        src['set_' + k] = {'clip': n, 'frame': '%d-%d (peak %d, %s)' % (t0, t1, pk, peak), 'why': 'settle: max residual ' + ', '.join(
+            '%s %.0f' % (a, math.degrees(max(abs(q[2 + j]) for q in r))) for j, a in enumerate(ANG))}
     src['swing'] = {'clip': '43_02', 'frame': '228-480 (one cycle, 12 phase bins)', 'why': 'grip bar, swing body'}
     return B, Wd, info, MCP, MCK, src
 

@@ -264,6 +264,12 @@
    "why": "playground: hanging with the knees drawn up",
    "fix": []
   },
+  "jumpCrouch": {
+   "clip": "13_11",
+   "frame": 196,
+   "w": 2,
+   "why": "forward jump: the crouch with both arms swung back (round 25f)"
+  },
   "run": {
    "clip": "09_01",
    "frame": "42-130 (16 keys; right foot down at 42)",
@@ -283,6 +289,16 @@
    "clip": "111_03",
    "frame": "760-990 (8 keys, mirrored for the other half)",
    "why": "crawling (limb timing)"
+  },
+  "set_land": {
+   "clip": "16_05",
+   "frame": "187-270 (peak 203, land)",
+   "why": "settle: max residual lean 5, head 14, aF 0, eF 0, aB 0, eB 0, hF 20, kF 6, hB 19, kB 7"
+  },
+  "set_stop": {
+   "clip": "16_08",
+   "frame": "112-222 (peak 114, skid)",
+   "why": "settle: max residual lean 4, head 2, aF 6, eF 38, aB 9, eB 40, hF 13, kF 6, hB 15, kB 26"
   },
   "swing": {
    "clip": "43_02",

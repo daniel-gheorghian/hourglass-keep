@@ -234,6 +234,14 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   flight; 16_05 held the elbows bent by his sides, one forearm read as a raised arm). Crawling he looks ahead, never at the floor: the neck line
   `CRAWL_NECK` and the skull's own pitch on it, pose value `hp` (`CRAWL_HP`; drawn by the head, eye and hair only, 0 in every other pose).
   Pictures `egyptr25b.py`.
+  No stiff moves (round 25f, owner: "check all his movements for stiffness and make adjustments based on research"). The rule for every move:
+  overlap (parts arrive at different rates: `followPose` with `PKR`, the arms, forearms and head after the trunk, the legs too in the air; only
+  toward held poses and short transitions, `LAGM`; clip cycles and held grips at the full rate); anticipation and settle around events,
+  measured where a local clip has one (`MCK.set_land` from 16_05, `MCK.set_stop` from 16_08: g toward the clip's peak plus each angle's residual,
+  `settlePose`, keyed by the time from the event, `P.stK/stT/stS`), else a pure function of that time (`turnSettle`, the hang's pendulum swing
+  about the hands `HG_*` in `livePose`, the fall's limbs); round 25a's extra joints where the clip shows them. Look only: never a timer, grip,
+  hit box or contact. The standing jump crouches with both arms back (`PS.jumpCrouch`, 13_11); the crawl's face is 7 degrees under the
+  horizontal (`CRAWL_NECK` 0.64, `CRAWL_HP` -0.52). Audit table and sources: egypt_themes.html round 25f; pictures `egyptr25f.py`.
 - Lift ropes (round 21a, owner: "holes in the slab with the rope threaded through"): all lift ropes are `barRope` in the theme's fibre
   (`liftRope`; `barRope`'s `ph` makes the lay travel with a running rope). The counterweight platform hangs on two bridles (`liftSling`: an
   eye seized `LS_J` above the slab, legs down through two holes near the front and back edges along the depth diagonal, `ropeHole` drawn in
