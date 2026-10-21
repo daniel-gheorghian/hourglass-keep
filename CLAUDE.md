@@ -180,6 +180,16 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   theme (`sandTex`: grains, packing, broken laminae; never ruled courses or cell seams), the shaft's dark a cached ramp (`sandShade`); the
   sand lift uses it too (`sandCut`). Torchlight's relief is rubbed back over the sand (`glRelWell`, `glRelBox`), else it embosses the back
   wall's art on it. `wellscan.py` (floors 3-30, 3 seeds: slope, volume, break timing, rewind) must print `ok`; pictures `egyptr21b.py`.
+  Rows of three or more (round 26d, owner: "more organic and less mechanically domino. On two columns of sand it works, on more than two it
+  doesn't"; `g.org`, n >= 3; rows of two are drawn exactly as in 21b): the level sags over each open outlet (`g.sa`) with a low swell (`g.nz`),
+  craters, level and heaps are joined by soft max/min (`wSmax`, `wSmin`: never steeper than either), a crater is a funnel (`WELL_FL`: the
+  angle of repose at the throat, flatter outward), each outlet is off centre (`g.ox`) with its own wall slope (`g.sl`) that slumps flatter in
+  four avalanches of its own (`g.sc`, only ever flatter, so the sand never grows back), the heaps between outlets are low rounded mounds
+  (`g.rs`). Each slab's lean, onset and tip-on (`wellTip1`), its crack (`wellCrk`, 85%: `slabCrack`, two uneven pieces, the near one turning
+  on the crack), the fall's lag and turn, the unequal halves of the first slab (`slabHalves`'s `q`), the sand pouring through its seams before
+  it goes (`wellPour`), the tongues sliding down the crater walls (`wellSlides`) and the dust from each hole are seeded hashes of its column
+  and row (`wellH`): no stream, rewind-safe. Look only: every break time, hit box and the bot unchanged. wellscan also checks the rewind on the
+  longest row. Pictures `egyptr26d.py`.
 - Arms up (round 19, owner: "a hump"): `torsoG` narrows the back near the shoulders (up to 1.3 px) and the raised arm rises from the
   back of the shoulder, so the back line runs from the waist into the arm. Pictures for round 19: `egyptr19.py`.
 - The prince's body and poses come from motion capture (round 23, owner: "Start from those clips and build the athletic teen prince body

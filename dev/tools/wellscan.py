@@ -3,7 +3,8 @@
 #  slope   the sand's surface is never steeper than the angle of repose (WELL_SL) between two samples, away from the walls: no vertical face
 #  volume  the sand never grows back, and has run down to its stagnant heaps (and stays) once the slabs have broken
 #  timing  each slab breaks exactly when it did before (0.5 s after its trigger; the update is untouched)
-#  rewind  a snapshot taken mid-drain and put back (the game's own snapAll / applySnap) gives the same surface, sample for sample
+#  rewind  a snapshot taken mid-drain and put back (the game's own snapAll / applySnap) gives the same surface, sample for sample (the first
+#          row of two or more, and the longest row of three or more: round 26d's own surface)
 # Prints one line per floor and 'ok' or 'FAIL'. Run from dev/tools.
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -27,8 +28,8 @@ JS = r'''([n,sd])=>{const H=__HK;window.__HKfreeze=true;H.EGP.traps=true;H.load(
       if(brk<0||Math.abs(brk-0.5)>1/60+1e-6)bad.push(['timing',n,sd,os[0].c,j,brk]);
     }}
   return {groups,bad};}'''
-RW = r'''([n,sd])=>{const H=__HK;window.__HKfreeze=true;H.load(n,sd,true);const L=H.L;let o=null;
-  for(const q of L.dyn){if(q.f.t!=='loose'||q.f.plank)continue;const g=H.wellGroup(q);if(g&&g.n>1){o=q;break;}}if(!o)return null;
+RW = r'''([n,sd,big])=>{const H=__HK;window.__HKfreeze=true;H.load(n,sd,true);const L=H.L;let o=null;
+  for(const q of L.dyn){if(q.f.t!=='loose'||q.f.plank)continue;const g=H.wellGroup(q);if(g&&g.n>(big?2:1)&&(!o||!big||g.n>o.f.wg.n)){o=q;if(!big)break;}}if(!o)return null;
   const g=H.wellGroup(o);H.P.inv=1e9;H.P.x=-9999;H.P.y=-9999;o.f.s=1;o.f.tm=0;for(let k=0;k<15;k++){H.tick(1);H.P.x=-9999;H.P.y=-9999;}
   const sn=H.snapAll();H.wellSolve(g);const S0=Float32Array.from(g.S);for(let k=0;k<60;k++){H.tick(1);H.P.x=-9999;H.P.y=-9999;}
   H.applySnap(sn);g.key=NaN;H.wellSolve(g);let d=0;for(let i=0;i<S0.length;i++)d=Math.max(d,Math.abs(S0[i]-g.S[i]));return d;}'''
@@ -42,11 +43,14 @@ if __name__ == '__main__':
         hasSnap = pg.evaluate("()=>typeof __HK.snapAll==='function'&&typeof __HK.applySnap==='function'")
         for n in range(LO, HI + 1):
             for sd in (801, 802, 803):
-                r = pg.evaluate(JS, [n, sd]); rw = pg.evaluate(RW, [n, sd]) if hasSnap else None
+                r = pg.evaluate(JS, [n, sd]); rw = pg.evaluate(RW, [n, sd, 0]) if hasSnap else None
+                rb = pg.evaluate(RW, [n, sd, 1]) if hasSnap else None   # (round 26d: and the longest row, three slabs or more, drawn its own way)
                 if rw is not None and rw > 1e-3:
                     r['bad'].append(['rewind', n, sd, rw])
+                if rb is not None and rb > 1e-3:
+                    r['bad'].append(['rewind3', n, sd, rb])
                 fails += len(r['bad'])
-                print('floor', n, 'seed', sd, 'groups', r['groups'], 'rewind diff', rw, 'bad', r['bad'][:4])
+                print('floor', n, 'seed', sd, 'groups', r['groups'], 'rewind diff', rw, rb, 'bad', r['bad'][:4])
         print('page errors', errs[:3])
         b.close()
     print('ok' if fails == 0 and not errs else 'FAIL %d' % fails)

@@ -5278,21 +5278,34 @@ const WELL_SL=0.67,WELL_VT=WELL_V*1.6,WELL_CD=36,WELL_DX=2;
 function wellGroup(o){const f=o.f;if(f.wg!==undefined)return f.wg;if(!looseWell(o))return f.wg=null;
   const at=c=>{const q=F(L,c,o.r);if(!q||q.t!=='loose'||q.plank)return null;const oo=L.dyn.find(d=>d.f===q);return oo&&looseWell(oo)?oo:null;};
   let a=o.c,b=o.c;while(at(a-1))a--;while(at(b+1))b++;const os=[];for(let c=a;c<=b;c++)os.push(at(c));const n=os.length,yt=SURF(o.r)+HY+5;
-  const g={r:o.r,c0:a,n,os,xa:a*TW-HX,yt,top:yt+1.5,yb:new Float32Array(n),th:new Float32Array(n),S:new Float32Array(n*TW/WELL_DX+1),key:NaN,fl:0,ybm:0};
-  for(let j=0;j<n;j++){g.yb[j]=SURF(o.r+looseWell(os[j]))+HY;g.ybm=Math.max(g.ybm,g.yb[j]);}
+  const g={r:o.r,c0:a,n,os,xa:a*TW-HX,yt,top:yt+1.5,yb:new Float32Array(n),th:new Float32Array(n),S:new Float32Array(n*TW/WELL_DX+1),key:NaN,fl:0,ybm:0,
+    org:n>=3,ox:new Float32Array(n),sl:new Float32Array(n),sc:new Float32Array(n),rs:new Float32Array(n),sa:new Float32Array(n),nz:0,np:[wellH(a,o.r,91)*6.28,wellH(a,o.r,92)*6.28]}; // (round 26d: org, the rows of three or more)
+  for(let j=0;j<n;j++){g.yb[j]=SURF(o.r+looseWell(os[j]))+HY;g.ybm=Math.max(g.ybm,g.yb[j]);if(g.org){g.ox[j]=(wellH(a+j,o.r,1)*2-1)*6;g.sl[j]=WELL_SL*(0.86+0.14*wellH(a+j,o.r,2));g.rs[j]=WELL_SL*(0.6+0.4*wellH(a+j,o.r,35));}}
   for(const q of os)q.f.wg=g;return g;}
 // the surface at sample i for a level yg (y grows downward): no higher than the crater of each open outlet, no lower than its residual heap
+// (round 26d) a seeded number 0..1 for a slab of a row (its column and row, k: which number): no stream, the same after a rewind
+function wellH(c,r,k){return hash2(c*131+k*7919,r*977+k*31)/4294967296;}
+// soft max and min (k px of blend): the slope of either is a mix of the two slopes, never steeper than the steeper of them
+function wSmax(a,b,k){return (a+b+Math.sqrt((a-b)*(a-b)+k*k))/2;}
+function wSmin(a,b,k){return (a+b-Math.sqrt((a-b)*(a-b)+k*k))/2;}
 function wellAt(g,i,yg){const x=i*WELL_DX,j0=Math.min(g.n-1,(x/TW)|0),yb=g.yb[j0];let C=-1e9,R=-1e9;
+  if(g.org){let c0=false,sg=0;for(let j=0;j<g.n;j++){const tj=g.th[j];if(tj<0)continue;const dx=x-(j*TW+16+g.ox[j]),e=Math.max(0,Math.abs(dx)-4),d=e*g.sl[j],fe=0.35*e+0.65*WELL_FL*Math.log(1+e/WELL_FL), // (a funnel: at the angle of repose at the throat, flattening outward, no straight run)
+      c=Math.min(g.yb[j],yg+tj)-fe*g.sl[j]*g.sc[j],r=g.yb[j]-(0.4*e+0.6*fe)*g.rs[j];if(c0){C=wSmax(C,c,3);R=wSmax(R,r,6);}else{C=c;R=r;c0=true;}sg+=g.sa[j]*Math.exp(-dx*dx/1600);}
+    const Lv=yg+sg+g.nz*(Math.sin(x/23+g.np[0])+0.6*Math.sin(x/11+g.np[1])); // (the level sags toward each open outlet, a low swell over the rest)
+    return clamp(wSmin(wSmax(Lv,C,4),R+0.8*Math.sin(x/17+g.np[1]),3),g.top,yb);}
   for(let j=0;j<g.n;j++){const tj=g.th[j];if(tj<0)continue;const d=Math.max(0,Math.abs(x-(j*TW+16))-4)*WELL_SL;C=Math.max(C,Math.min(g.yb[j],yg+tj)-d);R=Math.max(R,g.yb[j]-d);}
   return clamp(Math.min(Math.max(yg,C),R),g.top,yb);}
 function wellArea(g,yg){const M=g.n*TW/WELL_DX;let A=0;for(let i=0;i<=M;i++)A+=g.yb[Math.min(g.n-1,(i*WELL_DX/TW)|0)]-wellAt(g,i,yg);return A*WELL_DX;}
 function wellSolve(g){let key=gameTime,open=0,Q=0;for(let j=0;j<g.n;j++){const f=g.os[j].f;key+=f.s*7.31+f.tm*(j+1.37);}
   if(key===g.key)return g;g.key=key;const M=g.n*TW/WELL_DX,S=g.S;
   let T=0;for(let j=0;j<g.n;j++){const f=g.os[j].f,tau=f.s&&f.tm>0?f.tm:-1; // (a slab of a chain counts down from below zero before it starts)
-  g.th[j]=tau<0?-1:Math.min(WELL_CD,WELL_VT*tau);if(tau>=0){open++;T+=tau;}}
+  g.th[j]=tau<0?-1:Math.min(WELL_CD,WELL_VT*tau);if(tau>=0){open++;T+=tau;}if(g.org){const c=g.c0+j;g.sa[j]=tau<0?0:(5+6*wellH(c,g.r,3))*Math.min(1,tau/0.3); // (round 26d) the crater's wall slumps in four avalanches at
+      let w=0;if(tau>0){const u=tau/(0.7+0.5*wellH(c,g.r,36));for(let k=0;k<4;k++){const v=clamp((u-(k+0.2+0.6*wellH(c,g.r,40+k))/4.4)/0.07,0,1);w+=v*v*(3-2*v);}} // moments of its own,
+      g.sc[j]=1-0.04*w;}} // each a little flatter (only ever flatter: the sand never comes back)
+  if(g.org)g.nz=1.4*Math.min(1,T/0.3);
   if(!open){S.fill(g.top);g.fl=0;return g;}
   let A0=0;for(let j=0;j<g.n;j++)A0+=(g.yb[j]-g.top)*TW;const Ar=wellArea(g,1e9),At=Math.max(Ar,A0-(A0-Ar)*T/((g.ybm-g.top)/WELL_V*1.15));let yg;
-  if(wellArea(g,g.top-WELL_CD-1)<=At)yg=g.top-WELL_CD-1;else{let lo=g.top-WELL_CD-1,hi=g.ybm;for(let k=0;k<16;k++){const m=(lo+hi)/2;if(wellArea(g,m)>At)lo=m;else hi=m;}yg=hi;}
+  if(wellArea(g,g.top-WELL_CD-1)<=At)yg=g.top-WELL_CD-1;else{let lo=g.top-WELL_CD-1,hi=g.ybm;for(let k=0;k<(g.org?24:16);k++){const m=(lo+hi)/2;if(wellArea(g,m)>At)lo=m;else hi=m;}yg=hi;}
   for(let i=0;i<=M;i++)S[i]=wellAt(g,i,yg);
   g.fl=clamp((At-Ar)/(TW*12),0,1); // (still running out: grains streaming down the slopes)
   return g;}
@@ -5303,17 +5316,57 @@ function wellY(g,x){const u=clamp((x-g.xa)/WELL_DX,0,g.n*TW/WELL_DX),i=Math.min(
 // the half second before it gives way it tips on (to WELL_TIP1) and falls turning into the hole: the domino runs toward the first hole
 // at the pace he crosses the slabs, as the game has always let them fall. The first slab of a row has sand on both sides: it sags
 // and folds in two over its crater as before (round 16a)
-const WELL_TIP0=0.08,WELL_TIP1=0.22;
+const WELL_TIP0=0.08,WELL_TIP1=0.22,WELL_FL=30;
 function wellSunk(g,j){return wellY(g,g.xa+j*TW+16)-g.top;}
 function wellTip(o,f){const g=wellGroup(o);if(!g||g.n<2)return 0;wellSolve(g);const j=o.c-g.c0,own=f.s&&f.tm>0?f.tm:-1,fl=j>0?g.os[j-1].f:null,fr=j<g.n-1?g.os[j+1].f:null,
   tl=fl&&fl.s&&fl.tm>0?fl.tm:-1,tr=fr&&fr.s&&fr.tm>0?fr.tm:-1;let sd=tl>own||tr>own?(tl>=tr?-1:1):0;
   const eL=wellY(g,g.xa+j*TW+3)-g.top,eR=wellY(g,g.xa+j*TW+TW-3)-g.top;
   if(!sd){if(own>=0)return 0;if(Math.max(eL,eR)<2)return 0;sd=eL>=eR?-1:1;}
+  if(g.org){const c=o.c,r=o.r,T1=wellTip1(c,r),d0=0.14*wellH(c,r,6); // (round 26d) each slab of a long row its own: how far it leans on the sand it has lost, how soon, how it tips on
+    let a=Math.min(T1*0.7,WELL_TIP0*(0.5+0.9*wellH(c,r,4))*clamp(((sd<0?eL:eR)-2-4*wellH(c,r,5))/(9+14*wellH(c,r,7)),0,1));
+    if(own>=0){const u=clamp((own-d0)/(0.5-d0),0,1);a+=(T1-a)*Math.pow(u,1.3+1.8*wellH(c,r,8));}return sd*a;}
   let a=WELL_TIP0*clamp(((sd<0?eL:eR)-2)/14,0,1);if(own>=0){const u=clamp(own/0.5,0,1);a+=(WELL_TIP1-a)*u*u;}
   return sd*a;}
+function wellTip1(c,r){return 0.14+0.16*wellH(c,r,9);} // (its lean as it gives way)
+// (round 26d) a slab of a long row cracks across where its own flaw runs (most of them: wellH 10 under 0.85), at x, the crack's kinks, and how
+// far the piece over the hole has turned on the crack by the time it lets go (B)
+const WCK=new Map();
+function wellCrk(c,r){const key=r*65536+c;let k=WCK.get(key);if(k!==undefined)return k;
+  k=wellH(c,r,10)>=0.85?null:{x:7+18*wellH(c,r,11),j0:(wellH(c,r,12)-0.5)*7,j1:(wellH(c,r,13)-0.5)*5,j2:(wellH(c,r,14)-0.5)*4,B:0.2+0.35*wellH(c,r,15)};WCK.set(key,k);return k;}
+// the slab leaning on its far edge (tip, as wellTip) and broken across at k, the piece over the hole turned on further by b about the crack,
+// dropping dy: two uneven pieces, the far one still resting on the next slab or the wall
+const SCK=new Float64Array(8);
+function slabCrack(ctx,X,ys,tip,b,dy,k,body){const fx=X-HX,ft=ys+HY,yb=ys-HY,xm=fx+k.x,sd=tip<0?-1:1,px=sd<0?X+TW:X,K=SCK,L0=fx-8,R0=fx+TW+DX+8;
+  K[0]=xm+DX+k.j0;K[1]=yb;K[2]=xm+DX*0.5+k.j1;K[3]=ys;K[4]=xm;K[5]=ft;K[6]=xm+k.j2;K[7]=ft+12;
+  ctx.save();ctx.translate(px,ys);ctx.rotate(tip);ctx.translate(-px,-ys);
+  for(let near=0;near<2;near++){const left=(sd<0)===(near===1);ctx.save();
+    if(near){ctx.translate(K[2],ys+dy);ctx.rotate(sd*b);ctx.translate(-K[2],-ys);}
+    ctx.beginPath();ctx.moveTo(left?L0:K[0],yb-8);ctx.lineTo(left?K[0]:R0,yb-8);
+    if(left){for(let i=0;i<4;i++)ctx.lineTo(K[i*2],K[i*2+1]);ctx.lineTo(L0,ft+12);}else{ctx.lineTo(R0,ft+12);for(let i=3;i>=0;i--)ctx.lineTo(K[i*2],K[i*2+1]);}
+    ctx.closePath();ctx.save();ctx.clip();body();ctx.restore();
+    ctx.strokeStyle='rgba(10,6,12,.75)';ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(K[6],ft+5);ctx.lineTo(K[4],K[5]);ctx.lineTo(K[2],K[3]);ctx.lineTo(K[0],K[1]);ctx.stroke();
+    ctx.restore();}
+  ctx.restore();}
+// (round 26d) sand running through a slab's seams and its crack before it goes (a slab of a long row): from a moment of its own (a chain's
+// slab a little before its countdown ends), more as its break nears, most at the seam on the side it is losing, beating unevenly
+function wellPour(ctx,o,f,g,X,ys,tip,ck){const c=o.c,r=o.r,fx=X-HX,ft=ys+HY,t0=-0.3-0.4*wellH(c,r,25),k=clamp((f.tm-t0)/(0.5-t0),0,1);if(k<=0.02)return;
+  const hs=tip<0?-1:tip>0?1:(wellH(c,r,26)<0.5?-1:1),a=Math.abs(tip);
+  for(let i=0;i<2;i++){const x=i===0?(hs<0?fx+1.5:fx+TW-1.5):(ck?fx+ck.x:fx+6+20*wellH(c,r,27)),k2=i?clamp((f.tm-0.1-0.2*wellH(c,r,29))/0.2,0,1):1, // (the crack's stream once it has opened)
+    ki=k*k2*(i?0.7:1)*Math.max(0,0.45+0.55*Math.sin(gameTime*(3+4*wellH(c,r,28+i))+i*2.1+c)),y0=ft+5+a*(i?TW*0.5:TW);
+    sandFlow(ctx,x,y0,Math.max(y0+1,wellY(g,x)),0.24*ki,x*0.07);}}
+// small avalanches down a crater's walls while it runs (a long row): a tongue of loosened sand, lit, sliding from the brink to the throat,
+// each wall on its own beat (0.45 to 0.95 s), two at a time at most
+function wellSlides(ctx,g,C){const t=gameTime,D=WELL_DX;ctx.fillStyle=C.lit;
+  for(let j=0;j<g.n;j++){if(g.th[j]<0)continue;const xc=g.xa+j*TW+16+g.ox[j];
+    for(let sd=-1;sd<=1;sd+=2){let w=4;for(let k=0;k<26;k++){const x=xc+sd*(4+k*D),y0=wellY(g,x),y1=wellY(g,x+sd*D);if(x<g.xa+1||x>g.xa+g.n*TW-1||y0-y1<0.5)break;w=4+(k+1)*D;}if(w<10)continue;
+      for(let m=0;m<2;m++){const h=wellH(g.c0+j,g.r,31+(sd+1)*2+m),P=0.45+0.5*h,u=(t/P+h*7.3+m*0.5)%1,ln=5+5*h,x0=xc+sd*(w-(w-4)*u),x1=x0-sd*ln,dA=0.15+0.5*h,dB=dA+0.25;
+        ctx.globalAlpha=0.42*g.fl*Math.sin(u*Math.PI);ctx.beginPath();
+        for(let q=0;q<=4;q++){const x=lerp(x0,x1,q/4);ctx[q?'lineTo':'moveTo'](x+dA*DX,wellY(g,x)-dA*DY-0.4);}
+        for(let q=4;q>=0;q--){const x=lerp(x0,x1,q/4);ctx.lineTo(x+dB*DX,wellY(g,x)-dB*DY-0.4);}ctx.closePath();ctx.fill();}}}
+  ctx.globalAlpha=1;}
 // the slab in two halves, each turned about its outer edge (a: radians; its middle goes down), split along its crack
-function slabHalves(ctx,X,ys,a,body){const fx=X-HX,ft=ys+HY,xm=fx+15,yb=ys-HY;
-  for(const sd of [-1,1]){const px=sd<0?fx+HX:fx+TW+HX;ctx.save();ctx.translate(px,ys);ctx.rotate(-sd*a);ctx.translate(-px,-ys);
+function slabHalves(ctx,X,ys,a,body,q){const fx=X-HX,ft=ys+HY,xm=fx+15+(q?(wellH(q[0],q[1],16)*2-1)*6:0),yb=ys-HY; // (q: the slab's column and row, round 26d: in a long row its crack off the middle and the halves turning unevenly)
+  for(const sd of [-1,1]){const px=sd<0?fx+HX:fx+TW+HX,aa=q?a*(0.7+0.6*wellH(q[0],q[1],sd<0?17:18)):a;ctx.save();ctx.translate(px,ys);ctx.rotate(-sd*aa);ctx.translate(-px,-ys);
     ctx.beginPath();if(sd<0){ctx.moveTo(fx-8,yb-8);ctx.lineTo(xm+DX,yb-8);ctx.lineTo(xm+DX,yb);ctx.lineTo(xm,ft);ctx.lineTo(xm,ft+12);ctx.lineTo(fx-8,ft+12);}
     else{ctx.moveTo(xm+DX,yb-8);ctx.lineTo(fx+TW+DX+8,yb-8);ctx.lineTo(fx+TW+DX+8,ft+12);ctx.lineTo(xm,ft+12);ctx.lineTo(xm,ft);ctx.lineTo(xm+DX,yb);}
     ctx.closePath();ctx.save();ctx.clip();body();ctx.restore();
@@ -5388,7 +5441,7 @@ function drawWellGroup(ctx,g){wellSolve(g);const C=sandC(),n=g.n,S=g.S,M=n*TW/WE
     ctx.globalAlpha=0.8;ctx.drawImage(sandShadeTop(),xa,yt-DY,xb-xa+DX,DY+14);ctx.restore();}} // (in the slabs' shadow)
   if(g.fl>0.02){ctx.fillStyle=C.grain;for(let j=0;j<n;j++){if(g.th[j]<0)continue;const xc=xa+j*TW+16;
     for(let i=0;i<8;i++){const sd=i%2?1:-1,x0=xc+sd*(6+((i*0.618+j*0.31)%1)*30),u=(t*(2.1+0.3*(i%3))+i*0.37+j*0.53)%1,x=lerp(x0,xc+sd*3,u*u),d=0.2+((i*0.382)%1)*0.6;
-      if(x<xa+1||x>xb-1)continue;ctx.globalAlpha=0.85*g.fl*Math.sin(u*Math.PI);ctx.beginPath();ctx.arc(x+d*DX,wellY(g,x)-d*DY,0.55,0,6.2832);ctx.fill();}}ctx.globalAlpha=1;} // grains running down to the throat
+      if(x<xa+1||x>xb-1)continue;ctx.globalAlpha=0.85*g.fl*Math.sin(u*Math.PI);ctx.beginPath();ctx.arc(x+d*DX,wellY(g,x)-d*DY,0.55,0,6.2832);ctx.fill();}}ctx.globalAlpha=1;if(g.org)wellSlides(ctx,g,C);} // grains running down to the throat
   // its cut face
   ctx.save();ctx.beginPath();ctx.moveTo(xa,S[0]);for(let i=1;i<=M;i++)ctx.lineTo(xa+i*D,S[i]);for(let j=n-1;j>=0;j--){ctx.lineTo(xa+(j+1)*TW,g.yb[j]);ctx.lineTo(xa+j*TW,g.yb[j]);}ctx.closePath();ctx.clip();
   let sm=g.ybm;for(let i=0;i<=M;i++)sm=Math.min(sm,S[i]);
@@ -7256,8 +7309,11 @@ function drawDynamic(ctx,x0,x1,y0,y1){
         ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(fx+11,ft);ctx.lineTo(fx+12,ft+2.5);ctx.lineTo(fx+10.5,ft+5);ctx.moveTo(fx+24,ft);ctx.lineTo(fx+23,ft+5);ctx.stroke();
         if(EGP.traps){ctx.fillStyle='rgba(222,196,140,.9)';for(const ex of [fx,fx+TW]){ctx.fillRect(ex-0.6,ft,1.2,5);}const q2=onFloor(X+15,0.5,ys);ctx.fillRect(q2.x-3,q2.y-0.4,6,0.8);}}; // sand in its seams
         ctx.save();ctx.translate(0,sh+0.8+sk*(wl?0.6:1.6));
-        if(tip){const px=tip<0?X+TW:X;ctx.save();ctx.translate(px,ys);ctx.rotate(tip);ctx.translate(-px,-ys);body();ctx.restore();}else if(sag>0.004)slabHalves(ctx,X,ys,sag,body);else body();
-        if(wl&&tip&&wg.fl>0.02){const ex=tip<0?fx+1.5:fx+TW-1.5,y0=ft+5+Math.abs(tip)*TW;sandFlow(ctx,ex,y0,Math.max(y0+1,wellY(wg,ex)),0.2*wg.fl*Math.min(1,Math.abs(tip)/WELL_TIP0),ex*0.07);} // (sand running off its open edge while the volume drains)
+        const org=wg&&wg.org,ck=org&&tip?wellCrk(o.c,o.r):null; // (round 26d: in a row of three or more, most slabs break across their own flaw as they tip)
+        if(ck){const u=f.s===1&&f.tm>0?clamp(f.tm/0.5,0,1):0;slabCrack(ctx,X,ys,tip,ck.B*(0.12*Math.min(1,Math.abs(tip)/wellTip1(o.c,o.r))+0.88*Math.pow(u,1.5)),0,ck,body);}
+        else if(tip){const px=tip<0?X+TW:X;ctx.save();ctx.translate(px,ys);ctx.rotate(tip);ctx.translate(-px,-ys);body();ctx.restore();}else if(sag>0.004)slabHalves(ctx,X,ys,sag,body,org?[o.c,o.r]:null);else body();
+        if(org&&f.s===1)wellPour(ctx,o,f,wg,X,ys,tip,ck);
+        if(wl&&tip&&!org&&wg.fl>0.02){const ex=tip<0?fx+1.5:fx+TW-1.5,y0=ft+5+Math.abs(tip)*TW;sandFlow(ctx,ex,y0,Math.max(y0+1,wellY(wg,ex)),0.2*wg.fl*Math.min(1,Math.abs(tip)/WELL_TIP0),ex*0.07);} // (sand running off its open edge while the volume drains)
         if(EGP.traps&&f.s===1){
           if(wl){const Ls=wellY(wg,fx+16),kk=f.tm>0&&!tip?Math.max(0,0.7-f.tm*1.4):0; // (round 16a) the sand lying in its seams runs down into the crater opening under it, and is gone as it breaks
             sandFunnel(ctx,[X+1,X+15,X+TW-1],ys,TW,sk,o.c*0.37);if(kk>0.02)for(const ex of [fx+1.5,fx+15,fx+TW-1.5])sandFlow(ctx,ex,ft+5,Math.max(ft+6,Ls),kk*(ex===fx+15?1:0.6),ex*0.07);}
@@ -7320,9 +7376,17 @@ function drawDynamic(ctx,x0,x1,y0,y1){
         const X=d.x-16,bd=()=>slab(ctx,X,d.y,L.theme,true,true);
         if(d.wl){const ff=F(L,d.c,Math.round((d.y0+4)/TH)-1),g=ff&&ff.wg;let sd=0; // (round 21b) one whose neighbour went first falls turning into its hole, as one piece, on from its tip
           if(g&&g.n>1){const j=d.c-g.c0,fl=j>0?g.os[j-1].f:null,fr=j<g.n-1?g.os[j+1].f:null,tl=fl&&fl.s===2?fl.tm:-1,tr=fr&&fr.s===2?fr.tm:-1;if(tl>ff.tm||tr>ff.tm)sd=tl>=tr?-1:1;}
-          if(sd){if(d.y-d.y0>3){ctx.beginPath();ctx.rect(g.xa,d.y0-60,g.n*TW,999);ctx.clip();}const px=sd<0?X+TW:X;ctx.translate(px,d.y);ctx.rotate(sd*Math.min(0.7,WELL_TIP1+age*2.5));ctx.translate(-px,-d.y);bd();}
+          const org=g&&g.org,rr=Math.round((d.y0+4)/TH)-1;
+          if(sd&&org){if(d.y-d.y0>3){ctx.beginPath();ctx.rect(g.xa,d.y0-60,g.n*TW,999);ctx.clip();} // (round 26d) its own turn and pace; the far piece hangs on the rim a moment, the near one goes first
+            const lag=0.11*wellH(d.c,rr,19),al=Math.max(0,age-lag),yd=d.y0+0.5*(d.g||GRAV)*al*al,tp=sd*Math.min(0.8,wellTip1(d.c,rr)+al*(1.6+1.9*wellH(d.c,rr,20))),ck=wellCrk(d.c,rr);
+            ctx.translate(0,yd-d.y); // (drawn where it hangs: bd draws at d.y)
+            if(ck)slabCrack(ctx,X,d.y,tp,Math.min(1.4,ck.B+age*(1.8+2.2*wellH(d.c,rr,21))),Math.min(140,(d.y-yd)+110*age*age),ck,bd);
+            else{const px=sd<0?X+TW:X;ctx.translate(px,d.y);ctx.rotate(tp);ctx.translate(-px,-d.y);bd();}}
+          else if(sd){if(d.y-d.y0>3){ctx.beginPath();ctx.rect(g.xa,d.y0-60,g.n*TW,999);ctx.clip();}const px=sd<0?X+TW:X;ctx.translate(px,d.y);ctx.rotate(sd*Math.min(0.7,WELL_TIP1+age*2.5));ctx.translate(-px,-d.y);bd();}
           else{if(d.y-d.y0>3){ctx.beginPath();ctx.rect(X-HX,d.y0-60,TW,999);ctx.clip();} // (in the shaft: behind the walls' front faces)
-          slabHalves(ctx,X,d.y,Math.min(0.8,0.14+age*4),bd);}}else slabChunks(ctx,X,d.y,age,bd);}
+          slabHalves(ctx,X,d.y,Math.min(0.8,0.14+age*4),bd,org?[d.c,rr]:null);}
+          if(org&&age<0.6){ctx.restore();ctx.save();dustCloud(ctx,d.x+(wellH(d.c,rr,22)-0.5)*12,d.y0+HY+4,age-0.05*wellH(d.c,rr,23),0.5,0.4+0.35*wellH(d.c,rr,24),0);}} // (dust tumbling out of the hole as it goes, each its own)
+          else slabChunks(ctx,X,d.y,age,bd);}
       ctx.restore();ctx.save();if(d.kind==='slab'&&!d.wl)dustCloud(ctx,d.x,d.y0+HY+3,age,0.45,1.25,0);ctx.restore();ctx.save();}
     else if(d.kind==='plank')drawPlank(ctx,0,0,0);
     else if(d.kind==='rock'){const rk=[[4,-11],[9,-15],[19,-14],[27,-10],[28,-2],[21,1],[8,1],[4,-4]];ctx.beginPath();rk.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();ctx.fillStyle=th.wallB;ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=1.4;ctx.stroke();
