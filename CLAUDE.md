@@ -443,6 +443,13 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   never in a fork's short way or a G3 gate turn; segs `turn-sand3/4`); stepping on its slab starts it, it sinks at `SAND_LV` 140 px/s
   after `SAND_LW` 0.25 s and stays down; bot action `sandlift`; `estPath` times it as the slide. Checks: `lifttest.py` (sand3, sand4
   and its own case), `liftscan.py`; pictures `egyptr16.py`.
+  Always a shaft (round 26e, owner: "sand lifts must always work within a shaft otherwise they don't make sense"): wall beside the sand on
+  every storey above the foot (the open-hall pass keeps the cells either side of the shaft from its top row to its foot as walls, its window
+  draw made all the same, as round 25d's lintel: no stream moves), and the foot storey shut by granite mouth slabs (`f.ms`: the exit side
+  always, the far side where a corridor runs on there; `sandMouth`, `sandOpen`: up over the ride's last `SAND_MD` 28 px, a function of `f.y`;
+  play already held the exit by `f.gB`, the far mouth now holds too). Where a later run, passage or fill opened a side, or left a drop
+  beside the foot (16 of 322 on floors 1-48, 3 seeds), the move is the banner slide instead (same tiles, bot action `slide`, seg
+  `turn-bannerK`). `sandshaft.py` (floors 1-48, 3 seeds) must print `sandshaft: ok`; pictures `egyptr26e.py`.
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized from `estPath()` at a careful pace, times 0.84 to 1.08.
 - Pose angles are measured from straight down; positive means forward.
