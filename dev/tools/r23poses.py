@@ -38,9 +38,12 @@ TALL = 50.9      # the skeleton's height for the head's scale; drawn standing (s
                  # run's flight lifts him 2.6 px: its crown stays under v69's standing crown)
 SOLE = 1.6       # the drawn figure's height over TALL: the sole's lowest pixel under the floor line and the hair over the skull
 HEAD_R = 2.40    # the drawn head (chin to the hair's crown) in head radii (LEN.hd), as measured on the drawing (egyptr23.py body)
-NECK_CUT = 2.0   # round 23c (owner: "1.28 is fine. Now make the neck 2px shorter and keep everything else as is"): the chin, and the whole
+NECK_CUT = 1.0   # round 23d (owner, after 23c: "Too short, one pixel longer"; 23c cut 2.0); round 23c (owner: "1.28 is fine. Now make the neck 2px shorter and keep everything else as is"): the chin, and the whole
                  # head with it, sits this much nearer the shoulder joint than ANSUR's span (4.0 px, now 2.0); the body under the chin (the
                  # pit of the neck, C7, the trapezius, every width), the bones, poses, grips and hit boxes are unchanged
+KM_DROP = 0.5    # round 23d: the nape point (NJ.km) comes down this much, half the cut: between round 23b's place (0.6 px over the chin, which
+                 # would now be 3.61, 0.15 px over C7: too near to fold) and round 23c's (4.61, unmoved), so the back of the neck shows a little under
+                 # the skull again with no fold (see FIGURE_SPEC.md, round 23d)
 
 
 # ---------------- muscle bulk (round 23b) ----------------
@@ -459,7 +462,7 @@ def drawing(Wd, m=1.0):
     NJ = {'th': [r(jc - Wd['pit']), r(-Wd['neckB'] / 2 + 0.1)], 'c7': [r(jc - Wd['c7']), r(Wd['neckB'] / 2 + 0.05)],
           'bk': [[r(jc - Wd['pit'] + 1.9), 0.1], [r(jc - Wd['c7']), r(Wd['neckB'] / 2 + 0.05)], [r((jc - Wd['c7']) * 0.62), r(Wd['neckB'] / 2 + 0.55 + tr * 0.7)],
                  [r((jc - Wd['c7']) * 0.3), r(Wd['neckB'] / 2 + 0.75 + tr)]],
-          'km': [r(jc + 0.6), r(Wd['neck'] / 2 - 0.1)], 'nb': [r(jc - Wd['pit'] + 0.7), 0.15, r(Wd['neckB'] - o)], 'tp': [0.25, r(Wd['neck'] - o)],
+          'km': [r(jc + 0.6 - KM_DROP), r(Wd['neck'] / 2 - 0.1)], 'nb': [r(jc - Wd['pit'] + 0.7), 0.15, r(Wd['neckB'] - o)], 'tp': [0.25, r(Wd['neck'] - o)],
           'dq': 0.2, 'hn': 0.85}
     # deltoid, biceps, above the elbow (brachialis and triceps), elbow (a joint: unchanged), forearm, wrist (a joint)
     arm = [W0['arm'] * 1.35 * grow('delt', m), Wd['arm'], W0['arm'] * 0.9 * grow('armLo', m), W0['wrist'] * 1.35, Wd['fore'], W0['wrist']]

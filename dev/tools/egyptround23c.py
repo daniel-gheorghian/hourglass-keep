@@ -25,8 +25,8 @@ def sections(D, REL, img):
     J = json.load(open(os.path.join(HERE, 'r23body.json')))
     B, W = J['body'], J['widths']
     rows = [('MUS, the game\'s muscle level', '1.0 (round 23b drew round 23\'s body)', '1.28 (natural near-limit)'),
-            ('shoulder joint to chin', '%.2f px' % W['jc'], '%.2f px' % W['jcH']),
-            ('LEN.nk (skel: the head\'s centre nk + hd from the joint)', '%.3f' % (B['nk'] + 2.0), '%.3f' % B['nk']),
+            ('shoulder joint to chin', '%.2f px' % W['jc'], '%.2f px' % (W['jc'] - 2.0)),
+            ('LEN.nk (skel: the head\'s centre nk + hd from the joint)', '%.3f' % (B['nk'] + 1.0), '%.3f' % (B['nk'] - 1.0)),   # (r23body.json now holds round 23d's neck, 1 px cut)
             ('chin over the pit of the neck', '%.2f px' % W['pit'], '%.2f px' % (W['pit'] - 2.0)),
             ('standing height, sole to crown', '52.5 px', '50.5 px')]
     return ['<section class="card" id="r23c"><h2>Round 23c: MUS 1.28, the neck 2 px shorter</h2>'
@@ -45,9 +45,8 @@ def sections(D, REL, img):
             'the trapezius slope just above C7: no gap, no step and no new hump in any pose checked (standing, hanging, reaching, running, crouching, '
             'crawling, drinking, en garde).</li>'
             '<li>Robbers share the skeleton: their necks are 2 px shorter too.</li></ul>' +
-            fig(img, 'r23c_neck.png', 'Before (round 23b at MUS 1.28) and after: standing at 10x with the chin (red) and the shoulder joint (blue); '
-                'stand, hang, reach, run, crouch, crawl, drink and en garde and a robber at 4x; standing at 1x and 3x beside a robber; in the game at '
-                'the phone\'s resolution, Torchlight and Classic, standing and running') +
+            '<p class="meta">Picture: round 23c\'s before/after sheet (r23c_neck.png) is retired; round 23d\'s sheet shows round 23b, round 23c and '
+            'round 23d side by side (see <a href="#r23d">round 23d</a>), made by egyptr23c.py\'s successor egyptr23d.py.</p>' +
             '<h3>Tests</h3><p>' + E(TESTS) + '</p>'
             '<p class="meta">Retired to stay at 505 files: round 8\'s prince comparison (r8_prince_compare: v62, round 7 and round 8 side by side), '
             'superseded by rounds 23 to 23c.</p></section>']

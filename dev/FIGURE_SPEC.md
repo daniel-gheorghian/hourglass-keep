@@ -161,7 +161,7 @@ faint strokes in the part's own shade grow with the level (`RD.mh`, 0 at 1.0, 0.
 insertion (0.47 down the humerus) and the pectoral's short lower border (fading as the arms rise). Sources and pictures: egypt_themes.html,
 round 23b (`egyptr23b.py`). Check a level with figscan and lowceil with `window.__MUS` set.
 
-## The neck (round 23c): 2 px shorter
+## The neck (round 23c): 2 px shorter (superseded by round 23d: 1 px)
 
 Owner: "1.28 is fine. Now make the neck 2px shorter and keep everything else as is". `NECK_CUT` (r23poses.py, 2.0 px) is taken off ANSUR's
 span from the shoulder joint to the chin: `LEN.nk` 4.518 -> 2.518, the chin 3.98 -> 2.00 px over the joint (as drawn standing), so the whole
@@ -172,6 +172,17 @@ head's centre), the neck's top (NJ.hn, NJ.tp), and the drinking hand (skel's mou
 `NJ.km` stays where it was: moved down with the chin it would fall under C7 and fold the neck's back edge; it lies inside the skull. The
 skull's back now meets the trapezius slope just above C7. Standing height 52.5 -> 50.5 px (crowns only lower). Robbers share it. Picture:
 `egyptr23c.py` (r23c_neck.png). figscan against round 23b at 1.28: only the head, the mouth, crowns and the drinking hand move (2.00 px).
+
+## The neck (round 23d): 1 px shorter
+
+Owner, after round 23c: "Too short, one pixel longer". `NECK_CUT` is 1.0 (23c: 2.0): the shoulder joint to the chin is ANSUR's 4.0 px less 1,
+2.99 px as drawn standing (23b 3.98, 23c 2.00); `LEN.nk` 3.518 (23b 4.518, 23c 2.518); standing height 51.5 px (23b 52.5, 23c 50.5).
+Everything else is round 23c's (MUS 1.28; the body's neck points th, c7, bk, nb, every width, bone, pose, grip, hit box and timer).
+The nape `NJ.km`: in 23b it sat 0.6 px over the chin (4.61 along the neck's axis from the joint); 23c left it at 4.61 (2.6 px over the
+lower chin, inside the skull). Now `KM_DROP` (0.5, half the cut) puts it at 4.11, between that place and 23b's place relative to the chin
+(3.61, which is only 0.15 px over C7 at 3.46 and would fold the back edge). A little of the neck's back shows under the skull again and runs
+into the trapezius slope with no gap, overlap or hump in stand, hang, reach, run, crouch, crawl, drink, en garde and the robber (a sub-pixel
+change at 1x: under 15 pixels differ at 10x between 4.61 and 3.61). Picture: `egyptr23d.py` (r23d_neck.png: 23b | 23c | 23d).
 
 ## Superseded (rounds 22b to 22d, kept for the record)
 
