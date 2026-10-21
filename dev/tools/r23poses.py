@@ -364,6 +364,65 @@ def settle_seq(n, t0, pk, pw, end, t1, drop=(), step=4):
     return out
 
 
+# ---------------- round 26c: the running jump's flight, from a stride to a leap ----------------
+# Owner: "when jumping the stride is too large. It works for large gaps but for smaller gaps looks silly. I'd adjust the stride with the
+# actual distance he jumps." v72 held one frame through every running jump: 49_04 f176, the top of a dance leap (thighs 124 degrees apart,
+# the feet 40 px apart on a 51 px figure), whatever the gap. Now the flight is a sequence of LEAP_N keys from take-off (u 0, the rear foot
+# leaving the floor) to touch-down (u 1, the lead foot meeting it), in two measured sets the game blends by how far the jump is for (jumpSpan
+# in the source):
+#   L  49_04 f160-213: run, leap (subject 49): the take-off foot (left) leaves at f160, the thighs open to 124 degrees at f176 and close to
+#      77 as the lead (right) foot reaches down to land at f213 (0.44 s; the hip 1.4 m along, 1.15 m up). Round 23's jumpR is its f176.
+#   S  09_01 f27-43: a running stride's flight (subject 09, 3.4 m/s, the run's own clip): the left toe leaves at f27 with the thighs 73
+#      degrees apart, the right heel strikes at f43 at 31 (0.13 s). The shortest leap there is: the stride he is already running.
+# Both lead with the right (near) leg. The arms: S has the run's (09_01: the far arm forward, the near one back, in step with the legs). The
+# leap's arms are a dancer's port de bras, opened to the sides from take-off: seen from the side the near upper arm or forearm is under
+# half its length from u 0.125 on (LEAP_PROJ; printed by this script as 'arms in view'), its projected angle swings 140 degrees in 0.1 s
+# and the elbow reads as folded. So L keeps v72's arms, jumpR's (49_04 f176, both forward and up) through the flight, and the game's own
+# landing blend (40% toward the landing pose once he falls faster than 60 px/s) lowers them as before. The low leaps (a ceiling at his
+# height) take the same keys, each pitched forward by the low-leap rule (low_lean, as jumpLow), so no key's head rises above v69's low leap.
+# Round 25a's extras (so, fp: the shoulders, the feet's pitch: pointed in the leap) come from the same frames; the spine's bend sb too for the
+# stride (the run's 5-9 degrees), not for the leap: the dancer arches her back up to 34 degrees (sb -0.6), a ballet line, not a runner's; L
+# keeps v72's straight trunk (sb 0) and its shoulders level (so 0, as its arms are v72's).
+LEAP = {'L': ('49_04', 160, 213, (100, 240)), 'S': ('09_01', 27, 43, (42, 130))}
+LEAP_N = 9
+LEAP_PROJ = 0.5
+
+
+def leap_keys(B, n, a, b, span, pxm):
+    c = clip(n)
+    f = fwd_of(c, (a + b) // 2, span=span)
+    fl = floor_of(n, span[0], span[1], f) + 0.012
+    flat = footFlat(n, *((60, 150) if n == '49_04' else span), f, fl)   # the foot flat on the floor: 49_04's run-up, 09_01's cycle
+    keys, vis = [], []
+    for j in range(LEAP_N):
+        x = a + (b - a) * j / (LEAP_N - 1)
+        i = int(math.floor(x))
+        u = x - i
+        pa, pb = at(n, i, fwd=f), at(n, i + 1, fwd=f)
+        q = {k: pa[k] + (pb[k] - pa[k]) * u for k in ANG}
+        q.update(extras(n, x, f, flat, pxm))
+        keys.append(q)
+        P3, Q = c.P(int(round(x))), mocap.project(c.P(int(round(x))), f)
+        v = {}
+        for side, tag in (('R', 'F'), ('L', 'B')):
+            pr = lambda a_, b_: math.hypot(Q[b_ + side][0] - Q[a_ + side][0], Q[b_ + side][1] - Q[a_ + side][1]) / float(np.linalg.norm(P3[b_ + side] - P3[a_ + side]))
+            v[tag] = min(pr('sh', 'elb'), pr('elb', 'wri'))   # the upper arm and the forearm, each as seen against its length
+        vis.append(v)
+    return unwrap_keys(keys), [round(min(v['F'], v['B']), 2) for v in vis]
+
+
+def low_lean(B, G, q, name):
+    """the low-leap rule (see build): pitch the trunk forward until the head's top is no higher than v69's low leap's"""
+    oy = -G['PS.' + name]['hd'][1]
+    def hy_of(l, h):
+        a = l + h
+        return B['to'] * math.cos(l) + (B['nk'] + NECK_CUT + B['hd']) * math.cos(a) + 1.25 * B['hd'] * abs(math.cos(a))
+    l = q['lean']
+    while hy_of(l, q['head']) > oy + 1.25 * 4.6 * 0.95 - 0.6 and l < 1.4:
+        l += 0.02
+    return l
+
+
 def build():
     B, Wd, info = body()
     G = grips()
@@ -503,6 +562,24 @@ def build():
         src['set_' + k] = {'clip': n, 'frame': '%d-%d (peak %d, %s)' % (t0, t1, pk, peak), 'why': 'settle: max residual ' + ', '.join(
             '%s %.0f' % (a, math.degrees(max(abs(q[2 + j]) for q in r))) for j, a in enumerate(ANG))}
     src['swing'] = {'clip': '43_02', 'frame': '228-480 (one cycle, 12 phase bins)', 'why': 'grip bar, swing body'}
+    # --- round 26c: the running jump's flight, two sets (see LEAP); the low leaps' keys pitched forward one by one ---
+    lp, ll = {}, {}
+    for t, (n, a, b, span) in LEAP.items():
+        keys, vis = leap_keys(B, n, a, b, span, pxm)
+        if t == 'L':
+            for q in keys:   # v72's arms and straight trunk (see LEAP)
+                q.update({k: MCP['jumpR'][k] for k in ('aF', 'eF', 'aB', 'eB')} | {'sb': 0.0, 'soF': 0.0, 'soB': 0.0})
+        lp[t] = [{k: round(q[k], 3) for k in ANG + X25} for q in keys]
+        lo = []
+        for q in keys:
+            r = {k: round(q[k], 3) for k in ANG + X25}
+            r['lean'] = round(low_lean(B, G, q, 'jumpLow'), 3)
+            lo.append(r)
+        ll[t] = lo
+        src['leap' + t] = {'clip': n, 'frame': '%d-%d (%d keys, take-off to touch-down)' % (a, b, LEAP_N),
+                           'why': ('run, leap: the dance leap' if t == 'L' else 'run: a stride\'s flight') + '; arms in view (min proj) ' + ' '.join('%.2f' % v for v in vis)}
+    MCK['leap'] = lp
+    MCK['leapLow'] = ll
     return B, Wd, info, MCP, MCK, src
 
 

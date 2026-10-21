@@ -75,7 +75,7 @@ lunge 0.46, parry 0.07, lowStrike 0.10). The low leaps keep their legs and are p
 | jumpS | 13_11 f252 | forward jump in flight, both arms swung forward (round 25b; was 16_05 f150) |
 | kickTuck | 16_05 f152 | the broad jump in flight |
 | kickReach | 16_05 f182 | derived: the broad jump reaching for the floor |
-| jumpR | 49_04 f176 | run, leap: the split at the top |
+| jumpR | 49_04 f176 | run, leap: the split at the top (round 26c: the running jump's flight is now `MCK.leap`, from a stride to this leap; jumpR gives its flags and arms) |
 | kickPush | 49_04 f160 | derived: the leap's push-off (no wall-kick clip) |
 | jumpLow | 49_04 f164 | derived: pitched forward under the ceiling (both arms forward already) |
 | jumpLowS | 13_11 f244 | derived: just after take-off, both arms forward, pitched forward under the ceiling (round 25b; was 16_05 f150) |
@@ -328,6 +328,31 @@ so the pixel stays. Robbers keep R23DR (v70's widths and round 22's Bo). Also ch
 forward), windup 0.31 -> 0.09, the drink's last keys up to 0.32. Joints, skeleton, poses, grips, hit boxes, timings unchanged. Checks:
 figscan ok, lowceil, swingtest, rendersmoke, run2. Picture: `egyptr26b.py` (r26b_back.png: before | after with the back's contour, 10x,
 4x, numbers, in game both modes).
+
+## The stride for the distance (round 26c)
+
+Owner: "when jumping the stride is too large. It works for large gaps but for smaller gaps looks silly. I'd adjust the stride with the actual
+distance he jumps."
+
+Measured in play (`egyptr26c.py`, the bot on floors 1-27, two seeds): the arcs are fixed. Every running jump on a level floor flies 97.6 px in
+0.53 s (a low leap 74.2 px in 0.35 s, a standing jump 59.4 in 0.45) over three tiles of pit, two, one or a saw alike; only where it ends changes
+the distance flown (a ledge a storey up 33.8 px, a swing bar 42.7, a storey down 137.8). v72 held 49_04 f176 (thighs 124 degrees apart, feet 40 px)
+through every running jump. The standing jumps keep the feet together (4 degrees, 0.8 px) and are unchanged.
+
+| Part | How |
+|---|---|
+| D (`jumpSpan`, at take-off) | the shorter of: the arc to the first floor the feet meet or a wall in the way (`P.jF`), and a pit or trap in front (no floor, spikes, a loose slab, a closer, a saw, a vent) within 80 px: its far lip + `JS_FOOT` 12 (`P.jN`) |
+| s (`P.jS`) | (D - `JS_D0` 48) / (the level arc - 48), 0..1: one tile 0.01-0.10, two 0.69-0.72, three 0.96-1, up to a ledge 0-0.37, down a storey 1 |
+| flight (`leapPose`) | `MCK.leap` S and L, 9 keys from take-off to touch-down at the phase `P.t / P.jT` (`P.jT` the level arc's time), S + (L - S) s; past the phase's end the last key; the 40% landing blend once falling faster than 60 px/s as before |
+| S | 09_01 f27-43, a running stride's flight: thighs 73 degrees at toe-off to 31 at heel strike, the run's arms, sb, shoulders and feet |
+| L | 49_04 f160-213, the leap: 88, 121 at the top, 77 at touch-down; v72's arms (jumpR's: the clip's are a dancer's, opened sideways and end-on for most of the flight, under half their length in profile from u 0.125), sb 0 (the dancer arches 34 degrees), shoulders 0; the feet's pitch from the clip (pointed) |
+| low leaps | `MCK.leapLow`: the same keys, each pitched forward by the low-leap rule (`low_lean` in r23poses.py) |
+
+Widest as drawn, before > after (split, feet): one tile 124 > 62-71 deg, 40.0 > 25.6-27.3 px; two tiles 124 > 99-102, 36.4-36.9; three 124 > 115-116,
+39.6; up to a ledge 124 > 66-83, 25.6-31.9; low leap over one tile 101 > 62-73, 30.7 > 27.1-28.3; the low leap down a storey or over two tiles 101 >
+113-114 (drawn as the full leap where v72 held the leap's take-off frame). Look only: arcs, take-off, hit box, grabs, bot, timers unchanged; P.jS,
+P.jT, P.jD, P.jF, P.jN live on P (rewind-safe); no allocation a frame. Checks: figscan ok, lowceil, primtest, run2, rendersmoke. Pictures:
+`egyptr26c.py` (r26c_stride.png, r26c_jumps.gif).
 
 ## The neck (round 23c): 2 px shorter (superseded by round 23d: 1 px)
 

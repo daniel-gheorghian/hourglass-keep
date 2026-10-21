@@ -304,6 +304,16 @@
    "clip": "43_02",
    "frame": "228-480 (one cycle, 12 phase bins)",
    "why": "grip bar, swing body"
+  },
+  "leapL": {
+   "clip": "49_04",
+   "frame": "160-213 (9 keys, take-off to touch-down)",
+   "why": "run, leap: the dance leap; arms in view (min proj) 0.61 0.48 0.39 0.13 0.08 0.02 0.02 0.19 0.32"
+  },
+  "leapS": {
+   "clip": "09_01",
+   "frame": "27-43 (9 keys, take-off to touch-down)",
+   "why": "run: a stride's flight; arms in view (min proj) 0.82 0.81 0.80 0.80 0.81 0.82 0.84 0.86 0.88"
   }
  }
 }

@@ -201,6 +201,10 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   `figscan.py` (must print `figscan: ok`: held hands, no crown over v69's standing crown, nor over v69's own in the crawl and low leaps,
   soles on the floor, hands on the bar and at the mouth) and `egyptr23.py moves` (clip | new | v69). Pictures `egyptr23.py`
   (body, moves, game, clips).
+  The running jump's stride (round 26c, owner: "the stride is too large ... for smaller gaps looks silly"): every running jump flies the same
+  arc on a level floor (97.6 px), so the flight is drawn for the distance the jump is for: `jumpSpan` at take-off (the arc to the first floor or
+  wall, or a pit/trap's far lip + 12 px), `P.jS` = (D - 48) / (level arc - 48); `leapPose` blends `MCK.leap` S (09_01's stride flight) and L
+  (49_04's leap, v72's arms) over 9 keys by the arc's phase (`MCK.leapLow` pitched for the low leaps). Look only; `egyptr26c.py`.
   Muscle bulk (round 23b): `MUS` in r23poses.py is the upper arm's girth over ANSUR's median (round 23c, owner: "1.28 is fine": the game
   draws 1.28; 1.0 is round 23's look); every other width grows at its own rate per unit of it (`GROW`, from ANSUR II's lean 17-20 year olds by muscle
   percentile; `TRUNK_G` lays the trunk's growth in front or behind), joints, bones, skeleton, poses and hit boxes never. The block also
