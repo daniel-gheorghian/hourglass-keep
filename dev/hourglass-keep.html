@@ -7313,6 +7313,12 @@ function lightSprite(col){let c=spriteCache.get(col);if(c)return c;c=document.cr
   gr.addColorStop(0,'rgba('+col+',1)');gr.addColorStop(0.28,'rgba('+col+',0.62)');gr.addColorStop(0.62,'rgba('+col+',0.2)');gr.addColorStop(1,'rgba('+col+',0)');g.fillStyle=gr;g.fillRect(0,0,64,64);spriteCache.set(col,c);return c;}
 function stripCanvas(key,stops){let c=spriteCache.get(key);if(c)return c;c=document.createElement('canvas');c.width=1;c.height=64;const g=c.getContext('2d'),gr=g.createLinearGradient(0,0,0,64);for(const [k,v] of stops)gr.addColorStop(k,v);g.fillStyle=gr;g.fillRect(0,0,1,64);spriteCache.set(key,c);return c;}
 // every light that reaches the view this frame (world units); kind: torch, win, fill, item...
+// (round 25c, owner: "what is that haze around the prince?") the fill light every figure carries (the "lit characters" of the modern
+// look) lights him and the stone round him, never the sky seen through an opening: the sky is far away and shines by itself, so a
+// fill light on it was a pale halo that went with him wherever an opening was behind him (it stopped at the sill). Torchlight
+// keeps the fill's share in the light map's alpha and the composite takes it off where the scene's alpha says the backdrop shows
+// (glFrame; G2D.na); Classic leaves it out of the openings in its light canvas, except where a figure stands in front (fillCut)
+const FILL_COL='205,195,225',FILL_GL='const vec3 FILL_C=vec3('+FILL_COL.split(',').map(v=>(v/255).toFixed(4)).join(',')+');';
 function gatherLights(x0,x1,y0,y1){
   const th=L.theme,lk=lookOf(th.style),out=[],t=gameTime,add=(x,y,r,col,a,kind,bloom)=>{if(x+r>x0&&x-r<x1&&y+r>y0&&y-r<y1)out.push({x,y,r,col,a,kind,bloom});};
   for(const tc of L.torches){if(tc.broken)continue;const sd=(tc.c*7+tc.r*13)%10,fl=0.92+flK(sd,t),lo=th.style==='palace'&&lampFree(tc)?[0,0]:LAMP[th.style]||LAMP.dungeon,x=tc.c*TW+16+lo[0],y=SURF(tc.r)-38+lo[1]-((th.style==='palace'||th.style==='tile')&&lampFree(tc)?28:0);
@@ -7331,8 +7337,8 @@ function gatherLights(x0,x1,y0,y1){
       if(bo&&!(o[4]&&own)){const w=false,fy=SURF(Math.floor((o[1]+o[3]-1)/TH)),cy=o[1]+o[3]*0.5,h=Math.max(0,Math.min(fy-4-cy,1/sb.q)),d=sb.per*h;
         let blk=false;for(let t=0.15;t<=1.001&&!blk;t+=0.17){const bx=o[0]+o[2]/2+sb.dx*d*t,by=cy+sb.dy*d*t-4;blk=solidFront(bx,by);} // (round 15: not where a wall block stands between the opening and its landing; round 20a: or a low ceiling)
         if(!blk)add(o[0]+o[2]/2+sb.dx*d,cy+sb.dy*d-4,Math.max(34,o[2]*0.6+22),w?lk.win:sb.col,0.55*(w?RY_OWN:sb.k),'sky');}}}
-  if(P&&!(P.state==='dead'&&P.y>L.rows*TH))add(P.x,P.y-26,84,'205,195,225',0.42,'fill');
-  for(const g of G)if(g.alive&&!g.gone)add(g.x,g.y-26,56,'205,195,225',0.22,'fill');
+  if(P&&!(P.state==='dead'&&P.y>L.rows*TH))add(P.x,P.y-26,84,FILL_COL,0.42,'fill');
+  for(const g of G)if(g.alive&&!g.gone)add(g.x,g.y-26,56,FILL_COL,0.22,'fill');
   for(const sn of SN)if(sn.alive&&!sn.gone)add(sn.x,sn.y-4,34,'200,230,170',0.25,'fill');
   for(const it of L.items)if(!it.taken){const col=it.type==='heal'||it.type==='big'?'255,90,70':it.type==='life'?'255,210,110':'110,130,255';add(it.x,SURF(it.r)-8,it.type==='big'?42:32,col,it.type==='big'?0.75:0.6,'item',{r:9,a:0.35});}
   for(const cp of L.cps){const gc=th.glow||'255,214,130',y=SURF(cp.r)-26; // lit, it lights the room like a lamp (torch strength); unlit it keeps a faint glint
@@ -7360,6 +7366,27 @@ function gatherLights(x0,x1,y0,y1){
   return out;
 }
 let lightC=null,lightG=null;
+// (round 25c) Classic: the figures' fill lights in a canvas of their own at the light map's size, taken out wherever the backdrop
+// shows (where the room images are clear: an opening, less any block in front of it), except where a figure stands in front (its
+// silhouette); null when no fill light reaches an opening in view (ryOps: the fills are then drawn with the other lights, as before)
+const FCUT={c:null,g:null,m:null,mg:null};
+function fillCut(lights,sc,camD,camDY,lw,lh){if(!GFX().bg||!L)return null;
+  const x0=camD/sc,y0=camDY/sc,x1=x0+lw*4/sc,y1=y0+lh*4/sc,fl=[];for(const q of lights)if(q.kind==='fill')fl.push(q);if(!fl.length)return null;
+  const ops=[];for(const o of ryOps()){if(o.x1<x0||o.x0>x1||o.y1<y0||o.y0>y1)continue;if(fl.some(q=>o.x1>q.x-q.r&&o.x0<q.x+q.r&&o.y1>q.y-q.r&&o.y0<q.y+q.r))ops.push(o);}
+  if(!ops.length)return null;
+  if(!FCUT.c){FCUT.c=document.createElement('canvas');FCUT.g=FCUT.c.getContext('2d');FCUT.m=document.createElement('canvas');FCUT.mg=FCUT.m.getContext('2d');}
+  for(const c of [FCUT.c,FCUT.m])if(c.width!==lw||c.height!==lh){c.width=lw;c.height=lh;}
+  const g=FCUT.g,m=FCUT.mg,T=[sc/4,0,0,sc/4,-camD/4,-camDY/4];
+  g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='source-over';g.clearRect(0,0,lw,lh);g.setTransform(...T);g.globalCompositeOperation='lighter';
+  for(const q of fl){g.globalAlpha=Math.min(1,q.a);g.drawImage(lightSprite(q.col),q.x-q.r,q.y-q.r,2*q.r,2*q.r);}
+  m.setTransform(1,0,0,1,0,0);m.globalAlpha=1;m.globalCompositeOperation='source-over';m.fillStyle='#fff';m.fillRect(0,0,lw,lh);m.setTransform(...T);
+  m.globalCompositeOperation='destination-out';m.imageSmoothingEnabled=true;
+  for(let ry=Math.floor(y0/ROOM_H);ry<=Math.floor((y1-0.01)/ROOM_H);ry++)for(let rx=Math.floor(x0/ROOM_W);rx<=Math.floor(x1/ROOM_W);rx++)m.drawImage(roomCanvas(rx,ry),rx*ROOM_W,ry*ROOM_H,ROOM_W,ROOM_H); // (what the rooms cover is not sky)
+  SIL.m.clear();SIL.m2.clear();
+  const fig=e=>{const sl=glSilhouette(e,true);if(sl)m.drawImage(sl,e.x-48,e.y+(e.yo||0)-80,96,96);};
+  if(P&&P.state!=='dead'&&P.state!=='exit'&&!(P.y>L.rows*TH))fig(P);for(const e of G)if(e.alive&&!e.gone&&e.x>x0-60&&e.x<x1+60)fig(e);
+  g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='destination-out';g.drawImage(FCUT.m,0,0);g.globalCompositeOperation='source-over';
+  return FCUT.c;}
 // one low-resolution light map (ambient + every light, then the colour grade) multiplied over the scene
 function lightPass(ctx,lights,sc,camD,camDY,gradeOnly){
   const g=GFX(),th=L.theme,lk=lookOf(th.style),W=cv.width,Hh=cv.height,lw=Math.ceil(W/4),lh=Math.ceil(Hh/4);
@@ -7369,8 +7396,9 @@ function lightPass(ctx,lights,sc,camD,camDY,gradeOnly){
   if(!lightC||lightC.width!==lw||lightC.height!==lh){lightC=document.createElement('canvas');lightC.width=lw;lightC.height=lh;lightG=lightC.getContext('2d');}
   const l=lightG;l.setTransform(1,0,0,1,0,0);l.globalCompositeOperation='source-over';l.globalAlpha=1;
   if(g.light&&!gradeOnly){l.fillStyle='rgb('+lk.amb+')';l.fillRect(0,0,lw,lh);l.globalCompositeOperation='lighter';l.setTransform(sc/4,0,0,sc/4,-camD/4,-camDY/4);
-    for(const q of lights){l.globalAlpha=Math.min(1,q.a);l.drawImage(lightSprite(q.col),q.x-q.r,q.y-q.r,2*q.r,2*q.r);}
-    l.globalAlpha=1;l.setTransform(1,0,0,1,0,0);}
+    const cut=fillCut(lights,sc,camD,camDY,lw,lh); // (round 25c) the figures' fill light, kept off the sky
+    for(const q of lights){if(cut&&q.kind==='fill')continue;l.globalAlpha=Math.min(1,q.a);l.drawImage(lightSprite(q.col),q.x-q.r,q.y-q.r,2*q.r,2*q.r);}
+    l.globalAlpha=1;l.setTransform(1,0,0,1,0,0);if(cut){l.globalCompositeOperation='lighter';l.drawImage(cut,0,0);}}
   else{l.fillStyle='#fff';l.fillRect(0,0,lw,lh);}
   if(g.grade){l.globalCompositeOperation='multiply';l.drawImage(stripCanvas('grade-'+th.look+(L.prog?L.prog.tod:0),[[0,'rgb('+lk.top+')'],[0.55,'rgb(246,242,246)'],[1,'rgb('+lk.bot+')']]),0,0,lw,lh);}
   l.globalCompositeOperation='source-over';
@@ -8332,7 +8360,7 @@ function G2State(){return {m:[1,0,0,1,0,0],ga:1,op:0,fs:{k:0,c:[0,0,0,1],s:'#000
 function g2cloneSt(s){return {m:s.m.slice(),ga:s.ga,op:s.op,fs:s.fs,ss:s.ss,lw:s.lw,cap:s.cap,join:s.join,ml:s.ml,dash:s.dash,doff:s.doff,sm:s.sm,clips:0};}
 class G2D{
   constructor(t){this.T=t;this.isG2D=true;this.s=G2State();this.stk=[];this.P=[];this.P2=[];this.pool=[];this.pn=0;this.cpool=[];this.cout=[];this.sk={col:0,mo:0,gi:0,z:0,st:null};this.cur=null;this.cx=0;this.cy=0;this.lvl=0;this.rc=null;this.B=null;this.canvas={width:0,height:0};this.font='10px sans-serif';this.textAlign='start';this.textBaseline='alphabetic';}
-  begin(w,h,clear){const t=this.T;t.used=false;g2Use(t);t.ops.length=0;t.clear=clear||[0,0,0,0];t.w0=t.width=w;t.h0=t.height=h;this.canvas.width=w;this.canvas.height=h;this.s=G2State();this.stk.length=0;this.P.length=0;this.pn=0;this.cur=null;this.lvl=0;this.rc=null;this.B=null;}
+  begin(w,h,clear){const t=this.T;t.used=false;g2Use(t);t.ops.length=0;t.clear=clear||[0,0,0,0];t.w0=t.width=w;t.h0=t.height=h;this.canvas.width=w;this.canvas.height=h;this.s=G2State();this.stk.length=0;this.P.length=0;this.pn=0;this.cur=null;this.lvl=0;this.rc=null;this.B=null;this.na=0;this.ke=0;}
   // ---- state ----
   save(){this.stk.push(this.s);this.s=g2cloneSt(this.s);}
   restore(){if(!this.stk.length)return;const s=this.s;for(let i=0;i<s.clips;i++)this.clipPop();this.s=this.stk.pop();}
@@ -8401,9 +8429,12 @@ class G2D{
   fillRect(x,y,w,h){if(!(w&&h))return;const m=this.s.m,X0=m[0]*x+m[2]*y+m[4],Y0=m[1]*x+m[3]*y+m[5],X1=m[0]*(x+w)+m[2]*y+m[4],Y1=m[1]*(x+w)+m[3]*y+m[5],X2=m[0]*(x+w)+m[2]*(y+h)+m[4],Y2=m[1]*(x+w)+m[3]*(y+h)+m[5],X3=m[0]*x+m[2]*(y+h)+m[4],Y3=m[1]*x+m[3]*(y+h)+m[5];
     const st=this.s.fs,T=this.T;
     if(!T.ops.length&&!this.s.op&&!this.lvl&&!this.rc&&st.k===0&&st.c[3]*this.s.ga>=1&&!m[1]&&!m[2]&&Math.min(X0,X2)<=0&&Math.min(Y0,Y2)<=0&&Math.max(X0,X2)>=T.w0&&Math.max(Y0,Y2)>=T.h0){
-      T.clear=[st.c[0]/255,st.c[1]/255,st.c[2]/255,1];return;} // (v61b: an opaque fill of the whole target before anything else is its clear colour: one full-screen layer less)
+      T.clear=[st.c[0]/255,st.c[1]/255,st.c[2]/255,this.na?0:1];return;} // (v61b: an opaque fill of the whole target before anything else is its clear colour: one full-screen layer less)
     const mo=this._style(st);if(mo<0)return;const z=this._z(),gi=mo>=2?this._gi:0;this._batch(st.k===2?st.tex:null,st.k===2?st.smp:-1);
     const col=this._col(st);this._quad(X0,Y0,X1,Y1,X2,Y2,X3,Y3,col,mo,gi,z,st);}
+  // (round 25c) the blend recorded: one of G2BL's second nine leaves the target's alpha as it is: everything while na is set, and on the
+  // main scene (ke) the erasers too, so that only the backdrop (drawn under na) leaves the scene's alpha below 1
+  _op(){const q=this.s.op;return q+(this.na||(this.ke&&(q===3||q===4||q===6))?9:0);}
   strokeRect(x,y,w,h){this._w0(null);this.rect(x,y,w,h);this._stroke(this.P);this._w1();}
   clearRect(x,y,w,h){const so=this.s.op,sf=this.s.fs,sa=this.s.ga;this.s.op=6;this.s.fs={k:0,c:[0,0,0,0],s:'transparent'};this.s.ga=1;this.fillRect(x,y,w,h);this.s.op=so;this.s.fs=sf;this.s.ga=sa;}
   drawImage(img,a,b,c,d,e,f,g,h){let sx=0,sy=0,sw,sh,dx,dy,dw,dh;const iw=img.width,ih=img.height; // (img: a canvas, a target, or a view: a part of a target)
@@ -8433,7 +8464,7 @@ class G2D{
   _style(st){if(st.k===0)return 0;if(st.k===1){this._gi=g2GradIx(st.g);return st.g._hk[0]===0?2:3;}if(st.k===2)return 4;return -1;}
   _col(st){const ga=this.s.ga;if(st.k===0){const c=st.c,a=c[3]*ga;return (Math.round(a*255)<<24|Math.round(c[2]*a)<<16|Math.round(c[1]*a)<<8|Math.round(c[0]*a))>>>0;}const a8=Math.round(ga*(st.k===1&&st.g._am||1)*255);return (a8<<24|a8<<16|a8<<8|a8)>>>0;} // (a gradient: times its stops' largest alpha, g2RampRow)
   // starts a new batch when the target, texture, sampler, blend or clip level changes (a fill without a texture joins any)
-  _batch(tex,smp){const T=this.T,ops=T.ops,op=this.s.op,B=this.B;
+  _batch(tex,smp){const T=this.T,ops=T.ops,op=this._op(),B=this.B;
     if(B&&B.k===0&&B.op===op&&B.lvl===this.lvl&&B.rc===this.rc&&(tex===null||(B.tex===tex&&B.smp===smp)||B.tex===null)&&B.first+B.n===GLS.ni){if(tex!==null&&B.tex===null){B.tex=tex;B.smp=smp;}return;}
     this.B={k:0,first:GLS.ni,n:0,op,tex,smp,lvl:this.lvl,rc:this.rc};ops.push(this.B);}
   // one vertex (returns its number): position, colour (premultiplied, packed), the style's coordinates, mode + 8 x gradient, depth
@@ -8465,7 +8496,7 @@ class G2D{
   // (rule 'mark': a simple shape only sets bit 0). Step 2: a box over the shape, drawn where the low bits are not 0, which
   // also writes the stencil back with them cleared (a fill: the same level; a clip: one level up).
   _stc(C,rule,col,mo,gi,z,st,clip,simple){const ops=this.T.ops;let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
-    const W={k:clip?1:2,first:GLS.ni,n:0,rule:simple?'mark':rule,lvl:this.lvl,rc:this.rc,op:this.s.op,tex:st&&st.k===2?st.tex:null,smp:st&&st.k===2?st.smp:-1,cf:0,cn:0};ops.push(W);this.B=W;
+    const W={k:clip?1:2,first:GLS.ni,n:0,rule:simple?'mark':rule,lvl:this.lvl,rc:this.rc,op:this._op(),tex:st&&st.k===2?st.tex:null,smp:st&&st.k===2?st.smp:-1,cf:0,cn:0};ops.push(W);this.B=W;
     for(const o of C){const c=o.c,n=o.n;for(let i=0;i<n;i++){const x=c[i*2],y=c[i*2+1];if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
       if(simple)this._emitPoly(o,0,0,0,0,null);
       else{const b=GLS.nv;for(let i=0;i<n;i++)this._v(c[i*2],c[i*2+1],0,0,0,0,0,z);for(let i=1;i<n-1;i++)this._i3(b,b+i,b+i+1);}}
@@ -8552,6 +8583,9 @@ function g2dash(c,n,closed,D,off){const out=[];let tot=0;for(const v of D)tot+=v
 
 // ---- replay: what was recorded is drawn, in the same frame (glPrep then glSubmit at once: no frame of delay on this path) ----
 const G2BL=[[1,0x303,1,0x303],[1,1,1,1],[0x306,0x303,1,0x303],[0,0x303,0,0x303],[0,0x302,0,0x302],[0x304,0x303,0,1],[1,0,1,0],[1,0x301,1,0x303],[0x305,1,0x305,1]]; // (premultiplied: src, dst factors for colour and alpha)
+// (round 25c) the same nine with the target's alpha left as it is (G2D.na): the scene's alpha is how much of each pixel is not the backdrop
+// (the sky behind the openings), which the composite reads to keep the figures' fill light off the sky
+G2BL.push(...G2BL.map(b=>[b[0],b[1],0,1]));
 function g2Replay(){const gl=GLS.gl,U=GLS.prog.u;if(!GLS.T.length)return;GLS.stamp++;GLS.stats.draws=0;GLS.stats.uploads=0;
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
   // gradient rows and parameters (from typed arrays: no canvas is copied)
@@ -8589,7 +8623,7 @@ function g2Replay(){const gl=GLS.gl,U=GLS.prog.u;if(!GLS.T.length)return;GLS.sta
     gl.bindFramebuffer(gl.FRAMEBUFFER,t.fb);gl.viewport(0,0,t.w,t.h);gl.uniform2f(U.u_s,t.w0,t.h0);gl.disable(gl.SCISSOR_TEST);
     gl.colorMask(true,true,true,true);gl.depthMask(true);gl.stencilMask(0xFF);const c=t.clear;gl.clearColor(c[0],c[1],c[2],c[3]);gl.clearDepth(1);gl.clearStencil(0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);}
     let curOp=-1,curTex=null,curSmp=-2,curRc=null,curCm=0;const sx=t.w/t.w0,sy=t.h/t.h0;gl.uniform1i(U.u_cm,0);
-    const rect=o=>{const r=o.rc||null,cm=r?(o.op===4?2:o.op===6?3:1):0;if(r!==curRc){curRc=r;
+    const rect=o=>{const r=o.rc||null,q=o.op%9,cm=r?(q===4?2:q===6?3:1):0;if(r!==curRc){curRc=r;
         if(r){const X0=ox+r[0]*sx,X1=ox+r[2]*sx,Y0=oy+t.h-r[3]*sy,Y1=oy+t.h-r[1]*sy;let a=Math.max(0,Math.floor(X0)),b=Math.max(0,Math.floor(Y0)),a1=Math.ceil(X1),b1=Math.ceil(Y1);
           if(rg){a=Math.max(a,rg[0]);b=Math.max(b,rg[1]);a1=Math.min(a1,rg[0]+rg[2]);b1=Math.min(b1,rg[1]+rg[3]);}
           gl.enable(gl.SCISSOR_TEST);gl.scissor(a,b,Math.max(0,a1-a),Math.max(0,b1-b));gl.uniform4f(U.u_cr,X0,Y0,X1,Y1);}
@@ -8973,17 +9007,18 @@ function glMetalU(U){const gl=GLP.gl;if(!U||!MS.on)return;gl.uniform1i(U.u_mt,5)
   gl.uniform4f(U.u_mo,V[12],V[13],V[14],V[15]);gl.uniform4f(U.u_mw,V[16],V[17],V[18],V[19]);gl.uniform2f(U.u_mtx,V[20],V[21]);
   gl.uniform4fv(U.u_ml,MS.ML);gl.uniform3fv(U.u_mc,MS.MC);gl.uniform4fv(U.u_mf,MS.MF);gl.uniform4fv(U.u_msw,MS.SW);}
 const GLSH={
-  light:[`attribute vec2 a_k;attribute vec4 a_c;attribute vec4 a_o;attribute vec3 a_col;uniform vec2 u_s;varying vec2 v_k;varying vec3 v_col;varying vec2 v_f;
-    void main(){v_k=a_k;v_col=a_col;v_f=a_o.xy;vec2 p=a_c.xy+a_k*a_c.z;gl_Position=vec4(p.x/u_s.x*2.-1.,1.-p.y/u_s.y*2.,0.,1.);}`,
-   `precision mediump float;varying vec2 v_k;varying vec3 v_col;varying vec2 v_f;uniform float u_t;
+  light:[`attribute vec2 a_k;attribute vec4 a_c;attribute vec4 a_o;attribute vec3 a_col;uniform vec2 u_s;varying vec2 v_k;varying vec3 v_col;varying vec2 v_f;varying float v_a;
+    void main(){v_k=a_k;v_col=a_col;v_f=a_o.xy;v_a=a_o.z;vec2 p=a_c.xy+a_k*a_c.z;gl_Position=vec4(p.x/u_s.x*2.-1.,1.-p.y/u_s.y*2.,0.,1.);}`,
+   `precision mediump float;varying vec2 v_k;varying vec3 v_col;varying vec2 v_f;varying float v_a;uniform float u_t;
     void main(){float d=length(v_k);if(d>=1.)discard;
       float f=d<.28?mix(1.,.62,d/.28):d<.62?mix(.62,.2,(d-.28)/.34):mix(.2,0.,(d-.62)/.38); // the same falloff as the classic light sprite
       float ph=v_f.y,fl=1.+v_f.x*(.05*sin(u_t*17.+ph)+.04*sin(u_t*29.3+ph*2.1)+.03*sin(u_t*43.+ph*3.7));
-      gl_FragColor=vec4(v_col*f*fl,1.);}`],
+      gl_FragColor=vec4(v_col*f*fl,v_a*f);}`], // (round 25c) alpha: the figures' fill light alone (v_a its strength, 0 for every other light), so the composite can take it off the sky
   bright:[GLV,`precision mediump float;varying vec2 v_u;uniform sampler2D u_sc,u_map,u_cs,u_mk;uniform vec2 u_px;uniform float u_csk;uniform vec4 u_ocT,u_ocC;
-    ${GLSL_M}
+    ${GLSL_M}${FILL_GL}
     void main(){vec3 s=(texture2D(u_sc,v_u+u_px*vec2(-1.,-1.)).rgb+texture2D(u_sc,v_u+u_px*vec2(1.,-1.)).rgb+texture2D(u_sc,v_u+u_px*vec2(-1.,1.)).rgb+texture2D(u_sc,v_u+u_px*vec2(1.,1.)).rgb)*.25;
       vec3 l=s*texture2D(u_map,v_u).rgb*1.5;l+=msBright(v_u,s,u_px); // (unit MS: metal highlights and glints bloom)
+      {float fa=texture2D(u_map,v_u).a*(1.-(texture2D(u_sc,v_u+u_px*vec2(-1.,-1.)).a+texture2D(u_sc,v_u+u_px*vec2(1.,-1.)).a+texture2D(u_sc,v_u+u_px*vec2(-1.,1.)).a+texture2D(u_sc,v_u+u_px*vec2(1.,1.)).a)*.25);if(fa>.002)l=max(l-s*FILL_C*fa*1.5,0.);} // (round 25c) no fill light on the sky (glFrame)
       vec3 o=max(l-.7,0.)*1.6;
       if(u_csk>0.){vec4 q=texture2D(u_cs,v_u);vec3 a=q.rgb*2.*(1.-q.a);o+=max(s*a*1.5-.06,0.)*u_csk*(1.-smoothstep(.1,.5,texture2D(u_mk,clamp(v_u,u_ocC.xy,u_ocC.zw)*u_ocT.xy+u_ocT.zw).r));} // (v58b) the sky's light where it lands (the footprint, the opening's rim, a pane) blooms a little; the haze in the air does not, nor a figure in the beam (figlight: the figures' mask, glcOcc)
       gl_FragColor=vec4(o,1.);}`],
@@ -8996,7 +9031,7 @@ const GLSH={
     #endif
     varying vec2 v_u;uniform sampler2D u_sc,u_map,u_bl,u_mk;uniform vec2 u_d,u_vg,u_px,u_mp;uniform float u_t,u_sat;uniform vec4 u_fx;uniform vec3 u_sh,u_hi;
     uniform vec4 u_mkT,u_mkC;vec2 mkUV(vec2 u){return clamp(u,u_mkC.xy,u_mkC.zw)*u_mkT.xy+u_mkT.zw;} // (the effect mask's part of the mask atlas)
-    ${GLSL_A}
+    ${GLSL_A}${FILL_GL}
     uniform sampler2D u_rl;uniform float u_rk; // relief lighting (unit B): the factor from glRelief, and its strength (0 = off)
     uniform sampler2D u_cs,u_cm;uniform vec2 u_cfx; // atmosphere (glAtmo): shafts and caustics, mist and sheen
     uniform vec3 u_sd; // unit ST: the storm's sand colour
@@ -9009,8 +9044,9 @@ const GLSH={
       if(e>.01)uv+=vec2(sin(v_u.y*40.+u_t*2.),sin(v_u.x*60.-u_t*3.)*.7)*e*vec2(1.8,1.3)*u_px;
       uv=hkWarp(uv); // S3-A
       vec3 s=hkScene(uv),l=texture2D(u_map,v_u).rgb*1.5;float mcv=msCov(uv); // (unit MS: how much of this pixel is metal; 0 with none on screen)
+      float cov=texture2D(u_sc,uv).a,fa=texture2D(u_map,v_u).a*(1.-cov);if(fa>.002)l=max(l-FILL_C*fa*1.5,0.); // (round 25c) the figures' fill light (the map's alpha) taken off where the scene shows the backdrop, the sky (glFrame); cov: how much of the pixel is not the backdrop
       l*=1.+(texture2D(u_rl,v_u).r-.5)*2.*u_rk*(1.-mcv); // relief: lamp light raking across the stone (not across metal in front of it)
-      float sh=(m.r*2.+texture2D(u_mk,mkUV(v_u+vec2(u_mp.x,0.))).r+texture2D(u_mk,mkUV(v_u-vec2(u_mp.x,0.))).r+texture2D(u_mk,mkUV(v_u+vec2(0.,u_mp.y))).r+texture2D(u_mk,mkUV(v_u-vec2(0.,u_mp.y))).r)/6.;
+      float sh=(m.r*2.+texture2D(u_mk,mkUV(v_u+vec2(u_mp.x,0.))).r+texture2D(u_mk,mkUV(v_u-vec2(u_mp.x,0.))).r+texture2D(u_mk,mkUV(v_u+vec2(0.,u_mp.y))).r+texture2D(u_mk,mkUV(v_u-vec2(0.,u_mp.y))).r)/6.*cov; // (round 25c: the figures' shadows fall on the stone, never on the sky)
       l=mix(l,max(l,vec3(.95,.7,.42)),st*.2); // the air in the storm's veil is a little lit by its dust (unit ST: glStorm draws the dust itself)
       l*=1.-sh*.85*u_fx.x; // a shadow takes the light away and a little of the ambient
       vec3 c=s*l*(1.-sh*.4*u_fx.x);
@@ -9367,12 +9403,12 @@ function glFrame(lights,VZ,camD,camDY,th){
   let n=0;const B=GLLIGHTS;
   for(const q of lights){if(n>=GLMAXL)break;
     let col=GLCOL.get(q.col);if(!col){col=q.col.split(',').map(Number);GLCOL.set(q.col,col);}
-    const a=Math.min(1,q.a)*0.8/1.5/255,cx=q.x*VZ-camD,cy=q.y*VZ-camDY,r=q.r*VZ,fl=(GLFLICK[q.kind]||0)*(S.set.calm?0.3:1),ph=(q.x*0.37+q.y*0.11)%6.283;
+    const a=Math.min(1,q.a)*0.8/1.5/255,fa=q.kind==='fill'?a*255:0,cx=q.x*VZ-camD,cy=q.y*VZ-camDY,r=q.r*VZ,fl=(GLFLICK[q.kind]||0)*(S.set.calm?0.3:1),ph=(q.x*0.37+q.y*0.11)%6.283;
     if(cx+r<0||cx-r>w||cy+r<0||cy-r>h)continue;
-    for(let k=0;k<6;k++){const o=(n*6+k)*GLSTRIDE;B[o]=GLK[k][0];B[o+1]=GLK[k][1];B[o+2]=cx;B[o+3]=cy;B[o+4]=r;B[o+5]=0;B[o+6]=fl;B[o+7]=ph;B[o+8]=0;B[o+9]=0;B[o+10]=col[0]*a;B[o+11]=col[1]*a;B[o+12]=col[2]*a;}
+    for(let k=0;k<6;k++){const o=(n*6+k)*GLSTRIDE;B[o]=GLK[k][0];B[o+1]=GLK[k][1];B[o+2]=cx;B[o+3]=cy;B[o+4]=r;B[o+5]=0;B[o+6]=fl;B[o+7]=ph;B[o+8]=fa;B[o+9]=0;B[o+10]=col[0]*a;B[o+11]=col[1]*a;B[o+12]=col[2]*a;}
     n++;}
   const am=glcRGB(lk.amb),GLAMB=glAmbK(th.style,lk); // ambient, darker than the classic map's so the gaps between torches fall into shadow (owner, v41)
-  gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.map.f);gl.viewport(0,0,lw,lh);gl.clearColor(am[0]*GLAMB/255/1.5,am[1]*GLAMB/255/1.5,am[2]*GLAMB/255/1.5,1);gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.map.f);gl.viewport(0,0,lw,lh);gl.clearColor(am[0]*GLAMB/255/1.5,am[1]*GLAMB/255/1.5,am[2]*GLAMB/255/1.5,0);gl.clear(gl.COLOR_BUFFER_BIT);
   if(n){gl.useProgram(P.light.p);gl.uniform2f(P.light.u.u_s,w,h);gl.uniform1f(P.light.u.u_t,t);
     gl.bindBuffer(gl.ARRAY_BUFFER,GLP.lb);gl.bufferSubData(gl.ARRAY_BUFFER,0,B,0,n*6*GLSTRIDE);
     const S4=GLSTRIDE*4;gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,S4,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,4,gl.FLOAT,false,S4,8);
@@ -9780,7 +9816,7 @@ function render(){PF.s();
   METAL_PAINT_HI=!(sh&&GLFX.metal&&MS.ok);MSF.n=0;MSF.rec=sh&&GLFX.metal&&MS.ok; // (unit MS) Torchlight's metal shader carries the highlights; note the figures' metal
   const gls=GLP.gls=sh&&GLS.ok&&GLFX.wgl; // (unit WGL) Torchlight's scene drawn by WebGL2 through the facade, or (no WebGL2) in 2D and copied
   if(sh&&!gls&&(GLP.sceneC.width!==cv.width||GLP.sceneC.height!==cv.height)){GLP.sceneC.width=cv.width;GLP.sceneC.height=cv.height;}
-  let ctx=sh?(gls?GLS.F:GLP.sceneG):gx;if(gls){g2Begin();GLS.rs=PF.on&&PF.rs?PF.rs:GLP.rs;GLS.F.begin(cv.width,cv.height,[7/255,6/255,12/255,1]);}
+  let ctx=sh?(gls?GLS.F:GLP.sceneG):gx;if(gls){g2Begin();GLS.rs=PF.on&&PF.rs?PF.rs:GLP.rs;GLS.F.begin(cv.width,cv.height,[7/255,6/255,12/255,0]);GLS.F.na=1;GLS.F.ke=1;} // (round 25c: the void and the backdrop leave the scene's alpha at 0, glFrame)
   ctx.setTransform(1,0,0,1,0,0);
   ctx.fillStyle='#07060c';ctx.fillRect(0,0,cv.width,cv.height);
   if(!L)return;
@@ -9792,13 +9828,13 @@ function render(){PF.s();
   renderXf.VZ=VZ;renderXf.camD=camD;renderXf.camDY=camDY;
   const rx0=Math.floor(cx/ROOM_W),rx1=Math.floor((cx+vw)/ROOM_W),ry0=Math.floor(cy/ROOM_H),ry1=Math.floor((cy+vh-0.01)/ROOM_H);
   if(gf.bg)drawBackdrop(ctx,cx,cy,vw,vh,VZ,camD,camDY);
-  PF.p('bg');ctx.setTransform(1,0,0,1,0,0);
+  PF.p('bg');ctx.setTransform(1,0,0,1,0,0);if(gls)ctx.na=0; // (round 25c) the rooms and everything in them cover the sky: alpha
   for(let ry=ry0;ry<=ry1;ry++){const ya=Math.round(ry*ROOM_H*VZ)-camDY,yb=Math.round((ry+1)*ROOM_H*VZ)-camDY;
     for(let rx=rx0;rx<=rx1;rx++){const xa=Math.round(rx*ROOM_W*VZ)-camD,xb=Math.round((rx+1)*ROOM_W*VZ)-camD;ctx.drawImage(roomCanvas(rx,ry),xa,ya,xb-xa,yb-ya);}}
   ctx.setTransform(VZ,0,0,VZ,-camD,-camDY);
   PF.p('rooms');frameLights=(gf.light||gf.hero||gf.atmo)?gatherLights(cx-40,cx+vw+40,cy-40,cy+vh+40):[];
   ctx.save();ctx.beginPath();ctx.rect(cx,cy,vw,vh);ctx.clip();
-  PF.p('lights');drawDynamic(ctx,cx,cx+vw,cy,cy+vh);PF.p('dyn');
+  PF.p('lights');drawDynamic(ctx,cx,cx+vw,cy,cy+vh);PF.p('dyn');if(gls)ctx.na=1; // (round 25c) the grade, glows and haze over the whole view are not things in front of the sky
   if(gf.atmo)ambientLit(ctx,cx,cx+vw,cy,cy+vh);
   if(sh){if(gf.grade)lightPass(ctx,frameLights,VZ,camD,camDY,true); // (the shader adds the lights and the bloom)
     if(gf.light&&!GLFX.shafts)ryBeams2D(ctx,RY_2D*1.9);} // the beams as in Classic (unless the shader casts them)

@@ -294,6 +294,14 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   `wgl_parity.py` (single drawing calls against the real 2D context). `WK=1` runs the wgl_* tools in Playwright's WebKit (serve
   dev/ with `python3 -m http.server 8765 --bind 127.0.0.1`). `?bench&floors=17` benches chosen floors; `__BENCH_TRACE` holds each
   floor's first 6 s frame by frame (`wgl_trace.py`). The HUD canvas above WebGL is redrawn only when its drawing calls change (`hudKey`).
+- Nothing a figure carries lands on the sky (round 25c, owner: "what is that haze around the prince?"): the fill light every figure
+  carries (`gatherLights` kind `fill`, `FILL_COL`) lit the backdrop seen through openings, a pale halo that went with him and stopped at
+  the sill. Torchlight: the light map keeps the fill's share in its alpha; the scene's alpha is how much of a pixel is not the backdrop
+  (the void and `drawBackdrop` are drawn with `G2D.na`, which leaves alpha alone; on the main scene erasers keep it too, `ke`), and the
+  composite and the bright pass take the fill off where it is under 1; the figures' shadows (mask r) are scaled by it too. A figure in
+  front of the sky covers it, so he keeps his fill to his outline. Classic: `fillCut` draws the fills apart and cuts them where the room
+  images are clear, except over the figures' silhouettes. A new full-screen draw on the scene after `drawDynamic` stays under `na`; a new
+  dst-alpha blend on the main scene must not read that alpha. The ?wgl=0 fallback still lights the sky. Pictures: `egyptr25c.py`.
 - Torchlight's ambient light never drops under `AMB_MIN` (0.45 of full on its brightest channel, `glAmbK`; owner, v56 and v57: the Forge by
   Moonlight fell to 0.26), and each sky opening adds a soft bounce light where its beam meets the floor (`gatherLights`, Torchlight only).
   The fire vent burns over its whole grate (`VJETS`: a jet per slot, back and front rows, merging into one sheet); its timing and
