@@ -32,6 +32,9 @@ function* botGen(n, seed, opts) {
   const path = opts.path || L.path;
   // a test may start the prince anywhere (opts.at: column, row, facing) and end on a condition of its own (opts.done)
   if (opts.at) { const P0 = H.P; P0.x = opts.at.c * 32 + 16; P0.y = (opts.at.r + 1) * 64 - 4; P0.fallY = P0.y; P0.face = opts.at.face || 1; P0.state = 'stand'; }
+  // (round 26f) a floor's entry (opts.entry plays it, as the game does on a fresh floor): the bot waits, keys up, until control is given
+  if (opts.entry && !opts.at) H.startEntry();
+  while (H.P.state === 'enter') { allOff(); yield 0; }
   let f1 = 0, i = 0, ph = 0, f0 = 0, frames = 0, r0 = 0, hurtCount = 0, lastHp = H.P.hp, fights = 0, swGo = false;
   const maxPer = 60 * 90;
   const P = () => H.P;

@@ -2711,6 +2711,9 @@ const Snd={ctx:null,master:null,nb:null,
       case'drink':T(420,0.25,{to:900,vol:0.06,type:'sine'});T(560,0.2,{to:1100,vol:0.04,type:'sine',at:0.12});break;
       case'life':[293.7,370,440,587.3].forEach((f,i)=>T(f,0.35,{vol:0.07,type:'triangle',at:i*0.09}));break;
       case'poison':T(220,0.4,{to:110,vol:0.08,type:'sawtooth'});break;
+      case'stairsaway':[0,0.17,0.34,0.5].forEach((a,i)=>N(0.05,{vol:0.03*Math.pow(0.62,i),f:640-70*i,at:a}));break; // (round 26f) his steps going on up the stairs out of sight
+      case'exitlight':T(523.3,1.3,{vol:0.03,type:'sine',att:0.5});T(784,1.1,{vol:0.018,type:'sine',att:0.55,at:0.1});N(1.1,{vol:0.025,f:2200,type:'bandpass',q:0.6,att:0.5});break; // (round 26f) the doorway's light swelling
+      case'doorslide':N(0.26,{vol:0.07,f:260,to:520,type:'bandpass',q:1.6,att:0.04});break; // (round 26f) the entrance's leaf sliding down
       case'door':N(1.6,{vol:0.12,f:160,att:0.3});T(55,1.4,{vol:0.06,type:'sine',att:0.3});break;
       case'cp':T(880,0.6,{vol:0.05,type:'sine'});T(1318,0.5,{vol:0.03,type:'sine',at:0.08});break;
       case'die':[587.3,554.4,466.2,370,293.7].forEach((f,i)=>T(f,0.3,{vol:0.07,type:'triangle',at:i*0.13}));break;
@@ -2774,7 +2777,7 @@ function makeGuard(gd,i){const d=L.d,cap=gd.cap,sk=!!gd.skel,tr=cap?CAPT:TIERS[g
     pendingParry:null,pose:mk({}),cap,skel:sk,pit:gd.pit||1,reinf:gd.reinf||0,vy:0,fx:0,sx:0,tx:0,hitDone:false,flash:0,id:i};}
 function makeSnake(sp){return {x:sp.x,r:sp.r,y:SURF(sp.r),lo:sp.lo,hi:sp.hi,dir:sp.dir||-1,state:'slither',t:0,ph:Math.random()*6,alive:true,gone:false,cool:0,lunge:0,hitDone:false};}
 
-function startLevel(n,cpIdx){GLP.pend=null;GLP.now=true;GLP.quiet=performance.now()+3000;GLP.upNeed=UP_N;GLP.fastN=0; // (a new floor: the step up's back-off starts again)
+function startLevel(n,cpIdx,entry){GLP.pend=null;GLP.now=true;GLP.quiet=performance.now()+3000;GLP.upNeed=UP_N;GLP.fastN=0; // (a new floor: the step up's back-off starts again)
   if(S.set.torchRetry){delete S.set.torchRetry;if(S.set.lightMode==='classic'&&!GLP.dead){S.set.lightMode='torch';GLP.inSession=false;syncLightMode();writeSave();}} // (v63: a save left in Classic by the old automatic switch (it set torchRetry) gets Torchlight back; a Classic chosen in Graphics stays) // (each floor starts with the scene at full resolution: glTime scales it down if frames run slow)
   quiet=false;if(hintFloor!==n){hintFloor=n;hintSeen={};}hintQ.length=0;L=genLevel(n,levelSeed(n),false,n===S.legacyFloor);REW.length=0;rw=null;if(cpIdx<0){S.sands=SANDS;S.cpPlates=[];}
   G=L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];
@@ -2788,6 +2791,7 @@ function startLevel(n,cpIdx){GLP.pend=null;GLP.now=true;GLP.quiet=performance.no
   levelTime=S.floorTime||0;
   mode='play';intro=cpIdx>=0?0:2.6;
   S.started=true;S.level=n;writeSave();
+  if(entry&&cpIdx<0)startEntry(); // (round 26f: only a fresh floor: the next floor, a new run, Restart; never a checkpoint, a respawn or a Continue)
   cam.snap=true;updateCamera(0);
 }
 function respawn(){S.floorDeaths=(S.floorDeaths||0)+1;S.deaths++;S.floorTime=levelTime;S.resume=null;S.sands=SANDS;writeSave();startLevel(S.level,L.cpIndex);}
@@ -3493,11 +3497,27 @@ function updatePlayer(dt){
     // doorway's middle, then climbs its stairs tread by tread (drawDoor's: EX_RS up and EX_SX across each, receding up and to the right),
     // one footfall per tread, his body rising with each, the frame hiding him as he goes; as in PoP1, where the kid climbs the exit stairs
     // with an animation of his own (SDLPoP seqtbl, the level door's climb) and fades into the light
-    case'exit':{const tx=L.door.x;P.x=approach(P.x,tx,40*dt);if(Math.abs(P.x-tx)<0.5)P.exS=(P.exS||0)+dt*EX_RATE;
-      const k=P.exS||0,i=Math.floor(k),f=k-i,e=f<0.55?0:sstep((f-0.55)/0.45),q=i+e;P.exQ=q;P.exY=-q*(EX_RS+EX_SY)-Math.min(1,q)*EX_UP;P.exX=q*EX_SX*P.face;
+    // (round 26f, owner: "the prince climbs the wall, he should instead disappear on the stairs"): he walks to the middle facing the way
+    // he goes, turns to face the stairs if he came facing left (they recede to the right: v72 drifted him onto the left jamb, P.exX took
+    // his facing), climbs the same treads cut at the opening's head and right jamb (drawDynamic, SDLPoP clip_char), whitens into the
+    // stair light and is gone by EX_GONE; the doorway's light swells (exitSwell) and the card comes at EX_N. Footfalls on the treads,
+    // and on the stairs out of sight for half a second after he is gone (as in PoP); a soft swell of the light.
+    case'exit':{const tx=L.door.x;
+      if(P.exTt>0)P.exTt-=dt;
+      else if(Math.abs(P.x-tx)>=0.5){const d=Math.sign(tx-P.x);if(d!==P.face){P.face=d;P.exTt=EX_TURN;}else{P.x=approach(P.x,tx,40*dt);if(Math.abs(P.x-tx)<0.5)P.x=tx;}}
+      else if(P.face<0){P.face=1;P.exTt=EX_TURN;}
+      else P.exS=(P.exS||0)+dt*EX_RATE;
+      const k=P.exS||0,i=Math.floor(k),f=k-i,e=f<0.55?0:sstep((f-0.55)/0.45),q=i+e,k0=P.exK||0;P.exQ=q;P.exY=-q*(EX_RS+EX_SY)-Math.min(1,q)*EX_UP;P.exX=q*EX_SX;
       // (round 16c, stairscan.py: his feet were EX_UP below the tread in every theme: he stands at the floor's middle depth, the treads start
       // inside the doorway, behind the back wall's plane; the first step now takes him up onto the middle of the tread's top)
-      if(k>=EX_N||P.t>2.4)levelComplete();break;}
+      if(Math.floor(k0)<Math.floor(k)&&k<EX_GONE)Snd.play('step'); // (a footfall as each foot lands on its tread)
+      if(k0<EX_GONE&&k>=EX_GONE)Snd.play('stairsaway');if(k0<EX_SW0&&k>=EX_SW0)Snd.play('exitlight');P.exK=k;
+      if(k>=EX_N||P.t>3.6)levelComplete();break;}
+    // (round 26f, owner: "maybe enter the level"; PoP's start door, SDLPoP start_level_door/animate_leveldoor) he comes out of the
+    // entrance's dark doorway (deep in it at first, a silhouette that takes its colours as he reaches the light), walks on to his start
+    // and is given control at EN_CTL; the door's leaf drops behind him speeding up (entryOpen) and lands with a thud and dust (entryTick)
+    case'enter':{const xd=entryX(),xs=P.enXs,u=1-sstep(P.t/EN_OUT),k=Math.min(1,P.t/EN_CTL);P.enU=u;P.enK=0.92*(1-sstep(P.t/EN_LIT));
+      P.x=lerp(xd,xs,k<0.5?2*k*k:1-2*(1-k)*(1-k));if(k>=1){P.x=xs;P.enU=0;P.enK=0;setState('stand');}break;}
     case'dead':break;
   }
   // pose
@@ -3506,7 +3526,8 @@ function updatePlayer(dt){
     case'stand':tgt=P.sword&&P.foe?PS.garde:PS.stand;
       if(tgt===PS.stand&&P.stK){const t=gameTime-P.stT;tgt=P.stK==='turn'?turnSettle(t,lerpPose(PS.stand,PS.stand,0,stP)):settlePose(P.stK,t,P.stS,PS.stand,stP);}break;
     case'run':tgt=RP(P.ph);rate=40;if(ix===P.face)tgt.lean+=0.12*clamp(1-Math.abs(P.vx)/RUN,0,1);break; // (round 25f: he leans into the start, less as he gathers speed)
-    case'exit':tgt=P.exS>0?walkPose((P.exQ||0)*0.5,0.7):walkPose(P.t*0.93);rate=P.exS>0?30:40;break; // (on the stairs: half a stride a tread, the leading leg lifting onto the next one; round 16c: the stride moves only while he rises, so a planted foot stays put)
+    case'enter':tgt=walkPose(Math.abs(P.x-entryX())/43+0.25,Math.min(1,P.t/0.12));rate=40;break; // (his stride follows the ground covered, as the exit's approach: 0.93 cycles a second at 40 px/s)
+    case'exit':tgt=P.exS>0?walkPose((P.exQ||0)*0.5,0.7):P.exTt>0?turnSettle(EX_TURN-P.exTt,lerpPose(PS.turn,PS.turn,0,stP)):walkPose(P.t*0.93);rate=P.exS>0?30:40;break; // (on the stairs: half a stride a tread, the leading leg lifting onto the next one; round 16c: the stride moves only while he rises, so a planted foot stays put)
     case'stop':tgt=settlePose('stop',gameTime-P.stT,P.stS,PS.stand,stP);break; // (round 25f: 16_08's braking and settle, was PS.skid held)
     case'turn':tgt=turnSettle(gameTime-P.stT,lerpPose(PS.turn,PS.turn,0,stP));rate=40;break;
     case'step':case'edgeWalk':tgt=lerpPose(PS.stand,PS.step,Math.sin(Math.PI*Math.min(1,P.t/0.3)),tmpP);break;
@@ -3576,7 +3597,7 @@ function updateGuard(g,dt){
       if(g.t>DISS.t0)dissGrains(g,dt);if(g.t>DISS.t0+DISS.dur+0.15)g.gone=true;return;}
     if(g.t>1.1&&g.t-dt<=1.1){for(let i=0;i<14;i++)FX.push({x:g.x+(Math.random()-0.5)*34,y:g.y-2-Math.random()*8,vx:(Math.random()-0.5)*26,vy:-8-Math.random()*22,g:40,life:0.6+Math.random()*0.5,t:0,col:'rgba(214,190,140,.8)',sz:1.3});}
     if(g.t>1.9)g.gone=true;return;}
-  const dx=P.x-g.x,adx=Math.abs(dx),same=Math.abs(P.y-g.y)<8&&P.state!=='dead'&&P.state!=='exit';
+  const dx=P.x-g.x,adx=Math.abs(dx),same=Math.abs(P.y-g.y)<8&&P.state!=='dead'&&P.state!=='exit'&&P.state!=='enter';
   switch(g.state){
     case'idle':if(same&&adx<100){setE(g,'garde');g.face=Math.sign(dx)||g.face;g.think=0.35;Snd.play('draw');}break;
     case'garde':
@@ -3965,8 +3986,9 @@ function tileVisible(c,r){const x=c*TW+16,y=r*TH+32;return x>cam.x-24&&x<cam.x+v
 function update(dt){
   if(mode==='rewind'){stepRewind();updateCamera(dt);return;}
   gameTime+=dt;
-  if(mode==='play'&&++rewTick>=6){rewTick=0;REW.push(snapAll());if(REW.length>100)REW.shift();}
-  if(mode==='play')levelTime+=dt;
+  if(mode==='play'&&P&&P.state!=='enter'&&++rewTick>=6){rewTick=0;REW.push(snapAll());if(REW.length>100)REW.shift();} // (round 26f: no snapshot of the entry, so a rewind never plays it again)
+  if(mode==='play'&&!(P&&P.state==='enter'))levelTime+=dt; // (the floor's clock starts with control)
+  if(mode==='play'&&L)entryTick();
   if(intro>0)intro-=dt;
   if(flashFx){flashFx.t+=dt;if(flashFx.t>=flashFx.dur)flashFx=null;}
   updateFeatures(dt);
@@ -4000,8 +4022,19 @@ function update(dt){
     if(canRewind()){if(deadT>0.7&&took('g',0.3))startRewind();else if(deadT>0.7&&took('j',0.3))respawn();}
     else if(deadT>0.9&&(took('j',0.3)||took('g',0.3)))respawn();else if(deadT>3.2)respawn();}
 }
-const EX_N=5.2,EX_RATE=3.2,EX_RS=6.2,EX_SX=DX*0.22,EX_SY=DY*0.22,EX_UP=HY+DY*0.45+0.4; // (round 16c: from his floor's middle depth up onto the first tread; with his sole drawn under his foot point, its lowest pixel lands on the middle of the tread's top, measured by stairscan.py)
+const EX_N=4.6,EX_GONE=3.5,EX_SW0=2.6,EX_CUT=0.55,EX_TURN=0.16,EXF={look:true},EX_RATE=3.2,EX_RS=6.2,EX_SX=DX*0.22,EX_SY=DY*0.22,EX_UP=HY+DY*0.45+0.4; // (round 16c: from his floor's middle depth up onto the first tread; with his sole drawn under his foot point, its lowest pixel lands on the middle of the tread's top, measured by stairscan.py)
  // (the exit stairs: drawDoor's treads, RS rise, SX and SY their depth)
+// (round 26f) the entry: EN_OUT out of the doorway's depth (EN_DX, EN_DY: from inside the opening to the floor's middle depth), lit by
+// EN_LIT, control at EN_CTL; the leaf starts down at EN_DROP and falls in EN_FALL, speeding up (PoP's 5, 17, 99 px a frame at 12 fps)
+const EN_OUT=0.36,EN_LIT=0.42,EN_CTL=0.62,EN_DROP=0.42,EN_FALL=0.24,EN_DX=9,EN_DY=4.5;
+const entryX=()=>(L.start.door===undefined?1:L.start.door)*TW+16;
+function entryOpen(){if(!L||L.enG===undefined)return 0;const t=gameTime-L.enG;if(t<EN_DROP)return 1;const k=(t-EN_DROP)/EN_FALL;return k>=1?0:1-k*k*k;}
+function startEntry(){L.enG=gameTime;L.enS=0;P.enXs=P.x;P.x=entryX();P.enU=1;P.enK=0.92;setState('enter');P.vx=0;}
+function entryTick(){if(L.enG===undefined||L.enS>=2)return;const t=gameTime-L.enG;
+  if(L.enS<1&&t>=EN_DROP){L.enS=1;Snd.play('doorslide');}
+  if(L.enS<2&&t>=EN_DROP+EN_FALL){L.enS=2;const d=entryX(),r=L.start.r;Snd.play('thud');shake(0.8);DUSTC.push({x:d+HX,y:SURF(r)-HY+1,t:gameTime,sz:0.75});}}
+// (round 26f) how far the exit's light has swelled (0..1): it starts as he fades into it, peaks as he is gone, eases before the card
+function exitSwell(){if(!P||P.state!=='exit')return 0;const k=P.exS||0,sq=x=>sstep(x);return sq((k-EX_SW0)/(EX_GONE+0.1-EX_SW0))-0.35*sq((k-EX_GONE-0.2)/(EX_N-EX_GONE-0.2));}
 function levelComplete(){
   mode='card';
   const n=L.n,ft=levelTime,fd=S.floorDeaths||0;
@@ -5870,6 +5903,22 @@ function doorArch(g,th,x0,x1,y0,ctop,yb,kind,sp){const st=th.style,cx=(x0+x1)/2,
   if(st==='forge'){g.fillStyle='#5a4a44';for(let i=0;i<4;i++)g.fillRect(x0-4.6+i*w/3.2,ctop+2.6,1.4,1.4);g.fillStyle='rgba(255,120,40,.55)';g.fillRect(x0-6,y0-0.6,w+12,0.8);}
   if(st==='dungeon'){g.fillStyle=th.lo;for(let i=0;i<4;i++)g.fillRect(x0-6+i*(w+12)/4,ctop+1.2,1,y0-ctop-2);}
 }
+// (round 26f) the doorway's opening as a clip: the head (lintel or round arch) and both jambs, open below the floor
+function doorClip(ctx,x,r){const c=Math.floor(x/TW),ctop=r*TH+Math.max(ceilOff(c,r),ceilOff(c+1,r)),xc=x+HX,x0=xc-12;
+  doorHead(ctx,x0,x0+24,ctop+6,L.theme.style==='dungeon'?'round':'point',SURF(r)+40);ctx.clip();}
+// (round 26f) the stair light he whitens into: warm first (the treads' amber), then the pale gold at the top of the stairs
+const EXT0=[246,190,112],EXT1=[255,244,222];
+function exitTint(w){return 'rgb('+EXT0.map((v,i)=>Math.round(v+(EXT1[i]-v)*w)).join(',')+')';}
+// (round 26f) the prince drawn whole into a buffer, his own pixels tinted (source-atop: only where he is drawn) and the buffer laid down at
+// alpha al: a fade with no overlaps showing through and a tint that never spills round him. Both modes (Torchlight takes the buffer as a
+// canvas redrawn every frame, _glv); a second or so at each floor's ends
+const PTB={c:null,K:0,W:96,H:96};
+function drawPTint(ctx,x,y,o,tc,ta,al){const K=clamp(Math.ceil(renderXf.VZ||1),1,4),W=PTB.W,H=PTB.H,bx=Math.round(x)-48,by=Math.round(y)-80;
+  if(!PTB.c)PTB.c=document.createElement('canvas');const c=PTB.c;if(PTB.K!==K){PTB.K=K;c.width=W*K;c.height=H*K;}c._glv=1;
+  const t=c.getContext('2d');t.setTransform(1,0,0,1,0,0);t.globalCompositeOperation='source-over';t.globalAlpha=1;t.clearRect(0,0,W*K,H*K);
+  t.setTransform(K,0,0,K,-bx*K,-by*K);drawActor(t,P,x,y,P.face,P.pose,PAL_HERO,o);
+  if(ta>0.004){t.setTransform(1,0,0,1,0,0);t.globalCompositeOperation='source-atop';t.globalAlpha=Math.min(1,ta);t.fillStyle=tc;t.fillRect(0,0,W*K,H*K);t.globalCompositeOperation='source-over';t.globalAlpha=1;}
+  ctx.save();ctx.globalAlpha*=al;ctx.drawImage(c,bx,by,W,H);ctx.restore();}
 function drawDoor(ctx,x,r,open,isExit){
   // a doorway cut into the back wall: it stands on the floor's back edge, and because depth recedes up and to the
   // right you see its left jamb and its threshold; the exit opens onto stairs climbing up and back into the light
@@ -5898,7 +5947,8 @@ function drawDoor(ctx,x,r,open,isExit){
   ctx.beginPath();ctx.moveTo(x0,yb);ctx.lineTo(x1,yb);ctx.lineTo(x1+rdx,yb-rdy);ctx.lineTo(x0+rdx,yb-rdy);ctx.closePath();
   ctx.fillStyle=th.top;ctx.fill();ctx.fillStyle=lit?'rgba(255,220,160,.25)':'rgba(0,0,0,.3)';ctx.fill();
   ctx.restore();
-  if(lit){ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=open*0.5;const g2=ctx.createRadialGradient(xc,yb-10,2,xc,yb-10,46);g2.addColorStop(0,'rgba(246,210,138,.6)');g2.addColorStop(1,'rgba(246,210,138,0)');ctx.fillStyle=g2;ctx.fillRect(xc-50,yb-60,100,64);ctx.restore();}
+  if(lit){const sw=shaderOn()?0:exitSwell(); // (round 26f: Classic's swell of the exit's light is this sprite on the doorway, drawn under him; Torchlight's is the door's light, gatherLights)
+    ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=Math.min(1,open*0.5*(1+1.3*sw));const g2=ctx.createRadialGradient(xc,yb-10,2,xc,yb-10,46);g2.addColorStop(0,'rgba(246,210,138,.6)');g2.addColorStop(1,'rgba(246,210,138,0)');ctx.fillStyle=g2;ctx.fillRect(xc-50,yb-60,100,64);ctx.restore();}
   // frame on the wall face: two posts and a lintel that tucks under the ceiling
   ctx.fillStyle=th.wallB;ctx.fillRect(x0-5,y0,5,h);ctx.fillRect(x1,y0,5,h);
   ctx.fillStyle=th.hi;ctx.fillRect(x0-5,y0,1,h);ctx.fillRect(x1,y0,1,h);
@@ -7296,7 +7346,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
   const th=L.theme,c0=Math.floor(x0/TW)-1,c1=Math.floor(x1/TW)+1,r0=Math.floor(y0/TH)-1,r1=Math.floor(y1/TH)+1;
   const inRoom=(c,r)=>c>=c0&&c<=c1&&r>=r0&&r<=r1;
   for(const t of L.torches)if(!t.broken&&inRoom(t.c,t.r))drawLight(ctx,t,th);
-  {const sd=L.start.door===undefined?1:L.start.door;if(inRoom(sd,L.start.r))drawDoor(ctx,sd*TW+16,L.start.r,0,false);}
+  {const sd=L.start.door===undefined?1:L.start.door;if(inRoom(sd,L.start.r))drawDoor(ctx,sd*TW+16,L.start.r,entryOpen(),false);} // (round 26f: open while he comes out, then dropping)
   if(inRoom(L.door.c,L.door.r))drawDoor(ctx,L.door.x,L.door.r,L.door.open,true);
   for(const cp of L.cps)if(inRoom(cp.c,cp.r))drawHourglass(ctx,cp);
   for(const lf of L.lifts)if(liftVisible(lf,x0,x1,y0,y1))drawLift(ctx,lf,0);
@@ -7437,8 +7487,17 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     // "the prince is visible when hanging by a ledge": until now a 0.4 ghost of him was drawn through the wall while he moved.)
     ctx.save();{const lf=L.lifts.length?liftAround():null;if(lf)liftOccl(ctx,lf);} // (in a lift's shaft the walls' front faces round it are nearer than he is)
     figClip(ctx,P.hideMode,P.hideLg,P.state==='dead'?null:wallPress(P.x,P.y,P.face,P.pose));
-    const ex=P.state==='exit'&&P.exS>0;if(ex){const r=L.door.r,c=Math.floor(L.door.x/TW),ctop=r*TH+Math.max(ceilOff(c,r),ceilOff(c+1,r)),x0=L.door.x+HX-12;ctx.beginPath();ctx.rect(x0+0.5,ctop,23,SURF(r)-HY-ctop+40);ctx.clip();} // (on the stairs: inside the doorway, between its posts; the ceiling's front edge takes his head as he rises)
-    drawActor(ctx,P,P.x+(P.rdx||0)+(ex?P.exX:0),P.y+(P.rdy||0)+(ex?P.exY:0),P.face,P.pose,PAL_HERO,{yo:P.yo,sword:(P.sword&&!!P.foe)||P.state==='lowStrike'||P.state==='poke'||(P.lowSword&&P.state==='crouch')||P.state==='slide',swLen:P.state==='slide'?SL_BLADE:0,hasSword:true,flash:P.flash,alpha:P.state==='exit'?Math.max(0,1-Math.max(0,(P.exS||0)-2.6)/2.6):undefined,flutter:Math.min(1,Math.abs(P.vx)/90+(P.state==='air'?0.8:0)),time:gameTime});
+    // (round 26f) on the exit's stairs (from the first rise) he is cut at the opening's head (the lintel, or the round arch: doorHead) and at its
+    // jambs, as SDLPoP's clip_char cuts the kid at the level door: head and shoulders go behind the wall first; then his own pixels warm and
+    // whiten toward the stair light and fade (exitLook: a tint of his figure only, no glow round him). Coming out of the entrance he is cut by
+    // its opening while deep in it, a silhouette taking its colours (P.enK)
+    const ex=P.state==='exit'&&P.exS>0,en=P.state==='enter';let ox=0,oy=0,dc=null,tc=null,ta=0,al=1;
+    if(ex){ox=P.exX;oy=P.exY;if(P.exS>EX_CUT)dc=L.door;if(EXF.look){const k=P.exS,w=sstep((k-1.2)/1.8);ta=0.86*sstep((k-0.5)/2.4);al=1-sstep((k-1.8)/(EX_GONE-1.8));tc=exitTint(w);}}
+    if(en){ox=P.enU*EN_DX;oy=-P.enU*EN_DY;if(P.enU>0.3)dc={x:entryX(),r:L.start.r};ta=P.enK;tc='rgb(7,5,11)';}
+    const po={yo:P.yo,sword:(P.sword&&!!P.foe)||P.state==='lowStrike'||P.state==='poke'||(P.lowSword&&P.state==='crouch')||P.state==='slide',swLen:P.state==='slide'?SL_BLADE:0,hasSword:true,flash:P.flash,flutter:Math.min(1,Math.abs(P.vx)/90+(P.state==='air'?0.8:0)),time:gameTime};
+    if(dc)doorClip(ctx,dc.x,dc.r);
+    if(al<=0.004){}else if(ta>0.004||al<1)drawPTint(ctx,P.x+(P.rdx||0)+ox,P.y+(P.rdy||0)+oy,po,tc,ta,al);
+    else drawActor(ctx,P,P.x+(P.rdx||0)+ox,P.y+(P.rdy||0)+oy,P.face,P.pose,PAL_HERO,po);
     if(P.state==='drink'&&P.dkG&&!P.dkRel&&P.drinkIt)drawHeldFlask(ctx);
     ctx.restore();
   }
@@ -7514,7 +7573,7 @@ function gatherLights(x0,x1,y0,y1){
     if(cp.on){const k=cp.onAt!==undefined?clamp((gameTime-cp.onAt)/0.7,0,1):1;add(cp.x,y,150*k,gc,0.95*k,'item',{r:26,a:0.42*k});
       const q=nutPt(1-cpClockF(cp),0);add(cp.x+q[0]*1.9,SURF(cp.r)-26+Math.sin(gameTime*1.7+cp.x*0.05)*1.6+q[1]*1.9,46,'255,190,100',0.55*k,'trap');} // (the sun's own light, travelling along Nut's arch)
     else add(cp.x,y,38,gc,0.42,'item');}
-  if(L.door.open>0)add(L.door.x+HX,SURF(L.door.r)-26,120*Math.min(1,L.door.open),'255,196,120',0.9*Math.min(1,L.door.open),'door',{r:28,a:0.3*L.door.open});
+  if(L.door.open>0){const sw=shaderOn()?exitSwell():0;add(L.door.x+HX,SURF(L.door.r)-26,120*Math.min(1,L.door.open)*(1+0.3*sw),'255,196,120',0.9*Math.min(1,L.door.open)*(1+0.75*sw),'door',{r:28,a:0.3*L.door.open});} // (round 26f: Torchlight's light swells as he goes; its bloom stays as it was; Classic swells drawDoor's sprite)
   for(const o of L.dyn){const f=o.f,X=o.c*TW;if(X<x0-160||X>x1+160)continue;const ys=SURF(o.r);
     if(f.t==='vent'){const ph=cyc(f,t);if(ph>=0.7||ph<0.03){const vs=ventState(ph);add(X+16,ys-24,110,'255,140,60',0.9*vs.k*vs.al,'fire',{r:30,a:0.4*vs.k*vs.al});}} // (lit through the whole danger window)
     else if(f.t==='gate'&&!f.latch&&f.dur>0&&f.tm>0&&f.tm<Infinity)add(X+16-HX,o.r*TH-12,34,'255,200,120',0.55,'item');
@@ -7553,7 +7612,7 @@ function fillCut(lights,sc,camD,camDY,lw,lh){if(!GFX().bg||!L)return null;
   for(let ry=Math.floor(y0/ROOM_H);ry<=Math.floor((y1-0.01)/ROOM_H);ry++)for(let rx=Math.floor(x0/ROOM_W);rx<=Math.floor(x1/ROOM_W);rx++)m.drawImage(roomCanvas(rx,ry),rx*ROOM_W,ry*ROOM_H,ROOM_W,ROOM_H); // (what the rooms cover is not sky)
   SIL.m.clear();SIL.m2.clear();
   const fig=e=>{const sl=glSilhouette(e,true);if(sl)m.drawImage(sl,e.x-48,e.y+(e.yo||0)-80,96,96);};
-  if(P&&P.state!=='dead'&&P.state!=='exit'&&!(P.y>L.rows*TH))fig(P);for(const e of G)if(e.alive&&!e.gone&&e.x>x0-60&&e.x<x1+60)fig(e);
+  if(P&&P.state!=='dead'&&P.state!=='exit'&&!(P.state==='enter'&&P.enU>0)&&!(P.y>L.rows*TH))fig(P);for(const e of G)if(e.alive&&!e.gone&&e.x>x0-60&&e.x<x1+60)fig(e);
   g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='destination-out';g.drawImage(FCUT.m,0,0);g.globalCompositeOperation='source-over';
   return FCUT.c;}
 // one low-resolution light map (ambient + every light, then the colour grade) multiplied over the scene
@@ -9368,7 +9427,7 @@ function glMask(lights,VZ,camD,camDY){
   let any=0,sh=0;
   if(GLFX.shadow&&P){
     const red=lightSprite('255,0,0');GLCH.length=0;
-    if(P.state!=='dead'&&P.state!=='dying'&&P.state!=='exit'&&!(P.y>L.rows*TH))GLCH.push(P);
+    if(P.state!=='dead'&&P.state!=='dying'&&P.state!=='exit'&&!(P.state==='enter'&&P.enU>0)&&!(P.y>L.rows*TH))GLCH.push(P);
     for(const e of G)if(e.alive&&!e.gone&&e.x>cx-50&&e.x<cx+vw+50)GLCH.push(e);
     for(const e of GLCH){const low=e.state==='crouch'||e.state==='slide'||e.state==='lowStrike',hid=e===P&&P.hideMode>0&&P.hideLg;if(hid){g.save();figClip(g,P.hideMode,P.hideLg,null);} // (round 19: what the wall hides of him casts no shadow either)
       sh+=glShadow(g,e.x,e.y+(e.yo||0),low?.62:1,lights,red,e);if(hid)g.restore();}
@@ -9860,7 +9919,7 @@ function glcOcc(VZ,camD,camDY){
   g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='source-over';g.fillStyle='#000';g.fillRect(0,0,w,h);g.setTransform(VZ/8,0,0,VZ/8,-camD/8,-camDY/8);
   let any=0;const bb=GLCBB,near=e=>{const sx=(e.x*VZ-camD)/4,sy=(e.y*VZ-camDY)/4,m=24*VZ/4;return sx>bb[0]-m&&sx<bb[2]+m&&sy>bb[1]-m&&sy<bb[3]+m*3;};
   const one=e=>{if(!near(e))return;const s=glSilhouette(e);if(s){g.drawImage(s,e.x-48,e.y+(e.yo||0)-80,96,96);any=1;}};
-  if(P&&P.state!=='dead'&&P.state!=='exit'&&!(P.y>L.rows*TH))one(P);
+  if(P&&P.state!=='dead'&&P.state!=='exit'&&!(P.state==='enter'&&P.enU>0)&&!(P.y>L.rows*TH))one(P);
   for(const e of G)if(e.alive&&!e.gone)one(e);
   return any;} // (copied into WebGL with the other masks, in glAtlas)
 // runs both passes as needed; returns which the composite should read (bit 1: S, bit 2: M). Their targets sit on units 6 and 7.
@@ -10313,11 +10372,11 @@ function pause(){if(mode!=='play')return;snapshotResume();mode='paused';clearInp
   $('pTitle').textContent='Floor '+L.n+' · '+themeName(L.n);$('pFloorTime').textContent=fmt(levelTime);$('pRunTime').textContent=fmt(S.time+levelTime);$('pDeaths').textContent=String(S.deaths);
   syncToggles();show('pause');wake(false);}
 function resume(){hideAll();mode='play';clearInput();wake(true);}
-function nextFloor(){hideAll();startLevel(S.level,-1);wake(true);}
+function nextFloor(){hideAll();startLevel(S.level,-1,true);wake(true);}
 function goTitle(){if(L&&mode!=='title'&&mode!=='card'){S.floorTime=levelTime;writeSave();}mode='title';refreshTitle();show('title');wake(false);}
 $('bContinue').onclick=()=>{Snd.unlock();hideAll();startLevel(S.level,S.cp);applyResume(S.resume);wake(true);};
 $('bNew').onclick=()=>{Snd.unlock();if(S.started){show('confirm');return;}beginNew();};
-function beginNew(){S=newSave(S);S.started=true;writeSave();hideAll();startLevel(1,-1);wake(true);}
+function beginNew(){S=newSave(S);S.started=true;writeSave();hideAll();startLevel(1,-1,true);wake(true);}
 $('bConfirmYes').onclick=beginNew;
 $('bConfirmNo').onclick=()=>show('title');
 $('bHowT').onclick=()=>{howReturn='title';show('how');};
@@ -10332,7 +10391,7 @@ const toolGo=q=>{try{writeSave();}catch(e){}location.href=location.pathname+q;};
 $('bToolsP').onclick=()=>show('tools');$('bToolsClose').onclick=()=>show('pause');
 $('tBench').onclick=()=>toolGo('?bench');$('tBenchC').onclick=()=>toolGo('?bench=classic');$('tBenchA').onclick=()=>toolGo('?bench=auto');$('tProf').onclick=()=>toolGo('?prof');
 $('bResume').onclick=resume;
-$('bRestart').onclick=()=>{hideAll();S.cp=-1;S.cpPlates=[];S.resume=null;S.floorTime=levelTime;startLevel(L.n,-1);wake(true);};
+$('bRestart').onclick=()=>{hideAll();S.cp=-1;S.cpPlates=[];S.resume=null;S.floorTime=levelTime;startLevel(L.n,-1,true);wake(true);};
 $('bQuit').onclick=goTitle;
 $('bNext').onclick=nextFloor;
 $('bCardMenu').onclick=goTitle;
@@ -10422,6 +10481,7 @@ window.__HK={keyLight,get frameLights(){return frameLights;},jetPlaces,jsSwingPa
   get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG,secretCues};
 Object.assign(window.__HK,{guardBudget,snakeBudget,RP,drinkFrame}); // (the fighters' budgets, for guardscan.py; RP and drinkFrame, the run cycle's and the drink's poses, for egyptr21a.py)
 Object.assign(window.__HK,{LEN,skel,crawlPose,walkPose,climbFrame,swingPose,MCP,MCK,R23B,R23D,R23MUS,setMus,musNow:()=>RD.mus||1,mk,figReach}); // (the skeleton and the poses, for egyptr23.py and figscan.py)
+Object.assign(window.__HK,{respawn,startRewind,die,startEntry,entryOpen,entryX,exitSwell,EXF,EX_N,EX_GONE,EX_CUT,EN_CTL,EN_DROP,EN_FALL,doorHead,ceilOff:(c,r)=>ceilOff(c,r)}); // (round 26f: the exit and the entry, for stairscan.py and egyptr26f.py)
 Object.defineProperty(window.__HK,'intro',{get(){return intro;},set(v){intro=v;}}); // (the floor's title banner, for egyptprop.py)
 Object.assign(window.__HK,{GATE_G,liftCell,windowPath,gateGeom,stoneTex,STONES,THEME_STONE,SLAB_STONE,stoneLying,BLK_W,BLK_H,looseWell,WELL_V,blockStep,wellGroup,wellSolve,wellTip,sandTex});
 Object.assign(window.__HK,{EGP,nutClock,conceptClock2,barqueClock,conceptClock,flaskBody,flaskR,heart,setHero,HERO_VAR,PAL_HERO,SCHED,floorsOf,BGART,bgArt,LFX,themeOf,get PF(){return PF;}}); // (the themes' backdrops and effects, for egyptshot.py and egyptfx.py)

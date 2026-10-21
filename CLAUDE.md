@@ -378,10 +378,24 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   view through each opening must move under 1 px a frame in descents; it measures the pixels too).
 - Doors are drawn live, but Torchlight's relief reads the room's picture: the back wall's art is flattened under each doorway and its
   frame (`drawRoomStatic`). `doorscan.py` checks every door (floors 1 to 48, both modes) for art over the opening. At the exit he
-  climbs the doorway's stairs tread by tread (`EX_*`, `P.exS`), cut by the posts and the ceiling's edge. (round 16c) The stairs are the
+  climbs the doorway's stairs tread by tread (`EX_*`, `P.exS`). (round 26f, owner: "the prince climbs the wall, he should instead
+  disappear on the stairs"; exit D "into the light") He walks to the doorway's middle facing his way, turns to the stairs if he came
+  facing left (`EX_TURN`; the stairs recede right, `P.exX` never takes his facing), and from the first rise (`EX_CUT`) is cut at the
+  opening's head and jambs (`doorClip`: the lintel's line or the round vault, `doorHead`; SDLPoP `clip_char`): never at the ceiling's
+  edge. His own pixels then warm and whiten toward the stair light and fade (`drawPTint`: the figure drawn whole into a buffer, tinted
+  source-atop, laid down at an alpha; never a glow, haze or bloom round him), gone at `EX_GONE`; the doorway's light swells
+  (`exitSwell`: the door light in `gatherLights` in Torchlight, `drawDoor`'s additive sprite under him in Classic) and the card comes at
+  `EX_N` (about 1.7 s from Up). Footfalls on the treads, `stairsaway` (his steps on, out of sight, 0.5 s), `exitlight`. `EXF.look` off
+  draws him plain (stairscan's feet). Entry (E1, PoP's start door, `start_level_door`): on a fresh floor only (`startLevel(n,-1,true)`:
+  next floor, new run, Restart; never a checkpoint, respawn, Continue or rewind; no rewind snapshot or floor time while `P.state` is
+  `enter`) he comes out of the entrance's dark opening (`EN_DX`, `EN_DY` of depth, a silhouette taking its colours, `P.enK`), walks to
+  `L.start.x`, control at `EN_CTL` 0.62 s; the leaf (`entryOpen`, from `L.enG`, a function of the clock) drops from `EN_DROP` over
+  `EN_FALL`, speeding up, with `doorslide`, a `thud`, a small shake and a landing dust cloud (`entryTick`). The bot waits out the
+  state (`opts.entry` plays it). (round 16c) The stairs are the
   same in every style; his first step also lifts him `EX_UP` (from the floor's middle depth onto the tread, which starts inside the
   doorway), and his stride moves only while he rises (`P.exQ`), so a planted foot stays put; `stairscan.py` measures feet against the
-  drawn treads on floors 1 to 48. Stone slabs (portcullis, lift mouths) are rubbed out of the relief whenever they are down
+  drawn treads on floors 1 to 48 (both facings since round 26f), checks no pixel of his outside the opening's head and jambs during the
+  exit (both modes and facings) and the entry (control, the leaf, never replayed, the bot from the entry). Pictures `egyptr26f.py`. Stone slabs (portcullis, lift mouths) are rubbed out of the relief whenever they are down
   (`glRelSlab`: the back wall's courses and friezes were embossed on them); `openscan.py` checks windows, gates and lift mouths for
   wall art over the opening (floors 1 to 48, both modes; `EGP.noover` leaves out the hangings and lamp scars drawn after windows).
 - A dart shooter firing left sits on a wall's hidden left face: no head is drawn and its darts come from behind the front face.
