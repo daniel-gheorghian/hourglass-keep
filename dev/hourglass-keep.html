@@ -7788,12 +7788,17 @@ function bgLayers(look,tod=0){const key=look+':'+tod+':'+VS.toFixed(2);let v=bgC
   const art=BGART[look]||BGART.nun,sc=Math.max(0.5,VS*BGQ),style=look;
   let lys=art.layers.map(ly=>Object.assign({},ly,{col:todColor(ly.col,tod),tod}));
   if(tod===1&&!lys.some(q=>q.kind==='stars')&&!art.nostars)lys=[{f:0.015,kind:'stars',moon:'#d6def5',tod},...lys]; // a night sky has stars even over the Cistern
-  v=lys.map((ly,i)=>{const c=document.createElement('canvas');c.width=Math.round(BG_W*sc);c.height=Math.round(BG_H*sc);const g=c.getContext('2d');g.setTransform(sc,0,0,sc,0,0);
+  // (round 25e) the moon is a layer of its own, after its stars: each storey's openings see it at their own eye level, so it is drawn
+  // only for the storey the camera is at (crossfading as the camera moves between storeys, bgMoonA): one moon on the screen, not a stack
+  lys=lys.flatMap((ly,i)=>ly.kind==='stars'?[Object.assign({},ly,{nomoon:1,si:i}),Object.assign({},ly,{moonOnly:1,si:i})]:[Object.assign(ly,{si:i})]);
+  v=lys.map(ly=>{const i=ly.si,c=document.createElement('canvas');c.width=Math.round(BG_W*sc);c.height=Math.round(BG_H*sc);const g=c.getContext('2d');g.setTransform(sc,0,0,sc,0,0);
     const rnd=mulberry32(hash2(i*31+7,style.length*97+i));
     // everything is drawn twice, a layer-width apart, so the strip tiles seamlessly
     for(const ox of [0,-BG_W,BG_W]){g.save();g.translate(ox,0);bgPaint(g,ly,mulberry32(hash2(i*31+7,style.length*97+i)));g.restore();}
     if(GLFX.bgblur&&ly.kind!=='stars')bgSoften(c,g,bgBlurR(ly.f)*sc);
-    return {c,f:ly.f,drift:ly.drift||0};});
+    // (round 25e) whether the strip's top and bottom rows hold anything: the strip is carried on past its edges with them (found once here)
+    const ed=g.getImageData(0,0,c.width,1).data,eb=g.getImageData(0,c.height-1,c.width,1).data;let et=0,ebm=0;for(let k=3;k<ed.length;k+=4){et=Math.max(et,ed[k]);ebm=Math.max(ebm,eb[k]);}
+    return {c,f:ly.f,drift:ly.drift||0,top:et>0,bot:ebm>0,moon:!!ly.moonOnly};});
   bgCache.set(key,v);return v;}
 // ---- distance blur (S3 unit B, item 9; GLFX.bgblur): the view through the arches is a little out of focus, so the playfield
 // reads first. Done once, when a layer is painted (never per frame): the nearer layers stay sharper than the far ones, like a
@@ -7811,8 +7816,8 @@ function bgSoften(c,g,R){const lv=R<1.4?0:R<3?1:R<6?2:3;if(!lv)return;const w=c.
 function bgPaint(g,ly,rnd){const B=BG_BASE-(ly.lift||0),T=Math.PI*2,R=(a,b)=>a+rnd()*(b-a);g.fillStyle=ly.col;
   const ground=()=>g.fillRect(-2,B,BG_W+4,BG_H-B+2);
   switch(ly.kind){
-    case'stars':{const ns=ly.tod===1?170:ly.tod===2?22:90,al=ly.tod===2?0.45:1;for(let i=0;i<ns;i++){const x=R(0,BG_W),y=R(4,BG_BASE-40),r=R(0.3,ly.tod===1?1.3:0.9);g.fillStyle='rgba(255,248,230,'+(R(0.35,0.95)*al).toFixed(2)+')';g.fillRect(x,y,r,r);}}
-      g.globalAlpha=ly.tod===2?0.5:1;g.fillStyle=ly.moon;g.beginPath();g.arc(470,46,ly.tod===1?11:9,0,T);g.fill();g.globalAlpha=1;g.fillStyle='rgba(0,0,0,.0)';
+    case'stars':{const ns=ly.tod===1?170:ly.tod===2?22:90,al=ly.tod===2?0.45:1;if(!ly.moonOnly)for(let i=0;i<ns;i++){const x=R(0,BG_W),y=R(4,BG_BASE-40),r=R(0.3,ly.tod===1?1.3:0.9);g.fillStyle='rgba(255,248,230,'+(R(0.35,0.95)*al).toFixed(2)+')';g.fillRect(x,y,r,r);}}
+      if(ly.nomoon)break;g.globalAlpha=ly.tod===2?0.5:1;g.fillStyle=ly.moon;g.beginPath();g.arc(470,46,ly.tod===1?11:9,0,T);g.fill();g.globalAlpha=1;g.fillStyle='rgba(0,0,0,.0)';
       {const gr=g.createRadialGradient(470,46,8,470,46,34);gr.addColorStop(0,'rgba(255,240,210,.18)');gr.addColorStop(1,'rgba(255,240,210,0)');g.fillStyle=gr;g.fillRect(430,6,80,80);}
       g.save();g.globalCompositeOperation='destination-out';g.beginPath();g.arc(475,42,8,0,T);g.fill();g.restore();break;
     case'clouds':for(let i=0;i<9;i++){const x=R(0,BG_W),y=R(20,BG_BASE-50),w=R(50,120),h=R(5,11);for(let k=0;k<4;k++){g.beginPath();g.ellipse(x+k*w*0.22,y+R(-2,2),w*0.35,h,0,0,T);g.fill();}}break;
@@ -7907,30 +7912,63 @@ function openingsIn(x0,x1,y0,y1){const out=[],st=L.theme.style;
   for(const b of breaches())if(b&&b.open&&b.x1>=x0-4&&b.x0<=x1+4&&b.y1>=y0-4&&b.y0<=y1+4)out.push([b.x0,b.y0,b.x1-b.x0,b.y1-b.y0]);
   return out;}
 let bgC=null,bgG=null;
+// (round 25e, owner: "the backgrounds that are seen through the windows sometimes change wildly ... especially when going downwards")
+// The view was pinned to the screen vertically (its layers moved 0.18 of their depth factor, clamped at 22 px, the sky not at all), so
+// every opening slid over it at the camera's full speed: one storey down (a third of the screen) took a window from the dark land
+// through the bright horizon into the sky. Now each opening looks out at the eye level of its own storey: its view is placed as it
+// was when the camera frames that storey (bgAnchor: the camera's rest for the floor under the opening), and moves with the keep, but
+// for a vertical parallax of BG_VK of the camera's travel away from that rest for the farthest layer, (1-f) of it for a layer of
+// depth factor f (the near ones move most nearly with the keep, as at depth: SNES-era and Celeste-style separate X and Y scroll
+// factors). A pure function of the camera and of the opening, so a rewind, a respawn or a snap cannot jump it, and nothing switches
+// as the camera crosses a row: each opening keeps its own anchor (the seams between storeys lie in the stone between them). The screen
+// shake moves the view with the keep; a zoom does not slide it.
+const BG_VK=0.2,BG_FSKY=0.015,BG_MOONW=48; // (BG_FSKY: the sky and the sun move as the farthest layer, the stars)
+const BGV={x:0,y:0,sx:0}; // the camera the view is seen from: x without the shake (sx, added in screen space), y with it
+function bgRest(yb){const r=Math.floor((yb-1)/TH);return clamp(SURF(r)-ROOM_H*FRAME,0,Math.max(0,L.rows*TH-ROOM_H));} // (the view's top when the camera rests on the floor an opening's foot stands on)
+// each opening's anchor, found once a floor: openings that touch (a window knocked into a breach) are one hole and share the anchor of
+// the largest of them, so no seam runs through a hole and no anchor depends on what is in view
+const bgKey=r=>Math.round(r[0])*8192+Math.round(r[1]);
+function bgAnchors(){if(L._bgA)return L._bgA;const all=openingsIn(-1e9,1e9,-1e9,1e9),n=all.length,par=all.map((_,i)=>i),fd=i=>{while(par[i]!==i)i=par[i]=par[par[i]];return i;};
+  for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){const a=all[i],b=all[j];if(a[0]<=b[0]+b[2]+4&&b[0]<=a[0]+a[2]+4&&a[1]<=b[1]+b[3]+4&&b[1]<=a[1]+a[3]+4)par[fd(i)]=fd(j);}
+  const big=new Map();for(let i=0;i<n;i++){const g=fd(i),q=big.get(g);if(q===undefined||all[i][2]*all[i][3]>all[q][2]*all[q][3])big.set(g,i);}
+  const m=new Map();for(let i=0;i<n;i++){const q=all[big.get(fd(i))];m.set(bgKey(all[i]),bgRest(q[1]+q[3]));}
+  return L._bgA=m;}
+function bgAnchor(r){const v=bgAnchors().get(bgKey(r));return v===undefined?bgRest(r[1]+r[3]):v;}
 function drawBackdrop(ctx,cx,cy,vw,vh,VZ,camD,camDY){
+  BGV.x=cam.x;BGV.sx=cx+vw/2-viewW/2-cam.x;BGV.y=cy+vh*0.6-ROOM_H*0.6;
   const ops=openingsIn(cx,cx+vw,cy,cy+vh);if(!ops.length)return;
   const art=bgArt(L.theme),ly=bgLayers(L.theme.look,L.prog?L.prog.tod:0),k=VZ/VS;
   // only the part of the screen the openings cover is painted (in view units)
-  // openings close together (a run of arches) are painted as one box; scattered windows each get their own
+  // openings close together (a run of arches) and looking out from the same storey are painted as one box; scattered windows each get their own
   const boxes=[];
-  for(const r of ops){let b=[(r[0]*VZ-camD)/VS-1,(r[1]*VZ-camDY)/VS-1,0,0];b[2]=b[0]+r[2]*k+2;b[3]=b[1]+r[3]*k+2;
-    for(let i=boxes.length-1;i>=0;i--){const q=boxes[i];if(q[0]<=b[2]+6&&b[0]<=q[2]+6&&q[1]<=b[3]+6&&b[1]<=q[3]+6){b=[Math.min(b[0],q[0]),Math.min(b[1],q[1]),Math.max(b[2],q[2]),Math.max(b[3],q[3])];boxes.splice(i,1);}}
+  for(const r of ops){const an=bgAnchor(r);let b=[(r[0]*VZ-camD)/VS-1,(r[1]*VZ-camDY)/VS-1,0,0,an];b[2]=b[0]+r[2]*k+2;b[3]=b[1]+r[3]*k+2;
+    for(let i=boxes.length-1;i>=0;i--){const q=boxes[i];if(q[4]===an&&q[0]<=b[2]+6&&b[0]<=q[2]+6&&q[1]<=b[3]+6&&b[1]<=q[3]+6){b=[Math.min(b[0],q[0]),Math.min(b[1],q[1]),Math.max(b[2],q[2]),Math.max(b[3],q[3]),an];boxes.splice(i,1);}}
     boxes.push(b);}
-  for(const bb of boxes)paintBackdrop(ctx,art,ly,Math.max(0,Math.floor(bb[0])),Math.max(0,Math.floor(bb[1])),Math.min(viewW,Math.ceil(bb[2])),Math.min(ROOM_H,Math.ceil(bb[3])));}
-function paintBackdrop(ctx,art,ly,bx0,by0,bx1,by1){if(bx1<=bx0||by1<=by0)return;
+  for(const bb of boxes)paintBackdrop(ctx,art,ly,Math.max(0,Math.floor(bb[0])),Math.max(0,Math.floor(bb[1])),Math.min(viewW,Math.ceil(bb[2])),Math.min(ROOM_H,Math.ceil(bb[3])),bb[4]);}
+// where a layer of depth factor f stands on the screen (view units) for an opening anchored at an (bgAnchor), the camera at BGV
+function bgLayerY(f,an){const midY=L.rows*TH/2,hz=ROOM_H*0.7-BG_BASE,sink=L.prog?L.prog.sink:0;
+  return hz+sink-clamp((an-midY)*f*0.18,-22,22)-(1-BG_VK*(1-f))*(BGV.y-an);} // (at rest, the old place for that storey; then the keep's motion less the parallax)
+function paintBackdrop(ctx,art,ly,bx0,by0,bx1,by1,an){if(bx1<=bx0||by1<=by0)return;
   // compose sky and layers at low resolution, then one scaled copy onto the screen (no clip: the room images drawn
   // next cover everything but the openings)
   const q=VS*BGQ,cw=Math.ceil(viewW*q),ch=Math.ceil(ROOM_H*q);let g,src;
   if(ctx.isG2D){g=GLS.Fbg;src=GLS.bg;if(GLS.bgFr!==GLS.fr){GLS.bgFr=GLS.fr;g.begin(cw,ch);}} // (unit WGL: the same picture, drawn by WebGL into a target of bgC's size)
   else{if(!bgC||bgC.width!==cw||bgC.height!==ch){bgC=document.createElement('canvas');bgC.width=cw;bgC.height=ch;bgG=bgC.getContext('2d');}g=bgG;src=bgC;}
+  if(an===undefined)an=BGV.y;
+  const tod=L.prog?L.prog.tod:0,gk='grad'+tod,sk=art[gk]||(art[gk]=(()=>{const st=todSky(art.sky,tod),gr=g.createLinearGradient(0,0,0,ROOM_H);gr.addColorStop(0,st[0]);gr.addColorStop(0.45,st[1]);gr.addColorStop(0.72,st[2]);gr.addColorStop(1,st[3]);return gr;})());
+  const so=-(1-BG_VK*(1-BG_FSKY))*(BGV.y-an); // (round 25e) the sky goes with the view: the gradient made once, moved by the transform (past its ends it pads with its end stops)
+  g.setTransform(q,0,0,q,0,so*q);g.fillStyle=sk;g.fillRect(bx0,by0-so,bx1-bx0,by1-by0);
+  if(tod===2){const sx=viewW*0.62-BGV.x*0.01-BGV.sx,gr=art.sun||(art.sun=(()=>{const r=g.createRadialGradient(0,ROOM_H*0.7,2,0,ROOM_H*0.7,ROOM_H*0.9);r.addColorStop(0,'rgba(255,214,150,.55)');r.addColorStop(1,'rgba(255,170,110,0)');return r;})());
+    g.setTransform(q,0,0,q,sx*q,so*q);g.fillStyle=gr;g.fillRect(bx0-sx,by0-so,bx1-bx0,by1-by0);} // the sun just under the skyline (made once, moved by the transform: no gradient a frame)
   g.setTransform(q,0,0,q,0,0);
-  const tod=L.prog?L.prog.tod:0,sink=L.prog?L.prog.sink:0,gk='grad'+tod,sk=art[gk]||(art[gk]=(()=>{const st=todSky(art.sky,tod),gr=g.createLinearGradient(0,0,0,ROOM_H);gr.addColorStop(0,st[0]);gr.addColorStop(0.45,st[1]);gr.addColorStop(0.72,st[2]);gr.addColorStop(1,st[3]);return gr;})());
-  g.fillStyle=sk;g.fillRect(bx0,by0,bx1-bx0,by1-by0);
-  if(tod===2){const sx=viewW*0.62-cam.x*0.01,gr=g.createRadialGradient(sx,ROOM_H*0.7,2,sx,ROOM_H*0.7,ROOM_H*0.9);gr.addColorStop(0,'rgba(255,214,150,.55)');gr.addColorStop(1,'rgba(255,170,110,0)');g.fillStyle=gr;g.fillRect(bx0,by0,bx1-bx0,by1-by0);} // the sun just under the skyline
-  const midY=L.rows*TH/2,hz=ROOM_H*0.7-BG_BASE;
-  for(const L2 of ly){const W=BG_W,ox=-((((cam.x*L2.f+gameTime*L2.drift)%W)+W)%W),oy=hz+sink-clamp((cam.y-midY)*L2.f*0.18,-22,22),sx=L2.c.width/BG_W,sy=L2.c.height/BG_H;
-    for(let x=ox;x<viewW;x+=W){const ix0=Math.max(bx0,x),ix1=Math.min(bx1,x+W),iy0=Math.max(by0,oy),iy1=Math.min(by1,oy+BG_H);if(ix1<=ix0||iy1<=iy0)continue;
-      g.drawImage(L2.c,(ix0-x)*sx,(iy0-oy)*sy,(ix1-ix0)*sx,(iy1-iy0)*sy,ix0,iy0,ix1-ix0,iy1-iy0);}}
+  for(const L2 of ly){if(L2.moon){const d=Math.abs(BGV.y-an)/BG_MOONW;if(d>=1)continue;g.globalAlpha=1-d*d*(3-2*d);} // (the moon, for the storey the camera is at)
+    const W=BG_W,oy=bgLayerY(L2.f,an),sx=L2.c.width/BG_W,sy=L2.c.height/BG_H;let ox=-((((BGV.x*L2.f+gameTime*L2.drift)%W)+W)%W)-BGV.sx;while(ox>bx0)ox-=W;
+    for(let x=ox;x<bx1;x+=W){const ix0=Math.max(bx0,x),ix1=Math.min(bx1,x+W);if(ix1<=ix0)continue;
+      const iy0=Math.max(by0,oy),iy1=Math.min(by1,oy+BG_H);
+      if(iy1>iy0)g.drawImage(L2.c,(ix0-x)*sx,(iy0-oy)*sy,(ix1-ix0)*sx,(iy1-iy0)*sy,ix0,iy0,ix1-ix0,iy1-iy0);
+      if(L2.bot&&by1>oy+BG_H){const y0=Math.max(by0,oy+BG_H);g.drawImage(L2.c,(ix0-x)*sx,L2.c.height-1,(ix1-ix0)*sx,1,ix0,y0,ix1-ix0,by1-y0);} // (round 25e) the ground carried on below the strip
+      if(L2.top&&by0<oy){const y1=Math.min(by1,oy);g.drawImage(L2.c,(ix0-x)*sx,0,(ix1-ix0)*sx,1,ix0,by0,ix1-ix0,y1-by0);}} // and what hangs from above (the Cistern's architrave, ropes) carried on above it
+    if(L2.moon)g.globalAlpha=1;}
   ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.imageSmoothingEnabled=true;
   ctx.drawImage(src,bx0*q,by0*q,(bx1-bx0)*q,(by1-by0)*q,bx0*VS,by0*VS,(bx1-bx0)*VS,(by1-by0)*VS);ctx.restore();}
 
@@ -10213,6 +10251,7 @@ Object.assign(window.__HK,{EGP,nutClock,conceptClock2,barqueClock,conceptClock,f
 Object.assign(window.__HK,{hurt,HK,DISS,sandP,SAND_HP,GLFX,setClock:f=>{performance.now=f;}}); // S3-A (tests)
 Object.assign(window.__HK,{FLM,FLV,ventState,cyc}); // FL (flames: the sheets and the vent's look, for tests)
 Object.assign(window.__HK,{GLFX,GLREL,clearRooms,bgCache,bgLayers,solidBelow:(c,r)=>solidBelow(L,c,r),roomCanvas}); // (unit B's switches and caches, for its tests)
+Object.assign(window.__HK,{openingsIn,bgAnchor,bgLayerY,BGV,BG_VK,BG_FSKY}); // (round 25e: the backdrop's place for each opening, for egyptr25e.py)
 Object.assign(window.__HK,{GLS,G2D,g2Target,g2Begin,g2Replay,EC,g2col,HKPath,drawFigureHD,figDraw,paintBackdrop,bgLayers,BGART,lightSprite,drawLight,drawGate,drawJaws,drawDoor,drawHourglass,drawFlask,drawSnakeHD,drawLift}); // (unit WGL, for its parity tests)
 Object.assign(window.__HK,{GLA,PF,BENCH,G2UP,g2Warm,roomCache}); // (the mask atlas's layout, for wgl_maskcmp.py; ?prof and ?bench for wgl_prof.py)
 Object.assign(window.__HK,{MS,MSF,GLMETAL_P,msPreset:k=>{if(k!==undefined)GLMETAL_K=k;return GLMETAL_K;},msPaint:()=>METAL_PAINT_HI}); // (unit MS, for its tests and pictures)

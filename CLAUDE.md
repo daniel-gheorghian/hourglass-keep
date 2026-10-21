@@ -346,6 +346,17 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   Round 20b (owner: the wedge to the floor read crude): Classic draws such a beam `RY_SH` (5) times at a fifth of its strength, each cut by
   its own hull (the quad swept 12 to 72% of the way to the floor and spread 8 to 70%), so the shadow is whole at the blade and fades and
   widens to nothing short of the floor (an area light's penumbra); clips only, never a scratch canvas.
+- The view through openings (round 25e, owner: "the backgrounds seen through the windows sometimes change wildly ... especially when
+  going downwards") follows the keep, not the screen: each opening (window, open arch, breach) looks out at the eye level of its own storey.
+  Its view is placed as it was when the camera rests on the floor under the opening (`bgAnchor`: openings that touch share the anchor of the
+  largest, found once a floor in `L._bgA`), and moves with the keep but for a vertical parallax of `BG_VK` (0.2) of the camera's travel away
+  from that rest for the farthest layer, (1-f) of it for a layer of depth f (`bgLayerY`); the sky's gradient and the dawn sun go with the
+  farthest layer (`BG_FSKY`). Horizontal parallax is unchanged (f). Before, the view was pinned to the screen vertically (0.18 f, clamped at
+  22 px, the sky not at all), so every opening slid over it at the camera's full speed. A pure function of the camera and the opening:
+  never key the backdrop to the player, a row he is in, or anything the view culls. The strips carry on past their edges (ground below,
+  what hangs from above above); the moon is a layer of its own drawn only for the storey the camera is at (crossfading over `BG_MOONW`
+  48 px), so stacked openings do not each show one. The screen shake moves the view with the keep. Check with `egyptr25e.py` (the computed
+  view through each opening must move under 1 px a frame in descents; it measures the pixels too).
 - Doors are drawn live, but Torchlight's relief reads the room's picture: the back wall's art is flattened under each doorway and its
   frame (`drawRoomStatic`). `doorscan.py` checks every door (floors 1 to 48, both modes) for art over the opening. At the exit he
   climbs the doorway's stairs tread by tread (`EX_*`, `P.exS`), cut by the posts and the ceiling's edge. (round 16c) The stairs are the
