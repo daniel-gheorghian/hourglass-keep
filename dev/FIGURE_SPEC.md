@@ -19,22 +19,22 @@ Sources:
 
 Lengths below the chin are the CMU subjects 09, 13, 14 and 16's mean bones (the run and jump subjects), scaled so the hip joint
 stands at ANSUR's trochanter height in the body's scale; the joint from the shoulder to the chin, the neck and the depths are
-ANSUR's. Measured on the drawing (`egyptr23.py body`, r23measure.json):
+ANSUR's (round 23c: the chin 2 px nearer the joint, see below). Measured on the drawing (`egyptr23.py body`, r23measure.json):
 
 | Measure | Value | Source |
 |---|---|---|
-| standing height, sole's lowest pixel to the hair | 52.4 px (v69 53.0) | the crown never above v69's |
+| standing height, sole's lowest pixel to the hair | 52.4 px (v69 53.0); 50.5 since round 23c | the crown never above v69's |
 | head, chin to crown | 7.98 px: **6.57 heads** | the decision below |
 | scale below the chin | 3.59 cm a px | ANSUR stature 1764.5 mm less a 228 mm head |
 | hip joint over the floor | 25.2 px (0.48 of the height) | ANSUR trochanter 906 mm |
 | thigh, shank to the floor (LEN.th, sh) | 11.4, 13.8 px | CMU femur 41.9 cm, tibia 43.7 cm, + ANSUR ankle 70 mm |
 | hip joint to shoulder joint (LEN.to) | 14.0 px | CMU rest pose, 51.4 cm |
-| shoulder joint to chin | 4.0 px | ANSUR: acromion 1432.5 mm, the joint 40 mm under it |
+| shoulder joint to chin | 4.0 px; **2.0 px since round 23c** (owner) | ANSUR: acromion 1432.5 mm, the joint 40 mm under it, less `NECK_CUT` 2.0 |
 | upper arm, forearm to the palm (LEN.ua, fa) | 8.2, 7.7 px | CMU humerus 30.2 cm, radius 20.5 cm + 0.4 of ANSUR's hand |
 | head radius (LEN.hd) | 3.37 px | the drawn head is 2.40 radii chin to crown |
 | chest / waist / seat depth | 6.5 / 5.4 / 5.8 px | ANSUR chest (all), waist and buttock depth (lean) |
 | neck depth (its base) | 3.2 (3.6) px | ANSUR neck circumference / pi |
-| C7, pit of the neck under the chin | 0.56, 2.69 px | ANSUR cervicale and suprasternale heights |
+| C7, pit of the neck under the chin | 0.56, 2.69 px (round 23c: the same points on the body, the chin 2 px lower: C7 1.44 px over it, the pit 0.69 under) | ANSUR cervicale and suprasternale heights |
 | thigh, knee, calf, ankle across | 5.3, 3.5, 3.4, 1.9 px | ANSUR girths / pi |
 | deltoid, upper arm, forearm, wrist across | 4.0, 3.0, 2.6, 1.5 px | ANSUR biceps (x1.35 at the deltoid), forearm, wrist |
 | foot | 7.5 px | ANSUR foot length |
@@ -113,12 +113,14 @@ the low leaps and the slide), the sole on the floor where v69's was, the swing's
 ## Muscle bulk (round 23b): one multiplier, MUS
 
 Owner: "Yeah needs to be bulkier. Add a bulk multiplier, but in the sense of more muscle. Give me three variants of him with the current size
-then more and more bulky". The owner picks the level; until then the game draws 1.0 (round 23, unchanged pixel for pixel).
+then more and more bulky". The owner picked 1.28 in round 23c; round 23b itself drew 1.0 (round 23, unchanged pixel for pixel).
 
 The rule: `MUS` (r23poses.py) is the upper arm's girth over round 23's (ANSUR II's median). Every other measure grows at its own rate per
 unit of the upper arm's (`GROW`): `factor = 1 + rate x (MUS - 1)`. Joints (elbow, wrist, knee, ankle), bones, the skeleton (R23B), every pose,
 the held hands, hit boxes and timing never change. The waist barely grows (no fat), so the V-taper sharpens. Robbers keep 1.15 times the
 prince's breadth on top of the level.
+
+Round 23c: the owner picked 1.28 ("1.28 is fine"); the game draws it with no override (`MUS` in r23poses.py; R23D is the 1.28 table, R23DV keeps the others).
 
 | Measure | Rate | Basis |
 |---|---|---|
@@ -158,6 +160,18 @@ Drawing (Proko on the deltoid and calf; small-sprite practice: silhouette and va
 faint strokes in the part's own shade grow with the level (`RD.mh`, 0 at 1.0, 0.6 at 1.28): the deltoid's V into the upper arm at its
 insertion (0.47 down the humerus) and the pectoral's short lower border (fading as the arms rise). Sources and pictures: egypt_themes.html,
 round 23b (`egyptr23b.py`). Check a level with figscan and lowceil with `window.__MUS` set.
+
+## The neck (round 23c): 2 px shorter
+
+Owner: "1.28 is fine. Now make the neck 2px shorter and keep everything else as is". `NECK_CUT` (r23poses.py, 2.0 px) is taken off ANSUR's
+span from the shoulder joint to the chin: `LEN.nk` 4.518 -> 2.518, the chin 3.98 -> 2.00 px over the joint (as drawn standing), so the whole
+head sits 2 px lower on the same body in every pose. Unchanged: everything under the chin (the pit of the neck, C7, the trapezius slope: NJ's
+th, c7, bk, nb stay measured from the shoulder joint), every width, bone, pose (the low leaps' lean is still found with round 23's neck, so
+their heads are just lower), grip, hit box and timer. Follows the head: the face, hair, fillet, robbers' head cloths (all drawn about the
+head's centre), the neck's top (NJ.hn, NJ.tp), and the drinking hand (skel's mouth term `mh` puts the flask at the mouth). The nape point
+`NJ.km` stays where it was: moved down with the chin it would fall under C7 and fold the neck's back edge; it lies inside the skull. The
+skull's back now meets the trapezius slope just above C7. Standing height 52.5 -> 50.5 px (crowns only lower). Robbers share it. Picture:
+`egyptr23c.py` (r23c_neck.png). figscan against round 23b at 1.28: only the head, the mouth, crowns and the drinking hand move (2.00 px).
 
 ## Superseded (rounds 22b to 22d, kept for the record)
 

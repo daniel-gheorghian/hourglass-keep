@@ -38,6 +38,9 @@ TALL = 50.9      # the skeleton's height for the head's scale; drawn standing (s
                  # run's flight lifts him 2.6 px: its crown stays under v69's standing crown)
 SOLE = 1.6       # the drawn figure's height over TALL: the sole's lowest pixel under the floor line and the hair over the skull
 HEAD_R = 2.40    # the drawn head (chin to the hair's crown) in head radii (LEN.hd), as measured on the drawing (egyptr23.py body)
+NECK_CUT = 2.0   # round 23c (owner: "1.28 is fine. Now make the neck 2px shorter and keep everything else as is"): the chin, and the whole
+                 # head with it, sits this much nearer the shoulder joint than ANSUR's span (4.0 px, now 2.0); the body under the chin (the
+                 # pit of the neck, C7, the trapezius, every width), the bones, poses, grips and hit boxes are unchanged
 
 
 # ---------------- muscle bulk (round 23b) ----------------
@@ -46,7 +49,7 @@ HEAD_R = 2.40    # the drawn head (chin to the hair's crown) in head radii (LEN.
 # per unit of the upper arm's (GROW), from ANSUR II's men aged 17 to 20 with a waist under the median share of the chest (lean, n=211),
 # ranked by their limb and chest girths for stature: the ratios of the 97th to the 50th percentile group (see FIGURE_SPEC.md, round 23b).
 # The joints (elbow, wrist, knee, ankle), the bones and the skeleton never change; the waist barely (no fat).
-MUS = 1.0        # the game's level: round 23's body. The levels the page shows (and window.__MUS can pick at run time):
+MUS = 1.28       # the game's level (round 23c, owner: "1.28 is fine"); round 23b drew 1.0. The levels (window.__MUS can pick one at run time):
 LEVELS = [(1.0, 'round 23: ANSUR II medians, men 17-20'),
           (1.10, 'athletic: ANSUR II ~90th percentile of muscle among the lean, the frame taken out'),
           (1.18, 'strong: ANSUR II top 3-5% of the lean; a sprinter or gymnast (mesomorphy ~6)'),
@@ -80,7 +83,7 @@ def body():
     to = trunk * s_leg
     jc = (chin - A['acromialheight'] + 40.0) * k           # shoulder joint to chin (the joint 40 mm under the acromion)
     hd = headH / HEAD_R
-    nk = jc + 1.15 * hd - hd                               # skel: the head's centre nk+hd from the joint; the chin 1.15 r under it
+    nk = jc - NECK_CUT + 1.15 * hd - hd                    # skel: the head's centre nk+hd from the joint; the chin 1.15 r under it (round 23c: 2 px lower)
     ua = bl['lhumerus'] * s_leg
     fa = (bl['lradius'] + 0.4 * A['handlength'] / 10) * s_leg   # to the middle of the palm
     W = lambda mm: mm * k
@@ -90,7 +93,7 @@ def body():
            'neckB': dia(A['neckcircumferencebase']), 'thigh': dia(A['thighcircumference_all']), 'knee': dia(A['lowerthighcircumference_all']),
            'calf': dia(A['calfcircumference_all']), 'ankle': dia(A['anklecircumference']), 'arm': dia(A['bicepscircumferenceflexed_all']),
            'fore': dia(A['forearmcircumferenceflexed_all']), 'wrist': dia(A['wristcircumference']), 'foot': W(A['footlength']),
-           'c7': (chin - A['cervicaleheight']) * k, 'pit': (chin - A['suprasternaleheight']) * k, 'jc': jc}
+           'c7': (chin - A['cervicaleheight']) * k, 'pit': (chin - A['suprasternaleheight']) * k, 'jc': jc, 'jcH': jc - NECK_CUT}
     return B, wid, {'ansur': A, 'mocap_cm': bl, 'trunk_cm': trunk, 'px_per_mm': k, 'cm_per_px': 0.1 / k, 'headH': headH, 'leg_scale': s_leg}
 
 
@@ -282,7 +285,8 @@ def build():
         oy = -old['hd'][1]
         def hy_of(l, h):
             a = l + h
-            return B['to'] * math.cos(l) + (B['nk'] + B['hd']) * math.cos(a) + 1.25 * B['hd'] * abs(math.cos(a))
+            # (round 23c: measured with round 23's neck, so the leap's lean stays as it was and the shorter neck only lowers the head)
+            return B['to'] * math.cos(l) + (B['nk'] + NECK_CUT + B['hd']) * math.cos(a) + 1.25 * B['hd'] * abs(math.cos(a))
         l = q['lean']
         while hy_of(l, q['head']) > oy + 1.25 * 4.6 * 0.95 - 0.6 and l < 1.4:
             l += 0.02

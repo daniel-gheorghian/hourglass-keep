@@ -188,8 +188,8 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   mocap.cs.cmu.edu. The database was created with funding from NSF EIA-0196217.") gives the bones (subjects 09, 13, 14, 16) and every
   pose; ANSUR II's 17-20 year old men give the trunk's lengths and depths (BMI under 23) and the limbs' girths (all 422); the head is 1/6.5
   of his height (6.57 measured, 7.98 px; real is 7.7 heads, the 1989 kid 5.86) so the face reads at 52 px. `dev/tools/r23poses.py`
-  generates the source's block between `// <R23-MOCAP>` and `// </R23-MOCAP>`: `R23B` (LEN: th 11.4, sh 13.8, to 14.0, nk 4.5, hd 3.37,
-  ua 8.2, fa 7.7; standing 52.4 px against v69's 53.0), `R23D` (the drawing's widths: BQ/Fo/Bo, NJ, limbs, foot, kilt; robbers 1.15 times
+  generates the source's block between `// <R23-MOCAP>` and `// </R23-MOCAP>`: `R23B` (LEN: th 11.4, sh 13.8, to 14.0, nk 2.5 (4.5 before round 23c), hd 3.37,
+  ua 8.2, fa 7.7; standing 50.5 px (52.4 before round 23c) against v69's 53.0), `R23D` (the drawing's widths: BQ/Fo/Bo, NJ, limbs, foot, kilt; robbers 1.15 times
   as broad), `MCP` (single poses) and `MCK` (16-key run and walk cycles with each key's foot clearance `cl`, the crawl, the drink's
   keys, the swing's 12 phase bins). Never edit the block by hand. A pose is the game's angles measured from one clip frame in the side
   view of the body's facing (`dev/tools/mocap.py`: ASF/AMC parser, forward kinematics, `sheet`/`strip`/`video` to look at a clip); its
@@ -201,12 +201,17 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   `figscan.py` (must print `figscan: ok`: held hands, no crown over v69's standing crown, nor over v69's own in the crawl and low leaps,
   soles on the floor, hands on the bar and at the mouth) and `egyptr23.py moves` (clip | new | v69). Pictures `egyptr23.py`
   (body, moves, game, clips).
-  Muscle bulk (round 23b, owner's choice pending): `MUS` in r23poses.py is the upper arm's girth over ANSUR's median (1.0, the game's
-  look, exactly round 23); every other width grows at its own rate per unit of it (`GROW`, from ANSUR II's lean 17-20 year olds by muscle
+  Muscle bulk (round 23b): `MUS` in r23poses.py is the upper arm's girth over ANSUR's median (round 23c, owner: "1.28 is fine": the game
+  draws 1.28; 1.0 is round 23's look); every other width grows at its own rate per unit of it (`GROW`, from ANSUR II's lean 17-20 year olds by muscle
   percentile; `TRUNK_G` lays the trunk's growth in front or behind), joints, bones, skeleton, poses and hit boxes never. The block also
   carries the levels `R23MUS` [1, 1.10, 1.18, 1.28] and their tables `R23DV`; `window.__MUS` before load or `__HK.setMus(m)` draws one
   (pictures, tests); above 1.0 a faint deltoid V and pectoral border (`RD.mh`) and the calf's growth behind the shank (`RD.cb`). Pictures
   `egyptr23b.py` (bulk, game); a new level must pass figscan and lowceil with `__MUS` set.
+  The neck (round 23c, owner: "make the neck 2px shorter and keep everything else as is"): `NECK_CUT` (2.0) in r23poses.py comes off
+  ANSUR's shoulder-joint-to-chin span (4.0 to 2.0 px; `LEN.nk` 4.518 to 2.518), so the head sits 2 px lower on the same body in every
+  pose (standing 50.5 px); the body's neck points (NJ th, c7, bk, nb), widths, poses (the low leaps' lean is found with the old neck),
+  grips and hit boxes are unchanged; the drinking hand follows the mouth (`mh`); `NJ.km` stays (lowered it would fall under C7).
+  Picture `egyptr23c.py`.
 - Lift ropes (round 21a, owner: "holes in the slab with the rope threaded through"): all lift ropes are `barRope` in the theme's fibre
   (`liftRope`; `barRope`'s `ph` makes the lay travel with a running rope). The counterweight platform hangs on two bridles (`liftSling`: an
   eye seized `LS_J` above the slab, legs down through two holes near the front and back edges along the depth diagonal, `ropeHole` drawn in
