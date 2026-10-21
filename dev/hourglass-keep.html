@@ -552,6 +552,8 @@ function genLevel(n,seed,test,legacy){
   for(let att=0;att<8;att++){const L=buildLevel(n,seed,test,legacy,att);if(L){L.att=att;return L;}}
   return buildLevel(n,seed,test,legacy,-1);
 }
+// (round 26g) bot actions on one storey, and those of them that jump (a sand lift's kept walls are a ceiling over the cells beside its foot)
+const SL_JMP=new Set(['sjump','rjump','rjumpg','dashjump','jgrab','saw']),SL_HZ=new Set(['walk','look','tiptoe','runover','timed','darts','crawl','push','pull','drink',...SL_JMP]);
 function buildLevel(n,seed,test,legacy,att){
   let rngX=null; // while a side passage's corridor is filled, the floor's main stream is left alone (see fillCorridor)
   const rng0=mulberry32(seed), rng=()=>(rngX||rng0)(), ri=(a,b)=>a+Math.floor(rng()*(b-a+1)), ch=p=>rng()<p;
@@ -1840,6 +1842,18 @@ function buildLevel(n,seed,test,legacy,att){
     for(let i=L.lifts.length-1;i>=0;i--){const f=L.lifts[i];if(!f.sand)continue;let ok=true;
       for(let rr=f.rT+1;rr<f.rB&&ok;rr++)if(!Wl(f.sc-1,rr)||!Wl(f.sc+1,rr))ok=false;
       const fc=f.sc-f.sB,fb=L.base[f.rB*cols+fc];if(ok&&fb!==WALL&&fb!==FLOOR&&!(f.rB+1<rows&&Wl(fc,f.rB+1)))ok=false; // (a drop beside the foot)
+      // (round 26g) the walls kept over the foot storey's cells beside the shaft are a ceiling at his height there (ceilY): a jump taken
+      // under them is the low leap and falls short (a standing jump from beside the far mouth over a one-tile pit hung on the far lip).
+      // So a jump the route takes on the foot storey (the actions after the ride, up to the next vertical move) whose full arc would
+      // meet them, as beamOverhead tests it, makes it the banner slide too, whose hall keeps the headroom as before.
+      if(ok&&f.k>1){const ia=bot.indexOf(f._a),kc=[-1,1].map(s=>f.sc+s).filter(c=>!Wl(c,f.rB)),cy=f.rB*TH;
+        const hits=(x0,d,run)=>{const vx=run?183:132,vy=run?190:159,T=2*vy/GRAV;
+          for(let t=0.02;t<T;t+=0.02){const x=x0+d*vx*t,hy=SURF(f.rB)-(vy*t-0.5*GRAV*t*t)-HEAD_UP;
+            if(hy<cy-CEIL_TOL)for(const dx of [-6,0,6])if(kc.includes(Math.floor((x+dx)/TW)))return true;}return false;};
+        for(let j=ia+1;ia>=0&&kc.length&&j<bot.length&&ok&&SL_HZ.has(bot[j].a);j++){const q=bot[j];if(!SL_JMP.has(q.a))continue;
+          const d=q.dir||1,c0=q.from*TW+16;
+          if(q.a==='sjump'){if(hits(c0,d,false))ok=false;}
+          else{const e=q.a==='saw'?(q.from+d)*TW+16-22*d:c0-(q.a==='dashjump'?50:44)*d;for(let k=0;k<=12&&ok;k++)if(hits(e+d*4*k,d,true))ok=false;}}} // (a running jump: from where the bot presses Jump on to the edge)
       if(!ok){L.lifts.splice(i,1);const bn={top:f.rT*TH+9,bot:(f.rB-1)*TH+TH-16,a:-1,b:-1,t:-9};
         for(let j=0;j<f.k;j++)L.feat[(f.rT+j)*cols+f.sc]={t:'banner',top:j===0,bot:j===f.k-1,bn};
         f._a.a='slide';delete f._a.k;
