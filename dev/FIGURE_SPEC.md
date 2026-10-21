@@ -64,7 +64,7 @@ lunge 0.46, parry 0.07, lowStrike 0.10). The low leaps keep their legs and are p
 | Move | Clip, frame | Note |
 |---|---|---|
 | stand | 79_38 f30 (avg 20) | an actor standing at ease before drinking |
-| run (16 keys) | 09_01 f42-130 | right foot down at phase 0, left at 0.5; the hip over the lowest foot by the clip's clearance |
+| run (16 keys) | 09_01 f42-130 | right foot down at phase 0, left at 0.5; the hip over the lowest foot by the clip's clearance; round 25a: spine bend, shoulders, foot pitch from the same frames |
 | walk (16 keys) | 16_15 f80-211 | the exit's approach and its stairs (70% amplitude) |
 | skid (stop) | 16_08 f114 | run/jog, sudden stop |
 | turn | 16_08 f150 | derived: the settle after the stop (a turn is not in the side view) |
@@ -200,6 +200,45 @@ lats 7.19 / 8.19 / **9.38** / 10.57; waist 5.53 / 5.58 / **5.65** / 5.72; joints
 Robbers keep v70's widths at every level of the prince: `R23DR` (the 1.28 table) is drawn for any figure that is not the prince (`drawFigureHD`
 swaps RD for the call). At 1.65 the prince's deltoid (7.11 against 6.30), upper arm (4.88 against 4.47) and chest (10.03 against 9.06) pass a
 robber's; the robber keeps the heavier waist (6.25) and joints. Checks at a level: figscan, lowceil (with `window.__MUS`), liftscan, rendersmoke.
+
+## A supple run (round 25a): what the side view threw away
+
+Owner: "The prince is somewhat stiff when running. Humans are somewhat flexible. Research a bit how games are handling that in their
+characters." Round 23 projected each run key to the game's ten angles. That drew the trunk as one straight line from the hips' middle to the
+shoulders' middle, hung both arms from one point (moved only by the drawing's 0.9 sin(upper arm), -0.66 to -0.12 px), and kept the feet flat.
+`egyptr25a.py measure` (r25a.json) measures the rest in 09_01 and four other run clips (09_02, 09_03, 16_35, 16_36: they agree). Pixels are
+at the game's scale, 27.25 px a metre:
+
+| Measure (one stride) | 09_01 | the five clips | Drawn |
+|---|---|---|---|
+| thorax pitch less pelvis pitch (the spine's bend) | 0.7 to 12.3 deg, twice a stride | -1.6 to 14.6 | `sb`: the torso's spine curve |
+| thorax yaw less pelvis yaw (counter-rotation) | -11.9 to 8.6 deg | 19 to 27 deg peak to peak | as the shoulders' shift |
+| near shoulder joint fore and aft of the middle | -0.8 to 0.7 px | up to +-1.4 px | `soF`, `soB` (the far one opposite) |
+| foot pitch, ankle to ball (flat -21 deg) | -135 to -13 deg | -135 to -8 | `fpF`, `fpB` from flat: +6 to -114 deg |
+| hip joint fore and aft of the middle | +-0.2 px | +-0.4 px | no: under the threshold |
+| pelvis drop (near hip over far) | -0.4 to 0.6 px | | no: under the kilt |
+| wrist flexion | 11 to 15 deg, steady | 6 to 15 | no: 0.1 px at the hand |
+| head pitch in the world | -3.8 to 1.3 deg | | already the clip's (steadier than the chest) |
+
+How it is drawn (look only; timing, footfalls, hit boxes, crowns under v69's, wall hiding and lift occlusion unchanged):
+- `sb`: the control point of the torso's quadratic spine (`TG` in drawFigureHD0) moves by -LEN.to/2 tan(sb/2) along the forward normal.
+  The tangents at the pelvis and at the chest then differ by sb. The chord (`lean`), the shoulder joint and the head stay where they were.
+- `soF`/`soB`: each arm (shoulder, elbow, hand) is drawn moved that far along the trunk's normal. `sm` = 1 fades out the drawing's own
+  swing-driven root shift (`armG`), so the clip's values are not counted twice.
+- `fpF`/`fpB`: the foot turns about the ankle joint, `R23B.ah` (ANSUR's lateral malleolus, 1.95 px) up the shank from the sole point
+  the leg ends at (`footRot`, inside `leg`). Flat is the clip's own foot angle while ankle and ball are both down (`footFlat`: run -20.8,
+  walk -21.1 deg). In `cycPose` the hip stands `cl` over the turned foot's lowest point (`footLow`, the drawn foot's points `FOOTP`), so he
+  rises onto the ball at toe-off as the clip's hip does. v71's flat foot sank him 1.8 px there; heel strike and mid-stance are as before.
+- Follow-through, procedural: the kilt's hem is laid on the thighs as they were `KH_LAG` (0.035) of a stride before, `KH_K` (0.8) of the
+  way (`khF`/`khB`, set in `runPoseHD` from a second `cycPose` into its own buffer). It is a pure function of the phase: rewind-safe, no
+  state, no allocation.
+- The walk (16_15) carries the same keys. A part stride (amp < 1: the exit stairs, pushing and pulling blocks) keeps the feet flat and the
+  rest scaled. All the keys are 0 in every other pose. Robbers never run.
+
+Research (sources on the page, round 25a): rotoscoped games (PoP 1989, Another World) keep the real body's weight shifts; Dead Cells poses a
+3D skeleton at ~50 px; Overgrowth (Rosen, GDC 2014) layers procedural motion on few keys; the principles (overlapping action, foot roll,
+shoulders against hips, a bending spine, a steady head); running biomechanics (Schache 2002, Novacheck 1998, Pozzo 1990). Checks: figscan
+(ok against v69; against v71 only the run and walk differ), lowceil, stairscan, run2, rendersmoke.
 
 ## The neck (round 23c): 2 px shorter (superseded by round 23d: 1 px)
 

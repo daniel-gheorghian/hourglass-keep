@@ -220,6 +220,16 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   poses (the low leaps' lean is found with the old neck), grips and hit boxes are unchanged; the drinking hand follows the mouth (`mh`).
   The nape `NJ.km` comes down `KM_DROP` (0.5, half the cut: 4.61 to 4.11 along the neck's axis; all the way it would sit 0.15 px over
   C7 and fold the back edge). Pictures `egyptr23c.py`, `egyptr23d.py` (23b | 23c | 23d).
+  A supple run (round 25a, owner: "The prince is somewhat stiff when running. Humans are somewhat flexible"): the side view kept only ten
+  angles, so the trunk was one rigid line, both arms hung from one point and the feet were flat. r23poses.py (`extras`) now also writes, per
+  run and walk key from the same clips: `sb` (the thorax's pitch less the pelvis's, 2 to 12 degrees, drawn as the spine's curve: the torso's
+  control point gets -LEN.to/2 tan(sb/2); the chord `lean` is unchanged), `soF`/`soB` (each shoulder joint fore and aft, +-0.78 px: the
+  girdle's counter-rotation, 20 degrees peak to peak; the arm moves with it, and `sm` 1 fades the drawing's swing-driven shoulder shift),
+  `fpF`/`fpB` (the foot's pitch from the clip's foot-flat angle, +6 to -114 degrees: the foot turns about the ankle `R23B.ah` 1.95 px up the
+  shank; `cycPose` puts the hip over the turned foot's lowest point `footLow`, so he rises onto the ball at toe-off as the clip does). The
+  kilt's hem trails the thighs by `KH_LAG` 0.035 of a stride (`khF`/`khB`, set in `runPoseHD`: a pure function of the phase). These keys are
+  0 in every other pose; a part stride (stairs, push, pull) keeps the feet flat. Measured but too small at 1x: the hip joints' shift, the
+  pelvis's drop, the wrist. Numbers and pictures `egyptr25a.py` (measure, keys, gif); see `dev/FIGURE_SPEC.md`.
 - Lift ropes (round 21a, owner: "holes in the slab with the rope threaded through"): all lift ropes are `barRope` in the theme's fibre
   (`liftRope`; `barRope`'s `ph` makes the lay travel with a running rope). The counterweight platform hangs on two bridles (`liftSling`: an
   eye seized `LS_J` above the slab, legs down through two holes near the front and back edges along the depth diagonal, `ropeHole` drawn in

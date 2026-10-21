@@ -107,7 +107,8 @@ def body():
     fa = (bl['lradius'] + 0.4 * A['handlength'] / 10) * s_leg   # to the middle of the palm
     W = lambda mm: mm * k
     dia = lambda circ: circ / math.pi * k
-    B = {'th': th, 'sh': sh, 'to': to, 'nk': nk, 'hd': hd, 'ua': ua, 'fa': fa}
+    B = {'th': th, 'sh': sh, 'to': to, 'nk': nk, 'hd': hd, 'ua': ua, 'fa': fa,
+         'ah': A['lateralmalleolusheight'] * k}            # round 25a: the ankle joint over the sole (the foot turns about it)
     wid = {'chest': W(A['chestdepth_all']), 'waist': W(A['waistdepth']), 'seat': W(A['buttockdepth']), 'neck': dia(A['neckcircumference']),
            'neckB': dia(A['neckcircumferencebase']), 'thigh': dia(A['thighcircumference_all']), 'knee': dia(A['lowerthighcircumference_all']),
            'calf': dia(A['calfcircumference_all']), 'ankle': dia(A['anklecircumference']), 'arm': dia(A['bicepscircumferenceflexed_all']),
@@ -129,6 +130,7 @@ def rot_points(Q, a, about):
 
 
 CL = {}
+FLAT = {}   # round 25a: each cycle's foot-flat pitch (rad), see footFlat
 
 
 def clip(n):
@@ -262,6 +264,59 @@ def unwrap_keys(keys):
     return keys
 
 
+# ---------------- round 25a: what the side view threw away ----------------
+# Owner: "The prince is somewhat stiff when running. Humans are somewhat flexible." Round 23 projected each run key to the ten game angles
+# only: the trunk as one rigid line from the hip joints' middle to the shoulders' middle, both arms hung from one point, the feet drawn flat.
+# Measured in 09_01 (and 09_02, 09_03, 16_35, 16_36: see egyptr25a.py measure) the clip also carries, per key:
+#   sb       the thorax's pitch less the pelvis's (rad, + the chest further forward): 1 to 12 degrees, twice a stride (the chest nods
+#            forward as each foot takes the weight, straightens in flight); drawn as the spine's curve (torso TG), the chord (lean) unchanged
+#   soF/soB  each shoulder joint's place along the run, from the shoulders' middle (px, + forward): the shoulder girdle's counter-rotation
+#            against the pelvis (thorax yaw less pelvis yaw 20 degrees peak to peak) seen in profile, +-0.75 px, the arms with it
+#   fpF/fpB  the foot's pitch from flat (rad, + toes up): from +10 degrees at heel strike to -110 in the swing (the foot plantarflexed
+#            under the folded shank); flat is the clip's own foot-flat angle at mid-stance (footFlat)
+#   sm       1: the shoulders are measured (the drawing's own swing-driven shoulder shift is faded out)
+# Left out, measured too small at 1x: the hip joints' fore-and-aft shift (+-0.25 px), the pelvis's drop (+-0.5 px), the wrist (13 degrees
+# flexed, steady), the head (already the clip's: steadier than the chest).
+X25 = ['sb', 'soF', 'soB', 'fpF', 'fpB']
+
+
+def pitch_of(R3, fwd):
+    u = R3 @ np.array([0, 1.0, 0])
+    return math.atan2(float(u @ fwd), float(u[1]))
+
+
+def footFlat(n, a, b, f, fl):
+    """the foot's pitch (ankle -> ball, rad) while flat on the floor: both feet, frames where ankle and ball are both within 1.5 cm of
+    their lowest over the span"""
+    c = clip(n)
+    out = []
+    for s in 'LR':
+        Qs = [mocap.project(c.P(i), f) for i in range(a, b + 1)]
+        amin = min(q['ankle' + s][1] for q in Qs)
+        bmin = min(q['ball' + s][1] for q in Qs)
+        for q in Qs:
+            if q['ankle' + s][1] < amin + 0.015 and q['ball' + s][1] < bmin + 0.015:
+                out.append(math.atan2(q['ball' + s][1] - q['ankle' + s][1], q['ball' + s][0] - q['ankle' + s][0]))
+    return st.median(out)
+
+
+def extras(n, x, f, flat, pxm, front='r'):
+    """round 25a's measures at (fractional) frame x of clip n in the side view f"""
+    c = clip(n)
+    F, Bk = ('R', 'L') if front == 'r' else ('L', 'R')
+    def one(i):
+        R = mocap.fk(c.sk, c.frames[i])['_R']
+        Q = mocap.project(c.P(i), f)
+        p = mocap.params(Q, front)
+        sm = (Q['shL'][0] + Q['shR'][0]) / 2
+        return {'sb': pitch_of(R['thorax'], f) - pitch_of(R['root'], f), 'soF': (Q['sh' + F][0] - sm) * pxm, 'soB': (Q['sh' + Bk][0] - sm) * pxm,
+                'fpF': p['ftF'] - flat, 'fpB': p['ftB'] - flat}
+    a = int(math.floor(x))
+    u = x - a
+    A, Bq = one(a), one(a + 1)
+    return {k: A[k] + (Bq[k] - A[k]) * u for k in X25}
+
+
 def build():
     B, Wd, info = body()
     G = grips()
@@ -316,18 +371,22 @@ def build():
     i0, per = 42, 88
     keys, f = cycle('09_01', i0, per, 16)
     fl = floor_of('09_01', i0, i0 + per, f) + 0.012
+    FLAT['run'] = footFlat('09_01', i0, i0 + per, f, fl)
     for j, kq in enumerate(keys):
         x = i0 + per * j / 16
         kq['cl'] = max(0.0, clearance('09_01', int(round(x)), f, fl)) * pxm
-    MCK['run'] = [{k: round(kq[k], 3) for k in ANG + ['cl']} for kq in unwrap_keys(keys)]
+        kq.update(extras('09_01', x, f, FLAT['run'], pxm))
+    MCK['run'] = [{k: round(kq[k], 3) for k in ANG + ['cl'] + X25} | {'sm': 1} for kq in unwrap_keys(keys)]
     src['run'] = {'clip': '09_01', 'frame': '42-130 (16 keys; right foot down at 42)', 'why': 'run'}
     # --- the walk: 16_15, right heel strike 80 to 211 ---
     i0, per = 80, 131
     keys, f = cycle('16_15', i0, per, 16)
     fl = floor_of('16_15', i0, i0 + per, f) + 0.012
+    FLAT['walk'] = footFlat('16_15', i0, i0 + per, f, fl)
     for j, kq in enumerate(keys):
         kq['cl'] = max(0.0, clearance('16_15', int(round(i0 + per * j / 16)), f, fl)) * pxm
-    MCK['walk'] = [{k: round(kq[k], 3) for k in ANG + ['cl']} for kq in unwrap_keys(keys)]
+        kq.update(extras('16_15', i0 + per * j / 16, f, FLAT['walk'], pxm))
+    MCK['walk'] = [{k: round(kq[k], 3) for k in ANG + ['cl'] + X25} | {'sm': 1} for kq in unwrap_keys(keys)]
     src['walk'] = {'clip': '16_15', 'frame': '80-211 (16 keys)', 'why': 'walk'}
     # --- the drink (DK's times, tilt and fill as before): picking the flask up from the floor is 81_14's crouch (no clip lifts a
     # flask off the floor), the rest 79_38 drinking water: the hand to the mouth at 180, the head going back to 360, lowered by 520 ---
@@ -550,6 +609,7 @@ def emit():
                'grow': GROW, 'grow2': GROW2, 'nat': NAT, 'mus': MUS, 'trunk': TRUNK_G, 'cm_per_px': info['cm_per_px'], 'widths': {k: round(float(v), 3) for k, v in Wd.items()}},
               open(os.path.join(HERE, 'r23bulk.json'), 'w'), indent=1)
     print('R23B', Bj)
+    print('foot flat (deg):', {k: round(math.degrees(v), 1) for k, v in FLAT.items()})
     for k, v in src.items():
         print('%-10s %-7s %-30s %s' % (k, v['clip'], v['frame'], v['why']))
 
