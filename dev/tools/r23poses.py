@@ -76,6 +76,16 @@ TRUNK_G = [('seat', 0.15), ('seat', 0.2), ('waist', 0.5), ('waist', 0.5), ('lowc
 # round 24: the growth past NAT lays more of the upper back behind (rhomboids, the upper trapezius, teres: the back's line fills out from the
 # nape to the lats as one slope; with TRUNK_G's shares a big rear deltoid stood out of a flat upper back as a step)
 TRUNK_G2 = [('seat', 0.15), ('seat', 0.2), ('waist', 0.5), ('waist', 0.5), ('lowch', 0.4), ('chest', 0.3), ('chest', 0.35), ('chest', 0.3), ('trap', 0.25)]
+# the back with both arms up (Bo, at the trunk's levels U): BQ plus BO_UP (round 22: the lats stand out, the scapulae turn up), and for the
+# prince (round 26b, owner, a phone shot of the hang: "the prince with a hump of sorts ... I'd reduce with 1px the back") less BO_CUT: the
+# upper back behind the shoulder (U .62-.88) stood 5.1-5.2 px behind the spine's line (standing: 4.7-4.9) and 2.8 px behind the skull's
+# wall line, a mound under a neck that the raised arms draw forward. BO_CUT takes 1 px off its fullest part and tapers to nothing at the
+# waist and the shoulder's top, so the back runs from the trunk's top (unchanged) down to the lats as one slope (see FIGURE_SPEC.md, 26b).
+# Arms down (BQ) is unchanged: there the blades stand on the skull-to-seat wall line (round 22). The cut is the game's level's (MUS) in full,
+# a share (m-1)/(MUS-1) at the lower levels (at 1.0 the arms-up back is only 2.5 px deep, a full px would notch it), 1 px at 1.85. The
+# robbers keep round 22's Bo.
+BO_UP = [0, 0, 0, 0.1, 0.35, 0.3, 0.15, -0.3, -0.5]
+BO_CUT = [0, 0, 0, 0, -1.0, -1.0, -0.55, -0.2, 0]
 MH = 0.6         # the muscle contour hints' strength at NAT (none at 1.0)
 MH2 = 0.25       # round 24: and how much more by the last level (0.85 at 1.85)
 DU = 0.1         # round 24: how far down the humerus the biceps' point (0.22 up to NAT) moves by the last level: the big deltoid tapers
@@ -564,9 +574,10 @@ def bulk(Wd, m):
     return o
 
 
-def drawing(Wd, m=1.0):
+def drawing(Wd, m=1.0, rob=False):
     """the drawing's widths from the measured ones: a tube's fill is the measure less 0.75 px (its 1.25 px outline adds the rest).
-    m: the muscle bulk multiplier (round 23b; 1.0 is round 23's body): the upper arm's girth times m, every other measure by its own rate"""
+    m: the muscle bulk multiplier (round 23b; 1.0 is round 23's body): the upper arm's girth times m, every other measure by its own rate.
+    rob: the robbers' table (R23DR), which keeps v70's arms-up back (round 26b's BO_CUT is the prince's)"""
     o = 0.75
     r = lambda v: round(v, 2)
     W0 = Wd
@@ -582,7 +593,8 @@ def drawing(Wd, m=1.0):
     ad2 = [(dep[i] * (grow(TRUNK_G2[i][0], m) - grow(TRUNK_G2[i][0], min(m, NAT))), TRUNK_G2[i][1]) for i in range(len(dep))]   # round 24
     Fo = [r(d * k - o / 2 + a * f + a2 * f2) for d, k, (a, f), (a2, f2) in zip(dep, shf, add, ad2)]
     BQ = [r(d * (1 - k) - o / 2 + a * (1 - f) + a2 * (1 - f2)) for d, k, (a, f), (a2, f2) in zip(dep, shf, add, ad2)]
-    Bo = [r(b + a) for b, a in zip(BQ, [0, 0, 0, 0.1, 0.35, 0.3, 0.15, -0.3, -0.5])]   # arms up: the lats stand out, the scapulae turn up
+    kc = 0.0 if rob else min(1.0, (m - 1.0) / (MUS - 1.0))   # round 26b: the cut grows with the muscle laid behind (none at 1.0, where the back is flat)
+    Bo = [r(b + a + c * kc) for b, a, c in zip(BQ, BO_UP, BO_CUT)]   # arms up: the lats stand out, the scapulae turn up (round 26b: less the hump)
     jc = Wd['jc']
     tr = W0['neckB'] * (grow('trap', m) - grow('neckB', m)) / 2   # round 23b: the trapezius over the neck's own growth, on the slope from C7 down
     NJ = {'th': [r(jc - Wd['pit']), r(-Wd['neckB'] / 2 + 0.1)], 'c7': [r(jc - Wd['c7']), r(Wd['neckB'] / 2 + 0.05)],
@@ -639,7 +651,7 @@ def emit():
              '// R23MUS, R23DV (round 23b): the muscle bulk levels (the upper arm\'s girth over ANSUR II\'s median) and their tables (null: R23D).',
              'const R23MUS=' + js([m for m, _ in LEVELS]) + ',R23DV=' + js(DV) + ';',
              '// R23DR (round 24): the robbers\' table, v70\'s level 1.28 whatever the prince\'s (they must not grow with him).',
-             'const R23DR=' + js(drawing(Wd, ROB_MUS)) + ';',
+             'const R23DR=' + js(drawing(Wd, ROB_MUS, rob=True)) + ';',
              'const MCP=' + js(MCP) + ';',
              'const MCK=' + js(MCK) + ';',
              '// </R23-MOCAP>']

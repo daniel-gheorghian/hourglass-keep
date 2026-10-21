@@ -207,6 +207,11 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   carries the levels `R23MUS` [1, 1.10, 1.18, 1.28] and their tables `R23DV`; `window.__MUS` before load or `__HK.setMus(m)` draws one
   (pictures, tests); above 1.0 a faint deltoid V and pectoral border (`RD.mh`) and the calf's growth behind the shank (`RD.cb`). Pictures
   `egyptr23b.py` (bulk, game); a new level must pass figscan and lowceil with `__MUS` set.
+  Arms up, held hands (round 26b, owner: "a hump of sorts ... reduce with 1px the back"): a held hand's upper arm is drawn where skel's
+  two-bone solve puts it, so the trunk's arms-up shaping (`ra`), its twist and `armG` read the arm as drawn (`armDrawn`), not the clip's
+  aF/aB (the hang's 1.81/1.98 vs 2.69/2.83 drawn had shaped the trunk for arms half down since round 23: the standing back behind raised
+  arms). And r23poses.py's `BO_CUT` takes 1 px off the arms-up back (Bo) at its fullest (U .62-.76; 0.55 and 0.2 above; scaled (m-1)/(MUS-1));
+  arms down (BQ) and the robbers (R23DR) unchanged. Picture `egyptr26b.py` (r26b_back.png).
   Heroic range (round 24, owner after v70: "Still too lean: make it bulkier"): the game draws **MUS 1.65**, the middle of three stylised
   levels past the natural near-limit `NAT` 1.28 (1.45, 1.65, 1.85 in `R23MUS`; v70 drew 1.28). Up to NAT the measured `GROW`, past it
   `GROW2` (deltoid 1.2, arm and above the elbow 1.0, forearm 1.15, calf 0.95, chest 0.85, lats 1.0, thigh 0.8, waist 0.06: each level adds

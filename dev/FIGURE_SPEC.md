@@ -302,6 +302,33 @@ rendersmoke. Pictures: `egyptr25f.py` (r25f_moves.png, r25f_moves1.gif, r25f_mov
 
 Not yet: round 25a's sb, soF/soB and fpF/fpB for the landing, stop and jump keys (the settles carry the ten angles only); a measured turn.
 
+## No hump behind the shoulder (round 26b)
+
+Owner, a phone shot of the hang in Torchlight, the upper back circled: "the prince with a hump of sorts. I don't know if it is because the
+lights or an error in the measurements. In my opinion I'd reduce with 1px the back".
+
+Cause: the outline, not the light (the flat silhouette has it, and so does the trunk alone with both arms left out; the lit and shaded
+planes only follow the outline). Since round 23 a held hand (`hold`, `hb`: hang, jump up, the climb's start, slide, the sword poses, the
+drink) is put on its grip by skel's two-bone solve (`arm2`), so the upper arm is drawn where the solve puts it, but the trunk's arms-up
+shaping (`ra` in torsoG: round 19's scapulae turned up, the neck between the arms, round 22's lats) and the shoulder's root (`armG`) read
+the pose's clip angles `aF`/`aB`. The hang's clip (01_03) gives 1.81/1.98 rad; the arms are drawn at 2.69/2.83 (overhead), so the trunk
+was shaped for arms half down (ra 0.13; climb start 0.14, slide 0.18): the standing back, full at the trapezius, 4.6-4.9 px behind the
+spine's line at U .62-.96, behind arms past the head. v69's hang (aF 2.72) had ra 1. On the 10x silhouette the upper back stood 3.3 px
+behind the neck's back and 2.2 px behind the waist. The jump up's reach (ra 1 already) carried round 22's arms-up back, 5.1 px deep at
+U .62-.76, the fullest of any pose.
+
+Fix: `armDrawn` (in the source, before drawFigureHD0): for a held hand the upper arm's angle is the solved one (sh to the elbow), wrapped
+to the pose's; `ra`, the twist `tw2` and `armG` use it. And the owner's pixel: the arms-up back `Bo = BQ + BO_UP + BO_CUT * k`
+(r23poses.py; `BO_CUT` -1.0, -1.0, -0.55, -0.2 at U .62, .76, .88, .96, nothing at the waist and the shoulder's top; k = (m-1)/(MUS-1)
+up to 1, so none at 1.0 where the arms-up back is 2.5 px deep and a full pixel would notch it). At 1.65 Bo 5.07, 5.19, 4.96, 4.51 ->
+4.07, 4.19, 4.41, 4.31; drawn (with round 19's turn-up, ra 1) 4.13, 4.14, 3.48, 2.99 px behind the spine: one slope from the trunk's top
+(unchanged, 2.66) to the lats. After, at 10x: the hang's upper back 2.6 px behind the neck's back and 1.4 behind the waist; the reach's
+0.9 px nearer the spine. Arms down (`BQ`) is unchanged: there the blades stand on round 22's skull-to-seat line (0.6 px behind it standing),
+so the pixel stays. Robbers keep R23DR (v70's widths and round 22's Bo). Also changed by armDrawn: pull ra 0.28 -> 0 (its arms are drawn
+forward), windup 0.31 -> 0.09, the drink's last keys up to 0.32. Joints, skeleton, poses, grips, hit boxes, timings unchanged. Checks:
+figscan ok, lowceil, swingtest, rendersmoke, run2. Picture: `egyptr26b.py` (r26b_back.png: before | after with the back's contour, 10x,
+4x, numbers, in game both modes).
+
 ## The neck (round 23c): 2 px shorter (superseded by round 23d: 1 px)
 
 Owner: "1.28 is fine. Now make the neck 2px shorter and keep everything else as is". `NECK_CUT` (r23poses.py, 2.0 px) is taken off ANSUR's
