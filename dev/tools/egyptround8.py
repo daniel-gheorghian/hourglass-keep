@@ -47,7 +47,7 @@ def sections(D, REL, img):
                     ('Sidelock of youth (the side-lock option)', 'https://en.wikipedia.org/wiki/Sidelock_of_youth')]) +
              fig(img, 'r8_prince_compare.png', 'v62 (top), round 7 (middle), round 8 (bottom): stand, jump, hang, guard, lunge, fallen') +
              '<div class="g2" style="margin-top:8px">%s%s</div>' % (fig(img, 'r8_prince_hair.png', 'Hair: own hair with a linen fillet (built in), a rounded wig, a side lock, long and tied back'), fig(img, 'r8_prince_run.gif', 'Running, Torchlight')) +
-             '<h3>Athletic and oiled: before and after</h3><div class="g2">%s%s</div>' % (fig(img, 'r8_muscle_before.png', 'Before: the prince and the robbers (recruit, soldier, captain)'), fig(img, 'r8_muscle_after.png', 'After: broad shoulders, narrow waist, muscle shading, the sheen')) +
+             '<h3>Athletic and oiled: before and after</h3><p class="meta">(Its two pictures, r8_muscle_before and r8_muscle_after, were retired in round 23b to keep the page at its file cap: the prince\'s build is now round 23\'s, with round 23b\'s muscle levels.)</p>' +
              '<h3>On the darkest floors</h3><p class="meta">(Checked on the Green Hall, Nun, Hawara and Meroë in both modes; those eight pictures were retired in round 18 to keep the page under its file cap: round 8\'s prince is superseded by round 9\'s.)</p></section>')
     o.append(o.pop(next(i for i, x in enumerate(o) if 'id="jars8"' in x)))  # (superseded: after the prince)
     return o

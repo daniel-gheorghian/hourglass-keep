@@ -40,6 +40,25 @@ SOLE = 1.6       # the drawn figure's height over TALL: the sole's lowest pixel 
 HEAD_R = 2.40    # the drawn head (chin to the hair's crown) in head radii (LEN.hd), as measured on the drawing (egyptr23.py body)
 
 
+# ---------------- muscle bulk (round 23b) ----------------
+# Owner: "Yeah needs to be bulkier. Add a bulk multiplier, but in the sense of more muscle. Give me three variants of him with the current size
+# then more and more bulky". MUS is the upper arm's girth over round 23's (ANSUR II's median, 1.0); every other measure grows at its own rate
+# per unit of the upper arm's (GROW), from ANSUR II's men aged 17 to 20 with a waist under the median share of the chest (lean, n=211),
+# ranked by their limb and chest girths for stature: the ratios of the 97th to the 50th percentile group (see FIGURE_SPEC.md, round 23b).
+# The joints (elbow, wrist, knee, ankle), the bones and the skeleton never change; the waist barely (no fat).
+MUS = 1.0        # the game's level: round 23's body. The levels the page shows (and window.__MUS can pick at run time):
+LEVELS = [(1.0, 'round 23: ANSUR II medians, men 17-20'),
+          (1.10, 'athletic: ANSUR II ~90th percentile of muscle among the lean, the frame taken out'),
+          (1.18, 'strong: ANSUR II top 3-5% of the lean; a sprinter or gymnast (mesomorphy ~6)'),
+          (1.28, 'natural near-limit: between McCallum\'s and Reeves\'s ratios (arm 1.21-1.31), FFMI ~24-25')]
+GROW = {'arm': 1.0, 'fore': 0.55, 'delt': 1.2, 'armLo': 0.85, 'thigh': 0.7, 'thighM': 0.7, 'lthigh': 0.6, 'calf': 0.55, 'soleus': 0.45,
+        'neck': 0.55, 'neckB': 0.5, 'trap': 0.9, 'chest': 0.8, 'lowch': 0.75, 'seat': 0.6, 'waist': 0.12}
+# the trunk's levels (U = 0 .14 .3 .46 .62 .76 .88 .96 1 from the hip joint to the shoulder joint): which measure grows there and the share of
+# its growth in front (pectorals, the abdominal wall) against behind (glutes, lats, rhomboids and the trapezius)
+TRUNK_G = [('seat', 0.15), ('seat', 0.2), ('waist', 0.5), ('waist', 0.5), ('lowch', 0.3), ('chest', 0.45), ('chest', 0.55), ('chest', 0.45), ('trap', 0.35)]
+MH = 0.6         # the muscle contour hints' strength at the last level (none at 1.0)
+# (cb: the calf's growth is laid behind the shank, the gastrocnemius' bulge; the shin's line stays)
+
 def body():
     A = ansur()
     bl = {n: st.mean(mocap.Skel(os.path.join(mocap.REF, s + '.asf')).length_cm(n) for s in SUBJ) for n in
@@ -398,30 +417,55 @@ def reach_fix(B, q, name, log):
     q['lean'] = round(best, 3)
 
 
-def drawing(Wd):
-    """the drawing's widths from the measured ones: a tube's fill is the measure less 0.75 px (its 1.25 px outline adds the rest)"""
+def grow(k, m):
+    """a measure's factor at the bulk multiplier m (round 23b): 1 + its growth rate (GROW, per unit of the upper arm's) times (m - 1)"""
+    return 1.0 + GROW[k] * (m - 1.0)
+
+
+def bulk(Wd, m):
+    """the measured widths with m's muscle on them (round 23b): girths and depths grow at their own rates, the joints and bones not at all"""
+    if m == 1.0:
+        return dict(Wd)
+    o = dict(Wd)
+    for k in ('arm', 'fore', 'thigh', 'calf', 'neck', 'neckB'):
+        o[k] = Wd[k] * grow(k, m)
+    return o
+
+
+def drawing(Wd, m=1.0):
+    """the drawing's widths from the measured ones: a tube's fill is the measure less 0.75 px (its 1.25 px outline adds the rest).
+    m: the muscle bulk multiplier (round 23b; 1.0 is round 23's body): the upper arm's girth times m, every other measure by its own rate"""
     o = 0.75
     r = lambda v: round(v, 2)
-    seat, waist, chest = Wd['seat'], Wd['waist'], Wd['chest']
+    W0 = Wd
+    Wd = bulk(Wd, m)
+    seat, waist, chest = W0['seat'], W0['waist'], W0['chest']
     # the trunk in profile round the line hip joint -> shoulder joint, at U = 0 .14 .3 .46 .62 .76 .88 .96 1 of it (ANSUR levels: the
     # iliac crest at 0.33, the chest at 0.82, the acromion at 1.08): depth, and the share of it in front of the line
     dep = [seat, seat * 0.97, waist, waist * 1.01, (waist + chest) / 2, chest * 0.98, chest, chest * 0.92, chest * 0.74]
     shf = [0.42, 0.43, 0.51, 0.51, 0.51, 0.52, 0.51, 0.48, 0.44]
-    Fo = [r(d * k - o / 2) for d, k in zip(dep, shf)]
-    BQ = [r(d * (1 - k) - o / 2) for d, k in zip(dep, shf)]
+    # round 23b: the muscle's depth at each level, px, laid in front (pectorals, the abdominal wall) or behind (glutes, lats, trapezius,
+    # rhomboids) by where the muscle is (TRUNK_G: measure, its share in front)
+    add = [(dep[i] * (grow(TRUNK_G[i][0], m) - 1.0), TRUNK_G[i][1]) for i in range(len(dep))]
+    Fo = [r(d * k - o / 2 + a * f) for d, k, (a, f) in zip(dep, shf, add)]
+    BQ = [r(d * (1 - k) - o / 2 + a * (1 - f)) for d, k, (a, f) in zip(dep, shf, add)]
     Bo = [r(b + a) for b, a in zip(BQ, [0, 0, 0, 0.1, 0.35, 0.3, 0.15, -0.3, -0.5])]   # arms up: the lats stand out, the scapulae turn up
     jc = Wd['jc']
+    tr = W0['neckB'] * (grow('trap', m) - grow('neckB', m)) / 2   # round 23b: the trapezius over the neck's own growth, on the slope from C7 down
     NJ = {'th': [r(jc - Wd['pit']), r(-Wd['neckB'] / 2 + 0.1)], 'c7': [r(jc - Wd['c7']), r(Wd['neckB'] / 2 + 0.05)],
-          'bk': [[r(jc - Wd['pit'] + 1.9), 0.1], [r(jc - Wd['c7']), r(Wd['neckB'] / 2 + 0.05)], [r((jc - Wd['c7']) * 0.62), r(Wd['neckB'] / 2 + 0.55)],
-                 [r((jc - Wd['c7']) * 0.3), r(Wd['neckB'] / 2 + 0.75)]],
+          'bk': [[r(jc - Wd['pit'] + 1.9), 0.1], [r(jc - Wd['c7']), r(Wd['neckB'] / 2 + 0.05)], [r((jc - Wd['c7']) * 0.62), r(Wd['neckB'] / 2 + 0.55 + tr * 0.7)],
+                 [r((jc - Wd['c7']) * 0.3), r(Wd['neckB'] / 2 + 0.75 + tr)]],
           'km': [r(jc + 0.6), r(Wd['neck'] / 2 - 0.1)], 'nb': [r(jc - Wd['pit'] + 0.7), 0.15, r(Wd['neckB'] - o)], 'tp': [0.25, r(Wd['neck'] - o)],
           'dq': 0.2, 'hn': 0.85}
-    arm = [Wd['arm'] * 1.35, Wd['arm'], Wd['arm'] * 0.9, Wd['wrist'] * 1.35, Wd['fore'], Wd['wrist']]   # deltoid, biceps, above the elbow, elbow, forearm, wrist
-    leg = [Wd['thigh'], Wd['thigh'] * 0.97, Wd['knee'] * 1.1, Wd['knee'], Wd['calf'], Wd['calf'] * 0.8, Wd['ankle']]
-    T = lambda a, m: [r(max(0.9, v * m - o)) for v in a]
+    # deltoid, biceps, above the elbow (brachialis and triceps), elbow (a joint: unchanged), forearm, wrist (a joint)
+    arm = [W0['arm'] * 1.35 * grow('delt', m), Wd['arm'], W0['arm'] * 0.9 * grow('armLo', m), W0['wrist'] * 1.35, Wd['fore'], W0['wrist']]
+    # thigh at the fold, the mid-thigh, above the knee (vastus medialis), the knee and ankle (joints: unchanged), the calf (gastrocnemius),
+    # the lower calf (soleus)
+    leg = [Wd['thigh'], W0['thigh'] * 0.97 * grow('thighM', m), W0['knee'] * 1.1 * grow('lthigh', m), W0['knee'], Wd['calf'], W0['calf'] * 0.8 * grow('soleus', m), W0['ankle']]
+    T = lambda a, q: [r(max(0.9, v * q - o)) for v in a]
     return {'Fo': Fo, 'BQ': BQ, 'Bo': Bo, 'NJ': NJ, 'arm': T(arm, 1), 'armR': T(arm, 1.18), 'leg': T(leg, 1), 'legR': T(leg, 1.18),
             'fk': r((Wd['foot'] - 0.6) / 9.0), 'kilt': [r(Wd['thigh'] * 0.45 + 0.35), r(-(Wd['thigh'] * 0.47 + 0.35))],
-            'RS': r(Wd['thigh'] / 2 + 0.35), 'chest': r(chest), 'robK': 1.15}
+            'RS': r(Wd['thigh'] / 2 + 0.35), 'chest': r(chest * grow('chest', m)), 'robK': 1.15} | ({'mh': r(MH * (m - 1.0) / (LEVELS[-1][0] - 1.0)), 'cb': r((Wd['calf'] - W0['calf']) / 2), 'mus': m} if m > 1 else {})
 
 
 def js(v):
@@ -449,7 +493,8 @@ def emit():
         q.update({'hold': 1, 'hb': 1, 'gFx': round(fx, 3), 'gFy': round(h - 1.3, 3), 'gBx': round(bx, 3), 'gBy': round(h - 1.3, 3)})
     for f in fix:
         print('  grip:', f)
-    D = drawing(Wd)
+    D = drawing(Wd, MUS)
+    DV = [None if m == MUS else drawing(Wd, m) for m, _ in LEVELS]   # the levels' tables (the game's own is R23D)
     Bj = {k: round(float(v), 3) for k, v in B.items()}
     lines = ['// <R23-MOCAP> generated by dev/tools/r23poses.py from the CMU motion capture database (mocap.cs.cmu.edu; created with funding',
              '// from NSF EIA-0196217), ANSUR II and v69\'s held hands (r23grips.json). Do not edit by hand: change r23poses.py and run it.',
@@ -458,6 +503,8 @@ def emit():
              '// clearance over the floor, px).',
              'const R23B=' + js(Bj) + ';',
              'const R23D=' + js(D) + ';',
+             '// R23MUS, R23DV (round 23b): the muscle bulk levels (the upper arm\'s girth over ANSUR II\'s median) and their tables (null: R23D).',
+             'const R23MUS=' + js([m for m, _ in LEVELS]) + ',R23DV=' + js(DV) + ';',
              'const MCP=' + js(MCP) + ';',
              'const MCK=' + js(MCK) + ';',
              '// </R23-MOCAP>']
@@ -473,6 +520,9 @@ def emit():
     open(SRC, 'w', encoding='utf-8').write(s)
     json.dump({'body': Bj, 'widths': {k: round(float(v), 3) for k, v in Wd.items()}, 'info': {k: v for k, v in info.items() if k != 'ansur'},
                'ansur': info['ansur'], 'src': src}, open(os.path.join(HERE, 'r23body.json'), 'w'), indent=1, default=float)
+    json.dump({'levels': [{'m': m, 'basis': why, 'factors': {k: round(grow(k, m), 3) for k in GROW}, 'table': drawing(Wd, m)} for m, why in LEVELS],
+               'grow': GROW, 'trunk': TRUNK_G, 'cm_per_px': info['cm_per_px'], 'widths': {k: round(float(v), 3) for k, v in Wd.items()}},
+              open(os.path.join(HERE, 'r23bulk.json'), 'w'), indent=1)
     print('R23B', Bj)
     for k, v in src.items():
         print('%-10s %-7s %-30s %s' % (k, v['clip'], v['frame'], v['why']))

@@ -110,6 +110,55 @@ the drink's 1.3 s and its beats, the swing's physics are unchanged; the clips on
 up, the crawl's palms on the floor, no crown higher than v69's standing crown in any pose (and no higher than v69's own in the crawl,
 the low leaps and the slide), the sole on the floor where v69's was, the swing's hands on the bar, the drink's hand at the mouth.
 
+## Muscle bulk (round 23b): one multiplier, MUS
+
+Owner: "Yeah needs to be bulkier. Add a bulk multiplier, but in the sense of more muscle. Give me three variants of him with the current size
+then more and more bulky". The owner picks the level; until then the game draws 1.0 (round 23, unchanged pixel for pixel).
+
+The rule: `MUS` (r23poses.py) is the upper arm's girth over round 23's (ANSUR II's median). Every other measure grows at its own rate per
+unit of the upper arm's (`GROW`): `factor = 1 + rate x (MUS - 1)`. Joints (elbow, wrist, knee, ankle), bones, the skeleton (R23B), every pose,
+the held hands, hit boxes and timing never change. The waist barely grows (no fat), so the V-taper sharpens. Robbers keep 1.15 times the
+prince's breadth on top of the level.
+
+| Measure | Rate | Basis |
+|---|---|---|
+| upper arm (biceps) | 1.00 | the multiplier itself |
+| deltoid (profile) | 1.20 | ANSUR deltoid soft tissue (bideltoid less biacromial) grows faster than the arm |
+| above the elbow (brachialis, triceps) | 0.85 | estimate between biceps and forearm |
+| forearm | 0.55 | ANSUR 0.66 (17-20) and 0.48 (17-24, frame out) |
+| chest depth | 0.80 | ANSUR 0.91 / 0.72 |
+| lower ribs (lats) | 0.75 | research estimate (upper back 0.88 of the arm) |
+| trapezius slope | 0.90 | estimate (neck plus trapezius, Reeves) |
+| neck, its base | 0.55, 0.50 | ANSUR 0.47 / 0.60 |
+| thigh, mid-thigh | 0.70 | ANSUR 0.86 / 0.60 |
+| above the knee (vastus) | 0.60 | ANSUR lower thigh 0.69 / 0.61 |
+| calf | 0.55 | ANSUR 0.64 / 0.48; laid behind the shank (`RD.cb`), the shin straight |
+| lower calf (soleus) | 0.45 | estimate |
+| seat depth (glutes) | 0.60 | ANSUR 0.83 / 0.48; sprinters' glutes |
+| waist depth | 0.12 | held: the data's waist grows with the heaviest men's fat |
+
+The trunk's nine levels (`TRUNK_G`) take the measure at that level and lay its growth in front or behind: glutes 80-85% behind, the waist
+half and half, the lats 70% behind, the chest 45-55% in front, the trapezius 65% behind and up the slope from C7.
+
+The levels (`LEVELS`, carried in the source as `R23MUS`/`R23DV`; `window.__MUS` before load or `__HK.setMus(m)` draws one):
+
+| MUS | Basis |
+|---|---|
+| 1.0 | round 23: ANSUR II medians, men 17-20 |
+| 1.10 | athletic: ANSUR II ~90th percentile of muscle among the lean, the frame taken out |
+| 1.18 | strong: ANSUR II top 3-5% of the lean; a sprinter or gymnast (Heath-Carter mesomorphy ~6) |
+| 1.28 | natural near-limit: between McCallum's and Reeves's ratios (arm 1.21-1.31), fat-free mass index ~24-25 (Kouri et al. 1995) |
+
+ANSUR II analysis: men 17-20 with waist/chest under the median (n=211), ranked by girths for stature (biceps, forearm, calf, thigh, chest,
+shoulder); 97th / 50th percentile group: biceps 1.17, chest depth 1.16, thigh 1.15, buttock depth 1.14, forearm 1.12, calf 1.11, neck 1.08,
+waist depth 1.13 (BMI 30: fat; held here). A second cut (17-24, lean by waist/stature, n=679) agrees and shows the frame grows too (wrist
++5.5%), so half of that comes off the limbs.
+
+Drawing (Proko on the deltoid and calf; small-sprite practice: silhouette and value, not lines): muscle reads in the outline. Above 1.0 two
+faint strokes in the part's own shade grow with the level (`RD.mh`, 0 at 1.0, 0.6 at 1.28): the deltoid's V into the upper arm at its
+insertion (0.47 down the humerus) and the pectoral's short lower border (fading as the arms rise). Sources and pictures: egypt_themes.html,
+round 23b (`egyptr23b.py`). Check a level with figscan and lowceil with `window.__MUS` set.
+
 ## Superseded (rounds 22b to 22d, kept for the record)
 
 ### Round 22d: the 1989 Prince of Persia kid
