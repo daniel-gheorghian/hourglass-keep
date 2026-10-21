@@ -1828,7 +1828,10 @@ function buildLevel(n,seed,test,legacy,att){
     L.items=L.items.filter(it=>kept.includes(it));}
   // open a hall over everything the prince moves through: one row of headroom above every floor, gap and shaft top.
   // Gates and blades keep their lintel; the entrance and exit keep a wall to sit in.
-  {const hol=[];
+  // (round 25d, owner: "lift slab with no ceiling above it") A counterweight lift's top mouth keeps its lintel too, over the slab's
+  // cell and the shaft's top: the pass opened them for the run's headroom and the slab stood free against the hall. Its random
+  // number is drawn all the same (no window there), so every other window and the rest of the floor stay as they were.
+  {const hol=[],lin=new Set();for(const f of L.lifts)if(f.t==='lift'&&!f.sand&&f.sT&&f.rT>0){lin.add((f.rT-1)*cols+f.sc);lin.add((f.rT-1)*cols+f.sc+f.sT);}
     for(let rr=1;rr<rows;rr++)for(let cc=1;cc<cols-1;cc++){
       if(raw(cc,rr)===WALL||raw(cc,rr-1)!==WALL)continue;
       const f=fe(cc,rr);if(f&&(f.t==='gate'||f.t==='chomp'||f.t==='low'))continue;
@@ -1836,7 +1839,7 @@ function buildLevel(n,seed,test,legacy,att){
       if(rr===L.start.r&&(cc===L.start.door||cc===L.start.door+L.start.face))continue;
       if(keepWall.has((rr-1)*cols+cc))continue;
       hol.push(cc,rr-1);}
-    for(let i=0;i<hol.length;i+=2){set(hol[i],hol[i+1],EMPTY);if(ch(0.16))L.windows.push({c:hol[i],r:hol[i+1]});}}
+    for(let i=0;i<hol.length;i+=2){const kp=lin.has(hol[i+1]*cols+hol[i]);if(!kp)set(hol[i],hol[i+1],EMPTY);if(ch(0.16)&&!kp)L.windows.push({c:hol[i],r:hol[i+1]});}}
   L.base0=L.base.slice(); // the terrain as built: wall decoration follows it, so it doesn't vanish when a tile falls
   for(const f of L.lifts)if(f.t==='lift'&&f.y===f.yT)L.base[f.rT*cols+f.sc]=FLOOR; // (a platform resting at the top is the floor there; base0 keeps the open shaft)
   for(const bl of L.ext.blocks){bl.under=raw(bl.c,bl.r);set(bl.c,bl.r,WALL);}
@@ -6831,7 +6834,7 @@ function liftEye(ctx,x,ys,W){
 // 1. the counterweight lift: a hoist beam over the shaft (bedded in the wall on the shaft's far side from the top landing,
 // cantilevered over it, with a brace), a bronze sheave under it, two chains down to the platform, and a third chain from the
 // sheave down a channel in the back wall to a stone counterweight that is always at the other height from the platform
-function liftRig(f){const X=f.sc*TW,top=f.rT*TH,ws=-f.sT,by=B(L,f.sc,f.rT-1)===WALL?top+1:top-9; // (open above: the beam sits on the wall's top, above head height)
+function liftRig(f){const X=f.sc*TW,top=f.rT*TH,ws=-f.sT,by=top-9; // (above head height. Round 25d: the shaft's top keeps its lintel now, so the beam lies in it and the sheave turns in a slot in its underside, its upper half behind the lintel's face (liftOccl); under it, top+1, the wheel stood at the rider's head)
   const fr=clamp((f.y-f.yT)/(f.yB-f.yT),0,1),hy=by+11,wt=lerp(SURF(f.rB)-26,hy+10,fr); // the weight's top: low when the platform is high
   return {X,top,ws,by,hy,wt,cx:X+12.5,ca:X+5.5,cb:X+19.5};}
 // a counterweight lift's mouth on landing e (0 top, 1 bottom): its closure, drawn as a gate in the plane beside the shaft (round 14: in the

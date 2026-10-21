@@ -365,6 +365,11 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   before the ropes, beam and platform (its broad face is the shaft's side); the call plate's cell is cut round the slab (`liftMouthCut`)
   instead of the slab's foot being drawn again; a slab's cast floor shadow falls only on floor, not into the shaft; wear chips on a
   slab are capped in px (`stoneWear` cap: a share of its height made a slit that sheared it).
+- A slab always slides up into stone (round 25d, owner: "lift slab with no ceiling above it"): the open-hall pass (headroom over
+  every floor) keeps the lintel over gates, blades and a counterweight lift's top mouth and shaft top (it opened those two cells on every
+  lift, so the shut top slab stood free in the hall); it still draws their random number, so nothing else moves. The sheave turns in a slot
+  in the lintel (`liftRig` by = top-9). `slabscan.py` (floors 1-48, 3 seeds, every portcullis and lift mouth) must print `slabscan: ok`;
+  pictures `egyptr25d.py`.
 - A ceiling at his height (a WALL, or an upper floor's slab, `ceilY`) makes any floor jump the low leap (v60, owner), and the head
   clamp holds every frame; a saw that would sit under such a ceiling becomes spikes in place (the low leap cannot clear it).
   Check with `lowceil.py`.
