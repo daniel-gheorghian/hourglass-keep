@@ -24,7 +24,8 @@ def sections(D, REL, img):
                 ('Egyptian Museum, Cairo: the ka statue of Tutankhamun', 'https://egyptianmuseumcairo.eg/artefacts/statue-of-the-ka-of-tutankhamun'), ('The tomb of Nebamun (British Museum paintings)', 'https://en.wikipedia.org/wiki/Tomb_of_Nebamun'),
                 ('Artistic canons of body proportions: the Egyptian grid', 'https://en.wikipedia.org/wiki/Artistic_canons_of_body_proportions')]) +
          '<p class="meta">(Round 24: the prince\'s before/after pictures, r9_prince_before.png and r9_prince_after.png, retired to keep the page\'s size; his body has been rebuilt since, round 23 on.)</p>' +
-         '<h3>Hair, on the figure and in the game (Torchlight above, Classic below)</h3>' + fig(img, 'r9_hair_sheet.png', 'Close-cropped (built in), short curls, ear-length bob') +
+         '<h3>Hair, in the game (Torchlight above, Classic below)</h3>' +
+         '<p class="meta">(Round 25b: the hair options sheet r9_hair_sheet.png retired to keep the page\'s size; the close crop was built in, on a body rebuilt since round 23.)</p>' +
          '<div class="g4" style="margin-top:8px">' + ''.join(fig(img, 'r9_hair_%s_%s.jpg' % (h, m), '%s, %s' % (nm, m)) for m in ('torch', 'classic') for h, nm in (('crop', 'cropped (built in)'), ('curls', 'curls'), ('bob', 'bob'))) + '</div>' +
          '<p class="meta">(Round 22: the running clip retired to keep the page\'s size.)</p></section>']
     o.append('<section class="card" id="flasks9"><h2>The flasks, as an Egyptian would have made them (built in, round 9)</h2><p>Owner: "Those painted glass jars look more Amerindian than Egyptian. Let\'s make an exercise in imagination: if you would that the original potions how would they have looked if an Egyptian would have made it."</p>'
@@ -40,7 +41,8 @@ def sections(D, REL, img):
                     ('The Met: Egyptian faience, technology and production (a turquoise substitute, coloured with copper, "shining")', 'https://www.metmuseum.org/en/essays/egyptian-faience-technology-and-production'),
                     ('Egyptian blue', 'https://en.wikipedia.org/wiki/Egyptian_blue'),
                     ('The Met: gold in ancient Egypt (wire, twisted and braided, soldered on)', 'https://www.metmuseum.org/essays/gold-in-ancient-egypt')]) +
-             '<h3>v62 (top), round 8\'s jars (middle), round 9 (bottom): small, large, extra life, poison</h3><div class="g2">%s%s</div><div class="g2" style="margin-top:8px">%s%s</div></section>' % (
-                 fig(img, 'r9_flasks_compare.png', 'v62, round 8, round 9'), fig(img, 'r9_flasks_drink.gif', 'Being drunk: the level, the tilt, the bubbles'),
+             '<h3>v62 (top), round 8\'s jars (middle), round 9 (bottom): small, large, extra life, poison</h3><div class="g2">%s</div><div class="g2" style="margin-top:8px">%s%s</div>'
+             '<p class="meta">(Round 25b: the drinking clip r9_flasks_drink.gif retired to keep the page\'s size; the drink was rebuilt from motion capture in round 23.)</p></section>' % (
+                 fig(img, 'r9_flasks_compare.png', 'v62, round 8, round 9'),
                  fig(img, 'r9_flask_game_torch.jpg', 'On the floor, Torchlight'), fig(img, 'r9_flask_game_classic.jpg', 'Classic')))
     return o

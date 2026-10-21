@@ -179,7 +179,10 @@ SEL = {
     'land':     ('16_05', 203, {'w': 2}, 'the landing of a standing broad jump, knees taking the weight'),
     'skid':     ('16_08', 114, {'w': 2}, 'run/jog, sudden stop: the braking step'),
     'jumpR':    ('49_04', 176, {'w': 1}, 'run, leap: the split at the top of the leap'),
-    'jumpS':    ('16_05', 150, {'w': 2}, 'standing broad jump in flight, knees drawn up'),
+    # (round 25b, owner: "he raises this right arm but his left remains besides him": 16_05 holds both elbows bent at 90 degrees by his sides
+    # through the whole jump, the near forearm reading as one raised arm; 13_11 swings both arms back in the crouch and forward together through
+    # take-off and flight, as a standing broad jump does)
+    'jumpS':    ('13_11', 252, {'w': 2}, 'forward jump in flight: both arms swung forward together'),
     'fall':     ('90_16', 356, {'w': 2}, 'in the air, arms up'),
     'hang':     ('01_03', 1765, {'w': 6}, 'playground: holding a bar overhead, body straight (the video shows his feet still on the ground: a hang\'s shape; 01_09 f1700, a real hang, leans 0.8 rad back)'),
     'pull':     ('01_09', 1745, {'w': 3}, 'playground: hanging, the knees drawn up as the climb starts (no clip pulls up onto a ledge)'),
@@ -194,7 +197,7 @@ SEL = {
     'turn':     ('16_08', 150, {'w': 4}, 'derived: the settle after the sudden stop (a turn is not in the side view)'),
     'lowStrike': ('02_07', 204, {'w': 2, 'front': 'l'}, 'swordplay: the chop at its lowest'),
     'jumpLow':  ('49_04', 164, {'w': 1, 'lowLean': True}, 'derived: the leap\'s legs at take-off, the trunk pitched forward under the ceiling'),
-    'jumpLowS': ('16_05', 150, {'w': 1, 'lowLean': True}, 'derived: the standing jump\'s tuck, pitched forward under the ceiling'),
+    'jumpLowS': ('13_11', 244, {'w': 1, 'lowLean': True}, 'derived: the forward jump just after take-off, both arms forward, pitched forward under the ceiling'),
     'press':    ('81_14', 1745, {'w': 3}, 'climb backwards off a ledge, played backwards (a low ledge, on hands and knees): chest over the lip, one leg still hanging'),
     'kneelUp':  ('81_14', 1560, {'w': 3}, 'climb backwards off a ledge, played backwards: the second knee coming onto the floor'),
     'kneel':    ('81_14', 1430, {'w': 3}, 'climb backwards off a ledge, played backwards: on both knees, hands on the floor'),
@@ -317,6 +320,9 @@ def extras(n, x, f, flat, pxm, front='r'):
     return {k: A[k] + (Bq[k] - A[k]) * u for k in X25}
 
 
+CRAWL_NECK, CRAWL_HP = 0.80, -0.45   # round 25b: the crawl's neck line (rad from straight up) and the skull's pitch on it
+
+
 def build():
     B, Wd, info = body()
     G = grips()
@@ -412,7 +418,14 @@ def build():
     i0, per = 760, 230
     keys, f = cycle('111_03', i0, per, 8)
     sw = lambda q: {**q, 'hF': q['hB'], 'kF': q['kB'], 'hB': q['hF'], 'kB': q['kF'], 'aF': q['aB'], 'eF': q['eB'], 'aB': q['aF'], 'eB': q['eF']}
-    MCK['crawl'] = [{k: round(q[k], 3) for k in ANG} for q in unwrap_keys(keys + [sw(q) for q in keys])]
+    CK = unwrap_keys(keys + [sw(q) for q in keys])
+    # (round 25b, owner: "nobody crawls with their head pointing down, should be pointing forward". 111_03 carries her head on the trunk's line,
+    # the face to the floor (lean+head 1.2 rad from straight up). On hands and knees the neck extends and the eyes look ahead along the path
+    # (infants lift the head from the prone months on; adults crawling look forward): the neck's line is set to CRAWL_NECK from straight up
+    # (28 degrees of extension at the base of the neck against the trunk's 74) keeping the clip's own small nod, and the skull is turned up on
+    # it by CRAWL_HP at the atlas (hp, 26 degrees), so the face looks 20 degrees under the horizontal, the chin forward)
+    wm = sum(q['lean'] + q['head'] for q in CK) / len(CK)
+    MCK['crawl'] = [{**{k: round(q[k], 3) for k in ANG}, 'head': round(CRAWL_NECK + (q['lean'] + q['head'] - wm) - q['lean'], 3), 'hp': CRAWL_HP} for q in CK]
     src['crawl'] = {'clip': '111_03', 'frame': '760-990 (8 keys, mirrored for the other half)', 'why': 'crawling (limb timing)'}
     # --- the swing on the bar: 43_02 (grip bar, swing body), one cycle 228-480; the body's angles in the frame of the line from the hip
     # to the hands (the rope), keyed by the swing's phase as swingPose reads it: atan2(angle, speed / its own frequency) ---

@@ -71,11 +71,13 @@ lunge 0.46, parry 0.07, lowStrike 0.10). The low leaps keep their legs and are p
 | step (careful) | 139_29 f560 | sneaking |
 | crouch | 16_05 f110 | the deepest crouch before a standing broad jump |
 | land | 16_05 f203 | the broad jump's landing |
-| jumpS, kickTuck | 16_05 f150, f152 | the broad jump in flight |
+| jumpS | 13_11 f252 | forward jump in flight, both arms swung forward (round 25b; was 16_05 f150) |
+| kickTuck | 16_05 f152 | the broad jump in flight |
 | kickReach | 16_05 f182 | derived: the broad jump reaching for the floor |
 | jumpR | 49_04 f176 | run, leap: the split at the top |
 | kickPush | 49_04 f160 | derived: the leap's push-off (no wall-kick clip) |
-| jumpLow, jumpLowS | 49_04 f164, 16_05 f150 | derived: pitched forward under the ceiling |
+| jumpLow | 49_04 f164 | derived: pitched forward under the ceiling (both arms forward already) |
+| jumpLowS | 13_11 f244 | derived: just after take-off, both arms forward, pitched forward under the ceiling (round 25b; was 16_05 f150) |
 | reach (jump up to grab) | 14_07 f1624 | arms overhead at the top |
 | hang | 01_03 f1765 | playground, holding a bar overhead, body straight (the video shows his feet still on the ground: the shape of a hang; 01_09 f1700, a real hang, leans 0.8 rad back) |
 | pull | 01_09 f1745 | hanging, knees drawn up (no clip pulls up onto a ledge) |
@@ -87,7 +89,7 @@ lunge 0.46, parry 0.07, lowStrike 0.10). The low leaps keep their legs and are p
 | lunge | 02_08 f1174 | swordplay: the step and thrust |
 | hurt | 16_08 f100 | derived: braced back (no clip of a blow) |
 | dead | 90_16 f600 | fall on face: lying (rot from the trunk's angle) |
-| crawl (16 keys) | 111_03 f760-990 | weak: a pregnant woman crawling, limb timing only; half a cycle mirrored |
+| crawl (16 keys) | 111_03 f760-990 | weak: a pregnant woman crawling, limb timing only; half a cycle mirrored; round 25b: the neck line 0.80 rad from up (CRAWL_NECK, the clip's nod kept) and the skull turned up on it (hp = CRAWL_HP -0.45): the face looks ahead |
 | drink (DK's 11 keys) | 81_14 f1300, f1255; 79_38 f180-520 | the flask picked up from a crouch, then drinking water |
 
 Kept procedural (no clip): the wall run and the kick-shaft plant (two-bone IK on the new legs), the blade slide's shudder, the push and
@@ -239,6 +241,26 @@ Research (sources on the page, round 25a): rotoscoped games (PoP 1989, Another W
 3D skeleton at ~50 px; Overgrowth (Rosen, GDC 2014) layers procedural motion on few keys; the principles (overlapping action, foot roll,
 shoulders against hips, a bending spine, a steady head); running biomechanics (Schache 2002, Novacheck 1998, Pozzo 1990). Checks: figscan
 (ok against v69; against v71 only the run and walk differ), lowceil, stairscan, run2, rendersmoke.
+
+## Both arms in the jump, the head up in the crawl (round 25b)
+
+Owner: "when the prince is jumping from a standstill on a lower coridor the raises this right arm but his left remains besides him. That is
+weird"; "nobody crawls with their head pointing down, should be pointing forward".
+
+- Cause of the arm: the standing jumps (jumpS, jumpLowS) were 16_05 f150, a subject who jumps with both elbows bent 90 degrees by his sides
+  (upper arms 45 to 52 degrees back, forearms forward; 16_06, 16_07 the same). Both arms had the same angles: the far arm hid behind the body,
+  the near forearm stuck out level in front of the kilt. No procedural layer; the clip.
+- Now 13_11 (forward jump, subject 13), the textbook arm action of a standing broad jump (Ashby and Heegaard 2002): both arms back in the
+  crouch (f176-208, -55/-58 degrees), forward together through take-off (f224-240, +21 to +56) and flight, down to land (f288-312). jumpS is
+  f252 (arms +42/+34), jumpLowS f244 (+52/+49), pitched forward by the low-leap rule (lean -0.14 to 0.59) so the hands lead along the
+  corridor at chest height. jumpLow (49_04) already had both arms forward; the crouch, landing and kick-shaft poses are unchanged.
+- The crawl: a new pose value `hp`, the skull's pitch on the neck's top (the atlas): the head's shape, eye and hair turn by lean+head+hp;
+  the neck and the skeleton keep lean+head. 0 in every pose but the crawl. 111_03 carries the head on the trunk's line (face to the floor,
+  neck line 1.2 rad from up); the keys now set the neck line to `CRAWL_NECK` 0.80 rad (28 degrees of extension at the base against the trunk's
+  74) with the clip's nod, and `hp` = `CRAWL_HP` -0.45 (26 degrees at the atlas): the face 20 degrees under the horizontal, chin forward
+  (crawlers with a neutral neck face the floor and crane up to see ahead: Kretch, Franchak, Adolph 2014). The sword held low and the poke
+  use the crawl's keys. The crown rises 2.4 px, still 4.1 to 5.3 px under v69's crawl crown.
+- Checks: figscan ok, lowceil ALL OK; pictures `egyptr25b.py` (r25b_poses.png, r25b_game.png).
 
 ## The neck (round 23c): 2 px shorter (superseded by round 23d: 1 px)
 

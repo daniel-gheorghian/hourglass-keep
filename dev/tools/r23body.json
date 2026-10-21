@@ -105,10 +105,10 @@
    "why": "run, leap: the split at the top of the leap"
   },
   "jumpS": {
-   "clip": "16_05",
-   "frame": 150,
+   "clip": "13_11",
+   "frame": 252,
    "w": 2,
-   "why": "standing broad jump in flight, knees drawn up"
+   "why": "forward jump in flight: both arms swung forward together"
   },
   "fall": {
    "clip": "90_16",
@@ -213,10 +213,10 @@
    "why": "derived: the leap's legs at take-off, the trunk pitched forward under the ceiling (lean 0.29 -> 0.79)"
   },
   "jumpLowS": {
-   "clip": "16_05",
-   "frame": 150,
+   "clip": "13_11",
+   "frame": 244,
    "w": 1,
-   "why": "derived: the standing jump's tuck, pitched forward under the ceiling (lean -0.05 -> 0.31)"
+   "why": "derived: the forward jump just after take-off, both arms forward, pitched forward under the ceiling (lean -0.14 -> 0.59)"
   },
   "press": {
    "clip": "81_14",

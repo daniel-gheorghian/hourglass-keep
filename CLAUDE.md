@@ -230,6 +230,10 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   kilt's hem trails the thighs by `KH_LAG` 0.035 of a stride (`khF`/`khB`, set in `runPoseHD`: a pure function of the phase). These keys are
   0 in every other pose; a part stride (stairs, push, pull) keeps the feet flat. Measured but too small at 1x: the hip joints' shift, the
   pelvis's drop, the wrist. Numbers and pictures `egyptr25a.py` (measure, keys, gif); see `dev/FIGURE_SPEC.md`.
+  (round 25b, owner) Jumps move both arms together: the standing jumps (jumpS, jumpLowS) are 13_11's forward jump (arms swung forward in
+  flight; 16_05 held the elbows bent by his sides, one forearm read as a raised arm). Crawling he looks ahead, never at the floor: the neck line
+  `CRAWL_NECK` and the skull's own pitch on it, pose value `hp` (`CRAWL_HP`; drawn by the head, eye and hair only, 0 in every other pose).
+  Pictures `egyptr25b.py`.
 - Lift ropes (round 21a, owner: "holes in the slab with the rope threaded through"): all lift ropes are `barRope` in the theme's fibre
   (`liftRope`; `barRope`'s `ph` makes the lay travel with a running rope). The counterweight platform hangs on two bridles (`liftSling`: an
   eye seized `LS_J` above the slab, legs down through two holes near the front and back edges along the depth diagonal, `ropeHole` drawn in
