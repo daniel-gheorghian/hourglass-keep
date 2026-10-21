@@ -120,7 +120,7 @@ unit of the upper arm's (`GROW`): `factor = 1 + rate x (MUS - 1)`. Joints (elbow
 the held hands, hit boxes and timing never change. The waist barely grows (no fat), so the V-taper sharpens. Robbers keep 1.15 times the
 prince's breadth on top of the level.
 
-Round 23c: the owner picked 1.28 ("1.28 is fine"); the game draws it with no override (`MUS` in r23poses.py; R23D is the 1.28 table, R23DV keeps the others).
+Round 23c: the owner picked 1.28 ("1.28 is fine"); the game drew it until round 24 (now 1.65, below) with no override (`MUS` in r23poses.py; R23D is the 1.28 table, R23DV keeps the others).
 
 | Measure | Rate | Basis |
 |---|---|---|
@@ -160,6 +160,46 @@ Drawing (Proko on the deltoid and calf; small-sprite practice: silhouette and va
 faint strokes in the part's own shade grow with the level (`RD.mh`, 0 at 1.0, 0.6 at 1.28): the deltoid's V into the upper arm at its
 insertion (0.47 down the humerus) and the pectoral's short lower border (fading as the arms rise). Sources and pictures: egypt_themes.html,
 round 23b (`egyptr23b.py`). Check a level with figscan and lowceil with `window.__MUS` set.
+
+## Heroic range (round 24): the game draws MUS 1.65
+
+Owner, after seeing v70 (MUS 1.28) in the game: "Still too lean: make it bulkier". Round 23b had noted that 1.28 moves the outline by under 1 px
+at 1x. Round 24 goes past the natural range into a stylised one (Loomis's idealised man, comics' heroic build, Disney's Hercules from Greek
+statues, The Lost Crown's Sargon; God of War's Kratos is past what an acrobat could be) and puts the **middle of three levels, 1.65**, in the
+game; 1.45 and 1.85 are one step either way (`window.__MUS` / `__HK.setMus`). Sources and pictures: egypt_themes.html, round 24 (`egyptr24.py`).
+
+The rule: `factor = 1 + GROW x (min(m, NAT) - 1) + GROW2 x max(0, m - NAT)`, `NAT` = 1.28, so 1.28 is v70's table to the pixel. What reads at
+~50 px is the silhouette in whole pixels, so every muscle grows by ~0.5-1 px at 1x a level; the outline stays 1.25 px.
+
+| Measure | GROW (to 1.28) | GROW2 (past it) |
+|---|---|---|
+| upper arm | 1.00 | 1.00 |
+| deltoid | 1.20 | 1.20 |
+| above the elbow | 0.85 | 1.00 |
+| forearm | 0.55 | 1.15 (comics' thick forearms) |
+| chest depth | 0.80 | 0.85 |
+| lower ribs (lats) | 0.75 | 1.00 |
+| trapezius | 0.90 | 1.00 |
+| neck, its base | 0.55, 0.50 | 0.60, 0.55 |
+| thigh, mid-thigh | 0.70 | 0.80 |
+| above the knee | 0.60 | 0.75 |
+| calf | 0.55 | 0.95 |
+| soleus | 0.45 | 0.70 |
+| seat | 0.60 | 0.60 |
+| waist | 0.12 | 0.06 (the V-taper sharpens) |
+
+`TRUNK_G2` lays the trunk's growth past 1.28 further behind at the armpit and the upper back (lats 60%, the upper chest 65-70% behind; round 23b's
+shares put the lats' bulge under a flat upper back, with a notch under the big rear deltoid). `RD.du` (past 1.28 only) moves the biceps' point
+down the upper arm, 0.22 to 0.32 of it by 1.85, so the deltoid tapers to its insertion. `RD.mh` (the deltoid V and pectoral border) 0.6 at 1.28,
+0.76 at 1.65, 0.85 at 1.85.
+
+Widths across as drawn at 1x, outline included (px): deltoid 5.34 (v70) / 6.15 / **7.11** / 8.07; upper arm 3.79 / 4.29 / **4.88** / 5.47; forearm
+3.04 / 3.55 / **4.15** / 4.76; thigh 6.28 / 7.00 / **7.84** / 8.68; calf 3.87 / 4.41 / **5.05** / 5.69; chest depth 7.98 / 8.92 / **10.03** / 11.14;
+lats 7.19 / 8.19 / **9.38** / 10.57; waist 5.53 / 5.58 / **5.65** / 5.72; joints unchanged.
+
+Robbers keep v70's widths at every level of the prince: `R23DR` (the 1.28 table) is drawn for any figure that is not the prince (`drawFigureHD`
+swaps RD for the call). At 1.65 the prince's deltoid (7.11 against 6.30), upper arm (4.88 against 4.47) and chest (10.03 against 9.06) pass a
+robber's; the robber keeps the heavier waist (6.25) and joints. Checks at a level: figscan, lowceil (with `window.__MUS`), liftscan, rendersmoke.
 
 ## The neck (round 23c): 2 px shorter (superseded by round 23d: 1 px)
 

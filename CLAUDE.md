@@ -207,6 +207,13 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   carries the levels `R23MUS` [1, 1.10, 1.18, 1.28] and their tables `R23DV`; `window.__MUS` before load or `__HK.setMus(m)` draws one
   (pictures, tests); above 1.0 a faint deltoid V and pectoral border (`RD.mh`) and the calf's growth behind the shank (`RD.cb`). Pictures
   `egyptr23b.py` (bulk, game); a new level must pass figscan and lowceil with `__MUS` set.
+  Heroic range (round 24, owner after v70: "Still too lean: make it bulkier"): the game draws **MUS 1.65**, the middle of three stylised
+  levels past the natural near-limit `NAT` 1.28 (1.45, 1.65, 1.85 in `R23MUS`; v70 drew 1.28). Up to NAT the measured `GROW`, past it
+  `GROW2` (deltoid 1.2, arm and above the elbow 1.0, forearm 1.15, calf 0.95, chest 0.85, lats 1.0, thigh 0.8, waist 0.06: each level adds
+  about 0.5-1 px at 1x to every muscle, the waist stays) and `TRUNK_G2` (more of the upper back behind, so it runs nape to lats as one slope,
+  no hump); `RD.du` moves the biceps' point down the arm past NAT (the deltoid tapers); `RD.mh` 0.76. Robbers never grow with him: they draw
+  `R23DR` (v70's 1.28 table; `drawFigureHD` swaps it in for any figure that is not the prince); at 1.65 the prince's deltoid, arm and chest
+  pass a robber's, the robber keeps the heavier waist. Pictures `egyptr24.py` (bulk, game).
   The neck (round 23c, owner: "make the neck 2px shorter and keep everything else as is"; round 23d: "Too short, one pixel longer"):
   `NECK_CUT` (1.0 since 23d; 2.0 in 23c) in r23poses.py comes off ANSUR's shoulder-joint-to-chin span (4.0 to 3.0 px; `LEN.nk` 4.518 to
   3.518), so the head sits 1 px lower on the same body in every pose (standing 51.5 px); the body's neck points (NJ th, c7, bk, nb), widths,

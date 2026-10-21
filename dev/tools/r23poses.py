@@ -52,17 +52,33 @@ KM_DROP = 0.5    # round 23d: the nape point (NJ.km) comes down this much, half 
 # per unit of the upper arm's (GROW), from ANSUR II's men aged 17 to 20 with a waist under the median share of the chest (lean, n=211),
 # ranked by their limb and chest girths for stature: the ratios of the 97th to the 50th percentile group (see FIGURE_SPEC.md, round 23b).
 # The joints (elbow, wrist, knee, ankle), the bones and the skeleton never change; the waist barely (no fat).
-MUS = 1.28       # the game's level (round 23c, owner: "1.28 is fine"); round 23b drew 1.0. The levels (window.__MUS can pick one at run time):
+MUS = 1.65       # the game's level (round 24, owner after v70: "Still too lean: make it bulkier"): the middle of three stylised levels beyond the
+                 # natural near-limit; round 23c-23d drew 1.28, round 23b 1.0. The levels (window.__MUS or __HK.setMus can pick one at run time):
 LEVELS = [(1.0, 'round 23: ANSUR II medians, men 17-20'),
           (1.10, 'athletic: ANSUR II ~90th percentile of muscle among the lean, the frame taken out'),
           (1.18, 'strong: ANSUR II top 3-5% of the lean; a sprinter or gymnast (mesomorphy ~6)'),
-          (1.28, 'natural near-limit: between McCallum\'s and Reeves\'s ratios (arm 1.21-1.31), FFMI ~24-25')]
+          (1.28, 'natural near-limit: between McCallum\'s and Reeves\'s ratios (arm 1.21-1.31), FFMI ~24-25 (v70)'),
+          (1.45, 'heroic 1 (round 24): a classical statue / Disney Hercules young hero; one step past v70'),
+          (1.65, 'heroic 2 (round 24, the game): comic-book hero build, broad deltoids and lats, thick forearms and calves, narrow waist'),
+          (1.85, 'heroic 3 (round 24): the bulkiest still agile; past it the arms meet the trunk (God of War territory)')]
+NAT = 1.28       # round 24: up to the natural near-limit the measured rates (GROW); past it the stylised rates (GROW2), so 1.28 is v70's to the pixel
 GROW = {'arm': 1.0, 'fore': 0.55, 'delt': 1.2, 'armLo': 0.85, 'thigh': 0.7, 'thighM': 0.7, 'lthigh': 0.6, 'calf': 0.55, 'soleus': 0.45,
         'neck': 0.55, 'neckB': 0.5, 'trap': 0.9, 'chest': 0.8, 'lowch': 0.75, 'seat': 0.6, 'waist': 0.12}
+# round 24, the stylised range (per unit of the upper arm's growth past NAT): what comics and games enlarge on a heroic figure (Loomis's and
+# Hampton's ideal: shoulders wider, deltoid caps, lats, a deep chest, forearms and calves as thick as the arm's rate, the waist held for the
+# V-taper; see FIGURE_SPEC.md, round 24). Small sprites read bulk in the silhouette: every visible width must grow by ~0.6 px or more a level.
+GROW2 = {'arm': 1.0, 'fore': 1.15, 'delt': 1.2, 'armLo': 1.0, 'thigh': 0.8, 'thighM': 0.8, 'lthigh': 0.75, 'calf': 0.95, 'soleus': 0.7,
+         'neck': 0.6, 'neckB': 0.55, 'trap': 1.0, 'chest': 0.85, 'lowch': 1.0, 'seat': 0.6, 'waist': 0.06}
+ROB_MUS = 1.28   # round 24: the robbers keep v70's widths (1.15 times the prince's at 1.28) whatever the prince's level
 # the trunk's levels (U = 0 .14 .3 .46 .62 .76 .88 .96 1 from the hip joint to the shoulder joint): which measure grows there and the share of
 # its growth in front (pectorals, the abdominal wall) against behind (glutes, lats, rhomboids and the trapezius)
 TRUNK_G = [('seat', 0.15), ('seat', 0.2), ('waist', 0.5), ('waist', 0.5), ('lowch', 0.3), ('chest', 0.45), ('chest', 0.55), ('chest', 0.45), ('trap', 0.35)]
-MH = 0.6         # the muscle contour hints' strength at the last level (none at 1.0)
+# round 24: the growth past NAT lays more of the upper back behind (rhomboids, the upper trapezius, teres: the back's line fills out from the
+# nape to the lats as one slope; with TRUNK_G's shares a big rear deltoid stood out of a flat upper back as a step)
+TRUNK_G2 = [('seat', 0.15), ('seat', 0.2), ('waist', 0.5), ('waist', 0.5), ('lowch', 0.4), ('chest', 0.3), ('chest', 0.35), ('chest', 0.3), ('trap', 0.25)]
+MH = 0.6         # the muscle contour hints' strength at NAT (none at 1.0)
+MH2 = 0.25       # round 24: and how much more by the last level (0.85 at 1.85)
+DU = 0.1         # round 24: how far down the humerus the biceps' point (0.22 up to NAT) moves by the last level: the big deltoid tapers
 # (cb: the calf's growth is laid behind the shank, the gastrocnemius' bulge; the shin's line stays)
 
 def body():
@@ -426,7 +442,7 @@ def reach_fix(B, q, name, log):
 
 def grow(k, m):
     """a measure's factor at the bulk multiplier m (round 23b): 1 + its growth rate (GROW, per unit of the upper arm's) times (m - 1)"""
-    return 1.0 + GROW[k] * (m - 1.0)
+    return 1.0 + GROW[k] * (min(m, NAT) - 1.0) + GROW2[k] * max(0.0, m - NAT)   # round 24: GROW2 past the natural near-limit
 
 
 def bulk(Wd, m):
@@ -453,9 +469,10 @@ def drawing(Wd, m=1.0):
     shf = [0.42, 0.43, 0.51, 0.51, 0.51, 0.52, 0.51, 0.48, 0.44]
     # round 23b: the muscle's depth at each level, px, laid in front (pectorals, the abdominal wall) or behind (glutes, lats, trapezius,
     # rhomboids) by where the muscle is (TRUNK_G: measure, its share in front)
-    add = [(dep[i] * (grow(TRUNK_G[i][0], m) - 1.0), TRUNK_G[i][1]) for i in range(len(dep))]
-    Fo = [r(d * k - o / 2 + a * f) for d, k, (a, f) in zip(dep, shf, add)]
-    BQ = [r(d * (1 - k) - o / 2 + a * (1 - f)) for d, k, (a, f) in zip(dep, shf, add)]
+    add = [(dep[i] * (grow(TRUNK_G[i][0], min(m, NAT)) - 1.0), TRUNK_G[i][1]) for i in range(len(dep))]
+    ad2 = [(dep[i] * (grow(TRUNK_G2[i][0], m) - grow(TRUNK_G2[i][0], min(m, NAT))), TRUNK_G2[i][1]) for i in range(len(dep))]   # round 24
+    Fo = [r(d * k - o / 2 + a * f + a2 * f2) for d, k, (a, f), (a2, f2) in zip(dep, shf, add, ad2)]
+    BQ = [r(d * (1 - k) - o / 2 + a * (1 - f) + a2 * (1 - f2)) for d, k, (a, f), (a2, f2) in zip(dep, shf, add, ad2)]
     Bo = [r(b + a) for b, a in zip(BQ, [0, 0, 0, 0.1, 0.35, 0.3, 0.15, -0.3, -0.5])]   # arms up: the lats stand out, the scapulae turn up
     jc = Wd['jc']
     tr = W0['neckB'] * (grow('trap', m) - grow('neckB', m)) / 2   # round 23b: the trapezius over the neck's own growth, on the slope from C7 down
@@ -472,7 +489,7 @@ def drawing(Wd, m=1.0):
     T = lambda a, q: [r(max(0.9, v * q - o)) for v in a]
     return {'Fo': Fo, 'BQ': BQ, 'Bo': Bo, 'NJ': NJ, 'arm': T(arm, 1), 'armR': T(arm, 1.18), 'leg': T(leg, 1), 'legR': T(leg, 1.18),
             'fk': r((Wd['foot'] - 0.6) / 9.0), 'kilt': [r(Wd['thigh'] * 0.45 + 0.35), r(-(Wd['thigh'] * 0.47 + 0.35))],
-            'RS': r(Wd['thigh'] / 2 + 0.35), 'chest': r(chest * grow('chest', m)), 'robK': 1.15} | ({'mh': r(MH * (m - 1.0) / (LEVELS[-1][0] - 1.0)), 'cb': r((Wd['calf'] - W0['calf']) / 2), 'mus': m} if m > 1 else {})
+            'RS': r(Wd['thigh'] / 2 + 0.35), 'chest': r(chest * grow('chest', m)), 'robK': 1.15} | ({'mh': r(MH * min(1.0, (m - 1.0) / (NAT - 1.0)) + MH2 * max(0.0, m - NAT) / (LEVELS[-1][0] - NAT)), 'cb': r((Wd['calf'] - W0['calf']) / 2), 'mus': m} if m > 1 else {}) | ({'du': r(0.22 + DU * (m - NAT) / (LEVELS[-1][0] - NAT))} if m > NAT else {})
 
 
 def js(v):
@@ -512,6 +529,8 @@ def emit():
              'const R23D=' + js(D) + ';',
              '// R23MUS, R23DV (round 23b): the muscle bulk levels (the upper arm\'s girth over ANSUR II\'s median) and their tables (null: R23D).',
              'const R23MUS=' + js([m for m, _ in LEVELS]) + ',R23DV=' + js(DV) + ';',
+             '// R23DR (round 24): the robbers\' table, v70\'s level 1.28 whatever the prince\'s (they must not grow with him).',
+             'const R23DR=' + js(drawing(Wd, ROB_MUS)) + ';',
              'const MCP=' + js(MCP) + ';',
              'const MCK=' + js(MCK) + ';',
              '// </R23-MOCAP>']
@@ -528,7 +547,7 @@ def emit():
     json.dump({'body': Bj, 'widths': {k: round(float(v), 3) for k, v in Wd.items()}, 'info': {k: v for k, v in info.items() if k != 'ansur'},
                'ansur': info['ansur'], 'src': src}, open(os.path.join(HERE, 'r23body.json'), 'w'), indent=1, default=float)
     json.dump({'levels': [{'m': m, 'basis': why, 'factors': {k: round(grow(k, m), 3) for k in GROW}, 'table': drawing(Wd, m)} for m, why in LEVELS],
-               'grow': GROW, 'trunk': TRUNK_G, 'cm_per_px': info['cm_per_px'], 'widths': {k: round(float(v), 3) for k, v in Wd.items()}},
+               'grow': GROW, 'grow2': GROW2, 'nat': NAT, 'mus': MUS, 'trunk': TRUNK_G, 'cm_per_px': info['cm_per_px'], 'widths': {k: round(float(v), 3) for k, v in Wd.items()}},
               open(os.path.join(HERE, 'r23bulk.json'), 'w'), indent=1)
     print('R23B', Bj)
     for k, v in src.items():

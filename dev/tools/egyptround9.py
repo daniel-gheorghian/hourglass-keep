@@ -23,7 +23,7 @@ def sections(D, REL, img):
          links([('JSTOR Daily: hair, gender and status in ancient Egypt (after Gay Robins: non-elite men with their natural hair, elite men\'s wigs)', 'https://daily.jstor.org/hair-gender-and-social-status-in-ancient-egypt'), ('British Museum: wigs and hairstyles in ancient Egypt', 'https://www.britishmuseum.org/blog/wigs-and-hairstyles-ancient-egypt'),
                 ('Egyptian Museum, Cairo: the ka statue of Tutankhamun', 'https://egyptianmuseumcairo.eg/artefacts/statue-of-the-ka-of-tutankhamun'), ('The tomb of Nebamun (British Museum paintings)', 'https://en.wikipedia.org/wiki/Tomb_of_Nebamun'),
                 ('Artistic canons of body proportions: the Egyptian grid', 'https://en.wikipedia.org/wiki/Artistic_canons_of_body_proportions')]) +
-         '<div class="g2">%s%s</div>' % (fig(img, 'r9_prince_before.png', 'Round 8: the prince and a robber (soldier)'), fig(img, 'r9_prince_after.png', 'Round 9: gold sash, lean build, cropped hair; the robber unchanged')) +
+         '<p class="meta">(Round 24: the prince\'s before/after pictures, r9_prince_before.png and r9_prince_after.png, retired to keep the page\'s size; his body has been rebuilt since, round 23 on.)</p>' +
          '<h3>Hair, on the figure and in the game (Torchlight above, Classic below)</h3>' + fig(img, 'r9_hair_sheet.png', 'Close-cropped (built in), short curls, ear-length bob') +
          '<div class="g4" style="margin-top:8px">' + ''.join(fig(img, 'r9_hair_%s_%s.jpg' % (h, m), '%s, %s' % (nm, m)) for m in ('torch', 'classic') for h, nm in (('crop', 'cropped (built in)'), ('curls', 'curls'), ('bob', 'bob'))) + '</div>' +
          '<p class="meta">(Round 22: the running clip retired to keep the page\'s size.)</p></section>']
