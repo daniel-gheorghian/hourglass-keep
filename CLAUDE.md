@@ -329,6 +329,15 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   front of the sky covers it, so he keeps his fill to his outline. Classic: `fillCut` draws the fills apart and cuts them where the room
   images are clear, except over the figures' silhouettes. A new full-screen draw on the scene after `drawDynamic` stays under `na`; a new
   dst-alpha blend on the main scene must not read that alpha. The ?wgl=0 fallback still lights the sky. Pictures: `egyptr25c.py`.
+- Every figure's silhouette (`glSilhouette`: its lamp shadow, the cut it makes in the sky beams, the beam's capped light on it, the metal
+  carve, Classic's beam cut and fill cut) is drawn in its own palette (`silPal`: `guardPal` for a guard). (round 27c, owner: "Soldiers don't
+  seem to cast shadows and the light beams are drawn over them") From round 7 to 27b the robbers' head cloth needed a `khat` colour the old
+  `PAL_GSIL` lacked, `figDraw` threw inside the try and every guard's silhouette was null: no shadow, beams drawn over them, both modes. A
+  new palette key read by `drawFigureHD` must exist in every palette that reaches it. Pictures `egyptr27c.py` (r27c_guards.png).
+- The Blue Chambers' glaze and faience walls (mist pass, `u_lx.y`, `u_lx.w`; round 27d, owner's screenshot: "slanted bars ... moving ...
+  drawn over windows and light beams") are soft noise patches in the lamps' light that swell in place, times the scene's alpha (never on the
+  sky); they were a sine of x and y: bright slanted bars sliding along the dado, cut into dark bars by his lamp shadow, and laid over the
+  openings. No travelling bands in a look effect; sharp single glints stay in 2D (`lampGlints`). Pictures `egyptr27c.py` (r27d_bars.png, .gif).
 - Torchlight's ambient light never drops under `AMB_MIN` (0.45 of full on its brightest channel, `glAmbK`; owner, v56 and v57: the Forge by
   Moonlight fell to 0.26), and each sky opening adds a soft bounce light where its beam meets the floor (`gatherLights`, Torchlight only).
   The fire vent burns over its whole grate (`VJETS`: a jet per slot, back and front rows, merging into one sheet); its timing and

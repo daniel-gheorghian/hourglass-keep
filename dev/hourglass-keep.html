@@ -2582,7 +2582,6 @@ function drawSkeletonHD(ctx,x,y,face,p,pal,o){
 }
 
 const PAL_WHITE={skin:'#fff',skinD:'#fff',tunic:'#fff',tunicD:'#fff',pants:'#fff',pantsD:'#fff',sash:'#fff',hair:'#fff',boot:'#fff'},PAL_WHITE_B=Object.assign({},PAL_WHITE,{bones:true});
-const PAL_GSIL={egy:'rob',head:'cloth'}; // (the robbers' silhouettes: a kilt and a head cloth)
 const PAL_SKEL={skin:'#e9e3cf',skinD:'#c3bb9f',pants:'#e9e3cf',pantsD:'#c3bb9f',boot:'#d9d1b8',bones:true};
 // The prince (owner, round 6): an Egyptian prince of the New Kingdom, after the reliefs and statues of royal sons: the sidelock of
 // youth (a plaited lock on the right of a shaven head, the mark of the 18th Dynasty's princes; Ramesses II's sons in their processions),
@@ -9488,14 +9487,18 @@ const GLCH=[],GLBODY=[[0,-50,20,20],[0,-37,34,30],[0,-21,32,30],[0,-8,28,26]];le
 // behind it. (v53) Drawn once per figure per frame, at twice the world's scale, into a canvas of its own (SIL, reused frame to
 // frame; SIL.m maps this frame's figures to them, cleared by glPrep): before, each of the three drew the figure again.
 const SIL={pool:[],m:new Map(),m2:new Map(),v:[]};
+// (round 27c, owner: "Soldiers don't seem to cast shadows and the light beams are drawn over them") a guard's silhouette is drawn in its
+// own palette (guardPal): PAL_GSIL, gone, had no khat colour, so the head cloth's tied ends (round 7) threw in shadeHex and every robber's silhouette was
+// null: no shadow from a lamp, no cut in the beams (both modes), no carve in the metal or the fill. The shape is his own (weapon, cap)
+function silPal(e){return e.skel?PAL_SKEL:e===P?PAL_HERO:guardPal(e);}
 function glSilhouette(e,d2){const M=d2&&GLP.gls?SIL.m2:SIL.m;let c=M.get(e);if(c!==undefined)return c; // (d2: a 2D canvas even when WebGL draws the masks)
   if(GLP.gls&&!d2){const i=SIL.m.size;if(i>=12){SIL.m.set(e,null);return null;} // (unit WGL) a 192 px slot of one target (4 x 3), drawn by WebGL
     const g=g2Mk('sil',768,576,[0,0,0,0]),x=(i&3)*192,y=(i>>2)*192;g.setTransform(1,0,0,1,0,0);g.save();g.beginPath();g.rect(x,y,192,192);g.clip();g.setTransform(2,0,0,2,x,y);
-    try{figDraw(g,48,80,e.face||1,e.pose,e.skel?PAL_SKEL:e===P?PAL_HERO:PAL_GSIL,{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});c=SIL.v[i]||(SIL.v[i]={isView:true,tgt:GLS.sil,x,y,width:192,height:192});}catch(err){c=null;}
+    try{figDraw(g,48,80,e.face||1,e.pose,silPal(e),{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});c=SIL.v[i]||(SIL.v[i]={isView:true,tgt:GLS.sil,x,y,width:192,height:192});}catch(err){c=null;}
     g.restore();SIL.m.set(e,c);return c;}
   c=SIL.pool[M.size+(M===SIL.m2?6:0)];if(!c){c=document.createElement('canvas');c.width=c.height=192;c._g=c.getContext('2d');SIL.pool.push(c);}
   const g=c._g;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,192,192);g.setTransform(2,0,0,2,0,0);
-  try{figDraw(g,48,80,e.face||1,e.pose,e.skel?PAL_SKEL:e===P?PAL_HERO:PAL_GSIL,{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});}catch(err){c=null;}
+  try{figDraw(g,48,80,e.face||1,e.pose,silPal(e),{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});}catch(err){c=null;}
   M.set(e,c);return c;}
 function glShadow(g,x,y,sc,lights,spr,e){
   const sil=e&&e.pose?glSilhouette(e):null;
@@ -9940,11 +9943,15 @@ const GLCSH={
         if(lr>.015){
           if(u_lx.x>0.){float n=vn(vec2(w.x*.09+u_t*.05,w.y*.12))*vn(vec2(w.x*.21-u_t*.11,w.y*.27+7.)); // salt: the kershef's crystals glitter in the lamplight, a soft shimmer that wanders
             float sf=(tl.g>.5&&fy>55.5)?1.:(tl.r>.5?.5:.35);o.rgb+=R*smoothstep(.3,.62,n)*sf*u_lx.x*.9;} // (single crystals flash in 2D, lampGlints, sharp at full resolution)
-          if(u_lx.y>0.&&tl.g>.5&&tl.r<.5&&fy>26.&&fy<60.){ // glaze: the faience dado; a sheen runs across it as the flames sway (single tiles flash in 2D, lampGlints)
-            float sw=smoothstep(.78,1.,sin(w.x*.11-u_t*.9+fy*.06+sin(u_t*.37)*2.));o.rgb+=R*sw*.8*u_lx.y;}}}
+          if(u_lx.y>0.&&tl.g>.5&&tl.r<.5&&fy>26.&&fy<60.){ // glaze: the faience dado; a soft sheen in the lamps' light that swells and fades in place as the flames sway (single tiles flash in 2D, lampGlints)
+            // (round 27d, owner: "What are those slanted bars ... moving ... drawn over windows and light beams") it was a sine of x and y running
+            // along the dado: bright slanted bars 57 px apart sliding sideways, cut into dark ones by a figure's shadow, and laid over the sky seen
+            // through an opening. A glossy tile mirrors the flame where it is near the lamp (a lobe, broken by each tile's tilt), it never sweeps;
+            // and nothing of the wall shows where the scene is the backdrop (the scene's alpha, round 25c)
+            float sw=smoothstep(.5,.9,vn(vec2(w.x*.05,fy*.07+floor(w.y/64.)*7.1+u_t*.12)))*(.7+.3*sin(u_t*1.7+w.x*.013));o.rgb+=R*sw*.4*u_lx.y*texture2D(u_sc,v_u).a;}}}
       if(u_lx.w+u_lx2.x+u_lx2.y+u_lx2.z+u_lx2.w>0.){vec3 R=max(texture2D(u_map,v_u).rgb*1.5-u_mist.w,0.);float lr=dot(R,vec3(.3,.5,.2)); // (round 5: each theme's own)
-        if(u_lx.w>0.&&tl.r<.5&&tl.a<.25&&lr>.01){ // the faience walls: long soft highlights that slide as the flames move, in the lamps' light only
-          float sw=smoothstep(.72,1.,sin(w.x*.045+w.y*.02-u_t*.6+sin(u_t*.23+w.y*.01)*2.3))*smoothstep(.25,.6,vn(vec2(w.x*.03,w.y*.05+u_t*.05)));o.rgb+=R*sw*.55*u_lx.w;}
+        if(u_lx.w>0.&&tl.r<.5&&tl.a<.25&&lr>.01){ // the faience walls: soft highlights in the lamps' light only
+          float sw=smoothstep(.55,.9,vn(vec2(w.x*.028,w.y*.04+u_t*.06)))*(.75+.25*sin(u_t*1.3+w.y*.02));o.rgb+=R*sw*.25*u_lx.w*texture2D(u_sc,v_u).a;} // (round 27d: soft patches that swell in place, not slanted bands; never on the sky)
         if(u_lx2.z>0.&&tl.r<.5&&tl.a<.25&&lr>.04){float n=vn(vec2(w.x*.33+u_t*.03,w.y*.31))*vn(vec2(w.x*.29-u_t*.05,w.y*.37+11.))*vn(vec2(w.x*.41,w.y*.23-u_t*.04+5.)); // granite: crystals catching the lamp, sparse points that wander (smooth noise in world space: no per-pixel jitter)
           o.rgb+=R*smoothstep(.36,.5,n)*.9*u_lx2.z;}
         if(u_lx2.y>0.&&tl.g>.5&&fy>55.5&&tl.r<.5){float n=vn(vec2(w.x*.11,floor(w.y/64.)*7.3+u_t*.05)),e=smoothstep(.6,.78,n)*(.55+.45*sin(u_t*1.1+n*20.)); // embers: slag glowing in the floor's cracks, its own light
