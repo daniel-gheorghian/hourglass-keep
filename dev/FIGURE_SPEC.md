@@ -354,6 +354,28 @@ Widest as drawn, before > after (split, feet): one tile 124 > 62-71 deg, 40.0 > 
 P.jT, P.jD, P.jF, P.jN live on P (rewind-safe); no allocation a frame. Checks: figscan ok, lowceil, primtest, run2, rendersmoke. Pictures:
 `egyptr26c.py` (r26c_stride.png, r26c_jumps.gif).
 
+## The jump's height (round 27a)
+
+Owner: "The running jump of the prince: the stride is better now, but I think the height is wrong: he moves up too much."
+
+Measured (`egyptr27a.py`, the bot on floors 1-27, 1,220 jumps): every running jump leaves at 190 px/s up under GRAV 700 and rises 25.8 px (the
+box 24.2 at a frame); the figure was drawn on it (the hip at P.y - hy, hy 26), so hip and crown rose 25 px, half his height, over one tile or
+three, and with the leap's split the lowest foot came 27-37 px off the floor. At 51.5 px = 1.75 m that is 0.88 m; an elite long jumper's
+centre of mass rises about 0.5-0.6 m (take-off 3.4 m/s up, 8.8 along, about 21 degrees: Linthorne et al. 2005), 0.54 s of flight under real
+gravity 0.36 m (10.6 px), PoP1's runjump 14 px of a 63 px storey (SDLPoP seqtbl.c: dy -3, -9, -2, +11, +3). The pose adds nothing but the
+feet's tuck (right for a leap); the excess is the arc, and the arc is play (reach 2 vx vy / g), so only the drawing comes down.
+
+| Part | How |
+|---|---|
+| offset | `P.yo` = (1 - `P.jK`) max(0, P.jy - P.y) in the air case of a running jump: a parabola k times as high, 0 at take-off, touch-down and below the take-off level |
+| k (`jhK`, at take-off) | drawn top `JH_S` 8 px (s 0) to `JH_L` 14 (s 1) over the arc's apex (k 0.31-0.54; the low leap's apex is 11.7, k 0.68-1) |
+| traps | spikes' needles (`SPK` at the figure's depth) and saw blades (`sawX` at each moment of the flight): k rises until the drawn feet (the flight's target pose, `leapPose` and the landing blend) stand as high over each as on the full arc, or `JH_M` 1.5 px over the top |
+| full arc (k 1) | the arc meets a wall whose top stands over the take-off floor, lands higher up, passes a swing bar in reach; the standing jumps |
+
+Before > after (medians, px): hip rise over one tile 25.3 > 12.3 (8.0-15.5), two 24.9 > 12.1, three 24.9 > 13.6, short to the far lip 25.3 > 14.1;
+lowest foot 26.7 > 13.5, 33.4 > 20.8, 36.9 > 25.6; the low leap over a tile 9.0 > 6.5; ledges, bars, the low leap down a storey and the standing
+jumps unchanged. Every jump's distance, drop and outcome identical. Pictures `egyptr27a.py`.
+
 ## The neck (round 23c): 2 px shorter (superseded by round 23d: 1 px)
 
 Owner: "1.28 is fine. Now make the neck 2px shorter and keep everything else as is". `NECK_CUT` (r23poses.py, 2.0 px) is taken off ANSUR's

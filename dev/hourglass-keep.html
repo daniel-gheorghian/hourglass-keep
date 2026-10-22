@@ -2878,7 +2878,7 @@ const supported=(x=P.x)=>solidBelow(L,Math.floor(x/TW),pRow())||(x===P.x&&L.lift
 const LRN_ST={climb:['climb'],drink:['potion'],push:['block'],pull:['block'],slide:['banner'],wallrun:['wallrun'],climbDown:['drop'],poke:['poke','snake'],lowStrike:['snake']}; // states that mean a move was done
 function learn(...ids){let w=false;for(const id of ids)if(!S.learned[id]){S.learned[id]=1;w=true;}if(w)writeSave();}
 function setState(s){if(P&&P.state==='drink'&&s!=='drink'){dropFlask();if(P.dkG&&!P.dkFx&&s!=='dead'&&s!=='exit')drinkFx();} // knocked out of the drink with the flask in hand: it takes effect at once and the flask falls
-  if(P){const lk=LRN_ST[s];if(lk)learn(...lk);else if(s==='lift'&&P.lift)learn(P.lift.t==='chain'?'chain':'lift');}if((s==='stop'||s==='turn')&&P.state==='run'&&GFX().fx&&Math.abs(P.vx)>60)dust(P.x-P.face*4,P.y,4);if(P)P.state0=P.state;P.state=s;P.t=0;if(s!=='crouch'&&s!=='poke')P.lowSword=false;if(s!=='air')P.plant=null;
+  if(P){const lk=LRN_ST[s];if(lk)learn(...lk);else if(s==='lift'&&P.lift)learn(P.lift.t==='chain'?'chain':'lift');}if((s==='stop'||s==='turn')&&P.state==='run'&&GFX().fx&&Math.abs(P.vx)>60)dust(P.x-P.face*4,P.y,4);if(P){P.state0=P.state;if(P.state==='air'&&s!=='air')P.yo=0;}P.state=s;P.t=0;if(s!=='crouch'&&s!=='poke')P.lowSword=false;if(s!=='air')P.plant=null;
   if(P){if(s==='stop'||s==='turn'){P.stK=s;P.stT=gameTime;P.stS=s==='stop'?clamp(Math.abs(P.vx)/RUN,0.35,1):1;}else if(s!=='stand')P.stK=null; // (round 25f: the settle, see settlePose)
     if(s==='hang'){P.hgT=gameTime;P.hgA=HG_A[P.state0]||HG_A.air;}}} // (round 25f: the hang's swing, see livePose)
 function setE(e,s){e.state=s;e.t=0;}
@@ -2976,10 +2976,13 @@ function launch(){const run=P.jumpKind==='run';P.jx=P.x;P.jy=P.y;let vx=run?183:
 const JS_D0=48,JS_FOOT=12,JS_SCAN=80; // (JS_D0: a jump that needs no more than a tile and a half, a one-tile pit taken at its lip (51-53 px), is a lengthened running step)
 function jsHaz(c,r){if(B(L,c,r)===WALL)return 0;if(!solidBelow(L,c,r))return 1;const f=F(L,c,r);return f&&(f.t==='spikes'||(f.t==='loose'&&!(f.sturdy&&f.s===0))||f.t==='closer'||f.t==='saw'||f.t==='vent')?1:0;}
 function jumpSpan(vx,vy){const fc=P.face,x0=P.x,y0=P.y,row=pRow(),lev=vx*2*vy/GRAV;
-  let fly=lev,py=y0,x=x0;
+  let fly=lev,py=y0,x=x0,full=P.jumpKind!=='run'; // (full: round 27a, the arc drawn at its full height, see jhK)
   for(let t=1/60;t<3;t+=1/60){x=x0+fc*vx*t;const y=y0-vy*t+0.5*GRAV*t*t,wc=Math.floor((x+fc*(BW+1))/TW);
-    if(B(L,wc,rowOf(y-12))===WALL||B(L,wc,rowOf(y-40))===WALL){fly=Math.abs((fc>0?wc*TW-BW:(wc+1)*TW+BW)-x0);break;}
-    if(y>py){let hit=false;for(let r=Math.floor((py+4)/TH)-1;r<=Math.floor((y+4)/TH)-1;r++){const ys=SURF(r);if(py<=ys&&y>=ys&&solidBelow(L,pCol(x),r)){hit=true;break;}}
+    if(B(L,wc,rowOf(y-12))===WALL||B(L,wc,rowOf(y-40))===WALL){fly=Math.abs((fc>0?wc*TW-BW:(wc+1)*TW+BW)-x0);
+      let tr=B(L,wc,rowOf(y-40))===WALL?rowOf(y-40):rowOf(y-12);while(tr>0&&B(L,wc,tr-1)===WALL)tr--;if(tr*TH<y0-8)full=true; // (round 27a: a wall whose top stands over the take-off floor: a ledge he may catch)
+      break;}
+    if(!full&&L.dyn)for(const o of L.dyn){const f=o.f;if(f.t==='bar'&&Math.abs(x-f.x)<18&&Math.abs(y-HANG-f.y)<24){full=true;break;}}
+    if(y>py){let hit=false;for(let r=Math.floor((py+4)/TH)-1;r<=Math.floor((y+4)/TH)-1;r++){const ys=SURF(r);if(py<=ys&&y>=ys&&solidBelow(L,pCol(x),r)){hit=true;if(r<row)full=true;break;}}
       if(hit){fly=Math.abs(x-x0);break;}}
     if(y>L.rows*TH+90){fly=Math.abs(x-x0);break;}
     py=y;}
@@ -2987,7 +2990,40 @@ function jumpSpan(vx,vy){const fc=P.face,x0=P.x,y0=P.y,row=pRow(),lev=vx*2*vy/GR
   while(k<6&&Math.abs((fc>0?(c+1)*TW:c*TW)-x0)<=JS_SCAN&&B(L,c+fc,row)!==WALL&&!jsHaz(c+fc,row)){c+=fc;k++;}
   if(k<6&&jsHaz(c+fc,row)&&Math.abs((fc>0?(c+1)*TW:c*TW)-x0)<=JS_SCAN){let e=c+fc,n=0;while(n<6&&jsHaz(e+fc,row)){e+=fc;n++;}
     const far=e+fc;if(n<6&&B(L,far,row)!==WALL&&solidBelow(L,far,row))need=Math.abs((fc>0?(e+1)*TW:e*TW)-x0)+JS_FOOT;}
-  P.jF=fly;P.jN=need;P.jD=Math.min(fly,need);P.jT=2*vy/GRAV;P.jS=clamp((P.jD-JS_D0)/(lev-JS_D0),0,1);}
+  P.jF=fly;P.jN=need;P.jD=Math.min(fly,need);P.jT=2*vy/GRAV;P.jS=clamp((P.jD-JS_D0)/(lev-JS_D0),0,1);
+  P.jK=full?1:jhK(vx,vy,x0,fc,row,P.jS);}
+// Round 27a (owner: "The running jump of the prince: the stride is better now, but I think the height is wrong: he moves up too much"). The
+// running jump's arc (190 px/s up, GRAV 700) rises 25.8 px, half his height (51.5 px): about 0.88 m on a 1.75 m man, more than an elite long
+// jumper's centre of mass rises over 8 m (~0.5 m); the same 0.54 s of flight under real gravity rises 0.36 m (10.6 px), and PoP1's running
+// jump (SDLPoP seqtbl.c runjump: dy -3, -9, -2, then +11, +3) rises 14 px of a 63 px storey (14.2 of our 64). The figure followed the arc
+// exactly (the hip at P.y - hy), so the crown rose 25 px over every running jump, one tile of pit or three. So he is drawn on a lower arc
+// of the same shape, by the distance the jump is for like the stride: k = JH_S 8 px (s 0, a stretched stride over one tile) to JH_L 14
+// (s 1, the full leap) over the arc's apex; P.yo = (1-k) * (his rise over the take-off floor), so take-off, touch-down, every grab below
+// the take-off level and everything after are where the arc puts them (the offset is 0 there). Drawn on the full arc (k 1): a jump whose
+// arc meets a wall standing over the take-off floor (a ledge he may catch), lands on a floor higher up or passes a swing bar in reach (the
+// hands must reach what they catch), and the standing jumps. Over spikes (needles up to 21 px) or a saw (its blade 12 px up where it is at
+// each moment of the flight) k rises until the drawn feet stand as high over each needle and blade as on the full arc, or JH_M over its top.
+// Look only: the arc, P.y, the hit box, grabs, landing reach, timers, estPath and the bot are unchanged. P.jK lives on P (a rewind restores it).
+const JH_S=8,JH_L=14,JH_M=1.5,jhP=mk({}),jhQ=mk({}),JH_N=[],JH_W=[];
+// what stands in the flight (filled at take-off only, kept arrays: no allocation a frame): JH_N each needle of a row of spikes (SPK: its x
+// at the figure's depth, its tip's height over the floor there, onFloor), JH_W each saw (its blade, R SAW_R about ys+2, where sawX puts it
+// at that moment of the flight: the bot times the jump to the blade)
+function jhObs(x0,fc,row){JH_N.length=0;JH_W.length=0;const c0=pCol(x0);
+  for(let i=0;i<6;i++){const c=c0+fc*i,f=F(L,c,row);if(!f)continue;
+    if(f.t==='spikes'){const m=c%2?-1:1;for(const [bx,d,hh] of SPK){const q=onFloor(c*TW+16+m*(bx-16),d,0);JH_N.push(q.x-2.5,q.x+2.5,hh-q.y);}}
+    else if(f.t==='saw')JH_W.push(f);}}
+function jhK(vx,vy,x0,fc,row,s){const ap=vy*vy/(2*GRAV),T=2*vy/GRAV;
+  let k=Math.min(1,lerp(JH_S,JH_L,s)/ap);jhObs(x0,fc,row);if((!JH_N.length&&!JH_W.length)||k>=1)return k;
+  // the drawn feet (the flight's target pose at each moment, as the air case draws it) must stand as high over every needle and blade as
+  // they did on the full arc, or JH_M px over its top: k = the least that does it
+  for(let t=1/120;t<T;t+=1/120){const r=vy*t-0.5*GRAV*t*t;if(r<0.5)continue;
+    let p=leapPose(P.lowJump,t/T,s,jhP);if(-vy+GRAV*t>60)p=lerpPose(p,PS.land,0.4,jhQ);
+    const sk=skel(p);
+    for(let j=0;j<2;j++){const ft=j?sk.fB:sk.fF,fx=x0+fc*(vx*t+ft[0]),c=sk.hipH-ft[1];let top=-1;
+      for(let i=0;i<JH_N.length;i+=3)if(fx>=JH_N[i]&&fx<=JH_N[i+1])top=Math.max(top,JH_N[i+2]);
+      for(const f of JH_W){const dx=fx-sawX(f,gameTime+t);if(Math.abs(dx)<SAW_R)top=Math.max(top,Math.sqrt(SAW_R*SAW_R-dx*dx)-2);}
+      if(top<0)continue;const need=Math.min(r+c,top+JH_M)-c;if(need>k*r)k=Math.min(1,need/r);}}
+  return k;}
 const LPK=['lean','head','aF','eF','aB','eB','hF','kF','hB','kB','sb','soF','soB','fpF','fpB'],lpP=mk({});
 function leapPose(low,u,s,out){const K=low?MCK.leapLow:MCK.leap,base=low?PS.jumpLow:PS.jumpR,n=K.L.length-1;
   for(let i=0;i<PK.length;i++)out[PK[i]]=base[PK[i]];
@@ -3561,6 +3597,7 @@ function updatePlayer(dt){
       tgt.sw=P.face>0?0.46:Math.PI-0.46;rate=P.t<0.1?50:36;break;}
     case'swing':tgt=swingPose(P.swTh||0,P.swOm||0,P.swPump);rate=90;break;
     case'air':
+      P.yo=P.jumpKind==='run'&&!P.plant&&P.jK<1?(1-P.jK)*Math.max(0,P.jy-P.y):0; // (round 27a: drawn on a lower arc, see jhK)
       if(P.plant){tgt=plantPose();rate=45;break;}
       if(P.jumpKind==='kick'){tgt=kickPose();rate=36;break;}
       if(P.jumpKind==='wall'){tgt=wallRunIK(WR_TOP+4,null);rate=30;break;}
@@ -10494,7 +10531,7 @@ window.__HK={keyLight,get frameLights(){return frameLights;},jetPlaces,jsSwingPa
   levelCompleteHook:null,render,layout,startLevel,
   get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG,secretCues};
 Object.assign(window.__HK,{guardBudget,snakeBudget,RP,drinkFrame}); // (the fighters' budgets, for guardscan.py; RP and drinkFrame, the run cycle's and the drink's poses, for egyptr21a.py)
-Object.assign(window.__HK,{LEN,skel,crawlPose,walkPose,climbFrame,swingPose,MCP,MCK,R23B,R23D,R23MUS,setMus,musNow:()=>RD.mus||1,mk,figReach}); // (the skeleton and the poses, for egyptr23.py and figscan.py)
+Object.assign(window.__HK,{jumpSpan,jhK,leapPose,LEN,skel,crawlPose,walkPose,climbFrame,swingPose,MCP,MCK,R23B,R23D,R23MUS,setMus,musNow:()=>RD.mus||1,mk,figReach}); // (the skeleton and the poses, for egyptr23.py and figscan.py)
 Object.assign(window.__HK,{respawn,startRewind,die,startEntry,entryOpen,entryX,exitSwell,EXF,EX_N,EX_GONE,EX_CUT,EN_CTL,EN_DROP,EN_FALL,doorHead,ceilOff:(c,r)=>ceilOff(c,r)}); // (round 26f: the exit and the entry, for stairscan.py and egyptr26f.py)
 Object.defineProperty(window.__HK,'intro',{get(){return intro;},set(v){intro=v;}}); // (the floor's title banner, for egyptprop.py)
 Object.assign(window.__HK,{GATE_G,liftCell,windowPath,gateGeom,stoneTex,STONES,THEME_STONE,SLAB_STONE,stoneLying,BLK_W,BLK_H,looseWell,WELL_V,blockStep,wellGroup,wellSolve,wellTip,sandTex});
