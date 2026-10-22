@@ -8030,40 +8030,53 @@ function updateLookFx(dt){
 // Each part of the keep looks out on its own view, in layers that scroll at their own speeds (far ones barely move).
 const BG_W=640,BG_H=210,BG_BASE=176;
 // (each theme's view: the sky's four stops and the layers far to near; `nostars`: no stars even at night, for a smoky sky)
+// (round 27b, owner: "The background moves too fast ... We should keep the illusion of distance between that background and our walls and
+// windows") Each layer's factor is the one its depth gives: for a camera Z0 from the play plane and a layer Z away, a point of the layer
+// moves on the screen f = Z0/Z as far as the walls do (pinhole: x' = Z0 X/Z), and slides past the windows by 1-f. A thing H metres high
+// drawn h px high stands where h = s f H (s = 29.4 px/m on the play plane: the prince's 1.75 m is 51.5 px), so f = h/(s H): the factor
+// follows from the drawing's own size and what it shows, with no lens to choose. Until 27b the factors were 3 to 10 times too large for
+// what the layers show (el-Qurn's 345 m relief drawn 54 px moved at 0.05: a 37 m hill 107 m off; the palms at 0.3 read as 9 m shrubs
+// 13 m off). Depths (d behind the play plane, Z0 5.65 m: a 60 degree vertical view of the 6.5 m frame) and heights: egyptr27b.py's table.
+// The sky, stars, moon and sun are at infinity (f 0); clouds 0.002; a far haze ridge (`farridge`, aerial perspective: mixed into the sky's
+// horizon colour) where the farthest land was near; a near band (`near`: fallen blocks, scrub or reeds, 1-4 m at d 17 m, f 0.25, the
+// nearest anything in the view stands) in front in the open themes. Interiors (the Cistern, the Forge) keep their hall's own depths.
 const BGART={
   nun:{sky:['#0b111c','#18263c','#22344e','#152438'],layers:[ // papyrus-bundle columns under their architraves, standing in the water
-    {f:0.06,kind:'pcolon',col:'#2a3852',gap:30,w:7,lift:-30},{f:0.15,kind:'pcolon',col:'#131c2c',gap:64,w:13,lift:-30},{f:0.15,kind:'water',col:'rgba(130,160,200,.16)',lift:-30},{f:0.32,kind:'ropes',col:'#06090f',lift:0,jar:1}]},
+    {f:0.08,kind:'pcolon',col:'#2a3852',gap:30,w:7,lift:-30},{f:0.15,kind:'pcolon',col:'#131c2c',gap:64,w:13,lift:-30},{f:0.15,kind:'water',col:'rgba(130,160,200,.16)',lift:-30},{f:0.25,kind:'ropes',col:'#06090f',lift:0,jar:1}]},
   west:{sky:['#1a2452','#363c78','#9a5a62','#3c2838'],layers:[ // the Theban hills with el-Qurn, a temple's pylons and flagstaffs, palms
-    {f:0.015,kind:'stars',moon:'#f3e6c4'},{f:0.03,kind:'clouds',col:'rgba(170,140,180,.13)',drift:2.5},
-    {f:0.05,kind:'qurn',col:'#463a62',lift:8},{f:0.16,kind:'pylons',col:'#2a2044',win:'#ffc070',lift:14},{f:0.3,kind:'palms',col:'#140f26',lift:26}]},
+    {f:0,kind:'stars',moon:'#f3e6c4'},{f:0.002,kind:'clouds',col:'rgba(170,140,180,.13)',drift:2.5},
+    {f:0.005,kind:'qurn',col:'#463a62',lift:8},{f:0.07,kind:'pylons',col:'#2a2044',win:'#ffc070',lift:14},{f:0.13,kind:'palms',col:'#140f26',lift:26},{f:0.25,kind:'near',v:'reeds',col:'#0a0718',lift:30}]},
   blue:{sky:['#0e1c4c','#24398e','#5470bc','#22306c'],layers:[ // Saqqara: the step pyramid and its niched enclosure wall on the desert's edge
-    {f:0.015,kind:'stars',moon:'#e6ecff'},{f:0.05,kind:'hills',col:'#2a3c78',lift:-4},{f:0.1,kind:'steppyr',col:'#22346a',lift:6},{f:0.18,kind:'niched',col:'#18264e',lift:12},{f:0.3,kind:'palms',col:'#0a1230',lift:24}]},
+    {f:0,kind:'stars',moon:'#e6ecff'},{f:0.012,kind:'hills',col:'#2a3c78',lift:-4},{f:0.034,kind:'steppyr',col:'#22346a',lift:6},{f:0.06,kind:'niched',col:'#18264e',lift:12},{f:0.13,kind:'palms',col:'#0a1230',lift:24},{f:0.25,kind:'near',v:'stone',col:'#050a1e',lift:28}]},
   meroe:{sky:['#140404','#3e0f08','#8a3010','#b8461a'],nostars:1,layers:[ // Meroë: the steep royal pyramids behind the smelting furnaces and their smoke
-    {f:0.04,kind:'kushpyr',col:'#4a1a10',lift:2},{f:0.08,kind:'chimneys',col:'#3a1c14',glow:'#ff7a30',lift:8},{f:0.16,kind:'furnaces',col:'#1e0b07',glow:'#ff8a3a',lift:16},{f:0.04,kind:'smoke',col:'rgba(30,18,16,.55)',drift:4},{f:0.32,kind:'ropes',col:'#0a0403',lift:0}]},
+    {f:0.002,kind:'farridge',col:'#4a1a10',haze:0.5,lift:2},{f:0.036,kind:'kushpyr',col:'#4a1a10',lift:2},{f:0.1,kind:'chimneys',col:'#3a1c14',glow:'#ff7a30',lift:8},{f:0.17,kind:'furnaces',col:'#1e0b07',glow:'#ff8a3a',lift:16},{f:0.06,kind:'smoke',col:'rgba(30,18,16,.55)',drift:4},{f:0.25,kind:'ropes',col:'#0a0403',lift:0}]},
   osiris:{sky:['#06120f','#14342c','#2a5a4c','#183c33'],layers:[ // obelisks and lit shrines under a cavetto cornice, trees
-    {f:0.06,kind:'obelisks',col:'#1e4238',glow:'#7fffd0',lift:6},{f:0.16,kind:'shrines',col:'#0e221c',glow:'#8fffd8',lift:14},{f:0.05,kind:'clouds',col:'rgba(120,190,170,.12)',drift:3.5},{f:0.3,kind:'trees',col:'#050c0a',lift:24}]},
+    {f:0.002,kind:'farridge',col:'#1e4238',haze:0.55,lift:4},{f:0.075,kind:'obelisks',col:'#1e4238',glow:'#7fffd0',lift:6},{f:0.12,kind:'shrines',col:'#0e221c',glow:'#8fffd8',lift:14},{f:0.002,kind:'clouds',col:'rgba(120,190,170,.12)',drift:3.5},{f:0.145,kind:'trees',col:'#050c0a',lift:24},{f:0.25,kind:'near',v:'reeds',col:'#020605',lift:28}]},
   foggara:{sky:['#141428','#2c2a4a','#7a5a5a','#3a2a26'],layers:[ // the Fezzan: an escarpment, and lines of shaft mounds running across the sand to the palms
-    {f:0.015,kind:'stars',moon:'#f0e6d0'},{f:0.04,kind:'escarp',col:'#3a2e40',lift:22},{f:0.09,kind:'mounds',col:'#4a3832',lift:8,rows:3,sz:0.8},{f:0.18,kind:'mounds',col:'#2c201c',lift:-2,rows:2,sz:1.4},{f:0.32,kind:'palms',col:'#0e0a0c',lift:20,few:1}]},
+    {f:0,kind:'stars',moon:'#f0e6d0'},{f:0.006,kind:'escarp',col:'#3a2e40',lift:22},{f:0.02,kind:'mounds',col:'#4a3832',lift:8,rows:3,sz:0.8},{f:0.036,kind:'mounds',col:'#2c201c',lift:-2,rows:2,sz:1.4},{f:0.12,kind:'palms',col:'#0e0a0c',lift:20,few:1},{f:0.25,kind:'near',v:'scrub',col:'#070507',lift:26}]},
   deffufa:{sky:['#1c2048','#3a3a70','#a0605a','#3c2a30'],layers:[ // Kerma: the Deffufa's mudbrick mass, round huts, acacias
-    {f:0.015,kind:'stars',moon:'#f3e6c4'},{f:0.03,kind:'clouds',col:'rgba(180,140,160,.12)',drift:2},{f:0.06,kind:'dunes',col:'#4a3a5a',lift:2},
-    {f:0.14,kind:'deffufa',col:'#2c1e30',win:'#ffb060',lift:10},{f:0.22,kind:'huts',col:'#1a1220',lift:16},{f:0.32,kind:'acacia',col:'#0e0a14',lift:24}]},
+    {f:0,kind:'stars',moon:'#f3e6c4'},{f:0.002,kind:'clouds',col:'rgba(180,140,160,.12)',drift:2},{f:0.002,kind:'farridge',col:'#4a3a5a',haze:0.5,lift:10},{f:0.035,kind:'dunes',col:'#4a3a5a',lift:2},
+    {f:0.11,kind:'deffufa',col:'#2c1e30',win:'#ffb060',lift:10},{f:0.13,kind:'huts',col:'#1a1220',lift:16},{f:0.155,kind:'acacia',col:'#0e0a14',lift:24},{f:0.25,kind:'near',v:'scrub',col:'#07050b',lift:28}]},
   wells:{sky:['#101830','#28305a','#8a6a60','#3a2c2a'],layers:[ // the Valley of the Kings: el-Qurn over the cliffs, the tombs' doorways cut in them
-    {f:0.015,kind:'stars',moon:'#f3e6c4'},{f:0.04,kind:'qurn',col:'#3a2c38',lift:26},{f:0.14,kind:'cliffs',col:'#241a22',win:'#ffc880',lift:8},{f:0.3,kind:'hills',col:'#120c12',lift:-30}]},
+    {f:0,kind:'stars',moon:'#f3e6c4'},{f:0.005,kind:'qurn',col:'#3a2c38',lift:26},{f:0.021,kind:'cliffs',col:'#241a22',win:'#ffc880',lift:8},{f:0.115,kind:'hills',col:'#120c12',lift:-30}]},
   napata:{sky:['#1a1024','#4a2030','#c0603a','#5a2a24'],layers:[ // Gebel Barkal and its pinnacle, the steep pyramids, the Nile, palms
-    {f:0.015,kind:'stars',moon:'#f6dcc0'},{f:0.05,kind:'barkal',col:'#3a1c22',lift:12},{f:0.11,kind:'kushpyr',col:'#2a1218',lift:8},{f:0.17,kind:'water',col:'rgba(240,170,120,.14)',lift:-6},{f:0.3,kind:'palms',col:'#0e0608',lift:22}]},
+    {f:0,kind:'stars',moon:'#f6dcc0'},{f:0.002,kind:'farridge',col:'#3a1c22',haze:0.5,lift:6},{f:0.031,kind:'barkal',col:'#3a1c22',lift:12},{f:0.05,kind:'kushpyr',col:'#2a1218',lift:8},{f:0.08,kind:'water',col:'rgba(240,170,120,.14)',lift:-6},{f:0.125,kind:'palms',col:'#0e0608',lift:22},{f:0.25,kind:'near',v:'reeds',col:'#070304',lift:28}]},
   aksum:{sky:['#0a121e','#1c2c44','#56607a','#26303e'],layers:[ // the highlands' flat-topped ambas, the field of storeyed stelae, trees
-    {f:0.015,kind:'stars',moon:'#e6ecff'},{f:0.03,kind:'clouds',col:'rgba(160,170,190,.12)',drift:3},{f:0.05,kind:'ambas',col:'#222c3a',lift:20},{f:0.14,kind:'stelae',col:'#141a24',lift:10},{f:0.3,kind:'trees',col:'#06080c',lift:22}]},
+    {f:0,kind:'stars',moon:'#e6ecff'},{f:0.002,kind:'clouds',col:'rgba(160,170,190,.12)',drift:3},{f:0.004,kind:'ambas',col:'#222c3a',lift:20},{f:0.11,kind:'stelae',col:'#141a24',lift:10},{f:0.14,kind:'trees',col:'#06080c',lift:22},{f:0.25,kind:'near',v:'stone',col:'#030406',lift:28}]},
   hawara:{sky:['#121a32','#2a3460','#86707a','#2c2a3a'],layers:[ // Hawara: the worn mudbrick pyramid, the Fayum's water, the Labyrinth's broken walls, palms
-    {f:0.015,kind:'stars',moon:'#f3e6c4'},{f:0.06,kind:'ruinpyr',col:'#2e2a3a',lift:10},{f:0.12,kind:'water',col:'rgba(150,170,210,.15)',lift:-10},{f:0.18,kind:'labwalls',col:'#1a1824',lift:4},{f:0.3,kind:'palms',col:'#0a0a12',lift:24,few:1}]},
+    {f:0,kind:'stars',moon:'#f3e6c4'},{f:0.002,kind:'farridge',col:'#2e2a3a',haze:0.5,lift:4},{f:0.054,kind:'ruinpyr',col:'#2e2a3a',lift:10},{f:0.075,kind:'water',col:'rgba(150,170,210,.15)',lift:-10},{f:0.105,kind:'labwalls',col:'#1a1824',lift:4},{f:0.12,kind:'palms',col:'#0a0a12',lift:24,few:1},{f:0.25,kind:'near',v:'stone',col:'#050509',lift:28}]},
   shali:{sky:['#16244c','#34407a','#a07070','#3a2c3a'],layers:[ // Siwa: the hills, a salt lake, Shali's melted kershef town on its rock, date palms
-    {f:0.015,kind:'stars',moon:'#f3e6c4'},{f:0.04,kind:'hills',col:'#3a3456',lift:6},{f:0.1,kind:'saltlake',col:'rgba(235,235,240,.5)',lift:-6},{f:0.16,kind:'shali',col:'#2a2238',win:'#ffc070',lift:12},{f:0.3,kind:'palms',col:'#120e1e',lift:24}]}};
+    {f:0,kind:'stars',moon:'#f3e6c4'},{f:0.0115,kind:'hills',col:'#3a3456',lift:6},{f:0.02,kind:'saltlake',col:'rgba(235,235,240,.5)',lift:-6},{f:0.035,kind:'shali',col:'#2a2238',win:'#ffc070',lift:12},{f:0.13,kind:'palms',col:'#120e1e',lift:24},{f:0.25,kind:'near',v:'scrub',col:'#08060e',lift:28}]}};
 const bgArt=th=>BGART[th.look]||BGART.nun;
 const bgCache=new Map();
+const bgRGB=c=>c[0]==='#'?hexRGB(c):c.match(/[\d.]+/g).slice(0,3).map(Number);
+// (round 27b) a far layer takes the air between: its colour goes toward the sky's horizon stop (aerial perspective, Leonardo's 'perspective of disappearance')
+function bgHaze(art,ly,tod){const r=mixRGB(bgRGB(todColor(ly.col,tod)),bgRGB(todSky(art.sky,tod)[2]),ly.haze);return 'rgb('+r.map(Math.round)+')';}
 const BGQ=0.42; // the background is painted at this fraction of screen resolution: cheaper, and soft like distant scenery
 function bgLayers(look,tod=0){const key=look+':'+tod+':'+VS.toFixed(2);let v=bgCache.get(key);if(v)return v;
   const art=BGART[look]||BGART.nun,sc=Math.max(0.5,VS*BGQ),style=look;
-  let lys=art.layers.map(ly=>Object.assign({},ly,{col:todColor(ly.col,tod),tod}));
-  if(tod===1&&!lys.some(q=>q.kind==='stars')&&!art.nostars)lys=[{f:0.015,kind:'stars',moon:'#d6def5',tod},...lys]; // a night sky has stars even over the Cistern
+  let lys=art.layers.map(ly=>Object.assign({},ly,{col:ly.haze?bgHaze(art,ly,tod):todColor(ly.col,tod),tod}));
+  if(tod===1&&!lys.some(q=>q.kind==='stars')&&!art.nostars)lys=[{f:0,kind:'stars',moon:'#d6def5',tod},...lys]; // a night sky has stars even over the Cistern
   // (round 25e) the moon is a layer of its own, after its stars: each storey's openings see it at their own eye level, so it is drawn
   // only for the storey the camera is at (crossfading as the camera moves between storeys, bgMoonA): one moon on the screen, not a stack
   lys=lys.flatMap((ly,i)=>ly.kind==='stars'?[Object.assign({},ly,{nomoon:1,si:i}),Object.assign({},ly,{moonOnly:1,si:i})]:[Object.assign(ly,{si:i})]);
@@ -8081,7 +8094,7 @@ function bgLayers(look,tod=0){const key=look+':'+tod+':'+VS.toFixed(2);let v=bgC
 // lens focused on the prince (Hollow Knight blurs its background layers, with aerial perspective on top). The blur is a small
 // image pyramid on the GPU (halve the layer once or twice with smoothing, then scale it back up): Safari's canvas `filter` is
 // still off by default, and a blur over the pixels in JS took ~1 s a theme.
-function bgBlurR(f){return 1.2+2.8*clamp(1-f/0.32,0,1);} // in background units: ~1.2 for the nearest layer, ~4 for the farthest (owner: stronger)
+function bgBlurR(f){return 1.2+2.8*clamp(Math.log(0.2/Math.max(f,1e-4))/Math.log(40),0,1);} // (round 27b: on the log of the depth, f 0.2 and nearer sharpest, 0.005 and farther softest) // in background units: ~1.2 for the nearest layer, ~4 for the farthest (owner: stronger)
 function bgSoften(c,g,R){const lv=R<1.4?0:R<3?1:R<6?2:3;if(!lv)return;const w=c.width,h=c.height,p=4<<lv,W=w+2*p,Hh=h+2*p;
   const mk=(a,b)=>{const q=document.createElement('canvas');q.width=a;q.height=b;q.getContext('2d').imageSmoothingEnabled=true;return q;};
   const t=mk(W,Hh),tg=t.getContext('2d');for(const ox of [p-w,p,p+w])tg.drawImage(c,ox,p); // the strip tiles sideways: wrap it into the margins
@@ -8089,6 +8102,10 @@ function bgSoften(c,g,R){const lv=R<1.4?0:R<3?1:R<6?2:3;if(!lv)return;const w=c.
   const lev=[t];for(let i=0;i<lv;i++){const s=lev[i],d=mk(Math.ceil(s.width/2),Math.ceil(s.height/2));d.getContext('2d').drawImage(s,0,0,d.width,d.height);lev.push(d);}
   for(let i=lv-1;i>=0;i--){const u=lev[i],ug=u.getContext('2d');ug.clearRect(0,0,u.width,u.height);ug.drawImage(lev[i+1],0,0,u.width,u.height);}
   g.save();g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,w,h);g.drawImage(t,p,p,w,h,0,0,w,h);g.restore();}
+const BGK=2*Math.PI/BG_W; // (round 27b) one period over the strip: outlines made of whole periods tile without a seam
+// a closed outline over the strip: pt runs from x 0 to xe and comes back to its first height; scaled to end at BG_W, drawn with a little
+// flat margin either side so the copies a strip apart meet on the same line
+function bgClosed(g,pt,xe,B){const k=BG_W/xe;g.beginPath();g.moveTo(-2,BG_H);g.lineTo(-2,pt[0][1]);for(const p of pt)g.lineTo(p[0]*k,p[1]);g.lineTo(BG_W+2,pt[0][1]);g.lineTo(BG_W+2,BG_H);g.closePath();g.fill();}
 function bgPaint(g,ly,rnd){const B=BG_BASE-(ly.lift||0),T=Math.PI*2,R=(a,b)=>a+rnd()*(b-a);g.fillStyle=ly.col;
   const ground=()=>g.fillRect(-2,B,BG_W+4,BG_H-B+2);
   switch(ly.kind){
@@ -8097,9 +8114,9 @@ function bgPaint(g,ly,rnd){const B=BG_BASE-(ly.lift||0),T=Math.PI*2,R=(a,b)=>a+r
       {const gr=g.createRadialGradient(470,46,8,470,46,34);gr.addColorStop(0,'rgba(255,240,210,.18)');gr.addColorStop(1,'rgba(255,240,210,0)');g.fillStyle=gr;g.fillRect(430,6,80,80);}
       g.save();g.globalCompositeOperation='destination-out';g.beginPath();g.arc(475,42,8,0,T);g.fill();g.restore();break;
     case'clouds':for(let i=0;i<9;i++){const x=R(0,BG_W),y=R(20,BG_BASE-50),w=R(50,120),h=R(5,11);for(let k=0;k<4;k++){g.beginPath();g.ellipse(x+k*w*0.22,y+R(-2,2),w*0.35,h,0,0,T);g.fill();}}break;
-    case'dunes':g.beginPath();g.moveTo(-2,BG_H);for(let x=-2;x<=BG_W+2;x+=8)g.lineTo(x,B-10-8*Math.sin(x*0.012)-5*Math.sin(x*0.031+1));g.lineTo(BG_W+2,BG_H);g.fill();
+    case'dunes':g.beginPath();g.moveTo(-2,BG_H);for(let x=-2;x<=BG_W+2;x+=8)g.lineTo(x,B-10-8*Math.sin(x*BGK)-5*Math.sin(x*BGK*3+1));g.lineTo(BG_W+2,BG_H);g.fill();
       for(let i=0;i<7;i++){const x=R(0,BG_W),w=R(6,12),by=B-12;g.fillRect(x-w/2,by-w*0.8,w,w*0.8);g.beginPath();g.ellipse(x,by-w*0.8,w*0.55,w*0.5,0,Math.PI,0);g.fill();}break;
-    case'hills':g.beginPath();g.moveTo(-2,BG_H);for(let x=-2;x<=BG_W+2;x+=8)g.lineTo(x,B-26-18*Math.sin(x*0.009+0.5)-9*Math.sin(x*0.027));g.lineTo(BG_W+2,BG_H);g.fill();break;
+    case'hills':g.beginPath();g.moveTo(-2,BG_H);for(let x=-2;x<=BG_W+2;x+=8)g.lineTo(x,B-26-18*Math.sin(x*BGK+0.5)-9*Math.sin(x*BGK*3));g.lineTo(BG_W+2,BG_H);g.fill();break;
     case'city':{ground();let x=0;while(x<BG_W){const k=rnd(),w=R(14,30),h=R(16,40);
         g.fillRect(x,B-h,w,h);
         if(k<0.45){g.beginPath();g.ellipse(x+w/2,B-h,w*0.42,w*0.42,0,Math.PI,0);g.fill();g.fillRect(x+w/2-0.6,B-h-w*0.42-5,1.2,5);}
@@ -8112,25 +8129,26 @@ function bgPaint(g,ly,rnd){const B=BG_BASE-(ly.lift||0),T=Math.PI*2,R=(a,b)=>a+r
     case'pavilions':ground();for(let i=0;i<7;i++){const x=i*BG_W/7+R(0,30),w=R(26,44),h=R(18,30);g.fillRect(x,B-h,w,h);g.beginPath();g.moveTo(x+w/2-w*0.3,B-h);g.bezierCurveTo(x+w/2-w*0.42,B-h-w*0.4,x+w/2-2,B-h-w*0.45,x+w/2,B-h-w*0.62);g.bezierCurveTo(x+w/2+2,B-h-w*0.45,x+w/2+w*0.42,B-h-w*0.4,x+w/2+w*0.3,B-h);g.fill();
         g.fillStyle=ly.win;for(let k=0;k<3;k++){g.globalAlpha=R(0.4,0.85);const ax=x+w*(0.2+k*0.3)-2;g.beginPath();g.moveTo(ax,B-3);g.lineTo(ax,B-h*0.55);g.quadraticCurveTo(ax+2,B-h*0.7,ax+4,B-h*0.55);g.lineTo(ax+4,B-3);g.fill();}g.globalAlpha=1;g.fillStyle=ly.col;}break;
     case'cypress':ground();for(let i=0;i<12;i++){const x=R(0,BG_W),h=R(34,64),w=R(5,8);g.beginPath();g.ellipse(x,B-h/2,w,h/2,0,0,T);g.fill();}g.fillRect(-2,B-10,BG_W+4,10);break;
-    case'pcolon':{const gap=ly.gap,w=ly.w,top=10;g.fillRect(-2,top-8,BG_W+4,7);g.fillRect(-2,top-10,BG_W+4,1.4); // the architrave, its cornice
+    case'pcolon':{const gap=BG_W/Math.round(BG_W/ly.gap),w=ly.w,top=10;g.fillRect(-2,top-8,BG_W+4,7);g.fillRect(-2,top-10,BG_W+4,1.4); // the architrave, its cornice
       for(let x=0;x<BG_W;x+=gap){const cx=x+w/2;g.fillRect(x-1,top-1,w+2,2.4);g.beginPath();g.ellipse(cx,top+6,w*0.72,5.4,0,0,T);g.fill(); // the abacus and the closed papyrus bud
         g.beginPath();g.moveTo(x+w*0.08,top+9);g.lineTo(x,B-4);g.lineTo(x+w,B-4);g.lineTo(x+w*0.92,top+9);g.closePath();g.fill(); // the bundle shaft, swelling at the foot
         for(const yy of [top+12,top+14.4,top+16.8])g.fillRect(x-0.6,yy,w+1.2,1); g.beginPath();g.ellipse(cx,B-3,w*0.8,2.4,0,0,T);g.fill();}
       ground();break;}
-    case'qurn':g.beginPath();g.moveTo(-2,BG_H);for(let x=-2;x<=BG_W+2;x+=6){const d=Math.min(Math.abs(x-150),Math.abs(x-470)),pk=Math.max(0,28-d*0.42);g.lineTo(x,B-22-8*Math.sin(x*0.011+0.4)-4*Math.sin(x*0.037)-pk);}g.lineTo(BG_W+2,BG_H);g.fill();break; // the hills with el-Qurn, the peak shaped like a pyramid
+    case'qurn':g.beginPath();g.moveTo(-2,BG_H);for(let x=-2;x<=BG_W+2;x+=6){const d=Math.min(Math.abs(x-150),Math.abs(x-470)),pk=Math.max(0,28-d*0.42);g.lineTo(x,B-22-8*Math.sin(x*BGK+0.4)-4*Math.sin(x*BGK*4)-pk);}g.lineTo(BG_W+2,BG_H);g.fill();break; // the hills with el-Qurn, the peak shaped like a pyramid
     case'pylons':ground();for(let i=0;i<3;i++){const x=i*BG_W/3+R(10,80),w=R(64,86),h=R(36,48),tw=w*0.4;
         for(const sx of [x,x+w-tw]){g.beginPath();g.moveTo(sx,B);g.lineTo(sx+tw*0.1,B-h);g.lineTo(sx+tw*0.9,B-h);g.lineTo(sx+tw,B);g.closePath();g.fill();g.fillRect(sx+tw*0.06,B-h-2.4,tw*0.88,2.4); // each tower battered, under its cornice
           g.fillRect(sx+tw*0.3,B-h-16,1,16);g.fillRect(sx+tw*0.7,B-h-16,1,16);g.beginPath();g.moveTo(sx+tw*0.3+1,B-h-16);g.lineTo(sx+tw*0.3+5,B-h-14);g.lineTo(sx+tw*0.3+1,B-h-12);g.fill();} // flagstaffs with pennants
         g.fillRect(x+tw,B-h*0.62,w-2*tw,h*0.62);g.fillStyle=ly.win;g.globalAlpha=0.7;g.fillRect(x+w/2-2.4,B-h*0.44,4.8,h*0.44);g.globalAlpha=1;g.fillStyle=ly.col;}break; // the gate between, lit
     case'steppyr':for(let i=0;i<2;i++){const x=i*BG_W/2+R(60,200),w=R(110,140),h=w*0.46,n=6;for(let k=0;k<n;k++){const ww=w*(1-k*0.14),hh=h/n;g.beginPath();g.moveTo(x-ww/2,B-k*hh);g.lineTo(x-ww/2+hh*0.25,B-(k+1)*hh);g.lineTo(x+ww/2-hh*0.25,B-(k+1)*hh);g.lineTo(x+ww/2,B-k*hh);g.closePath();g.fill();}}ground();break; // Djoser's six steps
-    case'niched':ground();g.fillRect(-2,B-15,BG_W+4,15);for(let x=0;x<BG_W;x+=9){g.fillRect(x,B-17,4,2);if((x/9|0)%5===0)g.fillRect(x-2,B-19,8,4);}break; // the enclosure wall, panelled and with bastions
+    case'niched':ground();g.fillRect(-2,B-15,BG_W+4,15);for(let i=0;i<70;i++){const x=i*BG_W/70;g.fillRect(x,B-17,4,2);if(i%5===0)g.fillRect(x-2,B-19,8,4);}break; // the enclosure wall, panelled and with bastions
     case'kushpyr':ground();for(let i=0;i<9;i++){const x=R(0,BG_W),w=R(10,20),h=w*1.55;g.beginPath();g.moveTo(x-w/2,B);g.lineTo(x-w*0.06,B-h);g.lineTo(x+w*0.06,B-h);g.lineTo(x+w/2,B);g.closePath();g.fill(); // steep, about 70 degrees, a flat top
         if(rnd()<0.6){const cw=w*0.5;g.fillRect(x-w/2-cw*0.7,B-cw*0.55,cw,cw*0.55);g.fillRect(x-w/2-cw*0.8,B-cw*0.62,cw*1.2,1);}}break; // and a pylon chapel at its foot
     case'shrines':ground();{let x=0;while(x<BG_W){const w=R(18,30),h=R(14,24);g.fillStyle=ly.col;g.beginPath();g.moveTo(x,B);g.lineTo(x+1.4,B-h);g.lineTo(x+w-1.4,B-h);g.lineTo(x+w,B);g.closePath();g.fill();g.fillRect(x-1,B-h-3,w+2,3); // a shrine, its cornice
         if(rnd()<0.6){const gx=x+w/2,gy=B-h*0.4;const gr=g.createRadialGradient(gx,gy,0,gx,gy,10);gr.addColorStop(0,'rgba(140,255,215,.5)');gr.addColorStop(1,'rgba(140,255,215,0)');g.fillStyle=gr;g.fillRect(gx-10,gy-10,20,20);g.fillStyle=ly.glow;g.fillRect(gx-1.4,gy-3,2.8,6);}
         x+=w+R(10,34);}}break;
-    case'escarp':g.beginPath();g.moveTo(-2,BG_H);{let x=-2,y=B-14;g.lineTo(x,y);while(x<BG_W+2){const run=R(30,90);x+=run;g.lineTo(x,y);const ny=B-R(8,30);x+=Math.abs(ny-y)*0.6+2;y=ny;g.lineTo(x,y);}}g.lineTo(BG_W+2,BG_H);g.fill();break; // flat tops, short steep drops
-    case'mounds':ground();{const rows=ly.rows||2,sz=ly.sz||1;for(let r=0;r<rows;r++){const y0=B-2-r*7*sz,sl=R(-0.05,0.05);for(let x=R(-8,4);x<BG_W;x+=R(9,14)*sz){const y=y0+(x-BG_W/2)*sl;g.fillStyle=ly.col;g.beginPath();g.ellipse(x,y,4.4*sz,1.9*sz,0,Math.PI,0);g.fill();
+    case'escarp':{const pt=[[0,B-14]];let x=0,y=B-14;while(x<BG_W-40){const run=R(30,90);x+=run;pt.push([x,y]);const ny=B-R(8,30);x+=Math.abs(ny-y)*0.6+2;y=ny;pt.push([x,y]);}
+      pt.push([x+30,y]);x+=30+Math.abs(B-14-y)*0.6+2;pt.push([x,B-14]);bgClosed(g,pt,x,B);}break; // flat tops, short steep drops
+    case'mounds':ground();{const rows=ly.rows||2,sz=ly.sz||1;for(let r=0;r<rows;r++){const y0=B-2-r*7*sz,sl=R(-0.05,0.05);for(let x=R(-8,4);x<BG_W;x+=R(9,14)*sz){const y=y0+sl*90*Math.sin(x*BGK+sl*60);g.fillStyle=ly.col;g.beginPath();g.ellipse(x,y,4.4*sz,1.9*sz,0,Math.PI,0);g.fill();
         g.fillStyle='rgba(0,0,0,.35)';g.beginPath();g.ellipse(x,y-0.6*sz,1.4*sz,0.6*sz,0,0,T);g.fill();}}}g.fillStyle=ly.col;break; // the spoil ring round each shaft of a foggara, in lines across the sand
     case'deffufa':ground();for(let i=0;i<2;i++){const x=i*BG_W/2+R(40,200),w=R(80,110),h=R(48,62),rr=6;g.beginPath();g.moveTo(x,B);g.lineTo(x+1,B-h+rr);g.quadraticCurveTo(x+1,B-h,x+rr,B-h);g.lineTo(x+w-rr,B-h);g.quadraticCurveTo(x+w-1,B-h,x+w-1,B-h+rr);g.lineTo(x+w,B);g.closePath();g.fill(); // the mass, its corners rounded
         g.fillRect(x+w*0.7,B-h-8,w*0.22,9); g.beginPath();g.moveTo(x-30,B);g.lineTo(x,B-h*0.5);g.lineTo(x,B);g.fill(); // a turret, the stair ramp
@@ -8138,7 +8156,7 @@ function bgPaint(g,ly,rnd){const B=BG_BASE-(ly.lift||0),T=Math.PI*2,R=(a,b)=>a+r
     case'huts':ground();for(let i=0;i<10;i++){const x=R(0,BG_W),w=R(9,15),h=w*0.6;g.fillRect(x-w/2,B-h,w,h);g.beginPath();g.moveTo(x-w*0.62,B-h);g.lineTo(x,B-h-w*0.7);g.lineTo(x+w*0.62,B-h);g.fill();}break; // round huts under conical thatch
     case'acacia':ground();for(let i=0;i<4;i++){const x=R(0,BG_W),h=R(26,40),w=R(26,40);g.strokeStyle=ly.col;g.lineWidth=1.8;g.beginPath();g.moveTo(x,B);g.lineTo(x+2,B-h*0.6);g.lineTo(x-4,B-h);g.moveTo(x+2,B-h*0.6);g.lineTo(x+7,B-h);g.stroke();
         g.beginPath();g.ellipse(x+1,B-h-2,w/2,4,0,0,T);g.fill();}break; // umbrella-topped acacias
-    case'cliffs':g.beginPath();g.moveTo(-2,BG_H);for(let x=-2;x<=BG_W+2;x+=4)g.lineTo(x,B-54-6*Math.sin(x*0.02)-R(0,3));g.lineTo(BG_W+2,BG_H);g.fill();
+    case'cliffs':g.beginPath();g.moveTo(-2,BG_H);for(let x=-2;x<=BG_W+2;x+=4)g.lineTo(x,B-54-6*Math.sin(x*BGK*2)-R(0,3));g.lineTo(BG_W+2,BG_H);g.fill();
       g.fillStyle='rgba(0,0,0,.3)';for(let x=R(0,8);x<BG_W;x+=R(6,14))g.fillRect(x,B-52,1,R(20,50)); // the rills down the limestone
       for(let i=0;i<5;i++){const x=R(10,BG_W-10),y=B-R(4,20);g.fillStyle='#000';g.fillRect(x-3,y-7,6,7);g.fillStyle=ly.win;g.globalAlpha=0.35;g.fillRect(x-2,y-6,4,6);g.globalAlpha=1;}g.fillStyle=ly.col;break; // tomb doorways cut low in the cliff
     case'barkal':ground();{const x=R(120,420),w=220,h=60;g.beginPath();g.moveTo(x-w/2-30,B);g.lineTo(x-w/2,B-h);g.lineTo(x+w/2,B-h);g.lineTo(x+w/2+16,B-h*0.4);g.lineTo(x+w/2+40,B);g.closePath();g.fill(); // the flat-topped mountain
@@ -8147,15 +8165,33 @@ function bgPaint(g,ly,rnd){const B=BG_BASE-(ly.lift||0),T=Math.PI*2,R=(a,b)=>a+r
         if(fall){g.fillRect(x-h/2,B-w*0.8,h,w*0.8);continue;} // one lies broken on the ground
         g.fillRect(x-w/2,B-h,w,h);g.beginPath();g.ellipse(x,B-h,w/2,w*0.45,0,Math.PI,0);g.fill(); // its rounded head
         g.fillStyle='rgba(0,0,0,.4)';for(let y=B-h+w;y<B-8;y+=9){g.fillRect(x-w/2,y,w,0.9);g.fillRect(x-w*0.25,y+3,w*0.18,2.6);g.fillRect(x+w*0.07,y+3,w*0.18,2.6);}g.fillRect(x-w*0.2,B-7,w*0.4,7);g.fillStyle=ly.col;}break; // carved storeys, false windows, a false door at the foot
-    case'ambas':g.beginPath();g.moveTo(-2,BG_H);{let x=-2;g.lineTo(x,B-6);while(x<BG_W+2){const w=R(40,110),h=R(18,40);g.lineTo(x+6,B-h);g.lineTo(x+w-6,B-h);g.lineTo(x+w,B-6);x+=w+R(4,30);g.lineTo(x,B-6);}}g.lineTo(BG_W+2,BG_H);g.fill();break; // flat-topped mountains with sheer sides
+    case'ambas':{const pt=[[0,B-6]];let x=0;while(x<BG_W-40){const w=R(40,110),h=R(18,40);pt.push([x+6,B-h],[x+w-6,B-h],[x+w,B-6]);x+=w+R(4,30);pt.push([x,B-6]);}bgClosed(g,pt,x,B);}break; // flat-topped mountains with sheer sides
     case'ruinpyr':ground();for(let i=0;i<2;i++){const x=i*BG_W/2+R(80,220),w=R(100,130),h=w*0.38;g.beginPath();g.moveTo(x-w/2,B);for(let k=1;k<=10;k++){const u=k/10;g.lineTo(x-w/2+u*w/2,B-h*u+R(-2,2.5));}for(let k=9;k>=0;k--){const u=k/10;g.lineTo(x+w/2-u*w/2,B-h*u+R(-2,2.5));}g.closePath();g.fill();}break; // a worn mudbrick mound, its casing gone
     case'labwalls':ground();for(let x=R(0,10);x<BG_W;x+=R(10,26)){const h=R(4,14);g.fillRect(x,B-h,R(6,16),h);if(rnd()<0.3){g.fillRect(x+2,B-h-R(6,14),3,R(6,14));}}break; // the Labyrinth's broken walls and column stumps
     case'saltlake':g.fillRect(-2,B-3,BG_W+4,8);g.fillStyle='rgba(255,255,255,.35)';for(let i=0;i<30;i++)g.fillRect(R(0,BG_W),B-2+R(0,5),R(6,20),0.6);g.fillStyle=ly.col;break; // a salt-crusted lake
     case'shali':ground();{const x0=R(120,300),w=R(220,280);g.beginPath();g.moveTo(x0-30,B);g.quadraticCurveTo(x0+w/2,B-34,x0+w+30,B);g.fill(); // its rock
         let x=x0;while(x<x0+w){const bw=R(10,24),bh=R(16,40)*(1-Math.abs(x-x0-w/2)/(w*0.8)),yb=B-12;g.beginPath();g.moveTo(x,yb);g.lineTo(x+R(-1,1),yb-bh+4);g.quadraticCurveTo(x+bw*0.2,yb-bh-R(0,3),x+bw*0.5,yb-bh+R(-1,2));g.quadraticCurveTo(x+bw*0.8,yb-bh-R(0,3),x+bw,yb-bh+4);g.lineTo(x+bw,yb);g.closePath();g.fill(); // melted tops
           if(rnd()<0.5){g.fillStyle=ly.win;g.globalAlpha=R(0.4,0.8);g.fillRect(x+R(2,bw-4),yb-R(4,bh-6),1.6,2.2);g.globalAlpha=1;g.fillStyle=ly.col;}x+=bw*R(0.6,0.95);}}break;
-    case'colonnade':{const gap=ly.gap,w=ly.w,top=10;g.fillRect(-2,top-6,BG_W+4,8);for(let x=0;x<BG_W;x+=gap){g.fillRect(x,top,w,B-top);g.fillRect(x-2,top,w+4,3);g.fillRect(x-2,B-4,w+4,4);
+    case'colonnade':{const gap=BG_W/Math.round(BG_W/ly.gap),w=ly.w,top=10;g.fillRect(-2,top-6,BG_W+4,8);for(let x=0;x<BG_W;x+=gap){g.fillRect(x,top,w,B-top);g.fillRect(x-2,top,w+4,3);g.fillRect(x-2,B-4,w+4,4);
         g.beginPath();g.moveTo(x+w,top+gap*0.5);g.quadraticCurveTo(x+w+(gap-w)/2,top,x+gap,top+gap*0.5);g.lineTo(x+gap,top);g.lineTo(x+w,top);g.fill();}ground();break;}
+    case'farridge':{const p1=R(0,T),p2=R(0,T),p3=R(0,T),a=R(0.8,1.2); // (round 27b) a far ridge in the air's colour, km off: whole periods so it tiles
+      g.beginPath();g.moveTo(-2,BG_H);for(let x=-2;x<=BG_W+2;x+=4)g.lineTo(x,B-14*a-9*Math.sin(x*BGK+p1)-5*Math.sin(x*BGK*3+p2)-2*Math.sin(x*BGK*7+p3));g.lineTo(BG_W+2,BG_H);g.fill();break;}
+    case'near':{ground();const v=ly.v||'stone'; // (round 27b) the nearest band, d 17 m (f 0.25): things 1-4 m high, so h = s f H gives 7-30 px
+      g.beginPath();g.moveTo(-2,B+1);for(let x=-2;x<=BG_W+2;x+=8)g.lineTo(x,B-1.5-1.5*Math.sin(x*BGK*2+1)-Math.sin(x*BGK*5));g.lineTo(BG_W+2,B+1);g.fill(); // the ground's own swell
+      if(v==='stone'){for(let i=0;i<13;i++){const x=R(0,BG_W),k=rnd(),w=R(8,20),h=R(5,11);g.beginPath();
+          if(k<0.42){const t=R(-2,2);g.moveTo(x,B+1);g.lineTo(x+R(-1,1),B-h);g.lineTo(x+w*0.15,B-h-0.8);g.lineTo(x+w+R(-1,1),B-h+t);g.lineTo(x+w,B+1);} // a fallen block, a little askew
+          else if(k<0.72)g.ellipse(x,B+0.5,R(4,9),R(3,7),0,Math.PI,0); // a boulder
+          else if(k<0.86){g.rect(x,B-h*0.8,w*1.4,h*0.8);g.ellipse(x+w*1.4,B-h*0.4,h*0.22,h*0.4,0,0,T);} // a column drum lying on its side
+          else{const sw=R(6,12),sh=R(16,28);g.moveTo(x,B+1);g.lineTo(x,B-sh+R(0,4));g.lineTo(x+sw*0.3,B-sh);g.lineTo(x+sw*0.5,B-sh+R(3,7));g.lineTo(x+sw*0.75,B-sh+R(0,3));g.lineTo(x+sw,B-sh+R(4,9));g.lineTo(x+sw,B+1);} // a broken pier
+          g.fill();}
+        for(let i=0;i<34;i++){g.beginPath();g.ellipse(R(0,BG_W),B,R(0.8,2),R(0.6,1.4),0,Math.PI,0);g.fill();}}
+      else{const reeds=v==='reeds';g.strokeStyle=ly.col;g.lineCap='round';
+        for(let i=0;i<(reeds?9:12);i++){const x=R(0,BG_W),n=reeds?5+(rnd()*5|0):7+(rnd()*5|0),hh=reeds?R(14,30):R(6,15);
+          for(let k=0;k<n;k++){const u=(k/(n-1))-0.5,a=-Math.PI/2+u*(reeds?0.5:1.7)+R(-0.12,0.12),l=hh*R(0.65,1)*(reeds?1:1-Math.abs(u)*0.5),bx=x+u*(reeds?5:3),
+              ex=bx+Math.cos(a)*l,ey=B+Math.sin(a)*l;g.lineWidth=reeds?1.1:0.9;g.beginPath();g.moveTo(bx,B+0.5);g.quadraticCurveTo(bx+(ex-bx)*0.2,B-l*0.55,ex,ey);g.stroke(); // a stem or a blade, bending out
+            if(reeds&&rnd()<0.7){g.lineWidth=0.8;g.beginPath();for(let j=-2;j<=2;j++){g.moveTo(ex,ey);g.lineTo(ex+j*1.5+Math.cos(a)*1.5,ey-3.2+Math.abs(j)*0.9);}g.stroke();}}} // the papyrus's umbel
+        for(let i=0;i<(reeds?5:9);i++){g.beginPath();g.ellipse(R(0,BG_W),B+0.5,R(2.5,6),R(1.5,4),0,Math.PI,0);g.fill();}} // low stones among them
+      break;}
     case'water':g.fillStyle='rgba(8,14,24,.65)';g.fillRect(-2,B,BG_W+4,BG_H-B+2);g.strokeStyle=ly.col;g.lineWidth=0.8;for(let i=0;i<40;i++){const x=R(0,BG_W),y=R(B+2,BG_H-2),w=R(8,26);g.beginPath();g.moveTo(x,y);g.lineTo(x+w,y);g.stroke();}break;
     case'ropes': // (round 18b: were iron chains) laid ropes hanging from the vault, near and dark: some end in a knot and a frayed tail,
       // some carry a water jar in a rope sling (the Cistern: jars slung in cord nets, as in the tomb paintings) or a basket (the Forge: ore and charcoal)
@@ -8198,7 +8234,7 @@ let bgC=null,bgG=null;
 // factors). A pure function of the camera and of the opening, so a rewind, a respawn or a snap cannot jump it, and nothing switches
 // as the camera crosses a row: each opening keeps its own anchor (the seams between storeys lie in the stone between them). The screen
 // shake moves the view with the keep; a zoom does not slide it.
-const BG_VK=0.2,BG_FSKY=0.015,BG_MOONW=48; // (BG_FSKY: the sky and the sun move as the farthest layer, the stars)
+const BG_VK=0.2,BG_FSKY=0,BG_MOONW=48; // (BG_FSKY: the sky and the sun move as the farthest layer, the stars)
 const BGV={x:0,y:0,sx:0}; // the camera the view is seen from: x without the shake (sx, added in screen space), y with it
 function bgRest(yb){const r=Math.floor((yb-1)/TH);return clamp(SURF(r)-ROOM_H*FRAME,0,Math.max(0,L.rows*TH-ROOM_H));} // (the view's top when the camera rests on the floor an opening's foot stands on)
 // each opening's anchor, found once a floor: openings that touch (a window knocked into a breach) are one hole and share the anchor of
@@ -8231,19 +8267,23 @@ function paintBackdrop(ctx,art,ly,bx0,by0,bx1,by1,an){if(bx1<=bx0||by1<=by0)retu
   if(ctx.isG2D){g=GLS.Fbg;src=GLS.bg;if(GLS.bgFr!==GLS.fr){GLS.bgFr=GLS.fr;g.begin(cw,ch);}} // (unit WGL: the same picture, drawn by WebGL into a target of bgC's size)
   else{if(!bgC||bgC.width!==cw||bgC.height!==ch){bgC=document.createElement('canvas');bgC.width=cw;bgC.height=ch;bgG=bgC.getContext('2d');}g=bgG;src=bgC;}
   if(an===undefined)an=BGV.y;
+  const sn=v=>Math.round(v*q)/q; // (round 27b) a place snapped to the target's pixel grid
   const tod=L.prog?L.prog.tod:0,gk='grad'+tod,sk=art[gk]||(art[gk]=(()=>{const st=todSky(art.sky,tod),gr=g.createLinearGradient(0,0,0,ROOM_H);gr.addColorStop(0,st[0]);gr.addColorStop(0.45,st[1]);gr.addColorStop(0.72,st[2]);gr.addColorStop(1,st[3]);return gr;})());
   const so=-(1-BG_VK*(1-BG_FSKY))*(BGV.y-an); // (round 25e) the sky goes with the view: the gradient made once, moved by the transform (past its ends it pads with its end stops)
   g.setTransform(q,0,0,q,0,so*q);g.fillStyle=sk;g.fillRect(bx0,by0-so,bx1-bx0,by1-by0);
-  if(tod===2){const sx=viewW*0.62-BGV.x*0.01-BGV.sx,gr=art.sun||(art.sun=(()=>{const r=g.createRadialGradient(0,ROOM_H*0.7,2,0,ROOM_H*0.7,ROOM_H*0.9);r.addColorStop(0,'rgba(255,214,150,.55)');r.addColorStop(1,'rgba(255,170,110,0)');return r;})());
+  if(tod===2){const sx=viewW*0.62-BGV.sx,gr=art.sun||(art.sun=(()=>{const r=g.createRadialGradient(0,ROOM_H*0.7,2,0,ROOM_H*0.7,ROOM_H*0.9);r.addColorStop(0,'rgba(255,214,150,.55)');r.addColorStop(1,'rgba(255,170,110,0)');return r;})());
     g.setTransform(q,0,0,q,sx*q,so*q);g.fillStyle=gr;g.fillRect(bx0-sx,by0-so,bx1-bx0,by1-by0);} // the sun just under the skyline (made once, moved by the transform: no gradient a frame)
   g.setTransform(q,0,0,q,0,0);
   for(const L2 of ly){if(L2.moon){const d=Math.abs(BGV.y-an)/BG_MOONW;if(d>=1)continue;g.globalAlpha=1-d*d*(3-2*d);} // (the moon, for the storey the camera is at)
     const W=BG_W,oy=bgLayerY(L2.f,an),sx=L2.c.width/BG_W,sy=L2.c.height/BG_H;let ox=-((((BGV.x*L2.f+gameTime*L2.drift)%W)+W)%W)-BGV.sx;while(ox>bx0)ox-=W;
-    for(let x=ox;x<bx1;x+=W){const ix0=Math.max(bx0,x),ix1=Math.min(bx1,x+W);if(ix1<=ix0)continue;
-      const iy0=Math.max(by0,oy),iy1=Math.min(by1,oy+BG_H);
+    // (round 27b) the joins between the strip's copies, and between the strip and its carried-on rows, fall on whole pixels of the
+    // target (sn): two copies meeting inside a pixel each covered part of it and left a faint line down the view at every join
+    const ya=sn(oy),yb=sn(oy+BG_H);
+    for(let x=ox;x<bx1;x+=W){const ix0=Math.max(bx0,sn(x)),ix1=Math.min(bx1,sn(x+W));if(ix1<=ix0)continue;
+      const iy0=Math.max(by0,ya),iy1=Math.min(by1,yb);
       if(iy1>iy0)g.drawImage(L2.c,(ix0-x)*sx,(iy0-oy)*sy,(ix1-ix0)*sx,(iy1-iy0)*sy,ix0,iy0,ix1-ix0,iy1-iy0);
-      if(L2.bot&&by1>oy+BG_H){const y0=Math.max(by0,oy+BG_H);g.drawImage(L2.c,(ix0-x)*sx,L2.c.height-1,(ix1-ix0)*sx,1,ix0,y0,ix1-ix0,by1-y0);} // (round 25e) the ground carried on below the strip
-      if(L2.top&&by0<oy){const y1=Math.min(by1,oy);g.drawImage(L2.c,(ix0-x)*sx,0,(ix1-ix0)*sx,1,ix0,by0,ix1-ix0,y1-by0);}} // and what hangs from above (the Cistern's architrave, ropes) carried on above it
+      if(L2.bot&&by1>yb){const y0=Math.max(by0,yb);g.drawImage(L2.c,(ix0-x)*sx,L2.c.height-1,(ix1-ix0)*sx,1,ix0,y0,ix1-ix0,by1-y0);} // (round 25e) the ground carried on below the strip
+      if(L2.top&&by0<ya){const y1=Math.min(by1,ya);g.drawImage(L2.c,(ix0-x)*sx,0,(ix1-ix0)*sx,1,ix0,by0,ix1-ix0,y1-by0);}} // and what hangs from above (the Cistern's architrave, ropes) carried on above it
     if(L2.moon)g.globalAlpha=1;}
   ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.imageSmoothingEnabled=true;
   ctx.drawImage(src,bx0*q,by0*q,(bx1-bx0)*q,(by1-by0)*q,bx0*VS,by0*VS,(bx1-bx0)*VS,(by1-by0)*VS);ctx.restore();}
