@@ -329,6 +329,28 @@ forward), windup 0.31 -> 0.09, the drink's last keys up to 0.32. Joints, skeleto
 figscan ok, lowceil, swingtest, rendersmoke, run2. Picture: `egyptr26b.py` (r26b_back.png: before | after with the back's contour, 10x,
 4x, numbers, in game both modes).
 
+## No hump with the arms down (round 28a)
+
+Owner, a phone shot of floor 11 (the Blue Chambers, Torchlight), the prince standing, arms down, the upper back and the shoulder circled:
+"Prince hump in the first photo - I don't think the upper back sticks out as much in a muscular teen seen from the side".
+
+Measured on silhouettes at 10x (`egyptr28a.py`; px at 1x), standing at MUS 1.65: the arms-down back `BQ` 4.72, 4.89, 4.82, 4.82, 4.47 behind
+the spine's line at U .62, .76, .88, .96, 1, so the back was fullest 0.7 px under the shoulder joint, 2.1 px behind the nape, 0.6 px behind the
+seat, a bulge of 2.15 px over the chord from the nape to the waist (1.0: 0.68; 1.28: 1.17). Cause: round 23b/24's `TRUNK_G`/`TRUNK_G2` laid 55-75%
+of the growth behind at every level up to the joint (the `trap` measure at U 1 alone 2.1 px). And the deltoid's root (6.36 px wide at 1.65, 3.24 at
+1.0) grew round its centre at the joint: its cap 4 px over the joint, 0.8 px over the chin. Not the clip's thoracic pitch, `sb` (0 standing), or `RD.mh`.
+
+Research: the wall test (head, shoulder blades and buttocks on one wall, a hand's gap at the low back); thoracic kyphosis 20-45 degrees in
+adolescents (Lowell and Winters; boys 13-18 35.5 +- 7.8, Kermanshah; Fon, Pitt, Thies 1980) with its apex mid-thorax, over the blades' lower half;
+muscle grows from fixed bony origins (Proko's deltoid: clavicle, acromion, scapular spine; "not a ball").
+
+Fix (r23poses.py; prince only): `BT_TOP` [1, 1, 1, 1, .9, .8, .67, .51, .57] is the share of the growth behind kept at each level; `TR_K` 0.6 of
+the trapezius' bulge on the slope from C7 (NJ.bk); `Bo` is made from the full BQ (the arms-up back stays round 26b's). At 1.65 BQ 4.51, 4.45,
+4.15, 3.80, 3.54; NJ.bk 3.16, 3.45 (3.30, 3.65). `RD.dd` = `DD` x the deltoid half-width gained over 1.0 (1.56 px at 1.65; 0.67 at 1.28): armG drops
+the root down the humerus by dd cos(a), none past the horizontal. After (standing): behind the nape 1.6, behind the seat 0.1, bulge 1.66, fullest
+3.2 px under the joint; walk 3.08 > 2.41, land 3.24 > 2.53, run .5 2.97 > 2.54 (bulge); hang and jump up identical. Robbers (R23DR) keep the full
+back and no drop. Joints, bones, poses, grips, hit boxes unchanged. Checks: figscan ok, lowceil ALL OK.
+
 ## The stride for the distance (round 26c)
 
 Owner: "when jumping the stride is too large. It works for large gaps but for smaller gaps looks silly. I'd adjust the stride with the actual

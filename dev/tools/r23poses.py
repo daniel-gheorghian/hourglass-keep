@@ -86,8 +86,22 @@ TRUNK_G2 = [('seat', 0.15), ('seat', 0.2), ('waist', 0.5), ('waist', 0.5), ('low
 # robbers keep round 22's Bo.
 BO_UP = [0, 0, 0, 0.1, 0.35, 0.3, 0.15, -0.3, -0.5]
 BO_CUT = [0, 0, 0, 0, -1.0, -1.0, -0.55, -0.2, 0]
+# round 28a (owner, a phone shot of him standing, arms down, the upper back and shoulder circled: "Prince hump ... I don't think the upper back
+# sticks out as much in a muscular teen seen from the side"): the muscle laid behind the trunk (TRUNK_G, TRUNK_G2) kept its full share up to
+# the shoulder joint, so the arms-down back (BQ) stood 4.8 px behind the spine's line from U .62 right up to .96 and 4.5 at the joint: the
+# fullest point 0.7 px under the shoulder joint and a shelf from the nape out to it. In the body the back is fullest over the shoulder blades'
+# lower half (the thoracic curve's apex, T6-T8; normal kyphosis 20-45 degrees in adolescents) and the trapezius above them grows up the slope
+# to the neck (NJ.bk's tr), not out behind. BT_TOP keeps that share of the growth behind at each level (the prince's only; the robbers keep
+# R23DR), so the back rounds over from the blades into the trapezius slope. The arms-up back (Bo, round 26b) is still made from the full BQ.
+BT_TOP = [1, 1, 1, 1, 0.9, 0.8, 0.67, 0.51, 0.57]
+TR_K = 0.6       # round 28a: and the trapezius' bulge on the slope from C7 (NJ.bk) at this share, so the slope runs into the trunk's top with no step
 MH = 0.6         # the muscle contour hints' strength at NAT (none at 1.0)
 MH2 = 0.25       # round 24: and how much more by the last level (0.85 at 1.85)
+# round 28a: the deltoid's root drops down the humerus by DD of the half-width it gains over round 23's (1.0): its origin (clavicle,
+# acromion, the scapula's spine) is bone and does not grow, so the bigger muscle swells down and out over the arm, not up beside the neck
+# (Proko: not a ball; at 1.65 the root's cap stood 0.8 px over the chin and its back edge behind the trunk's top). Drawn for arms down,
+# fading to none as the arm rises past the horizontal (armG), so the arms-up shoulder of round 19/26b is as it was.
+DD = 1.0
 DU = 0.1         # round 24: how far down the humerus the biceps' point (0.22 up to NAT) moves by the last level: the big deltoid tapers
 # (cb: the calf's growth is laid behind the shank, the gastrocnemius' bulge; the shin's line stays)
 
@@ -669,11 +683,14 @@ def drawing(Wd, m=1.0, rob=False):
     add = [(dep[i] * (grow(TRUNK_G[i][0], min(m, NAT)) - 1.0), TRUNK_G[i][1]) for i in range(len(dep))]
     ad2 = [(dep[i] * (grow(TRUNK_G2[i][0], m) - grow(TRUNK_G2[i][0], min(m, NAT))), TRUNK_G2[i][1]) for i in range(len(dep))]   # round 24
     Fo = [r(d * k - o / 2 + a * f + a2 * f2) for d, k, (a, f), (a2, f2) in zip(dep, shf, add, ad2)]
-    BQ = [r(d * (1 - k) - o / 2 + a * (1 - f) + a2 * (1 - f2)) for d, k, (a, f), (a2, f2) in zip(dep, shf, add, ad2)]
+    BQf = [d * (1 - k) - o / 2 + a * (1 - f) + a2 * (1 - f2) for d, k, (a, f), (a2, f2) in zip(dep, shf, add, ad2)]   # (the full growth behind)
+    bt = [1.0] * len(dep) if rob else BT_TOP   # round 28a: the arms-down back rounds over above the blades (the prince's only)
+    BQ = [r(d * (1 - k) - o / 2 + (a * (1 - f) + a2 * (1 - f2)) * t) for d, k, (a, f), (a2, f2), t in zip(dep, shf, add, ad2, bt)]
     kc = 0.0 if rob else min(1.0, (m - 1.0) / (MUS - 1.0))   # round 26b: the cut grows with the muscle laid behind (none at 1.0, where the back is flat)
-    Bo = [r(b + a + c * kc) for b, a, c in zip(BQ, BO_UP, BO_CUT)]   # arms up: the lats stand out, the scapulae turn up (round 26b: less the hump)
+    Bo = [r(b + a + c * kc) for b, a, c in zip(BQf, BO_UP, BO_CUT)]   # arms up: the lats stand out, the scapulae turn up (round 26b: less the hump; from the full BQ)
     jc = Wd['jc']
     tr = W0['neckB'] * (grow('trap', m) - grow('neckB', m)) / 2   # round 23b: the trapezius over the neck's own growth, on the slope from C7 down
+    tr *= 1.0 if rob else TR_K   # round 28a
     NJ = {'th': [r(jc - Wd['pit']), r(-Wd['neckB'] / 2 + 0.1)], 'c7': [r(jc - Wd['c7']), r(Wd['neckB'] / 2 + 0.05)],
           'bk': [[r(jc - Wd['pit'] + 1.9), 0.1], [r(jc - Wd['c7']), r(Wd['neckB'] / 2 + 0.05)], [r((jc - Wd['c7']) * 0.62), r(Wd['neckB'] / 2 + 0.55 + tr * 0.7)],
                  [r((jc - Wd['c7']) * 0.3), r(Wd['neckB'] / 2 + 0.75 + tr)]],
@@ -685,9 +702,10 @@ def drawing(Wd, m=1.0, rob=False):
     # the lower calf (soleus)
     leg = [Wd['thigh'], W0['thigh'] * 0.97 * grow('thighM', m), W0['knee'] * 1.1 * grow('lthigh', m), W0['knee'], Wd['calf'], W0['calf'] * 0.8 * grow('soleus', m), W0['ankle']]
     T = lambda a, q: [r(max(0.9, v * q - o)) for v in a]
+    dd = 0.0 if rob else (W0['arm'] * 1.35 * (grow('delt', m) - 1.0)) / 2 * DD   # round 28a: the deltoid hangs from bone, its top stays
     return {'Fo': Fo, 'BQ': BQ, 'Bo': Bo, 'NJ': NJ, 'arm': T(arm, 1), 'armR': T(arm, 1.18), 'leg': T(leg, 1), 'legR': T(leg, 1.18),
             'fk': r((Wd['foot'] - 0.6) / 9.0), 'kilt': [r(Wd['thigh'] * 0.45 + 0.35), r(-(Wd['thigh'] * 0.47 + 0.35))],
-            'RS': r(Wd['thigh'] / 2 + 0.35), 'chest': r(chest * grow('chest', m)), 'robK': 1.15} | ({'mh': r(MH * min(1.0, (m - 1.0) / (NAT - 1.0)) + MH2 * max(0.0, m - NAT) / (LEVELS[-1][0] - NAT)), 'cb': r((Wd['calf'] - W0['calf']) / 2), 'mus': m} if m > 1 else {}) | ({'du': r(0.22 + DU * (m - NAT) / (LEVELS[-1][0] - NAT))} if m > NAT else {})
+            'RS': r(Wd['thigh'] / 2 + 0.35), 'chest': r(chest * grow('chest', m)), 'robK': 1.15} | ({'mh': r(MH * min(1.0, (m - 1.0) / (NAT - 1.0)) + MH2 * max(0.0, m - NAT) / (LEVELS[-1][0] - NAT)), 'cb': r((Wd['calf'] - W0['calf']) / 2), 'dd': r(dd), 'mus': m} if m > 1 else {}) | ({'du': r(0.22 + DU * (m - NAT) / (LEVELS[-1][0] - NAT))} if m > NAT else {})
 
 
 def js(v):
