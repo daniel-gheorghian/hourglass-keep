@@ -9704,7 +9704,7 @@ function glScene(w,h){const gl=GLP.gl;let src=GLP.sceneC;if(GLP.dOk)src=GLP.dC;
 function glcPre(VZ,camD,camDY,th){GLC.pns=0;GLC.ocAny=0;if(!GLC.on||!L)return;
   const caus=GLFX.caustics&&!!lfx().caus&&GFX().bg;
   GLC.pns=GLFX.shafts||caus?glcSources(VZ,camD,camDY,GLFX.shafts,caus):0;
-  if(GLC.pns){glcOcc(VZ,camD,camDY);GLC.ocAny=1;}GLC.nb=GLC.pns?glcBlk(VZ,camD,camDY):0;}
+  if(GLC.pns){GLC.ocFig=glcOcc(VZ,camD,camDY);GLC.ocAny=1;}GLC.nb=GLC.pns?glcBlk(VZ,camD,camDY):0;}
 // (round 20a) the blades and slabs near the beams in view, for the shafts' shader (u_bk): solid across the corridor's depth, they shade the
 // beam behind them like a wall and, like a figure, take only the near half of the haze over them; tested exactly in the shader
 const GLCBK=new Float32Array(32);
@@ -9713,7 +9713,7 @@ function glcBlk(VZ,camD,camDY){const vx=camD/VZ,vy=camDY/VZ,bb=GLCBB;let n=0;if(
     const k=n*8;GLCBK[k]=q[j];GLCBK[k+1]=q[j+2];GLCBK[k+2]=q[j+1];GLCBK[k+3]=q[j+3];GLCBK[k+4]=q[j+7];GLCBK[k+5]=q[j+5];GLCBK[k+6]=0;GLCBK[k+7]=0;n++;}
   return n;}
 // the mask atlas (texture unit 3, and 4 and 5 where the beams and the metal read it): the effect mask (quarter resolution) at
-// the top left, the figures in the beams (eighth) beside it, and below them only the part of the metal mask (half) that holds
+// the top left, the figures in the beams (quarter since round 28b; eighth before) beside it, and below them only the part of the metal mask (half) that holds
 // metal; 2 px of black between them, and every read clamped inside its own part. Sizes are rounded up to 32 px so the canvas
 // and the texture are rarely remade.
 const GLA={c:null,g:null,w:0,h:0,had:true,kT:new Float32Array(4),kC:new Float32Array(4),oT:new Float32Array(4),oC:new Float32Array(4)};
@@ -9730,7 +9730,7 @@ function glAtlasUp(){const gl=GLP.gl,A=GLA;GLP.mt=GLP.mtex;if(!A.dirty||!A.c)ret
   gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,GLP.mtex);
   if(A.w!==W||A.h!==H){gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,A.c);A.w=W;A.h=H;}
   else gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,A.c);}
-function glAtlas(w,h,lw,lh){const gl=GLP.gl,A=GLA,ow=Math.ceil(w/8),oh=Math.ceil(h/8),mo=MS.on&&(GLP.gls||MS.c);
+function glAtlas(w,h,lw,lh){const gl=GLP.gl,A=GLA,ow=Math.ceil(w/4),oh=Math.ceil(h/4),mo=MS.on&&(GLP.gls||MS.c);
   const cb=MS.cb,bx=mo?Math.max(0,Math.floor(cb[0])):0,by=mo?Math.max(0,Math.floor(cb[1])):0,bw=mo?Math.max(1,Math.ceil(cb[2])-bx):0,bh=mo?Math.max(1,Math.ceil(cb[3])-by):0;
   const up=v=>Math.ceil(v/32)*32,Y0=Math.max(lh,oh)+2,W=GLP.gls?up(Math.max(lw+2+ow,Math.ceil(w/2))):up(Math.max(lw+2+ow,bw)),H=GLP.gls?up(Y0+Math.ceil(h/2)):up(Y0+bh); // (v61b, WebGL masks: the atlas is a multisampled target, sized for the largest metal box so it is not made again as the box changes)
   const any=GLP.mkAny||GLC.ocAny||mo;
@@ -9816,7 +9816,7 @@ function glFrame(lights,VZ,camD,camDY,th){
 //    veils the scene by its alpha and adds its colour.
 // Both read one tiny texture of the level's tiles (glcTiles: r wall (LOW_R a low ceiling), g floor, b near water, a open arch; one texel per tile,
 // built once per floor and refreshed now and then for floors that fall), so they know where walls, floors and openings are
-// without any per-frame upload; the shafts also read a small mask of the figures (glcOcc, eighth resolution, only drawn and
+// without any per-frame upload; the shafts also read a small mask of the figures (glcOcc, quarter resolution (round 28b; eighth before), only drawn and
 // uploaded while a figure stands near a beam).
 // Light shafts: the scattering idea of GPU Gems 3 ch. 13 (march from each pixel toward the light, occluders cut the light),
 // turned for light from far away (moon, sky) into parallel beams: every source is a rectangle (a window, one arch between
@@ -9860,14 +9860,15 @@ const GLCSH={
       float e=1.-smoothstep(0.,.5,sqrt(d2)-sqrt(d1));return e*e;}
     // (round 20a) the slicers' blades and the granite slabs that are down (beamBlockers), up to four, exactly: u_bk[2i] (x0, x1, top at x0, top at
     // x1), u_bk[2i+1] (foot at x0, foot at x1); how much of a disc of radius e round p lies in one (a soft edge, no mask texels)
-    uniform vec4 u_bk[8];uniform float u_nb;
+    uniform vec4 u_bk[8];uniform float u_nb,u_of;
     float blkC(vec2 p,float e){float c=0.;for(int i=0;i<4;i++){if(float(i)>=u_nb)break;vec4 a=u_bk[2*i],b=u_bk[2*i+1];float t=clamp((p.x-a.x)/(a.y-a.x),0.,1.);
       c=max(c,smoothstep(-e,e,p.x-a.x)*smoothstep(-e,e,a.y-p.x)*smoothstep(-e,e,p.y-mix(a.z,a.w,t))*smoothstep(-e,e,mix(b.x,b.y,t)-p.y));}return c;}
+    float figC(vec2 u,vec2 dp){return (texture2D(u_oc,ocUV(u-dp)).r+2.*texture2D(u_oc,ocUV(u)).r+texture2D(u_oc,ocUV(u+dp)).r)*.25;} // (round 28b) the figures' mask read at three points across the light, 1-2-1
     float lowC(vec2 p){float r=tile(p).r;return step(.08,r)*step(r,.3);} // (round 20a) a low ceiling's cell (LOW_R in the tile map)
     void main(){vec2 w=wpos(v_u);vec3 o=vec3(0.),oa=vec3(0.);
       if(u_ns>0.){vec2 nn=vec2(u_dir.y,-u_dir.x);float lq=u_bq.x,sw=0.,tm=0.;vec3 aS=vec3(0.),aA=vec3(0.); // (v58) aS: light on what it touches (the floor where it lands, a figure in it, a window's pane); aA: light in the air
         float fy=floor(w.y/64.)*64.+60.,by=w.y-fy+4.,fb=(by>=0.&&by<=8.&&tile(w).g>.5)?1.:0.; // on a floor's top face: by 0 at its back edge (by the wall), 8 at its front
-        float fcv=texture2D(u_oc,ocUV(v_u)).r,ff=smoothstep(.15,.6,fcv),fk=blkC(w,2.*u_cam.z),fc=max(ff,fk);bool fig=fcv>.4,inB=fk>.5;vec3 aF=vec3(0.);vec2 du=vec2(-u_dir.x,u_dir.y)*u_cam.w/u_res; // (a figure here; du: up the beam, in screen uv per world px)
+        float fcv=texture2D(u_oc,ocUV(v_u)).r,ff=smoothstep(.35,.75,fcv),fk=blkC(w,2.*u_cam.z),fc=max(ff,fk);bool fig=fcv>.4,inB=fk>.5;vec3 aF=vec3(0.);vec2 du=vec2(-u_dir.x,u_dir.y)*u_cam.w/u_res; // (a figure here; du: up the beam, in screen uv per world px)
         for(int i=0;i<${GLCMAX};i++){if(float(i)>=u_ns)break;vec4 r=u_src[i],cl=u_scol[i]; // (unit RY) the opening's own shape, from its profile
           bool own=cl.w>5e3,brc=cl.w<-5e3; // (own: the forge's and the crypt's windows, their own light: a glow at the pane, no shaft; brc: a breach)
           vec2 q=w-r.xy;float tx=dot(q,nn)/r.w*u_rys.x,s=dot(q,u_dir),sr=own||brc?abs(cl.w)-1e4:abs(cl.w);if(tx<0.||tx>=1.||s<-1.||s>sr+lq+2.)continue; // across the beam: which line along the light the pixel is on
@@ -9898,12 +9899,22 @@ const GLCSH={
           for(int k=0;k<4;k++){float y=ys-64.*float(k),t=(w.y-y)/u_dir.y;if(t>tm)break;float e=.08+t*.002;T*=1.-smoothstep(.5-e,.5+e,texture2D(u_tm,vec2((w.x-u_dir.x*t)/32./u_tsz.x,(floor((y-1.)/64.)+.5)/u_tsz.y)).g);if(T<.01)break;} // (read between the tiles along the floor, so the shadow of a slab's end has a soft edge)
           float st=(tm-4.)/12.,n0=.5; // (v61b: the same steps for every pixel: a jitter per quarter-size pixel made a staircase of squares along the shadow edges that crawled as the view moved (owner, floor 1); the walls and figures read between texels, so no bands show)
           bool inside=fig; // (a figure in the beam is lit; it shades what lies behind it; the march stops at the opening)
+          // (round 28b, owner: "jaggies in the light beams") a figure's shadow in the haze had a hard edge, narrower than one texel of this
+          // quarter-size pass, so its bilinear upsample drew a staircase: the figures' mask was an eighth of the screen (8 px texels) and every
+          // step's reading was multiplied into T, so a dozen steps reading the bilinear ramp at 0.1-0.3 hardened it into an edge that traced the
+          // texels' steps. Now the mask is a quarter (glcOcc), each step reads it at three points across the light (figC, 1-2-1: a penumbra at
+          // least a texel wide that widens with distance, as the walls' does) at two places a quarter step either side along it (a figure
+          // thinner than a step left scallops), and the figure shades the pixel by the most any step saw of it (one occluder: its cover, not a
+          // product of a dozen readings of it)
+          vec2 np=vec2(u_dir.y,u_dir.x)*u_cam.w/u_res;float cf=0.,tx=4.*u_cam.z; // (np: across the light, in screen uv per world px; tx: one texel of the mask in world px)
           if(T>0.&&st>0.)for(int j=0;j<12;j++){float ts=4.+(float(j)+n0)*st;vec2 q=w-u_dir*ts;float d=1.-(tm-ts)/lq; // the light's depth at this step
             vec2 qd=q-vec2((d-.5)*16.,0.);float e=.07+ts*.0022,wl=smoothstep(.5-e,.5+e,texture2D(u_tm,qd/vec2(32.,64.)/u_tsz).r),qy=qd.y-floor(qd.y/64.)*64.; // (a wall block at that depth: its front face is drawn half a step to the left; read between the tiles, so its shadow has a soft edge that widens away from the block)
             if(qy<${LOW_H+2}.)wl=max(wl,(lowC(qd-vec2(e*32.,0.))+lowC(qd)+lowC(qd+vec2(e*32.,0.)))/3.*(1.-smoothstep(${LOW_H-1.5},${LOW_H+1.5},qy))); // (round 20a) a low ceiling's block (the top LOW_H px of its cell, the room's whole depth): read exactly, three taps across for a soft end that widens with distance
-            float ch=texture2D(u_oc,ocUV(v_u+du*ts)).r;if(inside){if(ch>.4)ch=0.;else inside=false;}
-            float cb=blkC(q,max(.6+ts*.02,.6*st));if(inB){if(cb>.4)cb=0.;else inB=false;}ch=max(ch,cb); // (round 20a) a blade or slab between the pixel and the opening: soft over at least the march's step (a thin blade between two samples left a staircase of hits and misses), and more with distance
-            T*=1.-max(wl,ch*.9);if(T<.02)break;} // walls, and the figures
+            float ch=0.;if(u_of>0.){vec2 dp=np*max(1.25*tx,1.6+ts*.05),da=du*(.25*st);ch=max(figC(v_u+du*ts-da,dp),figC(v_u+du*ts+da,dp));}
+            if(inside){if(ch>.4)ch=0.;else inside=false;}cf=max(cf,ch);
+            float cb=blkC(q,max(.6+ts*.02,.6*st));if(inB){if(cb>.4)cb=0.;else inB=false;} // (round 20a) a blade or slab between the pixel and the opening: soft over at least the march's step (a thin blade between two samples left a staircase of hits and misses), and more with distance
+            T*=1.-max(wl,cb*.9);if(T*(1.-cf)<.02)break;} // walls and blades
+          T*=1.-smoothstep(0.,.9,cf); // and the figures
           if(fc>0.)aS+=min(aF*(.45+.9*(1.-smoothstep(.2,.7,texture2D(u_oc,ocUV(v_u+du*5.)).r))),vec3(${RY_FIGC.toFixed(3)})); // (figlight) the side of a figure that faces the light: a weak cool light, capped (the composite multiplies it by the figure's own colour, so it never turns it white), feathered by the mask's soft edge
           float xb=dot(w,nn),sb=dot(w,u_dir),nz=.62*vn(vec2(xb*.07,sb*.02-u_t*.22))+.38*vn(vec2(xb*.19+5.3,sb*.05-u_t*.5)); // haze drifting slowly down the beam
           // dust motes: one cell in two across and along the beam holds a mote, each column of cells drifting down the beam at its
@@ -9964,7 +9975,7 @@ const GLCSH={
       gl_FragColor=o;}`]};
 const glcRGB=col=>{let c=GLCOL.get(col);if(!c){c=col.split(',').map(Number);GLCOL.set(col,c);}return c;}; // (parsed once)
 function glcInit(gl,P){
-  const mk=src=>{const p=glMake(gl,src);gl.bindAttribLocation(p,0,'a_p');return glLink(gl,p,['u_cam','u_res','u_tsz','u_tm','u_map','u_t','u_src','u_scol','u_ns','u_dir','u_oc','u_cau','u_sky','u_mist','u_mcol','u_sc','u_ln','u_rys','u_ry','u_ocT','u_ocC','u_bq','u_sk','u_lx','u_lx2','u_lc','u_bk','u_nb']);};
+  const mk=src=>{const p=glMake(gl,src);gl.bindAttribLocation(p,0,'a_p');return glLink(gl,p,['u_cam','u_res','u_tsz','u_tm','u_map','u_t','u_src','u_scol','u_ns','u_dir','u_oc','u_cau','u_sky','u_mist','u_mcol','u_sc','u_ln','u_rys','u_ry','u_ocT','u_ocC','u_bq','u_sk','u_lx','u_lx2','u_lc','u_bk','u_nb','u_of']);};
   GLC.S=mk(GLCSH.s);GLC.M=mk(GLCSH.m);
   for(const n of ['u_cs','u_cm','u_cfx'])P.final.u[n]=gl.getUniformLocation(P.final.p,n);
   GLC.max=gl.getParameter(gl.MAX_TEXTURE_SIZE)||4096;GLC.tm=null;GLC.lv=null;GLC.oct=null;GLC.fs=null;GLC.ry=null;GLC.on=true;}
@@ -10009,13 +10020,13 @@ function glcSources(VZ,camD,camDY,sh,cau){
     box(Math.min(o.x0,o.x0+ex)-6,o.y0-6,Math.max(o.x1,o.x1+ex)+6,o.y1+ey+6);}
   return n;}
 const ryNear=(a,b)=>a.d-b.d;
-// the figures that stand in a beam, flat, at an eighth of the resolution: what the shafts are cut by
+// the figures that stand in a beam, flat, at a quarter of the resolution (an eighth until round 28b): what the shafts are cut by
 function glcOcc(VZ,camD,camDY){
-  const w=Math.ceil(cv.width/8),h=Math.ceil(cv.height/8);
+  const w=Math.ceil(cv.width/4),h=Math.ceil(cv.height/4); // (round 28b: a quarter, as the shafts' own pass; it was an eighth, whose 8 px texels stepped the shadows and the haze's cut round a figure)
   let g;if(GLP.gls){g=g2Mk('occ',w,h,[0,0,0,1]);GLC.ow=w;GLC.oh=h;} // (unit WGL) drawn by WebGL into its own target
   else{if(!GLC.ocC){GLC.ocC=document.createElement('canvas');GLC.ocG=GLC.ocC.getContext('2d');}
   g=GLC.ocG;if(GLC.ow!==w||GLC.oh!==h){GLC.ocC.width=w;GLC.ocC.height=h;GLC.ow=w;GLC.oh=h;}}
-  g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='source-over';g.fillStyle='#000';g.fillRect(0,0,w,h);g.setTransform(VZ/8,0,0,VZ/8,-camD/8,-camDY/8);
+  g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='source-over';g.fillStyle='#000';g.fillRect(0,0,w,h);g.setTransform(VZ/4,0,0,VZ/4,-camD/4,-camDY/4);
   let any=0;const bb=GLCBB,near=e=>{const sx=(e.x*VZ-camD)/4,sy=(e.y*VZ-camDY)/4,m=24*VZ/4;return sx>bb[0]-m&&sx<bb[2]+m&&sy>bb[1]-m&&sy<bb[3]+m*3;};
   const one=e=>{if(!near(e))return;const s=glSilhouette(e);if(s){g.drawImage(s,e.x-48,e.y+(e.yo||0)-80,96,96);any=1;}};
   if(P&&P.state!=='dead'&&P.state!=='exit'&&!(P.state==='enter'&&P.enU>0)&&!(P.y>L.rows*TH))one(P);
@@ -10041,7 +10052,7 @@ function glAtmo(VZ,camD,camDY,th,lw,lh){
       gl.enable(gl.SCISSOR_TEST);gl.scissor(x0,lh-y1,Math.max(0,x1-x0),Math.max(0,y1-y0));} // only around the beams and the arches (GL's y runs up)
     gl.useProgram(GLC.S.p);com(U);gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,GLP.mt);gl.uniform1i(U.u_oc,4);gl.uniform4fv(U.u_ocT,GLA.oT);gl.uniform4fv(U.u_ocC,GLA.oC);
     if(ns)glcRy(gl);else{gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,GLC.ry||GLC.tm);}const sb=skyBeam(); // (unit RY) the profiles on unit 2 (the composite binds its own there later)
-    gl.uniform4fv(U.u_src,GLCSRC);gl.uniform4fv(U.u_scol,GLCCOL);gl.uniform1f(U.u_ns,ns);gl.uniform4fv(U.u_bk,GLCBK);gl.uniform1f(U.u_nb,GLC.nb||0);gl.uniform2f(U.u_dir,sb.dx,sb.dy);gl.uniform1f(U.u_ln,sb.ln);gl.uniform1i(U.u_ry,2);{const am=glcRGB(lk.amb),A=glAmbK(st,lk)*(am[0]*.3+am[1]*.5+am[2]*.2)/255;gl.uniform4f(U.u_bq,sb.lq,A,RY_FIG,RY_FLOOR);gl.uniform4f(U.u_sk,RY_AIR,RY_RIM,RY_MOTE*(fx.motes||1),RY_OWNG);}gl.uniform2f(U.u_rys,1/RYW,1/(GLC.ryh||RYH0));
+    gl.uniform4fv(U.u_src,GLCSRC);gl.uniform4fv(U.u_scol,GLCCOL);gl.uniform1f(U.u_ns,ns);gl.uniform4fv(U.u_bk,GLCBK);gl.uniform1f(U.u_nb,GLC.nb||0);gl.uniform1f(U.u_of,GLC.ocFig?1:0);gl.uniform2f(U.u_dir,sb.dx,sb.dy);gl.uniform1f(U.u_ln,sb.ln);gl.uniform1i(U.u_ry,2);{const am=glcRGB(lk.amb),A=glAmbK(st,lk)*(am[0]*.3+am[1]*.5+am[2]*.2)/255;gl.uniform4f(U.u_bq,sb.lq,A,RY_FIG,RY_FLOOR);gl.uniform4f(U.u_sk,RY_AIR,RY_RIM,RY_MOTE*(fx.motes||1),RY_OWNG);}gl.uniform2f(U.u_rys,1/RYW,1/(GLC.ryh||RYH0));
     const sr=glcRGB(bgArt(L.theme)['glow'+tod]||lk.win);
     gl.uniform3f(U.u_sky,sr[0]/255,sr[1]/255,sr[2]/255);gl.uniform4f(U.u_cau,cs?0.3:0,S.set.calm?0.35:0.8,0,0);
     gl.drawArrays(gl.TRIANGLES,0,3);gl.disable(gl.SCISSOR_TEST);f|=1;}

@@ -389,6 +389,12 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   Round 20b (owner: the wedge to the floor read crude): Classic draws such a beam `RY_SH` (5) times at a fifth of its strength, each cut by
   its own hull (the quad swept 12 to 72% of the way to the floor and spread 8 to 70%), so the shadow is whole at the blade and fades and
   widens to nothing short of the floor (an area light's penumbra); clips only, never a scratch canvas.
+  (round 28b, owner: "jaggies in the light beams") A figure's shadow down the haze is soft: its edge was narrower than a texel of the
+  shafts' quarter-size pass, so the bilinear upsample stepped it (the figures' mask, `glcOcc`, was an eighth, and the march multiplied a dozen
+  readings of it into T). The mask is a quarter now; each step reads it 1-2-1 across the light (`figC`, at least 1.25 texels apart, wider
+  with distance: a penumbra like the walls') at a quarter step either side along it; the figure shades by the most any step saw (`cf`, one
+  occluder), walls and blades still multiply; the haze over him is cut from 0.35 of the mask (inside his outline: no dark fringe); `u_of` skips
+  the taps when no figure is near a beam. No jitter, no new pass; Classic draws no figure shadow. Pictures and cost: `egyptr28b.py`.
 - The view through openings (round 25e, owner: "the backgrounds seen through the windows sometimes change wildly ... especially when
   going downwards") follows the keep, not the screen: each opening (window, open arch, breach) looks out at the eye level of its own storey.
   Its view is placed as it was when the camera rests on the floor under the opening (`bgAnchor`: openings that touch share the anchor of the
