@@ -344,6 +344,20 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   drawn over windows and light beams") are soft noise patches in the lamps' light that swell in place, times the scene's alpha (never on the
   sky); they were a sine of x and y: bright slanted bars sliding along the dado, cut into dark bars by his lamp shadow, and laid over the
   openings. No travelling bands in a look effect; sharp single glints stay in 2D (`lampGlints`). Pictures `egyptr27c.py` (r27d_bars.png, .gif).
+- The floor's own looks (round 31, owner, floor 13: "I love the effect of the floor, but it doesn't look correct in the perspective ... And it is
+  drawn on top of things including the prince"): the Forges' embers (meroe) and the wet flagstones' sheen (dungeon, crypt) were in the mist
+  pass, a band from the slab's front edge to its back edge wherever a noise of screen x alone was high, added over the finished scene at a
+  quarter of the resolution: upright bars over his feet, a saw's blade and its slot. Now they are the composite's (`floorFx`, `GLSL_FL`; full
+  resolution, no new pass) and lie only on the floor's own top face as the scene still shows it: the room's picture marks that face with
+  alpha 254 (`slab(...,mark)`, room pictures only), anything drawn over it in the scene makes the pixel 255, so a figure, trap, slot, rubble or
+  shadow is never painted over (the ?wgl=0 path has no mark and keeps the old overdraw). A thing lying on the floor uses its coordinates: `d`
+  across the slab, `s` along it at the front edge, so it leans along the depth diagonal. The embers glow in the flagstones' joints as slab()
+  draws them (`FLOOR_FT`, `glcFloorFt`: each tile's joints and its top face; unit 8): a hot thread, its glow and a warm pool, lumps that pulse.
+  The sheen is a reflection, so its streak stays upright under the light (in this view world vertical is screen vertical: the plane of the
+  light, the eye and the vertical draws as a vertical line); the light is mirrored about the wall's foot, brightest at the front edge (the
+  eye meets every point of the floor at the same angle here), and its wet patches lie on the floor. Classic's embers (`classicEmbers`) lie in
+  the same joints, off trap tiles and saw slots, cut where a figure stands. A new floor look goes in `floorFx`, never back in the mist pass.
+  Pictures and numbers `egyptr31.py` (r31_sheen.png).
 - Torchlight's ambient light never drops under `AMB_MIN` (0.45 of full on its brightest channel, `glAmbK`; owner, v56 and v57: the Forge by
   Moonlight fell to 0.26), and each sky opening adds a soft bounce light where its beam meets the floor (`gatherLights`, Torchlight only).
   The fire vent burns over its whole grate (`VJETS`: a jet per slot, back and front rows, merging into one sheet); its timing and
