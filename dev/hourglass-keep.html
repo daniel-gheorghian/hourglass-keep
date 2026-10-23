@@ -4185,7 +4185,7 @@ function drawRoomStatic(g,rx,ry,stage){
     if(B(L,gc,gr)===WALL||!solidBelow(L,gc,gr))return;
     const f=F(L,gc,gr);if(f&&((f.t==='loose'&&f.s<2)||f.t==='plate'||f.t==='xplate'||f.t==='lplate'||f.t==='closer'||f.t==='grate'))return;
     const lo=B(L,gc-1,gr)!==WALL&&!solidBelow(L,gc-1,gr),ro=B(L,gc+1,gr)!==WALL&&!solidBelow(L,gc+1,gr);
-    const ys=Y+TH-4;slab(g,X,ys,th,lo,ro,gc,gr,B(L,gc+1,gr)===WALL);
+    const ys=Y+TH-4;slab(g,X,ys,th,lo,ro,gc,gr,B(L,gc+1,gr)===WALL,false,true); // (round 31: mark, the floor's own top face for Torchlight's floor looks)
     if(f&&f.t==='spikes'){g.fillStyle='rgba(7,5,11,.8)';const m=gc%2?-1:1;for(const [bx,d] of SPK){const q=onFloor(X+16+m*(bx-16),d,ys);g.beginPath();g.ellipse(q.x,q.y,2.2,0.9,0,0,Math.PI*2);g.fill();}}
     if(L.rubble.has(gr*L.cols+gc)){const rnd=mulberry32(hash2(gc,gr+77));for(let i=0;i<6;i++){g.fillStyle=i%2?th.front:th.lo;const q=onFloor(X+4+rnd()*24,0.2+rnd()*0.6,ys),w=2+rnd()*4;g.fillRect(q.x,q.y-1,w,1.6+rnd()*1.2);}}
   });
@@ -4942,7 +4942,7 @@ function drawWindow(g,x,y,th,seed,open){
   g.fillStyle=th.top;g.fillRect(x0-3,bot+1.6,w+6,1.8);
 }
 const DRIFT={palace:'214,184,130',tile:'200,190,170',dungeon:'150,160,170',forge:'30,16,12',crypt:'120,150,120'};
-function slab(g,X,ys,th,lo,ro,gc,gr,wr,plain){
+function slab(g,X,ys,th,lo,ro,gc,gr,wr,plain,mark){
   const fx=X-HX,fr=fx+TW,ft=ys+HY,FH=5,br=wr?fr:fr+DX,st=th.style,known=gc!==undefined;
   const wx0=known?gc*TW:0,W=known&&!plain?wearLevel(wx0+16,gr*TH+TH-4):0,rnd=mulberry32(known?hash2(gc*31+7,gr*17+3):1);
   // flagstones of uneven length (joints placed along the whole floor, so they run on across tiles); the lip is cut at
@@ -4992,6 +4992,11 @@ function slab(g,X,ys,th,lo,ro,gc,gr,wr,plain){
   if(lo){g.strokeStyle='rgba(0,0,0,.4)';g.lineWidth=0.9;g.beginPath();g.moveTo(fx+DX,ys-HY);g.lineTo(fx,ft);g.lineTo(fx,ft+FH);g.stroke();}
   if(ro&&!wr){g.beginPath();g.moveTo(fr,ft);g.lineTo(fr+DX,ys-HY);g.lineTo(fr+DX,ys-HY+FH);g.lineTo(fr,ft+FH);g.closePath();g.fillStyle=th.lo;g.fill();g.fillStyle='rgba(0,0,0,.25)';g.fill();
     g.strokeStyle='rgba(0,0,0,.45)';g.lineWidth=0.8;g.stroke();}
+  // (round 31) the room's picture marks the floor's own top face: its alpha one step under opaque (254 of 255; in Classic the 1/255 of the
+  // backdrop that shows through is under one level). Anything drawn over it later in the scene (a figure, a trap, its slot, rubble, a shadow)
+  // makes the pixel opaque again, so Torchlight's composite lays the floor's looks (floorFx: wet sheen, embers) only where the scene still
+  // shows this face: never over what stands on it
+  if(mark){g.save();top();g.globalCompositeOperation='destination-out';g.globalAlpha=1/255;g.fillStyle='#000';g.fill();g.restore();}
 }
 // ---- flames (unit FL): soft, noise-shaped flames from a flipbook built once at load; Classic and Torchlight draw the same sprites ----
 // The recipe is the usual stylised-fire one (a scrolling noise times a flame-shaped mask with a cut-off, Alan Zucconi's fire shader and the
@@ -8383,12 +8388,27 @@ function lampGlints(ctx,x0,x1,y0,y1,salt){const t=gameTime,col=salt?'255,246,226
       const x=lx+fx,ph=(h>>>20)%100/16,b=Math.pow(Math.max(0,Math.sin(t*(1.3+((h>>>4)&7)*0.35)+ph)),14)*(1-Math.abs(fx)/70);if(b<0.05||(!salt&&B(L,Math.floor(x/TW),q.r)===WALL))continue;
       ctx.globalAlpha=Math.min(1,b);ctx.drawImage(lightSprite(col),x-3,fy-3,6,6);ctx.fillStyle='rgb('+col+')';ctx.fillRect(x-0.5,fy-1.5,1,3);ctx.fillRect(x-1.5,fy-0.5,3,1);}}
   ctx.restore();}
+// (round 31) Classic's embers lie in the floor's joints as Torchlight's do (floorFx): a glow along the depth diagonal of one joint in three,
+// on plain floor only (not on a tile with a feature, nor in a saw's slot), cut where a figure stands on it (the floor in front of his feet
+// stays lit): drawn after the lighting, as before, so it is cut, not covered. Was a round glow at a fixed spot on one tile in five, over him
+const CEMB=[];
+function classicEmbers(ctx,x0,x1,y0,y1,t){const sp=lightSprite('255,110,40'),r0=Math.max(0,Math.floor(y0/TH)),r1=Math.min(L.rows-1,Math.floor(y1/TH));
+  const figs=CEMB;figs.length=0;if(P&&P.state!=='dead')figs.push(P);for(const e of G)if(e.alive&&!e.gone)figs.push(e);
+  for(let r=r0;r<=r1;r++){const ys=SURF(r),jf=k=>k*22+((hash2(k*3+7,r*5+1)%1000)/1000-0.5)*10;let clip=false;
+    for(const e of figs)if(Math.abs(e.y+(e.yo||0)-ys)<6&&e.x>x0-20&&e.x<x1+20){if(!clip){ctx.save();ctx.beginPath();ctx.rect(x0-40,ys-HY-2,x1-x0+80,DY+4);clip=true;}ctx.rect(e.x-9,ys+0.5,18,-DY);}
+    if(clip)ctx.clip('evenodd');
+    for(let k=Math.floor((x0-40)/22);jf(k)<x1+40;k++){const xj=jf(k),c=Math.floor(xj/TW);if(xj-c*TW<0.01)continue;const h=hash2(k*7+3,r*11+5);if(h%3!==0)continue;
+      let ok=true;for(let q=-1;q<=1;q++){const cc=Math.floor((xj+q*HX)/TW);if(B(L,cc,r)===WALL||!solidBelow(L,cc,r)||L.feat[r*L.cols+cc]){ok=false;break;}}
+      if(ok)for(const o of L.dyn)if(o.r===r&&o.f.t==='saw'&&xj+HX>o.f.x0-16&&xj-HX<o.f.x1+16){ok=false;break;}
+      if(!ok)continue;const e=0.55+0.45*Math.sin(t*1.1+(h>>>8)%60);
+      ctx.save();ctx.translate(xj,ys);ctx.transform(1,0,-2,1,0,0); // (the sprite's up is the joint's way back: 2 px right for each px up)
+      ctx.globalAlpha=0.55*e;ctx.drawImage(sp,-6,-HY,12,DY);ctx.globalAlpha=0.8*e;ctx.drawImage(sp,-1.6,-HY,3.2,DY);ctx.restore();}
+    if(clip)ctx.restore();}}
 // Classic's simple equivalents of the mist pass's theme effects: embers (glows in the floor's cracks, on fixed spots), incense (a few
 // pale bands drifting across the view); and in both modes the granite's crystals (fixed points on the walls near lamps that catch
 // the light in turn: sharp at full resolution)
 function classicLookFx(ctx,x0,x1,y0,y1){const fx=lfx(),t=gameTime;ctx.save();ctx.globalCompositeOperation='lighter';
-  const cl=!GLP.used;if(cl&&fx.embers){const sp=lightSprite('255,110,40');for(let r=Math.max(0,Math.floor(y0/TH));r<=Math.min(L.rows-1,Math.floor(y1/TH));r++)for(let c=Math.max(0,Math.floor(x0/TW));c<=Math.min(L.cols-1,Math.floor(x1/TW));c++){
-      const h=hash2(c*5+3,r*9+1);if(h%5!==0||!solidBelow(L,c,r)||B(L,c,r)===WALL)continue;const ys=SURF(r),px=c*TW+4+(h>>>4)%24,e=0.55+0.45*Math.sin(t*1.1+(h>>>8)%60);ctx.globalAlpha=0.35*e;ctx.drawImage(sp,px-7,ys-3,14,6);}}
+  const cl=!GLP.used;if(cl&&fx.embers)classicEmbers(ctx,x0,x1,y0,y1,t);
   if(cl&&fx.incense){ctx.globalAlpha=1;for(let i=0;i<4;i++){const yy=y0+(i+0.5)*(y1-y0)/4+Math.sin(t*0.2+i*1.7)*10,g=ctx.createLinearGradient(0,yy-6,0,yy+6);g.addColorStop(0,'rgba(150,220,180,0)');g.addColorStop(0.5,'rgba(150,220,180,.07)');g.addColorStop(1,'rgba(150,220,180,0)');ctx.fillStyle=g;ctx.fillRect(x0,yy-6,x1-x0,12);}}
   if(fx.granite){for(const q of L.torches){if(q.broken)continue;const lx=q.c*TW+16,ly=SURF(q.r)-38;if(lx<x0-70||lx>x1+70||ly<y0-60||ly>y1+60)continue;
       for(let i=0;i<12;i++){const h=hash2(q.c*13+i,q.r*7+i*3),px=lx+((h&1023)/1023-0.5)*110,py=ly+(((h>>>10)&1023)/1023-0.5)*70,tw=Math.sin(t*(0.7+((h>>>20)&7)*0.25)+(h>>>24));if(tw<0.6||B(L,Math.floor(px/TW),Math.floor(py/TH))===WALL)continue;
@@ -9376,6 +9396,47 @@ function glMetalU(U){const gl=GLP.gl;if(!U||!MS.on)return;gl.uniform1i(U.u_mt,5)
   gl.uniform4f(U.u_mm,V[0],V[1],V[2],V[3]);gl.uniform4f(U.u_mq,V[4],V[5],V[6],V[7]);gl.uniform4f(U.u_mq2,V[8],V[9],V[10],V[11]);
   gl.uniform4f(U.u_mo,V[12],V[13],V[14],V[15]);gl.uniform4f(U.u_mw,V[16],V[17],V[18],V[19]);gl.uniform2f(U.u_mtx,V[20],V[21]);
   gl.uniform4fv(U.u_ml,MS.ML);gl.uniform3fv(U.u_mc,MS.MC);gl.uniform4fv(U.u_mf,MS.MF);gl.uniform4fv(U.u_msw,MS.SW);}
+// ---- the floor's own looks in Torchlight (round 31, owner: "I love the effect of the floor, but it doesn't look correct in the perspective ...
+// And it is drawn on top of things including the prince"): the wet flagstones' sheen (dungeon, crypt) and the embers in the Forges' floor
+// (meroe). Until round 31 both were in the mist pass (a quarter of the resolution, added over the finished scene): a band from the slab's
+// front edge to its back edge wherever a noise of the screen's x alone was high, so every glow stood upright on the floor, and it lay over
+// whatever stood there: his feet, a saw and its slot, a gate's foot. Now:
+//  - where: the floor's own top face only, as the scene still shows it. The room's picture marks that face (alpha 254, slab()); anything drawn
+//    over it in the scene makes the pixel opaque, so a figure, a trap, its slot, rubble or a shadow is never painted over (the 2D way: a
+//    floor's reflection belongs to the floor's layer, under what stands on it). Full resolution, in the composite: no new pass.
+//  - the floor's own coordinates: d, the depth across the slab (0 its front edge, 1 its back); s, the x where the pixel's line along the
+//    depth meets the front edge (+8), so a thing lying on the floor (a crack, a wet patch) leans along the depth diagonal (DX, -DY) as the
+//    flagstones' joints do. The embers glow in those joints (FLOOR_FT: each cell's joints, the same as slab() draws), a hot thread in
+//    the crack and a soft glow on the stone beside it, lumps of slag along it that pulse; never a band across the screen.
+//  - the sheen is a reflection, so it is not laid along the floor: a light's streak on a glossy floor lies in the plane of the light, the
+//    eye and the vertical, which the view (vertical kept vertical) draws as a vertical line under the light; the wet patches it shows
+//    in lie on the floor. It reads the light mirrored about the wall's foot (the back edge) and the bright things about the line they stand
+//    on, spread upward into a streak, and is brightest at the front edge, nearest the mirror point of the lamps above (the eye meets every
+//    point of the floor at the same angle in this view: no glancing back edge). Pictures: egyptr31.py.
+const GLSL_FL=`uniform vec4 u_fl,u_fc;uniform vec2 u_fsz;uniform sampler2D u_ft;
+    // u_fl: wet sheen, embers, the gate on (the scene's alpha marks the floor's face: not on the ?wgl=0 path), the ambient the sheen leaves out;
+    // u_fc: camD, camDY, 1/VZ, VZ; u_ft: one texel a tile (FLOOR_FT): rgb its joints' offsets (x 7.9, 1 none), a the floor's top face
+    float flH(vec2 p){vec3 q=fract(vec3(p.xyx)*.1031);q+=dot(q,q.yzx+33.33);return fract((q.x+q.y)*q.z);}
+    float flN(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(flH(i),flH(i+vec2(1.,0.)),f.x),mix(flH(i+vec2(0.,1.)),flH(i+vec2(1.,1.)),f.x),f.y);}
+    vec4 flT(float c,float r){return texture2D(u_ft,(vec2(c,r)+.5)/u_fsz);}
+    vec3 floorFx(vec2 uv,float cov){
+      vec2 w=(vec2(uv.x/u_px.x,(1.-uv.y)/u_px.y)+u_fc.xy)*u_fc.z;float row=floor(w.y/64.),fy=w.y-row*64.;if(fy<56.)return vec3(0.);
+      float d=(64.-fy)/8.,s=w.x-16.*d+8.,cl=floor(s/32.);vec4 t0=flT(cl,row);float k=t0.a; // d: across the slab; s: along it, at the front edge
+      if(u_fl.z>.5){float v=cov*255.;k*=clamp(255.-v,0.,1.)*clamp(v-251.,0.,1.);} // the face as the scene still shows it (254; 255 where something stands on it)
+      if(k<.004)return vec3(0.);vec3 o=vec3(0.);
+      if(u_fl.y>0.){float e=0.; // embers: slag in two joints of three, lumps along the crack that pulse; a hot thread and a glow on the stone beside it
+        for(int i=-1;i<=1;i++){float cc=cl+float(i);vec4 j=flT(cc,row);
+          for(int q=0;q<3;q++){float jv=j[q];if(jv>.995)continue;float xj=cc*32.+jv*(255./7.9),dx=abs(s-xj),h=flH(vec2(xj*.71,row*3.1+.5));if(h>.65||dx>14.)continue;
+            float a=smoothstep(.1,.5,flN(vec2(xj*.53+d*2.2,row*1.7+u_t*.05)))*(.55+.45*sin(u_t*1.1+h*40.));e+=a*(exp(-dx*dx*1.2)+.6*exp(-dx*.55)+.3*exp(-dx*dx*.03));}} // (the thread, its glow, and a warm pool on the flags beside it)
+        o+=vec3(1.,.5,.24)*min(e,1.4)*.9*u_fl.y;}
+      if(u_fl.x>0.){float wet=smoothstep(.3,.7,flN(vec2(s*.04,row*5.3))); // the wet patches lie on the floor
+        if(wet>.001){float pv=u_fc.w*u_px.y,ph=u_fc.w*u_px.x,yb=fy-56.;
+          vec3 R=vec3(0.);for(int j=0;j<3;j++){float hy=2.*yb+12.+float(j)*16.;R+=texture2D(u_map,uv+vec2(0.,hy*pv)).rgb;} // the lamps' light on the wall, mirrored about its foot, stretched up into a streak
+          R=max(R*.5-u_fl.w,0.); // (the lamps, not the ambient)
+          vec3 S=vec3(0.);for(int j=0;j<3;j++){float hy=max(2.*(fy-60.),0.)+3.+float(j)*7.;vec2 su=uv+vec2((float(j)-1.)*1.2*ph,hy*pv);S+=texture2D(u_sc,su).rgb*texture2D(u_map,su).rgb*1.5;}
+          S=max(S/3.-.3,0.)*2.; // the bright things (flames, lamps, a lit figure), mirrored about the line they stand on: wet stone shows the lights, not the dark wall
+          o+=(R*.35+S*.5)*wet*(.3+.7*(1.-d))*u_fl.x;}}
+      return o*k;}`;
 const GLSH={
   light:[`attribute vec2 a_k;attribute vec4 a_c;attribute vec4 a_o;attribute vec3 a_col;uniform vec2 u_s;varying vec2 v_k;varying vec3 v_col;varying vec2 v_f;varying float v_a;
     void main(){v_k=a_k;v_col=a_col;v_f=a_o.xy;v_a=a_o.z;vec2 p=a_c.xy+a_k*a_c.z;gl_Position=vec4(p.x/u_s.x*2.-1.,1.-p.y/u_s.y*2.,0.,1.);}`,
@@ -9405,6 +9466,7 @@ const GLSH={
     uniform sampler2D u_rl;uniform float u_rk; // relief lighting (unit B): the factor from glRelief, and its strength (0 = off)
     uniform sampler2D u_cs,u_cm;uniform vec2 u_cfx; // atmosphere (glAtmo): shafts and caustics, mist and sheen
     uniform vec3 u_sd; // (round 29) the tint the air before the dark greys toward
+    ${GLSL_FL}
     ${GLSL_M}
     void main(){
       vec3 m=texture2D(u_mk,mkUV(v_u)).rgb; // mask: r shadow, g heat, b storm
@@ -9421,7 +9483,8 @@ const GLSH={
       vec3 c=s*l*(1.-sh*.4*u_fx.x);
       c=msApply(c,uv,s,mcv,sh*u_fx.x); // unit MS: metal lit by the lamps
       if(u_cfx.x>.5){vec4 q=texture2D(u_cs,v_u);vec3 a=q.rgb*2.;c+=s*a*(1.-q.a)*1.5+a*q.a*clamp(1.15-1.8*dot(c,vec3(.3,.5,.2)),.2,1.);} // shafts and caustics: light on what they touch (a floor, a figure), and the haze in the air (its share in a), seen against the dark, hardly against what is lit
-      if(u_cfx.y>.5){vec4 m=texture2D(u_cm,v_u);c=c*(1.-m.a)+m.rgb;} // floor mist and wet sheen
+      if(u_cfx.y>.5){vec4 m=texture2D(u_cm,v_u);c=c*(1.-m.a)+m.rgb;} // floor mist (and the themes' looks)
+      if(u_fl.x+u_fl.y>0.)c+=floorFx(uv,cov); // (round 31) the floor's own looks: wet sheen, embers
       vec3 b=texture2D(u_bl,v_u).rgb*.4+(texture2D(u_bl,v_u+u_d).rgb+texture2D(u_bl,v_u-u_d).rgb)*.24+(texture2D(u_bl,v_u+u_d*2.2).rgb+texture2D(u_bl,v_u-u_d*2.2).rgb)*.06;
       c+=b*.6; // bloom
       if(st>.01)c=mix(c,u_sd*dot(c,vec3(.3,.5,.2)),st*.5); // (round 29) the air before the dark greys and darkens
@@ -9846,7 +9909,7 @@ function glFrame(lights,VZ,camD,camDY,th){
 // breach's haze is thin until the light leaves its edge; an own-light window (forge, crypt) is a glow at its pane, no shaft.
 Object.assign(GLFX,{shafts:true,mist:true,caustics:true,sheen:true});
 const LOW_H=TH-34,LOW_R=40; // (round 20a) a low ceiling's block: the top LOW_H px of its cell (lowCeil); LOW_R its value in the tile map's r (walls 255), under .5 so the mist and the looks' tests read it as open
-const GLC={on:false,lv:null,tk:0,key:'',tm:null,td:null,tw:0,th:0,ocC:null,ocG:null,oct:null,ocHad:false,ow:0,oh:0,fs:null,fm:null,fw:0,fh:0,max:4096};
+const GLC={fl:new Float32Array(4),fc:new Float32Array(4),ft:null,fd:null,ftw:0,fth:0,u8:false,on:false,lv:null,tk:0,key:'',tm:null,td:null,tw:0,th:0,ocC:null,ocG:null,oct:null,ocHad:false,ow:0,oh:0,fs:null,fm:null,fw:0,fh:0,max:4096};
 // (unit RY) each source is an opening in view: where its profile starts (ryProfile), which row of the profile texture holds it,
 // the texel width, its colour times strength and the profile's length along the light (negative: an opening whose sky is not lit, less 1e4 for a breach; plus 1e4: an own-light window)
 const GLCMAX=16,GLCSRC=new Float32Array(GLCMAX*4),GLCCOL=new Float32Array(GLCMAX*4),GLCBB=[0,0,0,0],RYH0=64;
@@ -9948,7 +10011,7 @@ const GLCSH={
           o+=u_sky*g*smoothstep(24.,40.,f.y)*u_cau.x*3.5;}}
       vec3 t=o+oa;float lt=dot(t,vec3(.3,.5,.2)),dz=(h21(gl_FragCoord.xy+fract(u_t*7.)*61.)-.5)/255.*step(.001,lt); // (dithered against banding)
       gl_FragColor=vec4(t*.5+dz,lt>0.?dot(oa,vec3(.3,.5,.2))/lt:0.);}`], // (stored at half, so a bright pane keeps its colour in eight bits; a: how much of it is in the air)
-  // M: mist and wet sheen -> rgb added, a veils
+  // M: mist and the themes' looks -> rgb added, a veils (round 31: the wet sheen and the embers are the composite's, floorFx)
   m:[GLV,GLCHEAD+`uniform vec4 u_mist,u_lx,u_lx2;uniform vec3 u_mcol,u_lc;uniform sampler2D u_sc;
     void main(){vec2 w=wpos(v_u);vec4 tl=tile(w);float fy=w.y-floor(w.y/64.)*64.;vec4 o=vec4(0.);
       if(u_mist.x>0.&&tl.r<.5){float g=texture2D(u_tm,vec2(w.x/32./u_tsz.x,(floor(w.y/64.)+.5)/u_tsz.y)).g; // (soft along the floor, so it thins out at its ends)
@@ -9956,12 +10019,7 @@ const GLCSH={
         if(g>.01){float n=vn(vec2(w.x*.022*sx+u_t*.09*wd,w.y*.04))*.6+vn(vec2(w.x*.055*sx-u_t*.16*wd,w.y*.09+3.))*.4;
           float hg=60.-fy,d=g*exp(-max(hg,0.)/(u_mist.y*(.7+.9*n)))*u_mist.x*(.15+1.25*smoothstep(.3,.8,n)); // height fog: thickest on the floor, thin a hand above it, drifting
           vec3 lt=texture2D(u_map,v_u).rgb*1.5;o=vec4(u_mcol*(lt*.4+.26)*d,d*.5);}} // lit by what lights the floor there
-      if(u_mist.z>0.&&tl.g>.5&&fy>55.5){float dp=clamp((64.-fy)/8.,0.,1.),wet=smoothstep(.3,.7,vn(vec2(w.x*.04,floor(w.y/64.)*5.3))); // across the slab's top: 0 its front edge, 1 its back
-        vec3 R=vec3(0.);for(int j=0;j<3;j++){float hy=6.+dp*40.+float(j)*14.*(.5+dp);R+=texture2D(u_map,v_u+vec2(0.,(fy-60.+hy)*u_cam.w/u_res.y)).rgb;} // the light above, stretched down into a streak
-        R=max(R*.5-u_mist.w,0.); // the lamps, not the ambient
-        vec3 S=vec3(0.);for(int j=0;j<3;j++){float hy=4.+dp*58.+float(j)*7.;vec2 su=v_u+vec2(0.,(fy-60.+hy)*u_cam.w/u_res.y);S+=texture2D(u_sc,su).rgb*texture2D(u_map,su).rgb*1.5;}
-        S=max(S/3.-.3,0.)*2.; // and the bright things above (flames, lamps, a lit figure), mirrored and stretched: wet stone shows the lights, not the dark wall
-        o.rgb+=(R*.35+S*.5)*wet*(.3+.7*dp)*u_mist.z;} // stronger toward the back, where the eye meets the floor at a glancing angle
+      // (round 31: the wet sheen is drawn in the composite now, floorFx)
       if(u_lx.x+u_lx.y>0.&&tl.a<.25){vec3 R=max(texture2D(u_map,v_u).rgb*1.5-u_mist.w,0.);float lr=dot(R,vec3(.3,.5,.2)); // (the lamps' light only: no glint in the ambient dark)
         if(lr>.015){
           if(u_lx.x>0.){float n=vn(vec2(w.x*.09+u_t*.05,w.y*.12))*vn(vec2(w.x*.21-u_t*.11,w.y*.27+7.)); // salt: the kershef's crystals glitter in the lamplight, a soft shimmer that wanders
@@ -9977,8 +10035,7 @@ const GLCSH={
           float sw=smoothstep(.55,.9,vn(vec2(w.x*.028,w.y*.04+u_t*.06)))*(.75+.25*sin(u_t*1.3+w.y*.02));o.rgb+=R*sw*.25*u_lx.w*texture2D(u_sc,v_u).a;} // (round 27d: soft patches that swell in place, not slanted bands; never on the sky)
         if(u_lx2.z>0.&&tl.r<.5&&tl.a<.25&&lr>.04){float n=vn(vec2(w.x*.33+u_t*.03,w.y*.31))*vn(vec2(w.x*.29-u_t*.05,w.y*.37+11.))*vn(vec2(w.x*.41,w.y*.23-u_t*.04+5.)); // granite: crystals catching the lamp, sparse points that wander (smooth noise in world space: no per-pixel jitter)
           o.rgb+=R*smoothstep(.36,.5,n)*.9*u_lx2.z;}
-        if(u_lx2.y>0.&&tl.g>.5&&fy>55.5&&tl.r<.5){float n=vn(vec2(w.x*.11,floor(w.y/64.)*7.3+u_t*.05)),e=smoothstep(.6,.78,n)*(.55+.45*sin(u_t*1.1+n*20.)); // embers: slag glowing in the floor's cracks, its own light
-          o.rgb+=vec3(1.,.5,.24)*e*.9*u_lx2.y;}
+        // (round 31: the embers are drawn in the composite now, floorFx)
         if(u_lx2.x>0.&&tl.r<.5){float n=vn(vec2(w.x*.012-u_t*.06,w.y*.03)),b=sin(w.y*.11+n*4.+u_t*.15)*.5+.5; // incense: thin layers of smoke drifting across the hall
           float d=smoothstep(.6,.92,b)*smoothstep(.35,.75,vn(vec2(w.x*.03+u_t*.04,w.y*.08)))*.45*u_lx2.x;o.rgb+=vec3(.74,.88,.78)*(R*.55+.12)*d;o.a=max(o.a,d*.35);}
         if(u_lx2.w>0.&&tl.a>.25){float inA=inArch(w); // arch dust: warm dust hanging in the open arches, lit by the low sun (or the moon)
@@ -9988,7 +10045,8 @@ const glcRGB=col=>{let c=GLCOL.get(col);if(!c){c=col.split(',').map(Number);GLCO
 function glcInit(gl,P){
   const mk=src=>{const p=glMake(gl,src);gl.bindAttribLocation(p,0,'a_p');return glLink(gl,p,['u_cam','u_res','u_tsz','u_tm','u_map','u_t','u_src','u_scol','u_ns','u_dir','u_oc','u_cau','u_sky','u_mist','u_mcol','u_sc','u_ln','u_rys','u_ry','u_ocT','u_ocC','u_bq','u_sk','u_lx','u_lx2','u_lc','u_bk','u_nb','u_of']);};
   GLC.S=mk(GLCSH.s);GLC.M=mk(GLCSH.m);
-  for(const n of ['u_cs','u_cm','u_cfx'])P.final.u[n]=gl.getUniformLocation(P.final.p,n);
+  for(const n of ['u_cs','u_cm','u_cfx','u_fl','u_fc','u_fsz','u_ft'])P.final.u[n]=gl.getUniformLocation(P.final.p,n);
+  GLC.u8=(gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS)||0)>=9; // (round 31) the floor's looks read their tile texture on unit 8 (the device's own count: __HKmaxTU tests the metal pair only)
   GLC.max=gl.getParameter(gl.MAX_TEXTURE_SIZE)||4096;GLC.tm=null;GLC.lv=null;GLC.oct=null;GLC.fs=null;GLC.ry=null;GLC.on=true;}
 // (unit RY) the beams' profiles, one row per opening shape (ryProfile), sent as they are made; all again after a new texture
 function glcRy(gl){
@@ -10011,7 +10069,16 @@ function glcTiles(gl){
   gl.activeTexture(gl.TEXTURE5);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
   if(!GLC.tm||GLC.tw!==C||GLC.th!==R){if(GLC.tm)gl.deleteTexture(GLC.tm);GLC.tm=glTex(gl,1,1);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,C,R,0,gl.RGBA,gl.UNSIGNED_BYTE,d.subarray(0,C*R*4));GLC.tw=C;GLC.th=R;}
   else{gl.bindTexture(gl.TEXTURE_2D,GLC.tm);gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,C,R,gl.RGBA,gl.UNSIGNED_BYTE,d.subarray(0,C*R*4));}
-  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);GLC.lv=L;GLC.key=key;return true;}
+  glcFloorFt(gl,C,R);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);GLC.lv=L;GLC.key=key;return true;}
+// (round 31) FLOOR_FT: one texel a tile for the floor's looks (floorFx): a 255 where the tile has a floor's top face; r, g, b the joints between
+// its flagstones that slab() draws (jf: the flag ends inside the cell, from its left edge, times 7.9; 255 none)
+function glcFloorFt(gl,C,R){if(!GLC.fd||GLC.fd.length<C*R*4)GLC.fd=new Uint8Array(C*R*4);const d=GLC.fd;d.fill(255,0,C*R*4);
+  for(let r=0;r<R;r++){const jf=k=>k*22+((hash2(k*3+7,r*5+1)%1000)/1000-0.5)*10;
+    for(let c=0;c<C;c++){const i=(r*C+c)*4;d[i+3]=B(L,c,r)!==WALL&&solidBelow(L,c,r)?255:0;if(!d[i+3])continue;const x0=c*TW;let n=0;
+      for(let k=Math.floor(x0/22)-1;n<3;k++){const a=jf(k);if(a>=x0+TW)break;if(a>x0)d[i+n++]=Math.min(254,Math.round((a-x0)*7.9));}}}
+  if(!GLC.ft||GLC.ftw!==C||GLC.fth!==R){if(GLC.ft)gl.deleteTexture(GLC.ft);GLC.ft=glTex(gl,1,1);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,C,R,0,gl.RGBA,gl.UNSIGNED_BYTE,d.subarray(0,C*R*4));GLC.ftw=C;GLC.fth=R;}
+  else{gl.bindTexture(gl.TEXTURE_2D,GLC.ft);gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,C,R,gl.RGBA,gl.UNSIGNED_BYTE,d.subarray(0,C*R*4));}}
 // the beams' sources in view (world rectangles), with colour times strength and the beam's length; returns how many, and
 // their screen box (GLCBB, quarter pixels) so the pass only runs there; with cau, the box also takes in the walls around the
 // open arches that the water lights (GLC.arch: any in view)
@@ -10045,12 +10112,15 @@ function glcOcc(VZ,camD,camDY){
   return any;} // (copied into WebGL with the other masks, in glAtlas)
 // runs both passes as needed; returns which the composite should read (bit 1: S, bit 2: M). Their targets sit on units 6 and 7.
 function glAtmo(VZ,camD,camDY,th,lw,lh){
-  const {gl}=GLP;if(!GLC.on||!L)return 0;
+  const {gl}=GLP;GLC.fl[0]=GLC.fl[1]=0;if(!GLC.on||!L)return 0;
   const st=th.style,gf=GFX(),tod=L.prog?L.prog.tod:0,lk=lookOf(st),wetT=st==='dungeon'||st==='crypt';
   const fx=lfx(),dust=GLFX.mist&&gf.atmo&&(fx.dust||fx.roll),lx=GLFX.lookfx&&gf.atmo&&!!(fx.salt||fx.glaze||fx.incense||fx.embers||fx.granite||fx.archdust||fx.wallglaze);
   const caus=GLFX.caustics&&!!fx.caus&&gf.bg,mist=GLFX.mist&&gf.atmo&&(dust||st==='crypt'||st==='dungeon'||(tod===1&&st!=='forge')),sheen=GLFX.sheen&&wetT&&!fx.dry;
   const ns=GLC.pns,cs=caus&&GLC.arch; // (glcPre found the sources; caustics only where an open arch is in view)
-  if(!ns&&!cs&&!mist&&!sheen&&!lx)return 0;
+  const emb=lx&&fx.embers?(S.set.calm?0.5:1):0,lxM=lx&&!!(fx.salt||fx.glaze||fx.incense||fx.granite||fx.archdust||fx.wallglaze); // (round 31: the embers and the sheen are the composite's, floorFx)
+  {const F=GLC.fl,am=glcRGB(lk.amb);F[0]=F[1]=0;if((sheen||emb)&&GLC.u8&&glcTiles(gl)){F[0]=sheen?(st==='dungeon'?1:0.8):0;F[1]=emb;F[2]=GLP.gls?1:0;F[3]=glAmbK(st,lk)*Math.max(am[0],am[1],am[2])/255*1.08;
+    const c=GLC.fc;c[0]=camD;c[1]=camDY;c[2]=1/VZ;c[3]=VZ;}}
+  if(!ns&&!cs&&!mist&&!lxM)return 0;
   if(!glcTiles(gl))return 0;
   if(!GLC.fs||GLC.fw!==lw||GLC.fh!==lh){GLC.fs=glFbo(gl,lw,lh);GLC.fm=glFbo(gl,lw,lh);GLC.fw=lw;GLC.fh=lh;}
   const w=cv.width,h=cv.height,t=gameTime%1000;let f=0;
@@ -10067,20 +10137,22 @@ function glAtmo(VZ,camD,camDY,th,lw,lh){
     const sr=glcRGB(bgArt(L.theme)['glow'+tod]||lk.win);
     gl.uniform3f(U.u_sky,sr[0]/255,sr[1]/255,sr[2]/255);gl.uniform4f(U.u_cau,cs?0.3:0,S.set.calm?0.35:0.8,0,0);
     gl.drawArrays(gl.TRIANGLES,0,3);gl.disable(gl.SCISSOR_TEST);f|=1;}
-  if(mist||sheen||lx){
+  if(mist||lxM){
     const U=GLC.M.u;gl.bindFramebuffer(gl.FRAMEBUFFER,GLC.fm.f);gl.viewport(0,0,lw,lh);glClr(gl);gl.useProgram(GLC.M.p);com(U);
     gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,GLP.stex);gl.uniform1i(U.u_sc,0);
     const am=glcRGB(lk.amb),A=glAmbK(st,lk)*Math.max(am[0],am[1],am[2])/255,mc=glcRGB(lk.mist);
     const ms=!mist?0:dust?dust[0]:st==='crypt'?0.8:st==='dungeon'?0.75:0.5,mh=dust?dust[1]:st==='crypt'?15:st==='dungeon'?11:9;
-    gl.uniform4f(U.u_mist,ms,mh,sheen?(st==='dungeon'?1:0.8):0,A*1.08);gl.uniform3f(U.u_mcol,mc[0]/255,mc[1]/255,mc[2]/255);
+    gl.uniform4f(U.u_mist,ms,mh,0,A*1.08); // (z: the wet sheen until round 31)gl.uniform3f(U.u_mcol,mc[0]/255,mc[1]/255,mc[2]/255);
     const ck=S.set.calm?0.5:1;
     gl.uniform4f(U.u_lx,lx&&fx.salt?ck:0,lx&&fx.glaze?ck:0,dust?dust[2]:1,lx&&fx.wallglaze?ck:0); // the theme's own: salt, glaze, the dust's wind, the faience walls
-    gl.uniform4f(U.u_lx2,lx&&fx.incense?1:0,lx&&fx.embers?ck:0,0,lx&&fx.archdust?1:0); // incense, embers, (granite: its crystals are drawn as sharp points in 2D, classicLookFx: at a quarter of the resolution they read as blotches), arch dust
+    gl.uniform4f(U.u_lx2,lx&&fx.incense?1:0,0,0,lx&&fx.archdust?1:0); // incense, (embers: the composite's since round 31), (granite: its crystals are drawn as sharp points in 2D, classicLookFx: at a quarter of the resolution they read as blotches), arch dust
     {const c=tod===1?[150,175,235]:tod===2?[255,200,150]:[255,176,110];gl.uniform3f(U.u_lc,c[0]/255,c[1]/255,c[2]/255);} // the arch dust's light: the low sun, or the moon
     gl.drawArrays(gl.TRIANGLES,0,3);f|=2;}
   gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,GLC.fs?GLC.fs.t:null);gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_2D,GLC.fm?GLC.fm.t:null);
   return f;}
-function glAtmoU(U,f){const gl=GLP.gl;if(!U.u_cfx)return;gl.uniform1i(U.u_cs,6);gl.uniform1i(U.u_cm,7);gl.uniform2f(U.u_cfx,f&1?1:0,f&2?1:0);} // (the composite's side)
+function glAtmoU(U,f){const gl=GLP.gl;if(!U.u_cfx)return;gl.uniform1i(U.u_cs,6);gl.uniform1i(U.u_cm,7);gl.uniform2f(U.u_cfx,f&1?1:0,f&2?1:0); // (the composite's side)
+  const F=GLC.fl,on=F[0]+F[1]>0&&GLC.ft;gl.uniform4f(U.u_fl,on?F[0]:0,on?F[1]:0,F[2],F[3]);gl.uniform1i(U.u_ft,GLC.u8?8:0); // (round 31) the floor's looks (floorFx)
+  if(on){gl.uniform4fv(U.u_fc,GLC.fc);gl.uniform2f(U.u_fsz,GLC.ftw,GLC.fth);gl.activeTexture(gl.TEXTURE8);gl.bindTexture(gl.TEXTURE_2D,GLC.ft);gl.activeTexture(gl.TEXTURE0);}}
 // ---- the dark in Torchlight (round 29; GLFX.storm2) ----
 // The same picture as Classic's stormLayer2D, from the same table (dkTable, a 1024 x 4 texture: the front's offset, its gold and the
 // torn back edge per world px of height; the top and the foot per px of width) and the same art (dkArt): opaque black, coverage
