@@ -8379,7 +8379,7 @@ function lampGlints(ctx,x0,x1,y0,y1,salt){const t=gameTime,col=salt?'255,246,226
       const x=lx+fx,ph=(h>>>20)%100/16,b=Math.pow(Math.max(0,Math.sin(t*(1.3+((h>>>4)&7)*0.35)+ph)),14)*(1-Math.abs(fx)/70);if(b<0.05||(!salt&&B(L,Math.floor(x/TW),q.r)===WALL))continue;
       ctx.globalAlpha=Math.min(1,b);ctx.drawImage(lightSprite(col),x-3,fy-3,6,6);ctx.fillStyle='rgb('+col+')';ctx.fillRect(x-0.5,fy-1.5,1,3);ctx.fillRect(x-1.5,fy-0.5,3,1);}}
   ctx.restore();}
-// (round 31) Classic's embers lie in the floor's joints as Torchlight's do (floorFx): a glow along the depth diagonal of one joint in three,
+// (round 31) Classic's embers lie in the floor's joints as Torchlight's do (floorFx): a glow along the depth diagonal of one joint in five (as faint as v76's, its mean light over the floor within 20%),
 // on plain floor only (not on a tile with a feature, nor in a saw's slot), cut where a figure stands on it (the floor in front of his feet
 // stays lit): drawn after the lighting, as before, so it is cut, not covered. Was a round glow at a fixed spot on one tile in five, over him
 const CEMB=[];
@@ -8388,12 +8388,12 @@ function classicEmbers(ctx,x0,x1,y0,y1,t){const sp=lightSprite('255,110,40'),r0=
   for(let r=r0;r<=r1;r++){const ys=SURF(r),jf=k=>k*22+((hash2(k*3+7,r*5+1)%1000)/1000-0.5)*10;let clip=false;
     for(const e of figs)if(Math.abs(e.y+(e.yo||0)-ys)<6&&e.x>x0-20&&e.x<x1+20){if(!clip){ctx.save();ctx.beginPath();ctx.rect(x0-40,ys-HY-2,x1-x0+80,DY+4);clip=true;}ctx.rect(e.x-9,ys+0.5,18,-DY);}
     if(clip)ctx.clip('evenodd');
-    for(let k=Math.floor((x0-40)/22);jf(k)<x1+40;k++){const xj=jf(k),c=Math.floor(xj/TW);if(xj-c*TW<0.01)continue;const h=hash2(k*7+3,r*11+5);if(h%3!==0)continue;
+    for(let k=Math.floor((x0-40)/22);jf(k)<x1+40;k++){const xj=jf(k),c=Math.floor(xj/TW);if(xj-c*TW<0.01)continue;const h=hash2(k*7+3,r*11+5);if(h%5!==0)continue;
       let ok=true;for(let q=-1;q<=1;q++){const cc=Math.floor((xj+q*HX)/TW);if(B(L,cc,r)===WALL||!solidBelow(L,cc,r)||L.feat[r*L.cols+cc]){ok=false;break;}}
       if(ok)for(const o of L.dyn)if(o.r===r&&o.f.t==='saw'&&xj+HX>o.f.x0-16&&xj-HX<o.f.x1+16){ok=false;break;}
       if(!ok)continue;const e=0.55+0.45*Math.sin(t*1.1+(h>>>8)%60);
       ctx.save();ctx.translate(xj,ys);ctx.transform(1,0,-2,1,0,0); // (the sprite's up is the joint's way back: 2 px right for each px up)
-      ctx.globalAlpha=0.55*e;ctx.drawImage(sp,-6,-HY,12,DY);ctx.globalAlpha=0.8*e;ctx.drawImage(sp,-1.6,-HY,3.2,DY);ctx.restore();}
+      ctx.globalAlpha=0.14*e;ctx.drawImage(sp,-6,-HY,12,DY);ctx.globalAlpha=0.24*e;ctx.drawImage(sp,-1.6,-HY,3.2,DY);ctx.restore();}
     if(clip)ctx.restore();}}
 // Classic's simple equivalents of the mist pass's theme effects: embers (glows in the floor's cracks, on fixed spots), incense (a few
 // pale bands drifting across the view); and in both modes the granite's crystals (fixed points on the walls near lamps that catch
@@ -9415,11 +9415,11 @@ const GLSL_FL=`uniform vec4 u_fl,u_fc;uniform vec2 u_fsz;uniform sampler2D u_ft;
       float d=(64.-fy)/8.,s=w.x-16.*d+8.,cl=floor(s/32.);vec4 t0=flT(cl,row);float k=t0.a; // d: across the slab; s: along it, at the front edge
       if(u_fl.z>.5){float v=cov*255.;k*=clamp(255.-v,0.,1.)*clamp(v-251.,0.,1.);} // the face as the scene still shows it (254; 255 where something stands on it)
       if(k<.004)return vec3(0.);vec3 o=vec3(0.);
-      if(u_fl.y>0.){float e=0.; // embers: slag in two joints of three, lumps along the crack that pulse; a hot thread and a glow on the stone beside it
+      if(u_fl.y>0.){float e=0.; // embers: slag in four joints of five, lumps along the crack that pulse; a hot thread and a glow on the stone beside it
         for(int i=-1;i<=1;i++){float cc=cl+float(i);vec4 j=flT(cc,row);
-          for(int q=0;q<3;q++){float jv=j[q];if(jv>.995)continue;float xj=cc*32.+jv*(255./7.9),dx=abs(s-xj),h=flH(vec2(xj*.71,row*3.1+.5));if(h>.65||dx>14.)continue;
-            float a=smoothstep(.1,.5,flN(vec2(xj*.53+d*2.2,row*1.7+u_t*.05)))*(.55+.45*sin(u_t*1.1+h*40.));e+=a*(exp(-dx*dx*1.2)+.6*exp(-dx*.55)+.3*exp(-dx*dx*.03));}} // (the thread, its glow, and a warm pool on the flags beside it)
-        o+=vec3(1.,.5,.24)*min(e,1.4)*.9*u_fl.y;}
+          for(int q=0;q<3;q++){float jv=j[q];if(jv>.995)continue;float xj=cc*32.+jv*(255./7.9),dx=abs(s-xj),h=flH(vec2(xj*.71,row*3.1+.5));if(h>.8||dx>16.)continue;
+            float a=smoothstep(.05,.45,flN(vec2(xj*.53+d*2.2,row*1.7+u_t*.05)))*(.55+.45*sin(u_t*1.1+h*40.));e+=a*(exp(-dx*dx*1.2)+.9*exp(-dx*.5)+.55*exp(-dx*dx*.02));}} // (the thread, its glow, and a warm pool on the flags beside it)
+        o+=vec3(1.,.5,.24)*min(e,2.)*.9*u_fl.y;}
       if(u_fl.x>0.){float wet=smoothstep(.3,.7,flN(vec2(s*.04,row*5.3))); // the wet patches lie on the floor
         if(wet>.001){float pv=u_fc.w*u_px.y,ph=u_fc.w*u_px.x,yb=fy-56.;
           vec3 R=vec3(0.);for(int j=0;j<3;j++){float hy=2.*yb+12.+float(j)*16.;R+=texture2D(u_map,uv+vec2(0.,hy*pv)).rgb;} // the lamps' light on the wall, mirrored about its foot, stretched up into a streak
