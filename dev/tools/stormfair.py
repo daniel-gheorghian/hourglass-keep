@@ -1,10 +1,11 @@
-# stormfair.py lo hi [seeds]: the sandstorm's front is where it kills (unit ST).
+# stormfair.py lo hi [seeds]: the dark's front is where it kills (unit ST; round 29).
 # Death is P.x < wx+4. On every chase floor in lo..hi (seeds tried until one has a chase), with the prince on a storm row and the
 # storm 20 to 90 px behind him, 200 frames apart in game time, in Classic and in Torchlight: at every storm row, from the feet
 # up to the waist, the dust's alpha must first reach .55 within 6 px of the kill line, and nothing denser than .25 may lie
 # beyond wx+10 (the veil and grains ahead stay thin). Uses __HK.stormProbe (Classic: the 2D layer drawn alone; Torchlight:
-# the shader's own buffer). Prints one line per floor and ends with 'FAILURES n'. (egypt: the chase is drawn as granite plugs by default,
-# their leading face at wx, on the same rows and speed; this checks the storm's look, EGP.plug=false, which the shader still draws.)
+# the shader drawn alone into a buffer of its own). Prints one line per floor and ends with 'FAILURES n'. (Round 29: the chase is the
+# dark, opaque black with a torn edge; the granite plug is gone. Every row is checked on the rip alone; the jackal, which comes out at
+# his height and may cross the waist line of the row above his, is checked with the rip on his own row.)
 # Torchlight frames are sent to WebGL at once (GLP.pipe=false): the test moves the storm tens of px between single frames, and
 # the game's one-frame-late picture (v52) would show the frame before; in play the storm pass reads the storm where it is.
 import os, sys
@@ -17,7 +18,7 @@ hi = int(a[1]) if len(a) > 1 else 27
 nseeds = int(a[2]) if len(a) > 2 else 1
 FRAMES, TORCH_EVERY = 200, 5
 fails = 0
-SETUP = '''([n,s])=>{const H=__HK;H.EGP.plug=false;window.__HKfreeze=true;window.__HKnoauto=true;H.GLP.pipe=false;document.querySelectorAll('.screen').forEach(e=>e.hidden=true);
+SETUP = '''([n,s])=>{const H=__HK;window.__HKfreeze=true;window.__HKnoauto=true;H.GLP.pipe=false;document.querySelectorAll('.screen').forEach(e=>e.hidden=true);
   for(const id in H.HINTS)H.S.hints[id]=1;for(const id of H.HINT_MOVE)H.S.learned[id]=1;
   const L=H.load(n,s,true);H.banner=null;const c=L.ext.chase;if(!c)return null;
   let sp=null;for(let cc=c.c0+6;cc<c.c1-4&&!sp;cc++)for(let r=c.rTop+1;r<c.rBot;r++)if(H.solidBelow(cc,r)&&H.solidBelow(cc-1,r)&&H.solidBelow(cc-2,r)&&H.solidBelow(cc-3,r)){sp={x:cc*32+16,r};break;}
@@ -25,9 +26,9 @@ SETUP = '''([n,s])=>{const H=__HK;H.EGP.plug=false;window.__HKfreeze=true;window
   c.on=true;c.done=false;c.t=1;return {theme:L.theme.name,rTop:c.rTop,rBot:c.rBot,row:sp.r};}'''
 STEP = '''([k,torch])=>{const H=__HK,P=H.P,c=H.L.ext.chase,sp=window.__sp,d=20+70*((k*37)%11)/10;
   P.x=sp.x;P.y=(sp.r+1)*64-4;P.state='stand';P.inv=1e9;P.vx=P.vy=0;c.wx=P.x-d;H.tick(1);P.x=sp.x;P.y=(sp.r+1)*64-4;c.wx=P.x-d;
-  const res=[];res.push(H.stormProbe(false));if(torch){H.S.set.lightMode='torch';H.cam.snap=true;H.render();res.push(H.stormProbe(true));}
+  const res=[[H.stormProbe(false,false),0],[H.stormProbe(false,true),1]];if(torch){H.S.set.lightMode='torch';H.cam.snap=true;H.render();res.push([H.stormProbe(true,false),0],[H.stormProbe(true,true),1]);}
   let worst=0,ahead=0,missing=0,n=0,gl=null;
-  for(const q of res){if(q.gl===false&&!q.rows){gl=false;continue;}if(q.gl)gl=true;for(const r of q.rows){n++;if(r.cross===null){missing++;continue;}worst=Math.max(worst,Math.abs(r.cross));ahead=Math.max(ahead,r.ahead);}}
+  for(const [q,own] of res){if(q.gl===false&&!q.rows){gl=false;continue;}if(q.gl)gl=true;for(const r of q.rows){if(own&&r.r!==sp.r)continue;n++;if(r.cross===null){missing++;continue;}worst=Math.max(worst,Math.abs(r.cross));ahead=Math.max(ahead,r.ahead);}}
   return {worst,ahead,missing,n,gl};}'''
 with sync_playwright() as p:
     b = p.chromium.launch()

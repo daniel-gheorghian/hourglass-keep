@@ -470,7 +470,24 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
 - A ceiling at his height (a WALL, or an upper floor's slab, `ceilY`) makes any floor jump the low leap (v60, owner), and the head
   clamp holds every frame; a saw that would sit under such a ceiling becomes spikes in place (the low leap cannot clear it).
   Check with `lowceil.py`.
-- The sandstorm's surface boils (v60, owner): a two-phase flow map in the shader, baked looping frames crossfaded in Classic (`STB`).
+- The chase is the dark (round 29, owner: "instead of a sandstorm I want a storm of darkness ... think of Anubis"; "100% black opaque,
+  like rips in the scene, and on that background the eyes, the jackal"; the granite plug and the sandstorm (v60's boiling dust, `STB`, its
+  bakes) are gone). The burial ground's night drives the thief out; its material is Tutankhamun's Anubis (Cairo JE 61444: black over the
+  wood, gold leaf in the ears and round the eyes, calcite and obsidian eyes). Opaque black, never a haze: a rip in the picture with a torn
+  edge (`dkTear`, `dkSplint`: piecewise-linear noise, straight runs and corners, crawling), gilded here and there (`DK_GOLD`) and a gold crest
+  along each floor at the kill line. One table a frame (`dkTable`: the front per world px of height, the ragged top and foot per px of
+  width) feeds both modes: Torchlight's `glStorm` draws it over the finished frame at full resolution (analytic coverage, no MSAA on the
+  pass; the composite's vignette), Classic's `stormLayer2D` after the haze (`drawDark2D`), so it stays black. It opens from a crack as it
+  wakes (`dkOpen`). The jackal (`dkArt`, `dkJackalPath`: black, gold inside the near ear, a calcite eye ringed in gold with a kohl line, a
+  gold collar and a gold edge where light would catch) slides out of it at his height, its jaw just over his head and its neck back in the
+  dark, when it wakes (0.3-3.2 s) and whenever it is within about two tiles of him (`dkLook`, a pure function of the chase, his height and
+  the clock); otherwise pairs of eyes open, blink and close in it. It eats light: lamps ahead dim at most `DK_DRAIN` and gutter, behind
+  it they are out (`dkDrain` in `gatherLights`); the air before it greys and darkens (the composite's veil, `u_sd`; Classic a shade); his
+  shadow is pulled back along the wall toward it (`drawShut`: three leaning copies of his silhouette, never on the sky through an
+  opening). At the arch dawn breaks it: black tatters with gold edges fly past and part round him, holes burn through it with gold edges, a
+  warm flash; flakes settle as ash. A jackal howls far off as it wakes (`howl`). Fair as before (death `P.x < wx+4`): `stormfair.py` checks
+  the rip on every storm row without the jackal and eyes (`stormProbe(torch, look)`), and with them on his own row. Look only: speed,
+  rows, kill line and bot unchanged. Pictures `egyptr29.py`.
 - Themes (branch egypt, owner): twelve themes of Egypt, Kush and the Sahara, four floors each (`THEMES`, `themeOf`), turning every 48
   floors; time of day and wear still turn every 20 (`progOf`). A theme has a drawing `style` (dungeon, palace, tile, forge, crypt: the
   style-keyed tables) and a `look` (its backdrop `BGART`, hangings `TAP`, Torchlight light `lk`, effects `LFX`). The generator never
@@ -480,10 +497,9 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   Built in (owner, round 4): the themes' lamps (`drawLampEg`) and the re-skinned traps are on by default: granite portcullis
   (`egSlab`; lift gates keep their bars; no metal mask; modelled by the key light: lit narrow face, a crisp arris, a core-shadow band and
   dark far edge on the broad face, a cast shadow on floor and wall, raised in round 16c so the edge reads in every theme), sliding roof block with sand (`egStone`, `egBlock`), sand floor, bronze-
-  tipped stakes, and the chase drawn as a granite plug (`drawPlug`; the storm shader, veil and Classic bakes are off behind it).
-  Look only: hit boxes, timing, generator and bot unchanged. `EGP={lamps,traps,plug}` turns them off for debugging (metaltest's
-  gate scene and stormfair test the iron gate and the storm that way). The plug is one passage-sized block per corridor row of the
-  chase, its leading face at `wx` (the kill line stays `wx+4`), with a dust veil marking the line where no floor is. The water clock
+  tipped stakes (the chase was a granite plug from round 4 to v75; round 29 made it the dark, below).
+  Look only: hit boxes, timing, generator and bot unchanged. `EGP={lamps,traps}` turns them off for debugging (metaltest's
+  gate scene tests the iron gate that way). The water clock
   (the Karnak clepsydra) replaces the hourglass as look and words: the checkpoint (`drawHourglass`), the HUD's measures and gate
   timers (`drawGlass`), the rewind's grade and words; `S.sands` and every timing are unchanged. Theme order: `themeOf(n)` takes the
   block's generator style (`GEN_STYLE[block%5]`) and picks the theme by light and 60-floor turn from `SCHED` (repeats every 180
