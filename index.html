@@ -172,7 +172,7 @@ body.portrait #rotate{display:flex}
           <dt>Crawl</dt><dd>Down gets you on hands and knees, left or right crawls, up stands. Low tunnels and swinging blades call for it.</dd>
           <dt>Fight</dt><dd><kbd>Grab</kbd> strikes. Up blocks when the guard raises his blade, then strike back fast; better guards parry a flurry and answer it. Down sheathes. Strike snakes before they coil, or crouch and <kbd>Grab</kbd> to draw your blade low and thrust at them in a tunnel. Skeletons only fall to a pit, so drive them over the edge.</dd>
           <dt>Gates</dt><dd>A plate raises a gate. A sky clock on a gate means it shuts again, with the time left shown at the top. A red plate right in front of a gate slams it shut, so jump over it. Some gates open from a plate out of sight, up a climb or down a hole; colour-marked gates answer to the plate of the same colour.</dd>
-          <dt>Traps</dt><dd>Jump saw blades as they come. Crouch under darts. When a granite plug starts to slide behind you, run and do not stop until the arch.</dd>
+          <dt>Traps</dt><dd>Jump saw blades as they come. Crouch under darts. When the dark wakes behind you, run and do not stop until the arch.</dd>
           <dt>Hours</dt><dd>When you fall, <kbd>Grab</kbd> turns back time about five seconds. You carry three hours; every sky clock gives them back.</dd>
           <dt>Flasks</dt><dd>Stand on one and tap <kbd>Grab</kbd> to drink. A small red flask heals one life, a large red one heals them all, gold adds a life, dark blue is poison. Large red flasks are rare and wait at the far ends of gated side passages; gold ones hide in passages without a gate.</dd>
           <dt>Exit</dt><dd>A floor plate somewhere opens the exit. Press up at the open door.</dd>
@@ -415,7 +415,7 @@ const skyOf=th=>todSkyCol(th.sky,L&&L.prog?L.prog.tod:0);
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=9;
-const APP_VERSION='75'; // set by the build; shown on the title and pause screens
+const APP_VERSION='76'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},learned:prev?prev.learned:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(!s.learned){s.learned={};if(s.level>2){s.learned.gap=s.learned.climb=s.learned.drop=1;}if(s.maxHp>3)s.learned.potion=1;} // an old save: whoever got past floor 2 can run, jump, climb and let go; the rest of the moves come back as hints until done
@@ -1208,7 +1208,7 @@ function buildLevel(n,seed,test,legacy,att){
     else bot.push({a:'walk',c:c+4},{a:'pull',from:c+4,n:1},{a:'climb',from:c+3},{a:'drop',from:c+4},{a:'walk',c:c+9});
     c+=9;run=1;return true;
   }
-  // ---- the sandstorm: a long run of obstacles that never ask you to wait, with a wall of sand behind you ----
+  // ---- the chase (the sandstorm until round 29, the dark since): a long run of obstacles that never ask you to wait, with the dark behind you ----
   function chaseSeg(){
     if(L.ext.chase)return false;
     const start=bot.length,c0=c,r0=r,want=ri(26,34)+Math.floor(d*8);let rTop=r,rBot=r,climbs=0,downs=0,guardN=0;
@@ -2758,6 +2758,12 @@ const Snd={ctx:null,master:null,nb:null,
       case'tick':T(1700,0.035,{vol:0.03,type:'square'});break;
       case'dart':N(0.09,{vol:0.07,f:2800,type:'bandpass',to:1400,q:3});break;
       case'storm':N(2.2,{vol:0.16,f:260,att:0.4,to:120});T(48,1.8,{vol:0.07,type:'sine',att:0.4});break;
+      case'howl':{const c=this.ctx,t0=c.currentTime+0.35; // (round 29) a jackal far off as the dark wakes: two voices gliding up, wavering, falling away, muffled by distance
+        for(const [d,f0,v] of [[0,430,0.05],[0.22,520,0.032]]){const t=t0+d,os=c.createOscillator(),lf=c.createOscillator(),lg=c.createGain(),bp=c.createBiquadFilter(),lp=c.createBiquadFilter(),g=c.createGain();
+          os.type='sawtooth';os.frequency.setValueAtTime(f0,t);os.frequency.exponentialRampToValueAtTime(f0*1.75,t+0.45);os.frequency.setValueAtTime(f0*1.75,t+1.0);os.frequency.exponentialRampToValueAtTime(f0*1.2,t+1.7);
+          lf.frequency.value=5.2;lg.gain.value=f0*0.03;lf.connect(lg);lg.connect(os.frequency);bp.type='bandpass';bp.frequency.value=f0*2;bp.Q.value=1.4;lp.type='lowpass';lp.frequency.value=1500;
+          g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(v,t+0.25);g.gain.setValueAtTime(v,t+1.1);g.gain.exponentialRampToValueAtTime(0.0001,t+1.8);
+          os.connect(bp);bp.connect(lp);lp.connect(g);g.connect(this.master);os.start(t);lf.start(t);os.stop(t+1.85);lf.stop(t+1.85);}}break;
       case'swing':N(0.07,{vol:0.045,f:330,type:'bandpass',q:7});N(0.09,{vol:0.04,f:290,type:'bandpass',q:7,at:0.06});break; // (round 18b) the turn: the ropes creak on the log (two short stick-slip groans, not a chain's rattle)
       case'ropecreak':for(let i=0;i<4;i++)N(0.06+0.02*i,{vol:0.06-0.008*i,f:250+30*i,type:'bandpass',q:8,at:i*0.075});break; // (round 18b) ready: the ropes take the strain, a run of fibrous creaks
     }},
@@ -3862,12 +3868,12 @@ function updateFeatures(dt){
     // it wakes as he crosses the line at c0+1 heading right, not when he lands past it: a route can pass this row the other way
     // first (dropping in off a ledge, which turns him to face right) and the storm would rise behind a prince who must go back
     const lx=chs.lx;chs.lx=P.x;
-    if(!chs.on&&alive&&mode==='play'&&lx!==undefined&&lx<=(chs.c0+1)*TW&&P.x>(chs.c0+1)*TW&&P.x<(chs.c0+4)*TW&&P.face>0&&pr>=chs.rTop&&pr<=chs.rBot){chs.on=true;chs.t=0;chs.wx=Math.min(P.x-4*TW,(chs.c0-1)*TW);msg('The sand stirs behind you. Run!',3);Snd.play('storm');hint('chase');}
+    if(!chs.on&&alive&&mode==='play'&&lx!==undefined&&lx<=(chs.c0+1)*TW&&P.x>(chs.c0+1)*TW&&P.x<(chs.c0+4)*TW&&P.face>0&&pr>=chs.rTop&&pr<=chs.rBot){chs.on=true;chs.t=0;chs.wx=Math.min(P.x-4*TW,(chs.c0-1)*TW);msg('The dark wakes behind you. Run!',3);Snd.play('storm');Snd.play('howl');hint('chase');}
     if(chs.on&&!chs.done){chs.t+=dt;if(alive){const near=clamp(1-(P.x-chs.wx)/150,0,1);if(near>0)shake(0.35+0.9*near);}const lead=P.x-chs.wx,keep=190-30*L.d;if(chs.t>0.7)chs.wx+=(chs.v+Math.max(0,lead-keep)*1.3)*dt; // it hangs on your heels: run ahead and it surges
-      if(alive&&P.x<chs.wx+4&&pr>=chs.rTop&&pr<=chs.rBot){flashScreen('#c08a40',0.5,0.4);die('sand');}
-      // it ends the moment he is through the arch: the storm makes one last rush after him and breaks up round him
+      if(alive&&P.x<chs.wx+4&&pr>=chs.rTop&&pr<=chs.rBot){flashScreen('#000000',0.6,0.5);die('sand');}
+      // it ends the moment he is through the arch: the dark makes one last rush after him and tears apart round him
       if(chs.wx>=chs.c1*TW-20||P.x>chs.c1*TW+8){chs.done=true;
-        if(P.state!=='dead'){msg(EGP.plug?'The plug grinds to a stop at the arch in a cloud of sand.':'The storm breaks at the arch and falls to dust around you.',3);Snd.play('crumble');shake(1.4);
+        if(P.state!=='dead'){msg('Dawn breaks at the arch, and the dark tears away.',3);Snd.play('crumble');shake(1.4);flashScreen('#ffe2a8',0.35,0.6);
           const tx=P.x+40;chs.diss={t:0,x0:chs.wx,tx,bx:chs.wx,ts:clamp((tx-chs.wx)/460,0.45,0.95)};STORMG.length=0;}}}
     if(chs.done){if(chs.diss){if(!chs.diss.over)updateStormDiss(chs,dt);}else if((chs.fade||0)<1)chs.fade=Math.min(1,(chs.fade||0)+dt*0.8);}}}
   if(L.door.opening&&L.door.open<1)L.door.open=Math.min(1,L.door.open+dt*0.45);
@@ -3923,7 +3929,7 @@ const HINTS={
   saw:'A saw blade runs along the floor. Jump it as it comes at you.',
   darts:'Darts fly from that wall at chest height. Crouch and crawl under them, or time your run.',
   block:'A loose block. Hold Grab and press toward it to push, away to pull. Its weight holds a plate down for good, and you can climb over it.',
-  chase:'A granite plug is sliding down the corridor behind you. Keep running and jump everything in your way; the arch at the far end stops it.',
+  chase:'The dark is coming down the corridor behind you. Keep running and jump everything in your way; it cannot pass the arch at the far end.',
   secret:'Something glints up there. Side passages without gates hide gold flasks.',
   secretdn:'Something glints at the edge of that drop. Side passages without gates hide gold flasks.',
   fork1:'Two ways on. Drop through the hole and fight a guard, or jump it and take the long way with its traps.',
@@ -5087,7 +5093,7 @@ const warmLamp=t=>L.theme.style==='crypt'&&(t.c*7+t.r*13)%10<3;
 // ---- the themes' own lamps and the re-skinned traps (owner, round 3: built in). EGP turns them off for debugging (the v61 looks).
 // Lamps: the shape only; the light, its colour, place and flicker are the style's (the flame sits where LAMP puts the light, so
 // Torchlight's lights line up). Traps: the look only; hit boxes, timing, generator and bot are untouched. Sources: egyptround2.py.
-const EGP={lamps:true,traps:true,plug:true,unlit:false};
+const EGP={lamps:true,traps:true,unlit:false};
 function drawLampEg(ctx,t,th){const look=th.look,st=th.style,free=lampFree(t),x=t.c*TW+16,y0=SURF(t.r)-38,base=SURF(t.r)-HY+1.5,tm=gameTime,seed=(t.c*7+t.r*13)%10;
   const lo=st==='palace'&&free?[0,0]:LAMP[st]||LAMP.dungeon,fx=x+lo[0],fy=y0+lo[1]-((st==='palace'||st==='tile')&&free?28:0)+4,lit=!EGP.unlit,K='#0b0812';
   const wl=warmLamp(t),gcl=wl?'255,188,100':th.glow,f=Math.sin(tm*13+seed)*0.6+Math.sin(tm*7.3+seed*1.7)*0.4,gsp=lightSprite(gcl);
@@ -5195,7 +5201,7 @@ function drawLampEg(ctx,t,th){const look=th.look,st=th.style,free=lampFree(t),x=
   return false;}
 // the re-skinned traps (EGP.traps): a granite portcullis slab for the gate (Khufu's and Unas's portcullises in their grooves); a
 // dressed roof block with sand running from its seams for the falling stone (Hawara's sliding roof blocks); bronze-tipped stakes
-// for the spikes (a film invention, kept for play); EGP.plug: the chase's front a granite plug sliding down the corridor
+// for the spikes (a film invention, kept for play)
 // ---- stones (round 12, owner: "check the actual granite texture, too pixelated"; "respect the level theme for the stone and the level of
 // damage and crumbling to that area"). Each stone is drawn once into a canvas at 4 px a game pixel, as soft-edged patches at the scale of
 // its crystals or grains in two or three tones over soft mottles (no noise pixel by pixel), then drawn scaled and smoothed onto each face,
@@ -5215,11 +5221,9 @@ const STONES={
   mudbrick:{base:'#8a5a3a',courses:1,mot:[['#9e6a46',.18],['#704830',.16]],pat:[['#c4a066',1.0,0.2,0.5,0.75,2],['#5a3822',0.4,0.3,0.7,0.5,0]],sheen:0},
   kershef:{base:'#8c7a62',mot:[['#a08e74',.18],['#76644c',.16]],pat:[['#ebe5d8',0.8,0.6,1.8,0.85,1],['#d8d1c1',0.5,0.4,1.2,0.6,0],['#5e5040',0.4,0.3,0.6,0.5,0]],sheen:0}};
 // each theme's own stone (roof blocks and their slots); the portcullis's slab (granite where the kings used it; where no one would have:
-// Napata, Meroë, Kerma, the Garamantes and the wells in sandstone, Shali in limestone, Aksum its syenite, Hawara its quartzite); the plugs
-// (granite, as in the Great Pyramid; Aksum's syenite and Hawara's quartzite are their own builders' hard stones)
+// Napata, Meroë, Kerma, the Garamantes and the wells in sandstone, Shali in limestone, Aksum its syenite, Hawara its quartzite)
 const THEME_STONE={west:'limestone',blue:'limestone',osiris:'greywacke',nun:'granite',napata:'sandstone',meroe:'sandstone',deffufa:'mudbrick',aksum:'syenite',hawara:'quartzite',shali:'kershef',foggara:'sandstone',wells:'sandstone'};
 const SLAB_STONE={west:'granite',blue:'granite',osiris:'granite',nun:'granite',hawara:'quartzite',aksum:'syenite',napata:'sandstone',meroe:'sandstone',deffufa:'sandstone',foggara:'sandstone',wells:'sandstone',shali:'limestone'};
-const PLUG_STONE={aksum:'syenite',hawara:'quartzite'};
 function hexA(h,a){const n=parseInt(h.slice(1),16);return 'rgba('+(n>>16)+','+((n>>8)&255)+','+(n&255)+','+a+')';}
 const STX=new Map();
 function stoneTex(kind,W,H,motif){const key=kind+':'+W+'x'+H+':'+(motif||'');let c=STX.get(key);if(c)return c;
@@ -5347,7 +5351,7 @@ function egSlabBody(ctx,pl,drop,X,plain,top){const K='#0b0812',T=T_SLAB,a=pl.L0,
   if(top){ctx.fillStyle='rgba(6,4,10,.92)';ctx.beginPath();ctx.moveTo(a+T/2,ya-0.5);ctx.lineTo(b+T/2+1.5,yb-0.5);ctx.lineTo(b+T/2+1.5,yb+3.5);ctx.lineTo(a+T/2,ya+3.5);ctx.closePath();ctx.fill();} // (and along its slant where it rises beside the ceiling's side face)
   if(STONES[kind].cry)stoneGlints(ctx,TX,(u,v)=>{if(u<0.5||u>15.5)return null;const yy=v-v0;if(yy<1||yy>yd-1)return null;const x=u*(b-a)/16;return [a+T/2+x,ya+yy+sl*x];},sd);}
 // ---- sand (round 12, owner: "starts with slow trickles of sand, quickly increasing, exponentially, a large puff of sands"): one routine
-// for every trap that pours sand (the roof block, the sand-filled shaft under a slab, the plugs). sandK: the flow at time t of a pour
+// for every trap that pours sand (the roof block, the sand-filled shaft under a slab). sandK: the flow at time t of a pour
 // that takes `dur` to go from a trickle (k0) to the full flow, growing exponentially; sandFlow: k sets the number of strands (one to
 // three), their width and the beads' speed, the grains breaking off and the ones catching the light; sandBillow: the cloud as the stone
 // lets go or lands, lobes swelling and rising, drifting apart, fading; sandSettle: the dust hanging after it, sinking over two seconds.
@@ -5663,33 +5667,6 @@ function egRoofLying(ctx,o,f,half){const R=roofStone(o),x0=R.xc-BLK_W/2,yt=R.ys+
   stoneBox(ctx,R.kind,x0,yt,BLK_W,BLK_H,{top:true,side:true,wear:Math.min(3,R.W+1),seed:R.sd+1,dust:true}); // fresh chips and dust from the fall
   wearRubble(ctx,x0,x0+BLK_W+DX,R.ys,Math.max(2,R.W),R.sd+9);
   if(age<1.3){sandBillow(ctx,o.c*TW+16,R.ys,age,1.25,0.6);sandSettle(ctx,o.c*TW+16,R.ys,age,22);}}
-// The chase drawn as granite plugs (owner, round 4: a plug is the size of the passage it slides down, not a wall). In every row of
-// the chase's span that has a floor at the front, a block one passage high (floor to ceiling, at most a storey) and two tiles long
-// fills the corridor's depth, its polished leading face at the front (ch.wx; the kill line, speed and rows are the storm's own); where
-// there is no floor (a shaft, the air over a drop) the line is marked by the dust it throws up, a pale veil the height of the span.
-const PLUGL=64;
-function drawPlug(ctx,ch,x0,x1,y0,y1){const fx=ch.diss?ch.diss.bx:ch.wx,a=1-(ch.fade||0),K='#0b0812',t=gameTime;if(fx<x0-PLUGL-20||a<=0.01)return;ctx.save();ctx.globalAlpha=a;
-  const top=ch.rTop*TH,bot=(ch.rBot+1)*TH,cf=Math.floor(fx/TW);
-  ctx.fillStyle='rgba(236,214,166,.16)';ctx.fillRect(fx-10,Math.max(top,y0-10),26,Math.min(bot,y1+10)-Math.max(top,y0-10)); // the dust it throws up, marking the line in every row
-  // (round 12, owner: "same perspective, texture, shader, damage as for the others"): each plug a block in the corridor's projection, its long
-  // front face toward us, its top receding up and to the right where the ceiling leaves it in view, its polished leading face across the
-  // corridor's depth; granite from the cached stone (Aksum: syenite; Hawara: quartzite), the pattern carried with it; worn as the walls it
-  // passes; sand trickling off its leading top edge, grit scraped off the back wall, a dust billow rolling at its foot
-  const kind=PLUG_STONE[L.theme.look]||'granite',xl=fx-HX-PLUGL,xr=fx-HX;
-  for(let r=ch.rTop;r<=ch.rBot;r++){const ys=SURF(r);if(ys<y0-80||ys-80>y1)continue;if(B(L,cf,r)===WALL||!solidBelow(L,cf,r))continue;
-    const cy=ceilingY(cf,r),h=Math.min(ys-cy,TH-4),tp=ys-h,hh=ys+HY-tp,top=tp-DY>cy-0.5,sd=hash2(r*13+7,ch.c0|0),W=EGP.wear!==undefined?EGP.wear:wearLevel(xl+PLUGL/2,ys-30);
-    ctx.save();ctx.beginPath();ctx.rect(xl-2,cy,PLUGL+DX+6,ys+HY+4-cy);ctx.clip();
-    const TX=stoneBox(ctx,kind,xl,tp,PLUGL,hh,{top:tp>cy+0.5,side:true,wear:W,seed:sd,u0:0});
-    ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(xl+PLUGL*0.5,tp,1,hh); // the joint between its two stones
-    ctx.save();ctx.transform(1,-DY/DX,0,1,xr,tp);const gl=ctx.createLinearGradient(0,0,DX,0);gl.addColorStop(0,'rgba(255,240,228,.3)');gl.addColorStop(1,'rgba(255,240,228,.06)');ctx.fillStyle=gl;ctx.fillRect(0,0,DX,hh);ctx.restore(); // its polished leading face
-    ctx.fillStyle='rgba(255,240,226,.55)';ctx.fillRect(xr-0.4,tp,0.9,hh); // the arris catching the light
-    ctx.restore();
-    if(STONES[kind].cry)stoneGlints(ctx,TX,(u,v)=>u<PLUGL&&v>12&&v<12+hh?[xl+u,tp+v-12]:null,sd);
-    if(tp>cy+2)sandFlow(ctx,xr+DX*0.5,tp-HY,ys,0.3,r*0.3); // sand running off its leading top edge
-    ctx.fillStyle='rgba(226,206,160,.85)';for(let i=0;i<8;i++){const u=(t*1.7+i/8)%1;ctx.globalAlpha=1-u;ctx.fillRect(xr+DX-1-u*6,tp-DY+u*(h-6)+Math.sin(i*2.1)*2,1.1,1.1);}ctx.globalAlpha=1; // grit ground off the back wall
-    ctx.fillStyle='rgba(240,222,176,.9)';for(let i=0;i<12;i++){const u=(t*2.4+i/12)%1;ctx.fillRect(xr+DX*0.5+u*12,ys-1-Math.sin(u*Math.PI)*7-(i%3),1.3,1.3);} // sand and grit pushed ahead of it
-    egHeap(ctx,xr+DX*0.5+5,ys,12,2);for(let i=0;i<2;i++)sandBillow(ctx,xr+DX*0.5+6,ys+1,((t*0.8+i*0.5)%1)*0.9,0.55,0.9);}
-  ctx.restore();}
 function drawLight(ctx,t,th){if(EGP.lamps&&drawLampEg(ctx,t,th))return;
   const free=lampFree(t),base=SURF(t.r)-HY+1.5,key=(t.r-1)*TH+11;
   const x=t.c*TW+16,st=th.style,y=SURF(t.r)-38-(free&&(st==='palace'||st==='tile')?28:0),tm=gameTime,seed=(t.c*7+t.r*13)%10,f=Math.sin(tm*13+seed)*0.6+Math.sin(tm*7.3+seed*1.7)*0.4;
@@ -6530,222 +6507,236 @@ function conceptClock(ctx,kind,f,s){const K='#0b0812';ctx.save();ctx.scale(s,s);
     ctx.globalCompositeOperation='lighter';ctx.globalAlpha=0.6;ctx.drawImage(lightSprite('255,210,110'),0,y-3.6,6.4,7.2);}
   ctx.restore();}
 function drawGlass(ctx,x,y,frac,cap,dim,rev){ctx.save();ctx.translate(x,y+0.5);ctx.scale(0.86,0.86);nutClock(ctx,frac,{s:1,dim,cap,rev,t:rev||(frac>0.02&&frac<0.98)?gameTime:0,glow:!dim});ctx.restore();} // (a still clock is still: the HUD is redrawn only when its picture changes)
-// ---- the sandstorm (unit ST): a wall of lit dust, not a shadow ----
-// The owner: "it doesn't look like a sandstorm, it looks more like a shadow; I can sometimes notice the painted edge underneath".
-// A haboob is a tall wall of tan to orange-brown dust, lit on the side facing the sky, its base still a readable brown (NWS
-// Lubbock's haboob events; Britannica); its head rolls forward over a dense layer of grains along the ground (the head of a
-// density current). So there is no fill with an outline any more: the dust is cached noise, domain-warped fbm (Inigo Quilez,
-// "Domain warping"), shaded as a height field from the floor's sky light (skyBeam), lit tops and a shaded base as in Horizon
-// Zero Dawn's clouds (Schneider and Vos 2015), in the floor's own sand colour (SANDC), its base about a third of the lit value
-// and never darker. Its alpha is a density: translucent at the front, opaque from about 60 px in; the head fades upward into
-// billows and the foot into the floor below, so no row line shows at the top or the bottom. Three depths drift at different
-// fractions of the front's speed (parallax). Fair: death is P.x < wx+4, and at the feet the front's alpha crosses .55 within
-// 2 px of that line (stBulge), with a lit crest of dust along each floor right at it; the head may lean far forward only above
-// the storm's top row, where nobody stands. Classic composes the dust at half resolution in two small canvases (colour, cut by
-// a mask), from tiles baked once per theme and time of day (one a frame); Torchlight draws the same layout in a shader
-// (glStorm). Both keep the blown grains and pebbles in 2D. stormfair.py checks the line in both modes.
-// The owner (after v59): "the surface of the storm is static, shouldn't it rumble too?" It slid as one painted sheet. A dust wall is
-// the head of a density current: Kelvin-Helmholtz billows form on its front, climb it, roll back over the head and break up,
-// merging and swelling as they go (Britter and Simpson 1978, J. Fluid Mech.; sodar of gust fronts over Tehran; the AMS
-// glossary's "knobby" dust wall); deep in the body it only churns. So the surface boils, its light moving with the lumps: Torchlight
-// carries its live noise along a flow (up the front, forward over the head, slower inside; STB) as a flow map in two phases
-// half a period apart (Vlachos, "Water flow in Portal 2", SIGGRAPH 2010), blended keeping their contrast (Heitz and Neyret
-// 2018), and its domain warp moves in time (Quilez); the slope light is worked out per pixel, so lit tops and shaded
-// undersides travel and change with the lumps. Classic has no per-pixel work: each surface is baked as STB.nf frames whose
-// warp walks a loop (3D noise sliced in time, made periodic) and crossfades from one to the next, and two more layers of the
-// billows, each faded in toward the front or the head, climb the front and roll forward over the head. Calm halves it all.
-// Fairness is untouched: the front's alpha does not depend on the boil.
-const SANDC={palace:{lit:[238,198,132],base:[98,74,46]},     // Sandstone Halls: ochre
-  tile:{lit:[232,206,152],base:[90,78,60]},                     // Lapis Gallery: the pale gold sand of its floors
-  forge:{lit:[228,152,104],base:[94,56,38]},                    // Ember Forge: rust
-  dungeon:{lit:[206,192,162],base:[80,74,64]},                  // the Cistern: grey-tan
-  crypt:{lit:[196,204,194],base:[74,80,80]}};                   // Jade Crypt: cool ash
-const STOD=[1,0.8,1],stCols={}; // (night dims the dust; the sky's colour tints it a little)
-function stormCol(){const st=L.theme.style,td=L.prog?L.prog.tod:0,k=st+td;if(stCols[k])return stCols[k];
-  const s=SANDC[st]||SANDC.dungeon,sky=SKYB[td]||SKYB[0],f=(c,i)=>Math.round(Math.min(255,c*STOD[td]*(0.8+0.2*sky.col[i]/255))),lit=s.lit.map(f),base=s.base.map(f),j=a=>a.join(',');
-  return stCols[k]={lit,base,litS:j(lit),baseS:j(base),midS:j(lit.map((v,i)=>Math.round((v+base[i])/2))),darkS:j(base.map(v=>Math.round(v*0.62))),skyS:j(sky.col)};}
+// ---- the dark (round 29): the chase is a storm of darkness ----
+// (owner: "instead of a sandstorm I want a storm of darkness, I think it makes for a better fit ... I think we should think of Anubis";
+// after a first look at the sandstorm only turned black, which read grey: "100% black opaque, like rips in the scene, and on that
+// background the eyes, the jackal"; the granite plug dropped.) The burial ground's own night drives the thief out; Anubis, "Lord of
+// the Sacred Land" and "He who is upon his mountain", keeps it. Its material is his statue from Tutankhamun's treasury (Cairo JE
+// 61444): black over the wood, gold leaf inside the ears and round the eyes, eye-whites of calcite, pupils of obsidian. So the dark is
+// no haze (a translucent black reads grey, or as the vignette): it is opaque, a rip in the picture with a torn edge (piecewise-linear
+// noise at three scales: straight runs and sharp corners, never a billow; a splinter now and then), gilded here and there along the
+// tear as the statue's edges are; on the black only the gold and the eyes. A jackal's head (dkArt: black, gold inside the ear, a
+// calcite eye ringed in gold, a gold collar) slides out of the dark's head above the storm's top row when it wakes and whenever it is
+// within about two tiles of him (dkLook); otherwise pairs of eyes open, blink and close in it. When it wakes the rip opens from a crack
+// (dkOpen). The dark eats light: the lamps ahead dim (at most DK_DRAIN) and gutter (dkDrain, in gatherLights), the air in front of it
+// darkens and greys (Torchlight's composite veil; Classic a shade), and his shadow is pulled back along the wall toward it (drawShut:
+// the shut, the shadow that is a part of the soul in the Book of the Dead). At the arch dawn breaks it: holes burn through it with
+// gold edges and its tatters fly past him and part round him. Fair as before: death is P.x < wx+4; from the feet to the waist of
+// anyone on a storm row the edge stays within 5 px of that line (stormfair.py), with a gold crest along each floor right at it; the
+// head and its tongues lean far forward only above the top row, where nobody stands. Both modes draw from one table (dkTable, made
+// once a frame: the edge per world px of height, the top and the foot per px of width): Torchlight in glStorm over the finished frame
+// at full resolution (a rip must be crisp; the sand was a quarter-size pass), Classic in the emissive pass. Look only: the front's
+// speed, the kill line, the rows and the bot are unchanged.
+const DK_GOLD=[226,180,92],DK_GS='226,180,92',DK_DRAIN=0.36;
 const stS=(a,b,x)=>sstep((x-a)/(b-a));
 // how far the visible front leans ahead of wx at height y: within 2 px from the feet to the waist of anyone on a storm row,
-// up to about 8 px at head height (the nose of the head leans over; back to 2 px where one row meets the next, so the front
-// never steps), and a big rolling head only above the storm's top row.
-// (The same formula is in the shader, GLSTSH.)
+// up to about 8 px at head height (back to 2 px where one row meets the next, so the front never steps), and a big forward
+// lean only above the storm's top row
 function stBulge(y,t,rTop){const r=Math.floor((y+4)/TH);let d=(r+1)*TH-4-y;if(r<rTop)d=(rTop+1)*TH-4-y;
   return 2*Math.sin(y*0.09+t*3)+stS(30,48,d)*(1-stS(54,64,d))*(5+3*Math.sin(y*0.05+t*1.7))+stS(64,110,d)*(28+16*Math.sin(y*0.021+t*1.1)+8*Math.sin(y*0.057-t*1.9));}
-// value noise that tiles with period (px,py) lattice cells, and its fbm (each octave doubles the period, so it still tiles)
-const stH=(i,j,s)=>(hash2(i*65537+j,s*977+13)>>>8)/16777216;
-function stVN(x,y,px,py,s){const xi=Math.floor(x),yi=Math.floor(y);let u=x-xi,v=y-yi;u=u*u*(3-2*u);v=v*v*(3-2*v);
-  const a=((xi%px)+px)%px,b=((yi%py)+py)%py,a1=(a+1)%px,b1=(b+1)%py,h00=stH(a,b,s),h10=stH(a1,b,s),h01=stH(a,b1,s),h11=stH(a1,b1,s);
-  return h00+(h10-h00)*u+(h01-h00)*v+(h00-h10-h01+h11)*u*v;}
-function stFbm(x,y,px,py,oct,s){let f=0,a=0.5,n=0;for(let o=0;o<oct;o++){f+=a*stVN(x,y,px,py,s+o*17);n+=a;x*=2;y*=2;px*=2;py*=2;a*=0.5;}return f/n;}
-function stBil(x,y,px,py,oct,s){let f=0,a=0.5,n=0;for(let o=0;o<oct;o++){f+=a*Math.abs(2*stVN(x,y,px,py,s+o*17)-1);n+=a;x*=2;y*=2;px*=2;py*=2;a*=0.5;}return f/n;} // (billow noise)
-const ST={tex:{},T:null,env:null,envKey:'',envPat:null,cc:null,cg:null,mc:null,mg:null,lc:null,lg:null,bz:new Float32Array(256)};
-// the boil: STB.nf baked frames per surface, looping (the warp's lookup walks a circle of radius STB.a, in lattice cells), STB.ft s
-// from one to the next; billows climb the front at STB.rise px/s within STB.fw px of it and roll forward over the head at STB.roll
-// px/s (relative to the front); Torchlight's flow restarts every STB.per s, in two phases half a period apart. Halved when calm.
-const STB={nf:6,a:0.4,ft:0.6,rise:26,roll:22,fw:150,per:1.6};
 function stCanvas(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c;}
-// one tile or sprite, baked once per theme and time of day. A texel is 2 world px. (A generator: it yields after each row, so
-// stormReady can spread a bake over frames by time; stBake runs one to the end.)
-function stBake(kind,fr){const g=stBakeG(kind,fr);let r=g.next();while(!r.done)r=g.next();return r.value;}
-function* stBakeG(kind,fr=0){const col=stormCol(),sb=skyBeam(),L0=col.lit,B0=col.base;
-  if(kind==='body'||kind==='mid'){ // the dust's surface: a domain-warped height field, lit from where the sky light comes from;
-    // frame fr of STB.nf: the warp's own lookup walks a circle of radius STB.a (so the frames loop), the lumps swell and fold
-    const N=128,P=kind==='body'?4:6,sd=kind==='body'?11:29,c=stCanvas(N,N),g=c.getContext('2d'),im=g.createImageData(N,N),D=im.data,h=new Float32Array(N*N),
-      th=fr/STB.nf*Math.PI*2,ca=STB.a*Math.cos(th),sa=STB.a*Math.sin(th);
-    for(let j=0;j<N;j++){for(let i=0;i<N;i++){const X=i/N*P,Y=j/N*P,qx=stFbm(X+ca,Y+sa,P,P,3,sd+1),qy=stFbm(X+2.7-sa,Y+1.3+ca,P,P,3,sd+2);const wx=X+0.9*qx,wy=Y+0.9*qy;h[j*N+i]=0.45*stFbm(wx,wy,P,P,4,sd)+0.55*stBil(wx,wy,P,P,4,sd+5);}yield;} // (billows: rounded lumps with creases between them)
-    for(let j=0;j<N;j++)for(let i=0;i<N;i++){const o=j*N+i,v=h[o],gx=h[j*N+(i+1)%N]-h[j*N+(i+N-1)%N],gy=h[((j+1)%N)*N+i]-h[((j+N-1)%N)*N+i];
-      let l=clamp(0.5-5.2*(gx*sb.dx+gy*sb.dy)+0.92*(v-0.5),0,1); // (a little more contrast than one still frame needs: the crossfade between frames softens it)
-      l=kind==='body'?0.2+0.75*l:0.3+0.7*l; // (the deep body never quite as lit as the billows in front of it)
-      D[o*4]=B0[0]+(L0[0]-B0[0])*l;D[o*4+1]=B0[1]+(L0[1]-B0[1])*l;D[o*4+2]=B0[2]+(L0[2]-B0[2])*l;D[o*4+3]=kind==='body'?255:255*stS(0.42,0.68,v);}
-    g.putImageData(im,0,0);return c;}
-  if(kind==='edge'){ // the front's alpha, 64 texels from 112 px behind it to 16 px ahead; tiles vertically (it rolls upward)
-    const W=64,N=128,c=stCanvas(W,N+4),g=c.getContext('2d'),im=g.createImageData(W,N+4),D=im.data;
-    for(let j=0;j<N+4;j++){if(j)yield;for(let i=0;i<W;i++){const s=112-2*i-1,X=i/W*3,Y=(j%N)/N*4,n=stFbm(X,Y,1024,4,3,41),o=(j*W+i)*4;
-      const a0=s>=-4?0.55+0.45*stS(-4,60,s):0.55*Math.exp((s+4)/4.5)*stS(-16,-12,s), // .55 right at the kill line, opaque from 60 px in, thin ahead
-        er=0.42*stS(10,30,s)*(1-stS(50,72,s)); // pockets of thinner dust a little way in, none at the line itself
-      D[o]=D[o+1]=D[o+2]=255;D[o+3]=255*clamp(a0-er*stS(0.35,0.7,n),0,1);}}
-    g.putImageData(im,0,0);return c;}
-  if(kind==='dis'){const N=128,c=stCanvas(N,N),g=c.getContext('2d'),im=g.createImageData(N,N),D=im.data; // the dissolve: holes open where this is high first
-    for(let j=0;j<N;j++){for(let i=0;i<N;i++){const o=(j*N+i)*4;D[o]=D[o+1]=D[o+2]=0;D[o+3]=255*stS(0.3,0.72,stFbm(i/N*5,j/N*5,5,5,3,71));}yield;}
-    g.putImageData(im,0,0);return c;}
-  if(kind==='rim'){const c=stCanvas(32,1),g=c.getContext('2d'),gr=g.createLinearGradient(0,0,32,0),lc='rgba('+L0.map(v=>Math.min(255,Math.round(v*1.06))).join(',')+',';
-    gr.addColorStop(0,lc+'0)');gr.addColorStop(0.45,lc+'.1)');gr.addColorStop(0.8,lc+'.3)');gr.addColorStop(0.9,lc+'.36)');gr.addColorStop(1,lc+'0)');g.fillStyle=gr;g.fillRect(0,0,32,1);return c;}
-  if(kind==='lip'){ // the crest of dust along a floor at the kill line: 48 x 10 world px, from 42 px behind the front to 6 ahead
-    const c=stCanvas(48,10),g=c.getContext('2d'),im=g.createImageData(48,10),D=im.data,lc=L0.map(v=>Math.min(255,v*1.08));
-    for(let j=0;j<10;j++)for(let i=0;i<48;i++){const s=42-i-0.5,o=(j*48+i)*4,hz=s>=-2?0.95*Math.exp(-Math.max(s-2,0)/22):0.95*stS(-7,-2,s),vt=Math.exp(-Math.pow((j-6.5)/2.2,2));
-      D[o]=lc[0];D[o+1]=lc[1];D[o+2]=lc[2];D[o+3]=255*hz*vt;}
-    g.putImageData(im,0,0);return c;}
-  if(kind==='veil'){const c=stCanvas(64,32),g=c.getContext('2d'),im=g.createImageData(64,32),D=im.data; // the fine dust running ahead
-    for(let j=0;j<32;j++)for(let i=0;i<64;i++){const o=(j*64+i)*4,v=(j+0.5)/32;D[o]=L0[0];D[o+1]=L0[1];D[o+2]=L0[2];D[o+3]=255*stS(0,12,i)*Math.exp(-Math.max(0,i-12)/14)*stS(0,0.3,v)*stS(1,0.86,v);} // (rising from inside the front: no edge)
-    g.putImageData(im,0,0);return c;}}
-// the storm's ragged head and foot, per floor (its rows): 256 texels wide, tiling sideways
-function stBakeEnv(ch){const g=stBakeEnvG(ch);let r=g.next();while(!r.done)r=g.next();return r.value;}
-function* stBakeEnvG(ch){const top=ch.rTop*TH,bot=(ch.rBot+1)*TH,YT=top-120,Hs=Math.ceil((bot+24-YT)/2),W=256,c=stCanvas(W,Hs),g=c.getContext('2d'),im=g.createImageData(W,Hs),D=im.data;
-  for(let j=0;j<Hs;j++){const y=YT+2*j+1;for(let i=0;i<W;i++){const X=i/W*6,o=(j*W+i)*4,f=stFbm(X,y/60,6,4096,3,53),f2=stFbm(X*2,y/30,12,4096,2,59);
-    D[o]=D[o+1]=D[o+2]=255;D[o+3]=255*stS(-18,18,y-YT-70-60*(f-0.5))*stS(21,3,y-bot-6*(f2-0.5));}yield;}
-  g.putImageData(im,0,0);return c;}
-// everything baked? (v61: a few rows at a time, within bud ms a frame (a whole piece was a frame's work: 50 to 150 ms on the
-// phone, the stutter at the start of a storm floor); the piece in hand carries over to the next frame; done before the storm wakes)
-function stormReady(ch,bud=2){const key=L.theme.style+(L.prog?L.prog.tod:0),T0=performance.now();let T=ST.tex[key];if(!T)T=ST.tex[key]={};
-  const ek=L.n+':'+(L.seed|0)+':'+ch.rTop+':'+ch.rBot;
-  for(;;){let id=null,mk=null;
-    for(const k of ['edge','dis'])if(!id&&!T[k]){id=key+k;mk=()=>stBakeG(k);}
-    if(!id)for(const k of ['body','mid']){const a=T[k]||(T[k]=[]);if(!id&&a.length<STB.nf){const f=a.length;id=key+k+f;mk=()=>stBakeG(k,f);}}
-    if(!id&&!T.rim){T.rim=stBake('rim');T.lip=stBake('lip');T.veil=stBake('veil');}
-    if(!id&&ST.envKey!==ek){id='env'+ek;mk=()=>stBakeEnvG(ch);}
-    if(!id){ST.T=T;return true;}
-    if(!ST.job||ST.job.id!==id)ST.job={id,g:mk()};
-    let r;do{r=ST.job.g.next();}while(!r.done&&performance.now()-T0<bud);
-    if(!r.done)return false;
-    const v=r.value;ST.job=null;
-    if(id.startsWith('env')){ST.env=v;ST.envKey=ek;ST.envPat=null;}else if(id===key+'edge')T.edge=v;else if(id===key+'dis')T.dis=v;else{const k=id.slice(key.length,key.length+4)==='body'?'body':'mid';T[k].push(v);}
-    if(performance.now()-T0>=bud)return false;}}
-// the dust itself (both modes without the shader): body, nearer billows, lamps glowing in it, the lit head, cut by the mask;
-// then the crest along the floors and the veil ahead. fx: the body's front, a: 1 - fade.
-function stormLayer2D(ctx,ch,fx,a,x0,x1,y0,y1){
-  if(!stormReady(ch,6)||a<=0.005)return;const T=ST.T,t=gameTime,tc=t*(S.set.calm?0.5:1),rT=ch.rTop,top=rT*TH,bot=(ch.rBot+1)*TH,YT=top-120,YB=bot+24,ka=Math.min(1,a*1.6);
-  const X0=Math.floor((x0-4)/2)*2,X1=Math.min(x1+4,fx+80),Y0=Math.floor(Math.max(y0-4,YT)/8)*8,Y1=Math.min(y1+4,YB);
-  if(X1>X0&&Y1>Y0){const w=Math.ceil((X1-X0)/2),h=Math.ceil((Y1-Y0)/2);
-    if(!ST.cc||ST.cc.width<w||ST.cc.height<h){const W=Math.max(w,ST.cc?ST.cc.width:0)+16,H=Math.max(h,ST.cc?ST.cc.height:0)+16;ST.cc=stCanvas(W,H);ST.mc=stCanvas(W,H);ST.lc=stCanvas(W,H);ST.cc._glv=1; /* (unit WGL: redrawn every frame) */ST.cg=ST.cc.getContext('2d');ST.mg=ST.mc.getContext('2d');ST.lg=ST.lc.getContext('2d');}
-    const m=ST.mg,c=ST.cg,nz=Math.min(256,Math.ceil((Y1-Y0)/8)),bz=ST.bz;
-    if(!T.pb){T.pb=T.body.map(b=>c.createPattern(b,'repeat'));T.pm=T.mid.map(b=>c.createPattern(b,'repeat'));T.pd=c.createPattern(T.dis,'repeat');}
-    if(!ST.envPat)ST.envPat=m.createPattern(ST.env,'repeat-x');
-    for(let k=0;k<nz;k++)bz[k]=stBulge(Y0+k*8+4,t,rT);
-    // the mask: solid behind the front, the front's soft edge in 8 px slices (its noise rolling upward), then the head and foot
-    m.setTransform(1,0,0,1,0,0);m.globalCompositeOperation='source-over';m.globalAlpha=1;m.clearRect(0,0,w,h);m.fillStyle='#fff';
-    const ey=tc*12;
-    for(let k=0;k<nz;k++){const y=Y0+k*8,ex=(fx+bz[k]+16-128-X0)/2,ty=k*4,sy=((y/2+ey)%128+128)%128;
-      if(ex>0)m.fillRect(0,ty,ex+0.5,4);m.drawImage(T.edge,0,sy,64,4,ex,ty,64,4);}
-    m.globalCompositeOperation='destination-in';{const eo=(fx*0.85+tc*8-X0)/2,yo=(YT-Y0)/2;m.setTransform(1,0,0,1,eo,yo);m.fillStyle=ST.envPat;m.fillRect(-eo,-yo,w,h);}
-    m.setTransform(1,0,0,1,0,0);m.globalCompositeOperation='source-over';
-    // the colour: the deep body (drifting at 0.55 of the front's speed), nearer billows (0.8, rising), each a crossfade of two
-    // of its baked frames (the lumps swell and fold, their light with them); then billows climbing the front and rolling
-    // forward over the head (own layers, faded in toward the front and the head); lamplight in the dust
-    const nf=STB.nf,fq=(u,P,x,y,al,g,rx=0,ry=0,rw=w,rh=h)=>{const i=Math.floor(u),f=u-i,a=i%nf,b=(a+1)%nf;g.setTransform(1,0,0,1,x,y); // (frames a and b, f of the way, over the rectangle r)
-      g.globalAlpha=al*Math.cos(f*1.5708);g.fillStyle=P[a];g.fillRect(rx-x,ry-y,rw,rh);g.globalAlpha=al*Math.sin(f*1.5708);g.fillStyle=P[b];g.fillRect(rx-x,ry-y,rw,rh);};
-    c.setTransform(1,0,0,1,0,0);c.globalCompositeOperation='source-over';c.globalAlpha=1;
-    {const ox=(fx*0.55+tc*6-X0)/2,oy=-Y0/2-tc*1.5,u=tc/STB.ft,i=Math.floor(u),f=u-i;c.setTransform(1,0,0,1,ox,oy);c.fillStyle=T.pb[i%nf];c.fillRect(-ox,-oy,w,h);c.globalAlpha=f;c.fillStyle=T.pb[(i+1)%nf];c.fillRect(-ox,-oy,w,h);}
-    fq(tc/STB.ft+1.5,T.pm,(fx*0.8+tc*16-X0)/2,-Y0/2-tc*STB.rise*0.2,0.85,c);
-    {const l=ST.lg,lay=(u,x,y,gr,al,rx,ry,rw,rh)=>{if(rw<1||rh<1)return;l.setTransform(1,0,0,1,0,0);l.globalCompositeOperation='source-over';l.clearRect(rx,ry,rw,rh);fq(u,T.pm,x,y,1,l,rx,ry,rw,rh);
-        l.setTransform(1,0,0,1,0,0);l.globalAlpha=1;l.globalCompositeOperation='destination-in';l.fillStyle=gr;l.fillRect(rx,ry,rw,rh);c.setTransform(1,0,0,1,0,0);c.globalAlpha=al;c.drawImage(ST.lc,rx,ry,rw,rh,rx,ry,rw,rh);};
-      const xf=(fx-X0)/2,x0f=Math.max(0,Math.floor(xf-STB.fw/2)),gf=l.createLinearGradient(xf-STB.fw/2,0,xf-20,0);gf.addColorStop(0,'rgba(0,0,0,0)');gf.addColorStop(1,'#000');
-      lay(tc/STB.ft+0.7,xf+tc*2,(-Y0-tc*STB.rise)/2,gf,0.6,x0f,0,w-x0f,h); // climbing the front
-      const yh=(top-Y0)/2,y1h=Math.min(h,Math.ceil(yh+30)),gh=l.createLinearGradient(0,yh-30,0,yh+30);gh.addColorStop(0,'#000');gh.addColorStop(1,'rgba(0,0,0,0)');
-      lay(tc/STB.ft+2.3,xf+tc*STB.roll/2,(-Y0-tc*STB.rise*0.3)/2+31,gh,0.6,0,0,w,y1h);} // rolling forward over the head
-    c.setTransform(1,0,0,1,0,0);c.globalAlpha=1;c.globalCompositeOperation='lighter';
-    for(const q of frameLights){if(q.kind!=='torch'&&q.kind!=='door'&&q.kind!=='item'&&q.kind!=='fire')continue;const r=q.r*0.5;if(q.x+r<X0||q.x-r>X1||q.y+r<Y0||q.y-r>Y1)continue;
-      c.globalAlpha=Math.min(1,q.a)*0.2;c.drawImage(lightSprite(q.col),(q.x-r-X0)/2,(q.y-r-Y0)/2,r,r);}
-    c.globalAlpha=1;c.globalCompositeOperation='source-over';
-    for(let k=0;k<nz;k++){const y=Y0+k*8;c.globalAlpha=0.3+0.7*(0.5+0.5*Math.sin(y*0.071+tc*2.1)*Math.sin(y*0.029-tc*1.3));c.drawImage(T.rim,(fx+bz[k]+6-64-X0)/2,k*4,32,4);} // the head's lit lip, just behind the front, brighter here and there (never one even line)
-    c.globalAlpha=1;
-    c.globalCompositeOperation='destination-in';c.drawImage(ST.mc,0,0,w,h,0,0,w,h);
-    if(a<1){ // breaking up: holes open through the noise and widen (not one even fade)
-      c.globalCompositeOperation='destination-out';c.globalAlpha=Math.min(1,(1-a)*1.3);const od=(fx-X0)/2;c.setTransform(1,0,0,1,od,0);c.fillStyle=T.pd;c.fillRect(-od,0,w,h);c.setTransform(1,0,0,1,0,0);c.globalAlpha=1;}
-    c.globalCompositeOperation='source-over';
-    ctx.save();ctx.globalAlpha=ka;ctx.imageSmoothingEnabled=true;ctx.drawImage(ST.cc,0,0,w,h,X0,Y0,w*2,h*2);ctx.restore();}
-  ctx.save();
-  ctx.globalAlpha=ka*0.08;ctx.drawImage(T.veil,fx-38,top-50,210,bot-top+62); // fine dust running ahead, lowering the contrast a little
-  const cc=Math.floor((fx+4)/TW);ctx.globalAlpha=ka; // the crest of dust along each floor, right at the kill line
-  for(let r=rT;r<=ch.rBot;r++){const ys=SURF(r);if(ys<y0-10||ys>y1+10||!(solidBelow(L,cc,r)||solidBelow(L,cc-1,r)||solidBelow(L,cc+1,r)))continue;ctx.drawImage(T.lip,fx+stBulge(ys-4,t,rT)-42,ys-8,48,10);}
-  ctx.restore();}
-// is the shader drawing the dust this frame? (then the 2D scene keeps only the grains, the pebbles and the burst's grains)
-function stormGL(){return !EGP.plug&&GLP.used&&GLFX.storm2&&GLST.ok&&GLST.gl===GLP.gl;}
-// the dust billows of the burst (drawStormBurst) and the settling cloud: soft sprites in the floor's sand colour, lit from the sky
+// the tear: piecewise-linear value noise (0..1), so straight runs and sharp corners
+const dkH=(i,s)=>(hash2(i,s)>>>8)/16777216;
+function dkLin(u,s){const i=Math.floor(u),a=dkH(i,s);return a+(dkH(i+1,s)-a)*(u-i);}
+// the same for the table's own streams, read from values made once (4096 a stream: a period of 4096 cells, never seen): dkTable runs
+// every frame over every px of height and width, and hashing there cost about a millisecond
+const DKS=[71,72,73,74,75,76,77,81,82,83,84,91,92],DKR=new Float32Array(DKS.length*4096);DKS.forEach((sd,k)=>{for(let i=0;i<4096;i++)DKR[k*4096+i]=dkH(i,sd);});
+function dkL(u,k){const i=Math.floor(u),j=i&4095,b=k<<12,a=DKR[b+j];return a+(DKR[b+((j+1)&4095)]-a)*(u-i);}
+// three scales sliding along the edge their own ways (the fibres crawl): -0.5..0.5; and a splinter now and then (0..1)
+function dkTear(y,t){return 0.45*dkL(y/19+t*0.19,0)+0.35*dkL(y/6.1-t*0.33,1)+0.2*dkL(y/2.3+t*0.8,2)-0.5;}
+function dkSplint(y,t){const u=y/5-t*0.45,i=Math.floor(u),h=DKR[(3<<12)+(i&4095)];return h<0.85?0:(h-0.85)/0.15*(1-Math.abs(2*(u-i)-1));}
+// the table both modes draw from (once a frame): F the front's offset from fx per world px of height from y0, G how much gold lies
+// along it there, J the torn back edge while it opens; Tt and Tb the ragged top and foot per px of width from x0 (about tb and bb);
+// u8 the same packed for the shader (rows: front, top, foot; each value v+96 in two bytes)
+const DKT={N:1024,F:new Float32Array(1024),G:new Float32Array(1024),J:new Float32Array(1024),Tt:new Float32Array(1024),Tb:new Float32Array(1024),Tg:new Float32Array(1024),
+  y0:0,x0:0,ny:0,nx:0,tb:0,bb:0,mx:0,key:'',ver:0,u8:new Uint8Array(1024*4*4),art:null,noLook:false}; // (noLook: the rip alone, for stormProbe)
+// (made at most 30 times a second, on a clock in 1/30 s steps, the top and foot from x0 in steps of 256 px: the front is kept as offsets
+// from fx, so its moving does not make it again; the shader's copy is uploaded only when it changed, ver)
+function dkTable(ch,fx,X0,X1){const t=Math.floor(gameTime*30)/30*(S.set.calm?0.5:1),rT=ch.rTop,top=rT*TH,bot=(ch.rBot+1)*TH,x0=Math.floor((X0-2)/256)*256,x1=Math.ceil((X1+4)/256)*256,key=t+':'+x0+':'+x1+':'+rT+':'+ch.rBot;
+  if(DKT.key===key)return DKT;DKT.key=key;DKT.ver++;
+  const y0=DKT.y0=top-140,ny=DKT.ny=Math.min(DKT.N,bot+40-y0),nx=DKT.nx=Math.min(DKT.N,x1-x0),u8=DKT.u8,N=DKT.N;DKT.x0=x0;DKT.tb=top-120;DKT.bb=bot+6;let mx=-1e9;
+  const pk=(o,v)=>{const q=clamp(v+96,0,255.99),r=Math.floor(q);u8[o]=r;u8[o+1]=Math.floor((q-r)*256);};
+  for(let i=0;i<ny;i++){const y=y0+i,r=Math.floor((y+4)/TH);let d=(r+1)*TH-4-y;if(r<rT)d=(rT+1)*TH-4-y;
+    const hb=stS(30,48,d)*(1-stS(56,64,d)),hd=stS(64,110,d),am=1.8+2.7*hb+14*hd,sp=1.2+3.3*hb+30*hd;
+    // the lean: stBulge's small sway from the feet to the waist, then straight runs and corners (no smooth swell) at head height and above
+    const ln=2*Math.sin(y*0.09+t*3)*(1-hd)+(hb>0?hb*(2+5*dkL(y/17+t*0.3,4)):0)+(hd>0?hd*(14+34*dkL(y/37-t*0.12,5)):0);
+    const o=3.4+ln+2*am*dkTear(y,t)+sp*dkSplint(y,t)-70*stS(150,190,d); // (the head's top bends back into the dark)
+    const g=clamp((dkL(y/9-t*0.7,11)-0.42)*2.4,0,1),jj=dkL(y/13+t*0.1,6)*14;
+    DKT.F[i]=o;DKT.G[i]=g*g;DKT.J[i]=jj;if(o>mx)mx=o;
+    const q=i*4;pk(q,o);u8[q+2]=Math.round(g*g*255);u8[q+3]=Math.round(jj/16*255);}
+  for(let q=ny*4;q<N*4;q++)u8[q]=u8[q-4]; // (the last texel on to the end of the row)
+  for(let i=0;i<nx;i++){const x=x0+i,tt=16*(0.6*dkL(x/31+t*0.15,7)+0.4*dkL(x/8.7-t*0.3,8)-0.5),tf=12*(0.6*dkL(x/27-t*0.12,9)+0.4*dkL(x/7.9+t*0.25,10)-0.5),
+      g=clamp((dkL(x/10+t*0.5,12)-0.45)*2.4,0,1);
+    DKT.Tt[i]=tt;DKT.Tb[i]=tf;DKT.Tg[i]=g*g;let q=(N+i)*4;pk(q,tt);u8[q+2]=Math.round(g*g*255);u8[q+3]=0;q=(2*N+i)*4;pk(q,tf);u8[q+2]=0;u8[q+3]=0;}
+  for(let q=(N+nx)*4;q<2*N*4;q++)u8[q]=u8[q-4];for(let q=(2*N+nx)*4;q<3*N*4;q++)u8[q]=u8[q-4];
+  DKT.mx=mx;return DKT;}
+// (round 29, owner: "let's take care at the edges, some kind of blend or lens effect ... showing tatters at the edges would make more sense in
+// both modes") tatters: strips of the dark torn from its edge, each a ragged ribbon tapering to its tip, fluttering like a flag (a wave running
+// out along it, growing toward the tip, with a curl); each grows out, flutters, and either draws back or tears loose and flies on ahead,
+// shrinking to nothing. Opaque black like the rest. Only from the head and above of each storm row and above the top row (never from the
+// feet to the waist, where the edge must say where it kills), and a loose one keeps its height. A pure function of the chase and the clock
+// (DK_TN slots, each its own period); [x0, y0, length, width, amp, wavelength, phase, curl] in world px, shared by both modes
+const DK_TN=32; // (the shader's u_ta holds 32)
+function dkTatters(ch,fx,T){const t=gameTime*(S.set.calm?0.5:1),top=ch.rTop*TH,nr=ch.rBot-ch.rTop+1,out=[];if(ch.diss||(ch.fade||0)>=1||dkOpen(ch)<40)return out;
+  for(let k=0;k<DK_TN;k++){const P0=2.1+0.9*dkH(k,700),u=(t+dkH(k,701)*P0)/P0,c=Math.floor(u),p=u-c,h=i=>dkH(c*31+k,710+i);
+    const band=Math.floor(h(0)*(nr+1.6)),y0=band>=nr?top-100+h(1)*88:(ch.rTop+band)*TH-2+h(1)*18; // (above the top row, or the head and ceiling of a row: d 44 to 62)
+    const iy=clamp(Math.round(y0-T.y0),0,T.ny-1),L0=(band>=nr?16:10)+(band>=nr?26:18)*h(2),w0=3+4*h(3),loose=h(4)>0.45;
+    let len=L0*sstep(p/0.25),dx=0,w=w0;
+    if(loose&&p>0.62){const q=(p-0.62)/0.38;dx=q*(26+44*h(5));len=L0*(1-0.5*q);w=w0*(1-q);} // torn loose: on ahead, shrinking
+    else if(!loose&&p>0.75)len=L0*(1-sstep((p-0.75)/0.25)); // drawn back
+    if(len<0.5||w<0.15)continue;
+    out.push([fx+T.F[iy]-3+dx,y0,len,w,1+1.6*h(6),12+9*h(7),h(8)*6.283,(h(9)-0.5)*4]);}
+  return out;}
+// a tatter's outline as a polygon (Classic), as the shader draws it: the centre line y0 + curl (u/len)^2 + amp (u/len) sin(2pi u/wl - 9t + ph),
+// the half width w/2 (1-u/len)^0.6 (0.75 + 0.25 sin(1.7u + ph))
+function dkTatterPath(ctx,q,t){const [x0,y0,len,w,am,wl,ph,cu]=q,n=Math.max(3,Math.ceil(len/1.5)),top=[],bt=[];
+  for(let i=0;i<=n;i++){const u=len*i/n,yc=y0+cu*(u/len)*(u/len)+am*(u/len)*Math.sin(6.283*u/wl-9*t+ph),hw=0.5*w*Math.pow(1-u/len,0.6)*(0.75+0.25*Math.sin(1.7*u+ph));top.push(x0+u,yc-hw);bt.push(x0+u,yc+hw);}
+  ctx.moveTo(top[0],top[1]);for(let i=2;i<top.length;i+=2)ctx.lineTo(top[i],top[i+1]);for(let i=bt.length-2;i>=0;i-=2)ctx.lineTo(bt[i],bt[i+1]);ctx.closePath();}
+// the rip's width while it opens from a crack (then the whole corridor behind the front)
+function dkOpen(ch){return ch.done||ch.t>=0.6?1e4:3+1200*Math.pow(stS(0,0.6,ch.t),2);}
+// the jackal and the eyes (a pure function of the chase, his row and the clock: rewind-safe): e how far the head has come out (at the
+// wake, and while the dark is within about two tiles of him), its box jr (world) and gold kg; ey: up to two pairs of eyes [x,y,open,alpha]
+const DK_JS=0.9,DK_JW=76,DK_JH=96,DK_JAX=12,DK_EW=26,DK_EH=9;
+function dkLook(ch,fx){const t=gameTime,a=1-(ch.fade||0),top=ch.rTop*TH,bot=(ch.rBot+1)*TH,o={e:0,kg:0,jr:null,ey:[]};if(ch.diss||a<=0.01)return o;
+  const kw=ch.done?0:stS(0.3,0.9,ch.t)*(1-stS(2.4,3.2,ch.t)),lead=P&&P.state!=='dead'&&P.state!=='dying'?P.x-ch.wx:999,kn=1-stS(52,90,lead),e=Math.max(kw,kn)*a;
+  o.e=e;o.kg=stS(0.35,1,e);
+  // (at his height, its lower jaw just over his head, following him up and down: above the storm's top row it was off the screen
+  // whenever he ran a lower row. Its muzzle may cross the waist line of the row above his; on his own row it stays above his head
+  // ahead of the line and its neck goes back into the dark: stormfair checks the rip on every row without it, and it on his row.)
+  const py=P?clamp(P.y,SURF(ch.rTop)-40,SURF(ch.rBot)):SURF(ch.rTop);
+  if(e>0.002&&!DKT.noLook){const ax=fx-6-(1-sstep(e))*46+7*kn+1.2*Math.sin(t*1.1),ay=py-20+(1-sstep(e))*10+0.8*Math.sin(t*1.7);
+    o.jr=[ax-DK_JAX*DK_JS,ay-DK_JH*DK_JS,DK_JW*DK_JS,DK_JH*DK_JS];}
+  const ke=(1-stS(0.1,0.3,e))*a;if(ke>0.01&&!DKT.noLook)for(let k=0;k<2;k++){const P0=3.7+0.9*k,u=(t+k*1.9)/P0,c=Math.floor(u),p=u-c;if(dkH(c,500+k)<0.25)continue;
+    let op=stS(0,0.1,p)*(1-stS(0.62,0.72,p));op*=1-0.95*Math.max(0,1-Math.abs(p-0.43)/0.03);if(op<=0.01)continue;
+    const x=fx-34-dkH(c,510+k)*120+2*Math.sin(t*0.7+k),y=top-70+dkH(c,520+k)*(bot-30-(top-70));o.ey.push([x,y,op,ke]);}
+  return o;}
+// the art, drawn once at DK_Q a world px: the jackal's silhouette (black), its gold and calcite (the inside of the near ear, the eye
+// ringed in gold with a kohl line back toward the ear, a brow, the mouth, a gold edge along the brow and muzzle, a collar), and a pair
+// of eyes for the dark itself (looking toward him)
+const DK_Q=4,DK_AJS=[0,0],DK_AJG=[320,0],DK_AEY=[640,0];
+function dkJackalPath(g){g.beginPath();g.moveTo(0,96);g.bezierCurveTo(3,80,7,62,9,50);g.bezierCurveTo(10,44,11,38,13,33);
+  g.bezierCurveTo(12,22,13,12,15,4);g.bezierCurveTo(17,12,19,22,21,29);g.lineTo(20,30); // the far ear
+  g.bezierCurveTo(20,20,21,10,24,1);g.bezierCurveTo(27,9,31,20,34,30); // the near ear
+  g.bezierCurveTo(37,31,40,32,42,35);g.quadraticCurveTo(44,38,47,39);g.bezierCurveTo(56,41,66,44,72,46); // brow, stop, muzzle
+  g.bezierCurveTo(75,47,76,49,75,51);g.quadraticCurveTo(74,53,71,53); // the nose
+  g.bezierCurveTo(66,56,58,58,50,59);g.bezierCurveTo(44,60,39,61,35,64);g.bezierCurveTo(30,71,19,81,8,96);g.closePath();} // jaw, throat, the neck going back into the dark
+function dkArt(){if(DKT.art)return DKT.art;const c=stCanvas(768,384),g=c.getContext('2d'),Q=DK_Q,G='rgb('+DK_GS+')',GD='#8e6424',CAL='#ece4d2',OBS='#08070a';
+  g.setTransform(Q,0,0,Q,DK_AJS[0],DK_AJS[1]);dkJackalPath(g);g.fillStyle='#000';g.fill();
+  g.setTransform(Q,0,0,Q,DK_AJG[0],DK_AJG[1]);g.save();dkJackalPath(g);g.clip();
+  {const gr=g.createLinearGradient(24,6,27,27);gr.addColorStop(0,'#f2d58e');gr.addColorStop(1,GD);g.fillStyle=gr; // the inside of the near ear
+    g.beginPath();g.moveTo(22.6,27.5);g.bezierCurveTo(22.6,19,23.2,11,24.6,6.5);g.bezierCurveTo(26.4,12,28.6,20,30.6,27.5);g.quadraticCurveTo(26.6,25.6,22.6,27.5);g.fill();}
+  g.strokeStyle=G;g.lineCap='round';g.lineJoin='round';
+  g.globalAlpha=0.55;g.lineWidth=0.55;g.beginPath();g.rect(-1,-1,80,64.5);g.save();g.clip();dkJackalPath(g);g.stroke();g.restore(); // a gold edge where the light would catch it
+  g.globalAlpha=0.6;g.lineWidth=0.5;g.beginPath();g.moveTo(71,53);g.quadraticCurveTo(62,54.8,54,55.4);g.stroke(); // the mouth
+  g.globalAlpha=1;g.lineWidth=0.7;g.beginPath();g.moveTo(36.5,37.2);g.quadraticCurveTo(41,35.8,45.4,37.6);g.stroke(); // the brow
+  g.beginPath();g.moveTo(38.4,40.6);g.quadraticCurveTo(35.6,39.8,32.6,39.2);g.lineWidth=0.8;g.stroke(); // the kohl line back toward the ear
+  const eye=()=>{g.beginPath();g.moveTo(38.4,40.6);g.quadraticCurveTo(41.6,38.2,45.6,40.6);g.quadraticCurveTo(41.8,42.6,38.4,40.6);g.closePath();};
+  eye();g.fillStyle=CAL;g.fill();g.save();eye();g.clip();g.fillStyle=OBS;g.beginPath();g.arc(43.2,40.4,1.25,0,Math.PI*2);g.fill();g.fillStyle='#fff';g.fillRect(42.6,39.6,0.5,0.5);g.restore();
+  eye();g.lineWidth=0.6;g.stroke();
+  for(const [y,hh] of [[73,2.2],[77.6,1.5]]){g.fillStyle=G;g.beginPath();g.moveTo(3,y+1.2);g.lineTo(33,y-0.6);g.lineTo(33,y-0.6+hh);g.lineTo(3,y+1.2+hh);g.fill();} // the collar
+  g.fillStyle=GD;g.globalAlpha=0.7;for(let i=0;i<7;i++){const x=7+i*3.4;g.fillRect(x,74,0.6,2.2);}g.globalAlpha=1;
+  g.restore();
+  g.setTransform(Q,0,0,Q,DK_AEY[0],DK_AEY[1]); // a pair of the dark's own eyes, facing out, the pupils turned a little toward him
+  for(const [cx,dr] of [[6.5,-1],[19.5,1]]){const cy=4.6,ox=cx+4.2*dr,oy=cy-0.4,ix=cx-4.2*dr,iy=cy+0.2, // (dr: the outer corner's side, a little raised)
+      lid=()=>{g.beginPath();g.moveTo(ix,iy);g.quadraticCurveTo(cx,cy-3.1,ox,oy);g.quadraticCurveTo(cx,cy+2.4,ix,iy);g.closePath();};
+    lid();g.fillStyle=CAL;g.fill();g.save();lid();g.clip();g.fillStyle=OBS;g.beginPath();g.arc(cx+0.7,cy-0.2,1.4,0,Math.PI*2);g.fill();g.fillStyle='#fff';g.fillRect(cx+0.2,cy-0.9,0.5,0.5);g.restore();
+    g.strokeStyle=G;g.lineWidth=0.55;lid();g.stroke();
+    g.lineWidth=0.7;g.beginPath();g.moveTo(ox,oy);g.lineTo(cx+6.4*dr,oy+0.9);g.stroke(); // the kohl tail
+    g.lineWidth=0.5;g.beginPath();g.moveTo(cx-3.6*dr,cy-2.6);g.quadraticCurveTo(cx,cy-4.1,cx+4.4*dr,cy-2.4);g.stroke();} // the brow
+  return DKT.art=c;}
+// the jackal and the eyes onto a 2D context (Classic)
+function dkLook2D(ctx,K){const A=dkArt(),Q=DK_Q;
+  if(K.jr){const [x,y,w,h]=K.jr;ctx.drawImage(A,DK_AJS[0],DK_AJS[1],DK_JW*Q,DK_JH*Q,x,y,w,h);if(K.kg>0.004){ctx.globalAlpha=K.kg;ctx.drawImage(A,DK_AJG[0],DK_AJG[1],DK_JW*Q,DK_JH*Q,x,y,w,h);ctx.globalAlpha=1;}}
+  for(const [x,y,op,al] of K.ey){const h=DK_EH*op;ctx.globalAlpha=al;ctx.drawImage(A,DK_AEY[0],DK_AEY[1],DK_EW*Q,DK_EH*Q,x-DK_EW/2,y-h/2,DK_EW,h);}ctx.globalAlpha=1;}
+// a torn hole or rag: a ragged polygon of n corners round (x,y)
+function dkRag(ctx,x,y,r,rot,sd,n=10){for(let i=0;i<n;i++){const an=rot+i/n*Math.PI*2+(dkH(i,sd)-0.5)*0.5,rr=r*(i&1?0.62+0.3*dkH(i+9,sd):0.8+0.3*dkH(i+9,sd));const px=x+Math.cos(an)*rr,py=y+Math.sin(an)*rr;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.closePath();}
+// the dark itself (Classic, and the stormfair probe): black between the ragged top and foot, behind the torn front; gold along the
+// tear, a crest along each floor at the kill line; holes burning through it as it goes; the jackal and the eyes. fx: the body's front,
+// a: 1 - fade.
+function stormLayer2D(ctx,ch,fx,a,x0,x1,y0,y1){if(a<=0.005)return;
+  const T=dkTable(ch,fx,x0-4,x1+4),t=gameTime,W=dkOpen(ch),ka=Math.min(1,a*3),ys=clamp(Math.floor(y0-T.y0)-2,0,T.ny-1),ye=clamp(Math.ceil(y1-T.y0)+2,1,T.ny),G='rgb('+DK_GS+')';
+  if(fx+T.mx<x0-4||ye<=ys)return;
+  ctx.save();ctx.globalAlpha=ka;
+  ctx.beginPath();ctx.moveTo(T.x0,T.tb+T.Tt[0]);for(let i=1;i<T.nx;i++)ctx.lineTo(T.x0+i,T.tb+T.Tt[i]);for(let i=T.nx-1;i>=0;i--)ctx.lineTo(T.x0+i,T.bb+T.Tb[i]);ctx.closePath();ctx.clip(); // between the top and the foot
+  ctx.save();ctx.beginPath();ctx.moveTo(fx+T.F[ys],T.y0+ys);for(let i=ys+1;i<ye;i++)ctx.lineTo(fx+T.F[i],T.y0+i);
+  if(W>=1e4){ctx.lineTo(x0-30,T.y0+ye);ctx.lineTo(x0-30,T.y0+ys);}else for(let i=ye-1;i>=ys;i--)ctx.lineTo(fx+T.F[i]-W-T.J[i],T.y0+i);
+  ctx.closePath();ctx.clip(); // behind the torn front
+  const holes=[];ctx.beginPath();ctx.rect(x0-30,y0-30,x1-x0+60,y1-y0+60);
+  if(a<1){const k=(1-a)*1.6,c0=Math.floor((x0-20)/16),c1=Math.ceil((Math.min(x1,fx+T.mx)+20)/16),r0=Math.floor((y0-20)/16),r1=Math.ceil((y1+20)/16); // dawn burns holes through it
+    for(let i=c0;i<=c1;i++)for(let j=r0;j<=r1;j++){const h=dkH(i*977+j,601),r=Math.min(5.9,k*16*(0.3+0.7*h)-2);if(r<=0.2)continue;
+      const x=i*16+8+(dkH(i*977+j,602)-0.5)*4,y=j*16+8+(dkH(i*977+j,603)-0.5)*4;dkRag(ctx,x,y,r,h*6,i*31+j);holes.push(x,y,r,h);}}
+  ctx.fillStyle='#000';ctx.fill('evenodd');
+  if(holes.length){ctx.strokeStyle=G;ctx.lineWidth=0.55;ctx.globalAlpha=ka*Math.min(1,(1-a)*3)*0.7;ctx.beginPath();for(let i=0;i<holes.length;i+=4)dkRag(ctx,holes[i],holes[i+1],holes[i+2],holes[i+3]*6,Math.floor(holes[i]/16)*31+Math.floor(holes[i+1]/16));ctx.stroke();ctx.globalAlpha=ka;}
+  ctx.restore();
+  // (round 29) a soft dark falloff just outside the tear: two wide strokes along it, faint
+  ctx.strokeStyle='#000';ctx.lineJoin='round';for(const [lw,al] of [[7,0.1],[3.5,0.16]]){ctx.lineWidth=lw;ctx.globalAlpha=ka*al*Math.min(1,a*3);ctx.beginPath();ctx.moveTo(fx+T.F[ys],T.y0+ys);for(let i=ys+1;i<ye;i+=2)ctx.lineTo(fx+T.F[i],T.y0+i);ctx.stroke();}
+  // the gold along the tear, in three strengths (the band's clip still holds); and along the top inside the dark
+  ctx.lineWidth=0.7;ctx.strokeStyle=G;ctx.lineJoin='round';
+  for(const [lo,hi,al] of [[0.06,0.3,0.3],[0.3,0.65,0.6],[0.65,2,0.95]]){ctx.globalAlpha=ka*al*Math.min(1,a*1.5);ctx.beginPath();let on=false;
+    for(let i=ys;i<ye;i++){const g=T.G[i];if(g>=lo&&g<hi){const x=fx+T.F[i]+0.2,y=T.y0+i;on?ctx.lineTo(x,y):ctx.moveTo(x,y);on=true;}else on=false;}ctx.stroke();}
+  {const ie=T.F[clamp(Math.round(T.tb-T.y0),0,T.ny-1)]+fx;ctx.globalAlpha=ka*0.5*Math.min(1,a*1.5);ctx.beginPath();let on=false;
+    for(let i=0;i<T.nx;i++){const x=T.x0+i;if(T.Tg[i]>0.3&&x<ie&&x>x0-4&&x<x1+4){const y=T.tb+T.Tt[i]+0.2;on?ctx.lineTo(x,y):ctx.moveTo(x,y);on=true;}else on=false;}ctx.stroke();}
+  // the crest of gold along each floor right at the kill line, trailing back into the dark
+  const cc=Math.floor((fx+4)/TW);ctx.globalAlpha=ka*Math.min(1,a*1.5);
+  for(let r=ch.rTop;r<=ch.rBot;r++){const sy=SURF(r);if(sy<y0-10||sy>y1+10||!(solidBelow(L,cc,r)||solidBelow(L,cc-1,r)||solidBelow(L,cc+1,r)))continue;
+    const ex=fx+T.F[clamp(sy-1-T.y0,0,T.ny-1)],gr=ctx.createLinearGradient(ex-8,0,ex+1,0);gr.addColorStop(0,'rgba('+DK_GS+',0)');gr.addColorStop(0.8,'rgba('+DK_GS+',.95)');gr.addColorStop(1,'rgba(255,236,190,1)');
+    ctx.fillStyle=gr;ctx.fillRect(ex-8,sy-2,9,1.6);}
+  ctx.restore();
+  {const TT=dkTatters(ch,fx,T);if(TT.length){const tt=gameTime*(S.set.calm?0.5:1);ctx.save();ctx.globalAlpha=ka;ctx.fillStyle='#000';ctx.beginPath();for(const q of TT)dkTatterPath(ctx,q,tt);ctx.fill();ctx.restore();}} // the tatters
+  ctx.save();ctx.globalAlpha=ka;{const K=dkLook(ch,fx);if(K.jr||K.ey.length)dkLook2D(ctx,K);}ctx.restore();} // (the jackal comes out past the front: drawn outside its cut, over the gold)
+// is the shader drawing the dark this frame? (then the 2D scene keeps only the flakes and the shards ahead of it)
+function stormGL(){return GLP.used&&GLFX.storm2&&GLST.ok&&GLST.gl===GLP.gl;}
+// how much a lamp at x keeps: none behind the front, dimmed and guttering ahead of it (look only)
+function dkDrain(x){const ch=L&&L.ext.chase;if(!ch||!ch.on||(ch.fade||0)>=1)return 1;const k=1-(ch.fade||0),d=x-ch.wx;if(d<0)return 1-k;
+  return 1-k*DK_DRAIN*Math.exp(-d/120)*(0.8+0.2*Math.sin(gameTime*19+x*0.37)*Math.sin(gameTime*7.3+x));}
+// a soft streak (the burst's wisps), black
 const stormSprites={};
-function puffSprite(kind){const col=stormCol(),key=kind+col.litS;let c=stormSprites[key];if(c)return c;c=stCanvas(72,72);const g=c.getContext('2d'),sb=skyBeam(),
-    lit='rgb('+col.litS+')',mid='rgb('+col.midS+')',base='rgb('+col.baseS+')',P={lit:[lit,mid,col.midS],mid:[lit,mid,col.midS],dark:[mid,base,col.baseS],soft:[lit,lit,col.litS]}[kind];
-  let gr=g.createRadialGradient(36,36,0,36,36,35);gr.addColorStop(0,P[1]);gr.addColorStop(0.36,P[1]);gr.addColorStop(0.7,'rgba('+P[2]+',.53)');gr.addColorStop(1,'rgba('+P[2]+',0)');g.fillStyle=gr;g.fillRect(0,0,72,72);
-  if(kind!=='soft'){const hx=36-sb.dx*8,hy=36-sb.dy*8;gr=g.createRadialGradient(hx,hy,0,hx,hy,24);gr.addColorStop(0,'rgba('+col.litS+',.8)');gr.addColorStop(1,'rgba('+col.litS+',0)');g.fillStyle=gr;g.globalAlpha=0.65;g.fillRect(0,0,72,72);g.globalAlpha=1;}
-  stormSprites[key]=c;return c;}
-// a long soft streak of blown sand
-function wispSprite(){const col=stormCol(),key='wisp'+col.litS;let c=stormSprites[key];if(c)return c;c=stCanvas(128,48);const g=c.getContext('2d');
-  g.translate(64,24);g.scale(1,0.36);const gr=g.createRadialGradient(0,0,0,0,0,62);gr.addColorStop(0,'rgba('+col.litS+',.8)');gr.addColorStop(0.45,'rgba('+col.midS+',.4)');gr.addColorStop(1,'rgba('+col.midS+',0)');
-  g.fillStyle=gr;g.fillRect(-64,-67,128,134);stormSprites[key]=c;return c;}
+function wispSprite(){let c=stormSprites.wisp;if(c)return c;c=stCanvas(128,48);const g=c.getContext('2d');
+  g.translate(64,24);g.scale(1,0.36);const gr=g.createRadialGradient(0,0,0,0,0,62);gr.addColorStop(0,'rgba(4,3,6,.85)');gr.addColorStop(0.45,'rgba(4,3,6,.4)');gr.addColorStop(1,'rgba(4,3,6,0)');
+  g.fillStyle=gr;g.fillRect(-64,-67,128,134);stormSprites.wisp=c;return c;}
 function drawStormHD(ctx,ch,x0,x1,y0,y1){const D=ch.diss,a=1-(ch.fade||0),fx=D?D.bx:ch.wx,t=gameTime;if(Math.max(fx,ch.wx)<x0-60)return;
   const top=Math.max(y0,ch.rTop*TH),bot=Math.min(y1,(ch.rBot+1)*TH),H=bot-top;if(H<=0)return;
-  const gl=stormGL(),col=stormCol(),ck=S.set.calm?0.6:1;
-  if(!gl)stormLayer2D(ctx,ch,fx,a,x0,x1,y0,y1);
+  const gl=stormGL(),ck=S.set.calm?0.6:1;
+  if(!gl&&!D&&P){ctx.save();const gr=ctx.createLinearGradient(fx,0,fx+190,0);gr.addColorStop(0,'rgba(4,3,8,'+(0.42*a)+')');gr.addColorStop(0.35,'rgba(4,3,8,'+(0.16*a)+')');gr.addColorStop(1,'rgba(4,3,8,0)'); // the air before it darkens
+    ctx.fillStyle=gr;ctx.fillRect(fx,ch.rTop*TH-120,190,(ch.rBot-ch.rTop+1)*TH+130);ctx.restore();}
   if(D){if(!gl)drawStormBurst(ctx,ch,top,bot,H,t);return;} // (the shader draws its own burst)
   ctx.save();ctx.globalAlpha=a;ctx.lineCap='round';
-  // blown grains as streaks, long as they are fast (motion blur): the layer along the floors fastest; one in four catches the
-  // sky's light (no glints when calm)
+  // flakes torn off the edge blowing ahead of it, long as they are fast (motion blur): black, and one in four a fleck of gold (none when calm)
   const rows=ch.rBot-ch.rTop+1;
   for(let pass=0;pass<3;pass++){if(pass===2&&S.set.calm)continue;ctx.beginPath();
-    for(let i=0;i<84;i++){if(i%4===3?pass!==2:pass===2||(i&1)!==pass)continue;const h=hash2(i,577),lay=h%3,
-      sp=((lay?150:250)+(h>>>10)%120)*ck,span=170,xx=fx-60+((t*sp+(h>>>3)%span)%span),
+    for(let i=0;i<48;i++){if(i%4===3?pass!==2:pass===2||(i&1)!==pass)continue;const h=hash2(i,577),lay=h%3,
+      sp=((lay?150:250)+(h>>>10)%120)*ck,span=80,xx=fx+4+((t*sp+(h>>>3)%span)%span),
       yy=lay?top+((h>>>12)%1000)/1000*H:SURF(ch.rTop+(h>>>4)%rows)-2-((h>>>9)%12),l=sp*0.035;
-      if(yy<top||yy>bot)continue;ctx.moveTo(xx-l,yy);ctx.lineTo(xx,yy+Math.sin(t*4+i)*0.6);}
-    ctx.strokeStyle='rgba('+(pass===2?col.skyS:pass?col.litS:col.midS)+','+(pass===2?0.7:0.5)+')';ctx.lineWidth=pass===1?0.7:0.9;ctx.stroke();}
-  // pebbles tumbling out in front
-  ctx.fillStyle='rgb('+col.darkS+')';
+      if(yy<top||yy>bot)continue;ctx.moveTo(xx-l*0.6,yy);ctx.lineTo(xx,yy+Math.sin(t*4+i)*0.6);}
+    ctx.strokeStyle=pass===2?'rgba('+DK_GS+',.8)':pass?'rgba(14,11,18,.55)':'rgba(3,2,5,.7)';ctx.lineWidth=pass===1?0.7:0.9;ctx.stroke();}
+  // shards of the dark tumbling out in front
+  ctx.fillStyle='#030205';
   for(let i=0;i<6;i++){const h=hash2(i,4243),u=((t*(0.7+(h%5)*0.12)+(h>>>6)%100/100)%1),px=fx-10+u*70,py=top+((h>>>12)%1000)/1000*H*0.9+H*0.05+Math.sin(u*Math.PI)*-10,rot=t*(6+i)+i,sz=1.4+(h>>>22)%3*0.6;
     ctx.save();ctx.translate(px,py);ctx.rotate(rot);ctx.globalAlpha=a*(1-u);ctx.beginPath();ctx.moveTo(-sz,-sz*0.4);ctx.lineTo(0,-sz);ctx.lineTo(sz,-sz*0.2);ctx.lineTo(sz*0.6,sz);ctx.lineTo(-sz*0.7,sz*0.7);ctx.closePath();ctx.fill();ctx.restore();}
-  // the nearer it is, the dustier the air
-  if(P){const k=clamp(1-(P.x-fx)/170,0,1)*a;if(k>0){ctx.globalAlpha=1;ctx.fillStyle='rgba('+col.litS+','+(0.12*k)+')';ctx.fillRect(x0,y0,x1-x0,y1-y0);}}
   ctx.restore();}
 const stormBulge=(y,t)=>20*Math.sin(y*0.017+t*1.25)+9*Math.sin(y*0.043-t*2.2)+4*Math.sin(y*0.11+t*4);
-// the storm breaking: its front billows tear loose and roll on past the prince, swelling and thinning as they go, and
-// part round him instead of swallowing him
-function drawStormBurst(ctx,ch,top,bot,H,t){const D=ch.diss,T=D.t,cx=P?P.x:D.tx,cy=P?P.y-30:0;ctx.save();
-  for(const [rank,kind,rmin,rmax,step] of [[1,'mid',12,20,11],[0,'soft',13,22,10]]){const spr=puffSprite(kind),rows=Math.ceil((H+40)/step)+1;
+// the dark breaking at the arch: tatters tear loose from its front and fly on past the prince, gold at their torn edges, turning and
+// shrinking as they go, and part round him instead of swallowing him (Classic; Torchlight's shader draws its own)
+function drawStormBurst(ctx,ch,top,bot,H,t){const D=ch.diss,T=D.t,cx=P?P.x:D.tx,cy=P?P.y-30:0;ctx.save();ctx.strokeStyle='rgb('+DK_GS+')';ctx.lineWidth=0.6;
+  for(const [rank,rmin,rmax,step] of [[1,5,9,11],[0,6,11,10]]){const rows=Math.ceil((H+40)/step)+1;
     for(let i=0;i<rows;i++){const hh=hash2(i*13+rank,rank*7+3),
       y0=top-20+((i+0.5)*step+((hh>>>9)%7)+(H+40)*4)%(H+40),
       bx0=D.x0-(rank?20:2)+stormBulge(y0+rank*9,t)+((hh>>>20)%13-6),
       delay=((hh>>>3)%10)*0.025,dur=D.ts*(0.85+((hh>>>7)%6)*0.08)+0.35,u=clamp((T-delay)/dur,0,1);if(u>=1)continue;
       const e=1-Math.pow(1-u,2.2),xx=bx0+(D.tx+40+((hh>>>11)%90)-bx0)*e,
         dxp=xx-cx,dyp=y0-cy,near=Math.exp(-(dxp*dxp)/(2*55*55)),sd=Math.sign(dyp||((hh&1)?1:-1)),yy=y0+sd*near*(sd<0?46:18)*e,
-        hole=clamp((Math.hypot(dxp,(yy-cy)*1.2)-18)/60,0.08,1),r=(rmin+((hh>>>14)%100)/100*(rmax-rmin))*(1+1.5*e);
-      ctx.globalAlpha=(rank?0.8:0.62)*Math.pow(1-u,1.3)*hole;ctx.drawImage(spr,xx-r,yy-r,2*r,2*r);}}
+        hole=clamp((Math.hypot(dxp,(yy-cy)*1.2)-18)/60,0.08,1),r=(rmin+((hh>>>14)%100)/100*(rmax-rmin))*(1-0.6*e);
+      ctx.globalAlpha=(rank?0.97:0.85)*Math.pow(1-u,1.3)*hole;ctx.fillStyle='#000';ctx.save();ctx.translate(xx,yy);ctx.scale(1.9,0.75);ctx.beginPath();dkRag(ctx,0,0,r,t*(1+(hh&3)*0.3)+i,hh&1023,7);ctx.restore();ctx.fill();ctx.globalAlpha*=0.35;ctx.stroke();}}
   ctx.restore();}
-// grains of the broken storm: they pour past the prince, are thrown round him and whirl, then drop and settle on the floor
+// flakes of the broken dark: they pour past the prince, are thrown round him and whirl, then drop and settle on the floor as ash
 const STORMG=[];
 function updateStormDiss(ch,dt){const D=ch.diss;D.t+=dt;const T=D.t,k=Math.min(1,T/D.ts);
-  ch.wx=T<D.ts?lerp(D.x0,D.tx,1-Math.pow(1-k,3)):D.tx+(T-D.ts)*30; // the rushing front: light, dust and the plain storm follow it
-  D.bx=D.x0+40*Math.min(1,T/0.6);                                    // the storm's body hardly moves on: it only thins away
+  ch.wx=T<D.ts?lerp(D.x0,D.tx,1-Math.pow(1-k,3)):D.tx+(T-D.ts)*30; // the rushing front: its tatters follow it
+  D.bx=D.x0+40*Math.min(1,T/0.6);                                    // the dark's body hardly moves on: it only burns away
   ch.fade=clamp((T-0.15)/1.3,0,1);
   if(P&&T<D.ts+0.8){D.acc=(D.acc||0)+(T<D.ts?170:60)*dt*(GFX().atmo?1:0.5);
     while(D.acc>=1){D.acc--;const y=P.y-3-Math.random()*86;
-      STORMG.push({x:ch.wx-Math.random()*50,y,vx:(T<D.ts?300:170)+Math.random()*160,vy:(Math.random()-0.5)*50,t:0,life:1.3+Math.random()*1.5,sw:Math.random()<0.5?1:-1,c:Math.random()<0.35?1:0,set:false});}}
+      STORMG.push({x:ch.wx-Math.random()*50,y,vx:(T<D.ts?300:170)+Math.random()*160,vy:(Math.random()-0.5)*50,t:0,life:1.3+Math.random()*1.5,sw:Math.random()<0.5?1:-1,c:Math.random()<0.3?1:0,set:false});}}
   const cx=P?P.x:0,cy=P?P.y-30:0;
   for(let i=STORMG.length-1;i>=0;i--){const g=STORMG[i];g.t+=dt;if(g.t>=g.life){STORMG.splice(i,1);continue;}if(g.set)continue;
     if(P){const dx=g.x-cx,dy=(g.y-cy)*1.25,d=Math.hypot(dx,dy)||1,R=70;
@@ -6755,31 +6746,44 @@ function updateStormDiss(ch,dt){const D=ch.diss;D.t+=dt;const T=D.t,k=Math.min(1
     if(B(L,c,r)===WALL){g.life=Math.min(g.life,g.t+0.12);continue;}
     if(g.vy>0&&g.y>=SURF(r)&&solidBelow(L,c,r)){g.y=SURF(r)-0.4;g.set=true;g.life=Math.min(g.life,g.t+0.8+Math.random()*0.9);}}
   if(T>3.4&&!STORMG.length)D.over=true;}
-function drawStormDiss(ctx,x0,x1,y0,y1){const D=L.ext.chase.diss,T=D.t,col=stormCol(); // (in the floor's sand colour)
+function drawStormDiss(ctx,x0,x1,y0,y1){const ch=L.ext.chase,D=ch.diss,T=D.t;
   if(P&&T<D.ts+1.8){const cx=P.x,cy=P.y-28,env=clamp(T/(D.ts*0.8),0,1)*clamp(1-(T-D.ts)/1.6,0,1);
     if(env>0.01){
-      // the air still thick with dust, clearing
-      ctx.fillStyle='rgba('+col.litS+','+(0.12*env)+')';ctx.fillRect(x0,y0,x1-x0,y1-y0);
-      // a cloud wrapping round him, thinnest where he stands
-      const gr=ctx.createRadialGradient(cx,cy,8,cx,cy,120);gr.addColorStop(0,'rgba('+col.litS+','+(0.06*env)+')');gr.addColorStop(0.45,'rgba('+col.midS+','+(0.26*env)+')');gr.addColorStop(1,'rgba('+col.midS+',0)');
-      ctx.fillStyle=gr;ctx.fillRect(cx-120,cy-120,240,240);
-      // and sand whirling about him
+      // dawn through the arch: a warm light washing back over him as the dark lets go
+      const ax=ch.c1*TW+16,gr=ctx.createRadialGradient(ax,cy,6,ax,cy,230);gr.addColorStop(0,'rgba(255,226,170,'+(0.3*env)+')');gr.addColorStop(0.5,'rgba('+DK_GS+','+(0.1*env)+')');gr.addColorStop(1,'rgba('+DK_GS+',0)');
+      ctx.fillStyle=gr;ctx.fillRect(ax-230,cy-230,460,460);
+      // and black tatters whirling round him, thinning
       const wsp=wispSprite();
-      for(let k=0;k<7;k++){const rr=26+k*7+T*20,an=T*(2.6-k*0.18)*(k%2?-1:1)+k*0.9,px=cx+Math.cos(an)*rr,py=cy+6+Math.sin(an)*rr*0.55,w=46+k*5,hh=w*0.3;
-        ctx.save();ctx.translate(px,py);ctx.rotate(Math.atan2(Math.cos(an)*0.55,-Math.sin(an))*(k%2?-1:1));ctx.globalAlpha=env*(0.5-k*0.04);ctx.drawImage(wsp,-w/2,-hh/2,w,hh);ctx.restore();}
-      ctx.globalAlpha=1;}
-    // dust settling along the floor
-    const st=clamp((T-0.5)/0.6,0,1)*clamp(1-(T-1.9)/1.3,0,1);
-    if(st>0.01){const ys=SURF(pRow());ctx.save();ctx.translate(cx-30,ys);ctx.scale(1,0.13);
-      const g2=ctx.createRadialGradient(0,0,4,0,0,160);g2.addColorStop(0,'rgba('+col.litS+','+(0.45*st)+')');g2.addColorStop(1,'rgba('+col.litS+',0)');ctx.fillStyle=g2;ctx.fillRect(-160,-160,320,320);ctx.restore();}}
-  // the grains, as short streaks while they fly and specks once they settle, batched by colour and fade
+      for(let k=0;k<7;k++){const rr=26+k*7+T*20,an=T*(2.6-k*0.18)*(k%2?-1:1)+k*0.9,px=cx+Math.cos(an)*rr,py=cy+6+Math.sin(an)*rr*0.55,w=40+k*5,hh=w*0.3;
+        ctx.save();ctx.translate(px,py);ctx.rotate(Math.atan2(Math.cos(an)*0.55,-Math.sin(an))*(k%2?-1:1));ctx.globalAlpha=env*(0.5-k*0.05);ctx.drawImage(wsp,-w/2,-hh/2,w,hh);ctx.restore();}
+      ctx.globalAlpha=1;}}
+  // the flakes, as short streaks while they fly and specks once they settle (black; a few burn gold), batched by colour and fade
   if(STORMG.length){ctx.lineCap='round';
     for(const pass of [0,1])for(const ab of [1,2,3]){let any=false;ctx.beginPath();
       for(const g of STORMG){if(g.c!==pass)continue;const al=Math.min(1,(g.life-g.t)/0.5,g.t*10);if(Math.max(1,Math.min(3,Math.ceil(al*3)))!==ab)continue;any=true;
         if(g.set){ctx.moveTo(g.x-1,g.y);ctx.lineTo(g.x+1,g.y);}else{const l=Math.min(0.016,4.5/Math.max(1,Math.hypot(g.vx,g.vy)));ctx.moveTo(g.x-g.vx*l,g.y-g.vy*l);ctx.lineTo(g.x+0.1,g.y);}}
-      if(any){ctx.globalAlpha=0.6*ab/3;ctx.strokeStyle='rgb('+(pass?col.litS:col.midS)+')';ctx.lineWidth=pass?1:1.3;ctx.stroke();}}
+      if(any){ctx.globalAlpha=(pass?0.75:0.7)*ab/3;ctx.strokeStyle=pass?'rgb('+DK_GS+')':'#050308';ctx.lineWidth=pass?0.9:1.4;ctx.stroke();}}
     ctx.globalAlpha=1;}}
-function drawStorm(ctx,ch,x0,x1,y0,y1){if(EGP.plug){drawPlug(ctx,ch,x0,x1,y0,y1);return;}if(!stormGL())stormLayer2D(ctx,ch,ch.diss?ch.diss.bx:ch.wx,1-(ch.fade||0),x0,x1,y0,y1);} // (Graphics: atmosphere off: the dust alone)
+// (Classic, and Torchlight with the dark's shader off) the dark itself, drawn last over the world, after the haze, so it stays black
+function drawDark2D(ctx,x0,x1,y0,y1){const ch=L.ext.chase;if(!ch||!ch.on||stormGL())return;const a=1-(ch.fade||0);if(a>0.005)stormLayer2D(ctx,ch,ch.diss?ch.diss.bx:ch.wx,a,x0,x1,y0,y1);}
+// (round 29, owner: "the shadow being pulled back is a great idea") the shut: as the dark nears, his shadow is drawn off him along the
+// back wall toward it, leaning back and stretching in three thinning copies, and smeared along the floor behind him; it starts about
+// eight tiles off and is whole within about two. His silhouette in black (figDraw's mono, as glSilhouette draws it), drawn before
+// him; cut at the wall's foot, the row's ceiling, the front and just ahead of him. Look only.
+const SHUT={c:null,g:null};
+function drawShut(ctx){const ch=L.ext.chase;if(!ch||!ch.on||ch.done||!P||P.state==='dead'||P.state==='dying'||P.state==='exit'||!P.pose)return;
+  const r=pRow();if(r<ch.rTop||r>ch.rBot)return;const k=(1-stS(80,240,P.x-ch.wx))*(1-(ch.fade||0));if(k<0.02)return;
+  if(!SHUT.c){SHUT.c=stCanvas(192,192);SHUT.c._glv=1;SHUT.g=SHUT.c.getContext('2d');}
+  const g=SHUT.g;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,192,192);g.setTransform(2,0,0,2,0,0);
+  try{figDraw(g,48,80,P.face||1,P.pose,PAL_HERO,{mono:'#000',hasSword:false,sword:false,time:gameTime});}catch(e){return;}
+  const ys=SURF(r),wb=ys-HY,ax=P.x+HX*0.6,ay=wb+0.5,t=gameTime;
+  const cy=ceilingY(Math.floor(P.x/TW),r)-1,cx0=ch.wx-6,cx1=P.x+26;
+  ctx.save();ctx.beginPath();ctx.rect(cx0,cy,cx1-cx0,wb+0.6-cy);for(const o of openingsIn(cx0,cx1,cy,wb))ctx.rect(o[0],o[1],o[2],o[3]);ctx.clip('evenodd'); // (never on the sky through an opening)
+  for(let i=2;i>=0;i--){const sk=k*(0.3+0.55*i)+0.04*Math.sin(t*2.3+i),sx=1+k*(0.25+0.6*i),off=k*(6+20*i);
+    ctx.save();ctx.translate(ax,ay);ctx.transform(sx,0,sk,1+0.05*i*k,-off,0);ctx.globalAlpha=Math.min(1,k*1.4)*[0.86,0.55,0.3][i];ctx.drawImage(SHUT.c,-48,-80,96,96);ctx.restore();}
+  ctx.restore();
+  ctx.save();ctx.beginPath();ctx.rect(ch.wx-6,wb,P.x+12-(ch.wx-6),2*HY);ctx.clip();ctx.translate(P.x-26*k,ys);ctx.scale(1,0.1); // and smeared along the floor
+  const gr=ctx.createRadialGradient(0,0,2,0,0,40+40*k);gr.addColorStop(0,'rgba(0,0,0,'+(0.45*k)+')');gr.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=gr;ctx.fillRect(-80-40*k,-80-40*k,160+80*k,160+80*k);ctx.restore();}
 function drawPlank(ctx,X,ys,sh){
   ctx.save();ctx.translate(0,sh);const fx=X-HX,ft=ys+HY;
   // boards running front to back, a thin front edge, and a rope rail on the near side
@@ -7547,6 +7551,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     // clip_char cuts his sprite at the wall's edge while he hangs or climbs facing left; the Apple II draws block fronts on the
     // foreground layer after the characters (FRAMEADV.S drawfrnt, addfore). Only his hands show above the ledge. (Round 19, owner:
     // "the prince is visible when hanging by a ledge": until now a 0.4 ghost of him was drawn through the wall while he moved.)
+    if(L.ext.chase)drawShut(ctx); // (round 29) his shadow pulled back toward the dark
     ctx.save();{const lf=L.lifts.length?liftAround():null;if(lf)liftOccl(ctx,lf);} // (in a lift's shaft the walls' front faces round it are nearer than he is)
     figClip(ctx,P.hideMode,P.hideLg,P.state==='dead'?null:wallPress(P.x,P.y,P.face,P.pose));
     // (round 26f) on the exit's stairs (from the first rise) he is cut at the opening's head (the lintel, or the round arch: doorHead) and at its
@@ -7574,9 +7579,9 @@ function drawDynamic(ctx,x0,x1,y0,y1){
 // things that give off their own light: drawn after the lighting pass so it never dims them
 function drawEmissive(ctx,x0,x1,y0,y1){
   for(const o of L.dyn)if(o.f.t==='vent'&&o.c*TW>x0-60&&o.c*TW<x1+60)drawVentFire(ctx,o,o.f);
-  {const chs=L.ext.chase;if(chs&&!chs.on&&!stormGL()&&!EGP.plug)stormReady(chs); // (unit ST: its tiles are baked before it wakes, a little each frame; v61: not when the storm shader draws the storm, which does not use them)
+  {const chs=L.ext.chase;
   if(chs&&chs.on){const D=chs.diss;
-    if((chs.fade||0)<1||(D&&!D.over)){if(EGP.plug)drawPlug(ctx,chs,x0,x1,y0,y1);else if(GFX().atmo)drawStormHD(ctx,chs,x0,x1,y0,y1);else if((chs.fade||0)<1)drawStorm(ctx,chs,x0,x1,y0,y1);}
+    if(((chs.fade||0)<1||(D&&!D.over))&&GFX().atmo)drawStormHD(ctx,chs,x0,x1,y0,y1); // (the dark itself: drawDark2D, after the haze)
     if(D&&!D.over)drawStormDiss(ctx,x0,x1,y0,y1);}}
   for(const p of FX){ctx.globalAlpha=Math.max(0,1-p.t/p.life);ctx.fillStyle=p.col;ctx.fillRect(p.x-p.sz/2,p.y-p.sz/2,p.sz,p.sz);}
   ctx.globalAlpha=1;
@@ -7612,7 +7617,7 @@ const FILL_COL='205,195,225',FILL_GL='const vec3 FILL_C=vec3('+FILL_COL.split(',
 function gatherLights(x0,x1,y0,y1){
   const th=L.theme,lk=lookOf(th.style),out=[],t=gameTime,add=(x,y,r,col,a,kind,bloom)=>{if(x+r>x0&&x-r<x1&&y+r>y0&&y-r<y1)out.push({x,y,r,col,a,kind,bloom});};
   for(const tc of L.torches){if(tc.broken)continue;const sd=(tc.c*7+tc.r*13)%10,fl=0.92+flK(sd,t),lo=th.style==='palace'&&lampFree(tc)?[0,0]:LAMP[th.style]||LAMP.dungeon,x=tc.c*TW+16+lo[0],y=SURF(tc.r)-38+lo[1]-((th.style==='palace'||th.style==='tile')&&lampFree(tc)?28:0);
-    const gc=warmLamp(tc)?'255,188,100':th.glow;add(x,y,150*fl,gc,0.95,'torch',{r:26,a:0.42});if(out.length&&out[out.length-1].x===x)out[out.length-1].r0=150;add(x,y+22,70,gc,0.45*fl,'torch');if(out.length&&out[out.length-1].y===y+22)out[out.length-1].a0=0.45;} // (r0, a0: the steady flame, for keyLight)
+    const gc=warmLamp(tc)?'255,188,100':th.glow,dn=L.ext.chase?dkDrain(x):1;if(dn<=0.01)continue;add(x,y,150*fl*(0.8+0.2*dn),gc,0.95*dn,'torch',{r:26,a:0.42*dn});if(out.length&&out[out.length-1].x===x)out[out.length-1].r0=150;add(x,y+22,70,gc,0.45*fl*dn,'torch');if(out.length&&out[out.length-1].y===y+22)out[out.length-1].a0=0.45;} // (r0, a0: the steady flame, for keyLight)
   {const ow=th.style==='forge'||th.style==='crypt',wc=ow?lk.win:skyBeam().col; // the windows that are drawn (ryOps), in the colour of the light through them
     // (v58b) the forge's and the crypt's windows are lit from within (the furnace, the tomb's lamps) and cast no shaft: a warm
     // glow at the pane, a soft halo round it and the light spilling down the wall onto the floor under it (a near light in the
@@ -7652,7 +7657,6 @@ function gatherLights(x0,x1,y0,y1){
     else if(f.t==='pend'){const q=pendTip(o,f);add(q.x,q.y,36,'225,222,240',0.28,'trap');}}
   if(EGP.traps)for(const d of L.debris){if(d.y0===undefined)continue;const age=debAge(d); // a sand floor's puff and a roof block's sand catch a little light while they hang in the air
     if(d.kind==='slab'&&!d.wl&&age<0.45)add(d.x,d.y0-4,56,'255,236,196',0.42*(1-age/0.45),'trap');else if(d.kind==='rock')add(d.x,d.y-20,40,'255,236,196',0.3,'trap');}
-  {const ch=L.ext.chase;if(ch&&ch.on&&(ch.fade||0)<1&&P)add(ch.wx-10,P.y-30,170,stormCol().litS,0.4,'storm');} // (unit ST: a soft glow of its own colour, not a lamp: it throws no shadows)
   return out;
 }
 let lightC=null,lightG=null;
@@ -8430,7 +8434,7 @@ const renderXf={VZ:1,camD:0,camDY:0}; // the last frame's world-to-canvas transf
 // true, though the frame runs a little slower than it would), and every few seconds one effect is left out to show what it
 // costs; the table is drawn over the HUD. Torchlight does not fall back to Classic meanwhile. Nothing is stored.
 const PF={upd:0,iv0:0,on:/[?&]prof\b/.test(location.search),t:0,gl:null,a:{},fa:{},fn:0,ws:0,al:false,cur:'all',iv:0,n:0,t0:0,ix:0,res:{},stg:null,off:{},sv:null,
-  rs:0,img:false,last:0,steps:[['all','all on'],['metal','metal'],['shafts','sky beams'],['flame','flames'],['sand','sand'],['relief','relief'],['shadow','shadows'],['mist','mist/sheen'],['heat','heat'],['grade','grade'],['storm','sandstorm'],['img','upload (v60)'],['rs75','scene .75'],['rs50','scene .5'],['sync','no delay'],['wgl','2D scene (v60)'],['msaa2','MSAA 2x'],['msaa1','MSAA off']],
+  rs:0,img:false,last:0,steps:[['all','all on'],['metal','metal'],['shafts','sky beams'],['flame','flames'],['sand','sand'],['relief','relief'],['shadow','shadows'],['mist','mist/sheen'],['heat','heat'],['grade','grade'],['storm','the dark'],['img','upload (v60)'],['rs75','scene .75'],['rs50','scene .5'],['sync','no delay'],['wgl','2D scene (v60)'],['msaa2','MSAA 2x'],['msaa1','MSAA off']],
   s(){if(this.on){this.t=performance.now();this.a={};this.gl=null;}},
   p(k){if(!this.on)return;if(this.gl)this.gl.finish();const t=performance.now();this.a[k]=(this.a[k]||0)+t-this.t;this.t=t;}};
 // ?bench (owner, v53): the same test on the phone every time, without anyone driving it. The test bot (dev/tools/bot.js,
@@ -9402,20 +9406,19 @@ const GLSH={
     ${GLSL_A}${FILL_GL}
     uniform sampler2D u_rl;uniform float u_rk; // relief lighting (unit B): the factor from glRelief, and its strength (0 = off)
     uniform sampler2D u_cs,u_cm;uniform vec2 u_cfx; // atmosphere (glAtmo): shafts and caustics, mist and sheen
-    uniform vec3 u_sd; // unit ST: the storm's sand colour
+    uniform vec3 u_sd; // (round 29) the tint the air before the dark greys toward
     ${GLSL_M}
     void main(){
       vec3 m=texture2D(u_mk,mkUV(v_u)).rgb; // mask: r shadow, g heat, b storm
       vec2 uv=v_u;float hz=m.g*u_fx.y,st=m.b*u_fx.z;
       if(hz>.01){uv+=vec2(sin(v_u.y*260.+u_t*7.+v_u.x*50.)+.6*sin(v_u.y*110.-u_t*4.3),.7*sin(v_u.x*180.+u_t*5.))*hz*vec2(1.7,.9)*u_px;} // heat: the scene is read a little off, in rising ripples
-      float e=st*u_fx.w; // the storm's veil: a slow wave through it (unit ST: over the whole veil, not a strip; u_fx.w is less when calm)
-      if(e>.01)uv+=vec2(sin(v_u.y*40.+u_t*2.),sin(v_u.x*60.-u_t*3.)*.7)*e*vec2(1.8,1.3)*u_px;
+      float e=st*st*st*u_fx.w; // (round 29) a lens at the dark's edge: the scene beside it is read from nearer the rip, so it stretches and bends into it (the veil's own ramp, cubed: most of it within a tile; u_fx.w is less when calm)
+      if(e>.01)uv.x-=e*(24.+3.*sin(v_u.y*17.-u_t*1.1))*u_px.x;
       uv=hkWarp(uv); // S3-A
       vec3 s=hkScene(uv),l=texture2D(u_map,v_u).rgb*1.5;float mcv=msCov(uv); // (unit MS: how much of this pixel is metal; 0 with none on screen)
       float cov=texture2D(u_sc,uv).a,fa=texture2D(u_map,v_u).a*(1.-cov);if(fa>.002)l=max(l-FILL_C*fa*1.5,0.); // (round 25c) the figures' fill light (the map's alpha) taken off where the scene shows the backdrop, the sky (glFrame); cov: how much of the pixel is not the backdrop
       l*=1.+(texture2D(u_rl,v_u).r-.5)*2.*u_rk*(1.-mcv); // relief: lamp light raking across the stone (not across metal in front of it)
       float sh=(m.r*2.+texture2D(u_mk,mkUV(v_u+vec2(u_mp.x,0.))).r+texture2D(u_mk,mkUV(v_u-vec2(u_mp.x,0.))).r+texture2D(u_mk,mkUV(v_u+vec2(0.,u_mp.y))).r+texture2D(u_mk,mkUV(v_u-vec2(0.,u_mp.y))).r)/6.*cov; // (round 25c: the figures' shadows fall on the stone, never on the sky)
-      l=mix(l,max(l,vec3(.95,.7,.42)),st*.2); // the air in the storm's veil is a little lit by its dust (unit ST: glStorm draws the dust itself)
       l*=1.-sh*.85*u_fx.x; // a shadow takes the light away and a little of the ambient
       vec3 c=s*l*(1.-sh*.4*u_fx.x);
       c=msApply(c,uv,s,mcv,sh*u_fx.x); // unit MS: metal lit by the lamps
@@ -9423,8 +9426,7 @@ const GLSH={
       if(u_cfx.y>.5){vec4 m=texture2D(u_cm,v_u);c=c*(1.-m.a)+m.rgb;} // floor mist and wet sheen
       vec3 b=texture2D(u_bl,v_u).rgb*.4+(texture2D(u_bl,v_u+u_d).rgb+texture2D(u_bl,v_u-u_d).rgb)*.24+(texture2D(u_bl,v_u+u_d*2.2).rgb+texture2D(u_bl,v_u-u_d*2.2).rgb)*.06;
       c+=b*.6; // bloom
-      if(st>.01){float g=fract(sin(dot(floor(vec2(v_u.x*420.-u_t*260.,v_u.y*110.)),vec2(12.9898,78.233)))*43758.5); // sand: a warm haze and streaks blowing along
-        c=mix(c,u_sd*(.35+dot(c,vec3(.33))*.8),st*.3)+u_sd*step(.975,g)*st*.1;} // (unit ST: the floor's sand colour, lower contrast)
+      if(st>.01)c=mix(c,u_sd*dot(c,vec3(.3,.5,.2)),st*.5); // (round 29) the air before the dark greys and darkens
       c=hkGrade(c,v_u); // S3-A: rewind sepia and edges, last-life pulse
       float lm=dot(c,vec3(.299,.587,.114));c=mix(vec3(lm),c,u_sat)*mix(u_sh,u_hi,smoothstep(.08,.75,lm)); // the theme's grade: cooler or warmer shadows and lights
       c=c/(1.+max(c-.85,0.)*.6); // roll the bright end off instead of clipping it
@@ -9564,10 +9566,10 @@ function glMask(lights,VZ,camD,camDY){
     for(const q of lights){if(q.kind!=='torch'||q.r<100)continue;g.globalAlpha=(lfx().heat!==undefined?lfx().heat:forge?.5:L.theme.style==='tile'?0:.25)*hk;if(g.globalAlpha>0){g.drawImage(green,q.x-14,q.y-70,28,70);any=1;}} // every flame shimmers a little, the forge's most
     g.globalAlpha=1;}
   const ch=L.ext.chase;
-  if(GLFX.storm&&!EGP.plug&&ch&&ch.on&&(ch.fade||0)<1&&P){ // (not behind the granite plug, which is solid) everything behind the front is hazy; ahead of it the haze thins out over a few tiles
+  if(GLFX.storm&&ch&&ch.on&&(ch.fade||0)<1&&P){ // the veil: whole behind the front, thinning out ahead of it over a few tiles
     if(!stormStrip){stormStrip=document.createElement('canvas');stormStrip.width=64;stormStrip.height=1;const sg=stormStrip.getContext('2d'),gr=sg.createLinearGradient(0,0,64,0);gr.addColorStop(0,'#00f');gr.addColorStop(1,'#000');sg.fillStyle=gr;sg.fillRect(0,0,64,1);}
     g.globalAlpha=1-(ch.fade||0);
-    if(GLFX.storm2&&GLST.ok){const fx=ch.diss?ch.diss.bx:ch.wx,sy=ch.rTop*TH-110,sh=(ch.rBot-ch.rTop+1)*TH+130,ss=stStrip();g.drawImage(ss,fx-120,sy,400,sh);if(fx-120>cx-4)g.drawImage(ss,0,0,4,32,cx-4,sy,fx-120-cx+5,sh);} // unit ST: a soft veil only, no hard edge (glStorm draws the dust)
+    if(GLFX.storm2&&GLST.ok){const fx=ch.diss?ch.diss.bx:ch.wx,sy=ch.rTop*TH-110,sh=(ch.rBot-ch.rTop+1)*TH+130,ss=stStrip();g.drawImage(ss,fx-120,sy,400,sh);if(fx-120>cx-4)g.drawImage(ss,0,0,4,32,cx-4,sy,fx-120-cx+5,sh);} // a soft veil only, no hard edge (glStorm draws the dark)
     else{g.fillStyle='#00f';g.fillRect(cx-4,cy-4,Math.max(0,ch.wx-cx+4),vh+8);g.drawImage(stormStrip,ch.wx,cy-4,170,vh+8);}
     g.globalAlpha=1;any=1;}
   g.globalCompositeOperation='source-over';g.globalAlpha=1;
@@ -9815,7 +9817,7 @@ function glFrame(lights,VZ,camD,camDY,th){
   if(m)glMetalU(MS.uf); // (unit MS)
   gl.uniform1i(P.final.u.u_sc,0);gl.uniform1i(P.final.u.u_map,1);gl.uniform1i(P.final.u.u_bl,2);gl.uniform2f(P.final.u.u_d,0,1.6/lh);gl.uniform2f(P.final.u.u_vg,viewW/ROOM_H,0.62*Math.max(viewW,ROOM_W)/ROOM_H);
   gl.drawArrays(gl.TRIANGLES,0,3);},h,1);
-  PF.p('compose');glStorm(VZ,camD,camDY,w,h,lw,lh);PF.p('storm'); // (unit ST) the sandstorm's dust, over the frame
+  PF.p('compose');glStorm(VZ,camD,camDY,w,h,lw,lh);PF.p('storm'); // (round 29) the dark, over the frame
   bind(0,GLP.stex);
 }
 // ---- atmosphere (unit S3-C): light shafts, floor mist, water caustics, wet-floor sheen. Torchlight only. ----
@@ -10081,96 +10083,98 @@ function glAtmo(VZ,camD,camDY,th,lw,lh){
   gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,GLC.fs?GLC.fs.t:null);gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_2D,GLC.fm?GLC.fm.t:null);
   return f;}
 function glAtmoU(U,f){const gl=GLP.gl;if(!U.u_cfx)return;gl.uniform1i(U.u_cs,6);gl.uniform1i(U.u_cm,7);gl.uniform2f(U.u_cfx,f&1?1:0,f&2?1:0);} // (the composite's side)
-// ---- the sandstorm in Torchlight (unit ST; GLFX.storm2) ----
-// The same layout as Classic's stormLayer2D, as a shader with live noise: per pixel, domain-warped fbm (Quilez) for the dust's
-// surface, shaded by its slope toward the sky light (lit tops, a shaded base never darker than a third of the lit sand), the
-// same front ramp, bulge, ragged head and foot, the lit crest along the floors at the kill line, and the lamps glowing softly in
-// the dust (from the light map). The burst at the arch tears the head into streaks that rush past the prince and part round
-// him; the dissolve opens holes through the noise. It is drawn at the light map's size, only over the storm's rectangle of the
-// screen, after the composite (so the lighting does not darken the dust) and laid over the frame; nothing runs without a storm.
-// The surface boils (unit ST's head comment): the height field is read twice along the flow (two phases): about 16 noise reads more
-// per texel, at the light map's quarter size.
+// ---- the dark in Torchlight (round 29; GLFX.storm2) ----
+// The same picture as Classic's stormLayer2D, from the same table (dkTable, a 1024 x 4 texture: the front's offset, its gold and the
+// torn back edge per world px of height; the top and the foot per px of width) and the same art (dkArt): opaque black, coverage
+// worked out per pixel across the edge (no MSAA on this pass), gold along the tear and the top, the crest at the kill line, holes
+// burning through it as it goes (noise against a rising threshold, gold at their edges), the burst's tatters past the prince, the
+// jackal and the eyes. Drawn after the composite at full resolution, only over the dark's rectangle of the screen (a rip must be crisp
+// and nothing may light it), with the composite's vignette; nothing runs without a chase.
 GLFX.storm2=true;
-const GLST={ok:false,gl:null,p:null,c:null,fb:null,fw:0,fh:0,lf:new Float32Array(8),on:false};
+const GLST={ok:false,gl:null,p:null,tab:null,art:null,pfb:null,pw:0,ph:0,lf:new Float32Array(8),on:false};
 const GLSTSH=[GLV,`#ifdef GL_FRAGMENT_PRECISION_HIGH
   precision highp float;
   #else
   precision mediump float;
   #endif
-  varying vec2 v_u;uniform vec4 u_cam,u_st,u_fx,u_bu,u_fl;uniform vec2 u_res,u_L;uniform float u_t;uniform vec3 u_lit,u_base;uniform float u_lf[8];uniform sampler2D u_map;
-  // u_st: the body's front x, top, bottom, top row; u_fx: 1-fade, churn, warp, burst progress; u_bu: rushing front x, the prince (hole); u_fl: the boil (STB: rise, roll, period, reach)
+  varying vec2 v_u;uniform vec4 u_cam,u_st,u_fx,u_bu,u_tb,u_jr,u_ja,u_jg,u_ea,u_e0,u_e1;uniform vec2 u_res,u_vg,u_es;uniform float u_t,u_t2,u_tn;uniform float u_lf[8];uniform vec4 u_ta[64];
+  uniform sampler2D u_tab,u_art;
+  // u_st: the front x, top, bottom, top row; u_fx: 1-fade, burst progress, the rip's width while it opens, the jackal's gold;
+  // u_bu: the rushing front x, the prince (the hole the tatters part round); u_tb: the table's y0, x0 and the top's and foot's bases;
+  // u_jr: the jackal's box (world), u_ja/u_jg: its silhouette and its gold in the art; u_ea: the eyes in the art, u_e0/u_e1: a pair (x, y, open, alpha);
+  // u_ta: u_tn tatters (up to 32), two each (x0, y0, length, width; amp, wavelength, phase, curl: dkTatters), u_t2 their clock
   float hs(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
   float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hs(i),hs(i+vec2(1.,0.)),f.x),mix(hs(i+vec2(0.,1.)),hs(i+vec2(1.,1.)),f.x),f.y);}
   float fb3(vec2 p){return .57*vn(p)+.29*vn(p*2.03+7.1)+.14*vn(p*4.01+3.3);}
-  float hf(vec2 p){vec4 n=vec4(vn(p),vn(p*2.03+7.1),vn(p*4.01+3.3),vn(p*7.97+1.7));return dot(.45*n+.55*abs(2.*n-1.),vec4(.53,.27,.13,.07));} // fbm and billows (rounded lumps with creases) from the same samples
-  float bulge(float y,float t){float r=floor((y+4.)/64.),d=(r+1.)*64.-4.-y;if(r<u_st.w)d=(u_st.w+1.)*64.-4.-y; // (as stBulge)
-    return 2.*sin(y*.09+t*3.)+smoothstep(30.,48.,d)*(1.-smoothstep(54.,64.,d))*(5.+3.*sin(y*.05+t*1.7))+smoothstep(64.,110.,d)*(28.+16.*sin(y*.021+t*1.1)+8.*sin(y*.057-t*1.9));}
+  vec4 tb(float i,float r){return texture2D(u_tab,vec2((clamp(i,0.,1023.)+.5)/1024.,(r+.5)/4.));}
+  float dv(vec4 c){return c.r*255.+c.g*(255./256.)-96.;}
+  void over(inout vec3 c,inout float a,vec3 sc,float sa){c=sc+c*(1.-sa);a=sa+a*(1.-sa);} // (premultiplied)
+  vec4 art(vec4 r,vec2 q){return texture2D(u_art,mix(r.xy,r.zw,q));}
   void main(){
-    vec2 w=(vec2(v_u.x*u_res.x,(1.-v_u.y)*u_res.y)+u_cam.xy)*u_cam.z;float t=u_t,tc=t*u_fx.y,fx=u_st.x,top=u_st.y,bot=u_st.z;
-    float s=fx+bulge(w.y,t)-w.x; // depth behind the visible front
-    float a=s>=-4.?.55+.45*smoothstep(-4.,60.,s):.55*exp((s+4.)/4.5)*smoothstep(-16.,-12.,s); // .55 at the kill line, opaque from 60 px in
-    vec2 p=vec2(w.x-fx*.55-tc*6.,w.y+tc*3.)/64.; // the deep body drifts at 0.55 of the front's speed, rising a little
-    vec2 q=vec2(fb3(p+vec2(tc*.07,tc*.16)),fb3(p+vec2(5.2,1.3)+vec2(-tc*.13,tc*.09))); // the warp itself moves: the lumps swell and fold (Quilez)
-    // the boil (flow map, Vlachos 2010): billows climb the front and roll forward over the head; the pattern is carried along that
-    // flow for u_fl.z s, in two phases half a period apart crossfaded, each restarting unseen at its zero weight (the restart
-    // staggered by a noise so the whole storm does not pulse at once); calmer deep in the body
-    float kf=1.-smoothstep(0.,u_fl.w,s),kh=1.-smoothstep(top-50.,top+60.,w.y);
-    vec2 fl=vec2(u_fl.y*kh*(.4+.6*kf),-u_fl.x*kf*(1.-.5*kh)-3.)/64.;
-    float h=0.,lit=0.,m=0.,po=vn(p*.6+3.1)*.7;
-    for(int i=0;i<2;i++){float ph=tc/u_fl.z+float(i)*.5+po,f=fract(ph),wt=1.-abs(2.*f-1.);
-      vec2 pp=p-fl*(f-.5)*u_fl.z+vec2(.37,.61)*floor(ph),pw=pp+.9*u_fx.z*q;
-      float h0=hf(pw),hx=hf(pw+vec2(.04,0.)),hy=hf(pw+vec2(0.,.04));
-      h+=wt*h0;lit+=wt*(clamp(.5-(dot(vec2(hx-h0,hy-h0),u_L))*6.+.7*(h0-.5),0.,1.)*.75+.2);
-      m+=wt*fb3(vec2(w.x-fx*.8-tc*16.,w.y+tc*9.)/32.-2.*fl*(f-.5)*u_fl.z+vec2(.53,.29)*floor(ph)+.5*q);}
-    {float w0=1.-abs(2.*fract(tc/u_fl.z+po)-1.),vr=inversesqrt(w0*w0+(1.-w0)*(1.-w0)); // (the blend keeps its contrast: variance-preserving, Heitz and Neyret 2018)
-      h=.5+(h-.5)*vr;lit=clamp(.55+(lit-.55)*vr,0.,1.);m=.5+(m-.5)*vr;}
-    float mb=smoothstep(.42,.68,m); // nearer billows, rising
-    lit=mix(lit,clamp(.68+.9*(m-.55),0.,1.),mb*.7);
-    a-=.42*smoothstep(10.,30.,s)*(1.-smoothstep(50.,72.,s))*smoothstep(.35,.7,h)*(1.-mb*.6); // thinner pockets a little way in
-    float fe=fb3(vec2((w.x-fx*.85-tc*8.)/85.,w.y/60.)); // the ragged head and foot
-    a*=smoothstep(-18.,18.,w.y-top+50.-60.*(fe-.5))*smoothstep(21.,3.,w.y-bot-6.*(fe-.5));
-    lit=clamp(lit+.25*(1.-smoothstep(top-70.,top+40.,w.y)),0.,1.); // the head's tops catch the sky
-    vec3 col=mix(u_base,u_lit,lit);
-    col=mix(col,u_lit*1.06,.32*(.3+.7*vn(vec2(w.y/17.,tc*.9)))*exp(-max(s,0.)/16.)*step(-12.,s)); // the head's lit lip, just behind the front
-    float rr=floor((w.y+4.)/64.),fy=(rr+1.)*64.-4.,lf=0.;for(int i=0;i<8;i++){if(float(i)==rr-u_st.w)lf=u_lf[i];}
-    float lip=lf*exp(-pow((w.y-fy+1.5)/2.2,2.))*(s>=-2.?.95*exp(-max(s-2.,0.)/22.):.95*smoothstep(-7.,-2.,s)); // the crest along the floor at the line
-    col=mix(col,min(u_lit*1.08,vec3(1.)),lip);a=max(a,lip);
-    col+=u_lit*max(dot(texture2D(u_map,v_u).rgb*1.5,vec3(.33))-.42,0.)*.55; // lamps glow softly in the dust
-    a*=smoothstep(0.,.25,h+.25-(1.-u_fx.x)*1.5)*min(1.,u_fx.x*1.6); // breaking up: holes through the noise, then gone
-    if(u_fx.w>0.){float u=u_fx.w,reg=smoothstep(-110.,10.,u_bu.x-w.x)*smoothstep(fx-60.,fx+10.,w.x); // the burst: torn streaks rushing past him
-      float sn=fb3(vec2((w.x-t*240.)/130.,w.y/11.)+q*.6),hb=smoothstep(18.,80.,length((w-u_bu.yz)*vec2(1.,1.2)));
-      float ab=reg*smoothstep(.3,.62,sn)*pow(1.-u,1.3)*hb*smoothstep(top-40.,top+10.,w.y)*smoothstep(bot+10.,bot-6.,w.y)*.85;
-      col=mix(col,u_lit*(.8+.25*sn),clamp(ab*3.,0.,1.)*(1.-a));a=max(a,ab);}
-    a=clamp(a,0.,.98);gl_FragColor=vec4(col*a,a);}`];
-const GLSTC=[GLV,`precision mediump float;varying vec2 v_u;uniform sampler2D u_s;uniform vec2 u_vg;
-  void main(){vec4 c=texture2D(u_s,v_u);vec2 q=(v_u-vec2(.5,.45))*vec2(u_vg.x,1.);float v=smoothstep(.4,u_vg.y,length(q))*.66;gl_FragColor=vec4(c.rgb*(1.-v),c.a);}`]; // (the vignette, as the composite's)
+    vec2 w=(vec2(v_u.x*u_res.x,(1.-v_u.y)*u_res.y)+u_cam.xy)*u_cam.z;float px=u_cam.z,t=u_t,fx=u_st.x,top=u_st.y,bot=u_st.z,a1=u_fx.x;vec3 G=vec3(.886,.706,.361);
+    float fy=w.y-u_tb.x,i=floor(fy),f=fy-i;vec4 c0=tb(i,0.),c1=tb(i+1.,0.);
+    float s=fx+mix(dv(c0),dv(c1),f)-w.x,gf=mix(c0.b,c1.b,f),jl=mix(c0.a,c1.a,f)*16.; // s: how far inside the front
+    float gx=w.x-u_tb.y,j=floor(gx),h=gx-j;vec4 t0=tb(j,1.),t1=tb(j+1.,1.),b0=tb(j,2.),b1=tb(j+1.,2.);
+    float tt=w.y-(u_tb.z+mix(dv(t0),dv(t1),h)),bb=u_tb.w+mix(dv(b0),dv(b1),h)-w.y,tg=mix(t0.b,t1.b,h); // below the top, above the foot
+    float vb=clamp(tt/px+.5,0.,1.)*clamp(bb/px+.5,0.,1.),cov=clamp(s/px+.5,0.,1.)*vb*clamp((u_fx.z+jl-s)/px+.5,0.,1.);
+    float gd=sqrt(gf)*exp(-pow((s-.2)/.6,2.))*vb+.5*tg*exp(-pow((tt-.2)/.5,2.))*clamp(s/px+.5,0.,1.)*clamp(bb/px+.5,0.,1.); // the gold along the tear and the top
+    gd*=min(1.,a1*1.5);
+    if(a1<1.){float n=fb3(w/15.+vec2(0.,t*.2)),th=(1.-a1)*1.25-.1;gd+=.75*exp(-pow((n-th)/.018,2.))*cov*min(1.,(1.-a1)*3.);cov*=smoothstep(th-.02,th+.02,n);} // dawn burns holes through it
+    cov*=min(1.,a1*3.);
+    float hl=s<0.?.34*exp(s/4.)*vb*min(1.,a1*3.):0.; // (round 29) a soft dark falloff just outside the tear, so the black does not end in a cut
+    float tc=0.;if(u_tn>0.&&s>-90.&&s<4.)for(int k=0;k<32;k++){if(float(k)>=u_tn)break;vec4 A=u_ta[2*k],B=u_ta[2*k+1];float u=w.x-A.x; // the tatters
+      if(u<0.||u>A.z)continue;float r=u/A.z,yc=A.y+B.w*r*r+B.x*r*sin(6.283*u/B.y-9.*u_t2+B.z),hw=.5*A.w*pow(1.-r,.6)*(.75+.25*sin(1.7*u+B.z));tc=max(tc,clamp((hw-abs(w.y-yc))/px+.5,0.,1.));}
+    cov=max(cov,tc*min(1.,a1*3.));
+    float rr=floor((w.y+4.)/64.),fl=(rr+1.)*64.-4.,lf=0.;for(int k=0;k<8;k++){if(float(k)==rr-u_st.w)lf=u_lf[k];}
+    gd=max(gd,lf*exp(-pow((w.y-fl+1.2)/1.1,2.))*(s>=-.5?exp(-max(s,0.)/3.5):smoothstep(-2.5,-.5,s))*.95*min(1.,a1*1.5)); // the crest along the floor at the kill line
+    vec3 col=vec3(0.);float al=cov+hl*(1.-cov);gd=min(gd,1.);over(col,al,G*gd,gd);
+    if(u_jr.z>0.){vec2 q=(w-u_jr.xy)/u_jr.zw;if(q.x>0.&&q.y>0.&&q.x<1.&&q.y<1.){over(col,al,vec3(0.),art(u_ja,q).a);vec4 g=art(u_jg,q)*u_fx.w;over(col,al,g.rgb,g.a);}} // the jackal
+    for(int k=0;k<2;k++){vec4 e=k==0?u_e0:u_e1;if(e.w>0.){vec2 q=(w-e.xy)/u_es+.5;q.y=.5+(q.y-.5)/max(e.z,.02);if(q.x>0.&&q.y>0.&&q.x<1.&&q.y<1.){vec4 c=art(u_ea,q)*e.w*cov;over(col,al,c.rgb,c.a);}}} // the eyes
+    if(u_fx.y>0.){float u=u_fx.y,reg=smoothstep(-110.,10.,u_bu.x-w.x)*smoothstep(fx-60.,fx+10.,w.x); // the burst: tatters rushing past him, gold at their edges
+      float sn=fb3(vec2((w.x-t*240.)/28.,w.y/13.))+.07*vn(w/2.3),hb=smoothstep(18.,80.,length((w-u_bu.yz)*vec2(1.,1.2))),env=reg*hb*smoothstep(top-40.,top+10.,w.y)*smoothstep(bot+10.,bot-6.,w.y),th=.62+.3*u; // (they shrink as they fly; ragged)
+      float ab=smoothstep(th,th+.02,sn)*env*.97,ed=exp(-pow((sn-th)/.012,2.))*env*.45*(1.-u);over(col,al,vec3(0.),ab);over(col,al,G*ed,ed);}
+    vec2 vq=(v_u-vec2(.5,.45))*vec2(u_vg.x,1.);col*=1.-smoothstep(.4,u_vg.y,length(vq))*.66; // (the composite's vignette)
+    gl_FragColor=vec4(col,al);}`];
 function glstInit(gl,P){try{const mk=(src,names)=>{const p=glMake(gl,src);gl.bindAttribLocation(p,0,'a_p');return glLink(gl,p,names);};
-    GLST.p=mk(GLSTSH,['u_fl','u_cam','u_res','u_t','u_st','u_fx','u_bu','u_lit','u_base','u_L','u_lf','u_map']);GLST.c=mk(GLSTC,['u_s','u_vg']);
-    P.final.u.u_sd=gl.getUniformLocation(P.final.p,'u_sd');GLST.gl=gl;GLST.fb=null;GLST.ok=true;}catch(e){GLST.ok=false;GLST.why=String(e&&e.message||e);}}
-function glStormU(U){if(!U.u_sd||!L)return;const c=stormCol().lit;GLP.gl.uniform3f(U.u_sd,c[0]/255*0.85,c[1]/255*0.85,c[2]/255*0.85);} // (the composite's veil colour)
+    GLST.p=mk(GLSTSH,['u_ta','u_tn','u_t2','u_cam','u_res','u_t','u_st','u_fx','u_bu','u_tb','u_jr','u_ja','u_jg','u_ea','u_e0','u_e1','u_es','u_vg','u_lf','u_tab','u_art']);
+    P.final.u.u_sd=gl.getUniformLocation(P.final.p,'u_sd');GLST.gl=gl;GLST.tab=null;GLST.art=null;GLST.pfb=null;GLST.ok=true;}catch(e){GLST.ok=false;GLST.why=String(e&&e.message||e);}}
+function glStormU(U){if(!U.u_sd||!L)return;GLP.gl.uniform3f(U.u_sd,0.4,0.38,0.44);} // (the composite's veil: the air before the dark greys and darkens toward this)
 let stStripC=null;
 function stStrip(){if(stStripC)return stStripC;const c=stStripC=stCanvas(64,32),g=c.getContext('2d'),im=g.createImageData(64,32),D=im.data; // the mask's veil: 1 behind the front, thinning ahead over ~260 px
   for(let j=0;j<32;j++)for(let i=0;i<64;i++){const o=(j*64+i)*4,v=(j+0.5)/32;D[o]=D[o+1]=0;D[o+2]=255;D[o+3]=255*(i<19?1:Math.exp(-(i-19)/14))*stS(0,0.35,v)*stS(1,0.88,v);}
   g.putImageData(im,0,0);return c;}
-function glStorm(VZ,camD,camDY,w,h,lw,lh){
-  const ch=L&&L.ext.chase;GLST.on=false;if(EGP.plug||!GLST.ok||!GLFX.storm2||GLST.gl!==GLP.gl||!ch||!ch.on)return;
+// draws the dark over the frame (or, for stormProbe, into fbo); true when it drew
+function glStorm(VZ,camD,camDY,w,h,lw,lh,fbo){
+  const ch=L&&L.ext.chase;if(!fbo)GLST.on=false;if(!GLST.ok||!GLFX.storm2||GLST.gl!==GLP.gl||!ch||!ch.on)return false;
   const D=ch.diss,a=1-(ch.fade||0),fx=D?D.bx:ch.wx,bu=D?clamp(D.t/(D.ts*1.1+0.35),0,1):0,burst=!!D&&bu<1;
-  if(a<=0.005&&!burst)return;
-  const top=ch.rTop*TH,bot=(ch.rBot+1)*TH,xr=Math.max(fx+80,burst?ch.wx+130:0);
-  const sx1=Math.min(lw,Math.ceil((xr*VZ-camD)/4)),sy0=Math.max(0,Math.floor(((top-120)*VZ-camDY)/4)),sy1=Math.min(lh,Math.ceil(((bot+24)*VZ-camDY)/4));
-  if(sx1<=0||sy1<=sy0)return; // not on screen
-  const gl=GLP.gl;if(!GLST.fb||GLST.fw!==lw||GLST.fh!==lh){GLST.fb=glFbo(gl,lw,lh);GLST.fw=lw;GLST.fh=lh;}
-  gl.bindFramebuffer(gl.FRAMEBUFFER,GLST.fb.f);gl.viewport(0,0,lw,lh);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.enable(gl.SCISSOR_TEST);gl.scissor(0,lh-sy1,sx1,sy1-sy0); // (cleared whole: the tile is never loaded)
-  const U=GLST.p.u,col=stormCol(),sb=skyBeam();gl.useProgram(GLST.p.p);
+  if(a<=0.005&&!burst)return false;
+  const top=ch.rTop*TH,bot=(ch.rBot+1)*TH,T=dkTable(ch,fx,camD/VZ,(camD+w)/VZ),K=dkLook(ch,fx);
+  const TT=dkTatters(ch,fx,T);let xr=fx+T.mx+12;if(burst)xr=Math.max(xr,ch.wx+130);if(K.jr)xr=Math.max(xr,K.jr[0]+K.jr[2]+2);for(const q of TT)xr=Math.max(xr,q[0]+q[2]+2);
+  const sx1=Math.min(w,Math.ceil(xr*VZ-camD)),sy0=Math.max(0,Math.floor(T.y0*VZ-camDY)),sy1=Math.min(h,Math.ceil((bot+40)*VZ-camDY));
+  if(sx1<=0||sy1<=sy0)return false; // not on screen
+  const gl=GLP.gl,U=GLST.p.u;
+  if(!GLST.tab){GLST.tab=gl.createTexture();GLST.tv=-1;gl.bindTexture(gl.TEXTURE_2D,GLST.tab);for(const [k,v] of [[gl.TEXTURE_MIN_FILTER,gl.NEAREST],[gl.TEXTURE_MAG_FILTER,gl.NEAREST],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]])gl.texParameteri(gl.TEXTURE_2D,k,v);}
+  gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,GLST.tab);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+  if(GLST.tv!==T.ver){gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1024,4,0,gl.RGBA,gl.UNSIGNED_BYTE,T.u8);GLST.tv=T.ver;} // (the data as is: no premultiplying)
+  gl.activeTexture(gl.TEXTURE1);
+  if(!GLST.art){const A=dkArt();GLST.art=glTex(gl,A.width,A.height);gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,true);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,A);gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);}
+  else gl.bindTexture(gl.TEXTURE_2D,GLST.art);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,fbo?fbo.f:null);gl.viewport(0,0,w,h);gl.enable(gl.SCISSOR_TEST);gl.scissor(0,h-sy1,sx1,sy1-sy0);
+  gl.useProgram(GLST.p.p);gl.uniform1i(U.u_tab,0);gl.uniform1i(U.u_art,1);
   gl.uniform4f(U.u_cam,camD,camDY,1/VZ,VZ);gl.uniform2f(U.u_res,w,h);gl.uniform1f(U.u_t,gameTime%1000);
-  gl.uniform4f(U.u_st,fx,top,bot,ch.rTop);gl.uniform4f(U.u_fx,a,S.set.calm?0.5:1,S.set.calm?0.3:1,burst?Math.max(bu,1e-4):0);gl.uniform4f(U.u_bu,ch.wx,P?P.x:0,P?P.y-30:0,0);gl.uniform4f(U.u_fl,STB.rise,STB.roll,STB.per,STB.fw);
-  gl.uniform3f(U.u_lit,col.lit[0]/255,col.lit[1]/255,col.lit[2]/255);gl.uniform3f(U.u_base,col.base[0]/255,col.base[1]/255,col.base[2]/255);gl.uniform2f(U.u_L,sb.dx,sb.dy);
+  gl.uniform4f(U.u_st,fx,top,bot,ch.rTop);gl.uniform4f(U.u_fx,a,burst?Math.max(bu,1e-4):0,dkOpen(ch),K.kg);gl.uniform4f(U.u_bu,ch.wx,P?P.x:0,P?P.y-30:0,0);
+  gl.uniform4f(U.u_tb,T.y0,T.x0,T.tb,T.bb);
+  const A=dkArt(),aw=A.width,ah=A.height,Q=DK_Q,R=(x,y,ww,hh)=>[x/aw,y/ah,(x+ww)/aw,(y+hh)/ah];
+  if(K.jr)gl.uniform4f(U.u_jr,...K.jr);else gl.uniform4f(U.u_jr,0,0,0,0);
+  gl.uniform4f(U.u_ja,...R(DK_AJS[0],DK_AJS[1],DK_JW*Q,DK_JH*Q));gl.uniform4f(U.u_jg,...R(DK_AJG[0],DK_AJG[1],DK_JW*Q,DK_JH*Q));gl.uniform4f(U.u_ea,...R(DK_AEY[0],DK_AEY[1],DK_EW*Q,DK_EH*Q));
+  {const A=GLST.ta||(GLST.ta=new Float32Array(256));for(let i=0;i<TT.length;i++)A.set(TT[i],i*8);gl.uniform4fv(U.u_ta,A);gl.uniform1f(U.u_tn,TT.length);gl.uniform1f(U.u_t2,(gameTime*(S.set.calm?0.5:1))%1000);}
+  gl.uniform2f(U.u_es,DK_EW,DK_EH);gl.uniform4f(U.u_e0,...(K.ey[0]||[0,0,0,0]));gl.uniform4f(U.u_e1,...(K.ey[1]||[0,0,0,0]));
+  gl.uniform2f(U.u_vg,viewW/ROOM_H,0.62*Math.max(viewW,ROOM_W)/ROOM_H);
   const cc=Math.floor((fx+4)/TW);for(let i=0;i<8;i++){const r=ch.rTop+i;GLST.lf[i]=r<=ch.rBot&&(solidBelow(L,cc,r)||solidBelow(L,cc-1,r)||solidBelow(L,cc+1,r))?1:0;}gl.uniform1fv(U.u_lf,GLST.lf);
-  gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,GLP.fb.map.t);gl.uniform1i(U.u_map,1);
-  gl.bindBuffer(gl.ARRAY_BUFFER,GLP.tri);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);gl.drawArrays(gl.TRIANGLES,0,3);
-  gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);gl.scissor(0,h-sy1*4,sx1*4,(sy1-sy0)*4);
-  gl.useProgram(GLST.c.p);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,GLST.fb.t);gl.uniform1i(GLST.c.u.u_s,0);gl.uniform2f(GLST.c.u.u_vg,viewW/ROOM_H,0.62*Math.max(viewW,ROOM_W)/ROOM_H);
-  gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.drawArrays(gl.TRIANGLES,0,3);gl.disable(gl.BLEND);gl.disable(gl.SCISSOR_TEST);GLST.on=true;}
+  gl.bindBuffer(gl.ARRAY_BUFFER,GLP.tri);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+  gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.drawArrays(gl.TRIANGLES,0,3);gl.disable(gl.BLEND);gl.disable(gl.SCISSOR_TEST);
+  gl.activeTexture(gl.TEXTURE0);if(fbo)gl.bindFramebuffer(gl.FRAMEBUFFER,null);else GLST.on=true;return true;}
 // is the shader pass in use this frame? (the setting, the Lighting switch of Graphics, and a working context)
 function shaderOn(){return S.set.lightMode==='torch'&&GFX().light&&glInit();}
 // frame-time bookkeeping, fed by the loop with the time since the previous drawn frame; scales the scene copy down when slow
@@ -10242,7 +10246,9 @@ function render(){PF.s();
   if(gf.light)drawEmissive(ctx,cx,cx+vw,cy,cy+vh);
   ctx.restore();
   ctx.setTransform(VS,0,0,VS,0,0);
-  if(gf.atmo)hazePass(ctx);PF.p('atmo2d');if(sh)PF.gl=GLP.gl;
+  if(gf.atmo)hazePass(ctx);
+  if(L.ext.chase&&L.ext.chase.on&&!stormGL()){ctx.save();ctx.setTransform(VZ,0,0,VZ,-camD,-camDY);ctx.beginPath();ctx.rect(cx,cy,vw,vh);ctx.clip();drawDark2D(ctx,cx,cx+vw,cy,cy+vh);ctx.restore();ctx.setTransform(VS,0,0,VS,0,0);} // (round 29)
+  PF.p('atmo2d');if(sh)PF.gl=GLP.gl;
   if(sh){try{glPrep(frameLights,VZ,camD,camDY,L.theme);}catch(e){glKill(String(e&&e.message||e));return render();}
     ctx=gx;ctx.setTransform(VS,0,0,VS,0,0);} // from here on only what the shader must not darken: flashes, HUD, text
   else{if(!vignette){vignette=ctx.createRadialGradient(viewW/2,ROOM_H/2,ROOM_H*0.45,viewW/2,ROOM_H/2,Math.max(viewW,ROOM_W)*0.66);vignette.addColorStop(0,'rgba(5,3,10,0)');vignette.addColorStop(1,'rgba(5,3,10,.5)');
@@ -10327,7 +10333,7 @@ function drawOverlayText(ctx){
     ctx.fillStyle='rgba(10,8,20,.82)';ctx.fillRect(bx,by,bw,h);ctx.fillStyle=banner.kind==='hint'?'#e8c47f':'#e4683b';ctx.fillRect(bx,by,2,h);
     ctx.fillStyle='#f2e9d8';lines.forEach((l,i)=>ctx.fillText(l,viewW/2,by+10+i*11));ctx.globalAlpha=1;}
   if(mode==='dead'){const a=Math.min(1,deadT/0.6);ctx.globalAlpha=a;ctx.fillStyle='rgba(8,6,14,.55)';ctx.fillRect(0,0,viewW,ROOM_H);
-    const cause={fall:'The fall was too far',spikes:'Impaled on the stakes',sword:'Cut down',blade:'Caught by the blade',crush:'Crushed by a falling block',poison:'Poisoned',snake:'Bitten by a snake',fire:'Burned',pend:'Struck by the pendulum',saw:'Cut by the saw',dart:'Struck by a dart',sand:EGP.plug?'Crushed by the granite plug':'Swallowed by the sand'}[P.cause]||'You fell';
+    const cause={fall:'The fall was too far',spikes:'Impaled on the stakes',sword:'Cut down',blade:'Caught by the blade',crush:'Crushed by a falling block',poison:'Poisoned',snake:'Bitten by a snake',fire:'Burned',pend:'Struck by the pendulum',saw:'Cut by the saw',dart:'Struck by a dart',sand:'Taken by the dark'}[P.cause]||'You fell';
     ctx.fillStyle='#e4683b';ctx.font='24px Rokkitt, Georgia, serif';ctx.fillText(cause,viewW/2,ROOM_H/2-10);
     ctx.fillStyle='#f2e9d8';ctx.font='600 8.5px Jost, system-ui, sans-serif';
     if(canRewind()){if(deadT>0.7){ctx.fillStyle='#e8c47f';ctx.fillText('Rewind: turn back the hours ('+S.sands+' left)',viewW/2,ROOM_H/2+13);ctx.fillStyle='#f2e9d8';ctx.fillText(L.cpIndex>=0?'Jump: rise at the sky clock':'Jump: rise at the floor gate',viewW/2,ROOM_H/2+26);}}
@@ -10617,20 +10623,24 @@ Object.assign(window.__HK,{MS,MSF,GLMETAL_P,msPreset:k=>{if(k!==undefined)GLMETA
 // (unit ST, for stormfair.py and the pictures) where the storm's front is at the feet, in either mode: for each storm row, at
 // heights from the feet to the waist, how far from the kill line (wx+4) the dust's alpha first reaches .55, and the densest dust
 // beyond wx+10. Classic: the 2D layer drawn alone at 1 px per world px. Torchlight: the shader's own buffer after a render.
-function stormProbe(torch){const ch=L.ext.chase,out=[];if(!ch)return null;let A;
-  if(!torch){stormReady(ch,1e9);const X=Math.floor(ch.wx)-200,Y=ch.rTop*TH-120,W=400,Hh=(ch.rBot-ch.rTop+1)*TH+150,c=stCanvas(W,Hh),g=c.getContext('2d');
+function stormProbe(torch,look){const ch=L.ext.chase,out=[];if(!ch)return null;let A;DKT.noLook=!look; // (look: with the jackal and the eyes)
+  if(!torch){const X=Math.floor(ch.wx)-200,Y=ch.rTop*TH-120,W=400,Hh=(ch.rBot-ch.rTop+1)*TH+150,c=stCanvas(W,Hh),g=c.getContext('2d');
     g.setTransform(1,0,0,1,-X,-Y);stormLayer2D(g,ch,ch.diss?ch.diss.bx:ch.wx,1-(ch.fade||0),X,X+W,Y,Y+Hh);const d=g.getImageData(0,0,W,Hh).data;
     A=(x,y)=>{const i=Math.floor(x-X),j=Math.floor(y-Y);return i<0||j<0||i>=W||j>=Hh?0:d[(j*W+i)*4+3]/255;};}
-  else{if(!GLST.on)return {gl:false};const gl=GLP.gl,lw=GLST.fw,lh=GLST.fh,d=new Uint8Array(lw*lh*4),{VZ,camD,camDY}=renderXf;
-    gl.bindFramebuffer(gl.FRAMEBUFFER,GLST.fb.f);gl.readPixels(0,0,lw,lh,gl.RGBA,gl.UNSIGNED_BYTE,d);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
-    A=(x,y)=>{const i=Math.floor((x*VZ-camD)/4),j=lh-1-Math.floor((y*VZ-camDY)/4);return i<0||j<0||i>=lw||j>=lh?-1:d[(j*lw+i)*4+3]/255;};}
+  else{if(!GLST.on)return {gl:false};const gl=GLP.gl,lw=gl.drawingBufferWidth,lh=gl.drawingBufferHeight,d=new Uint8Array(lw*lh*4),{VZ,camD,camDY}=renderXf; // (the dark drawn alone into a buffer of its own)
+    if(!GLST.pfb||GLST.pw!==lw||GLST.ph!==lh){GLST.pfb=glFbo(gl,lw,lh);GLST.pw=lw;GLST.ph=lh;}
+    gl.bindFramebuffer(gl.FRAMEBUFFER,GLST.pfb.f);gl.viewport(0,0,lw,lh);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+    glStorm(VZ,camD,camDY,lw,lh,0,0,GLST.pfb);
+    gl.bindFramebuffer(gl.FRAMEBUFFER,GLST.pfb.f);gl.readPixels(0,0,lw,lh,gl.RGBA,gl.UNSIGNED_BYTE,d);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+    A=(x,y)=>{const i=Math.floor(x*VZ-camD),j=lh-1-Math.floor(y*VZ-camDY);return i<0||j<0||i>=lw||j>=lh?-1:d[(j*lw+i)*4+3]/255;};}
+  DKT.noLook=false;
   const fx=ch.diss?ch.diss.bx:ch.wx,kl=ch.wx+4;
   for(let r=ch.rTop;r<=ch.rBot;r++)for(let y=SURF(r)-30;y<SURF(r);y+=3){let cross=null,ahead=0,off=false;
     for(let x=fx+60;x>=fx-40;x-=0.5){const a=A(x,y);if(a<0){off=true;break;}if(a>=0.55){cross=x-kl;break;}}
     for(let x=kl+7;x<=kl+60;x+=1){const a=A(x,y);if(a>ahead)ahead=a;}
     if(!off)out.push({r,y,cross,ahead});}
   return {gl:!!torch,wx:ch.wx,rows:out};}
-Object.assign(window.__HK,{ST,GLST,stormCol,stBulge,stormReady,stormProbe,stormNear,get Snd(){return Snd;}});
+Object.assign(window.__HK,{DKT,GLST,stormLayer2D,dkTable,dkLook,dkDrain,dkArt,stBulge,stormProbe,stormNear,get Snd(){return Snd;}});
 Object.assign(window.__HK,{hazardEdge,grabLabel,updateGrabLabel,glFit,glSet,get I(){return I;},get glShown(){return glShown;},blockCanMove,findFlask,findLedge}); // (the Grab button's label, for its test)
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 })();
