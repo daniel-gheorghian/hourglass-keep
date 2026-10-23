@@ -478,7 +478,11 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   along each floor at the kill line. One table a frame (`dkTable`: the front per world px of height, the ragged top and foot per px of
   width) feeds both modes: Torchlight's `glStorm` draws it over the finished frame at full resolution (analytic coverage, no MSAA on the
   pass; the composite's vignette), Classic's `stormLayer2D` after the haze (`drawDark2D`), so it stays black. It opens from a crack as it
-  wakes (`dkOpen`). The jackal (`dkArt`, `dkJackalPath`: black, gold inside the near ear, a calcite eye ringed in gold with a kohl line, a
+  wakes (`dkOpen`). Its edges (owner: "take care at the edges, some kind of blend or lens effect ... tatters at the edges ... in both modes"):
+  a soft dark falloff just outside the tear (both modes); tatters (`dkTatters`, `dkTatterPath`; `DK_TN` 32, the shader's `u_ta`): ragged
+  ribbons torn from its edge, fluttering, each drawing back or tearing loose and flying on ahead, shrinking, opaque, only from the head
+  height and up of each row (d 44 to 62) and above the top row, never from the feet to the waist; and in Torchlight a lens: the composite
+  reads the scene beside it from nearer the rip (the veil's ramp cubed), so it stretches and bends into it. The jackal (`dkArt`, `dkJackalPath`: black, gold inside the near ear, a calcite eye ringed in gold with a kohl line, a
   gold collar and a gold edge where light would catch) slides out of it at his height, its jaw just over his head and its neck back in the
   dark, when it wakes (0.3-3.2 s) and whenever it is within about two tiles of him (`dkLook`, a pure function of the chase, his height and
   the clock); otherwise pairs of eyes open, blink and close in it. It eats light: lamps ahead dim at most `DK_DRAIN` and gutter, behind

@@ -6559,6 +6559,28 @@ function dkTable(ch,fx,X0,X1){const t=Math.floor(gameTime*30)/30*(S.set.calm?0.5
     DKT.Tt[i]=tt;DKT.Tb[i]=tf;DKT.Tg[i]=g*g;let q=(N+i)*4;pk(q,tt);u8[q+2]=Math.round(g*g*255);u8[q+3]=0;q=(2*N+i)*4;pk(q,tf);u8[q+2]=0;u8[q+3]=0;}
   for(let q=(N+nx)*4;q<2*N*4;q++)u8[q]=u8[q-4];for(let q=(2*N+nx)*4;q<3*N*4;q++)u8[q]=u8[q-4];
   DKT.mx=mx;return DKT;}
+// (round 29, owner: "let's take care at the edges, some kind of blend or lens effect ... showing tatters at the edges would make more sense in
+// both modes") tatters: strips of the dark torn from its edge, each a ragged ribbon tapering to its tip, fluttering like a flag (a wave running
+// out along it, growing toward the tip, with a curl); each grows out, flutters, and either draws back or tears loose and flies on ahead,
+// shrinking to nothing. Opaque black like the rest. Only from the head and above of each storm row and above the top row (never from the
+// feet to the waist, where the edge must say where it kills), and a loose one keeps its height. A pure function of the chase and the clock
+// (DK_TN slots, each its own period); [x0, y0, length, width, amp, wavelength, phase, curl] in world px, shared by both modes
+const DK_TN=32; // (the shader's u_ta holds 32)
+function dkTatters(ch,fx,T){const t=gameTime*(S.set.calm?0.5:1),top=ch.rTop*TH,nr=ch.rBot-ch.rTop+1,out=[];if(ch.diss||(ch.fade||0)>=1||dkOpen(ch)<40)return out;
+  for(let k=0;k<DK_TN;k++){const P0=2.1+0.9*dkH(k,700),u=(t+dkH(k,701)*P0)/P0,c=Math.floor(u),p=u-c,h=i=>dkH(c*31+k,710+i);
+    const band=Math.floor(h(0)*(nr+1.6)),y0=band>=nr?top-100+h(1)*88:(ch.rTop+band)*TH-2+h(1)*18; // (above the top row, or the head and ceiling of a row: d 44 to 62)
+    const iy=clamp(Math.round(y0-T.y0),0,T.ny-1),L0=(band>=nr?16:10)+(band>=nr?26:18)*h(2),w0=3+4*h(3),loose=h(4)>0.45;
+    let len=L0*sstep(p/0.25),dx=0,w=w0;
+    if(loose&&p>0.62){const q=(p-0.62)/0.38;dx=q*(26+44*h(5));len=L0*(1-0.5*q);w=w0*(1-q);} // torn loose: on ahead, shrinking
+    else if(!loose&&p>0.75)len=L0*(1-sstep((p-0.75)/0.25)); // drawn back
+    if(len<0.5||w<0.15)continue;
+    out.push([fx+T.F[iy]-3+dx,y0,len,w,1+1.6*h(6),12+9*h(7),h(8)*6.283,(h(9)-0.5)*4]);}
+  return out;}
+// a tatter's outline as a polygon (Classic), as the shader draws it: the centre line y0 + curl (u/len)^2 + amp (u/len) sin(2pi u/wl - 9t + ph),
+// the half width w/2 (1-u/len)^0.6 (0.75 + 0.25 sin(1.7u + ph))
+function dkTatterPath(ctx,q,t){const [x0,y0,len,w,am,wl,ph,cu]=q,n=Math.max(3,Math.ceil(len/1.5)),top=[],bt=[];
+  for(let i=0;i<=n;i++){const u=len*i/n,yc=y0+cu*(u/len)*(u/len)+am*(u/len)*Math.sin(6.283*u/wl-9*t+ph),hw=0.5*w*Math.pow(1-u/len,0.6)*(0.75+0.25*Math.sin(1.7*u+ph));top.push(x0+u,yc-hw);bt.push(x0+u,yc+hw);}
+  ctx.moveTo(top[0],top[1]);for(let i=2;i<top.length;i+=2)ctx.lineTo(top[i],top[i+1]);for(let i=bt.length-2;i>=0;i-=2)ctx.lineTo(bt[i],bt[i+1]);ctx.closePath();}
 // the rip's width while it opens from a crack (then the whole corridor behind the front)
 function dkOpen(ch){return ch.done||ch.t>=0.6?1e4:3+1200*Math.pow(stS(0,0.6,ch.t),2);}
 // the jackal and the eyes (a pure function of the chase, his row and the clock: rewind-safe): e how far the head has come out (at the
@@ -6635,6 +6657,8 @@ function stormLayer2D(ctx,ch,fx,a,x0,x1,y0,y1){if(a<=0.005)return;
   ctx.fillStyle='#000';ctx.fill('evenodd');
   if(holes.length){ctx.strokeStyle=G;ctx.lineWidth=0.55;ctx.globalAlpha=ka*Math.min(1,(1-a)*3)*0.7;ctx.beginPath();for(let i=0;i<holes.length;i+=4)dkRag(ctx,holes[i],holes[i+1],holes[i+2],holes[i+3]*6,Math.floor(holes[i]/16)*31+Math.floor(holes[i+1]/16));ctx.stroke();ctx.globalAlpha=ka;}
   ctx.restore();
+  // (round 29) a soft dark falloff just outside the tear: two wide strokes along it, faint
+  ctx.strokeStyle='#000';ctx.lineJoin='round';for(const [lw,al] of [[7,0.1],[3.5,0.16]]){ctx.lineWidth=lw;ctx.globalAlpha=ka*al*Math.min(1,a*3);ctx.beginPath();ctx.moveTo(fx+T.F[ys],T.y0+ys);for(let i=ys+1;i<ye;i+=2)ctx.lineTo(fx+T.F[i],T.y0+i);ctx.stroke();}
   // the gold along the tear, in three strengths (the band's clip still holds); and along the top inside the dark
   ctx.lineWidth=0.7;ctx.strokeStyle=G;ctx.lineJoin='round';
   for(const [lo,hi,al] of [[0.06,0.3,0.3],[0.3,0.65,0.6],[0.65,2,0.95]]){ctx.globalAlpha=ka*al*Math.min(1,a*1.5);ctx.beginPath();let on=false;
@@ -6646,8 +6670,9 @@ function stormLayer2D(ctx,ch,fx,a,x0,x1,y0,y1){if(a<=0.005)return;
   for(let r=ch.rTop;r<=ch.rBot;r++){const sy=SURF(r);if(sy<y0-10||sy>y1+10||!(solidBelow(L,cc,r)||solidBelow(L,cc-1,r)||solidBelow(L,cc+1,r)))continue;
     const ex=fx+T.F[clamp(sy-1-T.y0,0,T.ny-1)],gr=ctx.createLinearGradient(ex-8,0,ex+1,0);gr.addColorStop(0,'rgba('+DK_GS+',0)');gr.addColorStop(0.8,'rgba('+DK_GS+',.95)');gr.addColorStop(1,'rgba(255,236,190,1)');
     ctx.fillStyle=gr;ctx.fillRect(ex-8,sy-2,9,1.6);}
-  ctx.globalAlpha=ka;{const K=dkLook(ch,fx);if(K.jr||K.ey.length)dkLook2D(ctx,K);} // (the jackal comes out past the front: drawn outside its cut, over the gold)
-  ctx.restore();}
+  ctx.restore();
+  {const TT=dkTatters(ch,fx,T);if(TT.length){const tt=gameTime*(S.set.calm?0.5:1);ctx.save();ctx.globalAlpha=ka;ctx.fillStyle='#000';ctx.beginPath();for(const q of TT)dkTatterPath(ctx,q,tt);ctx.fill();ctx.restore();}} // the tatters
+  ctx.save();ctx.globalAlpha=ka;{const K=dkLook(ch,fx);if(K.jr||K.ey.length)dkLook2D(ctx,K);}ctx.restore();} // (the jackal comes out past the front: drawn outside its cut, over the gold)
 // is the shader drawing the dark this frame? (then the 2D scene keeps only the flakes and the shards ahead of it)
 function stormGL(){return GLP.used&&GLFX.storm2&&GLST.ok&&GLST.gl===GLP.gl;}
 // how much a lamp at x keeps: none behind the front, dimmed and guttering ahead of it (look only)
@@ -9376,8 +9401,8 @@ const GLSH={
       vec3 m=texture2D(u_mk,mkUV(v_u)).rgb; // mask: r shadow, g heat, b storm
       vec2 uv=v_u;float hz=m.g*u_fx.y,st=m.b*u_fx.z;
       if(hz>.01){uv+=vec2(sin(v_u.y*260.+u_t*7.+v_u.x*50.)+.6*sin(v_u.y*110.-u_t*4.3),.7*sin(v_u.x*180.+u_t*5.))*hz*vec2(1.7,.9)*u_px;} // heat: the scene is read a little off, in rising ripples
-      float e=st*u_fx.w; // the storm's veil: a slow wave through it (unit ST: over the whole veil, not a strip; u_fx.w is less when calm)
-      if(e>.01)uv+=vec2(sin(v_u.y*40.+u_t*2.),sin(v_u.x*60.-u_t*3.)*.7)*e*vec2(1.8,1.3)*u_px;
+      float e=st*st*st*u_fx.w; // (round 29) a lens at the dark's edge: the scene beside it is read from nearer the rip, so it stretches and bends into it (the veil's own ramp, cubed: most of it within a tile; u_fx.w is less when calm)
+      if(e>.01)uv.x-=e*(24.+3.*sin(v_u.y*17.-u_t*1.1))*u_px.x;
       uv=hkWarp(uv); // S3-A
       vec3 s=hkScene(uv),l=texture2D(u_map,v_u).rgb*1.5;float mcv=msCov(uv); // (unit MS: how much of this pixel is metal; 0 with none on screen)
       float cov=texture2D(u_sc,uv).a,fa=texture2D(u_map,v_u).a*(1.-cov);if(fa>.002)l=max(l-FILL_C*fa*1.5,0.); // (round 25c) the figures' fill light (the map's alpha) taken off where the scene shows the backdrop, the sky (glFrame); cov: how much of the pixel is not the backdrop
@@ -10061,11 +10086,12 @@ const GLSTSH=[GLV,`#ifdef GL_FRAGMENT_PRECISION_HIGH
   #else
   precision mediump float;
   #endif
-  varying vec2 v_u;uniform vec4 u_cam,u_st,u_fx,u_bu,u_tb,u_jr,u_ja,u_jg,u_ea,u_e0,u_e1;uniform vec2 u_res,u_vg,u_es;uniform float u_t;uniform float u_lf[8];
+  varying vec2 v_u;uniform vec4 u_cam,u_st,u_fx,u_bu,u_tb,u_jr,u_ja,u_jg,u_ea,u_e0,u_e1;uniform vec2 u_res,u_vg,u_es;uniform float u_t,u_t2,u_tn;uniform float u_lf[8];uniform vec4 u_ta[64];
   uniform sampler2D u_tab,u_art;
   // u_st: the front x, top, bottom, top row; u_fx: 1-fade, burst progress, the rip's width while it opens, the jackal's gold;
   // u_bu: the rushing front x, the prince (the hole the tatters part round); u_tb: the table's y0, x0 and the top's and foot's bases;
-  // u_jr: the jackal's box (world), u_ja/u_jg: its silhouette and its gold in the art; u_ea: the eyes in the art, u_e0/u_e1: a pair (x, y, open, alpha)
+  // u_jr: the jackal's box (world), u_ja/u_jg: its silhouette and its gold in the art; u_ea: the eyes in the art, u_e0/u_e1: a pair (x, y, open, alpha);
+  // u_ta: u_tn tatters (up to 32), two each (x0, y0, length, width; amp, wavelength, phase, curl: dkTatters), u_t2 their clock
   float hs(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
   float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hs(i),hs(i+vec2(1.,0.)),f.x),mix(hs(i+vec2(0.,1.)),hs(i+vec2(1.,1.)),f.x),f.y);}
   float fb3(vec2 p){return .57*vn(p)+.29*vn(p*2.03+7.1)+.14*vn(p*4.01+3.3);}
@@ -10084,9 +10110,13 @@ const GLSTSH=[GLV,`#ifdef GL_FRAGMENT_PRECISION_HIGH
     gd*=min(1.,a1*1.5);
     if(a1<1.){float n=fb3(w/15.+vec2(0.,t*.2)),th=(1.-a1)*1.25-.1;gd+=.75*exp(-pow((n-th)/.018,2.))*cov*min(1.,(1.-a1)*3.);cov*=smoothstep(th-.02,th+.02,n);} // dawn burns holes through it
     cov*=min(1.,a1*3.);
+    float hl=s<0.?.34*exp(s/4.)*vb*min(1.,a1*3.):0.; // (round 29) a soft dark falloff just outside the tear, so the black does not end in a cut
+    float tc=0.;if(u_tn>0.&&s>-90.&&s<4.)for(int k=0;k<32;k++){if(float(k)>=u_tn)break;vec4 A=u_ta[2*k],B=u_ta[2*k+1];float u=w.x-A.x; // the tatters
+      if(u<0.||u>A.z)continue;float r=u/A.z,yc=A.y+B.w*r*r+B.x*r*sin(6.283*u/B.y-9.*u_t2+B.z),hw=.5*A.w*pow(1.-r,.6)*(.75+.25*sin(1.7*u+B.z));tc=max(tc,clamp((hw-abs(w.y-yc))/px+.5,0.,1.));}
+    cov=max(cov,tc*min(1.,a1*3.));
     float rr=floor((w.y+4.)/64.),fl=(rr+1.)*64.-4.,lf=0.;for(int k=0;k<8;k++){if(float(k)==rr-u_st.w)lf=u_lf[k];}
     gd=max(gd,lf*exp(-pow((w.y-fl+1.2)/1.1,2.))*(s>=-.5?exp(-max(s,0.)/3.5):smoothstep(-2.5,-.5,s))*.95*min(1.,a1*1.5)); // the crest along the floor at the kill line
-    vec3 col=vec3(0.);float al=cov;gd=min(gd,1.);over(col,al,G*gd,gd);
+    vec3 col=vec3(0.);float al=cov+hl*(1.-cov);gd=min(gd,1.);over(col,al,G*gd,gd);
     if(u_jr.z>0.){vec2 q=(w-u_jr.xy)/u_jr.zw;if(q.x>0.&&q.y>0.&&q.x<1.&&q.y<1.){over(col,al,vec3(0.),art(u_ja,q).a);vec4 g=art(u_jg,q)*u_fx.w;over(col,al,g.rgb,g.a);}} // the jackal
     for(int k=0;k<2;k++){vec4 e=k==0?u_e0:u_e1;if(e.w>0.){vec2 q=(w-e.xy)/u_es+.5;q.y=.5+(q.y-.5)/max(e.z,.02);if(q.x>0.&&q.y>0.&&q.x<1.&&q.y<1.){vec4 c=art(u_ea,q)*e.w*cov;over(col,al,c.rgb,c.a);}}} // the eyes
     if(u_fx.y>0.){float u=u_fx.y,reg=smoothstep(-110.,10.,u_bu.x-w.x)*smoothstep(fx-60.,fx+10.,w.x); // the burst: tatters rushing past him, gold at their edges
@@ -10095,7 +10125,7 @@ const GLSTSH=[GLV,`#ifdef GL_FRAGMENT_PRECISION_HIGH
     vec2 vq=(v_u-vec2(.5,.45))*vec2(u_vg.x,1.);col*=1.-smoothstep(.4,u_vg.y,length(vq))*.66; // (the composite's vignette)
     gl_FragColor=vec4(col,al);}`];
 function glstInit(gl,P){try{const mk=(src,names)=>{const p=glMake(gl,src);gl.bindAttribLocation(p,0,'a_p');return glLink(gl,p,names);};
-    GLST.p=mk(GLSTSH,['u_cam','u_res','u_t','u_st','u_fx','u_bu','u_tb','u_jr','u_ja','u_jg','u_ea','u_e0','u_e1','u_es','u_vg','u_lf','u_tab','u_art']);
+    GLST.p=mk(GLSTSH,['u_ta','u_tn','u_t2','u_cam','u_res','u_t','u_st','u_fx','u_bu','u_tb','u_jr','u_ja','u_jg','u_ea','u_e0','u_e1','u_es','u_vg','u_lf','u_tab','u_art']);
     P.final.u.u_sd=gl.getUniformLocation(P.final.p,'u_sd');GLST.gl=gl;GLST.tab=null;GLST.art=null;GLST.pfb=null;GLST.ok=true;}catch(e){GLST.ok=false;GLST.why=String(e&&e.message||e);}}
 function glStormU(U){if(!U.u_sd||!L)return;GLP.gl.uniform3f(U.u_sd,0.4,0.38,0.44);} // (the composite's veil: the air before the dark greys and darkens toward this)
 let stStripC=null;
@@ -10108,7 +10138,7 @@ function glStorm(VZ,camD,camDY,w,h,lw,lh,fbo){
   const D=ch.diss,a=1-(ch.fade||0),fx=D?D.bx:ch.wx,bu=D?clamp(D.t/(D.ts*1.1+0.35),0,1):0,burst=!!D&&bu<1;
   if(a<=0.005&&!burst)return false;
   const top=ch.rTop*TH,bot=(ch.rBot+1)*TH,T=dkTable(ch,fx,camD/VZ,(camD+w)/VZ),K=dkLook(ch,fx);
-  let xr=fx+T.mx+4;if(burst)xr=Math.max(xr,ch.wx+130);if(K.jr)xr=Math.max(xr,K.jr[0]+K.jr[2]+2);
+  const TT=dkTatters(ch,fx,T);let xr=fx+T.mx+12;if(burst)xr=Math.max(xr,ch.wx+130);if(K.jr)xr=Math.max(xr,K.jr[0]+K.jr[2]+2);for(const q of TT)xr=Math.max(xr,q[0]+q[2]+2);
   const sx1=Math.min(w,Math.ceil(xr*VZ-camD)),sy0=Math.max(0,Math.floor(T.y0*VZ-camDY)),sy1=Math.min(h,Math.ceil((bot+40)*VZ-camDY));
   if(sx1<=0||sy1<=sy0)return false; // not on screen
   const gl=GLP.gl,U=GLST.p.u;
@@ -10127,6 +10157,7 @@ function glStorm(VZ,camD,camDY,w,h,lw,lh,fbo){
   const A=dkArt(),aw=A.width,ah=A.height,Q=DK_Q,R=(x,y,ww,hh)=>[x/aw,y/ah,(x+ww)/aw,(y+hh)/ah];
   if(K.jr)gl.uniform4f(U.u_jr,...K.jr);else gl.uniform4f(U.u_jr,0,0,0,0);
   gl.uniform4f(U.u_ja,...R(DK_AJS[0],DK_AJS[1],DK_JW*Q,DK_JH*Q));gl.uniform4f(U.u_jg,...R(DK_AJG[0],DK_AJG[1],DK_JW*Q,DK_JH*Q));gl.uniform4f(U.u_ea,...R(DK_AEY[0],DK_AEY[1],DK_EW*Q,DK_EH*Q));
+  {const A=GLST.ta||(GLST.ta=new Float32Array(256));for(let i=0;i<TT.length;i++)A.set(TT[i],i*8);gl.uniform4fv(U.u_ta,A);gl.uniform1f(U.u_tn,TT.length);gl.uniform1f(U.u_t2,(gameTime*(S.set.calm?0.5:1))%1000);}
   gl.uniform2f(U.u_es,DK_EW,DK_EH);gl.uniform4f(U.u_e0,...(K.ey[0]||[0,0,0,0]));gl.uniform4f(U.u_e1,...(K.ey[1]||[0,0,0,0]));
   gl.uniform2f(U.u_vg,viewW/ROOM_H,0.62*Math.max(viewW,ROOM_W)/ROOM_H);
   const cc=Math.floor((fx+4)/TW);for(let i=0;i<8;i++){const r=ch.rTop+i;GLST.lf[i]=r<=ch.rBot&&(solidBelow(L,cc,r)||solidBelow(L,cc-1,r)||solidBelow(L,cc+1,r))?1:0;}gl.uniform1fv(U.u_lf,GLST.lf);

@@ -57,7 +57,7 @@ def shoot(html, shots):
             info = pg.evaluate(SETUP, [n, mode])
             pg.evaluate(STEP, [lead, t, dt, eyes])
             im = Image.open(io.BytesIO(pg.screenshot())).convert('RGB')
-            out.append((lab + ' — floor %d, %s' % (n, info['theme'] if info else '?'), im))
+            out.append((lab, 'floor %d, %s, %s' % (n, info['theme'] if info else '?', 'Torchlight' if mode == 'torch' else 'Classic'), im))
         b.close()
         if errs:
             print('page errors', errs[:3])
@@ -66,14 +66,15 @@ def shoot(html, shots):
 frames = shoot(NEW, SHOTS)
 if os.path.exists(OLD):
     frames = shoot(OLD, [('before (v75): the granite plug', 16, 'torch', 60, 5, -1, 0)]) + frames
-cols, f, pad, lh = 2, font(20), 12, 34
+cols, f, f2, pad, lh = 2, font(19), font(14), 12, 50
 th = TW * H // W
 rows = (len(frames) + cols - 1) // cols
 sheet = Image.new('RGB', (cols * (TW + pad) + pad, rows * (th + lh + pad) + pad), (20, 16, 24))
 d = ImageDraw.Draw(sheet)
-for i, (lab, im) in enumerate(frames):
+for i, (lab, sub, im) in enumerate(frames):
     x, y = pad + (i % cols) * (TW + pad), pad + (i // cols) * (th + lh + pad)
-    d.text((x, y + 6), lab, fill=(250, 240, 215), font=f)
+    d.text((x, y + 4), lab, fill=(250, 240, 215), font=f)
+    d.text((x, y + 28), sub, fill=(190, 180, 160), font=f2)
     sheet.paste(im.resize((TW, th), Image.LANCZOS), (x, y + lh))
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 sheet.save(OUT)
