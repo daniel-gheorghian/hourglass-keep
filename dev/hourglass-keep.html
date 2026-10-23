@@ -5371,10 +5371,19 @@ function sandFunnel(ctx,xs,y,w,k,seed){if(k<=0.02)return;const t=gameTime;ctx.fi
 // after. The corridor: the slab cracks into four pieces that separate as they fall, with a billow of dust tumbling out of the hole and
 // a ground-hugging cloud (a gravity current: a bulbous head rolling out both ways along the floor, slowing, settling) where it lands.
 const WELL_V=150; // px/s: a storey's sand in 0.43 s
-function looseWell(o){const f=o.f;if(f.wl!==undefined)return f.wl;let wl=false;
-  if(!f.plank){let k=1;while(o.r+k<L.rows&&!solidBelow(L,o.c,o.r+k)&&k<4)k++;
-    if(k<4&&o.r+k<L.rows){wl=k;for(let rr=o.r+1;rr<=o.r+k&&wl;rr++)for(const sd of [-1,1]){if(B(L,o.c+sd,rr)===WALL)continue;const nf=F(L,o.c+sd,o.r);if(nf&&nf.t==='loose'&&!nf.plank)continue;wl=false;break;}}}
-  return f.wl=wl;} // (k, the storeys down to its floor, or false)
+// (round 30, owner: "a corridor above another corridor doesn't use sand tiles, but instead regular tiles") A cracked slab beside another
+// used to skip its side test on every row: in a run of five over a corridor the three inner slabs each leaned on a neighbour and stood as a
+// column of sand through the corridor below (the run's ends, open, were corridor slabs). Now the whole run is tested at once: each slab's
+// pit (the storeys down to its floor, k) must be walled on both sides on every row down to that floor, by stone or by the pit of a
+// neighbour of the run that is itself a well and reaches that row; a slab that fails takes its neighbours' support away, until none
+// fails. Tiles only, kept on each slab's feature (f.wl), so the same after a rewind or respawn.
+function looseWell(o){const f=o.f;if(f.wl!==undefined)return f.wl;if(f.plank)return f.wl=false;
+  const r=o.r,sl=c=>{const q=F(L,c,r);return q&&q.t==='loose'&&!q.plank?q:null;};let a=o.c,b=o.c;while(sl(a-1))a--;while(sl(b+1))b++;
+  const n=b-a+1,K=[];for(let j=0;j<n;j++){let k=1;while(r+k<L.rows&&!solidBelow(L,a+j,r+k)&&k<4)k++;K.push(k<4&&r+k<L.rows?k:0);}
+  for(let ch=true;ch;){ch=false;for(let j=0;j<n;j++){if(!K[j])continue;let ok=true;
+    for(let rr=r+1;rr<=r+K[j]&&ok;rr++)for(const sd of [-1,1]){const jn=j+sd;if(B(L,a+jn,rr)===WALL||(jn>=0&&jn<n&&K[jn]&&rr<=r+K[jn]))continue;ok=false;break;}
+    if(!ok){K[j]=0;ch=true;}}}
+  for(let j=0;j<n;j++)sl(a+j).wl=K[j]||false;return f.wl;} // (k, the storeys down to its floor, or false)
 // ---- round 21b, owner: "when multiple tiles on sand exist the edge between them cannot be vertical; the sand doesn't hold up like
 // that ... sand draining from the entire volume, not one column at a time". A row of cracked slabs over one pit is one body of sand
 // (wellGroup: the slabs side by side whose looseWell holds, found once and kept on each slab's feature, f.wg). Dry sand cannot stand
