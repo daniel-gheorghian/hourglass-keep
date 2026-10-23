@@ -94,7 +94,6 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
 3. Commit as `vN: what changed`, push to `main`.
 4. About two minutes later, check that https://daniel-gheorghian.github.io/hourglass-keep/sw.js shows `hourglass-keep-vN`.
 5. Copy the source to `dev/tools/hk_vN_release.html` as the next baseline.
-6. From a claude.ai session only: republish the artifact mirror https://claude.ai/artifact/Lwe65enpj3TkDEkiCWETTQ from the source.
 
 ## Rules the owner has set
 
