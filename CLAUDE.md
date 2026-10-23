@@ -71,6 +71,7 @@ service worker's cache to `hourglass-keep-vN`, which is what makes installed cop
 | `p4bot.py lo hi [seeds]` | the bot plays floors forced to timed remote plates (P4, run for a gate in the next turn); the timers carry no extra factor | every run passes, 0 damage |
 | `orphanscan.py`, `mazescan.py` | no gate side passage is left without its plate (floors 1 to 27, 20 seeds); maze floors hold at least 1.5 times the gate puzzles of ordinary floors of the band, longway floors always a fork | 0 orphans, ratio >= 1.5, forks >= 1 |
 | `featurescan.py [file]`, `featbot.py` | a floor's featured families hold their share of their category (mean and minimum), flags come about one floor in nine, floors differ more than before (sameness); the bot plays floors forced to every flag and family (`window.__FEAT`) | shares near or over 40%, 0 damage |
+| `wellcorr.py lo hi [seeds]` | no sand well stands in a corridor: every well's pit is walled on both sides down to its floor (round 30) | `wellcorr: ok` |
 
 Speed: `?bench` in the game's URL (on the phone too) makes the bot (`bot.js`, fetched for the run; `botGen` steps it from the
 game's own frame loop) play six fixed floors live, 20 s each, and shows a table of frame times with a Copy button; the save is
@@ -189,6 +190,14 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   it goes (`wellPour`), the tongues sliding down the crater walls (`wellSlides`) and the dust from each hole are seeded hashes of its column
   and row (`wellH`): no stream, rewind-safe. Look only: every break time, hit box and the bot unchanged. wellscan also checks the rewind on the
   longest row. Pictures `egyptr26d.py`.
+  No sand in a corridor (round 30, owner: "a corridor above another corridor doesn't use sand tiles, but instead regular tiles"): a cracked
+  slab beside another skipped its side test on every row, so in a run of five over a lower corridor the three inner slabs leaned on each other
+  and stood as a column of sand down through his corridor (floor 9 seed 802, slabs 140-142 on row 16 over the corridor on row 18). `looseWell`
+  now tests the whole run of slabs at once: each slab's pit (its k storeys down to its floor) must be walled on both sides on every row down to
+  that floor, by stone or by the pit of a neighbour of the run that is itself a well and reaches that row; a slab that fails takes its
+  neighbours' support away until none fails (the rest take the corridor look). Tiles only, kept on each slab's feature (`f.wl`): look only.
+  `wellcorr.py [lo hi seeds]` (in suite.py; floors 1-48, 3 seeds) must print `wellcorr: ok`: well groups with a side open beside the pit 40
+  before (all walkable corridors), 0 after; groups 2096 to 2056 (slabs 3003 to 2883). Pictures `egyptr30.py` (r30_sandcorr.png, v76 | 30).
 - Arms up (round 19, owner: "a hump"): `torsoG` narrows the back near the shoulders (up to 1.3 px) and the raised arm rises from the
   back of the shoulder, so the back line runs from the waist into the arm. Pictures for round 19: `egyptr19.py`.
 - The prince's body and poses come from motion capture (round 23, owner: "Start from those clips and build the athletic teen prince body
