@@ -362,6 +362,8 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   shadow is never painted over (the ?wgl=0 path has no mark and keeps the old overdraw). A thing lying on the floor uses its coordinates: `d`
   across the slab, `s` along it at the front edge, so it leans along the depth diagonal. The embers glow in the flagstones' joints as slab()
   draws them (`FLOOR_FT`, `glcFloorFt`: each tile's joints and its top face; unit 8): a hot thread, its glow and a warm pool, lumps that pulse.
+  They keep v76's strength (owner: "I love the effect"): the mean light they add over the floor's face stays within 20% of v76's
+  (`egyptr31.py --measure`: Torchlight 10.4 / 11.1, Classic 0.23 / 0.25 R+G+B levels a pixel).
   The sheen is a reflection, so its streak stays upright under the light (in this view world vertical is screen vertical: the plane of the
   light, the eye and the vertical draws as a vertical line); the light is mirrored about the wall's foot, brightest at the front edge (the
   eye meets every point of the floor at the same angle here), and its wet patches lie on the floor. Classic's embers (`classicEmbers`) lie in

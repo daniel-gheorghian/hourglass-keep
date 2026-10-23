@@ -7,13 +7,15 @@
 # after, the whole floor run and 3x crops at his feet and the slot; the same at GLP.rs .5; the wet sheen on floor 2 (the Waters of Nun) and
 # floor 17 (the Green Hall of Osiris) with the prince by a lamp; Classic's embers on floor 13. Then the numbers: the share of the figure's
 # and the saw's pixels the floor's looks changed (before | after).
+# The first lines of the text block: the mean light the embers add over the floor's top face, v76 / round 31, both modes (--measure prints only
+# those, faster); round 31 keeps it within 20% of v76 (the owner loves the effect).
 # old.html defaults to v76's source (dev/tools/hk_v76_release.html if present, else git show d11123a:dev/hourglass-keep.html). Run from dev/tools.
 import io, os, subprocess, sys, tempfile
 from PIL import Image, ImageDraw, ImageChops
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-a = sys.argv[1:]
+a = [x for x in sys.argv[1:] if not x.startswith('--')]
 NEW = os.path.abspath(a[0] if a else os.path.join(HERE, '..', 'hourglass-keep.html'))
 OLD = a[1] if len(a) > 1 else None
 OUTD = os.path.join(HERE, 'egypt_themes')
@@ -29,12 +31,12 @@ FIND = r'''([n,kind])=>{const H=__HK;window.__HKfreeze=true;for(const id in H.HI
     for(const o of L.dyn){if(o.f.t!=='saw')continue;const f=o.f,c1=Math.floor((f.x1+14)/32);let g=true;for(let c=c1+1;c<=c1+5;c++)g=g&&ok(c,o.r);if(!g)continue;
       window.__O={x0:f.x0-14,x1:f.x1+14,y:(o.r+1)*64-4};return [n,1000+sd,H.themeName(n)];}}return null;}'''
 # the scene: the prince at px (world), facing right; frozen clock and random numbers; fx false turns the theme's looks off (to find the old bands)
-SHOW = r'''([px,rs,fx,ns,gr])=>{const H=__HK,o=window.__O,P=H.P,L=window.__L;const PH=H.PAL_HERO;if(!window.__PH)window.__PH=Object.assign({},PH);for(const k in PH)if(typeof PH[k]==='string')PH[k]=gr?'#00ff00':window.__PH[k];const sv=L.dyn.filter(q=>q.f.t==='saw');if(ns)for(const q of sv)L.dyn.splice(L.dyn.indexOf(q),1);let T=1e6;H.setClock(()=>T);let a=12345;Math.random=()=>{a=(a*16807)%2147483647;return a/2147483647;};
+SHOW = r'''([px,rs,fx,ns,gr,dt,co])=>{const H=__HK,o=window.__O,P=H.P,L=window.__L;const PH=H.PAL_HERO;if(!window.__PH)window.__PH=Object.assign({},PH);for(const k in PH)if(typeof PH[k]==='string')PH[k]=gr?'#00ff00':window.__PH[k];const sv=L.dyn.filter(q=>q.f.t==='saw');if(ns)for(const q of sv)L.dyn.splice(L.dyn.indexOf(q),1);let T=1e6+(dt||0)*1000;H.setClock(()=>T);let a=12345;Math.random=()=>{a=(a*16807)%2147483647;return a/2147483647;};
   H.GLFX.sheen=fx;const me=H.LFX.meroe;if(me._e===undefined)me._e=me.embers;me.embers=fx?me._e:0;P.inv=1e9;P.state='stand';P.face=1;P.x=px;P.y=o.y;for(const e of H.G)e.x=-9999;
-  H.cam.x=(o.lamp||o.x1)-H.viewW/2+(o.lamp?0:60);H.cam.y=o.y-64*2.2;H.cam.gy=H.cam.y;H.mode='play';if(H.GLP){H.GLP.pipe=false;H.GLP.rs=rs;}
+  H.cam.x=(o.lamp||o.x1)-H.viewW/2+(o.lamp?0:60)+(co||0);H.cam.y=o.y-64*2.2;H.cam.gy=H.cam.y;H.mode='play';if(H.GLP){H.GLP.pipe=false;H.GLP.rs=rs;}
   for(let i=0;i<4;i++){a=12345;H.render();}if(ns)L.dyn.push(...sv);const X=H.XF,cv=[...document.querySelectorAll('canvas')].find(c=>c.getBoundingClientRect().width>0),R=cv.getBoundingClientRect(),
     sp=(wx,wy)=>[(R.left+(wx*X.VZ-X.camD)/cv.width*R.width)*DPR,(R.top+(wy*X.VZ-X.camDY)/cv.height*R.height)*DPR];
-  return {P:sp(P.x,o.y),saw:sp((o.x0+o.x1)/2,o.y),x0:sp(o.x0,o.y),x1:sp(o.x1,o.y),vz:X.VZ*DPR/(cv.width/R.width)/DPR,camD:X.camD,w:cv.width,cw:R.width};}'''.replace('DPR', str(D))
+  return {P:sp(P.x,o.y),saw:sp((o.x0+o.x1)/2,o.y),x0:sp(o.x0,o.y),x1:sp(o.x1,o.y),kz:X.VZ*R.width/cv.width*DPR,camD:X.camD,w:cv.width,cw:R.width};}'''.replace('DPR', str(D))
 
 
 def old_src(tmp):
@@ -61,8 +63,8 @@ def page(b, src, mode):
     return pg
 
 
-def shot(pg, px, rs=1, fx=True, nosaw=False, green=False):
-    info = pg.evaluate(SHOW, [px, rs, fx, nosaw, green])
+def shot(pg, px, rs=1, fx=True, nosaw=False, green=False, dt=0, co=0):
+    info = pg.evaluate(SHOW, [px, rs, fx, nosaw, green, dt, co])
     return Image.open(io.BytesIO(pg.screenshot())).convert('RGB'), info
 
 
@@ -128,6 +130,23 @@ def over(on, off, m):
     return ImageChops.multiply(d, m).histogram()[255] / max(1, n), n
 
 
+def floor_light(pg):
+    """the mean light the floor's looks add over the floor's top face (the storey's band across the screen, less the saw's slot), the prince away:
+    looks on less looks off, R+G+B in 8-bit levels per device pixel, averaged over seven views: three moments (the embers pulse) and four pans along the storey"""
+    tot = 0.0; m = 0
+    for co, dt in ((0, 0), (0, 0.7), (0, 1.9), (-420, 0.3), (420, 1.1), (840, 2.6), (-840, 0.5)):  # (and the view panned along the storey: Classic's embers are few)
+        on, inf = shot(pg, -9999, 1, True, dt=dt, co=co); off, _ = shot(pg, -9999, 1, False, dt=dt, co=co); m += 1
+        k = inf['kz']; y = inf['x1'][1]; n = 0; acc = 0
+        for xa, xb in ((0, int(inf['x0'][0] - 2 * k)), (int(inf['x1'][0] + 2 * k), on.width)):  # the whole storey across the screen, less the slot
+            if xb - xa < 4:
+                continue
+            box = (xa, int(y - 4 * k), xb, int(y + 4 * k))
+            d = ImageChops.subtract(on.crop(box), off.crop(box))
+            acc += sum(sum(i * c for i, c in enumerate(d.getchannel(ch).histogram())) for ch in 'RGB'); n += d.width * d.height
+        tot += acc / max(1, n)
+    return tot / m
+
+
 def main():
     os.makedirs(OUTD, exist_ok=True)
     tmp = tempfile.mkdtemp()
@@ -148,6 +167,12 @@ def main():
           return ((sx/%d-R.left)*cv.width/R.width+X.camD)/X.VZ;}''' % D, bx)
         px = info - 3  # his feet over the band
         print('old band at device x', bx, '-> prince at world x', round(px, 1))
+        for mode, d_ in (('Torchlight', pt), ('Classic', pc)):
+            fl = {t: floor_light(d_[t]) for t in ('before', 'after')}
+            nums.append('%s, floor 13: the mean light the embers add over the floor\'s top face (R+G+B levels a pixel, 7 views): v76 %.2f / round 31 %.2f (%.0f%%)' % (mode, fl['before'], fl['after'], 100 * fl['after'] / max(1e-6, fl['before'])))
+            print(nums[-1], flush=True)
+        if '--measure' in sys.argv:
+            return
         S = {}
         for t in ('before', 'after'):
             for rs in (1, 0.5):
