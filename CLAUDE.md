@@ -414,11 +414,38 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   shadow away from the sun. Torchlight: the scene through G2D (all but him with `G2D.na`, as the sky) and `crossGL` (glFrame's light
   map with `CR.amb` and the sun or moon as one broad light plus his fill, bloom, grade, vignette; no shadow, heat, storm, metal,
   relief, beams or mist: those read a floor's tiles); Classic a glow at the sun and the vignette. Sound: `Snd.wind(k)` (looped noise,
-  a rising bandpass), `sandstep`/`sandrun`. The next floor's rooms are built meanwhile (`roomWork`). Rounds 36b-36d: oasis, garden,
+  a rising bandpass), `sandstep`/`sandrun`. The next floor's rooms are built meanwhile (`roomWork`). Rounds 36b-36d: oasis (built in 36b), garden,
   wadi and highland as `CROSS_SETS` entries with their own kinds (pools, palms near, pergolas, scree, terraces); animals only (geese,
   ibis, fish, a far jackal), no people. `crossscan.py` (in suite.py; every theme's crossing in both modes: starts and ends, the pad
   needed, skip, save/S/levelTime/rewind unchanged, never off/Continue/Restart/respawn/ordinary floor/bot/`?cross=0`, render ms against
   `HK_CROSS_MS` and a play frame) must print `crossscan: ok`. Pictures `egyptr36.py` (r36a_dunes.png, r36a_all.png, r36a_cross.gif).
+  Round 36b (owner's review of r36a_dunes.png: "the near dune is a straight-edged triangular wedge that reads as a PYRAMID"; the ground
+  "flat and empty"). Dunes (`erg`): a convex windward back flat at a rounded crest (radius `R`), a sharp but soft brink (a smooth minimum),
+  the slip face at `CROSS_LEE` bending concave into its apron, soft feet (a soft maximum with the corridor's floor), the crest line swelling
+  and sagging in whole periods; the slip face drawn as a crescent seen obliquely (its edge on the back a curve from the brink bulging
+  upwind and sweeping down to the horn: never a straight arris from a point), grain-flow streaks and a lighter foot; small dunes riding the
+  near seifs' backs; ridges in five depths. Ground relief (`dfield`, a strip per depth: f 0.45, 0.8 behind him, 1.3, 1.7 in front, never
+  above his feet's line): low swells lit by their slope with ripples following them, stones with their shadows, tufts of halfa, sized
+  29.4 f px a metre and footed in the ground's own colour there (`crossGroundAt`). The oasis (`CROSS_SETS.oasis`, `CROSS_LOOK[...].ov`:
+  meroe `hafir`, Musawwarat's and Meroë's rain-fed reservoirs with the spoil bank behind, acacias, the pyramids; deffufa `nile`, the
+  river across the view, palms and acacias on the far bank, empty round huts, the Deffufa; shali `spring`, a round spring in a dressed
+  stone rim with its upwelling, date palms in four depths, olives, mudbrick garden walls, the Aghurmi rock (`butte`) and Shali; the
+  report's mapping kept: Napata stays dunes, its barchans before Gebel Barkal, and Garama dunes): the water (`pool`, an outline in world x
+  and depth placed by the pinhole `crossPX`, so its far shore moves slower than its near one) shows the sky of its hour at the mirrored
+  height, the sun's or moon's glow and glitter path, every layer behind it marked `refl` mirrored about its own ground line (the soft
+  reflection, 0.4), darker toward the near shore; damp ground round it. `stand`: palms (trunks with the leaf bases' crossed pattern, crowns of
+  pinnate fronds with gravity's sag, dead fronds, dates; the crown swaying about the trunk's top), acacias (umbrella crowns), olives, huts,
+  walls, each drawn once into one atlas per layer (`crossCrown`, `crossTrunk`, `crossThing`). `reeds` (papyrus, common reed, reedmace)
+  along both shores, swaying by a shear; `ofore` (f 2.1): a frond's tip hanging in from above (never below his head's line) and reeds from
+  the screen's foot; the doorway in mudbrick (`gate.mud`, `crossMudFace`). The beat (`birds`): Egyptian geese resting on the water lift
+  off as he passes `CROSS_BEAT`: a run over the surface with splashes, then climbing away ahead of him, the white forewing showing; before,
+  they drift and bob with rings round them (no crouch: he never loses control). Sound: `firmstep`/`firmrun`, `frond`, `blip` (while the
+  water is in view), `geese` (honks and wingbeats). Look only, hashes of the floor's seed; layouts and the bot unchanged. crossscan:
+  `quick` (Classic, one theme per setting, about 20 s, in `suite.py quick`), `classic` and `torch` (every theme, the default and release
+  tiers run both as two jobs, Torchlight among the heavy ones); it also checks each setting's layer kinds (`SETX`) and that every layer is
+  baked within the fade from white, and prints the longest bake frame (script ms a frame, 36a | 36b measured alike: Classic median
+  0.7 | 0.8, p95 2.6 | 2.4; Torchlight median 1.6 | 1.8; the longest bake frame 20 ms Classic, 28 ms Torchlight, under the fade). Pictures `egyptr36.py r36b` (r36b_dunes.png before | after,
+  r36b_oasis.png, r36b_oasis.gif).
 - Lift ropes (round 21a, owner: "holes in the slab with the rope threaded through"): all lift ropes are `barRope` in the theme's fibre
   (`liftRope`; `barRope`'s `ph` makes the lay travel with a running rope). The counterweight platform hangs on two bridles (`liftSling`: an
   eye seized `LS_J` above the slab, legs down through two holes near the front and back edges along the depth diagonal, `ropeHole` drawn in

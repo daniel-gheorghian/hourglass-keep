@@ -5,15 +5,23 @@
 #   r36a_all.png    every theme's crossing (the nine not yet built play the plain stub), one frame each, Torchlight | Classic
 #   r36a_cross.gif  one crossing played through the game's own input (Right held: the walk, then the run; the gust; into the doorway;
 #                   the entry), Torchlight
+# Round 36b (dunes revised, the oasis):
+#   r36b_dunes.png  before | after: every dune theme and hour, round 36a's page (git show 250c213, written to egypt_themes/r36b_base36a.html)
+#                   against this one, at the start and in the gust, Torchlight and Classic rows
+#   r36b_oasis.png  every oasis theme (Meroë's hafir, Kerma's Nile, Siwa's spring) at every hour it comes in floors 1-180, three moments
+#                   (the start, the geese lifting off, at the doorway), Torchlight and Classic rows
+#   r36b_oasis.gif  one oasis crossing (floor 13, Meroë at dusk) played through the game's own input, Torchlight
+#   arguments: dunes36b | oasis | oasisgif | r36b (all three)
 # The scene is stepped by hand (crossStep at 60 Hz, frozen clock) so the pictures are the same every run.
-import io, os, sys
+import io, os, subprocess, sys
 from PIL import Image, ImageDraw
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 a = sys.argv[1:]
-WHAT = a[0] if a and a[0] in ('png', 'gif', 'all') else 'all'
-a = [x for x in a if x not in ('png', 'gif', 'all')]
+KW = ('png', 'gif', 'all', 'dunes36b', 'oasis', 'oasisgif', 'r36b')
+WHAT = a[0] if a and a[0] in KW else 'all'
+a = [x for x in a if x not in KW]
 SRC = os.path.abspath(a[0] if a else os.path.join(HERE, '..', 'hourglass-keep.html'))
 OUT = os.path.join(HERE, 'egypt_themes'); os.makedirs(OUT, exist_ok=True)
 VP = {'width': 852, 'height': 393}
@@ -21,7 +29,7 @@ INK = (20, 16, 24)
 
 BEGIN = r'''([n,mode])=>{const H=__HK;window.__HKfreeze=true;for(const id in H.HINTS)H.S.hints[id]=1;H.S.set.lightMode=mode;H.S.set.cross=true;H.S.started=true;
   H.startLevel(n-1,-1,true);H.levelComplete();document.getElementById('bNext').click();const c=H.CR;if(!c)return {err:'no crossing on '+n};
-  if(H.GLP)H.GLP.pipe=false;return {name:H.themeName(n),set:c.set,look:c.look,tod:c.tod};}'''
+  if(H.GLP)H.GLP.pipe=false;return {name:H.themeName(n),set:c.set,look:c.look,tod:c.tod,ov:c.ov||''};}'''
 # put him at x (world px), with the clock at t; held: the walk's phase as if walking there; gust: seconds into the gust (or -1)
 AT = r'''([x,t,gust,run])=>{const H=__HK,c=H.CR;c.x=x;c.t=t;c.gust=gust<0?-1:t-gust;c.hold=run?3:0;H.setKey('kb','r',true);
   for(let i=0;i<24;i++){H.crossStep(1/60);c.x=x;c.t=t;}H.setKey('kb','r',false);for(let k=0;k<16;k++)H.render();return {x:c.x,cx:c.cx,phase:c.phase};}'''
@@ -85,4 +93,53 @@ def run():
             pg.close()
         print('errors', errs[:5]); b.close()
 
-run()
+def run36b():
+    tod = ['dusk', 'night', 'dawn']
+    with sync_playwright() as p:
+        b = p.chromium.launch(); errs = []
+        def page(src):
+            pg = b.new_page(viewport=VP, device_scale_factor=1)
+            pg.on('pageerror', lambda e: errs.append(str(e)))
+            pg.goto('file://' + src); pg.wait_for_timeout(300); pg.add_style_tag(content=CSS); return pg
+        def firsts(pg, looks):
+            fl = pg.evaluate('''()=>{const H=__HK,o={};for(let n=2;n<=180;n++){if(!H.crossDue(n))continue;const th=H.themeOf(n),k=th.look+':'+H.progOf(n).tod;if(!o[k])o[k]=n;}return o;}''')
+            return sorted([(k, n) for k, n in fl.items() if k.split(':')[0] in looks], key=lambda q: q[1])
+        if WHAT in ('dunes36b', 'r36b'):
+            base = os.path.join(OUT, 'r36b_base36a.html')
+            if not os.path.exists(base):
+                open(base, 'wb').write(subprocess.run(['git', 'show', '250c213:dev/hourglass-keep.html'], cwd=HERE, capture_output=True, check=True).stdout)
+            pa, pb = page(base), page(SRC); rows, labels = [], []
+            for k, n in firsts(pb, ('blue', 'foggara', 'napata')):
+                for mode in ('torch', 'classic'):
+                    row = []
+                    for x, t, g in [(70, 1.2, -1), (340, 4.0, 1.2)]:
+                        for pg in (pa, pb):
+                            r = pg.evaluate(BEGIN, [n, mode]); pg.evaluate(AT, [x, t, g, 0]); row.append(shot(pg)); pg.evaluate('()=>__HK.crossEnd()')
+                    rows.append(row); labels.append('floor %d  %s  (%s, %s)  %s:   36a | 36b at the start,   36a | 36b in the gust' % (n, r['name'], r['set'], tod[r['tod']], mode))
+            sheet(rows, labels, os.path.join(OUT, 'r36b_dunes.png'), 0.42); pa.close(); pb.close()
+        if WHAT in ('oasis', 'r36b'):
+            pg = page(SRC); rows, labels = [], []
+            for k, n in firsts(pg, ('meroe', 'deffufa', 'shali')):
+                for mode in ('torch', 'classic'):
+                    r = pg.evaluate(BEGIN, [n, mode]); row = []
+                    for x, t, g in [(80, 1.2, -1), (360, 4.4, 0.9), (657, 9.0, -1)]:
+                        pg.evaluate(AT, [x, t, g, 0]); row.append(shot(pg))
+                    pg.evaluate('()=>__HK.crossEnd()'); rows.append(row); labels.append('floor %d  %s  (%s %s, %s)  %s' % (n, r['name'], r['set'], r['ov'], tod[r['tod']], mode))
+            sheet(rows, labels, os.path.join(OUT, 'r36b_oasis.png'), 0.5); pg.close()
+        if WHAT in ('oasisgif', 'r36b'):
+            pg = page(SRC); frames = []
+            pg.evaluate(BEGIN, [13, 'torch'])
+            for i in range(900):
+                held = i >= 30
+                st = pg.evaluate('''(held)=>{const H=__HK;H.setKey('kb','r',held);if(H.CR){H.crossStep(1/60);H.crossStep(1/60);}else{H.tick(2);}
+                  return {cr:!!H.CR,mode:H.mode,state:H.P.state};}''', held)
+                if i % 3 == 0:
+                    pg.evaluate('()=>__HK.render()'); frames.append(shot(pg).resize((426, 196), Image.LANCZOS))
+                if not st['cr'] and st['state'] != 'enter': break
+            out = os.path.join(OUT, 'r36b_oasis.gif')
+            frames[0].save(out, save_all=True, append_images=frames[1:], duration=100, loop=0); print('wrote', out, len(frames), 'frames')
+            pg.close()
+        print('errors', errs[:5]); b.close()
+
+if WHAT in ('dunes36b', 'oasis', 'oasisgif', 'r36b'): run36b()
+else: run()
