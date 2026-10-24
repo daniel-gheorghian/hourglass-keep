@@ -11,7 +11,7 @@
 #                    figure (rot) and head pitch (lean + rot + head, from upright, + forward) in a running jump's flight, scissoring (egyptr32's
 #                    40 take-offs over the run's phases)
 # --bot: the bot's frames (state, x, y, vx, vy, face, hp every game frame) and every standing jump's drawn pose (jumpPrep, air, the landing
-# 'sl', P.pose, P.yo) on floors 1-27 (seeds 1 and 2; --quick seed 1), v79 against round 34: must be identical.
+# 'sl', P.pose, P.yo, to 5 decimals) on floors 1-27 (seeds 1 and 2; --quick seed 1), v79 against round 34: must be identical.
 # Sources: hk_v77_release.html and hk_v79_release.html here (else git's 9ba4241 and b1e893e). Run from dev/tools. CMU mocap
 # (mocap.cs.cmu.edu, NSF EIA-0196217): 09_01, 49_04 (the restored flight), 127_21, 13_11.
 import os, sys, json, subprocess, tempfile, shutil, math, statistics as st
@@ -75,7 +75,7 @@ BOTJS = r"""([n,sd])=>{const H=__HK,K=['lean','head','aF','eF','aB','eB','hF','k
  const r=runBot(n,sd,{fight:false,stop:H=>{const p=H.P;if(!p)return false;
   hb=mix(hb,[p.state,p.x.toFixed(4),p.y.toFixed(4),(p.vx||0).toFixed(4),(p.vy||0).toFixed(4),p.face,p.hp].join(','));nb++;
   const sj=(p.state==='jumpPrep')||(p.state==='air'&&p.jumpKind==='stand')||((p.state==='land'||p.state==='stand')&&p.stK==='sl'&&H.gameTime-p.stT<0.8);
-  if(sj&&p.pose){const q=p.pose,s=[p.state,(p.yo||0).toFixed(5)].concat(K.map(k=>(q[k]||0).toFixed(5))).join(',');hs=mix(hs,s);ns++;if(fs.length<4000)fs.push(nb+':'+s);}
+  if(sj&&p.pose){const q=p.pose,f5=v=>{const t=(v||0).toFixed(5);return t==='-0.00000'?'0.00000':t;},s=[p.state,f5(p.yo)].concat(K.map(k=>f5(q[k]))).join(',');hs=mix(hs,s);ns++;if(fs.length<4000)fs.push(nb+':'+s);}
   return false;}});return {n,sd,ok:r.ok,nb,hb,ns,hs,fs};}"""
 
 

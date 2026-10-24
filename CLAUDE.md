@@ -375,9 +375,10 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   lead foot clear without a higher apex. Round 33a's apex is kept, its tops lowered for the upright figure (it stands about 1 px taller over
   the hip): `JH_S` 2.5, `JH_L` 4, the reach onto the arc for a catch over `JH_RT` 0.16 s. Crown over standing (bot, floors 1-27, seed 1;
   v77 / v79 / round 34): level running jump +12.2 / +3.5 / +3.5 (highest, over spikes and saws, +14.8 / +13.5 / +13.3), caught at the far
-  lip +13.6 / +4.0 / +4.0, to a ledge +24.9 / +10.0 / +9.3, the low leaps +3.7 / +1.4 / LOWLEAP; the swing bar's catch +23.9 / +18.4 / +23.6
+  lip +13.6 / +4.0 / +4.0, to a ledge +24.9 / +10.0 / +9.3, the low leaps (highest) +3.7 / +1.4 / +0.9 (their head 36 / 90 / 39 degrees forward, ducked under the ceiling as v77); the swing bar's catch +23.9 / +18.4 / +23.6
   (the dive had pitched the head down at the bar; the swing itself draws the crown to +27 within 0.2 s in all three). The standing jump's
-  drawn poses and the bot's frames are identical to v79's (`egyptr34.py --bot`). Look only. Checks: figscan, lowceil, stairscan, run2.
+  drawn poses (to 5 decimals) and the bot's frames are identical to v79's (`egyptr34.py --bot`, floors 1-27). Look only. Checks: figscan, lowceil,
+  stairscan, run2.
   Pictures and numbers `egyptr34.py` (r34_runjump.png: v77 | v79 | round 34 onions and strips; r34_runjump.gif; r34.json).
 - Lift ropes (round 21a, owner: "holes in the slab with the rope threaded through"): all lift ropes are `barRope` in the theme's fibre
   (`liftRope`; `barRope`'s `ph` makes the lay travel with a running rope). The counterweight platform hangs on two bridles (`liftSling`: an
