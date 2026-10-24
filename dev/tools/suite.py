@@ -69,6 +69,7 @@ J += [('liftkick', ['liftkick.py'], tail_check(r'ALL OK'))] # no wall plant or k
 J += [('liftscan', ['liftscan.py', str(n), str(n + 5), '3', 'both'], tail_check(r'ALL OK')) for n in range(3, 61, 6)] # no part of a lift or its rider over a wall's front, a low ceiling or a grating in front of it (Classic and Torchlight)
 J += [('lowceil', ['lowceil.py'], tail_check(r'ALL OK'))] # under a ceiling at his height a jump is the low leap and never goes through the stone
 J += [('wellcorr', ['wellcorr.py', str(n), str(n + 11)], tail_check(r'wellcorr: ok')) for n in range(1, 49, 12)] # (round 30) no sand well stands in a corridor: every well's pit is walled on both sides down to its floor
+J += [('crossscan', ['crossscan.py'], tail_check(r'crossscan: ok'))] # (round 36a) the Crossing between themes: every theme starts and ends, pad, skip, save untouched, never under the bot, both modes
 J += [('gratepeek', ['gratepeek.py', '6', '27', '6'], tail_check(r'tested [1-9]\d* bad 0 '))] # crouching on a grating shows the flask below
 # longest jobs first so the tail of the run isn't one slow floor
 RANK = {'liftscan': 0, 'featbot fight': 0, 'run2 fight': 1, 'rendersmoke': 2, 'puzzlescan': 3, 'primtest': 3, 'lifttest': 3, 'featbot': 3, 'metrics40': 4, 'featurescan': 4, 'forktest': 5, 'run2': 6}

@@ -99,7 +99,12 @@ kbd{font:700 11.5px/1 var(--f-body);letter-spacing:.08em;padding:3px 6px;border-
 @keyframes tilt{0%,30%{transform:rotate(0)}55%,85%{transform:rotate(-90deg)}100%{transform:rotate(0)}}
 body.portrait #rotate{display:flex}
 @media (prefers-reduced-motion:reduce){#rotate svg{animation:none;transform:rotate(-90deg)}}
-@media (prefers-reduced-motion:reduce){.btn,#pad .ar{transition:none}}
+/* (round 36a) the crossing: no Grab, no pause; Jump is the skip (a glyph); the pad's right arrow pulses while he waits */
+body.crossing #bGrab,body.crossing #bPause{visibility:hidden}
+#bJump.dim{opacity:.45}
+#pad.cue .ar.r{animation:padcue 1.3s ease-in-out infinite}
+@keyframes padcue{0%,100%{background:rgba(232,196,127,0);opacity:.7}50%{background:rgba(232,196,127,.3);opacity:1}}
+@media (prefers-reduced-motion:reduce){.btn,#pad .ar{transition:none}#pad.cue .ar.r{animation:none;background:rgba(232,196,127,.22);opacity:1}}
 </style>
 
 <div id="rotate" role="alert" aria-live="polite"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="14" y="5" width="20" height="38" rx="4" fill="none" stroke="currentColor" stroke-width="2.6"/><rect x="21" y="38" width="6" height="2" rx="1" fill="currentColor"/></svg><p>Turn your phone sideways to play.</p><small>The game is paused.</small></div>
@@ -186,6 +191,7 @@ body.portrait #rotate{display:flex}
           <button id="tSaver" type="button" aria-pressed="false">Battery saver</button>
           <button id="tLefty" type="button" aria-pressed="false">Pad on right</button>
           <button id="tCalm" type="button" aria-pressed="false">Softer flashes</button>
+          <button id="tCross" type="button" aria-pressed="true">Crossings</button>
           <button id="bGfxP" type="button">Graphics…</button>
           <button id="bToolsP" type="button">Tools…</button>
         </div>
@@ -2768,10 +2774,21 @@ const Snd={ctx:null,master:null,nb:null,
           g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(v,t+0.25);g.gain.setValueAtTime(v,t+1.1);g.gain.exponentialRampToValueAtTime(0.0001,t+1.8);
           os.connect(bp);bp.connect(lp);lp.connect(g);g.connect(this.master);os.start(t);lf.start(t);os.stop(t+1.85);lf.stop(t+1.85);}}break;
       case'swing':N(0.07,{vol:0.045,f:330,type:'bandpass',q:7});N(0.09,{vol:0.04,f:290,type:'bandpass',q:7,at:0.06});break; // (round 18b) the turn: the ropes creak on the log (two short stick-slip groans, not a chain's rattle)
+      case'sandstep':N(0.08,{vol:0.03,f:480});N(0.05,{vol:0.012,f:2400,type:'bandpass',q:0.7,at:0.012});break; // (round 36a) a footfall in sand: a dull push and a faint hiss of grains
+      case'sandrun':N(0.07,{vol:0.045,f:560});N(0.06,{vol:0.018,f:2800,type:'bandpass',q:0.7,at:0.01});break;
+      case'crossdoor':N(0.3,{vol:0.07,f:220,att:0.02,at:0.3});T(62,0.26,{to:40,vol:0.07,type:'sine',at:0.3});break; // (round 36a) into the doorway: the wind cut off, a low thud
       case'ropecreak':for(let i=0;i<4;i++)N(0.06+0.02*i,{vol:0.06-0.008*i,f:250+30*i,type:'bandpass',q:8,at:i*0.075});break; // (round 18b) ready: the ropes take the strain, a run of fibrous creaks
     }},
   // (unit ST) the storm's low rumble while it chases: filtered noise and a deep hum, rising as it nears (k 0..1); k 0, the sound
   // setting off or a suspended context let it die away
+  // (round 36a) the crossing's wind: looped noise through a bandpass that rises with it, over a low roar; k 0 lets it die away fast
+  wnd:null,wndK:-1,
+  wind(k){if(!this.ctx)return;const on=k>0.001&&this.ok(),c=this.ctx,t=c.currentTime;
+    if(!on){if(this.wnd){const h=this.wnd;this.wnd=null;this.wndK=-1;h.g.gain.cancelScheduledValues(t);h.g.gain.setTargetAtTime(0,t,0.06);setTimeout(()=>{try{h.src.stop();h.g.disconnect();}catch(e){}},700);}return;}
+    if(!this.wnd){const src=c.createBufferSource(),bp=c.createBiquadFilter(),lp=c.createBiquadFilter(),lg=c.createGain(),g=c.createGain();src.buffer=this.nb;src.loop=true;
+      bp.type='bandpass';bp.frequency.value=500;bp.Q.value=0.8;lp.type='lowpass';lp.frequency.value=200;lg.gain.value=0.7;g.gain.value=0.0001;
+      src.connect(bp);bp.connect(g);src.connect(lp);lp.connect(lg);lg.connect(g);g.connect(this.master);src.start(t);this.wnd={src,bp,g};}
+    if(Math.abs(k-this.wndK)<0.01)return;this.wndK=k;const h=this.wnd;h.g.gain.cancelScheduledValues(t);h.g.gain.setTargetAtTime(0.01+0.1*k*k,t,0.3);h.bp.frequency.setTargetAtTime(360+760*k,t,0.4);},
   hum:null,humK:-1,
   rumble(k){if(!this.ctx)return;const on=k>0.001&&this.ok(),c=this.ctx,t=c.currentTime;
     if(!on){if(this.hum){const h=this.hum;this.hum=null;this.humK=-1;h.g.gain.cancelScheduledValues(t);h.g.gain.setTargetAtTime(0,t,0.12);setTimeout(()=>{try{h.src.stop();h.os.stop();h.g.disconnect();}catch(e){}},900);}return;}
@@ -6278,10 +6295,10 @@ function exitTint(w){return 'rgb('+EXT0.map((v,i)=>Math.round(v+(EXT1[i]-v)*w)).
 // alpha al: a fade with no overlaps showing through and a tint that never spills round him. Both modes (Torchlight takes the buffer as a
 // canvas redrawn every frame, _glv); a second or so at each floor's ends
 const PTB={c:null,K:0,W:96,H:96};
-function drawPTint(ctx,x,y,o,tc,ta,al){const K=clamp(Math.ceil(renderXf.VZ||1),1,4),W=PTB.W,H=PTB.H,bx=Math.round(x)-48,by=Math.round(y)-80;
+function drawPTint(ctx,x,y,o,tc,ta,al,e){e=e||P;const K=clamp(Math.ceil(renderXf.VZ||1),1,4),W=PTB.W,H=PTB.H,bx=Math.round(x)-48,by=Math.round(y)-80;
   if(!PTB.c)PTB.c=document.createElement('canvas');const c=PTB.c;if(PTB.K!==K){PTB.K=K;c.width=W*K;c.height=H*K;}c._glv=1;
   const t=c.getContext('2d');t.setTransform(1,0,0,1,0,0);t.globalCompositeOperation='source-over';t.globalAlpha=1;t.clearRect(0,0,W*K,H*K);
-  t.setTransform(K,0,0,K,-bx*K,-by*K);drawActor(t,P,x,y,P.face,P.pose,PAL_HERO,o);
+  t.setTransform(K,0,0,K,-bx*K,-by*K);drawActor(t,e,x,y,e.face,e.pose,e.pal||PAL_HERO,o);
   if(ta>0.004){t.setTransform(1,0,0,1,0,0);t.globalCompositeOperation='source-atop';t.globalAlpha=Math.min(1,ta);t.fillStyle=tc;t.fillRect(0,0,W*K,H*K);t.globalCompositeOperation='source-over';t.globalAlpha=1;}
   ctx.save();ctx.globalAlpha*=al;ctx.drawImage(c,bx,by,W,H);ctx.restore();}
 function drawDoor(ctx,x,r,open,isExit){
@@ -7644,9 +7661,9 @@ function jsStamp(ctx,img,x,y,dx,dy,len,wd){const a=dx*len,b=dy*len,c=-dy*wd,d=dx
   ctx.transform(a,b,c,d,e,f);ctx.drawImage(img,-0.5,-0.5,1,1);ctx.transform(d/det,-b/det,-c/det,a/det,(c*f-d*e)/det,(b*e-a*f)/det);}
 // p: the path (jsPath); str: 0..1; v: the grains' speed, px/s; w: the stream's half width, px; seed; the view's box; wall: in a shaft
 // {wx0,wx1,wy} (the inner faces and the ledge's surface over which the walls end), else null
-function jetStream(ctx,p,str,v,w,seed,x0,x1,y0,y1,wall){
+function jetStream(ctx,p,str,v,w,seed,x0,x1,y0,y1,wall,spr){ // (spr: sprites of its own, {g,l}; round 36a's crossing)
   if(str<0.02||p.n<2||p.len<10||p.bx1<x0-30||p.bx0>x1+30||p.by1<y0-30||p.by0>y1+30)return;
-  const S2=jsSprites(),t=gameTime,L0=p.len,N=Math.min(JS_NP,Math.max(24,Math.round(L0/1.8*(0.55+0.45*str)))),A=JS_ACC,
+  const S2=spr||jsSprites(),t=gameTime,L0=p.len,N=Math.min(JS_NP,Math.max(24,Math.round(L0/1.8*(0.55+0.45*str)))),A=JS_ACC,
     vp=v*0.95,R=2.2*w+5,R2=R*R,ST=L0+2*R,K=Math.min(JS_EDK,Math.max(2,Math.round(L0/48))),sa=Math.min(1,str*1.15);
   // the eddies: they drift along at about half the stream's speed, turning each way in turn (a vortex street), weak near the entry
   for(let k=0;k<K;k++){const h=hash2(k*977+seed,41),q1=(h&255)/255,q2=((h>>>8)&255)/255,q3=((h>>>16)&255)/255,sg=k&1?1:-1,
@@ -10027,7 +10044,7 @@ function glRelLifts(n,VZ,camD,camDY){const cx=camD/VZ,cy=camDY/VZ,vw=cv.width/VZ
     else{const R=liftRig(f);slab(R.X,f.y);wheel(R.cx,R.hy,8);n=glRelBox(n,R.cx-5,R.wt-5,R.cx+5+DX*0.35,R.wt+21,VZ,camD,camDY);}}
   return n;}
 function glRelief(lights,VZ,camD,camDY){
-  const R=GLREL,gl=GLP.gl,w=cv.width,h=cv.height;R.on=0;if(!GLFX.relief)return;
+  const R=GLREL,gl=GLP.gl,w=cv.width,h=cv.height;R.on=0;if(!GLFX.relief||mode==='cross')return; // (round 36a: no rooms to rake in the crossing)
   let lit=false;for(const q of lights)if(GLSTRONG[q.kind]||q.kind==='fire'){lit=true;break;} // no lamp near: nothing to rake, skip the pass
   if(!lit)return;
   if(R.gl!==gl)glRelInit(gl);
@@ -10177,7 +10194,8 @@ function glFrame(lights,VZ,camD,camDY,th){
     for(let k=0;k<6;k++){const o=(n*6+k)*GLSTRIDE;B[o]=GLK[k][0];B[o+1]=GLK[k][1];B[o+2]=cx;B[o+3]=cy;B[o+4]=r;B[o+5]=0;B[o+6]=fl;B[o+7]=ph;B[o+8]=fa;B[o+9]=0;B[o+10]=col[0]*a;B[o+11]=col[1]*a;B[o+12]=col[2]*a;}
     n++;}
   const am=glcRGB(lk.amb),GLAMB=glAmbK(th.style,lk); // ambient, darker than the classic map's so the gaps between torches fall into shadow (owner, v41)
-  gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.map.f);gl.viewport(0,0,lw,lh);gl.clearColor(am[0]*GLAMB/255/1.5,am[1]*GLAMB/255/1.5,am[2]*GLAMB/255/1.5,0);gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.map.f);gl.viewport(0,0,lw,lh);const xa=mode==='cross'&&CR?CR.amb:null; // (round 36a: the open land's own ambient, 1 = as painted)
+  if(xa)gl.clearColor(xa[0]/1.5,xa[1]/1.5,xa[2]/1.5,0);else gl.clearColor(am[0]*GLAMB/255/1.5,am[1]*GLAMB/255/1.5,am[2]*GLAMB/255/1.5,0);gl.clear(gl.COLOR_BUFFER_BIT);
   if(n){gl.useProgram(P.light.p);gl.uniform2f(P.light.u.u_s,w,h);gl.uniform1f(P.light.u.u_t,t);
     gl.bindBuffer(gl.ARRAY_BUFFER,GLP.lb);gl.bufferSubData(gl.ARRAY_BUFFER,0,B,0,n*6*GLSTRIDE);
     const S4=GLSTRIDE*4;gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,S4,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,4,gl.FLOAT,false,S4,8);
@@ -10435,7 +10453,7 @@ function glcOcc(VZ,camD,camDY){
   return any;} // (copied into WebGL with the other masks, in glAtlas)
 // runs both passes as needed; returns which the composite should read (bit 1: S, bit 2: M). Their targets sit on units 6 and 7.
 function glAtmo(VZ,camD,camDY,th,lw,lh){
-  const {gl}=GLP;GLC.fl[0]=GLC.fl[1]=0;if(!GLC.on||!L)return 0;
+  const {gl}=GLP;GLC.fl[0]=GLC.fl[1]=0;if(!GLC.on||!L||mode==='cross')return 0; // (round 36a: the floor's mist, beams and sheen are not out in the open land)
   const st=th.style,gf=GFX(),tod=L.prog?L.prog.tod:0,lk=lookOf(st),wetT=st==='dungeon'||st==='crypt';
   const fx=lfx(),dust=GLFX.mist&&gf.atmo&&(fx.dust||fx.roll),lx=GLFX.lookfx&&gf.atmo&&!!(fx.salt||fx.glaze||fx.incense||fx.embers||fx.granite||fx.archdust||fx.wallglaze);
   const caus=GLFX.caustics&&!!fx.caus&&gf.bg,mist=GLFX.mist&&gf.atmo&&(dust||st==='crypt'||st==='dungeon'||(tod===1&&st!=='forge')),sheen=GLFX.sheen&&wetT&&!fx.dry;
@@ -10538,7 +10556,7 @@ function stStrip(){if(stStripC)return stStripC;const c=stStripC=stCanvas(64,32),
   g.putImageData(im,0,0);return c;}
 // draws the dark over the frame (or, for stormProbe, into fbo); true when it drew
 function glStorm(VZ,camD,camDY,w,h,lw,lh,fbo){
-  const ch=L&&L.ext.chase;if(!fbo)GLST.on=false;if(!GLST.ok||!GLFX.storm2||GLST.gl!==GLP.gl||!ch||!ch.on)return false;
+  const ch=L&&L.ext.chase;if(!fbo)GLST.on=false;if(!GLST.ok||!GLFX.storm2||GLST.gl!==GLP.gl||!ch||!ch.on||mode==='cross')return false;
   const D=ch.diss,a=1-(ch.fade||0),fx=D?D.bx:ch.wx,bu=D?clamp(D.t/(D.ts*1.1+0.35),0,1):0,burst=!!D&&bu<1;
   if(a<=0.005&&!burst)return false;
   const top=ch.rTop*TH,bot=(ch.rBot+1)*TH,T=dkTable(ch,fx,camD/VZ,(camD+w)/VZ),K=dkLook(ch,fx);
@@ -10615,6 +10633,7 @@ function render(){PF.s();
   ctx.setTransform(1,0,0,1,0,0);
   ctx.fillStyle='#07060c';ctx.fillRect(0,0,cv.width,cv.height);
   if(!L)return;
+  if(mode==='cross'&&CR){crossRender(ctx,sh,gls);return;} // (round 36a) the crossing draws its own land
   const gf=GFX(),z=zoom,VZ=VS*z,vw=viewW/z,vh=ROOM_H/z;
   let sx=0,sy=0;if(shakeA>0){const t=performance.now()/1000;sx=shakeA*(Math.sin(t*61)*0.6+Math.sin(t*37+1)*0.4);sy=shakeA*(Math.sin(t*53+2)*0.6+Math.sin(t*29+4)*0.4);}
   // zoom about a point at the hero's height: the view only ever shrinks, so it never shows past the level's edge
@@ -10868,6 +10887,307 @@ document.addEventListener('touchstart',e=>{const t=e.target;if(t.closest&&(t.clo
 for(const ev of ['contextmenu','selectstart'])document.addEventListener(ev,e=>e.preventDefault());
 document.addEventListener('dblclick',e=>e.preventDefault());
 
+// ================= the Crossing (round 36a) =================
+// (round 36a, owner: an interlude between themes; the research and its sources are dev/INTERLUDE_RESEARCH.md) At each change of theme
+// (every four floors, themeOf decides: after floors 4, 8, 12 ...) he crosses the open land of the theme he is going to, side-on, under
+// that floor's hour (progOf's tod: dusk, night, dawn), and walks into the dark doorway of the next part of the keep; the next floor's
+// own entry (round 26f's E1) follows. Order: exit (into the light), the card, Climb on, the crossing, the entry. Wordless.
+//  - Flow: nextFloor() starts the next floor as before (startLevel: the save, the rewind ring, the hours and the floor's clock are what
+//    they always were; the card had already saved) and, when crossDue(n), crossBegin() puts mode 'cross' on top of it: loop() steps
+//    crossStep and draws crossRender instead of update and render's floor; crossEnd() hands back to 'play' with the entry restarted
+//    (L.enG). gameTime runs (the look's clocks), levelTime and every save field do not: no floor time, no save, no rewind is touched.
+//  - Control (owner): he moves only while the pad is held toward the doorway (Right): a walk (CROSS_WALK, the exit's 40 px/s); held on
+//    for CROSS_RUNT he breaks into the game's run (RUN), as the run itself is a held direction; let go, he stops. Left turns him to look
+//    back. Up, Down and Grab do nothing. Standing still for CROSS_CUE the pad's right arrow pulses (#pad.cue): no words.
+//  - Skip: Jump, from CROSS_SKIP0 (0.5 s), every time; the Jump button shows a skip glyph while it lasts and Grab and the pause button
+//    are hidden. A skip fades to black over CROSS_SKIPF. Never on Continue, Restart, a checkpoint, a respawn or the title (only
+//    nextFloor starts one), never under ?bench, the bot or test loads (crossOn: quiet), with the pause menu's "Crossings" off
+//    (S.set.cross false) or with ?cross=0.
+//  - The scene (look only; generated from the floor's seed by hashes, no generator stream): CROSS_LOOK maps each theme's look to a
+//    setting; CROSS_SETS[setting](cr) returns its layers, each {kind, z (draw order), f (depth factor)}; CROSS_KINDS[kind] bakes a
+//    layer once (bake, one layer a frame while the fade from white hides it) and draws it every frame (draw). The view: the path is
+//    the play plane (round 27b's Z0, f 1), its ground at CROSS_GY, the horizon (eye level) at CROSS_HZ; ground at depth factor f lies
+//    at y = HZ + (GY-HZ) f, and a layer moves f of the camera's travel (f = Z0/Z = h/(s H), round 27b's rule): sky 0, far land
+//    0.005-0.13 (the theme's own BGART layers, reused through bgPaint), dunes 0.006-0.3, the path 1, the foreground 2-2.5 (nearer
+//    than he is: it moves faster). Layers drawn before z 60 are behind him, after it in front. A setting not built yet plays 'plain'
+//    (sky, ground, the theme's far layers, the doorway): rounds 36b-36d add 'oasis', 'garden', 'wadi' and 'highland'.
+//  - Dunes (blue, foggara, napata): seif ridges in long rows (erg), barchans (crescents: a convex windward back, the slip face at the
+//    angle of repose CROSS_LEE, 34 degrees as WELL_SL, horns trailing downwind), the corridor's floor with ripples in perspective rows,
+//    the near flank behind the path; the wind blows left to right (the slip faces face right), so at dusk (the sun low in the west,
+//    left) the slip faces are dark, at dawn (east, right) the windward backs are, at night the crests are silver under the moon.
+//    Sand streams off the near crests (jetStream on a path from each brink), and the beat: as he passes CROSS_BEAT of the way a gust
+//    lifts sand off the crests and sends a sheet of it skimming along the path (the wind's sound swells).
+//  - The doorway: a rock face across the end of the path holds a doorway framed as the next floor's start door (posts, lintel or
+//    round vault, doorArch's ornament, the theme's stone); at it he turns into the dark (EN_DX, EN_DY as the entry, reversed), is cut
+//    at the opening (doorHead) and darkens (drawPTint toward the entry's dark), the wind cuts off, a low thud, black, the entry.
+//  - Light: Torchlight draws the scene through G2D and the same composite (crossGL: no shadow, heat, storm, relief or atmosphere
+//    masks, which belong to a floor's tiles; ambient CR.amb, the sun or moon as a broad light, his fill light; bloom, grade,
+//    vignette); everything but him is drawn with G2D.na (as the sky: no fill light on the land). Classic draws the same scene with a
+//    soft glow at the sun and the vignette.
+//  - Sound (synthesized): a wind bed (Snd.wind: looped noise through a bandpass that rises with the wind), footfalls in sand
+//    (sandstep, sandrun), the doorway's thud (crossdoor).
+//  - Tests: crossscan.py (every theme's crossing starts and ends, the pad is needed, skip, the save, time and rewind untouched, never
+//    under the bot, ms per frame in both modes); pictures egyptr36.py.
+const CROSS_WALK=40,CROSS_RUN=RUN,CROSS_RUNT=1.6,CROSS_RUNB=0.5,CROSS_ACC=170,CROSS_DEC=280,CROSS_DIST=600,CROSS_X0=60,CROSS_FIN=0.6,
+  CROSS_SKIP0=0.5,CROSS_SKIPF=0.25,CROSS_IN=0.55,CROSS_OUT=0.35,CROSS_GY=134,CROSS_HZ=96,CROSS_BEAT=0.45,CROSS_CUE=1.4,CROSS_LEE=0.67,
+  CROSS_CAM=0.36,CROSS_GUST=[0.7,1.6,1.6]; // (GUST: rise, hold, fall in s)
+const CROSS_OFF=/[?&]cross=0\b/.test(location.search);
+// the setting each theme's land is crossed in (INTERLUDE_RESEARCH.md, section 3; owner: the limestone wadi for the Well Corridors and
+// terraced highland fields for Aksum); dv: the dunes' kind
+const CROSS_LOOK={blue:{set:'dunes',dv:'low'},foggara:{set:'dunes',dv:'seif'},napata:{set:'dunes',dv:'barchan'},
+  meroe:{set:'oasis'},deffufa:{set:'oasis'},shali:{set:'oasis'},west:{set:'garden'},osiris:{set:'garden'},hawara:{set:'garden'},nun:{set:'garden'},
+  wells:{set:'wadi'},aksum:{set:'highland'}};
+let CR=null,crossLast=null;
+function crossOn(){return !CROSS_OFF&&S.set.cross!==false&&!BENCH.on&&!quiet;}
+// a crossing is due when floor n starts a theme other than the floor before's (every fourth floor)
+function crossDue(n){return n>1&&themeOf(n).look!==themeOf(n-1).look&&crossOn();}
+const crossH=(cr,a,b)=>hash2(cr.seed+a*7919,b|0)/4294967296; // (a hash of the crossing's seed: 0..1)
+const crossRGB=(a,al)=>(al===undefined?'rgb(':'rgba(')+Math.round(clamp(a[0],0,255))+','+Math.round(clamp(a[1],0,255))+','+Math.round(clamp(a[2],0,255))+(al===undefined?')':','+al+')');
+const crossMul=(a,b)=>[a[0]*b[0],a[1]*b[1],a[2]*b[2]];
+// aerial perspective: how much of the horizon's colour a layer at depth factor f takes (0.62 at the far ergs, 0 at the path)
+const crossHazeK=f=>clamp(0.62-0.27*Math.log10(Math.max(f,1e-4)/0.006),0,0.7);
+// the sand's colours under the hour: lit (toward the light), dim (the flank, side-lit), shd (the face away), rim (the crest's line)
+function crossCols(cr){const c=SAND_LOOK[cr.look]||[230,205,160],tod=cr.tod,sky=todSky(bgArt(cr.th).sky,tod),hz=bgRGB(sky[2]);let o;
+  if(tod===1){const g=mixRGB(c,[200,200,200],0.45);o={lit:crossMul(g,[0.5,0.56,0.76]),dim:crossMul(g,[0.3,0.34,0.5]),shd:crossMul(g,[0.14,0.16,0.3]),rim:[214,226,255]};} // (moonlight: the sand's colour mostly gone, cool and pale)
+  else if(tod===2)o={lit:crossMul(c,[1.06,0.9,0.78]),dim:crossMul(c,[0.72,0.6,0.6]),shd:crossMul(c,[0.48,0.4,0.47]),rim:[255,228,186]};
+  else o={lit:crossMul(c,[1.04,0.84,0.68]),dim:crossMul(c,[0.68,0.55,0.55]),shd:crossMul(c,[0.4,0.31,0.38]),rim:[255,212,156]};
+  o.c=c;o.hz=hz;o.sky=sky;o.left=tod===0; // (the light: from the left at dusk, the right at dawn and under the moon)
+  o.at=(col,f)=>mixRGB(col,hz,crossHazeK(f));return o;}
+// the sun or the moon on the screen (view units): dusk low in the west (left); dawn in the east (right), a little higher at every
+// crossing of the dawn cycle (sunrise at floor 60: the climb's own measure); the moon high on the right, where the backdrop draws it
+function crossSun(cr){const W=viewW,hz=CROSS_HZ;if(cr.tod===1)return {x:W*0.8,y:30,r:8,moon:true};
+  if(cr.tod===2){const k=clamp(((cr.n-1)%CYCLE)/(CYCLE-1),0,1);return {x:W*0.84,y:hz-3-26*k,r:7};}
+  return {x:W*0.15,y:hz-6,r:7.5};}
+// ---- the layers ----
+const CROSS_KINDS={
+  // the sky by the hour (the next theme's own BGART sky under todSky, its horizon stop at the eye level), the sun's or the moon's
+  // glow, stars: baked once at half the screen's resolution (soft), f 0; the sun's disc is drawn crisp every frame (it blooms)
+  sky:{bake(ly,cr){const W=viewW,H=CROSS_HZ+44,q=Math.max(0.5,VS*0.5),cv=document.createElement('canvas');cv.width=Math.ceil(W*q);cv.height=Math.ceil(H*q);
+      const g=cv.getContext('2d'),st=cr.cols.sky,s=crossSun(cr),gr=g.createLinearGradient(0,0,0,H);g.setTransform(q,0,0,q,0,0);
+      gr.addColorStop(0,st[0]);gr.addColorStop(0.5*CROSS_HZ/H,st[1]);gr.addColorStop(CROSS_HZ/H,st[2]);gr.addColorStop(1,st[3]);g.fillStyle=gr;g.fillRect(0,0,W,H);
+      const rnd=mulberry32(hash2(cr.seed,77));
+      if(cr.tod!==0){const ns=cr.tod===1?160:26,al=cr.tod===1?1:0.4;for(let i=0;i<ns;i++){const x=rnd()*W,y=rnd()*(CROSS_HZ-14),r=0.3+rnd()*(cr.tod===1?1:0.6);
+        g.fillStyle='rgba(255,248,230,'+((0.3+0.65*rnd())*al*(1-0.6*y/CROSS_HZ)).toFixed(2)+')';g.fillRect(x,y,r,r);}}
+      const glo=(r,col,a)=>{const q2=g.createRadialGradient(s.x,s.y,0,s.x,s.y,r);q2.addColorStop(0,'rgba('+col+','+a+')');q2.addColorStop(0.35,'rgba('+col+','+(a*0.4).toFixed(3)+')');q2.addColorStop(1,'rgba('+col+',0)');g.fillStyle=q2;g.fillRect(s.x-r,s.y-r,2*r,2*r);};
+      if(s.moon){glo(60,'200,214,255',0.22);}else{glo(W*0.55,cr.tod===2?'255,190,140':'255,170,104',0.5);glo(70,'255,226,170',0.45);
+        const hb=g.createLinearGradient(0,CROSS_HZ-26,0,CROSS_HZ+4);hb.addColorStop(0,'rgba(255,190,130,0)');hb.addColorStop(1,'rgba(255,196,140,'+(cr.tod===2?0.3:0.24)+')');g.fillStyle=hb;g.fillRect(0,CROSS_HZ-26,W,30);}
+      ly.c=cv;ly.W=W;ly.H=H;ly.vw=W;ly.sun=s;},
+    draw(ctx,ly,cr){if(ly.vw!==viewW){ly.ok=false;CROSS_KINDS.sky.bake(ly,cr);ly.ok=true;}ctx.drawImage(ly.c,0,0,ly.W,ly.H);const s=ly.sun;
+      if(s.moon){ctx.save();ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.clip();ctx.fillStyle='#e8ecff';ctx.beginPath();ctx.arc(s.x,s.y,s.r+1,0,Math.PI*2);ctx.moveTo(s.x+4.5+s.r*0.86,s.y-3);ctx.arc(s.x+4.5,s.y-3,s.r*0.86,0,Math.PI*2);ctx.fill('evenodd');ctx.restore();}
+      else{ctx.fillStyle=cr.tod===2?'#fff0d0':'#ffe2b0';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();}}},
+  // the ground from the horizon to the screen's foot: the horizon's haze to the near sand, and its ripples (or a path's grit) in rows
+  // of their own depth (each row moves its own f: perspective)
+  ground:{bake(ly,cr){const C=cr.cols,gr=gx.createLinearGradient(0,CROSS_HZ,0,ROOM_H),f0=mixRGB(C.dim,C.hz,0.62),lt=mixRGB(C.dim,C.lit,ly.firm?0.14:0.24); // (flat ground takes the low light at a graze: darker than a face turned to it)
+      gr.addColorStop(0,crossRGB(f0));gr.addColorStop(0.1,crossRGB(mixRGB(C.dim,C.hz,0.32)));gr.addColorStop(0.4,crossRGB(lt));gr.addColorStop(1,crossRGB(mixRGB(C.dim,C.shd,0.45)));
+      ly.gr=gr;ly.sh=crossRGB(mixRGB(C.shd,C.dim,0.2),ly.firm?0.26:0.34);ly.lt=crossRGB(mixRGB(C.lit,C.rim,0.45),cr.tod===1?0.14:ly.firm?0.18:0.3);
+      // a ripple crest every few px, closer toward the horizon (perspective: each row at its own depth f, moving f of the camera's travel)
+      ly.ys=[];for(let y=CROSS_HZ+8;y<ROOM_H+2;y+=1.7+0.11*(y-CROSS_HZ))ly.ys.push(y);},
+    draw(ctx,ly,cr){ctx.fillStyle=ly.gr;ctx.fillRect(0,CROSS_HZ-1,viewW,ROOM_H-CROSS_HZ+1);
+      const W=viewW,cx=cr.cx,D=CROSS_GY-CROSS_HZ,seg=ly.firm?26:70;
+      for(let pass=0;pass<4;pass++){const lit=pass&1,near=pass>>1;ctx.strokeStyle=lit?ly.lt:ly.sh;ctx.lineWidth=near?0.8:0.45;ctx.beginPath();
+        for(let r=0;r<ly.ys.length;r++){const y0=ly.ys[r],f=(y0-CROSS_HZ)/D;if((f>=1)!==!!near||(lit&&f<0.32))continue;
+          const X0=cx+W/2-(W/2)/f,h=hash2(r*977+5,cr.seed),ph=(h&1023)/163,amp=0.3+0.45*f,k=(0.12+0.05*((h>>>10)&63)/63),dy=lit?-0.45-0.1*f:0.15,st=Math.max(3,Math.min(10,7/f));let on=false;
+          for(let x=-4;x<=W+4;x+=st){const X=X0+x/f,s2=Math.floor(X/seg),q=hash2(s2*31+r,cr.seed^0x3c3c)&1023;
+            if(q>(ly.firm?380:640)){on=false;continue;}const y=y0+dy+amp*Math.sin(X*k+ph)+0.25*amp*Math.sin(X*k*2.7+ph*1.7);if(!on){ctx.moveTo(x,y);on=true;}else ctx.lineTo(x,y);}}
+        ctx.stroke();}}},
+  // one of the theme's own far layers (BGART: the step pyramid, Gebel Barkal, the foggara mounds, palms ...) drawn by bgPaint as the
+  // windows show it, hazed by its depth and set on the ground at its own depth (its ground band cut off: the land goes on in front)
+  bgart:{bake(ly,cr){const src=ly.src,q=Math.max(0.5,VS*0.5),top=130,cv=document.createElement('canvas');cv.width=Math.round(BG_W*q);cv.height=Math.round((top+3)*q);
+      const g=cv.getContext('2d'),col=crossRGB(mixRGB(bgRGB(todColor(src.col,cr.tod)),cr.cols.hz,crossHazeK(src.f)*0.8)),l2=Object.assign({},src,{col,lift:0,tod:cr.tod});
+      for(const ox of [0,-BG_W,BG_W]){g.setTransform(q,0,0,q,ox*q,-(BG_BASE-top)*q);bgPaint(g,l2,mulberry32(hash2(ly.id*31+7,cr.look.length*97+ly.id)));}
+      g.setTransform(1,0,0,1,0,0);g.clearRect(0,Math.round((top+1)*q),cv.width,cv.height);
+      if(ly.span){g.clearRect(0,0,Math.round(ly.span[0]*q),cv.height);g.clearRect(Math.round(ly.span[1]*q),0,cv.width,cv.height);} // (a stand of them, not a row: only this stretch of the strip)
+      ly.c=cv;ly.W=BG_W;ly.H=top+3;ly.top=top;},
+    draw(ctx,ly,cr){const y=CROSS_HZ+(CROSS_GY-CROSS_HZ)*ly.f-ly.top;
+      if(ly.span){const ce=Math.max(0,cr.len-viewW);ctx.drawImage(ly.c,viewW*ly.at-ly.span[0]+(ce-cr.cx)*ly.f,y,ly.W,ly.H);}else crossStrip(ctx,ly,-cr.cx*ly.f-(ly.ox||0),y);}},
+  // a row of dunes seen side-on: seif ridges (ly.np peaks over the period ly.W), or barchans (ly.bar: separate crescents with horns);
+  // each peak a convex windward back (mean slope ly.sw) and a slip face at CROSS_LEE, its shaded wedge from the brink down to the foot,
+  // the crest's line in the light's colour; the near one (ly.near) carries ripples on its windward back and streams sand off its brinks
+  erg:{bake(ly,cr){const W=ly.W,H=ly.H,C=cr.cols,f=ly.f,rnd=mulberry32(hash2(cr.seed,ly.id*7919+11)),q=Math.min(VS*(ly.q||1),3600/W),cv=document.createElement('canvas');
+      cv.width=Math.ceil(W*q);cv.height=Math.ceil((H+4)*q);const g=cv.getContext('2d');g.setTransform(q,0,0,q,0,0);
+      const pk=[];for(let i=0;i<ly.np;i++){const h=H*(ly.h0+(1-ly.h0)*rnd());pk.push({x:(i+0.12+0.76*rnd())*W/ly.np,h,a:h/(ly.sw*(0.7+0.6*rnd())),kw:0.2+0.55*rnd()});}
+      const n=Math.ceil(W)+1,Y=new Float32Array(n),base=ly.bar?0:ly.b0||0;
+      for(let i=0;i<n;i++){let best=base;for(const p of pk)for(const o of [-W,0,W]){const dx=i-(p.x+o);let v;
+          if(dx<=0){if(dx<-p.a)continue;const u=dx/p.a;v=p.h*(1-u*u);}else{v=p.h-dx*CROSS_LEE;if(ly.bar){const ht=p.h*0.16*Math.max(0,1-(dx-p.h/CROSS_LEE*0.7)/(p.h*1.6));v=Math.max(v,dx<p.h*2.6?ht:0);}}
+          if(v>best)best=v;}Y[i]=best;}
+      for(let k=0;k<2;k++)for(let i=1;i<n-1;i++){const m=(Y[i-1]+Y[i+1])/2;if(m>Y[i])Y[i]=(Y[i]+m)/2;} // (round the valleys, keep the brinks sharp)
+      const yb=ly.bar?H:H+4,body=()=>{g.beginPath();g.moveTo(0,yb);for(let i=0;i<n;i++)g.lineTo(i,H-Y[i]);g.lineTo(W,yb);g.closePath();};
+      const lit=C.at(C.lit,f),dim=C.at(C.dim,f),shd=C.at(C.shd,f),bh=Math.max(...pk.map(p=>p.h));
+      const gr=g.createLinearGradient(0,H-bh,0,H);if(C.left){gr.addColorStop(0,crossRGB(lit));gr.addColorStop(1,crossRGB(mixRGB(lit,dim,0.75)));}else{gr.addColorStop(0,crossRGB(mixRGB(dim,shd,0.3)));gr.addColorStop(1,crossRGB(mixRGB(dim,shd,0.6)));}
+      body();g.fillStyle=gr;g.fill();
+      g.save();body();g.clip();
+      for(const p of pk)for(const o of [-W,0,W]){const bx=p.x+o,by=H-p.h-(ly.bar?0:0),ft=p.h/CROSS_LEE;if(bx+ft*2<0||bx-p.a>W)continue;
+        g.beginPath();g.moveTo(bx,by);g.lineTo(bx+ft*1.7,yb+ft*0.4);g.lineTo(bx+p.h*p.kw,yb);g.closePath();
+        if(C.left){const sg=g.createLinearGradient(0,by,0,H);sg.addColorStop(0,crossRGB(shd));sg.addColorStop(1,crossRGB(mixRGB(shd,dim,0.25)));g.fillStyle=sg;}
+        else{const sg=g.createLinearGradient(0,by,0,H);sg.addColorStop(0,crossRGB(lit));sg.addColorStop(1,crossRGB(mixRGB(lit,dim,0.6)));g.fillStyle=sg;}
+        g.fill();
+        if(ly.near){ // ripples on the windward back, parallel to it, a few px apart, faint
+          g.strokeStyle=crossRGB(C.left?shd:lit,0.22);g.lineWidth=0.45;g.beginPath();
+          for(let d=3;d<p.h*0.85;d+=2.6+rnd()*2.2){let on=false;for(let x=Math.max(0,bx-p.a);x<=Math.min(W,bx-1);x+=2){const i=Math.round(x);if(i<0||i>=n)continue;
+              const y=H-Y[i]+d+0.5*Math.sin(x*0.21+d);if(y>H){on=false;continue;}if(!on){g.moveTo(x,y);on=true;}else g.lineTo(x,y);}}
+          g.stroke();}}
+      g.restore();
+      // the crest's line: lit backs at dusk, the brinks under a light from the right, silver at night
+      g.strokeStyle=crossRGB(C.at(C.rim,f),ly.near?0.75:0.5);g.lineWidth=ly.near?0.7:0.45;g.beginPath();
+      for(const p of pk)for(const o of [-W,0,W]){const bx=p.x+o;if(C.left||cr.tod===1){const x0=Math.max(0,bx-p.a*0.8);let first=true;for(let x=x0;x<=Math.min(W,bx);x+=1.5){const i=Math.round(x);if(i<0||i>=n)continue;if(first){g.moveTo(x,H-Y[i]);first=false;}else g.lineTo(x,H-Y[i]);}}
+        if(!C.left){const x1=Math.min(W,bx+p.h/CROSS_LEE*0.5);let first=true;for(let x=Math.max(0,bx);x<=x1;x+=1.5){const i=Math.round(x);if(i<0||i>=n)continue;if(first){g.moveTo(x,H-Y[i]);first=false;}else g.lineTo(x,H-Y[i]);}}}
+      g.stroke();
+      ly.c=cv;ly.H=H+4;ly.pk=pk.map(p=>[p.x,p.h]);ly.Y=Y;},
+    draw(ctx,ly,cr){const x0=-cr.cx*ly.f-(ly.ox||0),yb=CROSS_HZ+(CROSS_GY-CROSS_HZ)*ly.f+1;crossStrip(ctx,ly,x0,yb-ly.H+4);
+      if(ly.near&&GFX().fx)crossPlumes(ctx,ly,cr,x0,yb);}},
+  // the rock across the end of the path and the doorway in it, framed as the next floor's start door (f 1: the path's own plane)
+  gate:{bake(ly,cr){const th=cr.th,W=300,H=150,q=VS,cv=document.createElement('canvas');cv.width=Math.ceil(W*q);cv.height=Math.ceil(H*q);const g=cv.getContext('2d');g.setTransform(q,0,0,q,0,0);
+      const rnd=mulberry32(hash2(cr.seed,991)),C=cr.cols,xc=110,yb=H-4,w=24,x0=xc-w/2,x1=x0+w,y0=yb-54,kind=th.style==='dungeon'?'round':'point',tk=ly.tod||cr.tod;
+      const rock=mixRGB(mixRGB(C.dim,C.lit,0.42),todRGB(hexRGB(th.wall),tk),0.16),rl=mixRGB(rock,C.rim,tk===1?0.18:0.28),rd=crossMul(rock,[0.55,0.5,0.56]);
+      // the rock: a butte with a rounded, weathered top, its left shoulder sloping down to the sand
+      const pt=[];let lv=0,l0=0,nx=0,x0s=0;for(let x=0;x<=W;x+=3){if(x>=nx){l0=lv;lv=(rnd()-0.5)*8;x0s=x;nx=x+22+rnd()*44;}const s=sstep((x-10)/56),top=yb-4-(102+lerp(l0,lv,sstep((x-x0s)/7))+1.2*Math.sin(x*0.13))*s;pt.push([x,top]);} // (a mesa: flat runs and short steps)
+      g.beginPath();g.moveTo(0,H);for(const p of pt)g.lineTo(p[0],p[1]);g.lineTo(W,H);g.closePath();
+      const gr=g.createLinearGradient(0,yb-110,0,yb);gr.addColorStop(0,crossRGB(rl));gr.addColorStop(0.5,crossRGB(rock));gr.addColorStop(1,crossRGB(rd));g.fillStyle=gr;g.fill();
+      g.save();g.clip();
+      g.fillStyle=crossRGB(crossMul(rock,[0.68,0.64,0.68]),0.5);for(let y=yb-100;y<yb;y+=5+rnd()*5)g.fillRect(0,y+rnd()*1.5,W,0.6+rnd()*0.5); // the bedding
+      g.fillStyle=crossRGB(crossMul(rock,[0.5,0.46,0.5]),0.5);for(let i=0;i<9;i++){const x=rnd()*W,y=yb-rnd()*100;g.fillRect(x,y,0.7,6+rnd()*18);} // cracks
+      if(C.left){const sg=g.createLinearGradient(0,0,70,0);sg.addColorStop(0,'rgba('+C.rim.join(',')+',.22)');sg.addColorStop(1,'rgba('+C.rim.join(',')+',0)');g.fillStyle=sg;g.fillRect(0,0,70,H);}
+      else{const sg=g.createLinearGradient(W-90,0,W,0);sg.addColorStop(0,'rgba('+C.rim.join(',')+',0)');sg.addColorStop(1,'rgba('+C.rim.join(',')+',.18)');g.fillStyle=sg;g.fillRect(W-90,0,90,H);}
+      g.restore();
+      // the doorway: the dark opening, its left jamb's inside face and threshold, the posts and lintel and the style's ornament (drawDoor's)
+      const sp=doorHead(g,x0,x1,y0,kind,null),rdx=DX*0.45,rdy=DY*0.45;
+      g.save();doorHead(g,x0,x1,y0,kind,yb);g.clip();const dg=g.createLinearGradient(0,y0,0,yb);dg.addColorStop(0,'#030206');dg.addColorStop(1,'#0c0910');g.fillStyle=dg;g.fillRect(x0,y0,w,yb-y0);
+      g.beginPath();g.moveTo(x0,y0);g.lineTo(x0+rdx,y0-rdy);g.lineTo(x0+rdx,yb-rdy);g.lineTo(x0,yb);g.closePath();g.fillStyle=th.lo;g.fill();g.fillStyle='rgba(0,0,0,.45)';g.fill();
+      g.beginPath();g.moveTo(x0,yb);g.lineTo(x1,yb);g.lineTo(x1+rdx,yb-rdy);g.lineTo(x0+rdx,yb-rdy);g.closePath();g.fillStyle=th.top;g.fill();g.fillStyle='rgba(0,0,0,.4)';g.fill();g.restore();
+      const ctop=y0-12;g.fillStyle=th.wallB;g.fillRect(x0-5,y0,5,yb-y0);g.fillRect(x1,y0,5,yb-y0);g.fillStyle=th.hi;g.fillRect(x0-5,y0,1,yb-y0);g.fillRect(x1,y0,1,yb-y0);
+      g.fillStyle='rgba(0,0,0,.35)';g.fillRect(x0-1,y0,1,yb-y0);g.fillStyle=th.wall;g.fillRect(x0-6,ctop,w+12,y0-ctop);g.fillStyle=th.top;g.fillRect(x0-6,y0-1.4,w+12,1.4);g.fillRect(x0-7,ctop-1.6,w+14,1.6);
+      doorArch(g,th,x0,x1,y0,ctop,yb,kind,sp);
+      if(tk===1){g.fillStyle='rgba(20,26,60,.35)';g.fillRect(x0-7,ctop-2,w+14,yb-ctop+2);}
+      // the sand drifted against its foot
+      g.fillStyle=crossRGB(mixRGB(C.dim,C.lit,0.4));g.beginPath();g.moveTo(-4,H);g.lineTo(-4,yb+1);g.quadraticCurveTo(20,yb-6,46,yb+0.5);g.lineTo(x0-8,yb+1);g.lineTo(x1+8,yb+1);g.lineTo(W,yb+0.5);g.lineTo(W,H);g.closePath();g.fill();
+      ly.c=cv;ly.W=W;ly.H=H;ly.xc=xc;ly.yb=yb;ly.door={x0,x1,y0,yb,kind};},
+    draw(ctx,ly,cr){const ox=cr.xd+HX-ly.xc-cr.cx,oy=CROSS_GY-HY-ly.yb;if(ox>viewW||ox+ly.W<0)return;ctx.drawImage(ly.c,ox,oy,ly.W,ly.H);}},
+  // the foreground, nearer than he is (f 2 to 2.5: it moves faster than he does): a dark swell of sand at the screen's foot and tufts
+  // of desert grass (or stones), sparse, low enough never to cover him
+  fore:{bake(ly,cr){const C=cr.cols;ly.col=crossRGB(crossMul(C.shd,cr.tod===1?[0.8,0.8,0.9]:[0.62,0.56,0.6]));ly.gc=crossRGB(crossMul(C.shd,cr.tod===1?[0.6,0.7,0.6]:[0.5,0.52,0.4]));},
+    draw(ctx,ly,cr){const W=viewW,cx=cr.cx,D=CROSS_GY-CROSS_HZ,f=2.25,yb=CROSS_HZ+D*f;
+      ctx.fillStyle=ly.col;ctx.beginPath();ctx.moveTo(-2,ROOM_H+2);for(let x=-2;x<=W+2;x+=8){const X=cx+W/2+(x-W/2)/f;ctx.lineTo(x,yb+2-3.4*Math.sin(X*0.019+cr.seed%7)-1.6*Math.sin(X*0.057));}ctx.lineTo(W+2,ROOM_H+2);ctx.closePath();ctx.fill();
+      const ft=1.92,yt=CROSS_HZ+D*ft,sp=140;ctx.strokeStyle=ly.gc;ctx.fillStyle=ly.gc;ctx.lineCap='round';
+      const xa=cx+W/2+(-40-W/2)/ft,xb=cx+W/2+(W+40-W/2)/ft;
+      for(let k=Math.floor(xa/sp);k<=Math.ceil(xb/sp);k++){const h=hash2(k*53+11,cr.seed^0x5a5a),u=(h&1023)/1023,v=((h>>>10)&1023)/1023,w2=((h>>>20)&1023)/1023;if(v<0.35)continue;
+        const X=k*sp+u*sp*0.7,x=W/2+(X-cx-W/2)*ft,y=yt+v*6;
+        if(ly.stones||w2<0.25){ctx.beginPath();ctx.ellipse(x,y,4+5*w2,2.2+2*v,0,Math.PI,0);ctx.fill();continue;}
+        const nb=7+Math.floor(w2*6),hh=13+10*v;ctx.lineWidth=0.9;ctx.beginPath();
+        for(let b=0;b<nb;b++){const a=(b/(nb-1)-0.5)*1.5+0.18+0.1*Math.sin(gameTime*1.7+b+k),l=hh*(0.6+0.4*Math.cos((b/(nb-1)-0.5)*2));
+          ctx.moveTo(x+(b-nb/2)*0.6,y);ctx.quadraticCurveTo(x+Math.sin(a)*l*0.4,y-l*0.6,x+Math.sin(a)*l,y-Math.cos(a)*l);}ctx.stroke();}}}};
+// a strip that repeats every ly.W units, its copies joined on whole pixels of the target (as paintBackdrop's)
+function crossStrip(ctx,ly,x0,y){const W=ly.W,sn=v=>Math.round(v*VS)/VS;let ox=((x0%W)+W)%W;if(ox>0)ox-=W;
+  for(let x=ox;x<viewW;x+=W){const a=sn(x),b=sn(x+W);ctx.drawImage(ly.c,a,y,b-a,ly.H);}}
+// sand streaming off the near dune's brinks (jetStream on a short path from each brink downwind); the gust makes it a plume
+const CRJP=[jsPath(),jsPath(),jsPath()];
+function crossPlumes(ctx,ly,cr,x0,yb){const g=crossGust(cr),str=(cr.tod===1?0.22:0.32)+0.68*g,W=ly.W;let k=0;
+  for(const p of ly.pk)for(const o of [0,W,2*W,-W]){if(k>=2)break;const sx=x0+p[0]+o,sy=yb-4-p[1];if(sx<-90||sx>viewW+10)continue;
+    const L0=34+70*g,P=jsReset(CRJP[k]);jsAdd(P,sx-2,sy+0.5);jsQuad(P,sx+L0*0.45,sy-5-7*g,sx+L0,sy+3+p[1]*0.12,10);
+    jetStream(ctx,P,str,40+60*g,1.6+2.6*g,hash2(cr.seed,k*13+Math.round(p[0])),-40,viewW+40,0,ROOM_H,null,cr.spr);k++;}}
+// the gust (the beat): 0..1, from the moment he passes CROSS_BEAT of the way
+function crossGust(cr){if(cr.gust<0)return 0;const t=cr.t-cr.gust,G=CROSS_GUST;return t<G[0]?sstep(t/G[0]):t<G[0]+G[1]?1:1-sstep((t-G[0]-G[1])/G[2]);}
+// ---- the settings: each returns its layers, far to near (z orders them: crossZ(f) for the land behind the path, 50 the doorway, 60 is his, 70 the foreground) ----
+const crossZ=f=>10+39*Math.min(f,1);
+function crossBgart(cr,o){const out=[];o=o||{};bgArt(cr.th).layers.forEach((s,i)=>{if(['stars','clouds','near','ropes','water','smoke','saltlake','pcolon','colonnade'].includes(s.kind)||(o.skip&&o.skip.includes(s.kind)))return;
+    const ly={kind:'bgart',src:s,f:s.f,z:crossZ(s.f),id:i};if(o.stand&&o.stand.includes(s.kind)){ly.span=[200,420];ly.at=0.4;}out.push(ly);});return out;} // (o.skip: kinds left out; o.stand: kinds drawn as one stand near the doorway, not along the whole way)
+const CROSS_SETS={
+  plain(cr){return [{kind:'sky',z:0,f:0},{kind:'ground',z:1,f:0,firm:true},...crossBgart(cr),{kind:'gate',z:50,f:1},{kind:'fore',z:70,f:2.45,stones:true}];},
+  dunes(cr){const dv=cr.dv,L2=[{kind:'sky',z:0,f:0},{kind:'ground',z:1,f:0},...crossBgart(cr,{stand:['palms']})];
+    const erg=(f,H,np,W,o)=>L2.push(Object.assign({kind:'erg',f,z:crossZ(f),H,np,W,h0:0.5,sw:0.22,q:f<0.05?0.5:1,id:L2.length},o||{}));
+    // (H px over its period W: a ridge H px high at depth factor f is H/(29.4 f) m: the near seif 8 m, the far ones 50-60 m some km off)
+    if(dv==='seif'){erg(0.01,10,9,640);erg(0.018,16,5,900,{b0:2});erg(0.3,76,2,1100,{near:1,b0:8,sw:0.26,h0:0.62});erg(0.62,9,7,900,{bar:1,sw:0.2,h0:0.35});}
+    else if(dv==='barchan'){erg(0.008,8,8,640);erg(0.045,22,3,1000,{bar:1,sw:0.2,h0:0.45});erg(0.28,64,1,900,{near:1,bar:1,sw:0.24,h0:0.85});erg(0.6,8,5,900,{bar:1,sw:0.2,h0:0.35});}
+    else{erg(0.02,12,7,640,{b0:1});erg(0.05,15,4,900,{b0:1,sw:0.18});erg(0.22,40,2,1000,{near:1,b0:4,sw:0.2,h0:0.6});erg(0.6,7,6,900,{bar:1,sw:0.18,h0:0.35});}
+    L2.push({kind:'gate',z:50,f:1},{kind:'fore',z:70,f:2.45});return L2;}};
+// his colours under the hour: the hero's palette times the light (the sky's: no lamps out here; Torchlight adds his fill light)
+function crossPal(tod){const k=tod===1?[0.52,0.58,0.78]:tod===2?[0.94,0.84,0.82]:[0.9,0.8,0.78],o={};
+  for(const q in PAL_HERO){const v=PAL_HERO[q];o[q]=typeof v==='string'&&/^#[0-9a-f]{6}$/i.test(v)?crossRGB(crossMul(hexRGB(v),k)):v;}return o;}
+// the sand grains' sprites for the hour (jetStream's own are lit sand, too bright under the moon)
+function crossSprites(cr){const C=cr.cols,c=cr.tod===1?mixRGB(C.lit,C.rim,0.25):mixRGB(C.lit,C.rim,0.35),g=document.createElement('canvas');g.width=g.height=32;
+  const x=g.getContext('2d'),gr=x.createRadialGradient(16,16,0,16,16,16),cs=c.map(Math.round).join(',');gr.addColorStop(0,'rgba('+cs+',1)');gr.addColorStop(0.3,'rgba('+cs+',0.9)');gr.addColorStop(0.62,'rgba('+cs+',0.4)');gr.addColorStop(1,'rgba('+cs+',0)');x.fillStyle=gr;x.fillRect(0,0,32,32);
+  return {g,l:lightSprite(crossMul(c,[cr.tod===1?0.45:0.7,cr.tod===1?0.45:0.7,cr.tod===1?0.5:0.7]).map(Math.round).join(','))};}
+// ---- the flow ----
+function crossBegin(){const n=L.n,th=L.theme,lk=CROSS_LOOK[th.look]||{set:'plain'},set=CROSS_SETS[lk.set]?lk.set:'plain';
+  CR={n,th,look:th.look,tod:L.prog?L.prog.tod:0,set,dv:lk.dv||'',seed:hash2(levelSeed(n),36001),t:0,x:CROSS_X0,v:0,ph:0,rk:0,hold:0,face:1,phase:'walk',ti:0,to:0,
+    xd:CROSS_X0+CROSS_DIST,len:CROSS_X0+CROSS_DIST+170,xb:CROSS_X0+CROSS_DIST*CROSS_BEAT,gust:-1,idle:0,cx:0,steps:0,skipped:false,frames:0,ms:[],hud:true,
+    e:{x:CROSS_X0,y:CROSS_GY,face:1,state:'stand',pose:mk(PS.stand),lk:null},tp:mk({}),lights:[],amb:null};
+  CR.cols=crossCols(CR);CR.layers=CROSS_SETS[set](CR).sort((a,b)=>a.z-b.z);CR.e.pal=crossPal(CR.tod);CR.spr=crossSprites(CR);
+  CR.amb=CR.tod===1?[0.84,0.88,0.98]:CR.tod===2?[0.9,0.86,0.86]:[0.88,0.83,0.85]; // (Torchlight's ambient: the land is painted for its hour already; the sun or moon adds its light round itself)
+  mode='cross';clearInput();acc=0;document.body.classList.add('crossing');
+  bJump.innerHTML='<svg viewBox="0 0 24 24" width="46%" height="46%" aria-hidden="true"><path d="M3 5l8 7-8 7zM12 5l8 7-8 7z" fill="currentColor"/><rect x="20" y="5" width="2" height="14" fill="currentColor"/></svg>';
+  crossCam(CR);crossBake(CR);}
+// bake the layers one a frame (the sky and the ground at once): the fade from white hides the rest as they come
+function crossBake(cr){let n=0;for(const ly of cr.layers){if(ly.ok)continue;CROSS_KINDS[ly.kind].bake(ly,cr);ly.ok=true;if(ly.kind!=='sky'&&ly.kind!=='ground'&&ly.kind!=='fore'&&++n>=1)break;}}
+function crossCam(cr){cr.cx=clamp(cr.x-viewW*CROSS_CAM,0,Math.max(0,cr.len-viewW));}
+function crossStep(dt){const c=CR;if(!c)return;c.t+=dt;gameTime+=dt;
+  if(c.phase==='skip'||c.phase==='out'){c.to+=dt;if(c.to>=(c.phase==='skip'?CROSS_SKIPF:CROSS_OUT)){crossEnd();return;}}
+  if(took('j',0.3)&&c.t>=CROSS_SKIP0&&(c.phase==='walk'||c.phase==='in')){c.phase='skip';c.to=0;c.skipped=true;return;} // (a press before 0.5 s is used up and does nothing)
+  const ix=(I.r?1:0)-(I.l?1:0),e=c.e,ph0=c.ph;
+  if(c.phase==='walk'){
+    if(ix>0){c.face=1;c.hold+=dt;}else{c.hold=0;if(ix<0)c.face=-1;}
+    c.rk=sstep((c.hold-CROSS_RUNT)/CROSS_RUNB);
+    const vt=ix>0?lerp(CROSS_WALK,CROSS_RUN,c.rk):0;c.v=approach(c.v,vt,(vt>c.v?CROSS_ACC*(1+1.5*c.rk):CROSS_DEC)*dt);
+    c.x+=c.v*dt;c.ph+=c.v*dt/lerp(43,44,c.rk);c.idle=c.v>0.5||ix?0:c.idle+dt;
+    if(c.x>=c.xd){c.x=c.xd;c.phase='in';c.ti=0;c.face=1;Snd.play('crossdoor');}}
+  else if(c.phase==='in'){c.ti+=dt;c.v=approach(c.v,0,CROSS_DEC*dt);c.ph+=dt*0.93;if(c.ti>=CROSS_IN){c.phase='out';c.to=0;}}
+  if(c.gust<0&&c.x>=c.xb)c.gust=c.t;
+  if(Math.floor(ph0*2)!==Math.floor(c.ph*2)&&c.phase==='walk'){c.steps++;Snd.play(c.rk>0.5?'sandrun':'sandstep');}
+  // his pose: standing, or the walk blended into the run by the hold (one phase for both: the walk's 43 px a cycle, the run's 44)
+  let tgt,rate;if(c.phase==='walk'&&c.v<1.5){tgt=PS.stand;rate=10;e.state='stand';}
+  else{const wp=walkPose(c.ph,c.phase==='in'?0.75:clamp(c.v/CROSS_WALK*1.2,0.35,1));tgt=c.rk>0.01?lerpPose(wp,runPoseHD(c.ph),c.rk,c.tp):wp;rate=c.rk>0.5?40:30;e.state='run';}
+  e.pose=followPose(e.pose,tgt,dt,rate);e.face=c.face;e.x=c.x;e.y=CROSS_GY;updActorLook(e,dt);
+  crossCam(c);
+  pad.classList.toggle('cue',c.phase==='walk'&&c.idle>CROSS_CUE&&c.t>CROSS_FIN);
+  bJump.classList.toggle('dim',c.t<CROSS_SKIP0);}
+function crossEnd(){const c=CR;if(!c)return;
+  crossLast={n:c.n,look:c.look,set:c.set,t:c.t,x:c.x,skipped:c.skipped,steps:c.steps,frames:c.frames,ms:c.ms.slice(),reached:c.x>=c.xd};CR=null;
+  mode='play';acc=0;document.body.classList.remove('crossing');pad.classList.remove('cue');bJump.classList.remove('dim');bJump.textContent='Jump';Snd.wind(0);
+  if(L&&L.enG!==undefined){L.enG=gameTime;L.enS=0;} // (the entry starts now: it waited under the crossing)
+  GLP.now=true;GLP.hudK=null;frameLights=[];}
+// the wind's sound: a bed over the whole crossing, rising with the gust; cut at the doorway
+function crossSound(c){const g=crossGust(c),k=c.phase==='walk'?(c.set==='dunes'?0.42:0.3)+0.08*Math.sin(c.t*0.7)+0.06*Math.sin(c.t*1.9+1)+0.55*g:0;Snd.wind(k*clamp(c.t/0.8,0,1));}
+// the lights (view units): the sun or the moon as one broad light, his fill light
+function crossLights(c,px,py){const s=crossSun(c),out=c.lights;out.length=0;
+  if(s.moon)out.push({x:s.x,y:s.y,r:viewW*0.95,col:'170,190,255',a:0.32,kind:'win',r0:viewW*0.95,a0:0.32});
+  else out.push({x:s.x,y:s.y,r:viewW*1.05,col:c.tod===2?'255,206,152':'255,178,112',a:0.5,kind:'win',r0:viewW*1.05,a0:0.5});
+  out.push({x:px,y:py-26,r:84,col:FILL_COL,a:0.42,kind:'fill'});return out;}
+// him: a long soft shadow on the sand away from the light, then the figure (the game's own drawing, lit from the sun's side); at the
+// doorway he turns into its depth, cut at the opening and darkening as the entry's silhouette does, reversed
+function crossFigure(ctx,c,gls){const e=c.e,px=c.x-c.cx,py=CROSS_GY,s=crossSun(c);
+  const u=c.phase==='in'||(c.phase==='out')?sstep(c.ti/0.42):0,ox=u*EN_DX,oy=-u*EN_DY,ta=c.phase==='in'||c.phase==='out'?0.92*sstep(c.ti/0.45):0;
+  if(u<0.5&&GFX().hero){const sd=s.x<px?1:-1,ln=s.moon?16:Math.min(46,(CROSS_GY-s.y)>40?22:46);ctx.save();ctx.globalAlpha=0.32*(1-u*2);ctx.fillStyle=crossRGB(crossMul(c.cols.shd,[0.5,0.5,0.6]));
+    ctx.beginPath();ctx.ellipse(px+sd*ln*0.5,py+0.8,ln*0.55,1.9,0,0,Math.PI*2);ctx.fill();ctx.restore();}
+  const po={sword:false,hasSword:true,flash:0,flutter:Math.min(1,c.v/90+0.5*crossGust(c)),time:gameTime};
+  frameLights=c.lights;if(gls)ctx.na=0;ctx.save();
+  if(u>0.2){const gl=c.layers.find(l=>l.kind==='gate');if(gl&&gl.door){const d=gl.door,ox2=c.xd+HX-gl.xc-c.cx,oy2=CROSS_GY-HY-gl.yb;doorHead(ctx,ox2+d.x0,ox2+d.x1,oy2+d.y0,d.kind,oy2+d.yb+40);ctx.clip();}}
+  if(ta>0.004)drawPTint(ctx,px+ox,py+oy,po,'rgb(7,5,11)',ta,1,e);else drawActor(ctx,e,px+ox,py+oy,e.face,e.pose,e.pal||PAL_HERO,po);
+  ctx.restore();if(gls)ctx.na=1;}
+// Torchlight: the composite of glFrame with the floor's own masks left empty (no shadow, heat, storm, metal, beams, relief or mist)
+function crossGL(lights){const w=cv.width,h=cv.height,lw=Math.ceil(w/4),lh=Math.ceil(h/4),gls=GLP.gls;SIL.m.clear();SIL.m2.clear();
+  {const mw=GLP.mkC.width,mh=GLP.mkC.height,g=gls?g2Mk('mask',mw,mh,[0,0,0,1]):GLP.mkG;g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='source-over';g.globalAlpha=1;g.fillStyle='#000';g.fillRect(0,0,mw,mh);}
+  GLP.mkAny=false;MSF.rec=false;MSF.n=0;MS.on=0;msUse(false);GLC.pns=0;GLC.ocAny=0;GLC.nb=0;
+  glAtlas(w,h,lw,lh);if(!gls)glShrink(w,h);
+  GLP.pend={lights,VZ:VS,camD:0,camDY:0,th:L.theme,w,h,gls};
+  if(gls||!GLP.pipe||(PF.on&&PF.sync)||GLP.first||GLP.now){GLP.now=false;glSubmit();}}
+function crossRender(ctx,sh,gls){const c=CR,t0=performance.now();crossBake(c);c.frames++;
+  renderXf.VZ=VS;renderXf.camD=0;renderXf.camDY=0;
+  ctx.setTransform(VS,0,0,VS,0,0);if(gls)ctx.na=1;
+  const px=c.x-c.cx;crossLights(c,px,CROSS_GY);let fig=false;
+  for(const ly of c.layers){if(!ly.ok)continue;if(!fig&&ly.z>=60){crossFigure(ctx,c,gls);fig=true;}CROSS_KINDS[ly.kind].draw(ctx,ly,c);}
+  if(!fig)crossFigure(ctx,c,gls);
+  // a sheet of sand skimming along the path in the gust, over his feet
+  {const g=crossGust(c);if(g>0.02&&GFX().fx){const P=jsReset(CRJP[2]),y=CROSS_GY+2;jsAdd(P,-30,y+1);jsQuad(P,viewW*0.5,y-4,viewW+30,y+2,16);jetStream(ctx,P,g*0.85,150,3.2,hash2(c.seed,5),-40,viewW+40,0,ROOM_H,null,c.spr);}}
+  ctx.setTransform(VS,0,0,VS,0,0);PF.p('dyn');
+  if(sh){try{crossGL(c.lights);}catch(err){glKill(String(err&&err.message||err));return;}ctx=gx;ctx.setTransform(VS,0,0,VS,0,0);}
+  else{const s=crossSun(c);if(!s.moon){ctx.save();ctx.globalCompositeOperation='lighter';const gr=ctx.createRadialGradient(s.x,s.y,2,s.x,s.y,90);gr.addColorStop(0,'rgba(255,214,150,.42)');gr.addColorStop(1,'rgba(255,170,100,0)');ctx.fillStyle=gr;ctx.fillRect(s.x-90,s.y-90,180,180);ctx.restore();}
+    if(!vignette){vignette=ctx.createRadialGradient(viewW/2,ROOM_H/2,ROOM_H*0.45,viewW/2,ROOM_H/2,Math.max(viewW,ROOM_W)*0.66);vignette.addColorStop(0,'rgba(5,3,10,0)');vignette.addColorStop(1,'rgba(5,3,10,.5)');}
+    ctx.fillStyle=vignette;ctx.fillRect(0,0,viewW,ROOM_H);}
+  // the fades over everything (the HUD canvas in Torchlight): from the exit's white light, to black at a skip or the doorway
+  const fw=c.t<CROSS_FIN?1-sstep(c.t/CROSS_FIN):0,fb=c.phase==='skip'?sstep(c.to/CROSS_SKIPF):c.phase==='out'?sstep(c.to/CROSS_OUT):0;
+  if(sh){if(fw>0.002||fb>0.002||c.hud){ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);ctx.setTransform(VS,0,0,VS,0,0);c.hud=fw>0.002||fb>0.002;}}
+  if(fw>0.002){ctx.fillStyle='rgba('+EXT1.join(',')+','+fw.toFixed(3)+')';ctx.fillRect(0,0,viewW,ROOM_H);}
+  if(fb>0.002){ctx.fillStyle='rgba(7,5,11,'+fb.toFixed(3)+')';ctx.fillRect(0,0,viewW,ROOM_H);}
+  GLP.hudK=null;c.ms.push(performance.now()-t0);if(c.ms.length>600)c.ms.shift();PF.p('hud');}
 // ================= screens =================
 const screens=['title','pause','card','how','confirm','gfx','tools'];
 let howReturn='title',gfxReturn='title';
@@ -10887,12 +11207,12 @@ const GFXB={gLight:'light',gAtmo:'atmo',gGrade:'grade',gHero:'hero',gFx:'fx',gHd
 function syncGfx(){const g=GFX();syncLightMode();for(const id in GFXB)$(id).setAttribute('aria-pressed',String(!!g[GFXB[id]]));}
 $('gShader').onclick=()=>{delete S.set.torchRetry;if(S.set.lightMode==='torch')S.set.lightMode='classic';else{S.set.lightMode='torch';if(!glInit()){S.set.lightMode='classic';}}writeSave();syncLightMode();render();};
 for(const id in GFXB)$(id).onclick=()=>{const g=GFX(),k=GFXB[id];g[k]=!g[k];if(k==='fx'){shakeA=0;zoom=1;}if(k==='bg')clearRooms();writeSave();syncGfx();render();};
-function syncToggles(){$('tFps').setAttribute('aria-pressed',String(!!S.set.fps));fpsShow();$('tSound').setAttribute('aria-pressed',String(S.set.sound));$('tSaver').setAttribute('aria-pressed',String(S.set.saver));$('tLefty').setAttribute('aria-pressed',String(S.set.lefty));$('tCalm').setAttribute('aria-pressed',String(!!S.set.calm));}
+function syncToggles(){$('tFps').setAttribute('aria-pressed',String(!!S.set.fps));fpsShow();$('tSound').setAttribute('aria-pressed',String(S.set.sound));$('tSaver').setAttribute('aria-pressed',String(S.set.saver));$('tLefty').setAttribute('aria-pressed',String(S.set.lefty));$('tCalm').setAttribute('aria-pressed',String(!!S.set.calm));$('tCross').setAttribute('aria-pressed',String(S.set.cross!==false));}
 function pause(){if(mode!=='play')return;snapshotResume();mode='paused';clearInput();S.floorTime=levelTime;writeSave();
   $('pTitle').textContent='Floor '+L.n+' · '+themeName(L.n);$('pFloorTime').textContent=fmt(levelTime);$('pRunTime').textContent=fmt(S.time+levelTime);$('pDeaths').textContent=String(S.deaths);
   syncToggles();show('pause');wake(false);}
 function resume(){hideAll();mode='play';clearInput();wake(true);}
-function nextFloor(){hideAll();startLevel(S.level,-1,true);wake(true);}
+function nextFloor(){hideAll();const cr=crossDue(S.level);startLevel(S.level,-1,true);if(cr)crossBegin();wake(true);} // (round 36a: the crossing, at a change of theme, between Climb on and the entry)
 function goTitle(){if(L&&mode!=='title'&&mode!=='card'){S.floorTime=levelTime;writeSave();}mode='title';refreshTitle();show('title');wake(false);}
 $('bContinue').onclick=()=>{Snd.unlock();hideAll();startLevel(S.level,S.cp);applyResume(S.resume);wake(true);};
 $('bNew').onclick=()=>{Snd.unlock();if(S.started){show('confirm');return;}beginNew();};
@@ -10919,11 +11239,12 @@ $('tSound').onclick=()=>{S.set.sound=!S.set.sound;writeSave();syncToggles();if(S
 $('tSaver').onclick=()=>{S.set.saver=!S.set.saver;writeSave();syncToggles();layout();};
 $('tFps').onclick=()=>{S.set.fps=!S.set.fps;writeSave();syncToggles();};
 $('tLefty').onclick=()=>{S.set.lefty=!S.set.lefty;writeSave();syncToggles();layout();};
+$('tCross').onclick=()=>{S.set.cross=S.set.cross===false;writeSave();syncToggles();}; // (round 36a) the crossings between themes, on by default
 $('tCalm').onclick=()=>{S.set.calm=!S.set.calm;writeSave();syncToggles();if(!S.set.calm)flashScreen('#ffffff',0.35,0.25);};
 
 let wl=null;
 async function wake(on){try{if(on){if(!wl&&navigator.wakeLock&&document.visibilityState==='visible'){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null;});}}else if(wl){await wl.release();wl=null;}}catch(e){wl=null;}}
-document.addEventListener('visibilitychange',()=>{if(document.hidden){Snd.rumble(0);if(mode==='play')pause();else if(L){S.floorTime=levelTime;writeSave();}}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){Snd.rumble(0);Snd.wind(0);if(mode==='play')pause();else if(L){S.floorTime=levelTime;writeSave();}}});
 addEventListener('pagehide',()=>{if(L&&(mode==='play'||mode==='paused')){if(mode==='play')snapshotResume();S.floorTime=levelTime;writeSave();}});
 
 // ================= loop =================
@@ -10973,6 +11294,9 @@ function loop(ts){
   if(mode==='play'||mode==='dead'||mode==='rewind'){acc+=dt;let n=0;const u0=PF.on||BENCH.g?performance.now():0;while(acc>=STEP&&n<6){acc-=STEP;n++;if(BENCH.g)BENCH.step();snapPrev();if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}if(n>=6)acc=0;if(PF.on||BENCH.g)PF.upd=performance.now()-u0;
     Snd.rumble(stormNear()); // (unit ST)
     frame++;if(S.set.saver&&(frame&1))return;{const iv=(ts-GLP.lastR)/(S.set.saver?2:1);if(GLP.lastR&&iv<250){glTime(iv);PF.iv0=iv;}GLP.lastR=ts;}const b0=roomBuilds,mz=PF.on||BENCH.run,r0=mz?performance.now():0;if(PF.on){try{renderAt(acc/STEP);}catch(e){const m=String(e&&e.message||e).slice(0,60)+' ('+PF.cur+')';if(m!==PF.err)console.log('prof step '+PF.cur+': '+(e&&e.stack||e));PF.err=m;}}else renderAt(acc/STEP);if(PF.on){PF.a.update=PF.upd;pfFrame(PF.upd+performance.now()-r0,PF.iv0||0);}if(BENCH.run)benchFrame(PF.iv0||0,PF.upd+performance.now()-r0);idleFrames=0;drawBuilds+=roomBuilds-b0;if(roomBuilds===b0)roomWork();}
+  else if(mode==='cross'&&CR){acc+=dt;let n=0;const u0=performance.now();while(acc>=STEP&&n<6&&CR){acc-=STEP;n++;crossStep(STEP);}if(n>=6)acc=0; // (round 36a) the crossing: its own step and picture
+    Snd.rumble(0);if(!CR)return;crossSound(CR);CR.us=performance.now()-u0;
+    frame++;if(S.set.saver&&(frame&1))return;const b0=roomBuilds;render();idleFrames=0;if(roomBuilds===b0&&CR&&CR.t>CROSS_FIN)roomWork();} // (the next floor's first rooms are built meanwhile)
   else{acc=0;GLP.lastR=0;Snd.rumble(0);if(++idleFrames%20===0)render();}
 }
 
@@ -11033,6 +11357,8 @@ function stormProbe(torch,look){const ch=L.ext.chase,out=[];if(!ch)return null;l
     for(let x=kl+7;x<=kl+60;x+=1){const a=A(x,y);if(a>ahead)ahead=a;}
     if(!off)out.push({r,y,cross,ahead});}
   return {gl:!!torch,wx:ch.wx,rows:out};}
+Object.assign(window.__HK,{crossBegin,crossEnd,crossStep,crossDue,crossOn,crossSun,crossGust,nextFloor,levelComplete,CROSS_LOOK,CROSS_SETS,CROSS_KINDS,CROSS_DIST,CROSS_X0,CROSS_FIN,CROSS_SKIP0,CROSS_WALK,CROSS_RUN,CROSS_RUNT}); // (round 36a: the crossing, for crossscan.py and egyptr36.py)
+Object.defineProperty(window.__HK,'CR',{get(){return CR;}});Object.defineProperty(window.__HK,'levelTime',{get(){return levelTime;}});Object.defineProperty(window.__HK,'crossLast',{get(){return crossLast;}});
 Object.assign(window.__HK,{DKT,GLST,stormLayer2D,dkTable,dkLook,dkDrain,dkArt,stBulge,stormProbe,stormNear,get Snd(){return Snd;}});
 Object.assign(window.__HK,{hazardEdge,grabLabel,updateGrabLabel,glFit,glSet,get I(){return I;},get glShown(){return glShown;},blockCanMove,findFlask,findLedge}); // (the Grab button's label, for its test)
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});

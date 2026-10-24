@@ -380,6 +380,45 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   drawn poses (to 5 decimals) and the bot's frames are identical to v79's (`egyptr34.py --bot`, floors 1-27). Look only. Checks: figscan, lowceil,
   stairscan, run2.
   Pictures and numbers `egyptr34.py` (r34_runjump.png: v77 | v79 | round 34 onions and strips; r34_runjump.gif; r34.json).
+- The Crossing (round 36a, owner, after the research in `dev/INTERLUDE_RESEARCH.md`: "an interlude between themes"; answers: at each
+  theme change, after Climb on, he moves only while the pad is held, wordless but skippable, all twelve themes in their setting,
+  Torchlight's glow and a Classic version, the hour from `progOf`, named "the Crossing"). At each change of theme (`crossDue(n)`:
+  `themeOf` differs from floor n-1's, so every fourth floor from 5) the order is exit (into the light), the card, Climb on, the
+  crossing, the next floor's entry (round 26f's E1). `nextFloor()` runs `startLevel` as before (save, rewind ring, hours and floor clock
+  are what they always were) and `crossBegin()` puts `mode='cross'` on top; `loop()` steps `crossStep` (60 Hz) and `render()` hands the
+  frame to `crossRender`; `crossEnd()` returns to 'play' with the entry restarted (`L.enG`). gameTime runs; levelTime, the save, S and
+  the rewind ring are untouched. Control: Right held walks (`CROSS_WALK` 40 px/s, the exit's pace); held on for `CROSS_RUNT` 1.6 s he
+  runs (`RUN`, as the game's run is a held direction); let go, he stops; Left turns him to look back; after `CROSS_CUE` still the
+  pad's right arrow pulses (`#pad.cue`). Skip: Jump from `CROSS_SKIP0` 0.5 s, every time (the Jump button shows a skip glyph; Grab and
+  pause are hidden), black over `CROSS_SKIPF`. Never on Continue, Restart, a checkpoint, a respawn or the title (only `nextFloor`
+  starts one), under `?bench`, the bot or test loads (`crossOn`: `quiet`), with the pause menu's "Crossings" off (`S.set.cross`
+  false) or `?cross=0`. Look only, from the floor's seed by hashes (`CR.seed`), no generator stream: layouts unchanged.
+  Structure for the next rounds: `CROSS_LOOK[look]` names the setting (dunes: blue, foggara, napata; oasis: meroe, deffufa,
+  shali; garden: west, osiris, hawara, nun; wadi: wells; highland: aksum); `CROSS_SETS[setting](cr)` returns its layers
+  `{kind, z, f, ...}` (a setting not built plays `plain`: sky, ground, the theme's BGART far layers through `bgPaint`, the
+  doorway); `CROSS_KINDS[kind]` has `bake(ly,cr)` (once, one layer a frame under the fade from white; into a canvas, uploaded once
+  by G2D) and `draw(ctx,ly,cr)` (every frame, view units). The view: the path is the play plane (f 1, his feet at `CROSS_GY` 134),
+  the horizon at `CROSS_HZ` 96, ground at depth factor f at y = HZ + 38 f, a layer moving f of the camera's travel (round 27b's
+  f = Z0/Z = h/(s H)); `crossZ(f)` orders the land behind him, 50 the doorway, 60 is he, 70 the foreground (f 1.9-2.25, faster than
+  him, never over him). Kinds: `sky` (BGART sky by `todSky`, its horizon stop at eye level; sun low left at dusk, right at dawn and a
+  little higher at each dawn crossing toward sunrise at floor 60, `crossSun`; moon and stars at night), `ground` (haze to near sand,
+  ripple crests in perspective rows; `firm` for a path), `bgart` (a theme's far layer, hazed by `crossHazeK(f)`, its ground band cut;
+  `span`: one stand, e.g. palms near the doorway), `erg` (dunes: convex windward backs, slip faces at `CROSS_LEE` 0.67 = 34 degrees,
+  the shaded wedge from the brink; `bar` barchans with horns; `near` ripples and sand streaming off the brinks by `jetStream` with the
+  crossing's own sprites, `crossSprites`), `gate` (a mesa across the end of the path with the next floor's start door: posts,
+  lintel or vault, `doorArch`), `fore`. The wind blows left to right: dusk's slip faces are dark, dawn's backs, night's crests silver
+  (`crossCols`). The beat: as he passes `CROSS_BEAT` of the way a gust (`crossGust`, `CROSS_GUST`) flares the plumes and sends a sheet
+  of sand along the path. At the doorway he turns into its depth (EN_DX, EN_DY reversed), cut by `doorHead` and darkened by
+  `drawPTint` (now any actor), the wind cuts off, a thud (`crossdoor`), black, the entry. He is the game's figure (`walkPose` blended
+  into `runPoseHD` by the hold, `followPose`, `updActorLook`, `drawActor`) in his palette under the hour (`crossPal`), a long soft
+  shadow away from the sun. Torchlight: the scene through G2D (all but him with `G2D.na`, as the sky) and `crossGL` (glFrame's light
+  map with `CR.amb` and the sun or moon as one broad light plus his fill, bloom, grade, vignette; no shadow, heat, storm, metal,
+  relief, beams or mist: those read a floor's tiles); Classic a glow at the sun and the vignette. Sound: `Snd.wind(k)` (looped noise,
+  a rising bandpass), `sandstep`/`sandrun`. The next floor's rooms are built meanwhile (`roomWork`). Rounds 36b-36d: oasis, garden,
+  wadi and highland as `CROSS_SETS` entries with their own kinds (pools, palms near, pergolas, scree, terraces); animals only (geese,
+  ibis, fish, a far jackal), no people. `crossscan.py` (in suite.py; every theme's crossing in both modes: starts and ends, the pad
+  needed, skip, save/S/levelTime/rewind unchanged, never off/Continue/Restart/respawn/ordinary floor/bot/`?cross=0`, render ms against
+  `HK_CROSS_MS` and a play frame) must print `crossscan: ok`. Pictures `egyptr36.py` (r36a_dunes.png, r36a_all.png, r36a_cross.gif).
 - Lift ropes (round 21a, owner: "holes in the slab with the rope threaded through"): all lift ropes are `barRope` in the theme's fibre
   (`liftRope`; `barRope`'s `ph` makes the lay travel with a running rope). The counterweight platform hangs on two bridles (`liftSling`: an
   eye seized `LS_J` above the slab, legs down through two holes near the front and back edges along the depth diagonal, `ropeHole` drawn in
