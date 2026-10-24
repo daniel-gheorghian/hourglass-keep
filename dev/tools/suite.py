@@ -69,9 +69,13 @@ J += [('liftkick', ['liftkick.py'], tail_check(r'ALL OK'))] # no wall plant or k
 J += [('liftscan', ['liftscan.py', str(n), str(n + 5), '3', 'both'], tail_check(r'ALL OK')) for n in range(3, 61, 6)] # no part of a lift or its rider over a wall's front, a low ceiling or a grating in front of it (Classic and Torchlight)
 J += [('lowceil', ['lowceil.py'], tail_check(r'ALL OK'))] # under a ceiling at his height a jump is the low leap and never goes through the stone
 J += [('wellcorr', ['wellcorr.py', str(n), str(n + 11)], tail_check(r'wellcorr: ok')) for n in range(1, 49, 12)] # (round 30) no sand well stands in a corridor: every well's pit is walled on both sides down to its floor
+# (round 36a) the Crossing between themes: every theme starts and ends, pad, skip, save untouched, never under the bot, both modes;
+# (round 36b) quick: Classic, one theme per setting (about 2 min); otherwise every theme, Classic and Torchlight as two jobs (Torchlight heavy)
+if mode == 'quick': J += [('crossscan', ['crossscan.py', 'quick'], tail_check(r'crossscan: ok'))]
+else: J += [('crossscan', ['crossscan.py', 'classic'], tail_check(r'crossscan: ok')), ('crossscan torch', ['crossscan.py', 'torch'], tail_check(r'crossscan: ok'))]
 J += [('gratepeek', ['gratepeek.py', '6', '27', '6'], tail_check(r'tested [1-9]\d* bad 0 '))] # crouching on a grating shows the flask below
 # longest jobs first so the tail of the run isn't one slow floor
-RANK = {'liftscan': 0, 'featbot fight': 0, 'run2 fight': 1, 'rendersmoke': 2, 'puzzlescan': 3, 'primtest': 3, 'lifttest': 3, 'featbot': 3, 'metrics40': 4, 'featurescan': 4, 'forktest': 5, 'run2': 6}
+RANK = {'liftscan': 0, 'crossscan torch': 0, 'crossscan': 2, 'featbot fight': 0, 'run2 fight': 1, 'rendersmoke': 2, 'puzzlescan': 3, 'primtest': 3, 'lifttest': 3, 'featbot': 3, 'metrics40': 4, 'featurescan': 4, 'forktest': 5, 'run2': 6}
 def floor_of(a): return max([int(x) for x in a[1:] if x.isdigit() and int(x) < 100] or [0]) # (the run2 seed base is not a floor)
 J.sort(key=lambda j: (RANK.get(j[0], 7), -floor_of(j[1])))
 TIMEOUT = 1500 # seconds a single job may take (the slowest healthy ones take under 5 min); a job over it fails and its worker is replaced
@@ -135,7 +139,7 @@ def go(j, w):
 # Jobs that draw Torchlight (software WebGL in headless Chromium, which spreads each frame over several cores) run at most
 # GPU_JOBS at a time; the other workers take bot jobs meanwhile. Eight of them at once took four times as long each and no
 # less in total, which pushed rendersmoke past its wall budget (v67: 1 alone 53 s, 4 at once 137 s each, 8 at once 300 s each).
-HEAVY = ('rendersmoke', 'liftscan')
+HEAVY = ('rendersmoke', 'liftscan', 'crossscan torch')
 GPU_JOBS = int(os.environ.get('HK_GPU_JOBS', '3'))
 t0 = time.time(); res = []; QL = queue.Queue(); QH = queue.Queue(); GPU = threading.Semaphore(GPU_JOBS)
 for j in J: (QH if j[0] in HEAVY else QL).put(j)

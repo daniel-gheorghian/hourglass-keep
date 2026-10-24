@@ -420,6 +420,156 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   a corridor, 61 of 64 over a well, 19 of 20 planks, 37 of 45 plates of all kinds, 1 block; Classic 0; 0 after). Torchlight's wet sheen (round 31) is
   off in it unless `sheen`: it mirrors lit wall art (a pale post in a sky beam) onto wet floors by design, a reflection. Pictures `egyptr35c.py`
   (r35c_wallart.png: v80 | round 35c, both modes).
+- The Crossing (round 36a, owner, after the research in `dev/INTERLUDE_RESEARCH.md`: "an interlude between themes"; answers: at each
+  theme change, after Climb on, he moves only while the pad is held, wordless but skippable, all twelve themes in their setting,
+  Torchlight's glow and a Classic version, the hour from `progOf`, named "the Crossing"). At each change of theme (`crossDue(n)`:
+  `themeOf` differs from floor n-1's, so every fourth floor from 5) the order is exit (into the light), the card, Climb on, the
+  crossing, the next floor's entry (round 26f's E1). `nextFloor()` runs `startLevel` as before (save, rewind ring, hours and floor clock
+  are what they always were) and `crossBegin()` puts `mode='cross'` on top; `loop()` steps `crossStep` (60 Hz) and `render()` hands the
+  frame to `crossRender`; `crossEnd()` returns to 'play' with the entry restarted (`L.enG`). gameTime runs; levelTime, the save, S and
+  the rewind ring are untouched. Control: Right held walks (`CROSS_WALK` 40 px/s, the exit's pace); held on for `CROSS_RUNT` 1.6 s he
+  runs (`RUN`, as the game's run is a held direction); let go, he stops; Left turns him to look back; after `CROSS_CUE` still the
+  pad's right arrow pulses (`#pad.cue`). Skip: Jump from `CROSS_SKIP0` 0.5 s, every time (the Jump button shows a skip glyph; Grab and
+  pause are hidden), black over `CROSS_SKIPF`. Never on Continue, Restart, a checkpoint, a respawn or the title (only `nextFloor`
+  starts one), under `?bench`, the bot or test loads (`crossOn`: `quiet`), with the pause menu's "Crossings" off (`S.set.cross`
+  false) or `?cross=0`. Look only, from the floor's seed by hashes (`CR.seed`), no generator stream: layouts unchanged.
+  Structure for the next rounds: `CROSS_LOOK[look]` names the setting (dunes: blue, foggara, napata; oasis: meroe, deffufa,
+  shali; garden: west, osiris, hawara, nun; wadi: wells; highland: aksum); `CROSS_SETS[setting](cr)` returns its layers
+  `{kind, z, f, ...}` (a setting not built plays `plain`: sky, ground, the theme's BGART far layers through `bgPaint`, the
+  doorway); `CROSS_KINDS[kind]` has `bake(ly,cr)` (once, one layer a frame under the fade from white; into a canvas, uploaded once
+  by G2D) and `draw(ctx,ly,cr)` (every frame, view units). The view: the path is the play plane (f 1, his feet at `CROSS_GY` 134),
+  the horizon at `CROSS_HZ` 96, ground at depth factor f at y = HZ + 38 f, a layer moving f of the camera's travel (round 27b's
+  f = Z0/Z = h/(s H)); `crossZ(f)` orders the land behind him, 50 the doorway, 60 is he, 70 the foreground (f 1.9-2.25, faster than
+  him, never over him). Kinds: `sky` (BGART sky by `todSky`, its horizon stop at eye level; sun low left at dusk, right at dawn and a
+  little higher at each dawn crossing toward sunrise at floor 60, `crossSun`; moon and stars at night), `ground` (haze to near sand,
+  ripple crests in perspective rows; `firm` for a path), `bgart` (a theme's far layer, hazed by `crossHazeK(f)`, its ground band cut;
+  `span`: one stand, e.g. palms near the doorway), `erg` (dunes: convex windward backs, slip faces at `CROSS_LEE` 0.67 = 34 degrees,
+  the shaded wedge from the brink; `bar` barchans with horns; `near` ripples and sand streaming off the brinks by `jetStream` with the
+  crossing's own sprites, `crossSprites`), `gate` (a mesa across the end of the path with the next floor's start door: posts,
+  lintel or vault, `doorArch`), `fore`. The wind blows left to right: dusk's slip faces are dark, dawn's backs, night's crests silver
+  (`crossCols`). The beat: as he passes `CROSS_BEAT` of the way a gust (`crossGust`, `CROSS_GUST`) flares the plumes and sends a sheet
+  of sand along the path. At the doorway he turns into its depth (EN_DX, EN_DY reversed), cut by `doorHead` and darkened by
+  `drawPTint` (now any actor), the wind cuts off, a thud (`crossdoor`), black, the entry. He is the game's figure (`walkPose` blended
+  into `runPoseHD` by the hold, `followPose`, `updActorLook`, `drawActor`) in his palette under the hour (`crossPal`), a long soft
+  shadow away from the sun. Torchlight: the scene through G2D (all but him with `G2D.na`, as the sky) and `crossGL` (glFrame's light
+  map with `CR.amb` and the sun or moon as one broad light plus his fill, bloom, grade, vignette; no shadow, heat, storm, metal,
+  relief, beams or mist: those read a floor's tiles); Classic a glow at the sun and the vignette. Sound: `Snd.wind(k)` (looped noise,
+  a rising bandpass), `sandstep`/`sandrun`. The next floor's rooms are built meanwhile (`roomWork`). Rounds 36b-36d: oasis (built in 36b), garden (36c),
+  wadi and highland (36d) as `CROSS_SETS` entries with their own kinds (pools, palms near, pergolas, scree, terraces); animals only (geese,
+  ibis, fish, a far jackal), no people. `crossscan.py` (in suite.py; every theme's crossing in both modes: starts and ends, the pad
+  needed, skip, save/S/levelTime/rewind unchanged, never off/Continue/Restart/respawn/ordinary floor/bot/`?cross=0`, render ms against
+  `HK_CROSS_MS` and a play frame) must print `crossscan: ok`. Pictures `egyptr36.py` (r36a_dunes.png, r36a_all.png, r36a_cross.gif).
+  Round 36b (owner's review of r36a_dunes.png: "the near dune is a straight-edged triangular wedge that reads as a PYRAMID"; the ground
+  "flat and empty"). Dunes (`erg`): a convex windward back flat at a rounded crest (radius `R`), a sharp but soft brink (a smooth minimum),
+  the slip face at `CROSS_LEE` bending concave into its apron, soft feet (a soft maximum with the corridor's floor), the crest line swelling
+  and sagging in whole periods; the slip face drawn as a crescent seen obliquely (its edge on the back a curve from the brink bulging
+  upwind and sweeping down to the horn: never a straight arris from a point), grain-flow streaks and a lighter foot; small dunes riding the
+  near seifs' backs; ridges in five depths. Ground relief (`dfield`, a strip per depth: f 0.45, 0.8 behind him, 1.3, 1.7 in front, never
+  above his feet's line): low swells lit by their slope with ripples following them, stones with their shadows, tufts of halfa, sized
+  29.4 f px a metre and footed in the ground's own colour there (`crossGroundAt`). The oasis (`CROSS_SETS.oasis`, `CROSS_LOOK[...].ov`:
+  meroe `hafir`, Musawwarat's and Meroë's rain-fed reservoirs with the spoil bank behind, acacias, the pyramids; deffufa `nile`, the
+  river across the view, palms and acacias on the far bank, empty round huts, the Deffufa; shali `spring`, a round spring in a dressed
+  stone rim with its upwelling, date palms in four depths, olives, mudbrick garden walls, the Aghurmi rock (`butte`) and Shali; the
+  report's mapping kept: Napata stays dunes, its barchans before Gebel Barkal, and Garama dunes): the water (`pool`, an outline in world x
+  and depth placed by the pinhole `crossPX`, so its far shore moves slower than its near one) shows the sky of its hour at the mirrored
+  height, the sun's or moon's glow and glitter path, every layer behind it marked `refl` mirrored about its own ground line (the soft
+  reflection, 0.4), darker toward the near shore; damp ground round it. `stand`: palms (trunks with the leaf bases' crossed pattern, crowns of
+  pinnate fronds with gravity's sag, dead fronds, dates; the crown swaying about the trunk's top), acacias (umbrella crowns), olives, huts,
+  walls, each drawn once into one atlas per layer (`crossCrown`, `crossTrunk`, `crossThing`). `reeds` (papyrus, common reed, reedmace)
+  along both shores, swaying by a shear; `ofore` (f 2.1): a frond's tip hanging in from above (never below his head's line) and reeds from
+  the screen's foot; the doorway in mudbrick (`gate.mud`, `crossMudFace`). The beat (`birds`): Egyptian geese resting on the water lift
+  off as he passes `CROSS_BEAT`: a run over the surface with splashes, then climbing away ahead of him, the white forewing showing; before,
+  they drift and bob with rings round them (no crouch: he never loses control). Sound: `firmstep`/`firmrun`, `frond`, `blip` (while the
+  water is in view), `geese` (honks and wingbeats). Look only, hashes of the floor's seed; layouts and the bot unchanged. crossscan:
+  `quick` (Classic, one theme per setting, about 20 s, in `suite.py quick`), `classic` and `torch` (every theme, the default and release
+  tiers run both as two jobs, Torchlight among the heavy ones); it also checks each setting's layer kinds (`SETX`) and that every layer is
+  baked within the fade from white, and prints the longest bake frame (script ms a frame, 36a | 36b measured alike: Classic median
+  0.7 | 0.8, p95 2.6 | 2.4; Torchlight median 1.6 | 1.8; the longest bake frame 20 ms Classic, 28 ms Torchlight, under the fade). Pictures `egyptr36.py r36b` (r36b_dunes.png before | after,
+  r36b_oasis.png, r36b_oasis.gif).
+  Round 36c (the garden, `CROSS_SETS.garden`, `CROSS_LOOK[...].gv`; Egypt's own gardens after INTERLUDE_RESEARCH.md, never the Babylonian
+  "hanging gardens"; regular where people keep them: rows, edges, channels). West `pool`: Nebamun's pool garden (BM EA 37983): a T-shaped
+  pool (`pool` with `poly`: straight edges in world x and depth, the stone coping: the far wall's inner face, the kerb's face toward him,
+  the side walls' faces where the eye sees them, lit on the light's side), blue and white lotus in clumps, fish gliding under the surface
+  and the rings where one rises; sycomore figs, date and doum palms planted evenly in rows, each in its watering basin (`pit`), a
+  whitewashed enclosure wall with a gateway, pomegranates, an idle shaduf (Ipuy's, TT217, no one at it), a vine pergola with grapes, beds
+  in square plots between mud ridges (`band` 'beds'), a runnel; the beat: a grey heron on the coping crouches and lifts off, slow
+  wingbeats, legs trailing (`fauna`, `crossHeron`). Osiris `field`: the Field of Reeds as Sennedjem's tomb (TT1) paints it: a canal and a row
+  of palms, sycomores and doums beyond (the obelisks and shrines mirrored in it), ripe grain and flowering flax in rows (`grain`: one row's
+  strip drawn at every row's own depth, scaled; `crossCrop`) cut by receding channels every 11 m; the field lies a metre below the bank he
+  walks (`sk` on a flat layer: its y scaled about the horizon; `sink` on rows and animals), so it is seen from above; the bank's face and the
+  canal in front of him with lotus and ducks (`dyke`); the beat: a breeze runs through the grain as a travelling wave, the ears lit at the
+  crest, a trough behind (`crossWave`/`crossWaveF`, `CROSS_WAVE`: a front along world x from where the camera's left edge is at the beat,
+  so no state). Hawara `shore`: Lake Moeris' edge in the Fayum: the lake with the pyramid and the labyrinth's walls mirrored, the far shore's
+  reeds (`thicket`), sacred ibis wading and feeding (`crossIbis`), green plots (`grain` 'green' within `xr`) with a shaduf at their corner by
+  the water, reeds at the shore, a ditch; the beat: the breeze through the reeds (`reeds` `wave`) and a cat's paw across the lake (`paw`: a
+  ruffled patch in the sky's own colour, ripples flickering). Nun `marsh`: papyrus thickets far off (`thicket`) and clumps standing in still
+  water with their reflections (`clumps`, `crossPapyrus`), blue lotus, the path on a raised earth dyke with the water on both sides (`dyke`);
+  the beat: ducks burst out of the papyrus with the swimming ones (`fauna` 'duck', `crossGoose`'s shape). The eye is 1.3 m up, so anything
+  standing in front of ground-level water or a field hides it: the pools are kept clear in front, the fields sunk. Foreground `gfore` (a
+  vine with grapes and the beds' cornflowers, poppies and mandrakes; ears of grain; reeds; papyrus), never over him. Fixes from the owner's
+  review of 36b: the geese rest on the near half of the water and come toward him as they climb away (their size still by the depth rule);
+  Siwa's mudbrick walls (`wall`, shared with the garden) have courses, buttresses with stepped tops, palm-log ends, a gateway or a breach
+  (hashes of their place). Sound: `earthstep`/`earthrun` (a beaten earth path), `rustle` (grain, papyrus), `breeze` (the wave), `heron`,
+  `ducks`, `duckcall`, `ibis`, `birdcall` (a hoopoe), `blip` (a fish). crossscan also checks the garden's layers and each garden theme's
+  features (`SETL`: tpool, lotus, fish, heron; grain, dyke, sunk; wave, paw, ibis; clumps, ducks). Script ms a frame (36b | 36c, measured
+  alike on this machine): Classic median 0.8 | 0.9, p95 2.4 | 2.5; Torchlight median 1.8 | 2.0 (unchanged floors measured 10-25% slower in the same run: the machine's) (software WebGL; its p95 spikes are the
+  machine's); the longest bake frame 19 ms Classic, under the fade. Look only: layouts and the bot unchanged. Pictures `egyptr36.py r36c`
+  (r36c_garden.png, r36c_garden.gif, r36c_fixes.png).
+  Round 36d (the last two settings and the audit of all twelve). The wadi (`CROSS_SETS.wadi`, the Well Corridors; owner: a limestone wadi):
+  the workmen's path over the Theban hills: pale cliffs in level beds cut back by gullies, each gully's cleft lit on the light's side and its
+  scree fan at the angle of repose below it (`cliff`, three depths), el-Qurn beyond (the theme's layer; its lit tomb doorways left out),
+  acacias and tamarisks in the wadi's bed, fallen boulders, the dry channel (`band` 'wash'), a well head with a stone trough far off (`stand`
+  things tamarisk, boulder, well); the path rises gently: `cr.tilt` 0.045 makes the ground a plane tilted along the way, so every layer on it is
+  sheared about the view's middle (full on the ground, fading out with depth), his feet ride it (`crossFY`), the sky stays level and the doorway
+  is placed on it unsheared. The beat: stones trickle down a scree fan off a spur of the near cliff, with dust (`rockfall`, its world x set so
+  it is in view at the beat), and two brown-necked ravens lift off a boulder (`fauna` 'raven', `crossRaven`). The highland (`CROSS_SETS.highland`,
+  Aksum; owner: terraced highland fields): the hill falls toward him, so the terraces behind the path step up with their dry-stone risers facing
+  him and the crop on each lip (`terr`: ripe grain, green, fallow fields along it; the eye is 1.3 m up, so the highest lip is a near skyline a
+  little over the horizon and the valley beyond is hidden), the riser down from his terrace's edge to the field below in front (`tfront`), far
+  hillsides terraced in contours with junipers (`slope`), Aksum's storeyed stelae on a skyline far off, the Great Stela lying broken (`slope`'s
+  `st`; nothing Christian), the ambas beyond, junipers, wild olives and granite tors (`juniper`, `wolive`, `tor`); a cooler, clearer light (`crossK`:
+  the low sun's warmth halved; less haze). The beat: a flock of small birds bursts out of the grain of the terrace above him and wheels away
+  (`flock`). Sound: `gravelstep`/`gravelrun`, `rockfall`, `raven`, `ravenfar`, `cliffwind`; the highland's earth footfalls, `flock`, `dove`.
+  The audit (owner's review of 36a-36c's pictures): night had no read of its own: `crossRim` lays a silver rim on every edge of a baked layer
+  that faces the moon (the drawing less itself shifted away from the moon, source-atop, at bake only: stands, reeds, clumps, thickets, the
+  far layers, cliffs, slopes, terraces, the doorway), the moonlit side brighter and silver, the shade darker and cooler, the sky lit round the
+  moon (a wide soft halo, a brighter one close in, the horizon paler under it), never day. The water read thin from his eye height: the Nile at
+  Kerma, the hafir, Siwa's spring and Lake Moeris reach nearer (to f 0.86-0.91), the mirrored sky kept brighter with a middle stop, the near
+  shore's darkening lighter, the moon's light a pale column on the far water, a light line under the far shore. The doorway was one sloped block
+  in every theme: now each setting's own (`gate` `gv`), framed as the next floor's start door: 'ruin' (the dunes: a temple wall of coursed
+  sandstone, its top broken in steps, a stretch of cavetto cornice over the door, a low rounded drift against it, a fallen block, column
+  drums), 'pylon' (the oasis and the garden: a mudbrick gateway between two battered towers with torus and cornice, the enclosure wall on;
+  whitewashed in Nebamun's garden), 'rock' (the wadi: cut in the cliff as the Valley's tombs are, a rebate round it, a cleared step, the
+  cliff's end face and its scree), 'granite' (Aksum: a wall of rubble courses between timber beams with their round 'monkey head' ends, in
+  projections and recesses, the doorway in dressed granite on a granite step). Osiris's shrines (BGART's glowing doorways in nothing) are left
+  out of the crossing. Nun's papyrus kept green under the low sun (`crossLitG`, the light's warmth halved for living green). The dark grass
+  band in front (West, Hawara) got soft patches, clods and stones, rosettes of leaves among denser tufts. The light's side was reversed in
+  several drawings (lit on the side away from the light): the palm crowns, acacias and olives, the reeds, the huts' thatch, the ground's
+  swells, stones and tufts (`dfield`): all corrected. Every crossing:
+
+  | Theme | Setting | Beat | Doorway |
+  |---|---|---|---|
+  | Halls of the West | garden: Nebamun's pool | a heron lifts off the coping | whitewashed pylon |
+  | Blue Chambers | dunes: low dunes at Saqqara | a gust off the crests | ruin in the sand |
+  | Forges of Meroë | oasis: the hafir | geese lift off | mudbrick pylon |
+  | Green Hall of Osiris | garden: the Field of Reeds | a breeze through the grain | mudbrick pylon |
+  | Foggaras of Garama | dunes: a seif corridor | a gust | ruin in the sand |
+  | Deffufa of Kerma | oasis: the Nile | geese lift off | mudbrick pylon |
+  | Well Corridors | wadi: limestone wadi, the path rising | stones down a scree fan, ravens | cut in the cliff |
+  | Labyrinth of Hawara | garden: Lake Moeris' shore | a breeze through the reeds, a cat's paw | mudbrick pylon |
+  | Salt Fortress of Shali | oasis: Siwa's spring | geese lift off | mudbrick pylon |
+  | Pyramids of Napata | dunes: barchans, Gebel Barkal | a gust | ruin in the sand |
+  | Stelae of Aksum | highland: terraced fields, the stelae far off | a flock out of the grain | granite in rubble and beams |
+  | Waters of Nun | garden: the papyrus marsh | ducks burst out | mudbrick pylon |
+
+  crossscan: `SETX` for the wadi and the highland, each setting's doorway (`gate-<gv>`), `SETL` for every theme with its own features (wells:
+  raven, tilt, cliff; aksum: stelae, terr, flock). Script ms a frame (36c | 36d, measured alike on this machine): Classic median 0.9 | 0.9-1.0, p95
+  2.5 | 2.6-2.9 (two runs); Torchlight median 2.0 | 2.1 (software WebGL; its p95 spikes are the machine's); the longest bake frame 19 | 40 ms Classic, 41 ms Torchlight
+  (the moonlit rims and the bigger doorways; still one layer a frame, all under the fade from white). For a phone: everything new is baked once
+  (the rims too; no per-frame allocation), the wadi's shear is one transform a layer, the reflections only draw inside the water's box, the
+  layers stay under 20 a crossing and their atlases under 4000 px. Look only: layouts identical (genLevel floors 1-48 x 3 seeds against
+  origin/main), the bot's frames on floors 3-6 identical. Pictures `egyptr36.py r36d` (r36d_all.png: every theme at every hour in floors 1-180,
+  start | beat | doorway, both modes; r36d_wadi_highland.gif; r36d_audit.png: 36c | 36d for each fix).
 - Lift ropes (round 21a, owner: "holes in the slab with the rope threaded through"): all lift ropes are `barRope` in the theme's fibre
   (`liftRope`; `barRope`'s `ph` makes the lay travel with a running rope). The counterweight platform hangs on two bridles (`liftSling`: an
   eye seized `LS_J` above the slab, legs down through two holes near the front and back edges along the depth diagonal, `ropeHole` drawn in
