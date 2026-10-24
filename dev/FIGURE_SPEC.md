@@ -418,6 +418,32 @@ for 13_11 f196, f252, 49_04 f176 and 16_05 f203 within 1-4 degrees (`r32jump.py 
 round 23's low-leap rule, and flightPose pitches further while the drawn crown would pass v69's low leap's (LOWC). figscan checks the keyed
 poses (crowns, soles, low crowns).
 
+## The jump's drawn apex (round 33a)
+
+A jump's figure is drawn `P.yo` under the arc, `yo = r - min(r, D)`, `D = k ap sin^2(pi t/T)`, raised onto the arc over `JH_RT` before a catch
+(`P.jKe`). The flight poses (`flightPose`, `DV_*`, `DS_*`) are unchanged; the gap left to PoP (the standing crown about 10 px above PoP's at our
+scale) is in the pose: 13_11's tuck against PoP's flat-out frames 24-25. Rule and numbers in CLAUDE.md (round 33a); `egyptr33a.py`.
+
+## The careful step (round 33b)
+
+Keys from CMU 139_29 f383-f540 (one sneaking stride; R heel-off 383, toe-off 390, contact 428; L heel-off 447, toe-off 466, contact 524), via
+r33step.py into MCS. The game plays it as a step-to: the near (R) swing is the lead foot's, the far (L) swing the trailing foot's, which sets down
+4 px behind the lead as in standing. The legs are not the clip's angles but IK onto foot paths built from the clip's ball progress, clearance
+(x1.7 lead, x2.6 trailing) and pitch (plus 0.45 rad toes-down about each contact). The hip stays at P.x; its height is standing minus a sin^2
+bump of 2.1 px, lower where reach requires. (The BVH mirror's 139_29.bvh and 77_29.bvh are byte-identical; the old PS.step pose was checked
+against this file.) Rule in CLAUDE.md (round 33b); `egyptr33b.py`.
+
+## From the hang onto the hanging (round 33c)
+
+No new clip keys; the timing comes from PoP 1989 and CMU clips, drawn on the existing body (`handsIn`).
+
+| Part | Source | Played |
+|---|---|---|
+| let go | PoP1 hangfall (frame 81 held 3 ticks, then freefall 106); CMU 01_10 f1940-2050 (hands stay 0.1 s, 0.05 s apart, arms stay up) | hands held on the lip until 0.03 / 0.07 s, slip off over 0.06 s, arms up 0.08 s, down over 0.25 s (also through a landing) |
+| take the cloth | CMU 01_09 f3810-3940 (one hand at a time); Bollo GDC 2018 (inertialization) | body offset decays over 0.2 s; first hand at 0, second at 0.06 s, each at least 0.1 / 0.12 s, at most 300 px/s; blade grows as the sword hand closes; knees at rate 24 with overlap |
+
+Grips and hit boxes are unchanged. Rule in CLAUDE.md (round 33c); `egyptr33c.py`.
+
 ## The neck (round 23c): 2 px shorter (superseded by round 23d: 1 px)
 
 Owner: "1.28 is fine. Now make the neck 2px shorter and keep everything else as is". `NECK_CUT` (r23poses.py, 2.0 px) is taken off ANSUR's

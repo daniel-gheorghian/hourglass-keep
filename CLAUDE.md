@@ -31,7 +31,7 @@ main's file, not the branch: run them from a copy of `dev/` with that path rewri
 
 ## Build
 
-From the repo root, with N the release number (current release v78, next v79):
+From the repo root, with N the release number (current release v79, next v80):
 
 ```
 python3 dev/tools/build.py dev/hourglass-keep.html index.html sw.js N
@@ -323,6 +323,44 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   way and run on (`sawSafe` simulates that). Checks: figscan (now also the keyed poses: no crown over v69's standing crown on the floor, no
   sole under it, the low flights under v69's low leaps), lowceil, stairscan, run2, p4bot, forktest, hdtest, metrics40. Pictures and numbers
   `egyptr32.py` (r32_jump.png: PoP | v77 | round 32 onions and strips; r32_jump.gif; PoP's sprites from ref/pop1/, local).
+- The jump's drawn apex (round 33a, owner after v78: "the prince is raised too high, the arc of the jump has a too high apex. Compare to
+  the original PoP animation"): measured on v78, the drawn crown rose 8-10 px over standing in a running jump, 15 in the standing jump (502 of
+  1,189 jumps on floors 1-27, drawn on the full arc) and 21 in a running jump to a ledge (full arc). PoP 1989 (SDLPoP seqtbl.c runjump/standjump,
+  sprites bottom-anchored at Char.y): the running crown at most 1 px of 41 over standing, the feet's rise a tick .21 .86 1 .21 of its top; the
+  standing crown 7 px under standing, the feet 6 up. Now the drawn rise over the take-off floor is `D = k ap sin^2(pi t/T)` (`jhK`, `jumpYo`;
+  sin^2 fits PoP's ticks, a parabola does not), its top `JH_S` 4 to `JH_L` 7 px running, `JH_SJ` 3 standing; where the hands must meet the arc
+  (a ledge's top passed coming down, a floor higher up, a swing bar: `P.jKe` from `jumpSpan`) the drawing rises onto it over the last `JH_RT`
+  0.2 s instead of flying the full arc; spikes and saws keep round 27a's clearance (by k or a share `P.jKr` of the arc, whichever draws lower);
+  D never exceeds the true rise. Crown over standing: running +8.4 to +3.6, standing +15.3 to +1.7, to a ledge +21.1 to +10 (at the catch); no
+  jump draws higher than v78. What is left of the gap to PoP is in the pose (13_11's tuck against PoP's flat-out frames 24-25). Look only.
+  `egyptr33a.py` (r33a_jump.png, r33a.json).
+- The careful step (round 33b, owner after v78: "the tiptoe animation: research this also against the PoP animation"). v78 blended one pose
+  (PS.step) in and out while P.x eased 13 px: the feet slid on the floor (7.6 and 11.0 px in one step, 21.4 and 46.9 px over four held steps),
+  lifted under 1.2 px and never turned, and the arms moved together (0.97). PoP 1989 (SDLPoP seqtbl.c step1-step14 and testfoot, Mechner's
+  SEQTABLE.S "step11 ;corresponds directly to filmed sequence"): a step-to in 12 ticks: weight on the rear foot, the lead lifted and reaching
+  low, set down toe first (125-126), weight over it with the body 3-4 of 41 px lower, the rear foot carried through and set down beside it;
+  short steps skip the widest frames; at the lip pressed again the toe tests the edge (frame 86). Now PoP's structure on CMU 139_29's sneak:
+  `dev/tools/r33step.py` writes `// <R33-STEP>` (`MCS`: body keys, each foot's swing progress, clearance and pitch, the events, the hip's
+  progress at each; never by hand). `stepPose` places both feet by two-bone IK where they stand (`tpLeg`: the foot turned about its ankle as
+  drawn), so no foot slides; the events go where P.x's ease has brought the hip as far as the clip's (`TP_EV`); each foot lands toe first
+  (`TP_TOE`); the trailing foot is carried higher (`TP_LB`); the hip dips in one bump (`TP_DIP`), lower only where the planted legs need it
+  (`tpDrop`, a table made once a step); trunk, head and careful arms are the clip's; after the last step the stance eases to standing
+  (`tipSettle`, P.stK 'tip', `TP_REL`). A step under `TT_D` toward a drop is PoP's test foot (`TT_*`). Steps over `TP_DMAX` (off a lift, aside)
+  and edgeWalk walk by the distance. After: planted feet slide 0.1-0.6 px, the ball lifts 3-3.5 px, arms correlate 0.17. Look only: P.x (ease
+  over `STEP_T` 0.3 s; PoP's step is 1.0 s, the clip's 0.65), reach, hit box, bot, estPath unchanged. Checks: figscan (the keyed steps), run2.
+  Pictures and numbers `egyptr33b.py` (r33b_tiptoe.png/.gif, --measure).
+- From the hang onto the hanging (round 33c, owner, floor 16: "the prince is hanging and we need a short animation that plays when the prince is
+  transitioning from hanging to the slide down position"). Look only, drawn on `P.pose` after the follow (`handsIn`, right after `poseOx`), so
+  shadows follow. Letting go of any hang (`HF_*`, `P.lgo`): each hand stays on the lip until `HF_R` (0.03 / 0.07 s), slips off with the body over
+  `HF_S`, rides with the arms up `HF_H` 0.08 s, then eases to the fall's arms over `HF_W` 0.25 s, carried through `land`/`stand` when he lands at
+  once (PoP1's hangfall, SDLPoP seqtbl.c: frame 81, arms up, 3 ticks; CMU 01_10: the hands on the bar 0.1 s after the hips start down, 0.05 s
+  apart). Taking the cloth (`SI_*`, `P.slI`): the physics still snaps `P.x` to the hanging's middle; the drawn body carries the offset and swings
+  in over `SI_T` 0.2 s (a decaying offset: Bollo, inertialization, GDC 2018); the hands go from where they are drawn to `PS.slide`'s grips, one
+  first (from a hang the sword hand, from a fall the nearer), the other 0.06 s later, each over max(`SI_H`, 1.875 d / `SI_V` 300 px/s); the blade
+  shows as the sword hand closes and sinks in to `SL_BLADE` (`slBlade`); the knees fold at `SI_RATE` 24 with the slide's overlap (`LAGM` slide:2).
+  Gameplay: Grab held with Down in a hang over a hanging takes the cloth at once (before, he let go and caught the same lip again). Largest move
+  in a frame, v78 to 33c: hands 15.2 / 22.0 to 3.5 / 3.4 px, head 9.6 / 9.1 to 3.6 / 3.2 px, the 9-9.5 px x jump to 0; the bot's frames
+  identical, estPath unchanged. Low-detail figures do not draw the offset. Pictures and numbers `egyptr33c.py`.
 - Lift ropes (round 21a, owner: "holes in the slab with the rope threaded through"): all lift ropes are `barRope` in the theme's fibre
   (`liftRope`; `barRope`'s `ph` makes the lay travel with a running rope). The counterweight platform hangs on two bridles (`liftSling`: an
   eye seized `LS_J` above the slab, legs down through two holes near the front and back edges along the depth diagonal, `ropeHole` drawn in
