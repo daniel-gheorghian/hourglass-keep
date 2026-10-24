@@ -2992,13 +2992,14 @@ function launch(){const run=P.jumpKind==='run';P.jx=P.x;P.jy=P.y;let vx=run?183:
 const JS_D0=48,JS_FOOT=12,JS_SCAN=80; // (JS_D0: a jump that needs no more than a tile and a half, a one-tile pit taken at its lip (51-53 px), is a lengthened running step)
 function jsHaz(c,r){if(B(L,c,r)===WALL)return 0;if(!solidBelow(L,c,r))return 1;const f=F(L,c,r);return f&&(f.t==='spikes'||(f.t==='loose'&&!(f.sturdy&&f.s===0))||f.t==='closer'||f.t==='saw'||f.t==='vent')?1:0;}
 function jumpSpan(vx,vy){const fc=P.face,x0=P.x,y0=P.y,row=pRow(),lev=vx*2*vy/GRAV;
-  let fly=lev,py=y0,x=x0,full=P.jumpKind!=='run'; // (full: round 27a, the arc drawn at its full height, see jhK)
+  let fly=lev,py=y0,x=x0,te=null; // (te: round 33a, the moment the drawn figure must be on the arc: a ledge's catch, a floor higher up, a swing bar; see jhK)
   for(let t=1/60;t<3;t+=1/60){x=x0+fc*vx*t;const y=y0-vy*t+0.5*GRAV*t*t,wc=Math.floor((x+fc*(BW+1))/TW);
     if(B(L,wc,rowOf(y-12))===WALL||B(L,wc,rowOf(y-40))===WALL){fly=Math.abs((fc>0?wc*TW-BW:(wc+1)*TW+BW)-x0);
-      let tr=B(L,wc,rowOf(y-40))===WALL?rowOf(y-40):rowOf(y-12);while(tr>0&&B(L,wc,tr-1)===WALL)tr--;if(tr*TH<y0-8)full=true; // (round 27a: a wall whose top stands over the take-off floor: a ledge he may catch)
+      let tr=B(L,wc,rowOf(y-40))===WALL?rowOf(y-40):rowOf(y-12);while(tr>0&&B(L,wc,tr-1)===WALL)tr--;
+      if(tr*TH<y0-8&&te===null){const yg=tr*TH-4+HANG,ya=y0-vy*vy/(2*GRAV);if(yg>=ya)te=(vy+Math.sqrt(2*GRAV*(yg-ya)))/GRAV;} // (a wall whose top stands over the take-off floor: a ledge he may catch, when his hands come down past its top, as findLedge)
       break;}
-    if(!full&&L.dyn)for(const o of L.dyn){const f=o.f;if(f.t==='bar'&&Math.abs(x-f.x)<18&&Math.abs(y-HANG-f.y)<24){full=true;break;}}
-    if(y>py){let hit=false;for(let r=Math.floor((py+4)/TH)-1;r<=Math.floor((y+4)/TH)-1;r++){const ys=SURF(r);if(py<=ys&&y>=ys&&solidBelow(L,pCol(x),r)){hit=true;if(r<row)full=true;break;}}
+    if(te===null&&L.dyn)for(const o of L.dyn){const f=o.f;if(f.t==='bar'&&Math.abs(x-f.x)<18&&Math.abs(y-HANG-f.y)<24){te=t;break;}}
+    if(y>py){let hit=false;for(let r=Math.floor((py+4)/TH)-1;r<=Math.floor((y+4)/TH)-1;r++){const ys=SURF(r);if(py<=ys&&y>=ys&&solidBelow(L,pCol(x),r)){hit=true;if(r<row&&te===null)te=t;break;}}
       if(hit){fly=Math.abs(x-x0);break;}}
     if(y>L.rows*TH+90){fly=Math.abs(x-x0);break;}
     py=y;}
@@ -3007,7 +3008,7 @@ function jumpSpan(vx,vy){const fc=P.face,x0=P.x,y0=P.y,row=pRow(),lev=vx*2*vy/GR
   if(k<6&&jsHaz(c+fc,row)&&Math.abs((fc>0?(c+1)*TW:c*TW)-x0)<=JS_SCAN){let e=c+fc,n=0;while(n<6&&jsHaz(e+fc,row)){e+=fc;n++;}
     const far=e+fc;if(n<6&&B(L,far,row)!==WALL&&solidBelow(L,far,row))need=Math.abs((fc>0?(e+1)*TW:e*TW)-x0)+JS_FOOT;}
   P.jF=fly;P.jN=need;P.jD=Math.min(fly,need);P.jT=2*vy/GRAV;P.jS=clamp((P.jD-JS_D0)/(lev-JS_D0),0,1);
-  P.jK=full?1:jhK(vx,vy,x0,fc,row,P.jS);}
+  P.jA=vy*vy/(2*GRAV);P.jKe=te;P.jK=jhK(vx,vy,x0,fc,row,P.jumpKind==='run'?P.jS:-1);P.jKr=JH_KR;}
 // Round 27a (owner: "The running jump of the prince: the stride is better now, but I think the height is wrong: he moves up too much"). The
 // running jump's arc (190 px/s up, GRAV 700) rises 25.8 px, half his height (51.5 px): about 0.88 m on a 1.75 m man, more than an elite long
 // jumper's centre of mass rises over 8 m (~0.5 m); the same 0.54 s of flight under real gravity rises 0.36 m (10.6 px), and PoP1's running
@@ -3020,7 +3021,24 @@ function jumpSpan(vx,vy){const fc=P.face,x0=P.x,y0=P.y,row=pRow(),lev=vx*2*vy/GR
 // hands must reach what they catch), and the standing jumps. Over spikes (needles up to 21 px) or a saw (its blade 12 px up where it is at
 // each moment of the flight) k rises until the drawn feet stand as high over each needle and blade as on the full arc, or JH_M over its top.
 // Look only: the arc, P.y, the hit box, grabs, landing reach, timers, estPath and the bot are unchanged. P.jK lives on P (a rewind restores it).
-const JH_S=6,JH_L=13,JH_M=1.5,jhP=mk({}),jhQ=mk({}),JH_N=[],JH_W=[];
+// (Round 33a replaces the share of the arc, its tops and the full-arc cases: below.)
+// Round 33a (owner after v78, floor 16: "I still think the prince is raised too high, the arc of the jump has a too high apex. Compare to the
+// original PoP animation"). Measured on v78 (egyptr33a.py; every jump the bot makes on floors 1-27, seed 1): the drawn crown rose over the
+// take-off floor to 58.6 px in a level running jump (the crown standing 50.3, running 49.1), 65.6 in the standing jump (502 of 1,189
+// jumps: drawn on the full arc, k 1) and 72.7 in a running jump to a ledge a storey up (k 1). Now 53.8, 52.0 and 60.3 (the reach at the
+// catch); no jump's drawn crown is higher than in v78. PoP 1989 (SDLPoP seqtbl.c runjump, standjump;
+// the kid's sprites, bottom-anchored at Char.y): the running jump's feet rise 3, 12, 14, 3 px a tick (of 14: .21 .86 1 .21; a parabola is .64
+// .96 .96 .64, sin^2 .35 .9 .9 .35) while the crown stays within 1 px of the standing crown (3 over the running one); the standing jump rises
+// 6 px for one tick and its crown stays 7-9 px under the standing crown (the body flat out). So: the drawn rise over the take-off floor is no
+// longer a share of the arc but D = k ap sin^2(pi t/T) (ap the arc's apex, T its time): slow off the floor while the dive builds, flat at the
+// top, as PoP's ticks; its top JH_S 4 px (s 0) to JH_L 7 (s 1) for a running jump, JH_SJ 3 for a standing one (was the full arc; PoP: 6 px of 41, 7.5 of 51.5 for the feet). Where the
+// hands must be where the arc puts them (a ledge whose top the hands pass coming down, a floor higher up, a swing bar: jumpSpan's P.jKe, the
+// moment) the drawing rises onto the arc over the last JH_RT s before it, a reach up to the catch, instead of flying the whole arc. Spikes
+// and saws: the drawn feet clear each needle and blade as on the full arc or by JH_M, by raising k or by adding a share P.jKr of the arc itself
+// (round 27a's rule), whichever draws the lower top. D never exceeds the true rise, so the head stays under any ceiling the arc respects.
+// Look only, as round 27a: the arc, P.y, the hit box, grabs, landing, timers, estPath and the bot are unchanged; P.jK, P.jKr, P.jKe, P.jA live
+// on P (a rewind restores them).
+const JH_S=4,JH_L=7,JH_SJ=3,JH_M=1.5,JH_RT=0.2,jhP=mk({}),jhQ=mk({}),JH_N=[],JH_W=[];let JH_KR=0;
 // what stands in the flight (filled at take-off only, kept arrays: no allocation a frame): JH_N each needle of a row of spikes (SPK: its x
 // at the figure's depth, its tip's height over the floor there, onFloor), JH_W each saw (its blade, R SAW_R about ys+2, where sawX puts it
 // at that moment of the flight: the bot times the jump to the blade)
@@ -3028,17 +3046,27 @@ function jhObs(x0,fc,row){JH_N.length=0;JH_W.length=0;const c0=pCol(x0);
   for(let i=0;i<6;i++){const c=c0+fc*i,f=F(L,c,row);if(!f)continue;
     if(f.t==='spikes'){const m=c%2?-1:1;for(const [bx,d,hh] of SPK){const q=onFloor(c*TW+16+m*(bx-16),d,0);JH_N.push(q.x-2.5,q.x+2.5,hh-q.y);}}
     else if(f.t==='saw')JH_W.push(f);}}
-function jhK(vx,vy,x0,fc,row,s){const ap=vy*vy/(2*GRAV),T=2*vy/GRAV;
-  let k=Math.min(1,lerp(JH_S,JH_L,s)/ap);jhObs(x0,fc,row);if((!JH_N.length&&!JH_W.length)||k>=1)return k;
+// k for the drawn rise D = k ap sin^2(pi t/T); s the running jump's stride for the distance (round 26c), -1 a standing jump; JH_KR the share
+// of the arc itself the obstacles need on top
+function jhK(vx,vy,x0,fc,row,s){const ap=vy*vy/(2*GRAV),T=2*vy/GRAV,kind=s<0?'stand':'run';JH_KR=0;
+  let k=Math.min(1,(s<0?JH_SJ:lerp(JH_S,JH_L,s))/ap);jhObs(x0,fc,row);if(!JH_N.length&&!JH_W.length)return k;
   // the drawn feet (the flight's target pose at each moment, as the air case draws it) must stand as high over every needle and blade as
-  // they did on the full arc, or JH_M px over its top: k = the least that does it
-  for(let t=1/120;t<T;t+=1/120){const r=vy*t-0.5*GRAV*t*t;if(r<0.5)continue;
-    const p=flightPose('run',P.lowJump,t/T,s,!!P.jMir,jhP),ro=p.rot||0,cr=Math.cos(ro),sr=Math.sin(ro),ox=(P.jO0||0)*Math.exp(-t/OX_T2)+(P.jB||0)*t*Math.exp(-t/OX_T3); // (round 32: the flight as drawn: its dive turns the feet with the figure)
+  // they did on the full arc, or JH_M px over its top: either k alone (ks) or a share of the arc on top (kr, round 27a's rule), whichever
+  // draws the lower top
+  let ks=k,kr=0;
+  for(let t=1/120;t<T;t+=1/120){const r=vy*t-0.5*GRAV*t*t;if(r<0.5)continue;const g=ap*Math.sin(Math.PI*t/T)**2;
+    const p=flightPose(kind,P.lowJump,t/T,s<0?1:s,!!P.jMir,jhP),ro=p.rot||0,cr=Math.cos(ro),sr=Math.sin(ro),ox=(P.jO0||0)*Math.exp(-t/OX_T2)+(P.jB||0)*t*Math.exp(-t/OX_T3); // (round 32: the flight as drawn: its dive turns the feet with the figure)
     for(let j=0;j<2;j++){const h=j?p.hB:p.hF,kk=j?p.kB:p.kF,qx=footX(h,kk),qy=LEN.th*Math.cos(h)+LEN.sh*Math.cos(h-kk),fx=x0+fc*(vx*t+qx*cr-qy*sr+ox),c=p.hy-(qx*sr+qy*cr);let top=-1;
       for(let i=0;i<JH_N.length;i+=3)if(fx>=JH_N[i]&&fx<=JH_N[i+1])top=Math.max(top,JH_N[i+2]);
       for(const f of JH_W){const dx=fx-sawX(f,gameTime+t);if(Math.abs(dx)<SAW_R)top=Math.max(top,Math.sqrt(SAW_R*SAW_R-dx*dx)-2);}
-      if(top<0)continue;const need=Math.min(r+c,top+JH_M)-c;if(need>k*r)k=Math.min(1,need/r);}}
-  return k;}
+      if(top<0)continue;const need=Math.min(r+c,top+JH_M)-c;
+      if(need>k*g){ks=Math.max(ks,need/g);kr=Math.max(kr,need/r);}}}
+  if(ks<=1&&ks<=kr)return ks;JH_KR=Math.min(1,kr);return k;}
+// the drawn figure's offset under the arc in a running or standing jump (P.yo; the air case): the true rise r over the take-off floor less D
+function jumpYo(){const r=Math.max(0,P.jy-P.y);if(!(r>0)||P.jK==null)return 0;const u=P.t/(P.jT||0.54);
+  let d=Math.max(u<1?P.jK*(P.jA||0)*Math.sin(Math.PI*u)**2:0,(P.jKr||0)*r);
+  if(P.jKe!=null)d+=(r-d)*s32((P.t-P.jKe+JH_RT)/JH_RT); // (onto the arc for the catch)
+  return r-Math.min(r,d);}
 const LPK=['lean','head','aF','eF','aB','eB','hF','kF','hB','kB','sb','soF','soB','fpF','fpB'],lpP=mk({});
 function leapPose(low,u,s,out){const K=low?MCK.leapLow:MCK.leap,base=low?PS.jumpLow:PS.jumpR,n=K.L.length-1;
   for(let i=0;i<PK.length;i++)out[PK[i]]=base[PK[i]];
@@ -3727,7 +3755,7 @@ function updatePlayer(dt){
       tgt.sw=P.face>0?0.46:Math.PI-0.46;rate=P.t<0.1?50:36;break;}
     case'swing':tgt=swingPose(P.swTh||0,P.swOm||0,P.swPump);rate=90;break;
     case'air':
-      P.yo=P.jumpKind==='run'&&!P.plant&&P.jK<1?(1-P.jK)*Math.max(0,P.jy-P.y):0; // (round 27a: drawn on a lower arc, see jhK)
+      P.yo=(P.jumpKind==='run'||P.jumpKind==='stand')&&!P.plant?jumpYo():0; // (round 27a: drawn on a lower arc; round 33a: PoP's ticks, both jumps, see jhK)
       if(P.plant){tgt=plantPose();rate=45;break;}
       if(P.jumpKind==='kick'){tgt=kickPose();rate=36;break;}
       if(P.jumpKind==='wall'){tgt=wallRunIK(WR_TOP+4,null);rate=30;break;}
