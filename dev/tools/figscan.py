@@ -28,7 +28,7 @@ if not os.path.exists(_old):
     _old = os.path.join(HERE, '..', '..', '..', '..', '..', 'dev', 'tools', 'hk_v69_release.html')  # (from a worktree: the main checkout's)
 OLD = os.path.abspath(a[1] if len(a) > 1 and a[1] else _old)
 OUTJ = a[2] if len(a) > 2 else os.path.join(HERE, 'figscan.json')
-EXPORT = 'window.__FS={walkPose:typeof walkPose==="function"?walkPose:null,skel,LEN,PS,mk,lerpPose,crawlPose,swingPose,wallRunIK,wallRunPose,climbFrame,drinkFrame,RP,plantPose,figReach,swordTip,figDraw,PAL_HERO,guardPal,GFX};'
+EXPORT = 'window.__FS={r32:typeof prepPose==="function"?{prepPose,landSeq,flightPose,seqU,J32,JP_T}:null,walkPose:typeof walkPose==="function"?walkPose:null,skel,LEN,PS,mk,lerpPose,crawlPose,swingPose,wallRunIK,wallRunPose,climbFrame,drinkFrame,RP,plantPose,figReach,swordTip,figDraw,PAL_HERO,guardPal,GFX};'
 CONTACT = {'hang', 'reach', 'pull', 'press', 'kneelUp', 'kneel', 'slide', 'garde', 'windup', 'lunge', 'parry', 'lowStrike'}
 SCAN = r'''()=>{const F=__FS,out=[];F.GFX().hd=true;
  const add=(name,p,ox,oy,kind,extra)=>{const s=F.skel(p),O=[ox||0,(oy||0)-s.hipH],P=q=>[+(q[0]+O[0]).toFixed(3),+(q[1]+O[1]).toFixed(3)];
@@ -55,6 +55,13 @@ SCAN = r'''()=>{const F=__FS,out=[];F.GFX().hd=true;
  for(const r of [0,20,40,55,69])add('wallrun '+r,F.mk(F.wallRunIK(r,null)),0,0,{k:'wallrun'});
  for(const ph of [0,0.25,0.5])add('wallrunPose '+ph,F.mk(F.wallRunPose(ph,ph)),0,0,{k:'wallrun'});
  add('plant',F.mk(F.plantPose()),0,0,{k:'plant'});
+ // (round 32) the jumps' keyed poses, new: on the floor (the wind-up, the take-off stance, the landings) no crown over v69's standing crown
+ // and no sole under the floor; in the air under a ceiling (the low leaps) no crown over v69's own low leap's
+ const R=F.r32;if(R){for(let i=0;i<=8;i++){const t=R.JP_T*i/8;add('r32 prep '+t.toFixed(3),F.mk(R.prepPose(t,false,F.mk({}))),0,0,{k:'r32g'});add('r32 prepLow '+t.toFixed(3),F.mk(R.prepPose(t,true,F.mk({}))),0,0,{k:'r32g'});}
+   for(let i=0;i<=6;i++){const u=i/6;add('r32 tk '+u.toFixed(2),F.mk(R.seqU(R.J32.tk,u,F.mk({}))),0,0,{k:'r32g'});}
+   for(const kd of ['rl','sl'])for(let i=0;i<=12;i++){const t=i*0.05;add('r32 '+kd+' '+t.toFixed(2),F.mk(R.landSeq(kd,t,false,F.mk({}))),0,0,{k:'r32g'});}
+   for(let i=0;i<=8;i++){const u=i/8;for(const s of [0,1])add('r32 runLow '+u.toFixed(3)+' s'+s,F.mk(R.flightPose('run',true,u,s,false,F.mk({}))),0,0,{k:'r32l'},{ref:'PS.jumpLow'});
+     add('r32 standLow '+u.toFixed(3),F.mk(R.flightPose('stand',true,u,1,false,F.mk({}))),0,0,{k:'r32l'},{ref:'PS.jumpLowS'});}}
  return {LEN:F.LEN,poses:out};}'''
 
 
@@ -155,6 +162,21 @@ if __name__ == '__main__':
             print('%-18s %s%s' % (k, ', '.join(line) or '-', ('   <<< ' + '; '.join(bad)) if bad else ''))
         if bad:
             fails.append(k)
+    for k, n in N.items():   # (round 32: the jumps' new keyed poses, see SCAN)
+        if not k.startswith('r32 '):
+            continue
+        bad = []
+        lim = O['PS.stand']['crown'] if n['kind'] == 'r32g' else O[n['ref']]['crown']
+        if n['crown'] < lim - 0.25:
+            bad.append('crown higher by %.2f (than v69\'s %s)' % (lim - n['crown'], 'PS.stand' if n['kind'] == 'r32g' else n['ref']))
+        if n['kind'] == 'r32g' and n['sole'] > N['PS.stand']['sole'] + 0.5:   # (the sole's outline: standing it is 1.25 px under the floor line)
+            bad.append('sole under the floor %+.2f' % (n['sole'] - N['PS.stand']['sole']))
+        rows.append({'pose': k, 'kind': n['kind'], 'bad': bad, 'new': {j: n[j] for j in ('crown', 'sole', 'hy')}})
+        if bad:
+            print('%-18s crown %.2f sole %.2f   <<< %s' % (k, n['crown'], n['sole'], '; '.join(bad)))
+            fails.append(k)
+    print('round 32 keyed poses: %d, highest crown on the floor %.2f (v69 standing %.2f)' % (sum(1 for k in N if k.startswith('r32 ')),
+          min([n['crown'] for k, n in N.items() if k.startswith('r32 ') and n['kind'] == 'r32g'] or [0]), O['PS.stand']['crown']))
     st = N['PS.stand']
     so = O['PS.stand']
     print('standing height (sole to crown): before %.2f, after %.2f' % (so['sole'] - so['crown'], st['sole'] - st['crown']))

@@ -223,11 +223,14 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   arc on a level floor (97.6 px), so the flight is drawn for the distance the jump is for: `jumpSpan` at take-off (the arc to the first floor or
   wall, or a pit/trap's far lip + 12 px), `P.jS` = (D - 48) / (level arc - 48); `leapPose` blends `MCK.leap` S (09_01's stride flight) and L
   (49_04's leap, v72's arms) over 9 keys by the arc's phase (`MCK.leapLow` pitched for the low leaps). Look only; `egyptr26c.py`.
+  (Round 32 supersedes the flight's keys: `flightPose` blends S into 127_21's long jump, `MCJ.D`, by 0.3 + 0.7 s, not 49_04's L; `P.jS` is
+  still the distance's measure. `leapPose` stays for the tools.)
   The jump's height (round 27a, owner: "he moves up too much"): the running arc rises 25.8 px (half his height, 0.88 m at 1.75 m; the game's
   gravity is 2.4 g; PoP1's runjump rises 14 px of a 63 px storey, an elite long jumper's centre of mass about 0.5 m) and he was drawn on it.
   Now he is drawn on a lower arc of the same shape: `P.yo` = (1 - `P.jK`) times his rise over the take-off floor (0 at take-off, touch-down and
   below the take-off level, so grabs and landings are where the arc puts them). `jhK` at take-off (in `jumpSpan`): the drawn top `JH_S` 8 px
-  (s 0) to `JH_L` 14 (s 1), raised until the drawn feet clear each spike needle and saw blade (where the blade is at that moment) as on the
+  (s 0) to `JH_L` 14 (s 1; round 32: 6 and 13, the dive's pitch keeping the head down and the legs tucked showing the arc; the feet tested
+  as `flightPose` draws them, turned with the figure), raised until the drawn feet clear each spike needle and saw blade (where the blade is at that moment) as on the
   full arc or by `JH_M`; k 1 (the full arc) where the arc meets a wall standing over the take-off floor, lands higher up or passes a swing bar,
   and for the standing jumps. Look only: arc, P.y, hit box, reach, grabs, bot, estPath unchanged (the arc's reach is 2 vx vy / g, so lowering it
   would change play). `egyptr27a.py` (r27a_jump.png, r27a_jump.gif).
@@ -282,8 +285,44 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   measured where a local clip has one (`MCK.set_land` from 16_05, `MCK.set_stop` from 16_08: g toward the clip's peak plus each angle's residual,
   `settlePose`, keyed by the time from the event, `P.stK/stT/stS`), else a pure function of that time (`turnSettle`, the hang's pendulum swing
   about the hands `HG_*` in `livePose`, the fall's limbs); round 25a's extra joints where the clip shows them. Look only: never a timer, grip,
-  hit box or contact. The standing jump crouches with both arms back (`PS.jumpCrouch`, 13_11); the crawl's face is 7 degrees under the
+  hit box or contact. The standing jump crouches with both arms back (`PS.jumpCrouch`, 13_11; round 32: a keyed wind-up, `prepPose`); the crawl's face is 7 degrees under the
   horizontal (`CRAWL_NECK` 0.64, `CRAWL_HP` -0.52). Audit table and sources: egypt_themes.html round 25f; pictures `egyptr25f.py`.
+- The jumps (round 32, owner: "The current one is too stiff too mechanical"; after the research: "Do everything; keep the motion capture body
+  and borrow PoP's structure"). Measured on v77 (`egyptr32.py --measure`, r32.json): no gather or push-off, and he left the floor from any stride,
+  so in 14 of 40 take-offs over the run's phases the thighs crossed in the air (scissoring: the leap's first key had the other leg forward); the
+  trunk upright through the flight (lean 2-12 degrees) while the whole figure rode the arc; the standing jump one held pose (4 of 26 air frames
+  still); a 40% step toward the landing pose in one frame at vy 60; the arms in lockstep (their velocities correlated +1.00 in the two-tile jump
+  and the standing jump); the take-off stretch dead (`updActorLook` read vy on a frame P.y had not moved); the lead knee straightening at
+  contact (43 to 23 to 16 degrees: the settle began at standing) and the hip dropping 0.8-1.8 px; the run back from a stop at 35 px/s; a frame
+  with no drawn motion at every launch. PoP 1989 (SDLPoP `seqtbl.c` runjump and standjump, `seg006.c` frame_table_kid; Mechner's Apple II
+  `SEQTABLE.S`, `FRAMEDEF.S`): the running jump gathers tall and narrow (frame 38), drives the free knee up (39), dives (the trunk near level at
+  the apex, the legs split; the head within 6 px of its running height while the feet rise 14), lands in a crouch with the arms trailing and runs
+  on; the standing jump winds up (a deep bow, both arms back, held two ticks, 0.58 s), launches along one diagonal from the rear toe to the
+  reaching hands, flies flat out and lands in three ticks of squash (the head 16 px down, a small recoil). The rule now, PoP's structure on the
+  clips' bodies: new keys come from CMU clips through `dev/tools/r32jump.py` (the block `// <R32-JUMP>`, `MCJ`; never by hand; it reads the BVH
+  conversion with `bvh.py`, checked against round 23's ASF numbers within 1-4 degrees by `r32jump.py check`): 127_21 (run, jump, stop, run:
+  `tk` the take-off stance f56-81, `D` the flight f81-129, `rl` the landing f129-177) and 13_11 (forward jump: `sw` the wind-up f150-240, `sf`
+  the flight f240-289, `sl` the landing f289-349); `Dlow`/`sfLow` pitched by round 23's low-leap rule. Shaped by hand on top (constants by
+  `flightPose`): the dive (`DV_*`: the figure turned forward by `rot`, the trunk further, the trail thigh back and the lead knee up, by s, as
+  sin^2 of the flight's phase; `DV_K0` of it even for a one-tile hop), the standing launch's diagonal and reaching arms (`SJ_TILT`, `SJ_ARM`)
+  and flat-out flight (`DS_*`), the landing squash (`LD_*` on `landSeq`, x1.35 after a run; `LR_*` on a run carried through, `landRun`),
+  peaking `LD_TP` 0.055 s after contact. Take-off: while Jump is pending (`P.jLe`, the lip) the run's drawn phase is steered over `ST_D` 40 px
+  so the stance `tk` (the last `TK_D` 16 px) starts on the take-off foot, and the flight's keys are mirrored when the other foot takes off
+  (`P.jMir`): no scissoring (0 of 40). Flight: `flightPose`, the near arm `ARM_LAG` behind and swinging through as the far one goes back
+  (`ARM_SW`, opposed: +0.29 two tiles, -0.18 one), the hip on the feet's heights at take-off and touch-down; past the level arc an eased
+  40% blend toward PS.land. The drawn x (`P.pose.ox`, `poseOx`, look only): the launch frame carries the run's step and the drawn speed ramps
+  into the arc's (`OX_T3`); in the wind-up the feet stay where they stood while the hip goes forward over them, the flight takes that lead
+  back (`OX_T2`); after a landing the feet stay planted 0.12 s, then the hip's lead eases back (the recoil). Followed with ease in as well as
+  out (the follow's rate rises over 0.08 s in the wind-up and take-off, not at an impact); the take-off stretch reads P.vy. After: lead knee
+  19-30 at the last air frame, 21-30 at contact, 77-91 three frames on (v77: 40-51, 22-27, 13-16); the head (its centre) 8.5-8.9 px down after a running landing, 8.7
+  after a standing one (v77 under 1.2); no still frames (v77's standing jump 4 of 26). Gameplay: the standing jump's wind-up `JP_T` 0.28 s (was 0.1; 13_11's own drive from its deepest
+  crouch to toe-off is 0.28 s, PoP's 0.58 s felt laggy for touch), and `estPath`'s `sjump` is 0.18 s longer (layouts unchanged on floors
+  1-48, 3 seeds; 37 gates' timers longer); a running jump that lands on its own level (dist <= 40) with the way held and Grab not held runs
+  straight on (`land`: vx kept at RUN, the stride carried on from the landing foot, phase 0 or 0.5), as PoP's runjump ends in the run; let
+  go, he stops in the crouch. The bot lets go in the air (rjump, dashjump, jgrab) and stops as before; the chase (`dash`) and `saw` hold the
+  way and run on (`sawSafe` simulates that). Checks: figscan (now also the keyed poses: no crown over v69's standing crown on the floor, no
+  sole under it, the low flights under v69's low leaps), lowceil, stairscan, run2, p4bot, forktest, hdtest, metrics40. Pictures and numbers
+  `egyptr32.py` (r32_jump.png: PoP | v77 | round 32 onions and strips; r32_jump.gif; PoP's sprites from ref/pop1/, local).
 - Lift ropes (round 21a, owner: "holes in the slab with the rope threaded through"): all lift ropes are `barRope` in the theme's fibre
   (`liftRope`; `barRope`'s `ph` makes the lay travel with a running rope). The counterweight platform hangs on two bridles (`liftSling`: an
   eye seized `LS_J` above the slab, legs down through two holes near the front and back edges along the depth diagonal, `ropeHole` drawn in

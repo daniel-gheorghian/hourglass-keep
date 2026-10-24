@@ -398,6 +398,26 @@ Before > after (medians, px): hip rise over one tile 25.3 > 12.3 (8.0-15.5), two
 lowest foot 26.7 > 13.5, 33.4 > 20.8, 36.9 > 25.6; the low leap over a tile 9.0 > 6.5; ledges, bars, the low leap down a storey and the standing
 jumps unchanged. Every jump's distance, drop and outcome identical. Pictures `egyptr27a.py`.
 
+## The jumps (round 32): PoP's structure on the clips' bodies
+
+Owner: "The current one is too stiff too mechanical"; after the research: "Do everything; keep the motion capture body and borrow PoP's
+structure". The body, its proportions and every round 23-31 pose stay; the jumps get new keys and PoP 1989's beats (SDLPoP seqtbl.c runjump
+f34-44 and standjump f16-33; Mechner's SEQTABLE.S, FRAMEDEF.S). Rule and numbers in CLAUDE.md (round 32); pictures `egyptr32.py`.
+
+| Part | Clip (r32jump.py, MCJ) | Played | By hand on top |
+|---|---|---|---|
+| take-off stance `tk` | 127_21 f56-81: the take-off foot struck, the gather (free knee folded, f62-68), the push-off (free thigh to 79 deg) | the last 16 px before the lip (TK_D), after the run's drawn phase is steered over 40 px (ST_D) so it starts on the take-off foot; mirrored for the other foot (P.jMir) | - |
+| flight `D` (running) | 127_21 f81-129: toe-off to the lead foot's strike, the near arm back, the far arm forward and down | with 09_01's stride S by 0.3 + 0.7 P.jS, at P.t / P.jT | the dive: rot 0.7, lean +0.45, trail thigh -0.35, lead knee +0.35 rad at s 1 (0.35 of it at s 0), as sin^2 of the phase; the near arm 0.05 behind and swinging through (ARM_SW 1.2) |
+| landing `rl` | 127_21 f129-177: the lead foot down, the trail foot 0.1 s later, the knees take him down | from contact, into standing from 0.24 s over 0.32 s | the squash: knees +0.7, hips +0.32, trunk +0.32 rad x1.35, peaking 0.055 s after contact |
+| wind-up `sw` | 13_11 f150-240: both arms back (fullest f178-186), deepest f214, the drive to toe-off f240 | JP_T 0.28 s, time-warped: arms back in 0.09 s, a 0.05 s hold, the drive accelerating | the launch diagonal (SJ_TILT 0.42 rad) and reaching arms (SJ_ARM 0.55) over the last 0.08 s |
+| flight `sf` (standing) | 13_11 f240-289 | at P.t / P.jT | the diagonal carried into the air, then flat out (rot 0.4, arms +0.5 at the apex) |
+| landing `sl` | 13_11 f289-349: down to f310, up by f350 | from contact, into standing from 0.2 s over 0.28 s | the squash as rl (x1) |
+
+The BVH reader (`bvh.py`: the cgspeed conversion of the CMU set, mirrored at github.com/una-dinosauria/cmu-mocap) gives round 23's angles
+for 13_11 f196, f252, 49_04 f176 and 16_05 f203 within 1-4 degrees (`r32jump.py check`). The low leaps' keys (Dlow, sfLow) are pitched by
+round 23's low-leap rule, and flightPose pitches further while the drawn crown would pass v69's low leap's (LOWC). figscan checks the keyed
+poses (crowns, soles, low crowns).
+
 ## The neck (round 23c): 2 px shorter (superseded by round 23d: 1 px)
 
 Owner: "1.28 is fine. Now make the neck 2px shorter and keep everything else as is". `NECK_CUT` (r23poses.py, 2.0 px) is taken off ANSUR's

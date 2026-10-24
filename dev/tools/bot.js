@@ -76,7 +76,7 @@ function* botGen(n, seed, opts) {
     while ((cx(ins.to) - x) * dir > 0 && t < 6) {
       t += dt;
       if (!air) { if (land > 0) land -= dt; else { v = Math.min(100, (v || 35) + 650 * dt); x += v * dt * dir; } if (!jumped && (x - jx) * dir >= 0 && v > 45) { air = true; jumped = true; vy = -190; } }
-      else { x += 183 * dt * dir; vy += 700 * dt; y += vy * dt; if (y >= 0) { y = 0; air = false; land = 0.1; v = 0; } }
+      else { x += 183 * dt * dir; vy += 700 * dt; y += vy * dt; if (y >= 0) { y = 0; air = false; land = 0; v = 100; } } // (round 32: forward held through the landing, he runs straight on)
       if (Math.abs(x - H.sawX(o.f, H.gameTime + t)) < 16 && y > -13) return false;
     }
     return true;
