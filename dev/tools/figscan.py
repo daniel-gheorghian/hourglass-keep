@@ -17,6 +17,7 @@
 #   swing    hands on the bar: no further from it than before (0.25 px; v69's straight arms fell 0.7 px short, inside the hand)
 #   drink    the hand at the mouth while he drinks (within 0.6 px of before's hand-to-mouth offset)
 # It also lists every place in the source that reads the skeleton (skel(), LEN), so a reader can see none of them is a hit box.
+# (round 33b) And the careful step's keyed poses (stepPose): no crown over v69's standing crown, the soles on the floor (not the test foot's).
 # Prints one line per pose with a difference, then 'figscan: ok' or 'figscan: FAIL (n)'. Writes figscan.json. Run from dev/tools.
 import json, os, re, sys, tempfile, shutil
 from playwright.sync_api import sync_playwright
@@ -28,7 +29,7 @@ if not os.path.exists(_old):
     _old = os.path.join(HERE, '..', '..', '..', '..', '..', 'dev', 'tools', 'hk_v69_release.html')  # (from a worktree: the main checkout's)
 OLD = os.path.abspath(a[1] if len(a) > 1 and a[1] else _old)
 OUTJ = a[2] if len(a) > 2 else os.path.join(HERE, 'figscan.json')
-EXPORT = 'window.__FS={r32:typeof prepPose==="function"?{prepPose,landSeq,flightPose,seqU,J32,JP_T}:null,walkPose:typeof walkPose==="function"?walkPose:null,skel,LEN,PS,mk,lerpPose,crawlPose,swingPose,wallRunIK,wallRunPose,climbFrame,drinkFrame,RP,plantPose,figReach,swordTip,figDraw,PAL_HERO,guardPal,GFX};'
+EXPORT = 'window.__FS={r33:typeof stepPose==="function"?{stepPose,ease}:null,r32:typeof prepPose==="function"?{prepPose,landSeq,flightPose,seqU,J32,JP_T}:null,walkPose:typeof walkPose==="function"?walkPose:null,skel,LEN,PS,mk,lerpPose,crawlPose,swingPose,wallRunIK,wallRunPose,climbFrame,drinkFrame,RP,plantPose,figReach,swordTip,figDraw,PAL_HERO,guardPal,GFX};'
 CONTACT = {'hang', 'reach', 'pull', 'press', 'kneelUp', 'kneel', 'slide', 'garde', 'windup', 'lunge', 'parry', 'lowStrike'}
 SCAN = r'''()=>{const F=__FS,out=[];F.GFX().hd=true;
  const add=(name,p,ox,oy,kind,extra)=>{const s=F.skel(p),O=[ox||0,(oy||0)-s.hipH],P=q=>[+(q[0]+O[0]).toFixed(3),+(q[1]+O[1]).toFixed(3)];
@@ -62,6 +63,10 @@ SCAN = r'''()=>{const F=__FS,out=[];F.GFX().hd=true;
    for(const kd of ['rl','sl'])for(let i=0;i<=12;i++){const t=i*0.05;add('r32 '+kd+' '+t.toFixed(2),F.mk(R.landSeq(kd,t,false,F.mk({}))),0,0,{k:'r32g'});}
    for(let i=0;i<=8;i++){const u=i/8;for(const s of [0,1])add('r32 runLow '+u.toFixed(3)+' s'+s,F.mk(R.flightPose('run',true,u,s,false,F.mk({}))),0,0,{k:'r32l'},{ref:'PS.jumpLow'});
      add('r32 standLow '+u.toFixed(3),F.mk(R.flightPose('stand',true,u,1,false,F.mk({}))),0,0,{k:'r32l'},{ref:'PS.jumpLowS'});}}
+ // (round 33b) the careful step's keyed poses: a full step, a short one and the test foot at a lip, on the floor: no crown over v69's
+ // standing crown, no sole under the floor (but the test foot's, which probes below the lip's level over the drop)
+ const R3=F.r33;if(R3){for(const [d,e] of [[13,false],[6,false],[0,true]])for(let i=0;i<=12;i++){const u=i/12;
+   add('r33b step d'+d+(e?' edge ':' ')+u.toFixed(2),F.mk(R3.stepPose(u,d*R3.ease(u),d,e,F.mk({}))),0,0,{k:e?'r33e':'r33g'});}}
  return {LEN:F.LEN,poses:out};}'''
 
 
@@ -175,6 +180,20 @@ if __name__ == '__main__':
         if bad:
             print('%-18s crown %.2f sole %.2f   <<< %s' % (k, n['crown'], n['sole'], '; '.join(bad)))
             fails.append(k)
+    for k, n in N.items():   # (round 33b: the careful step's keyed poses, see SCAN)
+        if not k.startswith('r33b '):
+            continue
+        bad = []
+        if n['crown'] < O['PS.stand']['crown'] - 0.25:
+            bad.append('crown higher by %.2f (than v69\'s PS.stand)' % (O['PS.stand']['crown'] - n['crown']))
+        if n['kind'] == 'r33g' and n['sole'] > N['PS.stand']['sole'] + 0.5:
+            bad.append('sole under the floor %+.2f' % (n['sole'] - N['PS.stand']['sole']))
+        rows.append({'pose': k, 'kind': n['kind'], 'bad': bad, 'new': {j: n[j] for j in ('crown', 'sole', 'hy')}})
+        if bad:
+            print('%-18s crown %.2f sole %.2f   <<< %s' % (k, n['crown'], n['sole'], '; '.join(bad)))
+            fails.append(k)
+    print('round 33b keyed poses: %d, highest crown %.2f, lowest sole on the floor %.2f (standing %.2f)' % (sum(1 for k in N if k.startswith('r33b ')),
+          min([n['crown'] for k, n in N.items() if k.startswith('r33b ')] or [0]), max([n['sole'] for k, n in N.items() if k.startswith('r33b ') and n['kind'] == 'r33g'] or [0]), N['PS.stand']['sole']))
     print('round 32 keyed poses: %d, highest crown on the floor %.2f (v69 standing %.2f)' % (sum(1 for k in N if k.startswith('r32 ')),
           min([n['crown'] for k, n in N.items() if k.startswith('r32 ') and n['kind'] == 'r32g'] or [0]), O['PS.stand']['crown']))
     st = N['PS.stand']
