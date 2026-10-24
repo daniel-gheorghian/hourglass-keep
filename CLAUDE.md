@@ -414,8 +414,8 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   shadow away from the sun. Torchlight: the scene through G2D (all but him with `G2D.na`, as the sky) and `crossGL` (glFrame's light
   map with `CR.amb` and the sun or moon as one broad light plus his fill, bloom, grade, vignette; no shadow, heat, storm, metal,
   relief, beams or mist: those read a floor's tiles); Classic a glow at the sun and the vignette. Sound: `Snd.wind(k)` (looped noise,
-  a rising bandpass), `sandstep`/`sandrun`. The next floor's rooms are built meanwhile (`roomWork`). Rounds 36b-36d: oasis (built in 36b), garden,
-  wadi and highland as `CROSS_SETS` entries with their own kinds (pools, palms near, pergolas, scree, terraces); animals only (geese,
+  a rising bandpass), `sandstep`/`sandrun`. The next floor's rooms are built meanwhile (`roomWork`). Rounds 36b-36d: oasis (built in 36b), garden (36c),
+  wadi and highland (36d) as `CROSS_SETS` entries with their own kinds (pools, palms near, pergolas, scree, terraces); animals only (geese,
   ibis, fish, a far jackal), no people. `crossscan.py` (in suite.py; every theme's crossing in both modes: starts and ends, the pad
   needed, skip, save/S/levelTime/rewind unchanged, never off/Continue/Restart/respawn/ordinary floor/bot/`?cross=0`, render ms against
   `HK_CROSS_MS` and a play frame) must print `crossscan: ok`. Pictures `egyptr36.py` (r36a_dunes.png, r36a_all.png, r36a_cross.gif).
@@ -446,6 +446,35 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   baked within the fade from white, and prints the longest bake frame (script ms a frame, 36a | 36b measured alike: Classic median
   0.7 | 0.8, p95 2.6 | 2.4; Torchlight median 1.6 | 1.8; the longest bake frame 20 ms Classic, 28 ms Torchlight, under the fade). Pictures `egyptr36.py r36b` (r36b_dunes.png before | after,
   r36b_oasis.png, r36b_oasis.gif).
+  Round 36c (the garden, `CROSS_SETS.garden`, `CROSS_LOOK[...].gv`; Egypt's own gardens after INTERLUDE_RESEARCH.md, never the Babylonian
+  "hanging gardens"; regular where people keep them: rows, edges, channels). West `pool`: Nebamun's pool garden (BM EA 37983): a T-shaped
+  pool (`pool` with `poly`: straight edges in world x and depth, the stone coping: the far wall's inner face, the kerb's face toward him,
+  the side walls' faces where the eye sees them, lit on the light's side), blue and white lotus in clumps, fish gliding under the surface
+  and the rings where one rises; sycomore figs, date and doum palms planted evenly in rows, each in its watering basin (`pit`), a
+  whitewashed enclosure wall with a gateway, pomegranates, an idle shaduf (Ipuy's, TT217, no one at it), a vine pergola with grapes, beds
+  in square plots between mud ridges (`band` 'beds'), a runnel; the beat: a grey heron on the coping crouches and lifts off, slow
+  wingbeats, legs trailing (`fauna`, `crossHeron`). Osiris `field`: the Field of Reeds as Sennedjem's tomb (TT1) paints it: a canal and a row
+  of palms, sycomores and doums beyond (the obelisks and shrines mirrored in it), ripe grain and flowering flax in rows (`grain`: one row's
+  strip drawn at every row's own depth, scaled; `crossCrop`) cut by receding channels every 11 m; the field lies a metre below the bank he
+  walks (`sk` on a flat layer: its y scaled about the horizon; `sink` on rows and animals), so it is seen from above; the bank's face and the
+  canal in front of him with lotus and ducks (`dyke`); the beat: a breeze runs through the grain as a travelling wave, the ears lit at the
+  crest, a trough behind (`crossWave`/`crossWaveF`, `CROSS_WAVE`: a front along world x from where the camera's left edge is at the beat,
+  so no state). Hawara `shore`: Lake Moeris' edge in the Fayum: the lake with the pyramid and the labyrinth's walls mirrored, the far shore's
+  reeds (`thicket`), sacred ibis wading and feeding (`crossIbis`), green plots (`grain` 'green' within `xr`) with a shaduf at their corner by
+  the water, reeds at the shore, a ditch; the beat: the breeze through the reeds (`reeds` `wave`) and a cat's paw across the lake (`paw`: a
+  ruffled patch in the sky's own colour, ripples flickering). Nun `marsh`: papyrus thickets far off (`thicket`) and clumps standing in still
+  water with their reflections (`clumps`, `crossPapyrus`), blue lotus, the path on a raised earth dyke with the water on both sides (`dyke`);
+  the beat: ducks burst out of the papyrus with the swimming ones (`fauna` 'duck', `crossGoose`'s shape). The eye is 1.3 m up, so anything
+  standing in front of ground-level water or a field hides it: the pools are kept clear in front, the fields sunk. Foreground `gfore` (a
+  vine with grapes and the beds' cornflowers, poppies and mandrakes; ears of grain; reeds; papyrus), never over him. Fixes from the owner's
+  review of 36b: the geese rest on the near half of the water and come toward him as they climb away (their size still by the depth rule);
+  Siwa's mudbrick walls (`wall`, shared with the garden) have courses, buttresses with stepped tops, palm-log ends, a gateway or a breach
+  (hashes of their place). Sound: `earthstep`/`earthrun` (a beaten earth path), `rustle` (grain, papyrus), `breeze` (the wave), `heron`,
+  `ducks`, `duckcall`, `ibis`, `birdcall` (a hoopoe), `blip` (a fish). crossscan also checks the garden's layers and each garden theme's
+  features (`SETL`: tpool, lotus, fish, heron; grain, dyke, sunk; wave, paw, ibis; clumps, ducks). Script ms a frame (36b | 36c, measured
+  alike on this machine): Classic median 0.8 | 0.9, p95 2.4 | 2.5; Torchlight median 1.8 | 2.0 (unchanged floors measured 10-25% slower in the same run: the machine's) (software WebGL; its p95 spikes are the
+  machine's); the longest bake frame 19 ms Classic, under the fade. Look only: layouts and the bot unchanged. Pictures `egyptr36.py r36c`
+  (r36c_garden.png, r36c_garden.gif, r36c_fixes.png).
 - Lift ropes (round 21a, owner: "holes in the slab with the rope threaded through"): all lift ropes are `barRope` in the theme's fibre
   (`liftRope`; `barRope`'s `ph` makes the lay travel with a running rope). The counterweight platform hangs on two bridles (`liftSling`: an
   eye seized `LS_J` above the slab, legs down through two holes near the front and back edges along the depth diagonal, `ropeHole` drawn in

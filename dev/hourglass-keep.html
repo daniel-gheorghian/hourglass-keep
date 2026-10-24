@@ -2782,6 +2782,15 @@ const Snd={ctx:null,master:null,nb:null,
       case'blip':{const f0=520+Math.random()*420;T(f0,0.08,{to:f0*1.7,vol:0.02,type:'sine'});}break; // (round 36b) a drop, a fish: the water
       case'geese':[0,0.22,0.5,0.78,1.15,1.5,1.9].forEach((a,i)=>{const f0=[420,380,460,400,350,440,390][i];T(f0,0.14,{to:f0*0.74,vol:0.026,type:'square',at:a});T(f0*1.5,0.12,{to:f0*1.1,vol:0.012,type:'triangle',at:a+0.01});});
         for(let i=0;i<14;i++)N(0.05,{vol:0.045*(1-i/16),f:700,type:'bandpass',q:0.7,at:0.15+i*0.1});break; // (round 36b) the geese lift off: honks and wingbeats
+      case'earthstep':N(0.055,{vol:0.035,f:640});T(92,0.06,{to:60,vol:0.024,type:'sine'});N(0.03,{vol:0.008,f:2200,type:'bandpass',q:0.8,at:0.01});break; // (round 36c) the garden: a footfall on a beaten earth path, a dull pat and a little grit
+      case'earthrun':N(0.05,{vol:0.045,f:760});T(100,0.05,{to:64,vol:0.028,type:'sine'});N(0.03,{vol:0.012,f:2400,type:'bandpass',q:0.8,at:0.01});break;
+      case'rustle':N(0.55,{vol:0.016,f:3000,type:'bandpass',q:0.5,att:0.22});N(0.4,{vol:0.009,f:5200,type:'bandpass',q:0.7,att:0.15,at:0.12});break; // (round 36c) grain or papyrus stirring
+      case'breeze':N(2.8,{vol:0.045,f:2200,type:'bandpass',q:0.45,att:1.0});N(2.2,{vol:0.03,f:4300,type:'bandpass',q:0.6,att:0.8,at:0.5});N(1.6,{vol:0.02,f:900,type:'bandpass',q:0.5,att:0.6,at:0.3});break; // (round 36c) the beat: a breeze running through the grain or the reeds
+      case'heron':T(310,0.24,{to:190,vol:0.035,type:'sawtooth'});N(0.22,{vol:0.03,f:850,type:'bandpass',q:2.2});for(let i=0;i<6;i++)N(0.09,{vol:0.04*(1-i/8),f:380,type:'bandpass',q:0.9,at:0.42+i*0.31});break; // (round 36c) a grey heron lifting off: its harsh croak, slow deep wingbeats
+      case'ducks':[0,0.12,0.3,0.45,0.7].forEach((a,i)=>{const f0=[600,540,620,560,580][i];T(f0,0.08,{to:f0*0.72,vol:0.024,type:'square',at:a});});for(let i=0;i<20;i++)N(0.04,{vol:0.04*(1-i/24),f:1100,type:'bandpass',q:0.8,at:0.04+i*0.055});break; // (round 36c) ducks bursting out of the papyrus: quacks, a whirr of fast wings
+      case'duckcall':T(560,0.08,{to:410,vol:0.016,type:'square'});T(540,0.08,{to:400,vol:0.014,type:'square',at:0.16});break;
+      case'ibis':T(170,0.14,{to:130,vol:0.02,type:'sawtooth'});T(150,0.12,{to:120,vol:0.016,type:'sawtooth',at:0.22});break; // (round 36c) an ibis's low croaks
+      case'birdcall':[0,0.16,0.32].forEach(a=>T(420,0.07,{to:400,vol:0.018,type:'sine',at:a}));break; // (round 36c) a hoopoe in the garden: oop-oop-oop
       case'crossdoor':N(0.3,{vol:0.07,f:220,att:0.02,at:0.3});T(62,0.26,{to:40,vol:0.07,type:'sine',at:0.3});break; // (round 36a) into the doorway: the wind cut off, a low thud
       case'ropecreak':for(let i=0;i<4;i++)N(0.06+0.02*i,{vol:0.06-0.008*i,f:250+30*i,type:'bandpass',q:8,at:i*0.075});break; // (round 18b) ready: the ropes take the strain, a run of fibrous creaks
     }},
@@ -10916,7 +10925,7 @@ document.addEventListener('dblclick',e=>e.preventDefault());
 //    at y = HZ + (GY-HZ) f, and a layer moves f of the camera's travel (f = Z0/Z = h/(s H), round 27b's rule): sky 0, far land
 //    0.005-0.13 (the theme's own BGART layers, reused through bgPaint), dunes 0.006-0.3, the path 1, the foreground 2-2.5 (nearer
 //    than he is: it moves faster). Layers drawn before z 60 are behind him, after it in front. A setting not built yet plays 'plain'
-//    (sky, ground, the theme's far layers, the doorway): round 36b adds 'oasis', rounds 36c-36d 'garden', 'wadi' and 'highland'.
+//    (sky, ground, the theme's far layers, the doorway): round 36b adds 'oasis', round 36c 'garden', round 36d 'wadi' and 'highland'.
 //  - Dunes (blue, foggara, napata): seif ridges in long rows (erg), barchans (crescents: a convex windward back, the slip face at the
 //    angle of repose CROSS_LEE, 34 degrees as WELL_SL, horns trailing downwind), the corridor's floor with ripples in perspective rows,
 //    the near flank behind the path; the wind blows left to right (the slip faces face right), so at dusk (the sun low in the west,
@@ -10942,9 +10951,25 @@ document.addEventListener('dblclick',e=>e.preventDefault());
 //    fronds swaying about the trunk's top, dead fronds, dates), acacias, Siwa's olives, Kerma's empty round huts, mudbrick garden walls,
 //    the Aghurmi rock (butte), reeds and papyrus at the water's edge (swaying), fronds and reeds in the foreground passing faster than
 //    he does (ofore), a mudbrick doorway (gate.mud). The beat: Egyptian geese resting on the water lift off as he passes (birds).
+//  - Garden (round 36c; Egypt's own gardens, never the Babylonian "hanging gardens"; regular where people keep it: rows, edges, channels):
+//    west (gv 'pool'): Nebamun's pool garden: a T-shaped pool in its stone coping (pool with poly: straight edges in world x and depth;
+//    the far wall's inner face, the kerb's face, the side walls' faces where the eye sees them), blue and white lotus, fish and their
+//    rings; sycomores, date and doum palms in rows, each in its watering basin, a whitewashed enclosure wall, pomegranates, an idle shaduf,
+//    a vine pergola, beds in square plots (band), a runnel; the beat: a grey heron lifts off the coping (fauna). osiris ('field'): the
+//    Field of Reeds as Sennedjem's tomb paints it: a canal and rows of trees beyond, ripe grain and flax in rows (grain) cut by receding
+//    channels, the field a metre below the bank he walks (sk, sink) so it is seen from above, the bank's face and the canal in front of
+//    him with lotus and ducks (dyke); the beat: a breeze runs through the grain (crossWave). hawara ('shore'): Lake Moeris' edge, the
+//    pyramid and the labyrinth beyond the water, the far shore's reeds (thicket), ibis wading, a shaduf by green plots, reeds; the beat:
+//    the breeze through the reeds and a cat's paw across the lake. nun ('marsh'): papyrus thickets far off and clumps standing in still
+//    water (clumps), blue lotus, the path on a raised earth dyke with water on both sides; the beat: ducks burst out of the papyrus.
+//    The eye is 1.3 m up: anything standing in front of ground-level water or a field hides it, so the pools are kept clear in front and
+//    the fields sunk. Foreground: gfore (vine and flowers, grain, reeds, papyrus). Siwa's walls (wall) got courses, buttresses, beam ends,
+//    gateways and breaches; the geese rest nearer and come nearer as they climb (owner's review of 36b).
 //  - Sound (synthesized): a wind bed (Snd.wind: looped noise through a bandpass that rises with the wind), footfalls in sand
 //    (sandstep, sandrun) or on the oasis's firm ground (firmstep, firmrun), the fronds' rustle (frond), the water's blips (blip), the
-//    geese's honks and wingbeats (geese), the doorway's thud (crossdoor).
+//    geese's honks and wingbeats (geese), the doorway's thud (crossdoor); the garden (round 36c): footfalls on a beaten earth path
+//    (earthstep, earthrun), grain and papyrus stirring (rustle), the breeze (breeze), the heron (heron), ducks (ducks, duckcall), ibis
+//    (ibis), a hoopoe (birdcall).
 //  - Tests: crossscan.py (every theme's crossing starts and ends, the pad is needed, skip, the save, time and rewind untouched, never
 //    under the bot, ms per frame in both modes); pictures egyptr36.py.
 const CROSS_WALK=40,CROSS_RUN=RUN,CROSS_RUNT=1.6,CROSS_RUNB=0.5,CROSS_ACC=170,CROSS_DEC=280,CROSS_DIST=600,CROSS_X0=60,CROSS_FIN=0.6,
@@ -10954,7 +10979,7 @@ const CROSS_OFF=/[?&]cross=0\b/.test(location.search);
 // the setting each theme's land is crossed in (INTERLUDE_RESEARCH.md, section 3; owner: the limestone wadi for the Well Corridors and
 // terraced highland fields for Aksum); dv: the dunes' kind
 const CROSS_LOOK={blue:{set:'dunes',dv:'low'},foggara:{set:'dunes',dv:'seif'},napata:{set:'dunes',dv:'barchan'},
-  meroe:{set:'oasis',ov:'hafir'},deffufa:{set:'oasis',ov:'nile'},shali:{set:'oasis',ov:'spring'},west:{set:'garden'},osiris:{set:'garden'},hawara:{set:'garden'},nun:{set:'garden'},
+  meroe:{set:'oasis',ov:'hafir'},deffufa:{set:'oasis',ov:'nile'},shali:{set:'oasis',ov:'spring'},west:{set:'garden',gv:'pool'},osiris:{set:'garden',gv:'field'},hawara:{set:'garden',gv:'shore'},nun:{set:'garden',gv:'marsh'},
   wells:{set:'wadi'},aksum:{set:'highland'}};
 let CR=null,crossLast=null;
 function crossOn(){return !CROSS_OFF&&S.set.cross!==false&&!BENCH.on&&!quiet;}
@@ -10966,7 +10991,7 @@ const crossMul=(a,b)=>[a[0]*b[0],a[1]*b[1],a[2]*b[2]];
 // aerial perspective: how much of the horizon's colour a layer at depth factor f takes (0.62 at the far ergs, 0 at the path)
 const crossHazeK=f=>clamp(0.62-0.27*Math.log10(Math.max(f,1e-4)/0.006),0,0.7);
 // the sand's colours under the hour: lit (toward the light), dim (the flank, side-lit), shd (the face away), rim (the crest's line)
-function crossCols(cr){let c=SAND_LOOK[cr.look]||[230,205,160];if(cr.set==='oasis')c=mixRGB(c,[132,112,90],0.42);const tod=cr.tod,sky=todSky(bgArt(cr.th).sky,tod),hz=bgRGB(sky[2]);let o;
+function crossCols(cr){let c=SAND_LOOK[cr.look]||[230,205,160];if(cr.set==='oasis')c=mixRGB(c,[132,112,90],0.42);else if(cr.set==='garden')c=mixRGB(c,cr.gv==='marsh'?[104,100,76]:[120,102,78],0.5); /* (round 36c: a kept garden's earth, the Nile's silt) */const tod=cr.tod,sky=todSky(bgArt(cr.th).sky,tod),hz=bgRGB(sky[2]);let o;
   if(tod===1){const g=mixRGB(c,[200,200,200],0.45);o={lit:crossMul(g,[0.5,0.56,0.76]),dim:crossMul(g,[0.3,0.34,0.5]),shd:crossMul(g,[0.14,0.16,0.3]),rim:[214,226,255]};} // (moonlight: the sand's colour mostly gone, cool and pale)
   else if(tod===2)o={lit:crossMul(c,[1.06,0.9,0.78]),dim:crossMul(c,[0.72,0.6,0.6]),shd:crossMul(c,[0.48,0.4,0.47]),rim:[255,228,186]};
   else o={lit:crossMul(c,[1.04,0.84,0.68]),dim:crossMul(c,[0.68,0.55,0.55]),shd:crossMul(c,[0.4,0.31,0.38]),rim:[255,212,156]};
@@ -11046,20 +11071,113 @@ function crossThing(g,it,s,cl,L,rnd){const T=6.2832;
     g.fillStyle=crossRGB(cl.th.dim);g.beginPath();g.moveTo(-w*0.62,-hw+0.4);g.quadraticCurveTo(-w*0.2,-hw-hr*0.55,0,-hw-hr);g.quadraticCurveTo(w*0.2,-hw-hr*0.55,w*0.62,-hw+0.4);g.closePath();g.fill();
     g.strokeStyle=crossRGB(cl.th.shd,0.5);g.lineWidth=Math.max(0.3,s*0.04);g.beginPath();for(let i=1;i<6;i++){const k=i/6;g.moveTo(-w*0.6*(1-k),-hw-hr*k*0.98+0.3);g.lineTo(w*0.6*(1-k),-hw-hr*k*0.98+0.3);}g.stroke();
     g.fillStyle=crossRGB(cl.th.lit,0.45);g.beginPath();g.moveTo(0,-hw-hr);g.quadraticCurveTo(L*w*0.2,-hw-hr*0.55,L*w*0.62,-hw+0.4);g.lineTo(L*w*0.3,-hw+0.4);g.closePath();g.fill();return;}
-  if(it.t==='wall'){const w=it.w*s,h=it.hm*s;g.fillStyle=crossRGB(cl.m.dim);g.beginPath();g.moveTo(-w/2,0);g.lineTo(-w/2+h*0.1,-h*0.9);g.quadraticCurveTo(-w/2+h*0.2,-h,-w/2+h*0.5,-h);
-    let x=-w/2+h*0.5;while(x<w/2-h*0.5){const nx=Math.min(w/2-h*0.5,x+s*(1.5+2*rnd())),dy=(rnd()-0.5)*h*0.12;g.quadraticCurveTo((x+nx)/2,-h+dy*2,nx,-h+dy);x=nx;}
-    g.quadraticCurveTo(w/2-h*0.2,-h,w/2-h*0.1,-h*0.9);g.lineTo(w/2,0);g.closePath();g.fill();
-    g.fillStyle=crossRGB(cl.m.lit,0.4);g.fillRect(-w/2,-h,w,h*0.16);g.strokeStyle=crossRGB(cl.m.shd,0.35);g.lineWidth=Math.max(0.3,s*0.03);g.beginPath();
-    for(let y=-h*0.15;y>-h*0.85;y-=Math.max(1.2,s*0.25)){for(let x2=-w/2+h*0.2;x2<w/2-h*0.2;x2+=s*(0.8+2*rnd())){if(rnd()<0.55)continue;const l=s*(0.6+1.2*rnd());g.moveTo(x2,y);g.lineTo(Math.min(w/2-h*0.2,x2+l),y);}}g.stroke();return;}}
+  // (round 36c) a sycomore fig (Ficus sycomorus: a short thick trunk splitting into great limbs, a broad dense rounded crown of grey-green
+  // leaf masses, figs on the trunk), lit on the light's side
+  if(it.t==='sycomore'){const h=it.hm*s,cw=it.cw*h,cy=-h*0.66,ry=h*0.3,rx=cw/2,bw=Math.max(0.8,0.085*h),ty=-h*0.36;if(it.pit)crossPit(g,s,cl,rnd);
+    g.fillStyle=crossRGB(cl.t.dim);g.beginPath();g.moveTo(-bw*0.95,0);g.quadraticCurveTo(-bw*0.42,-h*0.08,-bw*0.48,ty);g.lineTo(bw*0.48,ty);g.quadraticCurveTo(bw*0.42,-h*0.08,bw*0.95,0);g.closePath();g.fill();
+    g.fillStyle=crossRGB(cl.t.lit,0.5);g.fillRect(L>0?-bw*0.46:bw*0.08,ty,bw*0.38,-ty*0.94);
+    g.strokeStyle=crossRGB(cl.t.dim);g.lineCap='round';
+    for(let k=0;k<4;k++){const u=k/3-0.5,ex=u*rx*1.25+(rnd()-0.5)*rx*0.15,ey=cy+ry*(0.2+0.3*rnd());g.lineWidth=bw*(0.6-0.12*Math.abs(u));g.beginPath();g.moveTo(u*bw*0.5,ty+bw*0.5);g.quadraticCurveTo(ex*0.25,ty-h*0.06,ex,ey);g.stroke();}
+    const nb=28+Math.floor(rnd()*10),cs=[];
+    for(let i=0;i<nb;i++){const a=rnd()*T,rr=Math.sqrt(rnd()),b0=Math.sin(a)*rr;cs.push([Math.cos(a)*rr*rx*0.86,cy+(b0<0?b0*ry:b0*ry*0.55),cw*(0.075+0.05*rnd()),rnd()]);}
+    for(const c of cs){g.fillStyle=crossRGB(mixRGB(cl.sy.shd,cl.sy.dim,0.3));g.beginPath();g.ellipse(c[0],c[1]+c[2]*0.28,c[2],c[2]*0.72,0,0,T);g.fill();}
+    for(const c of cs){g.fillStyle=crossRGB(mixRGB(cl.sy.dim,cl.sy.lit,clamp(0.22-c[0]/rx*L*0.45-(c[1]-cy)/ry*0.3+0.2*c[3],0,1)));g.beginPath();g.ellipse(c[0]-L*c[2]*0.08,c[1]-c[2]*0.18,c[2]*0.84,c[2]*0.6,0,0,T);g.fill();}
+    if(s>9){g.fillStyle=crossRGB(cl.sy.lit,0.5);for(const c of cs)g.fillRect(c[0]-L*c[2]*0.3-0.3,c[1]-c[2]*0.45,Math.max(0.5,c[2]*0.18),Math.max(0.5,c[2]*0.12));
+      if(it.figs){g.fillStyle=crossRGB(cl.d.dim);for(let i=0;i<7;i++){g.beginPath();g.arc((rnd()-0.5)*bw*1.4,ty-rnd()*h*0.1,Math.max(0.4,s*0.035),0,T);g.fill();}}}
+    return;}
+  // (round 36c) a doum palm (Hyphaene thebaica: the trunk forking once or twice, each branch ending in a crown of stiff fan leaves on short
+  // stalks, old leaves hanging dry, bunches of its brown fruit), the Theban gardens' other palm
+  if(it.t==='doum'){const h=it.hm*s,bw=Math.max(0.7,0.034*h),tips=[];if(it.pit)crossPit(g,s,cl,rnd);g.lineCap='round';
+    const seg=(x0,y0,x1,y1,w0,w1)=>{const dx=x1-x0,dy=y1-y0,l=Math.hypot(dx,dy)||1,nx=-dy/l,ny=dx/l;g.fillStyle=crossRGB(cl.t.dim);g.beginPath();g.moveTo(x0+nx*w0/2,y0+ny*w0/2);g.lineTo(x1+nx*w1/2,y1+ny*w1/2);g.lineTo(x1-nx*w1/2,y1-ny*w1/2);g.lineTo(x0-nx*w0/2,y0-ny*w0/2);g.closePath();g.fill();
+      g.strokeStyle=crossRGB(cl.t.lit,0.6);g.lineWidth=Math.max(0.3,w1*0.35);g.beginPath();g.moveTo(x0-L*w0*0.22,y0);g.lineTo(x1-L*w1*0.22,y1);g.stroke();};
+    const br=(x0,y0,a,len,w,d)=>{const x1=x0+Math.sin(a)*len,y1=y0-Math.cos(a)*len;seg(x0,y0,x1,y1,w,w*0.84);
+      if(d<2&&(d===0||rnd()<0.55)){const sp=0.3+0.14*rnd();br(x1,y1,a-sp,len*0.7,w*0.8,d+1);br(x1,y1,a+sp*(0.8+0.3*rnd()),len*0.66,w*0.8,d+1);}else tips.push([x1,y1,a]);};
+    br(0,0,(rnd()-0.5)*0.08,h*0.46,bw,0);
+    for(const p of tips){const R=h*0.15,nl=9+Math.floor(rnd()*4);
+      for(let j=0;j<2;j++){const a=Math.PI+(rnd()-0.5)*0.8,cx=p[0]+Math.sin(a)*R*0.45,cy=p[1]-Math.cos(a)*R*0.45,th=a-Math.PI/2;g.strokeStyle=crossRGB(cl.dry.shd);g.lineWidth=Math.max(0.3,bw*0.25);g.beginPath();g.moveTo(p[0],p[1]);g.lineTo(cx,cy);g.stroke();
+        g.fillStyle=crossRGB(mixRGB(cl.dry.dim,cl.dry.shd,0.4));g.beginPath();g.moveTo(cx,cy);g.arc(cx,cy,R*0.42,th-0.5,th+0.5);g.closePath();g.fill();}
+      const lv=[];for(let j=0;j<nl;j++)lv.push({a:(j/(nl-1)-0.5)*3.3+p[2]*0.3+(rnd()-0.5)*0.2,k:rnd()});lv.sort((a,b)=>a.k-b.k);
+      for(const q of lv){const a=q.a,cx=p[0]+Math.sin(a)*R*0.45,cy=p[1]-Math.cos(a)*R*0.45,th=a-Math.PI/2,u=clamp(0.35-Math.sin(a)*L*0.35+0.25*q.k,0,1);
+        g.strokeStyle=crossRGB(cl.dm.shd);g.lineWidth=Math.max(0.3,bw*0.2);g.beginPath();g.moveTo(p[0],p[1]);g.lineTo(cx,cy);g.stroke();
+        g.fillStyle=crossRGB(q.k<0.35?mixRGB(cl.dm.shd,cl.dm.dim,0.5):mixRGB(cl.dm.dim,cl.dm.lit,u));g.beginPath();g.moveTo(cx,cy);g.arc(cx,cy,R*0.55,th-0.8,th+0.8);g.closePath();g.fill();
+        if(R>5){g.strokeStyle=crossRGB(cl.dm.shd,0.5);g.lineWidth=0.3;g.beginPath();for(const o of [-0.55,-0.2,0.2,0.55]){g.moveTo(cx,cy);g.lineTo(cx+Math.cos(th+o)*R*0.55,cy+Math.sin(th+o)*R*0.55);}g.stroke();}}
+      if(s>8){g.fillStyle=crossRGB(cl.d.shd);for(let i=0;i<5;i++){g.beginPath();g.arc(p[0]+(rnd()-0.5)*R*0.3,p[1]+R*(0.08+0.12*rnd()),Math.max(0.45,s*0.05),0,T);g.fill();}}}
+    return;}
+  // (round 36c) a small garden tree or shrub (persea, pomegranate: Ineni's list in TT81): a short stem, a rounded crown, red fruit (it.fr)
+  if(it.t==='bush'){const h=it.hm*s,cw=it.cw*h,cy=-h*0.62,bw=Math.max(0.6,0.05*h);if(it.pit)crossPit(g,s*0.7,cl,rnd);
+    g.strokeStyle=crossRGB(cl.t.dim);g.lineCap='round';g.lineWidth=bw;g.beginPath();g.moveTo(0,0);g.quadraticCurveTo((rnd()-0.5)*bw*3,-h*0.25,0,cy+h*0.1);g.stroke();
+    const nb=14+Math.floor(rnd()*6),cs=[];for(let i=0;i<nb;i++){const a=rnd()*T,rr=Math.sqrt(rnd());cs.push([Math.cos(a)*rr*cw*0.42,cy+Math.sin(a)*rr*h*0.3,cw*(0.12+0.06*rnd()),rnd()]);}
+    for(const c of cs){g.fillStyle=crossRGB(mixRGB(cl.vn.shd,cl.vn.dim,0.3));g.beginPath();g.ellipse(c[0],c[1]+c[2]*0.25,c[2],c[2]*0.8,0,0,T);g.fill();}
+    for(const c of cs){g.fillStyle=crossRGB(mixRGB(cl.vn.dim,cl.vn.lit,clamp(0.25-c[0]/cw*L*0.9+0.25*c[3],0,1)));g.beginPath();g.ellipse(c[0]-L*c[2]*0.08,c[1]-c[2]*0.2,c[2]*0.82,c[2]*0.62,0,0,T);g.fill();}
+    if(it.fr&&s>7){g.fillStyle=crossRGB(cl.fr.dim);for(let i=0;i<7;i++){const c=cs[Math.floor(rnd()*nb)];g.beginPath();g.arc(c[0]+(rnd()-0.5)*c[2],c[1]+(rnd()-0.2)*c[2]*0.6,Math.max(0.45,s*0.05),0,T);g.fill();}}
+    return;}
+  // (round 36c) a vine pergola (the Theban gardens' trellised walks): two rows of posts on whitewashed feet (the far row a little smaller
+  // and darker), a beam and poles across, the vine over the top in leaf, strands hanging between the posts, bunches of dark grapes
+  if(it.t==='pergola'){const w=it.w*s,h=it.hm*s,np=Math.max(2,Math.round(it.w/2.3)),pw=Math.max(0.8,0.17*s),dk=crossRGB(mixRGB(cl.wd.shd,cl.wd.dim,0.25));
+    g.fillStyle=crossRGB(cl.m.shd,0.35);g.fillRect(-w/2,-Math.max(1,s*0.12),w,Math.max(1,s*0.12)+0.5);
+    g.fillStyle=dk;for(let k=0;k<=np;k++){const x=-w/2+k*w/np+s*0.4;g.fillRect(x-pw*0.38,-h*0.96,pw*0.76,h*0.96-s*0.1);}g.fillRect(-w/2+s*0.2,-h*0.98-s*0.16,w+s*0.4,s*0.14);
+    for(let k=0;k<=np;k++){const x=-w/2+k*w/np;g.fillStyle=crossRGB(cl.wd.dim);g.fillRect(x-pw/2,-h,pw,h);g.fillStyle=crossRGB(cl.wd.lit,0.6);g.fillRect(L>0?x-pw/2:x,-h,pw/2,h);
+      g.fillStyle=crossRGB(cl.wh.dim);g.fillRect(x-pw/2-0.3,-h*0.15,pw+0.6,h*0.15);g.fillStyle=crossRGB(cl.wh.lit,0.6);g.fillRect(L>0?x-pw/2-0.3:x,-h*0.15,pw/2+0.3,h*0.15);}
+    g.fillStyle=crossRGB(cl.wd.shd);g.fillRect(-w/2-s*0.3,-h-s*0.2,w+s*0.6,s*0.2);for(let x=-w/2-s*0.2;x<w/2+s*0.3;x+=s*0.55)g.fillRect(x,-h-s*0.34,Math.max(0.6,s*0.1),s*0.16);
+    const lv=[];for(let x=-w/2-s*0.3;x<w/2+s*0.3;x+=s*0.28)for(let j=0;j<2;j++)lv.push([x+(rnd()-0.5)*s*0.3,-h-s*(0.2+0.32*j)+(rnd()-0.5)*s*0.2,s*(0.2+0.12*rnd()),rnd()]);
+    for(let k=0;k<np;k++){const x0=-w/2+k*w/np,x1=x0+w/np;for(let j=0;j<3+Math.floor(rnd()*3);j++){const x=lerp(x0+pw,x1-pw,rnd()),l=s*(0.3+0.8*rnd());for(let y=0;y<l;y+=s*0.2)lv.push([x+(rnd()-0.5)*s*0.12,-h+s*0.05+y,s*(0.12+0.08*rnd()),rnd()]);}}
+    for(const c of lv){g.fillStyle=crossRGB(mixRGB(cl.vn.shd,cl.vn.dim,0.35));g.beginPath();g.ellipse(c[0],c[1]+c[2]*0.2,c[2],c[2]*0.8,0,0,T);g.fill();}
+    for(const c of lv){g.fillStyle=crossRGB(mixRGB(cl.vn.dim,cl.vn.lit,clamp(0.2+0.45*c[3]+(c[1]<-h?0.25:0),0,1)));g.beginPath();g.ellipse(c[0]-L*c[2]*0.08,c[1]-c[2]*0.15,c[2]*0.8,c[2]*0.6,0,0,T);g.fill();}
+    if(s>9){const rr=Math.max(0.5,s*0.05);for(let k=0;k<np*2;k++){const x=-w/2+(k+0.5)*w/(np*2)+(rnd()-0.5)*s*0.4,y=-h+s*(0.15+0.15*rnd());g.fillStyle=crossRGB(cl.gp.dim);
+        for(const [n,row] of [[3,0],[3,1],[2,2],[1,3]])for(let i=0;i<n;i++){g.beginPath();g.arc(x+(i-(n-1)/2)*rr*1.7,y+row*rr*1.6,rr,0,T);g.fill();}
+        g.fillStyle=crossRGB(cl.gp.lit,0.6);g.beginPath();g.arc(x-L*rr*0.8,y+rr*0.6,rr*0.6,0,T);g.fill();}}
+    return;}
+  // (round 36c) an idle shaduf (the counterpoised sweep that lifts water into a garden: Ipuy's tomb, TT217; no one at it): two mud pillars, a
+  // crossbar, the pole on its pivot with a lump of mud bound to the short end, the rope and the pot hanging still from the long end (dir)
+  if(it.t==='shaduf'){const d=it.dir||1,ang=it.ang||0.4,pw=Math.max(0.7,0.32*s),hp=1.85*s,py=-hp-s*0.06,ca=Math.cos(ang),sa=Math.sin(ang),E=[d*ca*3.1*s,py-sa*3.1*s],S=[-d*ca*1.25*s,py+sa*1.25*s];
+    const pil=(x,c1,c2)=>{g.fillStyle=crossRGB(c1);g.beginPath();g.moveTo(x-pw*0.6,0);g.lineTo(x-pw*0.45,-hp);g.lineTo(x+pw*0.45,-hp);g.lineTo(x+pw*0.6,0);g.closePath();g.fill();
+      if(c2){g.fillStyle=crossRGB(c2,0.6);g.beginPath();g.moveTo(x+(L>0?-pw*0.6:pw*0.6),0);g.lineTo(x+(L>0?-pw*0.45:pw*0.45),-hp);g.lineTo(x,-hp);g.lineTo(x,0);g.closePath();g.fill();}};
+    pil(-s*0.3,mixRGB(cl.m.shd,cl.m.dim,0.3));
+    g.strokeStyle=crossRGB(cl.wd.shd);g.lineWidth=Math.max(0.6,s*0.1);g.lineCap='round';g.beginPath();g.moveTo(-s*0.5,py+s*0.04);g.lineTo(s*0.25,py+s*0.04);g.stroke();
+    pil(0,cl.m.dim,cl.m.lit);
+    g.strokeStyle=crossRGB(cl.wd.dim);g.lineWidth=Math.max(0.5,s*0.075);g.beginPath();g.moveTo(S[0],S[1]);g.lineTo(E[0],E[1]);g.stroke();g.strokeStyle=crossRGB(cl.wd.lit,0.5);g.lineWidth=Math.max(0.3,s*0.03);g.beginPath();g.moveTo(S[0],S[1]-s*0.02);g.lineTo(E[0],E[1]-s*0.02);g.stroke();
+    g.fillStyle=crossRGB(cl.m.dim);g.beginPath();g.ellipse(S[0],S[1]+s*0.12,s*0.3,s*0.24,0,0,T);g.fill();g.fillStyle=crossRGB(cl.m.lit,0.5);g.beginPath();g.ellipse(S[0]-L*s*0.08,S[1]+s*0.05,s*0.16,s*0.12,0,0,T);g.fill();
+    const by=-s*0.4;g.strokeStyle=crossRGB(cl.th.shd);g.lineWidth=Math.max(0.3,s*0.025);g.beginPath();g.moveTo(E[0],E[1]);g.lineTo(E[0],by-s*0.12);g.stroke();
+    g.fillStyle=crossRGB(cl.m.shd);g.beginPath();g.ellipse(E[0],by,s*0.17,s*0.15,0,0,T);g.fill();g.fillStyle=crossRGB(cl.m.lit,0.45);g.beginPath();g.ellipse(E[0]-L*s*0.05,by-s*0.04,s*0.08,s*0.07,0,0,T);g.fill();
+    return;}
+  // a mudbrick garden wall (round 36c, owner's review of 36b: Siwa's walls were long plain blocks): a slight batter and a worn, rounded
+  // coping; courses of brick with their joints (on a whitewashed wall, it.wash, only where the plaster has fallen); buttresses every 3 m
+  // or so with stepped tops; the ends of the palm logs laid through it under the coping; a gateway (it.gate, its place along the wall:
+  // the opening, its reveal in shade, a lintel of palm logs) or a breach where the top has fallen (it.br)
+  if(it.t==='wall'){const w=it.w*s,h=it.hm*s,mc=it.wash?cl.wh:cl.m,x0=-w/2,x1=w/2;
+    const body=()=>{g.beginPath();g.moveTo(x0,0);g.lineTo(x0+h*0.1,-h*0.9);g.quadraticCurveTo(x0+h*0.2,-h,x0+h*0.5,-h);let x=x0+h*0.5;
+      while(x<x1-h*0.5){const nx=Math.min(x1-h*0.5,x+s*(1.5+2*rnd())),dy=(rnd()-0.5)*h*0.08;g.quadraticCurveTo((x+nx)/2,-h+dy*2,nx,-h+dy);x=nx;}
+      g.quadraticCurveTo(x1-h*0.2,-h,x1-h*0.1,-h*0.9);g.lineTo(x1,0);g.closePath();};
+    body();g.fillStyle=crossRGB(mc.dim);g.fill();g.save();body();g.clip();
+    if(it.wash)for(let i=0;i<Math.max(2,Math.round(it.w/3));i++){const px=x0+rnd()*w,py=-h*(0.15+0.6*rnd()),pw2=s*(0.6+1.4*rnd());g.fillStyle=crossRGB(cl.m.dim,0.75);g.beginPath();
+      for(let k=0;k<9;k++){const a=k/9*T,rr=0.6+0.5*rnd();g.lineTo(px+Math.cos(a)*pw2*rr,py+Math.sin(a)*pw2*0.45*rr);}g.closePath();g.fill();}
+    const ch=Math.max(1.3,s*0.2);g.strokeStyle=crossRGB(cl.m.shd,it.wash?0.14:0.32);g.lineWidth=Math.max(0.3,s*0.025);g.beginPath();
+    for(let y=-ch,r=0;y>-h;y-=ch,r++){g.moveTo(x0,y);g.lineTo(x1,y);if(s>5)for(let x=x0+(r&1)*s*0.2;x<x1;x+=s*0.42){g.moveTo(x,y);g.lineTo(x,y+ch*0.85);}}g.stroke();
+    g.fillStyle=crossRGB(mc.shd,0.22);for(let i=0;i<Math.round(it.w*1.2);i++){const x=x0+rnd()*w;g.fillRect(x,-h,Math.max(0.5,s*0.05),h*(0.15+0.4*rnd()));} // (rain runnels from the top)
+    g.fillStyle=crossRGB(mc.lit,0.4);g.fillRect(x0,-h*1.05,w,h*0.17);g.restore();
+    for(let x=x0+s*1.6;x<x1-s*1.2;x+=s*(3+0.6*rnd())){const bw=s*0.55,bh=h*1.05;g.fillStyle=crossRGB(mixRGB(mc.dim,mc.lit,0.3));g.fillRect(x-bw/2,-bh+s*0.18,bw,bh-s*0.18);g.fillRect(x-bw*0.36,-bh,bw*0.72,s*0.2);
+      g.fillStyle=crossRGB(mc.shd,0.45);g.fillRect(L>0?x+bw/2-bw*0.24:x-bw/2,-bh+s*0.18,bw*0.24,bh-s*0.18);g.fillStyle=crossRGB(mc.lit,0.55);g.fillRect(x-bw/2,-bh+s*0.18,bw,Math.max(0.5,s*0.05));g.fillRect(x-bw*0.36,-bh,bw*0.72,Math.max(0.5,s*0.05));}
+    if(s>4)for(let x=x0+s*0.6;x<x1-s*0.4;x+=s*(0.8+0.3*rnd())){const y=-h*0.8;g.fillStyle='rgba(16,12,12,.55)';g.beginPath();g.arc(x,y,Math.max(0.45,s*0.075),0,T);g.fill();g.fillStyle=crossRGB(cl.wd.lit,0.55);g.beginPath();g.arc(x-L*s*0.02,y-s*0.02,Math.max(0.3,s*0.045),0,T);g.fill();}
+    if(it.gate){const gx=x0+w*it.gate,gw=s*1.15,gh=Math.min(h*0.86,s*1.9);g.clearRect(gx-gw/2,-gh,gw,gh+1);
+      g.fillStyle=crossRGB(mc.shd,0.75);g.fillRect(L>0?gx-gw/2:gx+gw/2-s*0.2,-gh,s*0.2,gh);g.fillStyle=crossRGB(cl.wd.shd);g.fillRect(gx-gw/2-s*0.15,-gh-s*0.22,gw+s*0.3,s*0.22);
+      g.fillStyle=crossRGB(cl.wd.lit,0.5);for(let x=gx-gw/2-s*0.08;x<gx+gw/2+s*0.1;x+=s*0.22){g.beginPath();g.arc(x,-gh-s*0.11,Math.max(0.35,s*0.075),0,T);g.fill();}}
+    if(it.br){const bx=x0+w*it.br,bw=s*(1.3+0.6*rnd()),bd=h*(0.25+0.12*rnd()),pts=[];for(let k=0;k<=8;k++){const u=k/8;pts.push([bx-bw+2*bw*u,-h*1.06+(bd+h*0.06)*Math.pow(Math.sin(Math.PI*u),0.8)+(k%8?(rnd()-0.5)*s*0.14:0)]);}
+      g.save();g.globalCompositeOperation='destination-out';g.beginPath();g.moveTo(bx-bw,-h*1.2);for(const p of pts)g.lineTo(p[0],p[1]);g.lineTo(bx+bw,-h*1.2);g.closePath();g.fill();g.restore();
+      g.strokeStyle=crossRGB(mc.shd,0.6);g.lineWidth=Math.max(0.4,s*0.05);g.beginPath();for(let k=1;k<8;k++){const p=pts[k];g.moveTo(p[0]-s*0.1,p[1]+0.4);g.lineTo(p[0]+s*0.1,p[1]+0.4);}g.stroke();}
+    return;}}
 // the oasis's colours at depth f under the hour: fronds, trunks, dead fronds, dates, leaves of acacia or olive, mud, thatch
 function crossOasisCols(cr,f){const C=cr.cols,o={},hz=x=>({lit:C.at(x.lit,f),dim:C.at(x.dim,f),shd:C.at(x.shd,f)});
   o.f=hz(crossLit(cr,[84,104,50]));o.t=hz(crossLit(cr,[124,100,76]));o.dry=hz(crossLit(cr,[154,120,74]));o.d=hz(crossLit(cr,[192,98,42]));
-  o.v=hz(crossLit(cr,cr.ov==='spring'?[118,128,94]:[88,106,56]));o.m=hz(crossLit(cr,[156,120,88]));o.th=hz(crossLit(cr,[172,142,94]));return o;}
+  o.v=hz(crossLit(cr,cr.ov==='spring'?[118,128,94]:[88,106,56]));o.m=hz(crossLit(cr,[156,120,88]));o.th=hz(crossLit(cr,[172,142,94]));
+  // (round 36c) the garden's: sycomore leaves, doum fans, vine and garden leaves, grapes, whitewash, timber, papyrus, its umbels, red fruit,
+  // ripe grain, flax and its flowers
+  o.sy=hz(crossLit(cr,[86,106,70]));o.dm=hz(crossLit(cr,[118,128,70]));o.vn=hz(crossLit(cr,[78,110,46]));o.gp=hz(crossLit(cr,[84,48,86]));o.wh=hz(crossLit(cr,[226,218,198]));o.wd=hz(crossLit(cr,[124,94,64]));
+  o.py=hz(crossLit(cr,[92,124,54]));o.um=hz(crossLit(cr,[140,150,72]));o.fr=hz(crossLit(cr,[176,52,40]));o.gr=hz(crossLit(cr,[212,174,94]));o.fx=hz(crossLit(cr,[100,128,88]));o.fb=hz(crossLit(cr,[120,140,222]));return o;}
 // the pool's shore: a rounded outline in world x and depth (th 0..2pi; sin th > 0 the near side), k > 1 widened (the damp margin, the bank)
 function crossPoolTh(P,th,k){const ph=P.ph,a=1+0.07*Math.sin(3*th+ph[0])+0.04*Math.sin(5*th+ph[1]),sn=Math.sin(th);
   return [P.Xc+P.Rx*Math.cos(th)*a*(1+(k-1)*0.45),P.fc+P.Rf*sn*(1+0.05*Math.sin(2*th+ph[2]))*(sn>0?k:1+(k-1)*0.3)];}
 // the river's banks: the far (near false) or the near edge's depth at world x
-function crossPoolEdge(P,X,near){const ph=P.ph;return near?P.fb+0.022*Math.sin(X/130+ph[2])+0.01*Math.sin(X/53+ph[3]):P.fa+0.02*Math.sin(X/110+ph[0])+0.012*Math.sin(X/41+ph[1]);}
+function crossPoolEdge(P,X,near){const ph=P.ph;if(P.straight&&(near||P.straight===true))return near?P.fb:P.fa;return near?P.fb+0.022*Math.sin(X/130+ph[2])+0.01*Math.sin(X/53+ph[3]):P.fa+0.02*Math.sin(X/110+ph[0])+0.012*Math.sin(X/41+ph[1]);}
 // the outline on the screen into P.sx, P.sy (k: the margin), returns the count
 function crossPoolPts(P,cr,k){const W=viewW;let n=0;
   if(P.river){for(let x=-16;x<=W+16;x+=14){const X=cr.cx+W/2+(x-W/2)/P.fa,F=crossPoolEdge(P,X,false);P.sx[n]=crossPX(cr,X,F);P.sy[n]=crossGYf(F);n++;}
@@ -11082,6 +11200,87 @@ function crossGoose(ctx,x,y,sz,dir,fly,flap,cb){const d=dir;
   ctx.strokeStyle=cb[3];ctx.lineWidth=Math.max(0.5,sz*0.075);ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x+d*sz*0.3,y-sz*0.03);ctx.lineTo(x+d*sz*0.6,y-sz*0.09);ctx.stroke();
   ctx.fillStyle=cb[3];ctx.beginPath();ctx.ellipse(x+d*sz*0.64,y-sz*0.1,sz*0.08,sz*0.06,0,0,6.2832);ctx.fill();
   const ty=wing(cb[0],0);ctx.strokeStyle=cb[2];ctx.lineWidth=Math.max(0.5,sz*0.07);ctx.beginPath();ctx.moveTo(sx+d*sz*0.1,sy);ctx.lineTo((sx+x-d*sz*0.22)/2,(sy+ty)/2);ctx.stroke();}
+// ---- the garden (round 36c) ----
+// (round 36c) a breeze running along the way as a travelling wave (the beat of the grain and the reed beds): from the moment he passes
+// CROSS_BEAT its front starts off the screen's left (where the camera's left edge is at the beat, a fixed place: no state) and runs along
+// world x at CROSS_WAVE[0] px/s (5.8 m/s), its crest CROSS_WAVE[1] px wide, for CROSS_WAVE[2] s; env rises, holds and fades. A function of
+// the beat's moment and the clock; the front is at one world x at every depth, so on the screen it sweeps the far rows slower (perspective)
+const CROSS_WAVE=[170,46,7.5];
+function crossWaveF(cr){if(cr.gust<0)return null;const t=cr.t-cr.gust;if(t<0||t>CROSS_WAVE[2])return null;
+  return {xf:cr.xb-viewW*CROSS_CAM-90+CROSS_WAVE[0]*t,env:sstep(t/0.5)*(1-sstep((t-CROSS_WAVE[2]+2.5)/2.5))};}
+function crossWave(cr,X){if(cr.gust<0)return 0;const t=cr.t-cr.gust;if(t<0||t>CROSS_WAVE[2])return 0;
+  const xf=cr.xb-viewW*CROSS_CAM-90+CROSS_WAVE[0]*t,env=sstep(t/0.5)*(1-sstep((t-CROSS_WAVE[2]+2.5)/2.5)),d=(X-xf)/CROSS_WAVE[1];return env*(Math.exp(-d*d)+0.4*Math.exp(-(d+2.4)*(d+2.4)));}
+// a point (X, F) inside an outline given as [X, F] pairs (world x and depth)
+function crossInPoly(P,X,F){let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[i],b=P[j];if((a[1]>F)!==(b[1]>F)&&X<(b[0]-a[0])*(F-a[1])/(b[1]-a[1])+a[0])c=!c;}return c;}
+// a tree's watering basin (the round pits with raised rims the Theban gardens planted their trees in: Deir el-Bahari, Nebamun's pool),
+// flat on the ground at the foot (0,0): s px a metre
+function crossPit(g,s,cl,rnd){const r=s*(0.85+0.2*rnd()),k=Math.max(0.5,s*0.06);g.fillStyle=crossRGB(cl.m.shd,0.5);g.beginPath();g.ellipse(0,0.3,r,k*1.3,0,0,6.2832);g.fill();
+  g.strokeStyle=crossRGB(cl.m.lit,0.6);g.lineWidth=Math.max(0.4,k*0.7);g.beginPath();g.ellipse(0,0,r,k,0,0,Math.PI);g.stroke();}
+// a stand thing's cell in its atlas (px at s px a metre): its width, height and foot
+function crossThingBox(it,s){let w,h;const t=it.t;
+  if(t==='hut'){w=it.w*s*1.3+4;h=4.3*s+4;}else if(t==='wall'){w=it.w*s+4;h=it.hm*s*1.14+5;}else if(t==='pergola'){w=(it.w+1.2)*s+4;h=(it.hm+0.75)*s+5;}
+  else if(t==='shaduf'){w=6.8*s+6;h=3.7*s+6;}else if(t==='doum'){w=1.25*it.hm*s+6;h=it.hm*s*1.12+6;}
+  else{w=Math.max(it.cw*it.hm*s*1.25,it.pit?2.3*s:0)+6;h=it.hm*s*1.2+5;}
+  return {w,h,px:w/2,py:h-(it.pit?Math.max(2.5,s*0.12):2)};}
+// (round 36c) a clump of papyrus (Cyperus papyrus, 3-5 m) H px tall at its foot (0,0): triangular stems in a fan, each topped by its
+// umbel, a mop-head of fine rays drooping round it; brown sheaths at the foot, the water line
+function crossPapyrus(g,H,r,cl,L){const ns=13+Math.floor(r()*7),st=[];
+  for(let i=0;i<ns;i++){const u=i/(ns-1)-0.5;st.push({bx:u*H*0.13,h:H*(0.62+0.38*r()),a:u*0.62+(r()-0.5)*0.14,k:r()});}
+  st.sort((p,q)=>p.k-q.k);g.lineCap='round';
+  for(const p of st){const back=p.k<0.4,tx=p.bx+Math.sin(p.a)*p.h,ty=-Math.cos(p.a)*p.h,side=clamp(0.5-Math.sin(p.a)*L*0.9,0,1);
+    g.strokeStyle=crossRGB(back?mixRGB(cl.py.shd,cl.py.dim,0.4):mixRGB(cl.py.dim,cl.py.lit,0.2+0.6*side));g.lineWidth=Math.max(0.5,H*0.011);g.beginPath();g.moveTo(p.bx,0);g.quadraticCurveTo(p.bx+Math.sin(p.a)*p.h*0.45,-p.h*0.55,tx,ty);g.stroke();
+    const R=H*(0.075+0.03*p.k),nr=17;g.fillStyle=crossRGB(back?mixRGB(cl.um.shd,cl.um.dim,0.4):cl.um.dim,0.55);g.beginPath();g.ellipse(tx,ty+R*0.32,R*0.95,R*0.6,0,0,6.2832);g.fill();
+    g.strokeStyle=crossRGB(back?mixRGB(cl.um.shd,cl.um.dim,0.5):mixRGB(cl.um.dim,cl.um.lit,0.3+0.5*side));g.lineWidth=Math.max(0.3,H*0.0045);g.beginPath();
+    for(let j=0;j<nr;j++){const an=-Math.PI/2+(j/(nr-1)-0.5)*3.6+(r()-0.5)*0.15+p.a*0.5,l=R*(0.8+0.35*r()),ex=tx+Math.cos(an)*l,ey=ty+Math.sin(an)*l*0.8+l*0.28*Math.abs(Math.cos(an));
+      g.moveTo(tx,ty);g.quadraticCurveTo(tx+Math.cos(an)*l*0.6,ty+Math.sin(an)*l*0.6-l*0.08,ex,ey);}
+    g.stroke();}
+  g.fillStyle=crossRGB(cl.dry.shd,0.8);for(let i=0;i<5;i++){const x=(r()-0.5)*H*0.12;g.beginPath();g.moveTo(x-H*0.012,0);g.lineTo(x,-H*0.06*(0.6+0.6*r()));g.lineTo(x+H*0.012,0);g.closePath();g.fill();}
+  g.fillStyle='rgba(10,14,18,.35)';g.beginPath();g.ellipse(0,0.5,H*0.12,H*0.012+0.5,0,0,6.2832);g.fill();}
+// (round 36c) a row of a crop seen from the side, W px (one period of the field's channels: the first ly.gap m left bare for the channel),
+// its soil at the foot: ripe emmer and barley (gold stalks, the ears leaning and their awns), flax (blue-green, its small blue flowers),
+// a young green crop (blades). s px a metre at the row's depth
+function crossCrop(g,ly,W,H,s,cl,r){const gap=(ly.gap||0)*s,c=ly.crop,hm=ly.hm*s,base=H-1.5;
+  g.fillStyle=crossRGB(cl.m.shd,0.5);g.fillRect(gap,base-0.4,W-gap,1.6);
+  const n=Math.round((W-gap)/Math.max(0.55,s*(c==='green'?0.065:0.04))),st=[[],[],[]];
+  for(let i=0;i<n;i++){const x=gap+(i+0.5+0.6*(r()-0.5))*(W-gap)/n,h=hm*(0.82+0.3*r()),a=(c==='green'?0.3:0.12)*(r()-0.5)+(c==='grain'?0.08:0),k=r();st[k<0.35?0:k<0.75?1:2].push([x,h,a]);}
+  const co=c==='grain'?cl.gr:c==='flax'?cl.fx:cl.vn,cols=[co.shd,co.dim,co.lit];g.lineCap='round';
+  for(let p=0;p<3;p++){g.strokeStyle=crossRGB(mixRGB(cols[p],p?cols[p-1]:cols[0],0.3));g.lineWidth=Math.max(0.3,s*(c==='green'?0.03:0.018));g.beginPath();
+    for(const q of st[p]){const ex=q[0]+Math.sin(q[2])*q[1],ey=base-Math.cos(q[2])*q[1];g.moveTo(q[0],base);g.quadraticCurveTo(q[0]+Math.sin(q[2])*q[1]*0.3,base-q[1]*0.6,ex,ey);
+      if(c==='green'){g.moveTo(q[0],base);g.quadraticCurveTo(q[0]-Math.sin(q[2]+0.5)*q[1]*0.4,base-q[1]*0.4,q[0]-Math.sin(q[2]+0.6)*q[1]*0.8,base-q[1]*0.6);}}
+    g.stroke();
+    if(c==='grain'){const l=s*0.09;g.lineWidth=Math.max(0.45,s*0.045);g.strokeStyle=crossRGB(mixRGB(cols[p],cols[2],0.45));g.beginPath();
+      for(const q of st[p]){const ex=q[0]+Math.sin(q[2])*q[1],ey=base-Math.cos(q[2])*q[1];g.moveTo(ex,ey);g.lineTo(ex+Math.sin(q[2]+0.25)*l,ey-Math.cos(q[2]+0.25)*l);}g.stroke();
+      if(s>9){g.lineWidth=0.3;g.strokeStyle=crossRGB(cols[2],0.6);g.beginPath();for(const q of st[p]){const ex=q[0]+Math.sin(q[2])*q[1]+Math.sin(q[2]+0.25)*l,ey=base-Math.cos(q[2])*q[1]-Math.cos(q[2]+0.25)*l;g.moveTo(ex,ey);g.lineTo(ex+Math.sin(q[2]+0.15)*l*0.9,ey-Math.cos(q[2]+0.15)*l*0.9);}g.stroke();}}}
+  if(c==='flax'){g.fillStyle=crossRGB(cl.fb.lit);const d=Math.max(0.6,s*0.045);for(const q of st[2].concat(st[1])){if(r()<0.45)continue;g.fillRect(q[0]+Math.sin(q[2])*q[1]-d/2,base-Math.cos(q[2])*q[1]-d/2,d,d);}}}
+// (round 36c) a grey heron (Ardea cinerea, about 0.95 m tall: sz px) at its feet (x,y), facing d: standing (st 0; v 0..1 its crouch
+// before the leap; ht turns the head a little) or flying (st 1: the neck drawn back, the legs trailing, the broad wings beating together,
+// v the flap -1..1). cb: grey, grey lit, white, black, bill
+function crossHeron(ctx,x,y,sz,d,st,v,ht,cb){ctx.lineCap='round';
+  if(!st){const c=v,by=y-sz*(0.52-0.1*c);ctx.strokeStyle=cb[3];ctx.lineWidth=Math.max(0.4,sz*0.03);ctx.beginPath();ctx.moveTo(x-d*sz*0.05,y);ctx.lineTo(x-d*sz*0.03,by+sz*0.06);ctx.moveTo(x+d*sz*0.05,y);ctx.lineTo(x+d*(0.02+0.06*c)*sz,by+sz*0.06);ctx.stroke();
+    ctx.fillStyle=cb[0];ctx.beginPath();ctx.ellipse(x-d*sz*0.03,by,sz*0.23,sz*0.1,-d*0.42,0,6.2832);ctx.fill();
+    ctx.fillStyle=cb[1];ctx.beginPath();ctx.ellipse(x-d*sz*0.02,by-sz*0.035,sz*0.17,sz*0.05,-d*0.42,0,6.2832);ctx.fill();
+    const nx=x+d*sz*0.13,ny=by-sz*0.06,hx=x+d*sz*(0.14+0.08*c),hy=by-sz*(0.38-0.18*c),tw=0.04*Math.sin(ht*0.7)*sz;
+    ctx.strokeStyle=cb[2];ctx.lineWidth=Math.max(0.5,sz*0.055);ctx.beginPath();ctx.moveTo(nx,ny);ctx.bezierCurveTo(nx+d*sz*0.1,ny-sz*0.1,hx-d*sz*0.1,hy+sz*0.14,hx+tw,hy);ctx.stroke();
+    ctx.fillStyle=cb[2];ctx.beginPath();ctx.ellipse(hx+tw,hy,sz*0.055,sz*0.04,0,0,6.2832);ctx.fill();
+    ctx.strokeStyle=cb[3];ctx.lineWidth=Math.max(0.3,sz*0.018);ctx.beginPath();ctx.moveTo(hx+tw,hy-sz*0.02);ctx.lineTo(hx+tw-d*sz*0.12,hy-sz*0.005);ctx.stroke();
+    ctx.strokeStyle=cb[4];ctx.lineWidth=Math.max(0.4,sz*0.025);ctx.beginPath();ctx.moveTo(hx+tw+d*sz*0.04,hy);ctx.lineTo(hx+tw+d*sz*0.2,hy+sz*0.015);ctx.stroke();return;}
+  const f=v,wl=sz*0.9,sx=x+d*sz*0.04,sy=y-sz*0.02;
+  const wing=(c,o)=>{const ty=sy-wl*f*0.8+o,tx=x-d*sz*0.32;ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(sx+d*sz*0.13,sy);ctx.bezierCurveTo(sx+d*sz*0.16,sy+(ty-sy)*0.55,tx+d*sz*0.12,ty+(sy-ty)*0.05,tx,ty);ctx.bezierCurveTo(tx-d*sz*0.02,ty+(sy-ty)*0.25,sx-d*sz*0.24,sy+(ty-sy)*0.35,sx-d*sz*0.2,sy+sz*0.02);ctx.closePath();ctx.fill();return ty;};
+  wing(cb[3],-sz*0.04);
+  ctx.strokeStyle=cb[3];ctx.lineWidth=Math.max(0.35,sz*0.025);ctx.beginPath();ctx.moveTo(x-d*sz*0.18,y+sz*0.02);ctx.lineTo(x-d*sz*0.55,y+sz*0.06);ctx.stroke();
+  ctx.fillStyle=cb[0];ctx.beginPath();ctx.ellipse(x,y,sz*0.24,sz*0.085,-d*0.05,0,6.2832);ctx.fill();
+  ctx.fillStyle=cb[2];ctx.beginPath();ctx.ellipse(x+d*sz*0.2,y-sz*0.04,sz*0.07,sz*0.06,0,0,6.2832);ctx.fill();ctx.beginPath();ctx.ellipse(x+d*sz*0.26,y-sz*0.08,sz*0.045,sz*0.035,0,0,6.2832);ctx.fill();
+  ctx.strokeStyle=cb[4];ctx.lineWidth=Math.max(0.4,sz*0.022);ctx.beginPath();ctx.moveTo(x+d*sz*0.29,y-sz*0.075);ctx.lineTo(x+d*sz*0.44,y-sz*0.06);ctx.stroke();
+  const ty=wing(cb[0],0),tx=x-d*sz*0.32;ctx.strokeStyle=cb[3];ctx.lineWidth=Math.max(0.5,sz*0.06);ctx.beginPath();ctx.moveTo(tx,ty);ctx.lineTo(tx+d*sz*0.04+(sx-tx)*0.22,ty+(sy-ty)*0.22);ctx.stroke();}
+// (round 36c) a sacred ibis (Threskiornis aethiopicus, about 0.7 m: sz px) wading at (x,y): the white body, the black plumes over its tail,
+// the bare black head and neck, the long down-curved bill; pk 0..1 its head lowered to feed. cb as the heron's (white, black)
+function crossIbis(ctx,x,y,sz,d,pk,cb){const by=y-sz*0.42;ctx.lineCap='round';
+  ctx.strokeStyle=cb[3];ctx.lineWidth=Math.max(0.35,sz*0.03);ctx.beginPath();ctx.moveTo(x-d*sz*0.04,y);ctx.lineTo(x-d*sz*0.02,by+sz*0.06);ctx.moveTo(x+d*sz*0.06,y);ctx.lineTo(x+d*sz*0.03,by+sz*0.06);ctx.stroke();
+  ctx.fillStyle=cb[2];ctx.beginPath();ctx.ellipse(x,by,sz*0.26,sz*0.12,-d*(0.12+0.3*pk),0,6.2832);ctx.fill();
+  ctx.fillStyle=cb[3];ctx.beginPath();ctx.ellipse(x-d*sz*0.22,by+sz*0.03+sz*0.04*pk,sz*0.1,sz*0.05,d*0.3,0,6.2832);ctx.fill();
+  const nx=x+d*sz*0.2,ny=by-sz*0.05+sz*0.1*pk,hx=x+d*sz*(0.3+0.12*pk),hy=by-sz*(0.3-0.62*pk);
+  ctx.strokeStyle=cb[3];ctx.lineWidth=Math.max(0.45,sz*0.045);ctx.beginPath();ctx.moveTo(nx,ny);ctx.quadraticCurveTo(nx+d*sz*0.08,(ny+hy)/2-sz*0.05*(1-pk),hx,hy);ctx.stroke();
+  ctx.lineWidth=Math.max(0.35,sz*0.025);ctx.beginPath();ctx.moveTo(hx,hy);ctx.quadraticCurveTo(hx+d*sz*0.14,hy+sz*0.02,hx+d*sz*(0.2-0.04*pk),hy+sz*(0.1+0.04*pk));ctx.stroke();}
 // ---- the layers ----
 const CROSS_KINDS={
   // the sky by the hour (the next theme's own BGART sky under todSky, its horizon stop at the eye level), the sun's or the moon's
@@ -11232,13 +11431,14 @@ const CROSS_KINDS={
       for(const it of ly.items){const r=mulberry32(hash2(cr.seed,Math.round(it.X*3)+ly.id*7717));it.r=r;
         if(it.t==='palm'){const Ht=it.hm*s,bw=Math.max(1,0.5*s),tw=Math.max(0.8,0.36*s),lean=it.lean*s,bow=it.bow*s,R=it.fl*s;Object.assign(it,{Ht,bw,tw,lean,bow,R,tx:lean,ty:Ht});
           it.b={w:Math.abs(lean)+2*Math.abs(bow)+bw*1.8+4,h:Ht+4};it.b.px=Math.max(0,-lean)+Math.abs(bow)+bw*0.9+2;it.b.py=Ht+2;
+          if(it.pit){const e=1.1*s+2-it.b.px;if(e>0){it.b.px+=e;it.b.w+=e;}it.b.w=Math.max(it.b.w,it.b.px+1.1*s+2);it.b.h+=Math.max(2,s*0.12);} // (round 36c: in its watering basin)
           it.c={w:2.8*R+4,h:2.4*R+4};it.c.px=it.c.w/2;it.c.py=R*1.05+2;cells.push(it.b,it.c);}
-        else{const w=it.t==='hut'?it.w*s*1.3+4:it.t==='wall'?it.w*s+4:it.cw*it.hm*s*1.25+6,h=it.t==='hut'?4.3*s+4:it.hm*s*1.2+5;it.b={w,h,px:w/2,py:h-2};cells.push(it.b);}}
+        else{it.b=crossThingBox(it,s);cells.push(it.b);}}
       let q=VS,Hs=0;for(let k=0;k<3;k++){const mw=4000/q;let x=0,y=0,rh=0;for(const c of cells){if(x+c.w>mw){x=0;y+=rh+1;rh=0;}c.x=x;c.y=y;x+=c.w+1;rh=Math.max(rh,c.h);}Hs=y+rh+1;if(Hs*q<=4000)break;q*=3900/(Hs*q);}
       const cv=document.createElement('canvas');cv.width=Math.ceil(4000);cv.height=Math.ceil(Hs*q);let wmax=0;for(const c of cells)wmax=Math.max(wmax,c.x+c.w);cv.width=Math.ceil((wmax+1)*q);
       const g=cv.getContext('2d');
       for(const it of ly.items){const r=it.r,b=it.b;g.setTransform(q,0,0,q,(b.x+b.px)*q,(b.y+b.py)*q);
-        if(it.t==='palm'){crossTrunk(g,0,0,it.Ht,it.bw,it.tw,it.lean,it.bow,cl.t,L);g.setTransform(q,0,0,q,(it.c.x+it.c.px)*q,(it.c.y+it.c.py)*q);crossCrown(g,0,0,it.R,r,cl,L,f>0.26&&cr.tod!==1);}
+        if(it.t==='palm'){if(it.pit)crossPit(g,s,cl,r);crossTrunk(g,0,0,it.Ht,it.bw,it.tw,it.lean,it.bow,cl.t,L);g.setTransform(q,0,0,q,(it.c.x+it.c.px)*q,(it.c.y+it.c.py)*q);crossCrown(g,0,0,it.R,r,cl,L,f>0.26&&cr.tod!==1);}
         else crossThing(g,it,s,cl,L,r);}
       ly.c=cv;ly.q=q;},
     draw(ctx,ly,cr){const f=ly.f,gy=crossGYf(f),q=ly.q,W=viewW,A=ly.c,gu=crossGust(cr),t=gameTime;
@@ -11254,9 +11454,13 @@ const CROSS_KINDS={
   // (the excavated spoil, as at Musawwarat's Great Hafir), Siwa's spring a dressed stone rim and its upwelling (rings)
   pool:{bake(ly,cr){const C=cr.cols,st=cr.cols.sky.map(bgRGB),wc=crossLit(cr,[58,78,86]).dim,r=mulberry32(hash2(cr.seed,ly.id*313+5));
       ly.ph=[r()*6.28,r()*6.28,r()*6.28,r()*6.28];
-      if(!ly.river){const N=56;ly.X=new Float32Array(N);ly.F=new Float32Array(N);for(let i=0;i<N;i++){const p=crossPoolTh(ly,i/N*6.2832,1);ly.X[i]=p[0];ly.F[i]=p[1];}
+      if(ly.poly){const N=ly.poly.length;ly.X=new Float32Array(N);ly.F=new Float32Array(N);for(let i=0;i<N;i++){ly.X[i]=ly.poly[i][0];ly.F[i]=ly.poly[i][1];}ly.fmin=Math.min(...ly.F);ly.fmax=Math.max(...ly.F);
+        // (round 36c) each edge's water side: along the view (1: the water nearer, a far edge whose inner wall shows) or receding (1: the water to its right)
+        ly.ws=[];for(let i=0;i<N;i++){const j=(i+1)%N,xm=(ly.X[i]+ly.X[j])/2,fm=(ly.F[i]+ly.F[j])/2;ly.ws.push(ly.F[i]===ly.F[j]?(crossInPoly(ly.poly,xm,fm+0.004)?1:-1):(crossInPoly(ly.poly,xm+4,fm)?1:-1));}
+        const k=crossLit(cr,[208,194,164]),A=c=>C.at(c,ly.fmin);ly.cp=[crossRGB(A(mixRGB(k.lit,[255,248,232],0.15))),crossRGB(A(mixRGB(k.dim,k.lit,0.3))),crossRGB(A(mixRGB(k.dim,k.shd,0.6))),crossRGB(A(mixRGB(k.dim,k.lit,0.15)))];}
+      else if(!ly.river){const N=56;ly.X=new Float32Array(N);ly.F=new Float32Array(N);for(let i=0;i<N;i++){const p=crossPoolTh(ly,i/N*6.2832,1);ly.X[i]=p[0];ly.F[i]=p[1];}
         ly.fmin=Math.min(...ly.F);ly.fmax=Math.max(...ly.F);}
-      else{ly.fmin=ly.fa-0.035;ly.fmax=ly.fb+0.04;}
+      else{ly.fmin=ly.fa-(ly.straight===true?0.004:0.035);ly.fmax=ly.fb+(ly.straight?0.004:0.04);}
       ly.sx=new Float32Array(200);ly.sy=new Float32Array(200);
       const rg=gx.createLinearGradient(0,CROSS_HZ,0,CROSS_HZ+48);const s0=crossSun(cr),hb=s0.moon?[150,165,205]:cr.tod===2?[255,196,150]:[255,176,116];rg.addColorStop(0,crossRGB(mixRGB(mixRGB(st[2],hb,s0.moon?0.12:0.3),wc,0.06)));rg.addColorStop(1,crossRGB(mixRGB(crossMul(st[1],[0.86,0.88,0.94]),wc,0.25)));ly.rg=rg;
       const tg=gx.createLinearGradient(0,crossGYf(ly.fmin),0,crossGYf(ly.fmax));tg.addColorStop(0,crossRGB(wc,0.04));tg.addColorStop(1,crossRGB(crossMul(wc,[0.55,0.55,0.66]),0.4));ly.tg=tg;
@@ -11265,19 +11469,27 @@ const CROSS_KINDS={
       ly.damp=crossRGB(crossMul(crossGroundAt(cr,ly.fmax),[0.62,0.6,0.64]),0.55);ly.lip=crossRGB(C.at(mixRGB(C.lit,C.rim,0.4),ly.fmin),0.45);ly.edge=crossRGB(crossMul(C.shd,[0.55,0.55,0.66]),0.6);
       ly.lt=crossRGB(mixRGB(st[2],[255,255,255],0.25),0.3);ly.dk=crossRGB(crossMul(wc,[0.6,0.6,0.7]),0.32);ly.gl=s.moon?'230,238,255':cr.tod===2?'255,238,204':'255,222,170';
       if(ly.v==='spring'){const k=crossLit(cr,[190,170,140]);ly.rim=[crossRGB(C.at(k.dim,ly.fc)),crossRGB(C.at(k.lit,ly.fc)),crossRGB(C.at(k.shd,ly.fc),0.7)];}
-      if(ly.v==='hafir'){const e=crossGroundAt(cr,ly.fmin-0.05);ly.berm=[crossRGB(mixRGB(e,C.at(C.left?C.lit:C.dim,ly.fmin),0.3)),crossRGB(C.at(C.rim,ly.fmin),0.3)];}},
+      if(ly.v==='hafir'){const e=crossGroundAt(cr,ly.fmin-0.05);ly.berm=[crossRGB(mixRGB(e,C.at(C.left?C.lit:C.dim,ly.fmin),0.3)),crossRGB(C.at(C.rim,ly.fmin),0.3)];}
+      // (round 36c) lotus pads in clumps with their flowers, blue (Nymphaea caerulea) and white (N. lotus); fish under the surface (tilapia, as in
+      // Nebamun's pool) and the places they rise; the cat's paw's colour
+      const inW=(X,F)=>ly.poly?crossInPoly(ly.poly,X-10,F)&&crossInPoly(ly.poly,X+10,F)&&crossInPoly(ly.poly,X,F-0.012)&&crossInPoly(ly.poly,X,F+0.012):ly.river?F>ly.fa+0.03&&F<ly.fb-0.015:false;
+      const rx=ly.poly?[Math.min(...ly.X),Math.max(...ly.X)]:ly.lx||crossRange(cr,ly.fb||0.5,0),pick=()=>{for(let k=0;k<40;k++){const X=lerp(rx[0],rx[1],r()),F=lerp(ly.fmin,ly.fmax,r());if(inW(X,F))return [X,F];}return null;};
+      if(ly.lotus){ly.pads=[];ly.fl=[];for(let c=0;c<Math.ceil(ly.lotus/5);c++){const p=pick();if(!p)continue;for(let i=0;i<5;i++){const X=p[0]+(r()-0.5)*40,F=p[1]+(r()-0.5)*0.03;if(!inW(X,F))continue;ly.pads.push([X,F,0.16+0.16*r()]);if(r()<0.32)ly.fl.push([X+(r()-0.5)*6,F,r()<0.6?0:1]);}}
+        const pd=crossLit(cr,[62,96,48]),bl=crossLit(cr,[96,126,222]),wh=crossLit(cr,[238,236,226]);ly.pc=[crossRGB(C.at(mixRGB(pd.shd,pd.dim,0.5),ly.fmin)),crossRGB(C.at(pd.lit,ly.fmin),0.55)];ly.fc2=[crossRGB(bl.lit),crossRGB(wh.lit)];}
+      if(ly.fish){ly.fs=[];ly.rp=[];for(let i=0;i<ly.fish;i++){const p=pick();if(p)ly.fs.push([p[0],p[1],(r()<0.5?-1:1)*(0.6+0.8*r()),r()*6.28,0.2+0.12*r()]);}for(let i=0;i<10;i++){const p=pick();if(p)ly.rp.push(p);}if(!ly.rp.length)ly.rp=null;ly.fc=crossRGB(crossMul(wc,[0.45,0.45,0.5]),0.45);}
+      if(ly.paw)ly.pw=crossRGB(mixRGB(st[1],[255,255,255],0.12));}, // (a ruffled patch shows the sky's own colour, not the mirrored land)
     draw(ctx,ly,cr){const W=viewW,t=gameTime,fx=GFX().fx;
       if(ly.berm){const N=ly.X.length;ctx.beginPath();let first=true;for(let i=N/2;i<=N;i++){const th=i/N*6.2832,p=crossPoolTh(ly,th,1.14),F=p[1],y=crossGYf(F)-0.9*29.4*F*Math.pow(Math.max(0,-Math.sin(th)),0.5);const x=crossPX(cr,p[0],F);if(first){ctx.moveTo(x,y);first=false;}else ctx.lineTo(x,y);}
         for(let i=N;i>=N/2;i--){const k=i%N;ctx.lineTo(crossPX(cr,ly.X[k],ly.F[k]),crossGYf(ly.F[k]));}ctx.closePath();ctx.fillStyle=ly.berm[0];ctx.fill();}
-      let n=crossPoolPts(ly,cr,1.32);crossPathPts(ctx,ly,n);ctx.fillStyle=ly.damp;ctx.fill();
+      let n;if(!ly.nodamp){n=crossPoolPts(ly,cr,1.32);crossPathPts(ctx,ly,n);ctx.fillStyle=ly.damp;ctx.fill();}
       n=crossPoolPts(ly,cr,1);let x0=1e9,x1=-1e9;for(let i=0;i<n;i++){const v=ly.sx[i];if(v<x0)x0=v;if(v>x1)x1=v;}
       ly.vis=x1>0&&x0<W;if(!ly.vis)return;
       const y0=crossGYf(ly.fmin)-1,y1=crossGYf(ly.fmax)+1,bx0=Math.max(-2,x0),bx1=Math.min(W+2,x1),bw=bx1-bx0,bh=y1-y0;
       ctx.save();ctx.beginPath();ctx.rect(bx0,y0,bw,bh);ctx.clip();crossPathPts(ctx,ly,n);ctx.clip(); // (the water's box first, a scissor: the mirrored layers cost only that box)
       ctx.fillStyle=ly.rg;ctx.fillRect(bx0,y0,bw,bh);ctx.fillStyle=ly.sg;ctx.fillRect(bx0,y0,bw,bh);
-      for(const l2 of cr.layers)if(l2.refl&&l2.ok&&l2.f<ly.fmin){ctx.save();ctx.globalAlpha=0.4;ctx.translate(0,2*crossGYf(l2.f));ctx.scale(1,-1);CROSS_KINDS[l2.kind].draw(ctx,l2,cr);ctx.restore();}
+      if(!ly.norefl)for(const l2 of cr.layers)if(l2.refl&&l2.ok&&l2.f<ly.fmin){ctx.save();ctx.globalAlpha=0.4;ctx.translate(0,2*crossGYf(l2.f));ctx.scale(1,-1);CROSS_KINDS[l2.kind].draw(ctx,l2,cr);ctx.restore();}
       ctx.fillStyle=ly.tg;ctx.fillRect(bx0,y0,bw,bh);
-      if(fx){const R=8,cx=cr.cx;ctx.lineWidth=0.5;
+      if(fx){const R=clamp(Math.round(bh/1.3),2,8),cx=cr.cx;ctx.lineWidth=0.5;
         for(let pass=0;pass<2;pass++){ctx.strokeStyle=pass?ly.dk:ly.lt;ctx.beginPath();
           for(let r=0;r<R;r++){const F=ly.fmin+(r+0.5+pass*0.4)/R*(ly.fmax-ly.fmin),y=crossGYf(F)+pass*0.5,P=30,Xa=cx+W/2-W/(2*F),Xb=cx+W/2+W/(2*F);
             for(let j=Math.floor(Xa/P);j<=Math.ceil(Xb/P);j++){const h=hash2(j*31+r*7+pass,cr.seed);if((h&3)===0)continue;const X=j*P+(h&255)/255*P+3*Math.sin(t*0.55+j+r),x=crossPX(cr,X,F),l=(2.5+5*((h>>>8)&255)/255)*F*1.3;
@@ -11287,6 +11499,15 @@ const CROSS_KINDS={
         const s=ly.sun;if(s.x>bx0-20&&s.x<bx1+20){ctx.strokeStyle='rgba('+ly.gl+',0.7)';ctx.lineWidth=0.7;ctx.beginPath();const sl=Math.floor(t*7);
           for(let r=0;r<22;r++){const F=ly.fmin+(r+0.5)/22*(ly.fmax-ly.fmin),y=crossGYf(F),w=(s.moon?5:8)+40*(F-ly.fmin),h=hash2(r*13+sl,cr.seed^0x9e3);if((h&7)===0)continue;
             for(let j=0;j<2;j++){const x=s.x+(((h>>>(4+j*9))&511)/511-0.5)*w,l=1.5+4*((h>>>(14+j*5))&31)/31;ctx.moveTo(x-l/2,y);ctx.lineTo(x+l/2,y);}}ctx.stroke();}}
+      // (round 36c) the breeze's cat's paw (Hawara's beat): a darker ruffled band crossing the water at the wave's front, its ripples flickering
+      if(ly.paw&&fx){const w=crossWaveF(cr);if(w&&w.env>0.01){ctx.fillStyle=ly.pw;for(let k=0;k<3;k++){const a=w.xf-70-55*k,b=w.xf+15+18*k;ctx.globalAlpha=w.env*0.14;ctx.beginPath();ctx.moveTo(crossPX(cr,a,ly.fmin),y0);ctx.lineTo(crossPX(cr,b,ly.fmin),y0);ctx.lineTo(crossPX(cr,b,ly.fmax),y1);ctx.lineTo(crossPX(cr,a,ly.fmax),y1);ctx.closePath();ctx.fill();}
+        ctx.globalAlpha=w.env*0.85;ctx.strokeStyle=ly.lt;ctx.lineWidth=0.5;ctx.beginPath();const sl=Math.floor(t*6);for(let r=0;r<10;r++){const F=lerp(ly.fmin,ly.fmax,(r+0.5)/10),y=crossGYf(F);for(let j=0;j<7;j++){const h=hash2(r*17+j,sl),X=w.xf-130+((h&1023)/1023)*160,x=crossPX(cr,X,F),l=(2+3*((h>>>10)&255)/255)*F*1.3;ctx.moveTo(x-l/2,y);ctx.lineTo(x+l/2,y);}}ctx.stroke();ctx.globalAlpha=1;}}
+      // fish gliding under the surface, the rings where one rises, the lotus pads lying on it
+      if(ly.fs&&fx){ctx.fillStyle=ly.fc;ctx.beginPath();for(const q of ly.fs){const a=t*0.25*q[2]+q[3],X=q[0]+16*Math.sin(a),F=q[1]+0.012*Math.sin(t*0.17+q[3]),x=crossPX(cr,X,F),y=crossGYf(F)+0.6,l=q[4]*29.4*F,d=Math.cos(a)*q[2]>0?1:-1;if(x<bx0-l||x>bx1+l)continue;
+          ctx.moveTo(x+l*0.5,y);ctx.ellipse(x,y,l*0.5,Math.max(0.5,l*0.16),0,0,6.2832);ctx.moveTo(x-d*l*0.45,y);ctx.lineTo(x-d*l*0.75,y-l*0.14);ctx.lineTo(x-d*l*0.75,y+l*0.14);ctx.closePath();}ctx.fill();
+        if(ly.rp){ctx.strokeStyle=ly.lt;ctx.lineWidth=0.55;const sl=Math.floor(t/0.8);for(let k=0;k<3;k++){const s2=sl-k,h=hash2(s2,cr.seed^0x71f);if((h&3)===0)continue;const p=ly.rp[(h>>>4)%ly.rp.length],age=t-s2*0.8-((h>>>12)&255)/255*0.3;if(age<0||age>2.2)continue;
+            const x=crossPX(cr,p[0],p[1]),y=crossGYf(p[1]);if(x<bx0-20||x>bx1+20)continue;ctx.globalAlpha=0.9*(1-age/2.2);ctx.beginPath();for(let j=0;j<2;j++){const a2=age-j*0.35;if(a2<0)continue;const rx=(0.1+0.45*a2)*29.4*p[1];ctx.moveTo(x+rx,y);ctx.ellipse(x,y,rx,Math.max(0.4,rx*0.32*p[1]),0,0,6.2832);}ctx.stroke();}ctx.globalAlpha=1;}}
+      if(ly.pads){for(let p=0;p<2;p++){ctx.fillStyle=ly.pc[p];ctx.beginPath();for(const q of ly.pads){const x=crossPX(cr,q[0],q[1]);if(x<bx0-10||x>bx1+10)continue;const y=crossGYf(q[1])+0.2,rx=q[2]*29.4*q[1]*(p?0.7:1),ry=Math.max(0.4,q[2]*29.4*q[1]*0.3*q[1])*(p?0.5:1),xo=p?-rx*0.2:0,yo=p?-ry*0.6:0;ctx.moveTo(x+xo+rx,y+yo);ctx.ellipse(x+xo,y+yo,rx,ry,0,0,6.2832);}ctx.fill();}}
       ctx.restore();
       // the shores: the far bank's lit lip, the near bank's dark edge; the spring's stone rim; its upwelling
       if(ly.rim){const N=ly.X.length;ctx.beginPath();for(let i=0;i<=N/2;i++){const k=i%N,x=crossPX(cr,ly.X[k],ly.F[k]),y=crossGYf(ly.F[k]);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}
@@ -11294,16 +11515,25 @@ const CROSS_KINDS={
         ctx.strokeStyle=ly.rim[2];ctx.lineWidth=0.5;ctx.beginPath();for(let i=2;i<N/2;i+=3){const F=ly.F[i],x=crossPX(cr,ly.X[i],F),y=crossGYf(F);ctx.moveTo(x,y+0.6);ctx.lineTo(x,y+0.32*29.4*F);}ctx.stroke();
         ctx.strokeStyle=ly.rim[1];ctx.lineWidth=1.3;crossPathPts(ctx,ly,n);ctx.stroke();
         if(fx){ctx.strokeStyle=ly.lt;ctx.lineWidth=0.5;ctx.beginPath();for(let k=0;k<3;k++){const w=((t*0.55+k/3)%1),X=ly.Xc+(k-1)*ly.Rx*0.3,F=ly.fc+(k-1)*0.02,x=crossPX(cr,X,F),y=crossGYf(F),rx=(1+7*w)*F;ctx.moveTo(x+rx,y);ctx.ellipse(x,y,rx,rx*0.24,0,0,6.2832);}ctx.stroke();}}
+      else if(ly.poly){ // (round 36c) the stone coping: the far wall's inner face under its far edge, the kerb's face toward him on the near
+        // edges, the side walls' inner faces where the eye sees them (lit on the light's side), the coping's lit top along every edge
+        const N=ly.X.length,hw=0.22*29.4,hk=0.14*29.4,cm=cr.cx+W/2,Lt=cr.cols.left?1:-1;
+        for(let i=0;i<N;i++){const j=(i+1)%N,Fa=ly.F[i],Fb=ly.F[j],xa=crossPX(cr,ly.X[i],Fa),xb=crossPX(cr,ly.X[j],Fb),ya=crossGYf(Fa),yb=crossGYf(Fb);if(Math.max(xa,xb)<-2||Math.min(xa,xb)>W+2)continue;
+          if(Fa===Fb){const x0=Math.min(xa,xb),w2=Math.abs(xb-xa);if(ly.ws[i]>0){ctx.fillStyle=ly.cp[2];ctx.fillRect(x0,ya,w2,hw*Fa);}else{ctx.fillStyle=ly.cp[1];ctx.fillRect(x0,ya,w2,hk*Fa);}}
+          else if(ly.ws[i]>0?cm>ly.X[i]:cm<ly.X[i]){ctx.fillStyle=(ly.ws[i]>0)===(Lt<0)?ly.cp[3]:ly.cp[2];ctx.beginPath();ctx.moveTo(xa,ya);ctx.lineTo(xb,yb);ctx.lineTo(xb,yb+hw*Fb);ctx.lineTo(xa,ya+hw*Fa);ctx.closePath();ctx.fill();}}
+        ctx.strokeStyle=ly.cp[0];ctx.lineWidth=1;crossPathPts(ctx,ly,n);ctx.stroke();}
       else{ctx.lineWidth=0.6;ctx.strokeStyle=ly.lip;ctx.beginPath();const h=ly.river?(n>>1):0;
         if(ly.river){for(let i=0;i<h;i++){if(i===0)ctx.moveTo(ly.sx[i],ly.sy[i]);else ctx.lineTo(ly.sx[i],ly.sy[i]);}ctx.stroke();ctx.strokeStyle=ly.edge;ctx.beginPath();for(let i=h;i<n;i++){if(i===h)ctx.moveTo(ly.sx[i],ly.sy[i]+0.3);else ctx.lineTo(ly.sx[i],ly.sy[i]+0.3);}ctx.stroke();}
-        else{const N=ly.X.length;for(let i=N/2;i<=N;i++){const k=i%N;if(i===N/2)ctx.moveTo(ly.sx[k],ly.sy[k]);else ctx.lineTo(ly.sx[k],ly.sy[k]);}ctx.stroke();ctx.strokeStyle=ly.edge;ctx.beginPath();for(let i=0;i<=N/2;i++){if(i===0)ctx.moveTo(ly.sx[i],ly.sy[i]+0.3);else ctx.lineTo(ly.sx[i],ly.sy[i]+0.3);}ctx.stroke();}}}},
+        else{const N=ly.X.length;for(let i=N/2;i<=N;i++){const k=i%N;if(i===N/2)ctx.moveTo(ly.sx[k],ly.sy[k]);else ctx.lineTo(ly.sx[k],ly.sy[k]);}ctx.stroke();ctx.strokeStyle=ly.edge;ctx.beginPath();for(let i=0;i<=N/2;i++){if(i===0)ctx.moveTo(ly.sx[i],ly.sy[i]+0.3);else ctx.lineTo(ly.sx[i],ly.sy[i]+0.3);}ctx.stroke();}}
+      if(ly.fl)for(let c=0;c<2;c++){ctx.fillStyle=ly.fc2[c];ctx.beginPath();for(const p of ly.fl){if(p[2]!==c)continue;const x=crossPX(cr,p[0],p[1]);if(x<-6||x>W+6)continue;const y=crossGYf(p[1]),hf=Math.max(1.2,0.13*29.4*p[1]),wf=hf*0.8;
+          ctx.moveTo(x-wf,y-hf*0.35);ctx.lineTo(x-wf*0.45,y-hf*0.05);ctx.lineTo(x,y-hf);ctx.lineTo(x+wf*0.45,y-hf*0.05);ctx.lineTo(x+wf,y-hf*0.35);ctx.lineTo(x+wf*0.3,y+0.3);ctx.lineTo(x-wf*0.3,y+0.3);ctx.closePath();}ctx.fill();}}},
   // reeds at the water's edge (ly.side 'far' or 'near'): clumps of three kinds drawn once (papyrus with its umbels by the Nile and the
   // hafir, common reed with its plumes, reedmace with its brown heads), set along the shore in world x and depth and swaying (a shear
   // about the clump's foot, a function of the clock)
   reeds:{bake(ly,cr){const P=ly.pool,r=mulberry32(hash2(cr.seed,ly.id*911+17)),s=29.4,cl=crossOasisCols(cr,0.75),q=VS,cells=[],L=cr.cols.left?1:-1;ly.cl=[];
       const near=ly.side==='near';
       if(P.river){const [a,b]=crossRange(cr,near?P.fb:P.fa,40);for(let X=a+r()*60;X<b;X+=(near?70:90)+r()*110){const F=crossPoolEdge(P,X,near)+(near?0.012:-0.004);ly.cl.push({X,F});}}
-      else for(let i=0;i<(near?6:7);i++){const u=r(),th=near?Math.PI*(u<0.5?0.04+0.3*u:0.96-0.3*(u-0.5)):Math.PI*(1.06+0.88*r()),p=crossPoolTh(P,th,1.03);ly.cl.push({X:p[0],F:p[1]+(near?0.008:-0.004)});}
+      else for(let i=0;i<(ly.nn||(near?6:7));i++){const u=r(),th=near?Math.PI*(u<0.5?0.04+0.3*u:0.96-0.3*(u-0.5)):Math.PI*(1.06+0.88*r()),p=crossPoolTh(P,th,1.03);ly.cl.push({X:p[0],F:p[1]+(near?0.008:-0.004)});}
       for(const c of ly.cl){c.v=Math.floor(r()*3);c.sc=0.75+0.5*r();c.ph=r()*6.28;}ly.cl.sort((a,b)=>a.F-b.F);
       for(let v=0;v<3;v++)cells.push({w:44,h:72,px:22,py:70,v});let x=0;for(const c of cells){c.x=x;c.y=0;x+=c.w+1;}
       const cv=document.createElement('canvas');cv.width=Math.ceil(x*q);cv.height=Math.ceil(73*q);const g=cv.getContext('2d');g.lineCap='round';
@@ -11315,23 +11545,23 @@ const CROSS_KINDS={
           else if(v===2&&b%4===1){g.fillStyle=crossRGB(cl.d.shd);g.fillRect(ex+u*4-0.9,ey+2,1.8,6);}}}
       ly.cells=cells;ly.c=cv;ly.q=q;},
     draw(ctx,ly,cr){const W=viewW,t=gameTime,gu=crossGust(cr),q=ly.q,A=ly.c;
-      for(const c of ly.cl){const x=crossPX(cr,c.X,c.F);if(x<-30||x>W+30)continue;const C2=ly.cells[c.v],k=c.F*c.sc,sh=0.07*Math.sin(t*1.25+c.ph)+0.03*Math.sin(t*2.9+c.ph*2)+0.06*gu;
+      for(const c of ly.cl){const x=crossPX(cr,c.X,c.F);if(x<-30||x>W+30)continue;const C2=ly.cells[c.v],k=c.F*c.sc,sh=0.07*Math.sin(t*1.25+c.ph)+0.03*Math.sin(t*2.9+c.ph*2)+(ly.wave?0.2*crossWave(cr,c.X):0.06*gu);
         ctx.save();ctx.translate(x,crossGYf(c.F)+0.5);ctx.transform(1,0,-sh,1,0,0);ctx.scale(k,k);ctx.drawImage(A,C2.x*q,0,C2.w*q,C2.h*q,-C2.px,-C2.py,C2.w,C2.h);ctx.restore();}}},
   // the beat (round 36b): Egyptian geese (Alopochen aegyptiacus, the Meidum geese) resting on the water lift off as he passes CROSS_BEAT of
   // the way: each in turn runs over the surface beating its wings (splashes), then climbs away ahead of him, the white of the forewing
   // showing; before that they drift and bob with rings spreading round them. All a function of the clock and the beat's moment
   birds:{bake(ly,cr){const r=mulberry32(hash2(cr.seed,ly.id*577+3)),P=ly.pool;ly.g=[];
-      for(let i=0;i<ly.n;i++){let X,F;if(P.river){X=ly.Xg+(i-ly.n/2)*24+r()*16;F=lerp(P.fa+0.06,P.fb-0.04,r());}else{X=P.Xc+(r()-0.35)*P.Rx*0.75;F=P.fc+(r()-0.5)*P.Rf*0.8;}
-        ly.g.push({X,F,d:r()<0.55?1:-1,dl:0.2*i+0.3*r(),ph:r()*6.28,sz:0.8+0.12*r()});}
+      for(let i=0;i<ly.n;i++){let X,F;if(P.river){X=ly.Xg+(i-ly.n/2)*24+r()*16;F=lerp(P.fa+0.06,P.fb-0.04,0.5+0.5*r());}else{X=P.Xc+(r()-0.35)*P.Rx*0.75;F=P.fc+(0.1+0.4*r())*P.Rf*0.85;} // (round 36c: the near half of the water)
+        ly.g.push({X,F,d:r()<0.55?1:-1,dl:0.2*i+0.3*r(),ph:r()*6.28,sz:0.84+0.1*r()});}
       ly.g.sort((a,b)=>a.F-b.F);const b=crossLit(cr,[156,122,88]),w=crossLit(cr,[232,228,216]),h=crossLit(cr,[206,188,156]);
       ly.cb=[crossRGB(b.dim),crossRGB(b.lit),crossRGB(w.lit),crossRGB(h.lit),crossRGB(b.shd)];ly.wk=crossRGB(mixRGB(cr.cols.sky.map(bgRGB)[2],[255,255,255],0.3),0.4);ly.sp=crossRGB(w.lit,0.7);},
     draw(ctx,ly,cr){const t=gameTime,b=cr.gust<0?-1:cr.t-cr.gust,fx=GFX().fx;
       for(const q of ly.g){const tb=b<0?-1:b-q.dl,F=q.F,s=29.4*F,sz=q.sz*s;let X=q.X+2.5*Math.sin(t*0.23+q.ph),hgt=0,fly=0,dir=q.d,flap=0;
-        if(tb>=0){dir=1;if(tb<0.7){X+=88*tb*tb;hgt=sz*0.3*tb/0.7;fly=0.5;flap=Math.sin(tb*6.2832*5);}else{const u=tb-0.7;X+=43+95*u+45*u*u;hgt=sz*0.3+s*(1.7*u+1.1*u*u);fly=1;flap=Math.sin(u*6.2832*3.4+q.ph);}}
-        const x=crossPX(cr,X,F),y=crossGYf(F)-hgt+(fly?0:0.35*Math.sin(t*1.7+q.ph));if(x<-40||x>viewW+40||y<-30)continue;
+        let Fd=F,szd=sz;if(tb>=0){dir=1;if(tb<0.7){X+=88*tb*tb;hgt=sz*0.3*tb/0.7;fly=0.5;flap=Math.sin(tb*6.2832*5);}else{const u=tb-0.7;X+=43+95*u+45*u*u;Fd=Math.min(0.95,F+(0.95-F)*sstep(u/2.4));szd=sz*Fd/F;hgt=sz*0.3+29.4*Fd*(1.7*u+1.1*u*u);fly=1;flap=Math.sin(u*6.2832*3.4+q.ph);}} // (round 36c: they climb away toward him a little, over his head's line)
+        const x=crossPX(cr,X,Fd),y=crossGYf(Fd)-hgt+(fly?0:0.35*Math.sin(t*1.7+q.ph));if(x<-40||x>viewW+40||y<-30)continue;
         if(fx&&tb<0){const w=(t*0.31+q.ph)%1;ctx.strokeStyle=ly.wk;ctx.globalAlpha=1-w;ctx.lineWidth=0.5;ctx.beginPath();ctx.ellipse(x,y+0.5,sz*(0.5+1.2*w),sz*(0.5+1.2*w)*0.22,0,0,6.2832);ctx.stroke();ctx.globalAlpha=1;}
         if(fx&&tb>=0&&tb<1){ctx.strokeStyle=ly.sp;ctx.globalAlpha=1-tb;ctx.lineWidth=0.6;ctx.beginPath();const wy=crossGYf(F);for(let k=0;k<2;k++){const sx=x-dir*sz*(0.45+0.4*k),hh=sz*(0.12+0.12*Math.abs(Math.sin(t*9+k)));ctx.moveTo(sx,wy);ctx.quadraticCurveTo(sx-dir*1.5,wy-hh,sx-dir*3,wy-hh*0.3);}ctx.stroke();ctx.globalAlpha=1;}
-        crossGoose(ctx,x,y,sz,dir,fly,flap,ly.cb);}}},
+        crossGoose(ctx,x,y,szd,dir,fly,flap,ly.cb);}}},
   // the foreground of an oasis, nearer than he is (f 2.1, faster than he moves): a frond's tip hanging in from above (never below his
   // head's line) and clumps of reeds rising from the screen's foot (never above his feet's): dark, lit only at the rim, swaying
   ofore:{bake(ly,cr){const C=cr.cols,q=VS,col=crossMul(C.shd,cr.tod===1?[0.5,0.56,0.7]:[0.4,0.36,0.38]),rim=crossRGB(mixRGB(col,C.rim,0.3)),cv=document.createElement('canvas');
@@ -11356,6 +11586,157 @@ const CROSS_KINDS={
       g.fillStyle=A(mixRGB(rk.dim,rk.lit,0.55));g.fillRect(100,top-12,18,13);g.fillRect(96,top-15,6,16);g.fillRect(114,top-15,6,16);g.fillStyle='rgba(10,8,12,.55)';g.fillRect(105,top-8,5,9);
       ly.c=cv;ly.W=W;ly.H=H;},
     draw(ctx,ly,cr){ctx.drawImage(ly.c,crossPX(cr,ly.X,ly.f)-ly.W/2,crossGYf(ly.f)-ly.H+2,ly.W,ly.H);}},
+  // ---- the garden (round 36c): Nebamun's pool (West), the Field of Reeds (Osiris), the Fayum's shore (Hawara), the papyrus marsh (Nun) ----
+  // a kept garden's ground in bands across the view (a band of constant depth is a horizontal strip on the screen): the beaten earth
+  // path with its edges (b.grassy: grass along them), flower beds in a grid of small square plots between low mud ridges (as the Theban
+  // and Amarna gardens laid them out), grass, stubble; their plants (cornflower, poppy, chrysanthemum, mandrake among low leaves) or the
+  // path's pebbles and trodden marks baked into a strip at the band's middle depth; in front of him never above his feet's line
+  band:{bake(ly,cr){const C=cr.cols;
+      for(const b of ly.bands){const fm=(b.f0+b.f1)/2,s=29.4*fm,gc=crossGroundAt(cr,fm),y0=crossGYf(b.f0),y1=Math.min(ROOM_H+2,crossGYf(b.f1)),cap=b.f0>1?y0-CROSS_GY-1.5:1e9,
+          r=mulberry32(hash2(cr.seed,ly.id*131+Math.round(b.f0*1000))),cl=crossOasisCols(cr,Math.min(fm,1)),t=b.t;b.fm=fm;
+        const wt=t==='runnel'?mixRGB(bgRGB(C.sky[1]),crossLit(cr,[58,78,86]).dim,0.4):null,base=wt?wt:t==='path'?mixRGB(gc,C.lit,0.14):t==='beds'?mixRGB(crossMul(gc,[0.7,0.68,0.62]),cl.vn.shd,0.15):t==='grass'?mixRGB(crossMul(gc,[0.82,0.84,0.74]),cl.vn.dim,0.22):t==='stubble'?mixRGB(gc,cl.gr.dim,0.3):gc;
+        b.col=crossRGB(base);b.e0=crossRGB(mixRGB(base,C.lit,0.35),t==='path'?0.6:0.35);b.e1=crossRGB(crossMul(base,[0.62,0.6,0.64]),0.55);
+        if(wt){b.e0=crossRGB(crossMul(gc,[0.55,0.52,0.56]),0.9);b.e1=crossRGB(mixRGB(gc,C.lit,0.3),0.8);} // (a runnel: the far bank's face in shade over the water, the near bank's lit lip)b.rg=crossRGB(mixRGB(base,C.lit,0.2),0.55);b.rd=crossRGB(crossMul(base,[0.6,0.58,0.6]),0.5);
+        const W=560,top=Math.max(1,Math.min(cap,t==='beds'?0.55*s:t==='path'?(b.grassy?0.3*s:0.08*s+1):t==='grass'?0.32*s:0.2*s))+1,H=Math.ceil(top+(y1-y0)+2),q=Math.min(VS,3600/W),cv=document.createElement('canvas');
+        cv.width=Math.ceil(W*q);cv.height=Math.ceil(H*q);const g=cv.getContext('2d');g.setTransform(q,0,0,q,0,0);g.lineCap='round';
+        const F=k=>lerp(b.f0,b.f1,k),Y=k=>Math.min(H-1,top+(crossGYf(F(k))-y0));
+        const tuft=(x,y,h,c,n)=>{g.strokeStyle=c;g.lineWidth=Math.max(0.35,h*0.06);g.beginPath();for(let i=0;i<n;i++){const a=(i/(n-1)-0.5)*1.5;g.moveTo(x+(i-n/2)*h*0.05,y);g.quadraticCurveTo(x+Math.sin(a)*h*0.35,y-h*0.6,x+Math.sin(a)*h,y-Math.cos(a)*h);}g.stroke();};
+        if(wt){g.strokeStyle=crossRGB(mixRGB(bgRGB(C.sky[2]),[255,255,255],0.3),0.35);g.lineWidth=0.5;g.beginPath();for(let i=0;i<40;i++){const k=0.2+0.6*r(),y=Y(k),x=r()*W,l=1.5+4*r();g.moveTo(x,y);g.lineTo(x+l,y);}g.stroke();} // (its ripples catching the sky)
+        else if(t==='path'){for(let i=0;i<70;i++){const k=r(),y=Y(k),rr=Math.max(0.4,29.4*F(k)*(0.02+0.05*r()*r()));g.fillStyle=crossRGB(crossMul(base,[0.62,0.6,0.62]),0.6);g.beginPath();g.ellipse(r()*W,y,rr*1.4,rr*0.6,0,0,6.2832);g.fill();}
+          for(let i=0;i<26;i++){const k=r(),y=Y(k),l=29.4*F(k)*(0.3+0.6*r());g.fillStyle=crossRGB(i&1?mixRGB(base,C.lit,0.3):crossMul(base,[0.8,0.78,0.8]),0.35);g.fillRect(r()*W,y,l,Math.max(0.4,0.3*(1+r())));} // (trodden smooth: long faint marks along it)
+          if(b.grassy)for(let x=0;x<W;x+=3+6*r())for(const k of [0.02,0.97]){const y=Y(k)+r()*1.5,h=Math.min(top-1,29.4*F(k)*(0.12+0.18*r()));if(h>0.8)tuft(x,y,h,crossRGB(mixRGB(cl.vn.dim,cl.vn.lit,0.3*r())),4);}}
+        else if(t==='beds'){const fc=[crossLit(cr,[80,104,206]).lit,crossLit(cr,[206,56,42]).lit,crossLit(cr,[226,196,70]).lit,crossLit(cr,[236,232,222]).lit];
+          for(let i=0;i<150;i++){const k=r(),y=Y(k),sk=29.4*F(k),x=r()*W,h=Math.min(top-1,sk*(0.2+0.3*r()));if(h<0.8)continue;tuft(x,y,h,crossRGB(mixRGB(cl.vn.dim,cl.vn.lit,0.4*r())),5);
+            if(r()<0.6){g.fillStyle=crossRGB(fc[Math.floor(r()*4)]);g.beginPath();g.arc(x+(r()-0.5)*h*0.6,y-h*(0.85+0.2*r()),Math.max(0.45,Math.min(sk*0.035,1.6)),0,6.2832);g.fill();}}}
+        else{const fc=[crossLit(cr,[80,104,206]).lit,crossLit(cr,[206,56,42]).lit,crossLit(cr,[226,196,70]).lit];for(let i=0;i<(t==='grass'?70:120);i++){const k=r(),y=Y(k),sk=29.4*F(k),x=r()*W,h=Math.min(top-1,sk*(t==='grass'?0.15+0.2*r():0.08+0.1*r()));if(h<0.8)continue;
+          tuft(x,y,h,crossRGB(t==='grass'?mixRGB(cl.vn.dim,cl.vn.lit,0.4*r()):mixRGB(cl.gr.dim,cl.gr.lit,0.5*r())),t==='grass'?5:3);
+          if(b.fl&&r()<b.fl){g.fillStyle=crossRGB(fc[Math.floor(r()*3)]);g.beginPath();g.arc(x,y-h,Math.max(0.5,Math.min(sk*0.03,1.8)),0,6.2832);g.fill();}}}
+        b.c=cv;b.W=W;b.H=H;b.top=top;}},
+    draw(ctx,ly,cr){const W=viewW;for(const b of ly.bands){const y0=crossGYf(b.f0),y1=Math.min(ROOM_H+2,crossGYf(b.f1));ctx.fillStyle=b.col;ctx.fillRect(0,y0,W,y1-y0);
+        if(b.t==='beds'){ctx.lineWidth=0.6;for(let p=0;p<2;p++){const dy=p?-0.45:0.25;ctx.strokeStyle=p?b.rg:b.rd;ctx.beginPath(); // the plots' low ridges: across, and receding (constant world x, every 1.3 m)
+            for(let k=1;k<4;k++){const y=crossGYf(lerp(b.f0,b.f1,Math.pow(k/4,1.5)))+dy;if(y>ROOM_H)break;ctx.moveTo(0,y);ctx.lineTo(W,y);}
+            const P=38,Xa=cr.cx+W/2-(W/2)/b.f0-P,Xb=cr.cx+W/2+(W/2)/b.f0+P;for(let X=Math.floor(Xa/P)*P;X<Xb;X+=P){ctx.moveTo(crossPX(cr,X,b.f0)+dy,y0);ctx.lineTo(crossPX(cr,X,b.f1)+dy,crossGYf(b.f1));}ctx.stroke();}}
+        ctx.fillStyle=b.e0;ctx.fillRect(0,y0-0.35,W,0.7);if(b.f1<2){ctx.fillStyle=b.e1;ctx.fillRect(0,y1-0.35,W,0.7);}
+        crossStrip(ctx,b,-cr.cx*b.fm,y0-b.top);}}},
+  // a field of a crop in rows (ripe emmer and barley gold, flax with its blue flowers, a young green crop) from depth f0 to f1: one row's
+  // strip drawn at every row's own depth, scaled by f/f1 (the plants' size and spacing in perspective); a channel across it every P px of
+  // the world, ly.gap m wide (the rows leave its gap: Sennedjem's Field of Reeds and the Fayum's plots are cut into squares by channels);
+  // the breeze's wave (the beat) runs along the rows as a sheen: stalks bent by the gust turn their lit sides up
+  grain:{bake(ly,cr){const f1=ly.f1,s=29.4*f1,P=ly.P||330,W=P*f1,H=Math.ceil(ly.hm*s*1.3)+3,q=Math.min(VS,3000/W),cl=crossOasisCols(cr,f1);ly.cv=[];
+      for(let v=0;v<2;v++){const cv=document.createElement('canvas');cv.width=Math.ceil(W*q);cv.height=Math.ceil(H*q);const g=cv.getContext('2d');g.setTransform(q,0,0,q,0,0);crossCrop(g,ly,W,H,s,cl,mulberry32(hash2(cr.seed,ly.id*97+v*13+5)));ly.cv.push(cv);}
+      ly.W=W;ly.H=H;ly.rows=[];for(let i=0;i<ly.n;i++)ly.rows.push({F:lerp(ly.f0,f1,ly.n>1?i/(ly.n-1):1),v:i&1});ly.off=crossH(cr,ly.id,3)*P;
+      const sp=document.createElement('canvas');sp.width=sp.height=32;const sg=sp.getContext('2d'),gr=sg.createRadialGradient(16,16,0,16,16,16),lc=mixRGB(ly.crop==='grain'?cl.gr.lit:cl.vn.lit,[255,244,214],0.4).map(Math.round).join(',');
+      gr.addColorStop(0,'rgba('+lc+',0.9)');gr.addColorStop(0.5,'rgba('+lc+',0.35)');gr.addColorStop(1,'rgba('+lc+',0)');sg.fillStyle=gr;sg.fillRect(0,0,32,32);ly.sp=sp;
+      {const sd=document.createElement('canvas');sd.width=sd.height=32;const g2=sd.getContext('2d'),g3=g2.createRadialGradient(16,16,0,16,16,16),dc=crossMul(cl.m.shd,[0.7,0.68,0.72]).map(Math.round).join(',');g3.addColorStop(0,'rgba('+dc+',0.7)');g3.addColorStop(1,'rgba('+dc+',0)');g2.fillStyle=g3;g2.fillRect(0,0,32,32);ly.sd=sd;}
+      if(ly.gap){const k=crossLit(cr,[60,80,90]).dim;ly.wc=crossRGB(mixRGB(bgRGB(cr.cols.sky[1]),k,0.35));}},
+    draw(ctx,ly,cr){const W=viewW,P=ly.P||330,wv=GFX().fx?crossWaveF(cr):null,gw=(ly.gap||0)*29.4;
+      const sk=(ly.sink||0)*29.4,xr=ly.xr;
+      if(gw){ctx.fillStyle=ly.wc;ctx.beginPath();const Xa=cr.cx+W/2-(W/2)/ly.f0-P,Xb=cr.cx+W/2+(W/2)/ly.f0+P,ya=crossGYf(ly.f0)+sk*ly.f0,fb=ly.f1+0.012,yb=crossGYf(fb)+sk*fb;
+        for(let X=Math.floor((Xa-ly.off)/P)*P+ly.off;X<Xb;X+=P){if(xr&&(X<xr[0]||X+P>xr[1]+1))continue;const xa=crossPX(cr,X,ly.f0),xb=crossPX(cr,X+gw,ly.f0),xc=crossPX(cr,X+gw,fb),xd=crossPX(cr,X,fb);if(Math.max(xb,xc)<0||Math.min(xa,xd)>W)continue;
+          ctx.moveTo(xa,ya);ctx.lineTo(xb,ya);ctx.lineTo(xc,yb);ctx.lineTo(xd,yb);ctx.closePath();}ctx.fill();}
+      for(const r of ly.rows){const k=r.F/ly.f1,w=ly.W*k,h=ly.H*k,y=crossGYf(r.F)+sk*r.F-h+1.2*k,x0=crossPX(cr,ly.off,r.F);let ox=((x0%w)+w)%w;if(ox>0)ox-=w;
+        if(xr){const k0=Math.ceil((xr[0]-ly.off)/P),k1=Math.floor((xr[1]-ly.off)/P)-1;for(let j=k0;j<=k1;j++){const x=x0+j*w;if(x+w<0||x>W)continue;ctx.drawImage(ly.cv[r.v],x,y,w,h);}}
+        else for(let x=ox;x<W;x+=w)ctx.drawImage(ly.cv[r.v],x,y,w,h);
+        if(wv){const xs=crossPX(cr,wv.xf,r.F),ww=CROSS_WAVE[1]*1.3*r.F; // (the crest's ears turned up to the light, the trough behind it in the stalks' shade, a smaller crest after)
+          for(let j=0;j<3;j++){const xc=xs-j*2.4*ww,a=wv.env*(j===1?0.5:j?0.4:0.7);if(xc<-ww||xc>W+ww)continue;ctx.globalAlpha=a;ctx.drawImage(j===1?ly.sd:ly.sp,xc-ww,y-h*0.06,ww*2,h*(j===1?0.8:0.5));}ctx.globalAlpha=1;}}}},
+  // a papyrus thicket far off (the marsh's far stands, the lake's far shore): a band of clumps, each a dome of umbels along its top, with
+  // open water between some (ly.gaps), hazed by its depth; a strip repeating every W
+  thicket:{bake(ly,cr){const f=ly.f,s=29.4*f,W=ly.W||700,H=Math.ceil(ly.hm*s*1.15)+4,q=Math.min(VS*(f<0.06?0.6:1),3600/W),L=cr.cols.left?1:-1,cl=crossOasisCols(cr,f),r=mulberry32(hash2(cr.seed,ly.id*733+1)),cv=document.createElement('canvas');
+      cv.width=Math.ceil(W*q);cv.height=Math.ceil(H*q);const g=cv.getContext('2d');g.setTransform(q,0,0,q,0,0);const n=Math.round(W),Y=new Float32Array(n+1),cs=[];
+      for(let x=0;x<W;){const w=s*(2+5*r()),h=ly.hm*s*(0.6+0.4*r());if(!(ly.gaps&&r()<0.22))cs.push([x+w/2,w/2,h]);x+=w*(0.7+0.4*r());}
+      for(const c of cs)for(const o of [-W,0,W])for(let i=Math.max(0,Math.floor(c[0]+o-c[1]*1.3));i<=Math.min(n,Math.ceil(c[0]+o+c[1]*1.3));i++){const u=(i-c[0]-o)/(c[1]*1.3),v=c[2]*Math.sqrt(Math.max(0,1-u*u*u*u));if(v>Y[i])Y[i]=v;}
+      Y[n]=Y[0];
+      g.fillStyle=crossRGB(mixRGB(cl.py.dim,cl.py.shd,0.45));g.beginPath();g.moveTo(0,H);for(let i=0;i<=n;i++)g.lineTo(i,H-Y[i]);g.lineTo(W,H);g.closePath();g.fill();
+      if(s>3){g.strokeStyle=crossRGB(cl.py.dim,0.5);g.lineWidth=0.35;g.beginPath();for(let x=0;x<W;x+=Math.max(1.2,s*0.15)*(0.6+0.8*r())){const v=Y[Math.round(x)];if(v<2)continue;g.moveTo(x,H);g.lineTo(x+(r()-0.5)*0.8,H-v+s*0.2);}g.stroke();}
+      for(let x=0;x<W;x+=Math.max(1,s*0.32)*(0.6+0.8*r())){const v=Y[Math.round(x)];if(v<2)continue;const rr=Math.max(0.6,s*(0.18+0.1*r())),y=H-v+rr*0.4+r()*s*0.3;
+        g.fillStyle=crossRGB(mixRGB(cl.um.dim,cl.um.lit,clamp(0.15+0.45*r()-L*(x%(s*3))/(s*3)*0.2,0,1)));g.beginPath();g.ellipse(x,y,rr*1.15,rr*0.75,0,Math.PI,0);g.fill();}
+      ly.c=cv;ly.W=W;ly.H=H;},
+    draw(ctx,ly,cr){crossStrip(ctx,ly,-cr.cx*ly.f,crossGYf(ly.f)-ly.H+1.5);}},
+  // clumps of papyrus standing in the water (the marsh's islands): three heights drawn once at the path's scale (f 1), each clump drawn at
+  // its own depth (scaled by f), swaying by a shear about its foot, the breeze's wave bending them in turn; their reflections in the water
+  // (mirrored about the foot, faint, kept inside the water's band ly.wy)
+  clumps:{bake(ly,cr){const q=VS,cl=crossOasisCols(cr,0.6),L=cr.cols.left?1:-1,r=mulberry32(hash2(cr.seed,ly.id*411+3)),cells=[];
+      for(let v=0;v<3;v++){const Hc=(3.1+0.8*v)*29.4;cells.push({w:Math.ceil(Hc*1.15)+6,h:Math.ceil(Hc*1.08)+6,Hc});}let x=0;for(const c of cells){c.x=x;c.px=c.w/2;c.py=c.h-3;x+=c.w+1;}
+      const cv=document.createElement('canvas');cv.width=Math.ceil(x*q);cv.height=Math.ceil(Math.max(...cells.map(c=>c.h))*q);const g=cv.getContext('2d');
+      for(const c of cells){g.setTransform(q,0,0,q,(c.x+c.px)*q,c.py*q);crossPapyrus(g,c.Hc,r,cl,L);}
+      ly.cells=cells;ly.c=cv;ly.q=q;ly.items.sort((a,b)=>a.F-b.F);},
+    draw(ctx,ly,cr){const W=viewW,t=gameTime,q=ly.q,A=ly.c,fx=GFX().fx;
+      for(let pass=fx&&ly.wy?0:1;pass<2;pass++){if(!pass){const y0=crossGYf(ly.wy[0]),y1=crossGYf(ly.wy[1]);ctx.save();ctx.beginPath();ctx.rect(0,y0,W,y1-y0);ctx.clip();ctx.globalAlpha=0.26;}
+        for(const c of ly.items){if(!pass&&c.F<0.4)continue;const C2=ly.cells[c.v],k=c.F*c.sc,x=crossPX(cr,c.X,c.F);if(x+C2.w*k<0||x-C2.w*k>W)continue;
+          const sh=0.05*Math.sin(t*0.9+c.ph)+0.025*Math.sin(t*2.3+c.ph*2)+0.18*crossWave(cr,c.X);ctx.save();ctx.translate(x,crossGYf(c.F)+0.5);
+          if(pass){ctx.transform(1,0,-sh,1,0,0);ctx.scale(k,k);}else{ctx.transform(1,0,sh,1,0,0);ctx.scale(k,-k);}
+          ctx.drawImage(A,C2.x*q,0,C2.w*q,C2.h*q,-C2.px,-C2.py,C2.w,C2.h);ctx.restore();}
+        if(!pass){ctx.globalAlpha=1;ctx.restore();}}}},
+  // the garden's animals: a grey heron standing on the pool's coping lifts off as he passes CROSS_BEAT (West: a crouch, the neck drawn
+  // back, slow deep wingbeats, the legs trailing, climbing away ahead of him and a little nearer); ducks hidden in the papyrus burst up at
+  // the beat with the swimming ones (Nun: fast wingbeats, a steep climb: Nebamun's marsh, without the fowler); ducks paddling on a canal
+  // (Osiris); sacred ibis wading in the shallows, feeding (Hawara). Functions of the clock and the beat's moment; sizes by the depth rule
+  fauna:{bake(ly,cr){const g=crossLit(cr,[148,154,162]),w=crossLit(cr,[226,226,218]),k=crossLit(cr,[36,36,42]),b=crossLit(cr,[214,172,84]),d=crossLit(cr,[128,104,80]),gn=crossLit(cr,[60,120,96]);
+      ly.cb=ly.sp==='duck'?[crossRGB(d.dim),crossRGB(d.lit),crossRGB(gn.lit),crossRGB(crossMul(d.dim,[0.7,0.72,0.66])),crossRGB(d.shd)]:[crossRGB(g.dim),crossRGB(g.lit),crossRGB(w.lit),crossRGB(k.dim),crossRGB(b.lit)];
+      ly.items.sort((a,b)=>a.F-b.F);},
+    draw(ctx,ly,cr){const t=gameTime,b=cr.gust<0?-1:cr.t-cr.gust,W=viewW,gy=F=>crossGYf(F)+(ly.sink||0)*29.4*F;
+      for(const q of ly.items){const tb=b<0||!q.lift?-1:b-q.dl;let X=q.X,F=q.F,hgt=0,fly=0,flap=0,dir=q.d;
+        if(ly.sp==='heron'){if(tb<0.3){const x=crossPX(cr,X,F);if(x<-30||x>W+30)continue;crossHeron(ctx,x,crossGYf(F),q.sz*29.4*F,dir,0,tb<0?0:sstep(tb/0.3),t+q.ph,ly.cb);continue;}
+          const u=tb-0.3;X+=55*u+38*u*u;F=Math.min(0.97,F+0.18*sstep(u/2.5));const s=q.sz*29.4*F;hgt=s*(0.3+1.5*u+0.6*u*u);
+          const x=crossPX(cr,X,F),y=crossGYf(F)-hgt;if(x<-40||x>W+40||y<-30)continue;crossHeron(ctx,x,y,s,1,1,Math.sin(u*6.2832/0.62+0.4),0,ly.cb);continue;}
+        if(ly.sp==='ibis'){X+=6*Math.sin(t*0.12+q.ph);const x=crossPX(cr,X,F);if(x<-20||x>W+20)continue;const pk=Math.max(0,Math.sin(t*(0.8+0.15*(q.ph%2))+q.ph));crossIbis(ctx,x,crossGYf(F),q.sz*29.4*F,dir,pk,ly.cb);continue;}
+        if(tb<0){if(q.hid)continue;X+=3*Math.sin(t*0.2+q.ph);const x=crossPX(cr,X,F);if(x<-20||x>W+20)continue;crossGoose(ctx,x,gy(F)+0.3*Math.sin(t*1.6+q.ph),q.sz*29.4*F,dir,0,0,ly.cb);continue;}
+        dir=1;if(!q.hid&&tb<0.45){X+=70*tb*tb;hgt=q.sz*29.4*F*0.25*tb/0.45;fly=0.5;flap=Math.sin(tb*6.2832*7);}
+        else{const v=q.hid?tb:tb-0.45,F0=F;X+=(q.hid?0:14)+50*v+60*v*v;F=Math.min(0.95,F+0.12*sstep(v/2));hgt=29.4*F0*(q.hid?1.4:0.14)+29.4*F*(2.6*v+1.2*v*v);fly=1;flap=Math.sin(v*6.2832*6+q.ph);}
+        const x=crossPX(cr,X,F),y=gy(q.F)+(crossGYf(F)-crossGYf(q.F))-hgt;if(x<-30||x>W+30||y<-20)continue;crossGoose(ctx,x,y,q.sz*29.4*F,dir,fly,flap,ly.cb);}}},
+  // the garden's foreground, nearer than he is (f 2.1, as ofore): West a vine's runner hanging in from above with its leaves and a bunch
+  // of grapes, and clumps of the beds' flowers at the screen's foot; Osiris ears of ripe grain; Hawara reeds; Nun papyrus with its umbels,
+  // below and leaning in from above. Dark, lit only at the rim (the flowers' colours muted); never over him
+  gfore:{bake(ly,cr){const C=cr.cols,q=VS,v=ly.v,col=crossMul(C.shd,cr.tod===1?[0.5,0.56,0.7]:[0.42,0.4,0.38]),rim=mixRGB(col,C.rim,0.3),cv=document.createElement('canvas');
+      cv.width=Math.ceil(266*q);cv.height=Math.ceil(112*q);const g=cv.getContext('2d'),r=mulberry32(hash2(cr.seed,4343+v.length)),dk=crossRGB(col),rm=crossRGB(rim);g.lineCap='round';ly.top=false;
+      const fl=c=>crossRGB(mixRGB(col,crossMul(c,cr.tod===1?[0.45,0.5,0.7]:[0.62,0.55,0.55]),0.55));
+      const stem=(x0,ex,ey,c,w)=>{g.strokeStyle=c;g.lineWidth=w;g.beginPath();g.moveTo(x0,0);g.quadraticCurveTo(x0+(ex-x0)*0.3,ey*0.6,ex,ey);g.stroke();};
+      g.setTransform(q,0,0,q,222*q,110*q); // the foot clump, its foot at (222, 110)
+      if(v==='vine'){g.fillStyle=dk;for(let b=0;b<9;b++){g.beginPath();g.ellipse((r()-0.5)*26,-r()*14,3.5,1.6,(r()-0.5)*1.4,0,6.2832);g.fill();}
+        for(let b=0;b<11;b++){const u=b/10-0.5,h=22+16*r(),a=u*1.1+0.1*(r()-0.5),ex=u*10+Math.sin(a)*h,ey=-Math.cos(a)*h;stem(u*8,ex,ey,b%4===0?rm:dk,1.1);
+          g.fillStyle=fl(b%3===0?[70,96,200]:b%3===1?[200,50,40]:[220,190,60]);g.beginPath();g.arc(ex,ey,2.2+0.8*r(),0,6.2832);g.fill();}}
+      else if(v==='grain'){for(let b=0;b<16;b++){const u=b/15-0.5,h=26+18*r(),a=u*0.6+0.18+0.1*(r()-0.5),ex=u*12+Math.sin(a)*h,ey=-Math.cos(a)*h;stem(u*10,ex,ey,b%4===0?rm:dk,0.9);
+          const e2=[ex+Math.sin(a+0.3)*8,ey-Math.cos(a+0.3)*8];g.strokeStyle=b%3===0?rm:fl([200,160,80]);g.lineWidth=2.6;g.beginPath();g.moveTo(ex,ey);g.lineTo(e2[0],e2[1]);g.stroke();g.lineWidth=0.5;g.beginPath();g.moveTo(e2[0],e2[1]);g.lineTo(ex+Math.sin(a+0.2)*15,ey-Math.cos(a+0.2)*15);g.stroke();}}
+      else if(v==='papyrus'){for(let b=0;b<8;b++){const u=b/7-0.5,h=28+16*r(),a=u*0.7+0.08*(r()-0.5),ex=u*8+Math.sin(a)*h,ey=-Math.cos(a)*h;stem(u*6,ex,ey,b%3===0?rm:dk,1.4);
+          g.lineWidth=0.6;g.beginPath();for(let j=0;j<13;j++){const an=-Math.PI/2+(j/12-0.5)*3.4,l=7+2*r();g.moveTo(ex,ey);g.quadraticCurveTo(ex+Math.cos(an)*l*0.6,ey+Math.sin(an)*l*0.6-1,ex+Math.cos(an)*l,ey+Math.sin(an)*l*0.8+l*0.3*Math.abs(Math.cos(an)));}g.stroke();}}
+      else for(let b=0;b<16;b++){const u=b/15-0.5,h=30+16*r(),a=u*0.9+0.1*(r()-0.5);stem(u*10,u*6+Math.sin(a)*h,-Math.cos(a)*h,b%4===0?rm:dk,1.3);}
+      if(v==='vine'||v==='papyrus'){ly.top=true;g.setTransform(q,0,0,q,2*q,2*q); // the top: from (0,0) at the cell's top left, hanging down to the right
+        if(v==='vine'){const P=u=>[150*u,24*u+40*u*u];g.strokeStyle=dk;g.lineWidth=1.6;g.beginPath();g.moveTo(0,0);for(let k=1;k<=20;k++){const p=P(k/20);g.lineTo(p[0],p[1]+2*Math.sin(k*1.3));}g.stroke();
+          g.lineWidth=0.6;g.beginPath();for(let k=0;k<5;k++){const p=P(0.12+0.18*k),a=r()*6;g.moveTo(p[0],p[1]);for(let j=1;j<=10;j++){const u=j/10;g.lineTo(p[0]+Math.cos(a+u*7)*4*u+u*3,p[1]+Math.sin(a+u*7)*4*u+u*6);}}g.stroke(); // (tendrils curling)
+          for(let k=0;k<22;k++){const p=P(0.03+0.95*k/21),s2=5.5+4*r(),cx2=p[0]+(r()-0.5)*8,cy2=p[1]+3+r()*7;g.fillStyle=k%5===0?rm:dk;g.beginPath();
+            for(let j=0;j<=30;j++){const th=j/30*6.2832,rr=s2*(1+0.2*Math.cos(5*th))*(th>4.4&&th<5.0?0.55:1);g.lineTo(cx2+Math.cos(th)*rr,cy2+Math.sin(th)*rr*0.85);}g.closePath();g.fill();}
+          for(const k of [0.45,0.8]){const p=P(k);g.fillStyle=fl([80,44,84]);for(const [n,row] of [[3,0],[4,1],[3,2],[2,3],[1,4]])for(let i=0;i<n;i++){g.beginPath();g.arc(p[0]+(i-(n-1)/2)*3,p[1]+9+row*2.6,1.7,0,6.2832);g.fill();}}}
+        else for(let b=0;b<6;b++){const y0=8+b*8,ex=60+50*r(),ey=y0+18+20*r(),R=9+3*r();g.strokeStyle=b%3===0?rm:dk;g.lineWidth=1.3;g.beginPath();g.moveTo(-22,y0-20);g.quadraticCurveTo(ex*0.5,y0,ex,ey);g.stroke();
+          g.fillStyle=dk;g.beginPath();g.ellipse(ex,ey+R*0.3,R*0.9,R*0.55,0,0,6.2832);g.fill();g.strokeStyle=b%3===0?rm:dk;g.lineWidth=0.6;g.beginPath();
+          for(let j=0;j<15;j++){const an=-Math.PI/2+(j/14-0.5)*3.6,l=R*(0.85+0.3*r());g.moveTo(ex,ey);g.quadraticCurveTo(ex+Math.cos(an)*l*0.6,ey+Math.sin(an)*l*0.6-1,ex+Math.cos(an)*l,ey+Math.sin(an)*l*0.8+l*0.3*Math.abs(Math.cos(an)));}g.stroke();}}
+      ly.c=cv;ly.q=q;},
+    draw(ctx,ly,cr){const W=viewW,f=ly.f,P=230,q=ly.q,cx=cr.cx*f,t=gameTime,wv=0.05*crossGust(cr);
+      for(let k=Math.floor((cx-200)/P);k<=Math.ceil((cx+W+200)/P);k++){const h=hash2(k*71+3,cr.seed^0x0a5e),u=(h&1023)/1023,v=((h>>>10)&1023)/1023;if(v<0.3)continue;const x=k*P+u*P*0.6-cx;
+        if(v<0.68||!ly.top){if(x<-60||x>W+60)continue;const sh=0.08*Math.sin(t*1.1+k)+wv;ctx.save();ctx.translate(x,ROOM_H+4);ctx.transform(1,0,-sh,1,0,0);ctx.drawImage(ly.c,182*q,0,84*q,112*q,-40,-110,84,112);ctx.restore();}
+        else{const fl=(h>>>20)&1?1:-1;if(x+fl*178<-20&&x<-20||x+fl*178>W+20&&x>W+20)continue;ctx.save();ctx.translate(x,-36);ctx.scale(fl,1);ctx.rotate(0.04*Math.sin(t*0.9+k)+wv*0.6);ctx.drawImage(ly.c,0,0,180*q,112*q,-2,-4,180,112);ctx.restore();}}}},
+  // the dyke's face and the water in front of it (Nun: the path on a raised earth bank with the water on both sides): the bank's face toward
+  // him from its top (ft) down to the water (fw, ly.dh m below the path): earth in layers, stones, roots, grass hanging over the lip; the
+  // water from there to the screen's foot holds the sky high up (the eye looks steeply into it), the bank's dark reflection under it,
+  // ripples and lotus pads. In front of him, but under his feet's line
+  dyke:{bake(ly,cr){const C=cr.cols,gc=crossGroundAt(cr,ly.ft),st=cr.cols.sky.map(bgRGB),wc=crossLit(cr,[58,78,86]).dim,cl=crossOasisCols(cr,1),L=C.left?1:-1;
+      ly.yt=crossGYf(ly.ft);ly.yf=crossGYf(ly.fw)+ly.dh*29.4*ly.fw;const fh=ly.yf-ly.yt;
+      const fg=gx.createLinearGradient(0,ly.yt,0,ly.yf);fg.addColorStop(0,crossRGB(mixRGB(gc,C.lit,0.1)));fg.addColorStop(0.25,crossRGB(crossMul(gc,[0.72,0.68,0.66])));fg.addColorStop(1,crossRGB(crossMul(gc,[0.42,0.4,0.44])));ly.fg=fg;
+      const wg=gx.createLinearGradient(0,ly.yf,0,ROOM_H);wg.addColorStop(0,crossRGB(mixRGB(st[1],wc,0.35)));wg.addColorStop(1,crossRGB(mixRGB(st[0],wc,0.45)));ly.wg=wg;
+      const rg=gx.createLinearGradient(0,ly.yf,0,ly.yf+fh*0.8);rg.addColorStop(0,crossRGB(crossMul(gc,[0.3,0.3,0.34]),0.6));rg.addColorStop(1,crossRGB(crossMul(gc,[0.3,0.3,0.34]),0));ly.rg=rg;
+      ly.lt=crossRGB(mixRGB(st[1],[255,255,255],0.3),0.3);ly.dk=crossRGB(crossMul(wc,[0.6,0.6,0.7]),0.3);
+      const W=600,H=Math.ceil(ROOM_H+4-ly.yt),q=Math.min(VS,3600/W),cv=document.createElement('canvas');cv.width=Math.ceil(W*q);cv.height=Math.ceil(H*q);const g=cv.getContext('2d'),r=mulberry32(hash2(cr.seed,ly.id*59+1));g.setTransform(q,0,0,q,0,0);
+      for(let i=0;i<44;i++){g.fillStyle=crossRGB(crossMul(gc,i&1?[0.5,0.48,0.5]:[0.85,0.8,0.76]),0.3);g.fillRect(r()*W,fh*(0.15+0.8*r()),6+20*r(),0.6+0.6*r());}
+      for(let i=0;i<16;i++){const x=r()*W,y=fh*(0.3+0.65*r()),rr=0.6+1.4*r();g.fillStyle=crossRGB(crossMul(gc,[0.5,0.48,0.5]),0.7);g.beginPath();g.ellipse(x,y,rr*1.3,rr,0,0,6.2832);g.fill();g.fillStyle=crossRGB(mixRGB(gc,C.lit,0.3),0.6);g.beginPath();g.ellipse(x-L*rr*0.3,y-rr*0.35,rr*0.6,rr*0.4,0,0,6.2832);g.fill();}
+      g.strokeStyle=crossRGB(crossMul(gc,[0.4,0.38,0.4]),0.6);g.lineWidth=0.5;g.beginPath();for(let i=0;i<12;i++){const x=r()*W;g.moveTo(x,fh*0.1);g.quadraticCurveTo(x+(r()-0.5)*8,fh*0.4,x+(r()-0.5)*10,fh*(0.5+0.3*r()));}g.stroke();
+      g.strokeStyle=crossRGB(cl.vn.dim);g.lineWidth=0.7;g.lineCap='round';g.beginPath();for(let x=0;x<W;x+=2+5*r()){const l=2+5*r(),a=(r()-0.3)*1.2;g.moveTo(x,0.5);g.quadraticCurveTo(x+Math.sin(a)*l*0.6,l*0.3,x+Math.sin(a)*l,l*(0.6+0.3*r()));}g.stroke();
+      const bl=crossLit(cr,[110,140,220]).lit,wh=crossLit(cr,[236,234,226]).lit;
+      for(let i=0;i<22;i++){const x=r()*W,y=fh+3+r()*(H-fh-4),rx=3+4*r();g.fillStyle=crossRGB(mixRGB(cl.vn.shd,cl.vn.dim,0.4));g.beginPath();g.ellipse(x,y,rx,rx*0.42,0,0,6.2832);g.fill();g.fillStyle=crossRGB(cl.vn.dim,0.6);g.beginPath();g.ellipse(x-rx*0.15,y-rx*0.1,rx*0.65,rx*0.25,0,0,6.2832);g.fill();
+        if(r()<0.28){g.fillStyle=crossRGB(r()<0.6?bl:wh);g.beginPath();g.moveTo(x-2,y-1);g.lineTo(x-1.2,y-3.6);g.lineTo(x,y-1.6);g.lineTo(x+1.2,y-3.6);g.lineTo(x+2,y-1);g.closePath();g.fill();}}
+      ly.c=cv;ly.W=W;ly.H=H;},
+    draw(ctx,ly,cr){const W=viewW,t=gameTime,yt=ly.yt,yf=ly.yf;ctx.fillStyle=ly.fg;ctx.fillRect(0,yt,W,yf-yt);ctx.fillStyle=ly.wg;ctx.fillRect(0,yf,W,ROOM_H+4-yf);ctx.fillStyle=ly.rg;ctx.fillRect(0,yf,W,(yf-yt)*0.8);
+      if(GFX().fx){ctx.lineWidth=0.6;for(let pass=0;pass<2;pass++){ctx.strokeStyle=pass?ly.dk:ly.lt;ctx.beginPath();for(let r=0;r<6;r++){const y=yf+2+r*(ROOM_H-yf)/6+pass*0.6,f=1.25+0.15*r,P=26;
+          const Xa=cr.cx*f-30;for(let j=Math.floor(Xa/P);j<=Math.ceil((Xa+W+60)/P);j++){const h=hash2(j*31+r*7+pass,cr.seed^0x4d1);if((h&3)===0)continue;const x=j*P+(h&255)/255*P+3*Math.sin(t*0.5+j+r)-cr.cx*f,l=(3+6*((h>>>8)&255)/255)*f*0.6;ctx.moveTo(x-l/2,y);ctx.lineTo(x+l/2,y);}}ctx.stroke();}}
+      crossStrip(ctx,ly,-cr.cx*1.15,yt);}},
   // the rock across the end of the path and the doorway in it, framed as the next floor's start door (f 1: the path's own plane)
   gate:{bake(ly,cr){const th=cr.th,W=300,H=150,q=VS,cv=document.createElement('canvas');cv.width=Math.ceil(W*q);cv.height=Math.ceil(H*q);const g=cv.getContext('2d');g.setTransform(q,0,0,q,0,0);
       const rnd=mulberry32(hash2(cr.seed,991)),C=cr.cols,xc=110,yb=H-4,w=24,x0=xc-w/2,x1=x0+w,y0=yb-54,kind=th.style==='dungeon'?'round':'point',tk=ly.tod||cr.tod;
@@ -11445,7 +11826,7 @@ const CROSS_SETS={
     const ac=(X,hm)=>({t:'acacia',X,hm,cw:0.95+0.35*r()}),ol=X=>({t:'olive',X,hm:4+1.5*r(),cw:0.75+0.2*r()}),pa=P.river?null:[P.Xc-P.Rx*1.15,P.Xc+P.Rx*1.15];
     if(v==='spring'){L2.push({kind:'butte',f:0.05,z:crossZ(0.05)+0.002,X:200+viewW*(0.5+0.2/0.05),id:L2.length,refl:true});
       st(0.17,row(0.17,16,X=>palm(X,11+5*r(),0.17)));st(0.3,row(0.3,8,X=>palm(X,9+5*r(),0.3)));
-      st(0.46,[...row(0.46,5,X=>palm(X,4+3*r(),0.46,1)),...row(0.46,3,ol)]);st(0.52,row(0.52,4,X=>({t:'wall',X,w:6+8*r(),hm:1.6+0.4*r()})));
+      st(0.46,[...row(0.46,5,X=>palm(X,4+3*r(),0.46,1)),...row(0.46,3,ol)]);st(0.52,row(0.52,4,X=>{const w=6+8*r(),hm=1.6+0.4*r(),h1=crossH(cr,Math.round(X),11),h2=crossH(cr,Math.round(X),12);return {t:'wall',X,w,hm,gate:w>8.5&&h1<0.6?0.25+0.5*h2:0,br:w>7&&h1>=0.6?0.2+0.6*h2:0};})); // (round 36c: gateways and breaches)
       st(0.9,row(0.9,3,X=>palm(X,3.6+1.4*r(),0.9,1),pa));}
     else if(v==='hafir'){st(0.17,row(0.17,6,X=>palm(X,10+5*r(),0.17)));st(0.27,row(0.27,6,X=>ac(X,5+2.5*r())));st(0.33,row(0.33,4,X=>ac(X,4+2.5*r())));st(0.9,row(0.9,3,X=>ac(X,3.5+1.2*r()),pa));}
     else{st(0.17,row(0.17,12,X=>palm(X,11+5*r(),0.17)));st(0.22,[...row(0.22,5,X=>palm(X,9+4*r(),0.22)),...row(0.22,3,X=>ac(X,6+2*r()))]);st(0.27,row(0.27,4,X=>({t:'hut',X,w:4+1.5*r()})));
@@ -11455,7 +11836,73 @@ const CROSS_SETS={
       {kind:'reeds',side:'near',pool:P,f:fn,z:crossZ(fn)+0.01,pap:v!=='spring',id:L2.length+2},
       {kind:'dfield',f:0.93,z:crossZ(0.93)+0.005,W:880,id:L2.length+3,ns:2,hk:0.4,nst:5,ntf:12,nfr:v==='hafir'?0:3,veg:1},
       {kind:'dfield',f:1.3,z:61.8,W:980,id:L2.length+4,ns:2,hk:0.4,nst:4,ntf:6,veg:1},
-      {kind:'gate',z:50,f:1,mud:v!=='hafir'},{kind:'ofore',z:70,f:2.1});return L2;}};
+      {kind:'gate',z:50,f:1,mud:v!=='hafir'},{kind:'ofore',z:70,f:2.1});return L2;},
+  // (round 36c) the garden, Egypt's own (INTERLUDE_RESEARCH.md: never the "hanging gardens", which are Babylonian), regular where people keep
+  // it (rows, edges, channels): v 'pool' (West: Nebamun's pool garden, BM EA 37983: a T-shaped pool in its stone coping with lotus and fish,
+  // sycomore figs, date and doum palms in rows round it, each in its watering basin, the whitewashed enclosure wall, an idle shaduf, a vine
+  // pergola, beds in square plots, el-Qurn and the temple beyond; a grey heron lifts off the coping: the beat), 'field' (Osiris: the Field
+  // of Reeds as Sennedjem's tomb, TT1, paints it: canals across the view and channels cutting the ripe grain and the flax into plots, rows of
+  // palms, sycomores and doum palms beyond, the water all round, an idle shaduf, ducks on the near canal; a breeze runs through the grain),
+  // 'shore' (Hawara: the Fayum's lake shore, Lake Moeris, the labyrinth's ruin and the pyramid beyond the water, reeds along the shore, sacred
+  // ibis wading, a shaduf, green plots in rows; a breeze runs through the reeds and over the water as a cat's paw), 'marsh' (Nun: papyrus
+  // thickets standing in still water with blue lotus, the path on a raised earth dyke with the water on both sides; ducks burst out of the
+  // papyrus, as in Nebamun's marsh scene without the fowler)
+  garden(cr){const v=cr.gv||'pool',r=mulberry32(hash2(cr.seed,36303)),L2=[{kind:'sky',z:0,f:0},{kind:'ground',z:1,f:0,firm:true}],id=()=>L2.length,xb=CROSS_X0+CROSS_DIST*CROSS_BEAT;
+    const st=(f,items,o)=>L2.push(Object.assign({kind:'stand',f,z:crossZ(f),items,id:id()},o||{}));
+    const even=(f,sp,fn,jit)=>{const [a,b]=crossRange(cr,f,30),out=[];let i=0;for(let X=a+sp*0.5;X<b;X+=sp,i++)out.push(fn(X+(jit||0)*(r()-0.5)*sp,i));return out;}; // (planted: evenly spaced)
+    const palm=(X,hm,f,young)=>({t:'palm',X,hm,lean:(r()-0.5)*(young?0.4:0.8),bow:(r()-0.5)*0.3,fl:young?2.1+0.5*r():2.7+0.8*r(),sa:f<0.2?0:0.02+0.025*r(),sf:0.7+0.5*r(),ph:r()*6.28});
+    const syc=(X,hm)=>({t:'sycomore',X,hm,cw:1.1+0.25*r(),figs:1}),doum=(X,hm)=>({t:'doum',X,hm}),bush=(X,hm,fr)=>({t:'bush',X,hm,cw:0.8+0.2*r(),fr});
+    const trees=(f,k)=>(X,i)=>{const m=i%3;return m===0?syc(X,(8+3*r())*k):m===1?palm(X,(10+3*r())*k,f):doum(X,(9+3*r())*k);};
+    const band=(bands,z)=>L2.push({kind:'band',bands,f:bands[0].f0,z:z!==undefined?z:crossZ(bands[0].f0)+0.003,id:id()});
+    const water=o=>{const P=Object.assign({kind:'pool',nodamp:true,id:id()},o);P.z=crossZ(P.f)+0.01;L2.push(P);return P;};
+    const canal=(fa,fb,o)=>water(Object.assign({v:'canal',river:true,straight:true,fa,fb,f:fa},o||{}));
+    const far=()=>L2.push(...crossBgart(cr).map(l=>Object.assign(l,{refl:true})));
+    if(v==='pool'){far();const Xc=420;
+      st(0.17,even(0.17,150,trees(0.17,1),0.15),{refl:true});
+      st(0.2,even(0.2,12*29.4,(X,i)=>({t:'wall',X,w:12.15,hm:2.4,wash:1,gate:i%4===2?0.35+0.3*r():0})),{refl:true});
+      st(0.29,even(0.29,135,(X,i)=>Object.assign(trees(0.29,0.8)(X,i),{pit:1}),0.04),{refl:true});
+      st(0.4,[-130,0,130].map((o,i)=>Object.assign(bush(Xc+o,2.6+0.4*r(),i!==1),{pit:1})),{refl:true});
+      band([{f0:0.79,f1:0.9,t:'beds'}],crossZ(0.44)+0.005); // (under the pool: its stem runs out between the beds toward the path)
+      water({v:'tpool',poly:[[Xc-210,0.44],[Xc+210,0.44],[Xc+210,0.58],[Xc+55,0.58],[Xc+55,0.87],[Xc-55,0.87],[Xc-55,0.58],[Xc-210,0.58]],f:0.44,lotus:42,fish:7});
+      st(0.52,[{t:'shaduf',X:Xc-238,dir:1,ang:0.42}]);
+      st(0.68,[Object.assign(bush(Xc-150,2.7,1),{pit:1}),Object.assign(bush(Xc+150,2.5,1),{pit:1})]);
+      st(0.74,[{t:'pergola',X:50,w:6,hm:2.3}]);
+      L2.push({kind:'fauna',sp:'heron',items:[{X:Xc+70,F:0.85,d:-1,dl:0.15,ph:r()*6,sz:0.95,lift:1}],f:0.85,z:crossZ(0.85)+0.002,id:id()});
+      band([{f0:0.91,f1:1.1,t:'path'}]);band([{f0:1.17,f1:1.23,t:'runnel'},{f0:1.3,f1:2.7,t:'grass',fl:0.3}],60.6); // (a runnel along the path: the garden's water led round the beds)
+      L2.push({kind:'gate',z:50,f:1,mud:true},{kind:'gfore',v:'vine',z:70,f:2.1});}
+    else if(v==='field'){far(); // (the field lies a metre below the bank he walks: sk/sink, so it is seen from above as the painting shows it)
+      canal(0.15,0.18);
+      st(0.205,even(0.205,118,(X,i)=>i%3===1?syc(X,7+2*r()):i%3===2?doum(X,8+2*r()):palm(X,10+3*r(),0.205),0.1),{refl:true});
+      canal(0.238,0.25,{norefl:true,sk:1});
+      L2.push({kind:'grain',crop:'grain',f0:0.26,f1:0.36,n:5,hm:1.1,P:330,gap:1.2,sink:1,f:0.26,z:crossZ(0.26),id:id()});
+      canal(0.37,0.382,{norefl:true,sk:1});
+      L2.push({kind:'grain',crop:'flax',f0:0.392,f1:0.47,n:4,hm:0.9,P:330,gap:1.2,sink:1,f:0.392,z:crossZ(0.392),id:id()});
+      band([{f0:0.86,f1:1.08,t:'path',grassy:1}]);st(0.88,[{t:'shaduf',X:470,dir:1,ang:0.36}]);
+      L2.push({kind:'dyke',ft:1.08,fw:1.2,dh:0.6,f:1.08,z:49.2,id:id()});
+      L2.push({kind:'fauna',sp:'duck',sink:0.6,items:[{X:560,F:1.32,d:-1,ph:1,sz:0.58},{X:600,F:1.4,d:-1,ph:2.5,sz:0.55}],f:1.32,z:49.3,id:id()});
+      L2.push({kind:'gate',z:50,f:1},{kind:'gfore',v:'grain',z:70,f:2.1});}
+    else if(v==='shore'){far();
+      L2.push({kind:'thicket',f:0.128,z:crossZ(0.128)+0.001,hm:2.4,W:700,id:id(),refl:true});
+      const P=water({v:'lake',Xc:700,Rx:430,fc:0.3,Rf:0.165,f:0.135,nodamp:false,paw:true}),shore=X=>P.fc+P.Rf*Math.sqrt(Math.max(0,1-Math.pow((X-P.Xc)/P.Rx,2)));
+      L2.push({kind:'grain',crop:'green',f0:0.3,f1:0.62,n:9,hm:0.45,P:300,gap:0.9,xr:[-700,240],f:0.3,z:crossZ(0.3),id:id()});
+      L2.push({kind:'fauna',sp:'ibis',items:[0,1,2,3].map(i=>{const X=xb+90+i*55+r()*30;return {X,F:shore(X)-0.012-0.01*r(),d:r()<0.5?1:-1,ph:r()*6.28,sz:0.68};}),f:0.43,z:crossZ(0.43),id:id()});
+      L2.push({kind:'reeds',side:'near',pool:P,f:0.47,z:crossZ(0.47)+0.01,pap:true,wave:true,nn:9,id:id()});
+      st(0.42,[{t:'shaduf',X:262,dir:1,ang:0.38}]);st(0.6,[bush(980,3.6,0)]);
+      band([{f0:0.87,f1:1.08,t:'path',grassy:1}]);band([{f0:1.17,f1:1.23,t:'runnel'},{f0:1.3,f1:2.7,t:'grass',fl:0.12}],60.6); // (the ditch the shaduf's water runs along to the plots)
+      L2.push({kind:'gate',z:50,f:1,mud:true},{kind:'gfore',v:'reeds',z:70,f:2.1});}
+    else{ // the marsh
+      for(const [f,hm] of [[0.035,3],[0.075,3.6],[0.13,4]])L2.push({kind:'thicket',f,z:crossZ(f),hm,W:Math.round(560+300*f),gaps:1,id:id(),refl:true});
+      water({v:'marsh',river:true,straight:'near',fa:0.165,fb:0.845,f:0.165,lotus:36,lx:[-60,1000]});
+      const cl=[];for(let g=0;g<9;g++){const Xg=-120+g*125+r()*60,Fg=0.24+0.44*r(),nc=3+Math.floor(r()*4);for(let i=0;i<nc;i++)cl.push({X:Xg+(i-nc/2)*(10+8*r()),F:clamp(Fg+(r()-0.5)*0.05,0.22,0.68),v:Math.floor(r()*3),sc:0.85+0.3*r(),ph:r()*6.28});}
+      L2.push({kind:'clumps',items:cl.filter(c=>c.F<0.45),f:0.22,z:crossZ(0.22)+0.01,wy:[0.165,0.845],id:id()});
+      L2.push({kind:'clumps',items:cl.filter(c=>c.F>=0.45),f:0.45,z:crossZ(0.45)+0.01,wy:[0.165,0.845],id:id()});
+      const hid=cl.filter(c=>c.X>xb+60&&c.X<xb+380&&c.F>0.38).slice(0,6);
+      L2.push({kind:'fauna',sp:'duck',items:[...hid.map((c,i)=>({X:c.X,F:c.F,d:1,dl:0.12*i+0.1*r(),ph:r()*6.28,sz:0.55,hid:1,lift:1})),
+        ...[0,1,2].map(i=>({X:xb+120+i*45+r()*20,F:0.74+0.03*r(),d:r()<0.5?1:-1,dl:0.3+0.15*i,ph:r()*6.28,sz:0.56,lift:1}))],f:0.74,z:crossZ(0.74)+0.004,id:id()});
+      band([{f0:0.85,f1:1.09,t:'path',grassy:1}]);L2.push({kind:'dyke',ft:1.09,fw:1.2,dh:0.6,f:1.09,z:49.2,id:id()});
+      L2.push({kind:'gate',z:50,f:1},{kind:'gfore',v:'papyrus',z:70,f:2.1});}
+    return L2;}
+};
 // his colours under the hour: the hero's palette times the light (the sky's: no lamps out here; Torchlight adds his fill light)
 function crossPal(tod){const k=tod===1?[0.52,0.58,0.78]:tod===2?[0.94,0.84,0.82]:[0.9,0.8,0.78],o={};
   for(const q in PAL_HERO){const v=PAL_HERO[q];o[q]=typeof v==='string'&&/^#[0-9a-f]{6}$/i.test(v)?crossRGB(crossMul(hexRGB(v),k)):v;}return o;}
@@ -11465,7 +11912,7 @@ function crossSprites(cr){const C=cr.cols,c=cr.tod===1?mixRGB(C.lit,C.rim,0.25):
   return {g,l:lightSprite(crossMul(c,[cr.tod===1?0.45:0.7,cr.tod===1?0.45:0.7,cr.tod===1?0.5:0.7]).map(Math.round).join(','))};}
 // ---- the flow ----
 function crossBegin(){const n=L.n,th=L.theme,lk=CROSS_LOOK[th.look]||{set:'plain'},set=CROSS_SETS[lk.set]?lk.set:'plain';
-  CR={n,th,look:th.look,tod:L.prog?L.prog.tod:0,set,dv:lk.dv||'',ov:lk.ov||'',seed:hash2(levelSeed(n),36001),t:0,x:CROSS_X0,v:0,ph:0,rk:0,hold:0,face:1,phase:'walk',ti:0,to:0,
+  CR={n,th,look:th.look,tod:L.prog?L.prog.tod:0,set,dv:lk.dv||'',ov:lk.ov||'',gv:lk.gv||'',seed:hash2(levelSeed(n),36001),t:0,x:CROSS_X0,v:0,ph:0,rk:0,hold:0,face:1,phase:'walk',ti:0,to:0,
     xd:CROSS_X0+CROSS_DIST,len:CROSS_X0+CROSS_DIST+170,xb:CROSS_X0+CROSS_DIST*CROSS_BEAT,gust:-1,idle:0,cx:0,steps:0,skipped:false,frames:0,ms:[],hud:true,
     e:{x:CROSS_X0,y:CROSS_GY,face:1,state:'stand',pose:mk(PS.stand),lk:null},tp:mk({}),lights:[],amb:null};
   CR.cols=crossCols(CR);CR.layers=CROSS_SETS[set](CR).sort((a,b)=>a.z-b.z);CR.pool=CR.layers.find(l=>l.kind==='pool')||null;CR.e.pal=crossPal(CR.tod);CR.spr=crossSprites(CR);
@@ -11488,7 +11935,7 @@ function crossStep(dt){const c=CR;if(!c)return;c.t+=dt;gameTime+=dt;
     if(c.x>=c.xd){c.x=c.xd;c.phase='in';c.ti=0;c.face=1;Snd.play('crossdoor');}}
   else if(c.phase==='in'){c.ti+=dt;c.v=approach(c.v,0,CROSS_DEC*dt);c.ph+=dt*0.93;if(c.ti>=CROSS_IN){c.phase='out';c.to=0;}}
   if(c.gust<0&&c.x>=c.xb)c.gust=c.t;
-  if(Math.floor(ph0*2)!==Math.floor(c.ph*2)&&c.phase==='walk'){c.steps++;Snd.play(c.set==='oasis'?(c.rk>0.5?'firmrun':'firmstep'):(c.rk>0.5?'sandrun':'sandstep'));}
+  if(Math.floor(ph0*2)!==Math.floor(c.ph*2)&&c.phase==='walk'){c.steps++;Snd.play(c.set==='oasis'?(c.rk>0.5?'firmrun':'firmstep'):c.set==='garden'?(c.rk>0.5?'earthrun':'earthstep'):(c.rk>0.5?'sandrun':'sandstep'));}
   // his pose: standing, or the walk blended into the run by the hold (one phase for both: the walk's 43 px a cycle, the run's 44)
   let tgt,rate;if(c.phase==='walk'&&c.v<1.5){tgt=PS.stand;rate=10;e.state='stand';}
   else{const wp=walkPose(c.ph,c.phase==='in'?0.75:clamp(c.v/CROSS_WALK*1.2,0.35,1));tgt=c.rk>0.01?lerpPose(wp,runPoseHD(c.ph),c.rk,c.tp):wp;rate=c.rk>0.5?40:30;e.state='run';}
@@ -11502,11 +11949,16 @@ function crossEnd(){const c=CR;if(!c)return;
   if(L&&L.enG!==undefined){L.enG=gameTime;L.enS=0;} // (the entry starts now: it waited under the crossing)
   GLP.now=true;GLP.hudK=null;frameLights=[];}
 // the wind's sound: a bed over the whole crossing, rising with the gust; cut at the doorway
-function crossSound(c){const g=crossGust(c),oa=c.set==='oasis',k=c.phase==='walk'?(c.set==='dunes'?0.42:oa?0.2:0.3)+0.08*Math.sin(c.t*0.7)+0.06*Math.sin(c.t*1.9+1)+(oa?0.12:0.55)*g:0;Snd.wind(k*clamp(c.t/0.8,0,1));
+function crossSound(c){const g=crossGust(c),oa=c.set==='oasis',ga=c.set==='garden',br=ga&&(c.gv==='field'||c.gv==='shore'),
+    k=c.phase==='walk'?(c.set==='dunes'?0.42:oa?0.2:ga?0.15:0.3)+0.08*Math.sin(c.t*0.7)+0.06*Math.sin(c.t*1.9+1)+(oa?0.12:ga?(br?0.3:0.08):0.55)*g:0;Snd.wind(k*clamp(c.t/0.8,0,1));
   // (round 36b) the oasis: fronds rustling now and then, the water's blips while it is in view, the geese at the beat
-  if(!oa||c.phase!=='walk'||c.t<CROSS_FIN)return;if(c.gust>=0&&!c.sb){c.sb=1;Snd.play('geese');}
-  const sl=Math.floor(c.t*5);if(sl===c.sl)return;c.sl=sl;const h=hash2(sl,c.seed^0x51d)/4294967296,P=c.pool;
-  if(h<0.06)Snd.play('frond');else if(h<0.06+(P&&P.vis?0.09:0))Snd.play('blip');}
+  // (round 36c) the garden: at the beat the heron's croak and wingbeats (West), the ducks' burst (Nun) or the breeze through the grain and the
+  // reeds (Osiris, Hawara); the grain's or the papyrus's rustle, the pool's blips (a fish rising), now and then a bird: a hoopoe in the
+  // garden, a duck in the marsh, an ibis on the shore
+  if(!(oa||ga)||c.phase!=='walk'||c.t<CROSS_FIN)return;if(c.gust>=0&&!c.sb){c.sb=1;Snd.play(oa?'geese':c.gv==='pool'?'heron':c.gv==='marsh'?'ducks':'breeze');}
+  const sl=Math.floor(c.t*5);if(sl===c.sl)return;c.sl=sl;const h=hash2(sl,c.seed^0x51d)/4294967296,P=c.pool,pv=P&&P.vis;
+  if(oa){if(h<0.06)Snd.play('frond');else if(h<0.06+(pv?0.09:0))Snd.play('blip');return;}
+  if(h<(c.gv==='pool'?0.03:0.07))Snd.play(c.gv==='pool'?'frond':'rustle');else if(h<0.1+(pv?0.07:0))Snd.play('blip');else if(h>0.982)Snd.play(c.gv==='marsh'?'duckcall':c.gv==='shore'?'ibis':'birdcall');}
 // the lights (view units): the sun or the moon as one broad light, his fill light
 function crossLights(c,px,py){const s=crossSun(c),out=c.lights;out.length=0;
   if(s.moon)out.push({x:s.x,y:s.y,r:viewW*0.95,col:'170,190,255',a:0.32,kind:'win',r0:viewW*0.95,a0:0.32});
@@ -11534,10 +11986,12 @@ function crossRender(ctx,sh,gls){const c=CR,t0=performance.now();crossBake(c);c.
   renderXf.VZ=VS;renderXf.camD=0;renderXf.camDY=0;
   ctx.setTransform(VS,0,0,VS,0,0);if(gls)ctx.na=1;
   const px=c.x-c.cx;crossLights(c,px,CROSS_GY);let fig=false;
-  for(const ly of c.layers){if(!ly.ok)continue;if(!fig&&ly.z>=60){crossFigure(ctx,c,gls);fig=true;}CROSS_KINDS[ly.kind].draw(ctx,ly,c);}
+  for(const ly of c.layers){if(!ly.ok)continue;if(!fig&&ly.z>=60){crossFigure(ctx,c,gls);fig=true;}
+    if(ly.sk){ctx.save();ctx.translate(0,CROSS_HZ);ctx.scale(1,1+ly.sk*29.4/(CROSS_GY-CROSS_HZ));ctx.translate(0,-CROSS_HZ);CROSS_KINDS[ly.kind].draw(ctx,ly,c);ctx.restore();} // (round 36c: a flat layer below the path's level, ly.sk m: ground at depth f lies 29.4 f px a metre lower, a scale about the horizon)
+    else CROSS_KINDS[ly.kind].draw(ctx,ly,c);}
   if(!fig)crossFigure(ctx,c,gls);
   // a sheet of sand skimming along the path in the gust, over his feet
-  {const g=crossGust(c);if(g>0.02&&GFX().fx&&c.set!=='oasis'){const P=jsReset(CRJP[2]),y=CROSS_GY+2;jsAdd(P,-30,y+1);jsQuad(P,viewW*0.5,y-4,viewW+30,y+2,16);jetStream(ctx,P,g*0.85,150,3.2,hash2(c.seed,5),-40,viewW+40,0,ROOM_H,null,c.spr);}}
+  {const g=crossGust(c);if(g>0.02&&GFX().fx&&(c.set==='dunes'||c.set==='plain')){const P=jsReset(CRJP[2]),y=CROSS_GY+2;jsAdd(P,-30,y+1);jsQuad(P,viewW*0.5,y-4,viewW+30,y+2,16);jetStream(ctx,P,g*0.85,150,3.2,hash2(c.seed,5),-40,viewW+40,0,ROOM_H,null,c.spr);}}
   ctx.setTransform(VS,0,0,VS,0,0);PF.p('dyn');
   if(sh){try{crossGL(c.lights);}catch(err){glKill(String(err&&err.message||err));return;}ctx=gx;ctx.setTransform(VS,0,0,VS,0,0);}
   else{const s=crossSun(c);if(!s.moon){ctx.save();ctx.globalCompositeOperation='lighter';const gr=ctx.createRadialGradient(s.x,s.y,2,s.x,s.y,90);gr.addColorStop(0,'rgba(255,214,150,.42)');gr.addColorStop(1,'rgba(255,170,100,0)');ctx.fillStyle=gr;ctx.fillRect(s.x-90,s.y-90,180,180);ctx.restore();}

@@ -15,7 +15,8 @@
 #   torch | classic  one lighting mode only, every theme (suite.py's default and release tiers run both, as two jobs)
 #   (none)           both modes, every theme;  an argument ending .html is the page to test
 # Per setting it also checks what the setting must show (SETX below: the layer kinds its scene holds, e.g. the oasis's pool, palms,
-# reeds and its beat's animals) and that the beat fires.
+# reeds and its beat's animals; round 36c: the garden, and per garden theme SETL: the T-pool, lotus, fish, heron, the sunk field, the
+# reeds' breeze, the lake's cat's paw, ibis, ducks) and that the beat fires.
 # Prints one line per crossing and 'crossscan: ok' or 'crossscan: FAILURES n'.
 import os, sys, statistics
 from playwright.sync_api import sync_playwright
@@ -28,7 +29,12 @@ QUICK = 'quick' in ARGS
 MODES = ('classic',) if QUICK or 'classic' in ARGS else ('torch',) if 'torch' in ARGS else ('torch', 'classic')
 # the layer kinds each setting's scene must hold (round 36b: dunes revised, the oasis)
 SETX = {'dunes': ['sky', 'ground', 'erg', 'dfield', 'gate', 'fore'], 'oasis': ['sky', 'ground', 'pool', 'stand', 'reeds', 'birds', 'gate', 'ofore'],
+        'garden': ['sky', 'ground', 'pool', 'band', 'fauna', 'gate', 'gfore'],
         'plain': ['sky', 'ground', 'gate', 'fore']}
+# (round 36c) what each garden theme's scene must hold besides (layer kinds, and its features: tpool the T-pool in its coping, lotus,
+# fish, the animals by species, wave the reeds' breeze, paw the lake's cat's paw, sunk a field below the bank)
+SETL = {'west': ['tpool', 'lotus', 'fish', 'heron', 'stand'], 'osiris': ['grain', 'dyke', 'sunk', 'duck', 'stand'],
+        'hawara': ['grain', 'reeds', 'thicket', 'wave', 'paw', 'ibis'], 'nun': ['clumps', 'thicket', 'dyke', 'lotus', 'duck']}
 BUD = {'classic': float(os.environ.get('HK_CROSS_MS_C', os.environ.get('HK_CROSS_MS', 8))), 'torch': float(os.environ.get('HK_CROSS_MS_T', os.environ.get('HK_CROSS_MS', 40)))}
 KREL = float(os.environ.get('HK_CROSS_K', 2.5))
 fails = []
@@ -41,7 +47,7 @@ BEGIN = r'''([n,mode])=>{const H=__HK;window.__HKfreeze=true;for(const id in H.H
   const c=H.CR;const o={mode:H.mode,play:pm.slice(8).sort((a,b)=>a-b)[8],due:H.crossDue(n),saveCard:save0===localStorage.getItem('hourglass-keep-v1')};
   if(!c)return o;if(H.GLP)H.GLP.pipe=false;
   window.__X0={save:localStorage.getItem('hourglass-keep-v1'),S:JSON.stringify(H.S),lt:H.levelTime,rew:H.REW.length,level:H.S.level};
-  return Object.assign(o,{set:c.set,look:c.look,tod:c.tod,name:H.themeName(n),kinds:[...new Set(c.layers.map(l=>l.kind))]});}'''
+  return Object.assign(o,{set:c.set,look:c.look,tod:c.tod,name:H.themeName(n),kinds:[...new Set(c.layers.map(l=>l.kind).concat(c.layers.flatMap(l=>[l.poly?'tpool':'',l.lotus?'lotus':'',l.fish?'fish':'',l.paw?'paw':'',l.wave?'wave':'',l.sp||'',l.sink||l.sk?'sunk':'']).filter(Boolean)))]});}'''
 # a run of steps with a render every eighth one; keys held as given; returns where it stands
 STEPS = r'''([k,keys])=>{const H=__HK;for(const q of ['l','r','u','d','j','g'])H.setKey('kb',q,keys.includes(q));const ms=[];let rk=0,gust=false,steps=0;
   for(let i=0;i<k&&H.CR;i++){H.crossStep(1/60);if(!H.CR)break;rk=Math.max(rk,H.CR.rk);gust=gust||H.CR.gust>=0;if(i%8===7){H.render();ms.push(H.CR.ms[H.CR.ms.length-1]);}}
@@ -77,7 +83,7 @@ with sync_playwright() as p:
             bk = pg.evaluate(BAKE)   # (round 36b) the layers' bakes, one a frame, all done under the fade from white (CROSS_FIN at 60 Hz)
             if bk['n'] > bk['fin'] or bk['left']: bad('%s: the bakes take %d frames (the fade %d)' % (tag, bk['n'], bk['fin']))
             BK[mode].append(bk['mx'])
-            miss = [k for k in SETX.get(r['set'], []) if k not in r['kinds']]
+            miss = [k for k in SETX.get(r['set'], []) + (SETL.get(lk, []) if r['set'] == 'garden' else []) if k not in r['kinds']]
             if miss: bad('%s: the %s scene lacks %s' % (tag, r['set'], miss))
             s1 = pg.evaluate(STEPS, [20, ['j']])                       # Jump at 0.33 s: too early, nothing
             s2 = pg.evaluate(STEPS, [170, []])                         # 3 s, no input
