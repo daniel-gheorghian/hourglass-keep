@@ -444,6 +444,23 @@ No new clip keys; the timing comes from PoP 1989 and CMU clips, drawn on the exi
 
 Grips and hit boxes are unchanged. Rule in CLAUDE.md (round 33c); `egyptr33c.py`.
 
+## The running jump's flight (round 34)
+
+Owner after v79: "The standing jump is fine, the running jump is not: him tilting his head and rotating like that is not natural. The previous
+movement was fine, except the apex." No new clip keys: round 32's hand-made dive comes off and v77's flight comes back, on round 33a's low apex.
+
+| Part | v79 (round 32) | Round 34 |
+|---|---|---|
+| keys | 09_01's stride S to 127_21's long jump `MCJ.D` by 0.3 + 0.7 s (Catmull-Rom) | `leapPose`: `MCK.leap` S (09_01) and L (49_04, v72's arms) by s, as v77; low leaps `MCK.leapLow` |
+| dive | `DV_*`: rot 0.7, lean +0.45, trail thigh -0.35, lead knee +0.35 rad, sin^2 of the phase, 0.35 of it at s 0 | none: rot 0 |
+| take-off | the flight starts on `tk`'s last key (= D's first) | eases out of `tk`'s last key over `LP_TK` 0.45 of the flight (not the low leaps), so the lead knee is not dropped at toe-off |
+| arms | the near arm `ARM_LAG` behind, `ARM_SW` 1.2 rad swing-through | `ARM_LAG`/`ARM_LEAD` kept; `ARM_SW` dropped (on v72's raised arms it threw the near arm overhead) |
+| hip | the feet's heights at take-off and touch-down | the same from S and L (`J32.S`, `J32.L`); the low leap keeps PS.jumpLow.hy (v77's) |
+| drawn rise | `JH_S` 4 / `JH_L` 7 px, reach over `JH_RT` 0.2 s | `JH_S` 2.5 / `JH_L` 4, `JH_RT` 0.16 s (the upright crown sits about 1 px higher over the hip than the dived one) |
+
+Kept: the stance, the phase steering and P.jMir (0 of 40 take-offs scissor), poseOx, the eased landing blend, the landing keys and squash,
+running on, the low-leap cap (LOWC), the standing jump. Rule and numbers in CLAUDE.md (round 34); `egyptr34.py`.
+
 ## The neck (round 23c): 2 px shorter (superseded by round 23d: 1 px)
 
 Owner: "1.28 is fine. Now make the neck 2px shorter and keep everything else as is". `NECK_CUT` (r23poses.py, 2.0 px) is taken off ANSUR's

@@ -3039,14 +3039,14 @@ function jumpSpan(vx,vy){const fc=P.face,x0=P.x,y0=P.y,row=pRow(),lev=vx*2*vy/GR
 // .96 .96 .64, sin^2 .35 .9 .9 .35) while the crown stays within 1 px of the standing crown (3 over the running one); the standing jump rises
 // 6 px for one tick and its crown stays 7-9 px under the standing crown (the body flat out). So: the drawn rise over the take-off floor is no
 // longer a share of the arc but D = k ap sin^2(pi t/T) (ap the arc's apex, T its time): slow off the floor while the dive builds, flat at the
-// top, as PoP's ticks; its top JH_S 4 px (s 0) to JH_L 7 (s 1) for a running jump, JH_SJ 3 for a standing one (was the full arc; PoP: 6 px of 41, 7.5 of 51.5 for the feet). Where the
+// top, as PoP's ticks; its top JH_S 4 px (s 0) to JH_L 7 (s 1; round 34: 2.5 and 4, the figure upright) for a running jump, JH_SJ 3 for a standing one (was the full arc; PoP: 6 px of 41, 7.5 of 51.5 for the feet). Where the
 // hands must be where the arc puts them (a ledge whose top the hands pass coming down, a floor higher up, a swing bar: jumpSpan's P.jKe, the
-// moment) the drawing rises onto the arc over the last JH_RT s before it, a reach up to the catch, instead of flying the whole arc. Spikes
+// moment) the drawing rises onto the arc over the last JH_RT s (0.2; round 34: 0.16) before it, a reach up to the catch, instead of flying the whole arc. Spikes
 // and saws: the drawn feet clear each needle and blade as on the full arc or by JH_M, by raising k or by adding a share P.jKr of the arc itself
 // (round 27a's rule), whichever draws the lower top. D never exceeds the true rise, so the head stays under any ceiling the arc respects.
 // Look only, as round 27a: the arc, P.y, the hit box, grabs, landing, timers, estPath and the bot are unchanged; P.jK, P.jKr, P.jKe, P.jA live
 // on P (a rewind restores them).
-const JH_S=4,JH_L=7,JH_SJ=3,JH_M=1.5,JH_RT=0.2,jhP=mk({}),jhQ=mk({}),JH_N=[],JH_W=[];let JH_KR=0;
+const JH_S=2.5,JH_L=4,JH_SJ=3,JH_M=1.5,JH_RT=0.16,jhP=mk({}),jhQ=mk({}),JH_N=[],JH_W=[];let JH_KR=0;
 // what stands in the flight (filled at take-off only, kept arrays: no allocation a frame): JH_N each needle of a row of spikes (SPK: its x
 // at the figure's depth, its tip's height over the floor there, onFloor), JH_W each saw (its blade, R SAW_R about ys+2, where sawX puts it
 // at that moment of the flight: the bot times the jump to the blade)
@@ -3075,6 +3075,18 @@ function jumpYo(){const r=Math.max(0,P.jy-P.y);if(!(r>0)||P.jK==null)return 0;co
   let d=Math.max(u<1?P.jK*(P.jA||0)*Math.sin(Math.PI*u)**2:0,(P.jKr||0)*r);
   if(P.jKe!=null)d+=(r-d)*s32((P.t-P.jKe+JH_RT)/JH_RT); // (onto the arc for the catch)
   return r-Math.min(r,d);}
+// Round 34 (owner after v79: "The standing jump is fine, the running jump is not: him tilting his head and rotating like that is not natural.
+// The previous movement was fine, except the apex"). Round 32's running flight pitched the whole figure forward (rot up to 0.7 rad, 38 degrees drawn),
+// the trunk 0.45 rad further and the head with it (lean + rot + head to about 50 degrees forward at the apex), split the thighs and lifted the
+// lead knee by hand (DV_*), even on a one-tile hop (DV_K0, DV_S0), on 127_21's long jump (MCJ.D). The running flight is v77's again: leapPose's
+// S (09_01's stride) and L (49_04's leap, v72's arms) by the distance, upright (rot 0), the low leaps on MCK.leapLow as in v77; it eases out of
+// the take-off stance's last key (127_21's toe-off: the lead knee up) over the first LP_TK of the flight (not a low leap, v77's), so the knee
+// is not dropped at toe-off and a hop over spikes lifts its lead foot clear without a higher apex. Kept from round 32: the take-off stance and the steered phase with the flight mirrored by the take-off foot (P.jMir: 0 of 40 take-offs scissor), the near arm
+// a beat behind and the far one ahead (ARM_LAG, ARM_LEAD; the opposed swing ARM_SW is dropped: on v72's raised arms it threw the near arm
+// overhead), the hip on the feet at take-off and touch-down (J32.S, J32.L; a low leap keeps PS.jumpLow.hy, v77's, under its ceiling), the
+// drawn x (poseOx), the eased landing blend, the landing keys and squash, running on. Kept from round 33a: D = k ap sin^2(pi t/T), its tops
+// lowered for the upright figure (JH_S 2.5, JH_L 4; the reach onto the arc for a catch over JH_RT 0.16 s) so no running crown is drawn
+// higher than v79's. The standing jump is unchanged. Look only.
 const LPK=['lean','head','aF','eF','aB','eB','hF','kF','hB','kB','sb','soF','soB','fpF','fpB'],lpP=mk({});
 function leapPose(low,u,s,out){const K=low?MCK.leapLow:MCK.leap,base=low?PS.jumpLow:PS.jumpR,n=K.L.length-1;
   for(let i=0;i<PK.length;i++)out[PK[i]]=base[PK[i]];
@@ -3099,6 +3111,7 @@ function leapPose(low,u,s,out){const K=low?MCK.leapLow:MCK.leap,base=low?PS.jump
 //   flight     flightPose: 09_01's stride (S) to 127_21's long jump (D) by the distance (P.jS, round 26c); the near arm a beat behind, the far
 //              arm a beat ahead (ARM_LAG, ARM_LEAD); the dive (hand-shaped, PoP): the figure pitched forward (rot), the trunk further, the
 //              trail thigh back and the lead knee up, by s, as sin^2 of the flight's phase; the hip on the take-off and landing feet's heights
+//              (round 34 took the running dive and D out again: see the note over leapPose)
 //   x          P.pose.ox: the drawn take-off velocity ramps from the run's into the arc's (OX_T3) instead of a one-frame step; the standing
 //              wind-up keeps the feet planted while the hip goes forward over them, and the flight takes that lead back (OX_T2)
 //   standing   jumpPrep (JP_T): 13_11's wind-up time-warped: the arms swing back (0.09 s), hold (0.05 s), the drive (accelerating) and the
@@ -3107,9 +3120,8 @@ function leapPose(low,u,s,out){const K=low?MCK.leapLow:MCK.leap,base=low?PS.jump
 //              into standing; the feet stay planted for 0.12 s (ox), then the hip's lead eases back (PoP's small recoil)
 // No allocation a frame: every buffer below is made once; P carries jMir, jGo, jLe, jO0, jB, jFx, lnT (rewind-safe, look only).
 const JP_T=0.28,TK_D=16,ST_D=40,TK_PH=0.55,
-  DV_ROT=0.7,DV_LEAN=0.45,DV_SPL=0.35,DV_KNE=0.35,DV_S0=0.3,DV_K0=0.35,
   DS_ROT=0.4,DS_LEAN=0.12,DS_ARM=0.5,SJ_TILT=0.42,SJ_ARM=0.55,
-  ARM_LAG=0.05,ARM_LEAD=0.04,ARM_SW=1.2,
+  ARM_LAG=0.05,ARM_LEAD=0.04,LP_TK=0.45,
   LD_TP=0.055,LD_K=0.7,LD_H=0.32,LD_L=0.32,LR_K=1.45,LR_H=0.55,LR_L=0.5,
   OX_T2=0.2,OX_T3=0.06;
 function s32(x){x=x<0?0:x>1?1:x;return x*x*(3-2*x);}
@@ -3117,8 +3129,9 @@ const wrapC=x=>x-Math.round(x);
 function footMax(q){return Math.max(footLow(q.hF,q.kF,q.fpF),footLow(q.hB,q.kB,q.fpB));}
 const J32=(()=>{const P0=q=>{const o=mk(Object.assign({},q,{air:1}));o.cl=q.cl||0;o.sm=1;o.hy=footMax(o)+o.cl;return o;};
   const ev=K=>K.map(P0),tm=K=>K.map(([t,q])=>[t,P0(q)]);
-  return {tk:ev(MCJ.tk),D:ev(MCJ.D),Dlow:ev(MCJ.Dlow),sf:ev(MCJ.sf),sfLow:ev(MCJ.sfLow),rl:tm(MCJ.rl),sw:tm(MCJ.sw),sl:tm(MCJ.sl),
-    S:MCK.leap.S.map(q=>P0(Object.assign({cl:1},q))),SL:MCK.leapLow.S.map(q=>P0(Object.assign({cl:1},q)))};})();
+  return {tk:ev(MCJ.tk),sf:ev(MCJ.sf),sfLow:ev(MCJ.sfLow),rl:tm(MCJ.rl),sw:tm(MCJ.sw),sl:tm(MCJ.sl),
+    S:MCK.leap.S.map(q=>P0(Object.assign({cl:1},q))),SL:MCK.leapLow.S.map(q=>P0(Object.assign({cl:1},q))),
+    L:MCK.leap.L.map(q=>P0(Object.assign({cl:1},q)))};})();
 // even keys at u 0..1, and timed keys [t, pose] (Catmull-Rom, the ends held)
 function seqU(K,u,out){const n=K.length-1,f=(u<0?0:u>1?1:u)*n,i=Math.min(n-1,Math.floor(f)),w=f-i,a=K[i>0?i-1:0],b=K[i],c=K[i+1],d=K[i+2<=n?i+2:n];
   for(let j=0;j<PK.length;j++){const k=PK[j];out[k]=crom(a[k],b[k],c[k],d[k],w);}return out;}
@@ -3130,13 +3143,10 @@ function mir32(p){let t=p.hF;p.hF=p.hB;p.hB=t;t=p.kF;p.kF=p.kB;p.kB=t;t=p.fpF;p.
 const fpA=mk({}),fpB=mk({});
 // the flight of a running (kind 'run') or standing jump at phase u (P.t / P.jT), s the stride for the distance (round 26c)
 function flightPose(kind,low,u,s,mir,out){const uc=u<0?0:u>1?1:u,b=Math.sin(Math.PI*uc),bb=b*b;
-  if(kind==='run'){const S=low?J32.SL:J32.S,D=low?J32.Dlow:J32.D,n=D.length-1,sd=s;s=DV_S0+(1-DV_S0)*s; // (even the shortest hop takes some of the leap's keys and dive: not a stride held still)
-    seqU(S,u,fpA);seqU(D,u,fpB);lerpPose(fpA,fpB,s,out);
-    seqU(S,u-ARM_LAG,fpA);seqU(D,u-ARM_LAG,fpB);out.aF=lerp(fpA.aF,fpB.aF,s);out.eF=lerp(fpA.eF,fpB.eF,s);
-    seqU(S,u+ARM_LEAD,fpA);seqU(D,u+ARM_LEAD,fpB);out.aB=lerp(fpA.aB,fpB.aB,s);out.eB=lerp(fpA.eB,fpB.eB,s);
-    out.hy=lerp(lerp(S[0].hy,S[n].hy,uc),lerp(D[0].hy,D[n].hy,uc),s);
-    const k=(DV_K0+(1-DV_K0)*sd)*bb;out.rot=DV_ROT*k;out.lean+=DV_LEAN*k;out.aF+=ARM_SW*(DV_K0+(1-DV_K0)*sd)*s32(uc/0.45)*(1-s32((uc-0.75)/0.25)); // (the near arm swings through as the far one goes back: opposed)
-    out.hB-=DV_SPL*k;out.hF+=DV_ROT*k;out.kF+=DV_KNE*k;}
+  if(kind==='run'){ // (round 34: v77's flight, leapPose's S and L by the distance, upright: no dive; the near arm a beat behind, the far one ahead)
+    leapPose(low,u,s,out);leapPose(low,u-ARM_LAG,s,fpA);out.aF=fpA.aF;out.eF=fpA.eF;leapPose(low,u+ARM_LEAD,s,fpB);out.aB=fpB.aB;out.eB=fpB.eB;
+    if(!low){const S=J32.S,Lk=J32.L,n=S.length-1;out.hy=lerp(lerp(S[0].hy,S[n].hy,uc),lerp(Lk[0].hy,Lk[n].hy,uc),s);} // (the hip on the feet at take-off and touch-down; a low leap keeps v77's PS.jumpLow.hy, under its ceiling)
+    out.rot=0;if(!low&&uc<LP_TK)lerpPose(J32.tk[J32.tk.length-1],out,s32(uc/LP_TK),out);} // (out of the take-off stance's last key, the lead knee driven up, over LP_TK of the flight: no knee dropped at toe-off)
   else{const K=low?J32.sfLow:J32.sf,n=K.length-1;seqU(K,u,out);seqU(K,u-ARM_LAG*1.6,fpA);out.aF=fpA.aF;out.eF=fpA.eF;out.aB-=0.12*bb; // (the near arm a beat behind the far one, the far one a little lower)
     out.hy=lerp(K[0].hy,K[n].hy,uc);const r0=SJ_TILT*(1-s32(uc/0.35)),r=r0+DS_ROT*bb;
     out.rot=r;out.lean+=DS_LEAN*bb;const ar=r+(SJ_TILT+(low?0:SJ_ARM))*(1-s32(uc/0.5))+(low?0:DS_ARM)*bb;out.aF+=ar;out.aB+=ar;}
