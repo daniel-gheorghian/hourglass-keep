@@ -2040,7 +2040,7 @@ function lerpPose(a,b,t,out){out=out||mk({});for(const k of PK)out[k]=a[k]+(b[k]
 // (LAGM): the clip cycles (run, walk, crawl, climb, drink, swing) carry their own overlap and are followed as before; held hands are IK'd
 // to their grips (gF/gB at the full rate), so a grip never lags. In the air the legs trail the body too (they are no contact there).
 const PKR=PK.map(k=>({aF:0.7,aB:0.7,eF:0.55,eB:0.55,head:0.75,hp:0.75,sb:0.85}[k]||1)),PKRA=PK.map((k,j)=>PKR[j]*({hF:0.75,hB:0.75,kF:0.7,kB:0.7}[k]||1));
-const LAGM={stand:1,turn:1,stop:1,land:1,jumpPrep:1,landHurt:1,step:1,edgeWalk:1,bonk:1,garde:1,advance:1,retreat:1,blocked:1,strike:1,parry:1,hurt:1,lowStrike:1,dead:1,air:2,jumpUp:2,hang:2};
+const LAGM={stand:1,turn:1,stop:1,land:1,jumpPrep:1,landHurt:1,step:1,edgeWalk:1,bonk:1,garde:1,advance:1,retreat:1,blocked:1,strike:1,parry:1,hurt:1,lowStrike:1,dead:1,air:2,jumpUp:2,hang:2,slide:2};
 function followPose(cur,tgt,dt,rate,m){if(!m)return lerpPose(cur,tgt,1-Math.exp(-dt*rate),cur);const R=m===2?PKRA:PKR;
   for(let j=0;j<PK.length;j++){const k=PK[j];cur[k]+=(tgt[k]-cur[k])*(1-Math.exp(-dt*rate*R[j]));}return cur;}
 // (2) Settles, measured (r23poses.py SETTLE: MCK.set_land from 16_05's landing, MCK.set_stop from 16_08's sudden stop): keyed by the time
@@ -3424,6 +3424,61 @@ const KICK_VX=62,KICK_VY=-275,PLANT_MIN=0.11,PLANT_STICK=0.16,PLANT_MAX=0.45;
 // sliding down a hanging (case 'slide'): steady speed, braking, and the blade's drawn length: it points into the cloth,
 // so it is drawn short, along the depth direction (up and right)
 const SL_V=170,SL_A=1100,SL_BLADE=9;
+// ---- Round 33c (owner, floor 16: "the prince is hanging and we need a short animation that plays when the prince is transitioning from hanging
+// to the slide down position"). v78 measured (egyptr33c.py): letting go of a lip, the near hand left it 10.5 px in one frame (the hold weight
+// fell 1 to 0.67 at once); taking the cloth, the physics x snaps 9 px from the hang (7 px out from the lip) to the hanging's middle and the
+// figure went with it in one frame, both hands jumped 11-15 px from the fall's arms to the cloth, the head 9.6 px, the knees folded 57% of
+// the way in a frame (follow rate 50), the blade appeared whole; and Grab held with Down caught the same lip again every time.
+// Look only (hit box, P.x/P.y, the cut, timing, the bot unchanged), drawn on P.pose after the follow (handsIn), so the silhouette's shadows
+// follow too. Two parts, from PoP 1989 and motion capture:
+// (1) Letting go of a hang (HF_*): PoP1's hangfall (SDLPoP seqtbl.c) holds frame 81, the arms still up, three ticks (0.25 s at 12 fps) while
+// the body drops 0, 6, 9 and 12 units before freefall's frame 106; CMU 01_10 (letting go of an overhead bar) keeps the hands on the bar
+// 0.1 s after the hips start down, the two hands 0.05 s apart, and the arms stay overhead as the body drops (the hands fall 0.14-0.29 m
+// while the hips fall 0.51 m). So each hand stays on the lip until HF_R (near 0.03, far 0.07 s; the body hangs on until then), slips off
+// over HF_S to ride with the body, arms up, for HF_H, then eases into the fall's arms over HF_W (on the floor too, if he lands first).
+// (2) Taking the cloth (SI_*): the drawn body carries the 9 px snap and swings in under the hands over SI_T (an offset that decays to
+// nothing: Bollo's inertialization, GDC 2018, rather than a cross-fade); one hand takes the cloth first (SI_D, SI_H: from a hang the
+// sword hand, from a fall the one nearer it), the other 0.06 s later (CMU 01_09's release is one hand at a time), and the blade grows into
+// the cloth as the sword hand closes (slBlade); from a hang each hand leaves the lip where it held it, from a fall where it was; a hand
+// far from the cloth takes longer (top speed SI_V). The knees fold at SI_RATE with the slide's overlap (LAGM), not at the bite's
+// jolt. Grab held with Down in a hang over a hanging now takes the cloth straight away (it caught the lip again before).
+const HF_R=[0.03,0.07],HF_S=0.06,HF_H=0.08,HF_W=0.25,HF_END=0.07+0.08+0.25;
+const SI_T=0.2,SI_D=[0,0.06],SI_H=[0.1,0.12],SI_S=0.05,SI_ARC=1.5,SI_RATE=24,SI_V=300; // (SI_V: a hand's top speed, px/s: a hand far from the cloth takes longer)
+const s5=x=>{x=x<0?0:x>1?1:x;return x*x*x*(x*(6*x-15)+10);};
+// the drawn figure's frame for pose p (its hip, world px; the rotation's cos and sin), with the feet at y (default P.y); lift left out
+function siFrame(p,y){const s=skel(p),low=Math.max(s.fF[1],s.fB[1]);
+  return {x:P.x+P.face*(p.ox||0),y:(y==null?P.y:y)-(low+(p.hy-low)*p.air)+(P.yo||0)+(p.oy||0),c:Math.cos(p.rot||0),s:Math.sin(p.rot||0)};}
+// a world point in that frame (the hip's, x forward)
+function siHip(fr,wx,wy){const dx=(wx-fr.x)*P.face,dy=wy-fr.y;return [dx*fr.c+dy*fr.s,-dx*fr.s+dy*fr.c];}
+function siGrip(p,i,h,w){if(i){p.gBx=h[0];p.gBy=h[1];p.hb=w;}else{p.gFx=h[0];p.gFy=h[1];p.hold=w;}}
+function handsIn(){const p=P.pose,st=P.state,ps=P.dhS,f=P.face;
+  if(st==='slide'&&ps&&ps!=='slide'&&P.t<0.02){const dx=clamp((P.dhX-P.x)*f,-24,24),lg=ps==='air'?P.lgo:null,W=[[P.dhFx,P.dhFy],[P.dhBx,P.dhBy]];
+    p.ox=dx;const fr=siFrame(p),r={t0:gameTime,dx,l:[0,0],W,H:[null,null],h:[0,0],d:[SI_D[0],SI_D[1]]},e=[0,0];
+    for(let i=0;i<2;i++){r.l[i]=ps==='hang'||(lg&&gameTime-lg.t0<HF_R[i])?1:0;const a=r.H[i]=siHip(fr,W[i][0],W[i][1]);e[i]=Math.hypot(a[0]-(i?PS.slide.gBx:PS.slide.gFx),a[1]-(i?PS.slide.gBy:PS.slide.gFy));
+      r.h[i]=Math.max(SI_H[i],1.875*e[i]/SI_V);}
+    if(e[1]<e[0]-4)r.d=[SI_D[1],SI_D[0]]; // (the hand nearer the cloth takes it first: from a fall the raised one; the sword hand then drives the blade in)
+    P.slI=r;}
+  if(st==='air'&&ps==='hang'&&!P.jumpKind&&P.t<0.02)P.lgo={t0:gameTime,y0:P.y,W:[[P.dhFx,P.dhFy],[P.dhBx,P.dhBy]]};
+  if(!(st==='air'&&!P.jumpKind||st==='land'||st==='landHurt'||st==='stand'))P.lgo=null;if(st!=='slide')P.slI=null; // (a let-go that lands at once, PoP1's hangdrop, eases the arms down on the floor)
+  if(P.slI){const r=P.slI,t=gameTime-r.t0;
+    if(t<0||t>1)P.slI=null;
+    else{p.ox=r.dx*(1-s5(t/SI_T));const fr=siFrame(p);
+      for(let i=0;i<2;i++){const u=s5((t-r.d[i])/r.h[i]),bx=i?PS.slide.gBx:PS.slide.gFx,by=i?PS.slide.gBy:PS.slide.gFy;let a=r.H[i];
+        if(r.l[i]){const lh=siHip(fr,r.W[i][0],r.W[i][1]),k=i?'siZB':'siZF';if(t<=r.d[i]||!P[k])P[k]=lh; // (on the lip until it goes, then it slips off with the body over SI_S)
+          const q=s5((t-r.d[i])/SI_S),z=P[k];a=[lh[0]+(z[0]-lh[0])*q,lh[1]+(z[1]-lh[1])*q];}
+        siGrip(p,i,[a[0]+(bx-a[0])*u,a[1]+(by-a[1])*u-SI_ARC*Math.sin(Math.PI*u)],1);}
+      if(t>=SI_T&&t>=r.d[0]+r.h[0]&&t>=r.d[1]+r.h[1])P.slI=null;}}
+  if(P.lgo){const r=P.lgo,t=gameTime-r.t0;
+    if(t<0||t>HF_END)P.lgo=null;
+    else{const fr=siFrame(p);
+      for(let i=0;i<2;i++){const R=HF_R[i],W=r.W[i],a=siHip(fr,W[0],W[1]);let h=a,w=1;
+        if(t>R){const yR=r.y0+0.5*GRAV*R*R,z=siHip({x:fr.x,y:fr.y+yR-P.y,c:fr.c,s:fr.s},W[0],W[1]),k=s5((t-R)/HF_S);h=[a[0]+(z[0]-a[0])*k,a[1]+(z[1]-a[1])*k];w=1-s5((t-R-HF_H)/HF_W);}
+        siGrip(p,i,h,w);}}}
+  // where the hands and the body are drawn now (as livePose draws them: the hang's swing turns him about his hands), for the next frame's start
+  const q=GFX().hd?livePose(P,p):p,s=skel(q),c=Math.cos(q.rot||0),sn=Math.sin(q.rot||0),bx=P.x+f*(q.ox||0),by=P.y-s.hipH+(P.yo||0)+(q.oy||0);
+  P.dhFx=bx+f*(s.hF[0]*c-s.hF[1]*sn);P.dhFy=by+s.hF[0]*sn+s.hF[1]*c;P.dhBx=bx+f*(s.hB[0]*c-s.hB[1]*sn);P.dhBy=by+s.hB[0]*sn+s.hB[1]*c;P.dhX=bx;P.dhS=st;}
+// the blade's drawn length while he takes the cloth: none until the sword hand is halfway there, then it sinks in to SL_BLADE
+function slBlade(){const r=P.slI;if(!r)return SL_BLADE;const u=s5((gameTime-r.t0-r.d[0])/r.h[0]);return u<0.5?0:2+(SL_BLADE-2)*s5((u-0.5)/0.5);}
 function startPlant(sd,go){P.plant={sd,t0:gameTime,go};P.vx=0;P.face=sd;
   Snd.play('plant');if(GFX().fx)dust(P.x+sd*7,P.y-22,2);if(P.lk)P.lk.sq=0.92;}
 function kickOff(sd){P.plant=null;P.vx=-sd*KICK_VX;P.vy=KICK_VY;P.face=-sd;P.fallY=P.y;P.autoGrab=true;P.jumpKind='kick';P.kickT=gameTime;P.wallT=-9;
@@ -3648,6 +3703,8 @@ function updatePlayer(dt){
     case'landHurt':if(P.t>=0.6)setState('stand');break;
     case'hang':{const lg=P.ledge;if(!solidBelow(L,lg.c,lg.r)){startFall(0);break;}
       if(I.u||took('u')){P.cs={x0:P.x,y0:P.y,x1:lg.xe-lg.s*10,y1:lg.ys};setState('climb');Snd.play('grab');break;}
+      // (round 33c) Grab held with Down over a hanging takes the cloth (it let go and caught the same lip again); see handsIn for the look
+      if(I.g&&I.d&&bannerAt()&&took('d')){P.vx=0;P.vy=0;P.x=pCol()*TW+16;P.fallY=P.y;setState('slide');Snd.play('slide');break;}
       if(took('d')||took('j')){startFall(0);break;}break;}
     case'climb':{const k=Math.min(1,P.t/CLIMB_T),cf=climbFrame(P.cs,k);P.x=cf.x;P.y=cf.y;
       if(k>=1){P.x=P.cs.x1;P.y=P.cs.y1;P.fallY=P.y;setState('stand');standOn();}break;}
@@ -3724,7 +3781,7 @@ function updatePlayer(dt){
     case'slide':{tgt=lerpPose(PS.slide,PS.reach,P.t<0.07?0.35:0,tmpP);const sh=Math.sin(P.t*47);tgt.lean+=0.04*sh;tgt.eF+=0.1*sh;tgt.eB-=0.1*sh;
       let fy=null;for(let r=rowOf(P.y-1);r<L.rows&&fy===null;r++)if(solidBelow(L,pCol(),r))fy=SURF(r);
       const k=fy===null?0:clamp(1-(fy-P.y)/52,0,1);if(k>0){tgt.hF=lerp(tgt.hF,1.0,k);tgt.kF=lerp(tgt.kF,1.75,k);tgt.hB=lerp(tgt.hB,0.75,k);tgt.kB=lerp(tgt.kB,1.55,k);tgt.head+=0.15*k;}
-      tgt.sw=P.face>0?0.46:Math.PI-0.46;rate=P.t<0.1?50:36;break;}
+      tgt.sw=P.face>0?0.46:Math.PI-0.46;rate=P.slI||P.dhS!=='slide'?SI_RATE:P.t<0.1?50:36;break;} // (round 33c: taking the cloth folds the knees at SI_RATE, not the bite's 50)
     case'swing':tgt=swingPose(P.swTh||0,P.swOm||0,P.swPump);rate=90;break;
     case'air':
       P.yo=P.jumpKind==='run'&&!P.plant&&P.jK<1?(1-P.jK)*Math.max(0,P.jy-P.y):0; // (round 27a: drawn on a lower arc, see jhK)
@@ -3755,6 +3812,7 @@ function updatePlayer(dt){
   if(P.state==='jumpPrep'||(P.state==='air'&&(P.jumpKind==='run'||P.jumpKind==='stand')))rate*=0.35+0.65*s32(P.t/0.08);
   followPose(P.pose,tgt,dt,rate,P.state==='air'&&(P.plant||P.jumpKind==='kick'||P.jumpKind==='wall')?0:P.state==='run'&&P.lnT!=null&&gameTime-P.lnT<0.4?1:LAGM[P.state]); // (round 25f: overlap; round 32: the arms trail a run through a landing)
   poseOx(dt);
+  handsIn(); // (round 33c: letting go of a lip, taking the cloth)
 }
 
 // ================= guards =================
@@ -7693,7 +7751,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     const ex=P.state==='exit'&&P.exS>0,en=P.state==='enter';let ox=0,oy=0,dc=null,tc=null,ta=0,al=1;
     if(ex){ox=P.exX;oy=P.exY;if(P.exS>EX_CUT)dc=L.door;if(EXF.look){const k=P.exS,w=sstep((k-1.2)/1.8);ta=0.86*sstep((k-0.5)/2.4);al=1-sstep((k-1.8)/(EX_GONE-1.8));tc=exitTint(w);}}
     if(en){ox=P.enU*EN_DX;oy=-P.enU*EN_DY;if(P.enU>0.3)dc={x:entryX(),r:L.start.r};ta=P.enK;tc='rgb(7,5,11)';}
-    const po={yo:P.yo,sword:(P.sword&&!!P.foe)||P.state==='lowStrike'||P.state==='poke'||(P.lowSword&&P.state==='crouch')||P.state==='slide',swLen:P.state==='slide'?SL_BLADE:0,hasSword:true,flash:P.flash,flutter:Math.min(1,Math.abs(P.vx)/90+(P.state==='air'?0.8:0)),time:gameTime};
+    const po={yo:P.yo,sword:(P.sword&&!!P.foe)||P.state==='lowStrike'||P.state==='poke'||(P.lowSword&&P.state==='crouch')||(P.state==='slide'&&slBlade()>0),swLen:P.state==='slide'?slBlade():0,hasSword:true,flash:P.flash,flutter:Math.min(1,Math.abs(P.vx)/90+(P.state==='air'?0.8:0)),time:gameTime};
     if(dc)doorClip(ctx,dc.x,dc.r);
     if(al<=0.004){}else if(ta>0.004||al<1)drawPTint(ctx,P.x+(P.rdx||0)+ox,P.y+(P.rdy||0)+oy,po,tc,ta,al);
     else drawActor(ctx,P,P.x+(P.rdx||0)+ox,P.y+(P.rdy||0)+oy,P.face,P.pose,PAL_HERO,po);
