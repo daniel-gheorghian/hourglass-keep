@@ -515,6 +515,19 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   with distance: a penumbra like the walls') at a quarter step either side along it; the figure shades by the most any step saw (`cf`, one
   occluder), walls and blades still multiply; the haze over him is cut from 0.35 of the mask (inside his outline: no dark fringe); `u_of` skips
   the taps when no figure is near a beam. No jitter, no new pass; Classic draws no figure shadow. Pictures and cost: `egyptr28b.py`.
+  (round 35b, owner after v80, floor 17: "light beam through sand", "light beam in front of the saws") Sand stands in front of the room's
+  whole depth like a wall's front face: a well's body and a sand lift's column (its slab's front edge down) take no beam light, haze, rim, pane
+  or footprint, and no floor mist or wall look either (an arch or breach in a pit's back wall, drawn behind the sand, had its lit rim and streaks
+  laid on the sand halfway down the column, floor 17 seed 19). Their outline this frame (`sandSegs`: the surface as drawn, wellSolve's S, flat
+  stretches merged, at most `SDMAX` 24 segments) goes to the shafts' and mist shaders (`u_sd`, `u_sf`, `sdC`) and to Classic's cut with the walls
+  (`ryBeams2D`, `rySandCut`); above the surface the pit is air (a drained well is lit). The footprint is light on the floor's top face, never on
+  what stands on it: Torchlight's composite and bright pass add it only where the scene's alpha shows the floor (`fpGate`, `GLFX.fpgate`):
+  round 31's mark (254), what the room's picture lays on the face (`RL_A` 251: breach rubble, fallen things, spike holes, a broken end, drawn on
+  a scratch canvas and marked where they cover the face, `rlBegin`/`rlEnd`) or a flat thing drawn live (`fpMark`, `FPM_A` 254: plates, cracked
+  slabs, planks, closers, a vent's grate; its tile 128 in FLOOR_FT, `FT_FLAT`, so floorFx keeps off it as before); 255 (a saw's blade and slot,
+  stakes, a flask, a lamp stand, a fallen block) is left out, a soft shadow under 254.5 is not. Classic cuts the same things' boxes
+  (`ryStand`, `ryStandCut`). Look only. Beam frames away from sand and things on the floor (beamshot's floors, frozen): Torchlight 0 to 0.1% of
+  pixels differ by more than 4 levels (feet, lamp stands, flasks), Classic 0 to 0.07%. Pictures `egyptr35b.py` (r35b_beams.png).
 - The view through openings (round 25e, owner: "the backgrounds seen through the windows sometimes change wildly ... especially when
   going downwards") follows the keep, not the screen: each opening (window, open arch, breach) looks out at the eye level of its own storey.
   Its view is placed as it was when the camera rests on the floor under the opening (`bgAnchor`: openings that touch share the anchor of the
