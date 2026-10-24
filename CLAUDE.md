@@ -31,7 +31,7 @@ main's file, not the branch: run them from a copy of `dev/` with that path rewri
 
 ## Build
 
-From the repo root, with N the release number (current release v77, next v78):
+From the repo root, with N the release number (current release v78, next v79):
 
 ```
 python3 dev/tools/build.py dev/hourglass-keep.html index.html sw.js N
