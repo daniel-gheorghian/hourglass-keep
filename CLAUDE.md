@@ -380,6 +380,30 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   drawn poses (to 5 decimals) and the bot's frames are identical to v79's (`egyptr34.py --bot`, floors 1-27). Look only. Checks: figscan, lowceil,
   stairscan, run2.
   Pictures and numbers `egyptr34.py` (r34_runjump.png: v77 | v79 | round 34 onions and strips; r34_runjump.gif; r34.json).
+- The running jump's tempo (round 35a, owner after v80: "again the jump, just the running jump: the prince hangs too much in air while jumping.
+  Tweak the timings so it is shorter. The prince running speed doesn't match the running jump, the fact that the prince hangs too much in air
+  breaks the tempo"). Measured on v80 (`egyptr35a.py`, the bot on floors 1-27, seed 1): a level running jump was 0.533 s in the air (32 frames;
+  the arc 2 vy/g = 0.543 s) at 183 px/s, 1.83 times `RUN` (100): already faster across than the run, but 2.5 of the run's steps (a step 0.22 s)
+  with the drawn apex only 4 px (round 33a), so he glided. PoP 1989 (SDLPoP seqtbl.c; 12 ticks a second, 14 x-units to a tile): runcyc1 is
+  26 units in 8 ticks (89 px/s here, a step in 4 ticks, 0.33 s); runjump's frames 40-43 are in the air, 39 to 44 floor to floor is 5 ticks
+  (0.417 s, 1.25 steps) and 36 units (82 px) at 2.2 times its run; its gather (frames 35-39) 1.6 times. Celeste (NoelFB/Celeste Player.cs:
+  MaxRun 90, JumpHBoost 40, the air speed reduced back toward MaxRun at RunReduce 400 x AirMult .65) carries about its run speed across.
+  Now a running jump (rjump, the low leap, dash jumps, jgrab, a run onto the swing bar: `P.jumpKind` 'run') flies the same path in `RJ_K`
+  0.75 of the time: velocities over RJ_K, gravity and the fall cap 480 over RJ_K^2 and RJ_K (`rjK()` in stAir, `launch`), until he lands,
+  grabs, catches a bar or kicks; `RJ_DV` (g STEP (1/RJ_K - 1)/2, 1.94 px/s on vy) puts the frames on v80's discrete parabola, so every 3rd
+  frame is v80's every 4th and a level jump lands on v80's very pixel (97.6 px, frame 24 for 32). Level running jump 0.533 -> 0.400 s
+  (PoP 0.417), 183 -> 244 px/s (2.44 x RUN; PoP 2.2), 2.4 -> 1.8 steps; the low leap 0.350 -> 0.267 s (212 -> 283 px/s); caught at the far
+  lip 0.750 -> 0.567; to a ledge a storey up 0.500 -> 0.367; to the swing bar's catch 0.233 -> 0.183. Unchanged: reach (level 97.6 px, the
+  low leap's 74.2 lands 75.4: its 21st frame falls between samples, +1.2 px), rise (hit box 24.2 px, low 10.6 -> 10.7), every landing within
+  one frame's step of the arc as before (4 px of arc against 3), beamOverhead, jumpSpan's geometry, the run's speed, the take-off stance (by
+  distance), the landing keys and running on, the standing jump (bit for bit: rjK() is 1). On the flight's clock too: P.jT and P.jKe
+  (times RJ_K), JH_RT, the saw's blade in jhK and the bot's `sawSafe` (`__HK.RJ_K`, `RJ_DV`), the air follow's rate (/ RJ_K) and its
+  0.08 s / 0.15 s eases; the swing's catch and the landing squash read the arc's own speed (x RJ_K: runCatch 0.73 -> 0.72). estPath:
+  rjump -0.13, rjumpg -0.18, jgrab -0.13, swing -0.05 s (both paces, the time saved in the air): layouts identical on floors 1-48, 3 seeds
+  (tiles, features, L.path, start and exit; metrics40 against v80 the same), 49 of 1,438 gate timers 0.1-0.3 s shorter. The chase is
+  0.1-0.5 s quicker for the bot, the dark's speed unchanged. Checks: run2 (1-27, fight 5-10), primtest, hdtest, lowceil, figscan, forktest,
+  p4bot, metrics40, swingtest. Pictures and numbers `egyptr35a.py` (r35a_jump.png: v80 | 35a on one clock with the run before and after;
+  r35a_jump.gif real time; r35a.json).
 - Lift ropes (round 21a, owner: "holes in the slab with the rope threaded through"): all lift ropes are `barRope` in the theme's fibre
   (`liftRope`; `barRope`'s `ph` makes the lay travel with a running rope). The counterweight platform hangs on two bridles (`liftSling`: an
   eye seized `LS_J` above the slab, legs down through two holes near the front and back edges along the depth diagonal, `ropeHole` drawn in

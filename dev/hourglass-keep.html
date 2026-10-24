@@ -804,12 +804,14 @@ function buildLevel(n,seed,test,legacy,att){
   // needs more than the plain table below says, so there every action takes what the bot measured (floors 6 to 27) and a little over,
   // and even the tightest factor of timerK (0.84) stays beatable. (The plain table also feeds the worth-a-life and fork choices.)
   // (round 32: a standing jump winds up for JP_T 0.28 s, 0.18 s more than before: sjump carries it)
+  // (round 35a: a running jump is in the air RJ_K of the time it was: rjump 0.13 s less (0.533 to 0.400 s, the bot on floors 1-27),
+  // rjumpg 0.18 (caught at the far lip, 0.750 to 0.567), jgrab 0.13 (0.500 to 0.367), swing 0.05 (to the bar's catch, 0.233 to 0.183))
   function estPath(acts,cur,careful){let t=0;const mv=c2=>{t+=Math.abs(c2-cur)*(careful?0.55:0.34);cur=c2;};
     for(const a of acts){
       if(a.a==='walk'){mv(a.c);t+=careful?0.4:0.2;continue;}
       if(a.from!==undefined)mv(a.from);
       const dd=a.to!==undefined?Math.abs(a.to-a.from):0;
-      t+=({runover:dd*0.32+0.4,sjump:(careful?1.2:1.0)+0.18,rjump:careful?2.8:1.7,rjumpg:careful?4.0:2.8,tiptoe:dd*0.8+0.5,crawl:dd*0.8+1.3,timed:dd*0.32+2.6,climb:1.3,drink:DR_T,hangdrop:1.8,drop:careful?1.45:0.9,slide:careful?4.0:2.2,walljump:1.6+0.9*(a.k||2),wallrun:2.2,collapse:careful?2.2:1.5,jgrab:careful?4.2:3.0,swing:careful?2.4:1.6,sandlift:careful?4.0:2.2,lift:a.chn?(careful?3.8:3.5)+(a.k*64+32)/CHAIN_V:careful?1.5+1.1*a.k:1.2+a.k})[a.a]||0;
+      t+=({runover:dd*0.32+0.4,sjump:(careful?1.2:1.0)+0.18,rjump:(careful?2.8:1.7)-0.13,rjumpg:(careful?4.0:2.8)-0.18,tiptoe:dd*0.8+0.5,crawl:dd*0.8+1.3,timed:dd*0.32+2.6,climb:1.3,drink:DR_T,hangdrop:1.8,drop:careful?1.45:0.9,slide:careful?4.0:2.2,walljump:1.6+0.9*(a.k||2),wallrun:2.2,collapse:careful?2.2:1.5,jgrab:(careful?4.2:3.0)-0.13,swing:(careful?2.4:1.6)-0.05,sandlift:careful?4.0:2.2,lift:a.chn?(careful?3.8:3.5)+(a.k*64+32)/CHAIN_V:careful?1.5+1.1*a.k:1.2+a.k})[a.a]||0;
       if(a.to!==undefined)cur=a.to;}
     return t;}
   const timerK=()=>0.84+0.14*rng()+0.1*(1-d); // timer over the estimated route back (a careful pace): 0.84 (tight) .. 1.08
@@ -2977,15 +2979,36 @@ function beamOverhead(run){const row=pRow(),vx=run?183:132,vy=run?190:159,T=2*vy
   for(let t=0.02;t<T;t+=0.02){const x=P.x+P.face*vx*t,hy=P.y-(vy*t-0.5*GRAV*t*t)-HEAD_UP,cy=ceilOver(x,row);
     if(cy!==null&&hy<cy-CEIL_TOL)return true;}
   return false;}
+// Round 35a (owner after v80: "the prince hangs too much in air while jumping. Tweak the timings so it is shorter. The prince running speed
+// doesn't match the running jump, the fact that the prince hangs too much in air breaks the tempo"). A running jump (rjump, the low leap, the
+// chase's dash jumps, jgrab, the run onto a swing bar) flew its arc in 0.54 s (the low leap 0.37 s) at 183 px/s, 1.83 times RUN: 2.5 of
+// the run's steps (a step 0.22 s at RUN), where PoP 1989's runjump is in the air 5 ticks at 12 fps, 0.42 s, 1.25 of its steps, at 2.2
+// times its run (SDLPoP seqtbl.c runjump, frames 39-44: 36 x-units in 5 ticks; runcyc1: 26 units in 8 ticks, a step in 4). The jump
+// already outran the run; what broke the tempo was the time in the air (the drawn apex is only 4 px since round 33a, so he glided). So the same path is flown in RJ_K of the time: every velocity over RJ_K and the gravity over RJ_K^2 while
+// P.jumpKind is 'run' (stAir, launch), from take-off until he lands, grabs, catches a bar or kicks off a wall: every point of the arc,
+// its reach (the level 97.6 px, the low leap's 74), its rise (25.8 px, the low leap's 11.7) and every landing, grab and head clamp are
+// where they were (the generator's layouts, beamOverhead, findLedge and the bot's positions unchanged), only sooner. What is timed along
+// the flight follows the same clock: P.jT, the catch moment P.jKe and the reach onto the arc (JH_RT), a saw's blade where it is when he
+// passes (jhK, the bot's sawSafe), the flight's follow rate and its eases (the air case), the swing's catch and the landing's squash read
+// the arc's own speed (times RJ_K). The run's speed, the take-off stance (by distance), the landing keys and running on are unchanged;
+// the standing jump is unchanged (owner: "just the running jump"). estPath's rjump, rjumpg, jgrab and swing are shorter by the time
+// saved in the air (the bot measured), so gate timers over a running jump are shorter by as much.
+// RJ_K 3/4: in the air 0.41 s (24 frames, PoP's 5 ticks 0.42 s), the arc's own speed 244 px/s (2.4 times RUN; PoP's 2.2), 1.8 steps.
+// The frames sample the arc as v80's did (semi-implicit Euler at STEP: its points lie on the parabola launched at vy - g STEP/2) when the
+// launch adds RJ_DV: every 3rd frame here is v80's every 4th, so a level running jump lands on v80's very pixel (97.6 px, its 32nd
+// frame, here the 24th); a landing elsewhere is found at most one frame's step (4 px of arc) past the point it crosses, as before (3 px).
+const RJ_K=0.75,RJ_DV=GRAV*STEP*(1/RJ_K-1)/2;
+function rjK(){return P.jumpKind==='run'?RJ_K:1;}
 function launch(){const run=P.jumpKind==='run';P.jx=P.x;P.jy=P.y;let vx=run?183:132,vy=run?190:159;P.lowJump=false;
   if(beamOverhead(run)){[vx,vy]=LOWJ[run?'run':'stand'];P.lowJump=true;}
+  const k=run?RJ_K:1; // (round 35a: the running jump's clock, see RJ_K; vx, vy here are the arc's geometry)
   // (round 32, look only) the leg that takes off: the gather's choice, else the foot on the floor now; the drawn x carried into the arc
   if(run){if(P.jGo==null)P.jMir=(((P.ph%1)+1)%1)<0.5;}else P.jMir=false;P.jGo=null;P.jLe=null;
-  {const v0=(P.state==='run'?Math.abs(P.vx):0)+(P.jOv||0),o0=(P.pose.ox||0)+v0*STEP;P.jO0=o0;P.jB=v0-vx+o0/OX_T2;} // (o0: the step the launch frame does not move him)
-  jumpSpan(vx,vy); // (round 26c: how far this jump is for, for its stride; look only)
-  setState('air');P.vx=P.face*vx;P.vy=-vy;P.fallY=P.y;P.autoGrab=true;Snd.play('jump');}
+  {const v0=(P.state==='run'?Math.abs(P.vx):0)+(P.jOv||0),o0=(P.pose.ox||0)+v0*STEP;P.jO0=o0;P.jB=v0-vx/k+o0/OX_T2;} // (o0: the step the launch frame does not move him)
+  jumpSpan(vx,vy,k); // (round 26c: how far this jump is for, for its stride; look only)
+  setState('air');P.vx=P.face*vx/k;P.vy=-(run?vy+RJ_DV:vy)/k;P.fallY=P.y;P.autoGrab=true;Snd.play('jump');}
 // Round 26c (owner: "when jumping the stride is too large. It works for large gaps but for smaller gaps looks silly. I'd adjust the stride
-// with the actual distance he jumps"). Every running jump flies the same arc on a level floor (183 px/s for 0.54 s: 97.6 px, 3 tiles; a low
+// with the actual distance he jumps"). Every running jump flies the same arc on a level floor (183 px/s for 0.54 s: 97.6 px, 3 tiles; round 35a: 244 px/s for 0.41 s; a low
 // leap 74 px), whether it crosses three tiles of pit or one, or a row of spikes; v72 drew all of them with one held split (thighs 124 degrees
 // apart, the feet 40 px). So the stride is drawn for the distance the jump is for, found once at take-off from the tiles (no state but P's,
 // no allocation; look only: the arc, timing, hit box and grabs are untouched):
@@ -2999,7 +3022,7 @@ function launch(){const run=P.jumpKind==='run';P.jx=P.x;P.jy=P.y;let vx=run?183:
 // level arc's time). Stored on P, so a rewind restores it with him.
 const JS_D0=48,JS_FOOT=12,JS_SCAN=80; // (JS_D0: a jump that needs no more than a tile and a half, a one-tile pit taken at its lip (51-53 px), is a lengthened running step)
 function jsHaz(c,r){if(B(L,c,r)===WALL)return 0;if(!solidBelow(L,c,r))return 1;const f=F(L,c,r);return f&&(f.t==='spikes'||(f.t==='loose'&&!(f.sturdy&&f.s===0))||f.t==='closer'||f.t==='saw'||f.t==='vent')?1:0;}
-function jumpSpan(vx,vy){const fc=P.face,x0=P.x,y0=P.y,row=pRow(),lev=vx*2*vy/GRAV;
+function jumpSpan(vx,vy,tk){const fc=P.face,x0=P.x,y0=P.y,row=pRow(),lev=vx*2*vy/GRAV;tk=tk||1; // (round 35a: tk the jump's clock, RJ_K for a running jump: the times stored are the flight's own)
   let fly=lev,py=y0,x=x0,te=null; // (te: round 33a, the moment the drawn figure must be on the arc: a ledge's catch, a floor higher up, a swing bar; see jhK)
   for(let t=1/60;t<3;t+=1/60){x=x0+fc*vx*t;const y=y0-vy*t+0.5*GRAV*t*t,wc=Math.floor((x+fc*(BW+1))/TW);
     if(B(L,wc,rowOf(y-12))===WALL||B(L,wc,rowOf(y-40))===WALL){fly=Math.abs((fc>0?wc*TW-BW:(wc+1)*TW+BW)-x0);
@@ -3015,8 +3038,8 @@ function jumpSpan(vx,vy){const fc=P.face,x0=P.x,y0=P.y,row=pRow(),lev=vx*2*vy/GR
   while(k<6&&Math.abs((fc>0?(c+1)*TW:c*TW)-x0)<=JS_SCAN&&B(L,c+fc,row)!==WALL&&!jsHaz(c+fc,row)){c+=fc;k++;}
   if(k<6&&jsHaz(c+fc,row)&&Math.abs((fc>0?(c+1)*TW:c*TW)-x0)<=JS_SCAN){let e=c+fc,n=0;while(n<6&&jsHaz(e+fc,row)){e+=fc;n++;}
     const far=e+fc;if(n<6&&B(L,far,row)!==WALL&&solidBelow(L,far,row))need=Math.abs((fc>0?(e+1)*TW:e*TW)-x0)+JS_FOOT;}
-  P.jF=fly;P.jN=need;P.jD=Math.min(fly,need);P.jT=2*vy/GRAV;P.jS=clamp((P.jD-JS_D0)/(lev-JS_D0),0,1);
-  P.jA=vy*vy/(2*GRAV);P.jKe=te;P.jK=jhK(vx,vy,x0,fc,row,P.jumpKind==='run'?P.jS:-1);P.jKr=JH_KR;}
+  P.jF=fly;P.jN=need;P.jD=Math.min(fly,need);P.jT=tk*2*vy/GRAV;P.jS=clamp((P.jD-JS_D0)/(lev-JS_D0),0,1);
+  P.jA=vy*vy/(2*GRAV);P.jKe=te===null?null:tk*te;P.jK=jhK(vx,vy,x0,fc,row,P.jumpKind==='run'?P.jS:-1,tk);P.jKr=JH_KR;}
 // Round 27a (owner: "The running jump of the prince: the stride is better now, but I think the height is wrong: he moves up too much"). The
 // running jump's arc (190 px/s up, GRAV 700) rises 25.8 px, half his height (51.5 px): about 0.88 m on a 1.75 m man, more than an elite long
 // jumper's centre of mass rises over 8 m (~0.5 m); the same 0.54 s of flight under real gravity rises 0.36 m (10.6 px), and PoP1's running
@@ -3056,24 +3079,24 @@ function jhObs(x0,fc,row){JH_N.length=0;JH_W.length=0;const c0=pCol(x0);
     else if(f.t==='saw')JH_W.push(f);}}
 // k for the drawn rise D = k ap sin^2(pi t/T); s the running jump's stride for the distance (round 26c), -1 a standing jump; JH_KR the share
 // of the arc itself the obstacles need on top
-function jhK(vx,vy,x0,fc,row,s){const ap=vy*vy/(2*GRAV),T=2*vy/GRAV,kind=s<0?'stand':'run';JH_KR=0;
+function jhK(vx,vy,x0,fc,row,s,tk){const ap=vy*vy/(2*GRAV),T=2*vy/GRAV,kind=s<0?'stand':'run';JH_KR=0;tk=tk||1; // (round 35a: t below is the arc's own time, tk*t the clock's)
   let k=Math.min(1,(s<0?JH_SJ:lerp(JH_S,JH_L,s))/ap);jhObs(x0,fc,row);if(!JH_N.length&&!JH_W.length)return k;
   // the drawn feet (the flight's target pose at each moment, as the air case draws it) must stand as high over every needle and blade as
   // they did on the full arc, or JH_M px over its top: either k alone (ks) or a share of the arc on top (kr, round 27a's rule), whichever
   // draws the lower top
   let ks=k,kr=0;
   for(let t=1/120;t<T;t+=1/120){const r=vy*t-0.5*GRAV*t*t;if(r<0.5)continue;const g=ap*Math.sin(Math.PI*t/T)**2;
-    const p=flightPose(kind,P.lowJump,t/T,s<0?1:s,!!P.jMir,jhP),ro=p.rot||0,cr=Math.cos(ro),sr=Math.sin(ro),ox=(P.jO0||0)*Math.exp(-t/OX_T2)+(P.jB||0)*t*Math.exp(-t/OX_T3); // (round 32: the flight as drawn: its dive turns the feet with the figure)
+    const tc=tk*t,p=flightPose(kind,P.lowJump,t/T,s<0?1:s,!!P.jMir,jhP),ro=p.rot||0,cr=Math.cos(ro),sr=Math.sin(ro),ox=(P.jO0||0)*Math.exp(-tc/OX_T2)+(P.jB||0)*tc*Math.exp(-tc/OX_T3); // (round 32: the flight as drawn: its dive turns the feet with the figure)
     for(let j=0;j<2;j++){const h=j?p.hB:p.hF,kk=j?p.kB:p.kF,qx=footX(h,kk),qy=LEN.th*Math.cos(h)+LEN.sh*Math.cos(h-kk),fx=x0+fc*(vx*t+qx*cr-qy*sr+ox),c=p.hy-(qx*sr+qy*cr);let top=-1;
       for(let i=0;i<JH_N.length;i+=3)if(fx>=JH_N[i]&&fx<=JH_N[i+1])top=Math.max(top,JH_N[i+2]);
-      for(const f of JH_W){const dx=fx-sawX(f,gameTime+t);if(Math.abs(dx)<SAW_R)top=Math.max(top,Math.sqrt(SAW_R*SAW_R-dx*dx)-2);}
+      for(const f of JH_W){const dx=fx-sawX(f,gameTime+tc);if(Math.abs(dx)<SAW_R)top=Math.max(top,Math.sqrt(SAW_R*SAW_R-dx*dx)-2);}
       if(top<0)continue;const need=Math.min(r+c,top+JH_M)-c;
       if(need>k*g){ks=Math.max(ks,need/g);kr=Math.max(kr,need/r);}}}
   if(ks<=1&&ks<=kr)return ks;JH_KR=Math.min(1,kr);return k;}
 // the drawn figure's offset under the arc in a running or standing jump (P.yo; the air case): the true rise r over the take-off floor less D
 function jumpYo(){const r=Math.max(0,P.jy-P.y);if(!(r>0)||P.jK==null)return 0;const u=P.t/(P.jT||0.54);
   let d=Math.max(u<1?P.jK*(P.jA||0)*Math.sin(Math.PI*u)**2:0,(P.jKr||0)*r);
-  if(P.jKe!=null)d+=(r-d)*s32((P.t-P.jKe+JH_RT)/JH_RT); // (onto the arc for the catch)
+  if(P.jKe!=null){const rt=JH_RT*rjK();d+=(r-d)*s32((P.t-P.jKe+rt)/rt);} // (onto the arc for the catch; round 35a: over the same share of the faster flight)
   return r-Math.min(r,d);}
 // Round 34 (owner after v79: "The standing jump is fine, the running jump is not: him tilting his head and rotating like that is not natural.
 // The previous movement was fine, except the apex"). Round 32's running flight pitched the whole figure forward (rot up to 0.7 rad, 38 degrees drawn),
@@ -3474,7 +3497,7 @@ function landingSurface(py,ny){
   return null;
 }
 function land(h){
-  const vi=P.vy;P.y=h.ys;P.vy=0;const dist=h.ys-P.fallY;
+  const vi=P.vy*rjK();P.y=h.ys;P.vy=0;const dist=h.ys-P.fallY; // (round 35a: vi the arc's own speed, so the landing's squash is as before)
   if(P.jumpKind==='run'||P.jumpKind==='stand'){const a=Math.min(P.x,P.jx),b=Math.max(P.x,P.jx);if(b-a>=40)learn('gap');for(let c=pCol(a);c<=pCol(b);c++){const sf=F(L,c,h.r);if(sf&&sf.t==='spikes'&&c!==pCol()){learn('spikes');break;}}} // a jump that cleared spikes counts
   const jk=P.jumpKind;P.jumpKind=null;
   const f=F(L,pCol(),h.r);
@@ -3630,7 +3653,7 @@ function stPlant(dt){const pl=P.plant,pt=gameTime-pl.t0;
   return true;}
 function stAir(dt){
   if(P.plant&&stPlant(dt))return;
-  P.vy=Math.min(P.vy+GRAV*dt,480);
+  {const k=rjK();P.vy=Math.min(P.vy+GRAV/(k*k)*dt,480/k);} // (round 35a: a running jump flies its arc on its own clock, RJ_K)
   if(P.vx){const want=P.x+P.vx*dt,nx=clampMove(P.x,want,P.y,P);if(Math.abs(nx-want)>0.01)P.vx=0;P.x=nx;}
   let ws=wallTouch();if(P.jumpKind==='kick'&&ws===-P.face&&gameTime-(P.kickT||-9)<0.15)ws=0; // the wall he has just left
   if(ws){P.wallT=gameTime;P.wallS=ws;}
@@ -3687,7 +3710,7 @@ function barPos(f){const pv=barPv(f),lc=f.y-pv,a=f.ps||0;BARP.x=f.x+lc*Math.sin(
 // the swing's amplitude from its energy
 function swAmp(th,om){const e=0.5*om*om/(SW_W*SW_W)+1-Math.cos(th);return e>=2?Math.PI:Math.acos(1-e);}
 function swingCatch(b){const bp=barPos(b),fc=P.face,th=Math.asin(clamp((P.x-bp.x)*fc/34,-0.9,0.9));
-  P.swTh=th;P.swOm=SW_ETA*(P.vx*fc*Math.cos(th)-P.vy*Math.sin(th))/34;P.swRdy=swAmp(P.swTh,P.swOm)>=SW_CLEAR;P.swPump=0;
+  const k=rjK();P.swTh=th;P.swOm=SW_ETA*k*(P.vx*fc*Math.cos(th)-P.vy*Math.sin(th))/34;P.swRdy=swAmp(P.swTh,P.swOm)>=SW_CLEAR;P.swPump=0; // (round 35a: k, the arc's own speed: a running catch swings as before)
   P.swIx=(I.r?1:0)-(I.l?1:0);P.swArm=0;P.swArmT=-9;P.swPT=-9;P.swPD=0;P.swKick=0;P.swKd=0;P.swKT=-9;P.swDn=0;
   P.bar=b;P.sw0=gameTime;P.vx=0;P.vy=0;setState('swing');swingPlace();}
 function swingPlace(){const bp=barPos(P.bar);P.x=bp.x+P.face*34*Math.sin(P.swTh);P.y=bp.y+34*Math.cos(P.swTh)+24.5;}
@@ -3923,8 +3946,8 @@ function updatePlayer(dt){
       if(P.plant){tgt=plantPose();rate=45;break;}
       if(P.jumpKind==='kick'){tgt=kickPose();rate=36;break;}
       if(P.jumpKind==='wall'){tgt=wallRunIK(WR_TOP+4,null);rate=30;break;}
-      if(P.jumpKind==='run'||P.jumpKind==='stand'){const T=P.jT||0.54;tgt=flightPose(P.jumpKind,P.lowJump,P.t/T,P.jumpKind==='run'?(P.jS==null?1:P.jS):1,!!P.jMir,lpP); // (round 32: see flightPose; round 26c's stride for the distance)
-        if(P.t>T)tgt=lerpPose(tgt,PS.land,0.4*s32((P.t-T)/0.15),tmpP);} // (falling on past the take-off level: eased toward the landing, was a 40% step at vy 60)
+      if(P.jumpKind==='run'||P.jumpKind==='stand'){const T=P.jT||0.54,k=rjK();tgt=flightPose(P.jumpKind,P.lowJump,P.t/T,P.jumpKind==='run'?(P.jS==null?1:P.jS):1,!!P.jMir,lpP); // (round 32: see flightPose; round 26c's stride for the distance)
+        if(P.t>T)tgt=lerpPose(tgt,PS.land,0.4*s32((P.t-T)/(0.15*k)),tmpP);rate/=k;} // (falling on past the take-off level: eased toward the landing, was a 40% step at vy 60; round 35a: on the flight's clock, RJ_K)
       else{tgt=PS.fall;if(P.jumpKind)tgt=lerpPose(tgt,PS.land,0.4*s32((P.vy-60)/120),tmpP);}break;
     case'land':tgt=P.stK==='rl'||P.stK==='sl'?landSeq(P.stK,gameTime-P.stT,!!P.jMir&&P.stK==='rl',stP):settlePose('land',gameTime-P.stT,P.stS,PS.stand,stP);rate=40;break; // (round 25f: 16_05's give and rise, was PS.land held; round 32: a jump's own landing)
     case'hang':tgt=PS.hang;rate=30;break;
@@ -3944,7 +3967,7 @@ function updatePlayer(dt){
   if(P.stumble>0&&['stand','run','stop','turn','garde','advance','retreat'].includes(P.state)){const w=Math.min(1,P.stumble/0.8);
     tgt=lerpPose(tgt,PS.hurt,0.3*w,mk({}));tgt.lean+=0.22*w*Math.sin(P.t*7.5);tgt.head+=0.25*w*Math.sin(P.t*5.3+1);tgt.aB-=0.5*w;tgt.aF+=0.25*w*Math.sin(P.t*6);}
   // (round 32) ease in as well as out: a wind-up or a take-off starts slow (the follow's rate rises over 0.08 s); the landing's impact does not
-  if(P.state==='jumpPrep'||(P.state==='air'&&(P.jumpKind==='run'||P.jumpKind==='stand')))rate*=0.35+0.65*s32(P.t/0.08);
+  if(P.state==='jumpPrep'||(P.state==='air'&&(P.jumpKind==='run'||P.jumpKind==='stand')))rate*=0.35+0.65*s32(P.t/(0.08*rjK())); // (round 35a: a running flight's on its clock)
   followPose(P.pose,tgt,dt,rate,P.state==='air'&&(P.plant||P.jumpKind==='kick'||P.jumpKind==='wall')?0:P.state==='run'&&P.lnT!=null&&gameTime-P.lnT<0.4?1:LAGM[P.state]); // (round 25f: overlap; round 32: the arms trail a run through a landing)
   if(tgt===stpP){const w=s32(P.t/0.05);for(const k of TP_LEG)P.pose[k]+=(tgt[k]-P.pose[k])*w;P.pose.air=1;P.pose.hy=tgt.hy;} // (round 33b: the feet where IK puts them, on the floor: a leg that lagged would slide its foot)
   poseOx(dt);
@@ -10825,7 +10848,7 @@ function grabLabel(){
       if(barNear())return 'Swing';
       if(P.vy>0&&bannerAt())return 'Slide';
       // a ledge the hands will pass in the next moment: down the fall ahead (0.45 s), or after the top of a jump
-      const top=P.vy<0?P.vy*P.vy/(2*GRAV):0;
+      const k=rjK(),top=P.vy<0?P.vy*P.vy*k*k/(2*GRAV):0; // (round 35a: a running jump's rise on its own clock)
       if(findLedge(P.y-top,true,P.y+Math.max(0,P.vy)*0.45+10))return 'Hang';
       return 'Grab';}
   }
@@ -10998,7 +11021,7 @@ window.__HK={keyLight,get frameLights(){return frameLights;},jetPlaces,jsSwingPa
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
   get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,ryOps,ryShape,ryProfile,skyBeam,RY,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,plantPose,legIK,mk,drawDynamic,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
-  get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG,secretCues};
+  get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG,secretCues,RJ_K,RJ_DV};
 Object.assign(window.__HK,{guardBudget,snakeBudget,RP,drinkFrame}); // (the fighters' budgets, for guardscan.py; RP and drinkFrame, the run cycle's and the drink's poses, for egyptr21a.py)
 Object.assign(window.__HK,{jumpSpan,jhK,leapPose,LEN,skel,crawlPose,walkPose,climbFrame,swingPose,MCP,MCK,R23B,R23D,R23MUS,setMus,musNow:()=>RD.mus||1,mk,figReach}); // (the skeleton and the poses, for egyptr23.py and figscan.py)
 Object.assign(window.__HK,{respawn,startRewind,die,startEntry,entryOpen,entryX,exitSwell,EXF,EX_N,EX_GONE,EX_CUT,EN_CTL,EN_DROP,EN_FALL,doorHead,ceilOff:(c,r)=>ceilOff(c,r)}); // (round 26f: the exit and the entry, for stairscan.py and egyptr26f.py)

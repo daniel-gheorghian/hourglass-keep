@@ -461,6 +461,24 @@ movement was fine, except the apex." No new clip keys: round 32's hand-made dive
 Kept: the stance, the phase steering and P.jMir (0 of 40 take-offs scissor), poseOx, the eased landing blend, the landing keys and squash,
 running on, the low-leap cap (LOWC), the standing jump. Rule and numbers in CLAUDE.md (round 34); `egyptr34.py`.
 
+## The running jump's tempo (round 35a)
+
+Owner after v80: "the prince hangs too much in air while jumping ... breaks the tempo". The poses are untouched: the running flight is round
+34's (`flightPose` by u = P.t / P.jT), flown on a shorter clock. A running jump keeps v80's path and lands where it did; only time is scaled.
+
+| | v80 | Round 35a | PoP 1989 (runjump, 12 fps) |
+|---|---|---|---|
+| level running jump in the air | 0.533 s (32 frames) | 0.400 s (24 frames) | 5 ticks floor to floor, 0.417 s (4 drawn in the air) |
+| across, against the run | 183 px/s, 1.83 x RUN | 244 px/s, 2.44 x RUN | 36 units in 5 ticks, 2.2 x its run (runcyc1 3.25 units a tick) |
+| steps of the run in the air | 2.4 (a step 0.22 s) | 1.8 | 1.25 (a step 4 ticks) |
+| low leap in the air | 0.350 s, 212 px/s | 0.267 s, 283 px/s | none |
+| reach / hit box's rise (level) | 97.6 / 24.2 px | 97.6 / 24.2 px | 82 px / 14 of 63 |
+| gravity during the jump | 700 | 700 / 0.75^2 = 1244 | |
+
+What is timed along the flight is on the same clock (`RJ_K`): the flight's phase P.jT, the catch's moment P.jKe and the reach onto the arc
+`JH_RT`, the follow's rate and its eases in the air case, the saw's blade in `jhK`. The take-off stance is placed by distance and the
+landing keys from contact, so neither changes. Rule and numbers in CLAUDE.md (round 35a); `egyptr35a.py`.
+
 ## The neck (round 23c): 2 px shorter (superseded by round 23d: 1 px)
 
 Owner: "1.28 is fine. Now make the neck 2px shorter and keep everything else as is". `NECK_CUT` (r23poses.py, 2.0 px) is taken off ANSUR's

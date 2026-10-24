@@ -73,10 +73,11 @@ function* botGen(n, seed, opts) {
     const dir = ins.dir || 1, lo = Math.min(ins.from, ins.to), hi = Math.max(ins.from, ins.to);
     const o = H.L.dyn.find(q => q.f.t === 'saw' && q.r === row() && q.c >= lo && q.c <= hi); if (!o) return true;
     let x = P().x, v = 0, y = 0, vy = 0, air = false, land = 0, t = 2 / 60, jumped = false; const dt = 1 / 60, jx = cx(ins.from + dir) - 22 * dir;
+    const K = H.RJ_K || 1; // (round 35a: the running jump flies the same arc in RJ_K of the time; RJ_DV keeps its frames on v80's points)
     while ((cx(ins.to) - x) * dir > 0 && t < 6) {
       t += dt;
-      if (!air) { if (land > 0) land -= dt; else { v = Math.min(100, (v || 35) + 650 * dt); x += v * dt * dir; } if (!jumped && (x - jx) * dir >= 0 && v > 45) { air = true; jumped = true; vy = -190; } }
-      else { x += 183 * dt * dir; vy += 700 * dt; y += vy * dt; if (y >= 0) { y = 0; air = false; land = 0; v = 100; } } // (round 32: forward held through the landing, he runs straight on)
+      if (!air) { if (land > 0) land -= dt; else { v = Math.min(100, (v || 35) + 650 * dt); x += v * dt * dir; } if (!jumped && (x - jx) * dir >= 0 && v > 45) { air = true; jumped = true; vy = -(190 + (H.RJ_DV || 0)) / K; } }
+      else { x += 183 / K * dt * dir; vy += 700 / (K * K) * dt; y += vy * dt; if (y >= 0) { y = 0; air = false; land = 0; v = 100; } } // (round 32: forward held through the landing, he runs straight on)
       if (Math.abs(x - H.sawX(o.f, H.gameTime + t)) < 16 && y > -13) return false;
     }
     return true;
