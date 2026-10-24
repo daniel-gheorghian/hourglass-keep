@@ -404,6 +404,22 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   0.1-0.5 s quicker for the bot, the dark's speed unchanged. Checks: run2 (1-27, fight 5-10), primtest, hdtest, lowceil, figscan, forktest,
   p4bot, metrics40, swingtest. Pictures and numbers `egyptr35a.py` (r35a_jump.png: v80 | 35a on one clock with the run before and after;
   r35a_jump.gif real time; r35a.json).
+- No wall art over a floor tile (round 35c, owner after v80: "wall decorations over the tiles"; screenshot: The Green Hall of Osiris, a cracked
+  slab at the end of a ledge over a lower corridor, as on floor 18 seed 4418 cell 201,11). A tile drawn live (a cracked slab, a plank, a plate,
+  xplate, lplate, closer, grating: `drawRoomStatic` leaves its cell to `drawDynamic`) has no slab in the room's picture, so the back wall's art
+  (the arch posts, the dado's band, the frieze of the storey below) runs on under it there, and Torchlight's relief, which reads that picture,
+  embossed it on the tile's top and lip. `glRelFloors` rubs the relief back over every run of live tiles in view, over exactly its top face and
+  lip (`glRelQ`: a quad at full strength to its edges, which are the tile's own, so the wall beside it keeps its relief; over a sand well too,
+  where `glRelWell`'s soft box left the corners half rubbed), and over a pushed block (`drawBlock`: front, top, side; its cell is drawn from
+  `blockUnder`, so the open hall's posts behind it were embossed on it); the relief pass now takes `GLREL_Q` 160 quads (64 before). And the cracked slab's
+  lip crack was a lone '>' (out 1 px and back 1.5, away from the top's cracks) that read as one of the wall's chevrons: its two lip cracks now run
+  on from where the top's cracks reach the front edge, near straight. Classic drew no art over the tiles. Look only. A new tile or block drawn
+  live over the room's picture needs its rubbing in `glRelFloors` (`glRelLive` for a tile type). `tilescan.py [file] [lo hi] [views=K] [sheen]` frames up to K live tiles a floor (seed 4400+n) and
+  compares every floor tile in view, live or plain, top face and lip, with the frame drawn with the back wall's art flattened and its openings
+  left open (`EGP.noart='atop'`); must print `tilescan: ok` (floors 1-48, 2 views a floor: 154 of 2,064 tiles before, all Torchlight: 36 of 41 cracked slabs over
+  a corridor, 61 of 64 over a well, 19 of 20 planks, 37 of 45 plates of all kinds, 1 block; Classic 0; 0 after). Torchlight's wet sheen (round 31) is
+  off in it unless `sheen`: it mirrors lit wall art (a pale post in a sky beam) onto wet floors by design, a reflection. Pictures `egyptr35c.py`
+  (r35c_wallart.png: v80 | round 35c, both modes).
 - Lift ropes (round 21a, owner: "holes in the slab with the rope threaded through"): all lift ropes are `barRope` in the theme's fibre
   (`liftRope`; `barRope`'s `ph` makes the lay travel with a running rope). The counterweight platform hangs on two bridles (`liftSling`: an
   eye seized `LS_J` above the slab, legs down through two holes near the front and back edges along the depth diagonal, `ropeHole` drawn in

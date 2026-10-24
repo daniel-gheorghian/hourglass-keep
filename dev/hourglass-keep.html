@@ -4505,7 +4505,7 @@ function drawRoomStatic(g,rx,ry,stage){
     if(isArchTop(gc,gr))drawArch(g,cc*TW,rr*TH,th,bgOn&&isOpenArch(gc,gr),gc,gr,'frame');}
   for(const w of L.windows){if(Math.floor(w.c/RW)!==rx||Math.floor(w.r/RH)!==ry)continue;if(bgOn&&inOpening(w.c,w.r))continue;if(inBreach(w.c*TW+16,w.r*TH+38,true))continue;drawWindow(g,(w.c%RW)*TW+16,(w.r%RH)*TH+38,th,w.c,bgOn);}
   if(!EGP.noover){drawWallScars(g,rx,ry,th);drawHangings(g,rx,ry,th);} // (openscan.py: EGP.noover leaves out what is hung on the wall after the windows)
-  if(EGP.noart){g.fillStyle=th.wall;g.fillRect(-TW,-TH,ROOM_W+2*TW,ROOM_H+2*TH);} // (doorscan.py: the back wall without its art)
+  if(EGP.noart){g.save();if(EGP.noart==='atop')g.globalCompositeOperation='source-atop';g.fillStyle=th.wall;g.fillRect(-TW,-TH,ROOM_W+2*TW,ROOM_H+2*TH);g.restore();} // (doorscan.py: the back wall without its art; 'atop', tilescan.py: and its openings left open, so the sky's light is the same)
   // (round 15, owner: "wall decoration over door") the doorways cut out of the back wall's art: the doors are drawn live over the room, but
   // Torchlight's relief is taken from the room's picture, so the stone courses and friezes behind a doorway were embossed over the door
   // and the lit stair. Under each doorway and its frame the back wall is one flat tone (the door covers it)
@@ -7824,7 +7824,9 @@ function drawDynamic(ctx,x0,x1,y0,y1){
         ctx.fillStyle='rgba(0,0,0,.6)';for(const ex of [fx,fx+TW]){ctx.beginPath();ctx.moveTo(ex-0.8,ft+5);ctx.lineTo(ex-0.8,ft);ctx.lineTo(ex-0.8+DX,ys-HY);ctx.lineTo(ex+0.8+DX,ys-HY);ctx.lineTo(ex+0.8,ft);ctx.lineTo(ex+0.8,ft+5);ctx.closePath();ctx.fill();}
         ctx.fillStyle='rgba(0,0,0,.85)';ctx.beginPath();ctx.moveTo(X+TW-1,ys-HY+0.5);ctx.lineTo(X+TW-8,ys-HY+0.5);ctx.lineTo(X+TW-1,ys+0.5);ctx.fill(); // a chip missing at the corner
         ctx.strokeStyle='rgba(0,0,0,.88)';ctx.lineWidth=1.9;ctx.beginPath();ctx.moveTo(X+7,ys-3);ctx.lineTo(X+10,ys+1);ctx.lineTo(X+15,ys-1);ctx.lineTo(X+14,ys+3);ctx.moveTo(X+21,ys-3);ctx.lineTo(X+22,ys+3.5);ctx.moveTo(X+15,ys-1);ctx.lineTo(X+19,ys-2.5);ctx.stroke();
-        ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(fx+11,ft);ctx.lineTo(fx+12,ft+2.5);ctx.lineTo(fx+10.5,ft+5);ctx.moveTo(fx+24,ft);ctx.lineTo(fx+23,ft+5);ctx.stroke();
+        // (round 35c, owner: "wall decorations over the tiles") the lip's cracks run on down from where the top's two cracks reach its front
+        // edge, as hairlines with small uneven kinks; the lip's own crack was a lone '>' (out 1 px, back 1.5) away from both, read as a chevron of the wall's art
+        ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(X+13.75,ft);ctx.lineTo(X+14.3,ft+2.2);ctx.lineTo(X+13.9,ft+5);ctx.moveTo(X+22.1,ft);ctx.lineTo(X+21.6,ft+2.8);ctx.lineTo(X+21.9,ft+5);ctx.stroke();
         if(EGP.traps){ctx.fillStyle='rgba(222,196,140,.9)';for(const ex of [fx,fx+TW]){ctx.fillRect(ex-0.6,ft,1.2,5);}const q2=onFloor(X+15,0.5,ys);ctx.fillRect(q2.x-3,q2.y-0.4,6,0.8);}}; // sand in its seams
         ctx.save();ctx.translate(0,sh+0.8+sk*(wl?0.6:1.6));
         const org=wg&&wg.org,ck=org&&tip?wellCrk(o.c,o.r):null; // (round 26d: in a row of three or more, most slabs break across their own flaw as they tip)
@@ -10064,7 +10066,8 @@ function glMask(lights,VZ,camD,camDY){
 // (ambient only) there is no direction, so no relief. Things drawn over the walls that would carry the wall's pattern (the
 // prince, guards, flames, traps, items, falling stone) are rubbed back to neutral with soft ellipses.
 Object.assign(GLFX,{relief:true,ao:true,bgblur:true}); // unit B's switches: relief (Torchlight), corner shading and distance blur (both modes)
-const GLREL={wv:[],n:0,gl:null,rp:null,xp:null,buf:null,fb:null,fw:0,fh:0,tex:new Map(),list:[],on:0,V:new Float32Array(64*24),sc:null,sg:null,ul:null,uk:null},GLREL_MAX=16,GLREL_K=0.6;
+const GLREL_Q=160; // quads a frame: the rooms in view, then the rubbings (64 until round 35c, which rubs every live floor tile in view too)
+const GLREL={wv:[],n:0,gl:null,rp:null,xp:null,buf:null,fb:null,fw:0,fh:0,tex:new Map(),list:[],on:0,V:new Float32Array(GLREL_Q*24),sc:null,sg:null,ul:null,uk:null},GLREL_MAX=16,GLREL_K=0.6;
 const GLRV=`attribute vec2 a_p;attribute vec2 a_t;varying vec2 v_t,v_s;void main(){v_t=a_t;v_s=a_p*.5+.5;gl_Position=vec4(a_p,0.,1.);}`;
 const GLRS={room:[GLRV,`precision mediump float;varying vec2 v_t,v_s;uniform sampler2D u_rm,u_map;uniform vec2 u_tx,u_lo;uniform float u_k,u_pm;
     float H(vec2 o){vec4 c=texture2D(u_rm,v_t+o*u_tx);return dot(c.rgb,vec3(.3,.59,.11))*mix(c.a,1.,u_pm);} // (u_pm 1: the room's own texture, already premultiplied) // height: the stone's brightness (an opening is a deep hole)
@@ -10100,18 +10103,18 @@ function glRelQuad(o,x0,y0,x1,y1,u0,v0,u1,v1){const V=GLREL.V,w=cv.width,h=cv.he
   i=glRelV(V,i,X0,Y0,u0,v0);i=glRelV(V,i,X1,Y0,u1,v0);i=glRelV(V,i,X1,Y1,u1,v1);i=glRelV(V,i,X0,Y0,u0,v0);i=glRelV(V,i,X1,Y1,u1,v1);glRelV(V,i,X0,Y1,u0,v1);}
 function glRelV(V,i,x,y,u,v){V[i]=x;V[i+1]=y;V[i+2]=u;V[i+3]=v;return i+4;}
 // a soft neutral ellipse over something drawn on the wall (world centre and half sizes)
-function glRelEx(n,x,y,hx,hy,VZ,camD,camDY){if(n>=64)return n;const sx=x*VZ-camD,sy=y*VZ-camDY,ax=hx*VZ,ay=hy*VZ;if(sx+ax<0||sx-ax>cv.width||sy+ay<0||sy-ay>cv.height)return n;
+function glRelEx(n,x,y,hx,hy,VZ,camD,camDY){if(n>=GLREL_Q)return n;const sx=x*VZ-camD,sy=y*VZ-camDY,ax=hx*VZ,ay=hy*VZ;if(sx+ax<0||sx-ax>cv.width||sy+ay<0||sy-ay>cv.height)return n;
   glRelQuad(n,sx-ax,sy-ay,sx+ax,sy+ay,-1,1,1,-1);return n+1;}
 // (round 16c, openscan.py) a stone slab (portcullis, lift mouth) is opaque: the wall's courses and friezes behind it were embossed on its face
 // (only a gate on the move was rubbed back, by an ellipse that left its corners). Rubbed back over its whole box: the quad's coordinates
 // run to 0.4 only, so the soft ellipse of the rubbing shader is near full strength to its edges
-function glRelSlab(n,X,Y,ys,open,VZ,camD,camDY){if(n>=64)return n;gateGeom(X,Y,ys,{open});const pl=GATE_G.pl,dr=GATE_G.drop;if(dr<2)return n;
+function glRelSlab(n,X,Y,ys,open,VZ,camD,camDY){if(n>=GLREL_Q)return n;gateGeom(X,Y,ys,{open});const pl=GATE_G.pl,dr=GATE_G.drop;if(dr<2)return n;
   const x0=(pl.L0-T_SLAB/2-1)*VZ-camD,x1=(pl.R0+T_SLAB/2+1)*VZ-camD,y0=(pl.top-DY)*VZ-camDY,y1=(pl.ce(pl.L0)+Math.min(72,dr+3)+1)*VZ-camDY;
   if(x1<0||x0>cv.width||y1<0||y0>cv.height)return n;glRelQuad(n,x0,y0,x1,y1,-0.4,0.4,0.4,-0.4);return n+1;}
 // (round 21b, owner: "sand has wall motif") the sand of a well or a sand lift is drawn over the shaft's back wall, so the relief, which
 // reads the room's picture, embossed the wall's courses and friezes on it: rubbed back over the sand in view, cell by cell from its
 // surface (and the top's depth) down to the shaft's floor, like a stone slab (glRelSlab)
-function glRelBox(n,x0,y0,x1,y1,VZ,camD,camDY){if(n>=64||y1-y0<1.5)return n;const a=x0*VZ-camD,b=x1*VZ-camD,c=y0*VZ-camDY,d=y1*VZ-camDY;if(b<0||a>cv.width||d<0||c>cv.height)return n;glRelQuad(n,a,c,b,d,-0.4,0.4,0.4,-0.4);return n+1;}
+function glRelBox(n,x0,y0,x1,y1,VZ,camD,camDY){if(n>=GLREL_Q||y1-y0<1.5)return n;const a=x0*VZ-camD,b=x1*VZ-camD,c=y0*VZ-camDY,d=y1*VZ-camDY;if(b<0||a>cv.width||d<0||c>cv.height)return n;glRelQuad(n,a,c,b,d,-0.4,0.4,0.4,-0.4);return n+1;}
 function glRelWell(n,g,VZ,camD,camDY){wellSolve(g);const per=TW/WELL_DX;for(let j=0;j<g.n;j++){let m=g.yb[j];for(let i=j*per;i<=(j+1)*per;i++)m=Math.min(m,g.S[i]);
   n=glRelBox(n,g.xa+j*TW,m-DY-1,g.xa+(j+1)*TW+(j===g.n-1?DX:0),g.yb[j],VZ,camD,camDY);}return n;}
 function glRelLifts(n,VZ,camD,camDY){const cx=camD/VZ,cy=camDY/VZ,vw=cv.width/VZ,vh=cv.height/VZ;
@@ -10119,6 +10122,31 @@ function glRelLifts(n,VZ,camD,camDY){const cx=camD/VZ,cy=camDY/VZ,vw=cv.width/VZ
     const slab=(X,ys)=>{n=glRelBox(n,X-HX,ys-HY-1,X-HX+TW+DX,ys+HY+8,VZ,camD,camDY);},wheel=(x,y,r)=>{n=glRelBox(n,x-r-1,y-r-1,x+r+1,y+r+1,VZ,camD,camDY);};
     if(f.t==='chain'){for(let i=0;i<f.n;i++){const q=chainPos(f,i,gameTime);slab(q.x-16,q.y);}for(const xx of [f.c0*TW+16,f.c1*TW+16]){wheel(xx,f.yT+3,8.5);wheel(xx,f.yB+1,8.5);}}
     else{const R=liftRig(f);slab(R.X,f.y);wheel(R.cx,R.hy,8);n=glRelBox(n,R.cx-5,R.wt-5,R.cx+5+DX*0.35,R.wt+21,VZ,camD,camDY);}}
+  return n;}
+// (round 35c, owner after v80: "wall decorations over the tiles") a floor tile drawn live (a cracked slab over a corridor, a plank, a plate, a
+// closer, a grating) has no slab in the room's picture (drawRoomStatic leaves its cell to drawDynamic), so the back wall's art runs on under it
+// there: the relief, which reads the picture, embossed the posts, bands and friezes behind it on its top face and lip. Rubbed back over each run
+// of such tiles in view, over exactly its top face and lip (quads at full strength to their edges, which are the tile's own, so the wall beside
+// it keeps its relief; over a sand well too: glRelWell's soft box left its corners half rubbed); and a pushed block. tilescan.py tests it.
+const GLREL_LIVE=new Set(['plate','xplate','lplate','closer','grate']);
+function glRelLive(c,r){const f=F(L,c,r);if(!f)return false;if(f.t!=='loose')return GLREL_LIVE.has(f.t);return f.s<2;}
+// a convex quad a, b, q, d (world px, in order round it) rubbed back at full strength (texture coordinates inside the rubbing's flat middle)
+function glRelQ(n,ax,ay,bx,by,qx,qy,dx,dy,VZ,camD,camDY){if(n>=GLREL_Q)return n;const V=GLREL.V,w=cv.width/2,h=cv.height/2,k=0.28;let i=n*24;
+  const X0=(ax*VZ-camD)/w-1,Y0=1-(ay*VZ-camDY)/h,X1=(bx*VZ-camD)/w-1,Y1=1-(by*VZ-camDY)/h,X2=(qx*VZ-camD)/w-1,Y2=1-(qy*VZ-camDY)/h,X3=(dx*VZ-camD)/w-1,Y3=1-(dy*VZ-camDY)/h;
+  i=glRelV(V,i,X0,Y0,-k,-k);i=glRelV(V,i,X1,Y1,k,-k);i=glRelV(V,i,X2,Y2,k,k);i=glRelV(V,i,X0,Y0,-k,-k);i=glRelV(V,i,X2,Y2,k,k);glRelV(V,i,X3,Y3,-k,k);return n+1;}
+function glRelFloors(n,VZ,camD,camDY){const cx=camD/VZ,cy=camDY/VZ,c0=Math.max(0,Math.floor(cx/TW)-1),c1=Math.min(L.cols-1,Math.floor((cx+cv.width/VZ)/TW)+1),
+    r0=Math.max(0,Math.floor(cy/TH)-1),r1=Math.min(L.rows-1,Math.floor((cy+cv.height/VZ)/TH));
+  for(let r=r0;r<=r1;r++){const ys=SURF(r),ft=ys+HY,yb=ys-HY-1;
+    for(let c=c0;c<=c1;c++){if(!glRelLive(c,r))continue;let e=c;while(e<c1&&glRelLive(e+1,r))e++;
+      const fx=c*TW-HX,fr=e*TW+TW-HX,br=B(L,e+1,r)===WALL?fr:fr+DX+2; // (against a wall the top's back corner is behind its face, as drawDynamic cuts it)
+      n=glRelQ(n,fx,ft,fr,ft,br,yb,fx+DX+2,yb,VZ,camD,camDY); // the top face, and 1 px over its back edge along its own diagonals (a closer stands proud)
+      n=glRelQ(n,fx,ft-0.5,fr,ft-0.5,fr,ft+FHH+3,fx,ft+FHH+3,VZ,camD,camDY); // the lip, and the 3 px a cracked slab sinks and shakes
+      c=e;}}
+  // a pushed block (drawBlock) is drawn live too, its cell left to the art under it (blockUnder): its front, top and side
+  for(const bl of L.ext.blocks){const k=bl.mv?ease(Math.min(1,bl.mv.t/bl.mv.dur)):0,by=bl.r*TH,bx=(bl.mv?lerp(bl.mv.from,bl.mv.to,k):bl.c)*TW-HX;
+    if(bx+TW+DX<cx||bx>cx+cv.width/VZ||by+TH<cy||by-DY>cy+cv.height/VZ)continue;
+    n=glRelQ(n,bx,by,bx+TW,by,bx+TW,by+TH,bx,by+TH,VZ,camD,camDY);n=glRelQ(n,bx,by,bx+TW,by,bx+TW+DX,by-DY,bx+DX,by-DY,VZ,camD,camDY);
+    n=glRelQ(n,bx+TW,by,bx+TW+DX,by-DY,bx+TW+DX,by+TH-DY,bx+TW,by+TH,VZ,camD,camDY);}
   return n;}
 function glRelief(lights,VZ,camD,camDY){
   const R=GLREL,gl=GLP.gl,w=cv.width,h=cv.height;R.on=0;if(!GLFX.relief)return;
@@ -10151,6 +10179,7 @@ function glRelief(lights,VZ,camD,camDY){
   // back wall: the relief, read from the room's picture, embossed the back wall's courses, posts and friezes on the paternoster's slabs, the
   // platform, the counterweight and the wheels as they passed. Rubbed back over each of them in view (their boxes, as a mouth slab's)
   n=glRelLifts(n,VZ,camD,camDY);
+  n=glRelFloors(n,VZ,camD,camDY); // (round 35c) the floor tiles drawn live
   if(EGP.traps){for(const o of L.dyn){const g=o.f.wg;if(o.f.t!=='loose'||!g||g.os[0]!==o)continue;n=glRelWell(n,g,VZ,camD,camDY);} // (round 21b) sand is not embossed with the wall's art behind it
     for(const f of L.lifts)if(f.sand&&f.y<SURF(f.rB)-0.5)n=glRelBox(n,f.sc*TW-HX,f.y+HY+5-DY,f.sc*TW-HX+TW,SURF(f.rB)+HY,VZ,camD,camDY);}
   gl.bindFramebuffer(gl.FRAMEBUFFER,R.fb.f);gl.viewport(0,0,fw,fh);gl.clearColor(.5,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);
