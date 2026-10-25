@@ -4570,9 +4570,10 @@ function drawRoomStatic(g,rx,ry,stage){
   // 4. floors: walking surface, front lip and open ends
   each((gc,gr,X,Y)=>{
     if(B(L,gc,gr)===WALL||!solidBelow(L,gc,gr))return;
+    if(liftPit(gc,gr)){liftPitDraw(g,X,Y+TH-4,th,B(L,gc+1,gr)===WALL);return;} // (round 37a) a lift's foot: its platform is the floor there, drawn live
     const f=F(L,gc,gr);if(f&&((f.t==='loose'&&f.s<2)||f.t==='plate'||f.t==='xplate'||f.t==='lplate'||f.t==='closer'||f.t==='grate'))return;
     const lo=B(L,gc-1,gr)!==WALL&&!solidBelow(L,gc-1,gr),ro=B(L,gc+1,gr)!==WALL&&!solidBelow(L,gc+1,gr);
-    const ys=Y+TH-4;slab(g,X,ys,th,lo,ro,gc,gr,B(L,gc+1,gr)===WALL,false,true); // (round 31: mark, the floor's own top face for Torchlight's floor looks)
+    const ys=Y+TH-4;slab(g,X,ys,th,lo,ro,gc,gr,B(L,gc+1,gr)===WALL,false,true);if(LIFT_DBG.tiles)LIFT_DBG.tiles.add(gr*L.cols+gc); // (liftscan.py, round 37a: the floor tiles the room pictures draw) // (round 31: mark, the floor's own top face for Torchlight's floor looks)
     if(f&&f.t==='spikes'){gl.fillStyle='rgba(7,5,11,.8)';const m=gc%2?-1:1;for(const [bx,d] of SPK){const q=onFloor(X+16+m*(bx-16),d,ys);gl.beginPath();gl.ellipse(q.x,q.y,2.2,0.9,0,0,Math.PI*2);gl.fill();}}
     if(L.rubble.has(gr*L.cols+gc)){const rnd=mulberry32(hash2(gc,gr+77));for(let i=0;i<6;i++){gl.fillStyle=i%2?th.front:th.lo;const q=onFloor(X+4+rnd()*24,0.2+rnd()*0.6,ys),w=2+rnd()*4;gl.fillRect(q.x,q.y-1,w,1.6+rnd()*1.2);}}
   });
@@ -4636,7 +4637,7 @@ function aoBack(g,rx,ry,B,solidBelow,isLow){const R=AO_K.reach;g.save();g.global
   g.restore();}
 function aoFloor(g,rx,ry,B,solidBelow){const R=AO_K.reach*0.8;g.save();g.globalCompositeOperation='source-atop';
   for(let rr=0;rr<RH;rr++)for(let cc=0;cc<RW;cc++){const gc=rx*RW+cc,gr=ry*RH+rr,X=cc*TW,ys=rr*TH+TH-4;
-    if(B(L,gc,gr)===WALL||!solidBelow(L,gc,gr))continue;const f=F(L,gc,gr);if(f&&(f.t==='loose'||f.t==='plate'||f.t==='xplate'||f.t==='lplate'||f.t==='closer'||f.t==='grate'))continue;
+    if(B(L,gc,gr)===WALL||!solidBelow(L,gc,gr)||liftPit(gc,gr))continue;const f=F(L,gc,gr);if(f&&(f.t==='loose'||f.t==='plate'||f.t==='xplate'||f.t==='lplate'||f.t==='closer'||f.t==='grate'))continue;
     if(B(L,gc+1,gr)===WALL)aoBand(g,X+TW-HX-R,ys-HY,X+TW-HX,ys+HY,true,AO_K.top,true); // the walking surface where it runs into a wall
     if(B(L,gc-1,gr)===WALL)aoBand(g,X-HX,ys-HY,X-HX+R,ys+HY,true,AO_K.top,false);}
   g.restore();}
@@ -5222,6 +5223,31 @@ function isArchTop(gc,gr){return gr>=0&&D0(gc,gr)===EMPTY&&D0(gc,gr+1)===FLOOR&&
 function liftNear(c,r){for(let rr=r-1;rr<=r;rr++)for(let cc=c-1;cc<=c+1;cc++)if(liftCell(cc,rr))return true;return false;}
 function liftCell(c,r){let S=L._lsc;if(!S||S.lv!==L.lifts||S.n!==L.lifts.length){S=L._lsc=new Set();S.lv=L.lifts;S.n=L.lifts.length;for(const f of L.lifts)for(let rr=f.rT;rr<=f.rB;rr++)for(let cc=f.ca;cc<=f.cb;cc++)S.add(rr*L.cols+cc);}
   return c>=0&&c<L.cols&&S.has(r*L.cols+c);}
+// (round 37a, owner after v81: "The lift shafts, at the very bottom the floor tile should be missing because the moving tile of the lift will
+// replace it") the foot of a counterweight lift's or a sand lift's shaft has no floor tile of its own: the platform (or the sand lift's slab) is
+// the floor there when it rests at the foot, its top and lip exactly where a floor tile's are, and while it is away the foot is a shallow pit
+// LP_D deep, the platform's own thickness: the shaft's back wall going on down into it, the end of the floor beside it as its left face, a dark
+// stone floor with its front edge on the front plane. Only where nobody can stand at the foot while the platform is away: a counterweight
+// lift's mouth there is shut while it is away and the far side is wall (2 of 716 on floors 1-48 x 3 seeds open on a drop there: they keep the
+// floor tile), a sand lift's foot is held by its mouth slabs until its slab has come down for good. Look only: the cell stays FLOOR in play
+// (it is never stood on while the pit shows). The paternoster's foot is a floor he walks and lands on, so it keeps its tiles.
+const LP_D=5;
+function liftPit(c,r){let M=L._lpit;if(!M||M.lv!==L.lifts||M.n!==L.lifts.length){M=L._lpit=new Map();M.lv=L.lifts;M.n=L.lifts.length;
+    for(const f of L.lifts)if(f.t==='lift'&&(f.sand||D0(f.sc-f.sB,f.rB)===WALL))M.set(f.rB*L.cols+f.sc,f);}
+  return c>=0&&c<L.cols?M.get(r*L.cols+c)||null:null;}
+// the pit, in the room's picture where the floor tile would be (X, ys: the cell's x and floor line in the picture; wr: a wall on its right,
+// whose front face is nearer than the pit's back right corner)
+function liftPitDraw(g,X,ys,th,wr){const fx=X-HX,fr=fx+TW,ft=ys+HY,bk=ys-HY,D=LP_D,xr=wr?fr:fr+DX;
+  g.save();g.beginPath();g.rect(fx,bk-0.5,xr-fx,ft+D+3-bk+0.5);g.clip();
+  g.fillStyle=th.wall;g.fillRect(fx+DX,bk,TW,D+1);g.fillStyle='rgba(5,3,10,.6)';g.fillRect(fx+DX,bk,TW,D+1); // its back: the shaft's back wall going on down, in the shaft's shade
+  const q=(a,b,c,d)=>{g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.lineTo(c[0],c[1]);g.lineTo(d[0],d[1]);g.closePath();};
+  q([fx,ft+D],[fr,ft+D],[fr+DX,bk+D],[fx+DX,bk+D]);g.fillStyle=th.lo;g.fill(); // its floor, dark: the light falls in only from above
+  const sg=g.createLinearGradient(0,bk+D,0,ft+D);sg.addColorStop(0,'rgba(4,3,8,.74)');sg.addColorStop(1,'rgba(4,3,8,.48)');g.fillStyle=sg;g.fill();
+  g.strokeStyle='rgba(0,0,0,.55)';g.lineWidth=0.8;g.beginPath();g.moveTo(fx+DX,bk+D);g.lineTo(fr+DX,bk+D);g.stroke(); // (the corner where its floor meets its back)
+  q([fx,ft],[fx+DX,bk],[fx+DX,bk+D],[fx,ft+D]);g.fillStyle=th.lo;g.fill();g.fillStyle='rgba(0,0,0,.3)';g.fill(); // its left side: the end of the floor or the wall beside it, seen from the right as a slab's open end is
+  g.strokeStyle='rgba(0,0,0,.5)';g.lineWidth=0.8;g.beginPath();g.moveTo(fx+DX,bk+D);g.lineTo(fx,ft+D);g.stroke();g.strokeStyle='rgba(255,255,255,.14)';g.lineWidth=0.6;g.beginPath();g.moveTo(fx+0.3,ft+0.4);g.lineTo(fx+DX+0.3,bk+0.4);g.stroke(); // (its lit top arris)
+  g.fillStyle=th.front;g.fillRect(fx,ft+D,TW,3);g.fillStyle='rgba(0,0,0,.5)';g.fillRect(fx,ft+D,TW,3); // its floor's front edge, in the shade of the floors' lips beside it
+  g.restore();}
 // only some stretches of arches open onto the view; the rest stay closed, so the keep keeps its walls
 function isOpenArch(gc,gr){if(!isArchTop(gc,gr))return false;const b=Math.floor(gc/4),op=k=>hash2(k*7+3,gr*13+5)%100<40;return op(b)&&!op(b-1);} // never two open stretches in a row
 function inOpening(gc,gr){return isOpenArch(gc,gr)||isOpenArch(gc,gr-1);}
@@ -7385,7 +7411,7 @@ const CUT_AT_WALL=new Set(['plate','xplate','lplate','closer','loose','spikes'])
 // brackets, verdigris on the bronze in the damp themes, a chipped platform lip, streaks down the shaft; 3 a rotten bite out of the
 // beam's end bound with rope, heavier rust and soot or moss, a cracked platform. Never broken, never like a hurtdrop.
 function liftVisible(f,x0,x1,y0,y1){return (f.cb+1)*TW+80>x0&&f.ca*TW-80<x1&&f.rB*TH+TH+10>y0&&f.rT*TH-40<y1;}
-const LIFT_DBG={off:false,rider:false,gatesR:false}; // (liftscan.py: off leaves the lifts out of a frame, rider the prince, and gatesR draws only the gratings on the shafts' right edges, to compare with frames that have them)
+const LIFT_DBG={off:false,rider:false,gatesR:false,tiles:null}; // (liftscan.py: off leaves the lifts out of a frame, rider the prince, and gatesR draws only the gratings on the shafts' right edges, to compare with frames that have them; tiles, a Set, collects the cells whose floor tile the room pictures draw)
 function drawLift(ctx,f,half){if(LIFT_DBG.off||(LIFT_DBG.gatesR&&f.t==='chain'))return;if(f.sand)drawSandLift(ctx,f,half);else if(f.t==='chain')drawLiftChain(ctx,f,half);else drawLiftCounterweight(ctx,f,half);}
 function liftWear(f){if(f.wl===undefined||f.wn!==L.n){const x=(f.ca+f.cb+1)*TW/2,ym=(f.rT*TH+SURF(f.rB))/2;f.wn=L.n;f.wl=inBreach(x,ym,true)?3:wearLevel(x,ym);}return f.wl;}
 // the front faces of the walls and low ceilings round a lift: cut out of what is drawn next (ctx in world space; save/restore round it)
@@ -7569,14 +7595,14 @@ function sandOpen(f){return clamp((f.y-f.yB+SAND_MD)/SAND_MD,0,1);}
 function sandMouth(ctx,f,s,h){const gx=EGP.traps?(s<0?f.sc*TW-T_SLAB/2:(f.sc+1)*TW+T_SLAB/2):liftGx(f,s);drawGate(ctx,{open:sandOpen(f),latch:true,dur:0,lg:1},gx-16,f.rB*TH,SURF(f.rB),h);}
 function drawSandLift(ctx,f,half){
   if(half||LIFT_DBG.gatesR){for(const s of f.ms)if(s>0)sandMouth(ctx,f,s,half?1:0);return;} // (a right mouth's near half after the rider, as the counterweight's)
-  const th=L.theme,ys=f.y,bot=SURF(f.rB),W=liftWear(f),X=f.sc*TW,top=f.rT*TH,h=ys-f.yT;
+  const th=L.theme,ys=f.y,bot=SURF(f.rB),W=liftWear(f),X=f.sc*TW,top=f.rT*TH,h=ys-f.yT,pd=liftPit(f.sc,f.rB)?LP_D:0; // (round 37a: pd, the foot's pit under the slab's resting place)
   ctx.save();liftOccl(ctx,f);
-  ctx.save();liftOcclSide(ctx,f);ctx.beginPath();ctx.rect(X-HX,f.yT-HY,TW,bot-f.yT+HY);ctx.clip(); // (round 19) seen through the hole only: under the top slab's back edge, between the front planes of the cells beside it (its right groove lay over the next floor tile's top and lip)
+  ctx.save();liftOcclSide(ctx,f);ctx.beginPath();ctx.rect(X-HX,f.yT-HY,TW,bot-f.yT+HY+pd);ctx.clip(); // (round 19) seen through the hole only: under the top slab's back edge, between the front planes of the cells beside it (its right groove lay over the next floor tile's top and lip)
   liftShaftBack(ctx,X,TW,top,bot,W);
-  const ox=X+16+HX;ctx.fillStyle='rgba(6,4,10,.92)';ctx.beginPath();ctx.moveTo(ox-5,bot-HY+0.5);ctx.lineTo(ox-5,bot-HY-5);ctx.quadraticCurveTo(ox,bot-HY-7.5,ox+5,bot-HY-5);ctx.lineTo(ox+5,bot-HY+0.5);ctx.closePath();ctx.fill(); // the outlet
+  const ox=X+16+HX,oy=bot-HY+pd;ctx.fillStyle='rgba(6,4,10,.92)';ctx.beginPath();ctx.moveTo(ox-5,oy+0.5);ctx.lineTo(ox-5,oy-5);ctx.quadraticCurveTo(ox,oy-7.5,ox+5,oy-5);ctx.lineTo(ox+5,oy+0.5);ctx.closePath();ctx.fill(); // the outlet (round 37a: in the pit's back, on its floor)
   ctx.restore();
   ctx.restore();for(const s of f.ms)if(s<0){sandMouth(ctx,f,s,0);sandMouth(ctx,f,s,1);}ctx.save();liftOccl(ctx,f); // (round 26e: a left mouth whole, behind the sand and slab)
-  if(ys<bot-0.5)sandCut(ctx,X-HX,ys+HY+5,bot+HY,f.yT+HY+5,h,f.s===1&&f.tm>=SAND_LW,f.sc*131+f.rT*7);
+  if(ys<bot-0.5)sandCut(ctx,X-HX,ys+HY+5,bot+HY+pd,f.yT+HY+5,h,f.s===1&&f.tm>=SAND_LW,f.sc*131+f.rT*7); // (round 37a: down into the foot's pit)
   if(f.s===1&&f.tm<SAND_LW+0.3){const k=Math.max(0,1-Math.abs(f.tm-SAND_LW)/0.3);if(k>0.02)dustCloud(ctx,X+16-HX,ys+HY+3,0.12+0.2*(1-k),0.6,0.55,0);} // a puff as it first gives
   if(f.s===1&&f.tm>=SAND_LW&&ys>f.yT+2)for(const ex of [X-HX+1.6,X+TW-HX-1.6])sandFlow(ctx,ex,f.yT+HY+5,ys+HY+1,0.16,ex*0.07); // grains left on the shaft's sides running down the gap after it (they stop when it does)
   // (round 19) the cells on the shaft's right are nearer than the slab's back right corner once it has left a landing: a wall's
@@ -7585,7 +7611,7 @@ function drawSandLift(ctx,f,half){
   for(let r=f.rT;r<=f.rB;r++){if(B(L,f.sc+1,r)===WALL)ctx.rect(xr,r*TH,TW,TH);
     else if(solidBelow(L,f.sc+1,r)){const sy=SURF(r);ctx.moveTo(xr,sy+HY+9);ctx.lineTo(xr+TW+DX,sy+HY+9);ctx.lineTo(xr+TW+DX,sy-HY);ctx.lineTo(xr+DX,sy-HY);ctx.lineTo(xr,sy+HY);ctx.closePath();}}
   ctx.clip('evenodd');
-  sandSlab(ctx,X,ys,th,W,hash2(f.sc,f.rB));
+  sandSlab(ctx,X,ys,th,W,hash2(f.sc,f.rB),pd&&ys>=bot-0.5); // (round 37a: at rest in the foot's pit its lip's shadow is the pit floor's edge, already in shade)
   ctx.restore();for(const s of f.ms)if(s>0)sandMouth(ctx,f,s,0);}
 // (round 19, owner: the sand lift's platform "doesn't respect perspective") the slab is a floor tile of the theme's stone, cut to
 // the shaft: its lip (front face) on the front plane over the whole cell, X-HX to X+TW-HX, exactly where the floor tiles' lips are,
@@ -7593,10 +7619,10 @@ function drawSandLift(ctx,f,half){
 // outline round all of it lay over the next floor tile's top and lip (at the top and the bottom of the shaft) and its lip stopped half
 // a pixel short of each edge. Now no side face (beside it there is always either floor it abuts or a wall whose front face is nearer)
 // and no outline over the top; only the slab's left edge and the lip's foot are inked, where it meets the open shaft and its shadow.
-function sandSlab(ctx,X,ys,th,W,seed){
+function sandSlab(ctx,X,ys,th,W,seed,inPit){
   if(!EGP.traps){liftSlab(ctx,X,ys,th,W,seed);return;}
   const fx=X-HX,ft=ys+HY,K='#0b0812';
-  ctx.fillStyle='rgba(0,0,0,.28)';ctx.fillRect(fx,ft+5,TW,3); // the lip's shadow, as under a floor tile's
+  if(!inPit){ctx.fillStyle='rgba(0,0,0,.28)';ctx.fillRect(fx,ft+5,TW,3);} // the lip's shadow, as under a floor tile's
   stoneBox(ctx,THEME_STONE[th.look]||'limestone',fx,ft,TW,5,{top:true,side:false,near:true,wear:W,seed,nostroke:true});
   ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(fx,ft,TW,0.8); // the arris between top and lip, as the floor's
   ctx.strokeStyle=K;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(fx+DX,ys-HY);ctx.lineTo(fx+0.5,ft);ctx.lineTo(fx+0.5,ft+5.5);ctx.lineTo(fx+TW,ft+5.5);ctx.stroke();}
@@ -8246,7 +8272,7 @@ function beamBlockers(x0,x1,y0,y1){BLK.n=0;for(const o of L.dyn){const t=o.f.t;i
 const SDMAX=24,SDS={n:0,a:new Float32Array(SDMAX*4),f:new Float32Array(SDMAX)};
 function sdSeg(x0,x1,ta,tb,ft){if(SDS.n>=SDMAX)return;const i=SDS.n*4,a=SDS.a;a[i]=x0;a[i+1]=x1;a[i+2]=ta;a[i+3]=tb;SDS.f[SDS.n++]=ft;}
 function sandSegs(x0,x1,y0,y1){SDS.n=0;if(!L)return 0;
-  for(const f of L.lifts){if(!f.sand)continue;const X=f.sc*TW-HX,bot=SURF(f.rB);if(f.y>=bot-0.5||X+TW<x0||X>x1||bot+HY<y0||f.y>y1)continue;sdSeg(X,X+TW,f.y+HY,f.y+HY,bot+HY);} // (from the slab's front edge: its lip and the sand under it)
+  for(const f of L.lifts){if(!f.sand)continue;const X=f.sc*TW-HX,bot=SURF(f.rB);if(f.y>=bot-0.5||X+TW<x0||X>x1||bot+HY<y0||f.y>y1)continue;sdSeg(X,X+TW,f.y+HY,f.y+HY,bot+HY+(liftPit(f.sc,f.rB)?LP_D:0));} // (round 37a: down into the foot's pit) // (from the slab's front edge: its lip and the sand under it)
   if(EGP.traps)for(const o of L.dyn){if(o.f.t!=='loose'||o.f.plank)continue;const g=wellGroup(o);if(!g||g.os[0]!==o)continue;
     const xa=g.xa,xb=xa+g.n*TW;if(xb<x0||xa>x1||g.ybm<y0||g.top-WELL_CD>y1)continue;wellSolve(g);const S=g.S,per=TW/WELL_DX,M=g.n*per;
     for(let i0=0;i0<M;){const j=(i0/per)|0;let j2=j;while(j2+1<g.n&&g.yb[j2+1]===g.yb[j])j2++;const e=(j2+1)*per;let i1=Math.min(i0+4,e); // (one foot per run of columns)
@@ -8842,7 +8868,7 @@ function classicEmbers(ctx,x0,x1,y0,y1,t){const sp=lightSprite('255,110,40'),r0=
     for(const e of figs)if(Math.abs(e.y+(e.yo||0)-ys)<6&&e.x>x0-20&&e.x<x1+20){if(!clip){ctx.save();ctx.beginPath();ctx.rect(x0-40,ys-HY-2,x1-x0+80,DY+4);clip=true;}ctx.rect(e.x-9,ys+0.5,18,-DY);}
     if(clip)ctx.clip('evenodd');
     for(let k=Math.floor((x0-40)/22);jf(k)<x1+40;k++){const xj=jf(k),c=Math.floor(xj/TW);if(xj-c*TW<0.01)continue;const h=hash2(k*7+3,r*11+5);if(h%5!==0)continue;
-      let ok=true;for(let q=-1;q<=1;q++){const cc=Math.floor((xj+q*HX)/TW);if(B(L,cc,r)===WALL||!solidBelow(L,cc,r)||L.feat[r*L.cols+cc]){ok=false;break;}}
+      let ok=true;for(let q=-1;q<=1;q++){const cc=Math.floor((xj+q*HX)/TW);if(B(L,cc,r)===WALL||!solidBelow(L,cc,r)||L.feat[r*L.cols+cc]||liftPit(cc,r)){ok=false;break;}}
       if(ok)for(const o of L.dyn)if(o.r===r&&o.f.t==='saw'&&xj+HX>o.f.x0-16&&xj-HX<o.f.x1+16){ok=false;break;}
       if(!ok)continue;const e=0.55+0.45*Math.sin(t*1.1+(h>>>8)%60);
       ctx.save();ctx.translate(xj,ys);ctx.transform(1,0,-2,1,0,0); // (the sprite's up is the joint's way back: 2 px right for each px up)
@@ -10221,7 +10247,8 @@ function glRelief(lights,VZ,camD,camDY){
   n=glRelLifts(n,VZ,camD,camDY);
   n=glRelFloors(n,VZ,camD,camDY); // (round 35c) the floor tiles drawn live
   if(EGP.traps){for(const o of L.dyn){const g=o.f.wg;if(o.f.t!=='loose'||!g||g.os[0]!==o)continue;n=glRelWell(n,g,VZ,camD,camDY);} // (round 21b) sand is not embossed with the wall's art behind it
-    for(const f of L.lifts)if(f.sand&&f.y<SURF(f.rB)-0.5)n=glRelBox(n,f.sc*TW-HX,f.y+HY+5-DY,f.sc*TW-HX+TW,SURF(f.rB)+HY,VZ,camD,camDY);}
+    for(const f of L.lifts)if(f.sand){const pd=liftPit(f.sc,f.rB)?LP_D:0;if(f.y<SURF(f.rB)-0.5)n=glRelBox(n,f.sc*TW-HX,f.y+HY+5-DY,f.sc*TW-HX+TW,SURF(f.rB)+HY+pd,VZ,camD,camDY);
+      else if(pd)n=glRelBox(n,f.sc*TW-HX,f.y-HY-1,f.sc*TW-HX+TW+DX,f.y+HY+8,VZ,camD,camDY);}} // (round 37a) its slab at rest in the foot's pit: the pit's edges in the room's picture under it are not embossed on it (as glRelLifts' platform)
   gl.bindFramebuffer(gl.FRAMEBUFFER,R.fb.f);gl.viewport(0,0,fw,fh);gl.clearColor(.5,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);
   if(!nr)return;
   gl.bindBuffer(gl.ARRAY_BUFFER,R.buf);gl.bufferSubData(gl.ARRAY_BUFFER,0,R.V,0,n*24);

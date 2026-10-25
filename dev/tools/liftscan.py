@@ -17,6 +17,14 @@
 #  relief (Torchlight, with a lamp near): the final picture of the lift's slabs, platform and counterweight is the same with Torchlight's
 #        relief off: the back wall's art was embossed on them;
 # and the paternoster gets two more clock times: a slab on its bottom run, and one at the top of the column beside the right landing.
+# Round 37a (owner after v81: "The lift shafts, at the very bottom the floor tile should be missing because the moving tile of the lift will
+# replace it"), per counterweight and sand lift case:
+#  pit:  the room's picture draws no floor tile (slab()) in the foot cell of a lift with a pit (liftPit: all but the counterweight lifts whose
+#        foot is open on its far side, which keep theirs), and does draw one where there is none (and at a paternoster's foot);
+#  flush: with the platform or slab at rest at the foot, its lip covers the floor lips' rows (the floor line + 0.5 to + 4.5 px: every row over
+#        60% of the cell's width), its top the rows just above them (- 2 to - 0.5 px, 60%), and nothing of it is under them (+ 6.25 to + 7.5
+#        px, where the pit's floor edge and the lips' shade are: no row over 30%), against the frame with no lift: its top and lip within 1 px
+#        of the floor tiles' beside it. 'flushlog' prints the three numbers for every such case.
 # Before the cases it counts the arches (recesses, openings) and breaches set in a lift shaft's back wall (cells, any number is a failure).
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -38,7 +46,8 @@ ART = r'''([lo,hi,seeds])=>{const H=__HK;let arch=0,br=0,cells=0;const where=[];
       for(const b of H.breaches())if(b&&b.x1>f.ca*32-8+4&&b.x0<(f.cb+1)*32-8-4&&b.y1>f.rT*64+4&&b.y0<SURF(f.rB)-4){br++;if(where.length<5)where.push(['breach',n,seed,f.ca,f.rB]);}}}
   return {arch,br,cells,where};function SURF(r){return (r+1)*64-4;}}'''
 RUN = r'''([n,seed,i,pos,mode])=>{const H=__HK;window.__HKfreeze=true;for(const id in H.HINTS)H.S.hints[id]=1;H.S.set.lightMode=mode;
-  const L=H.load(n,seed,true);H.banner=null;const f=L.lifts[i],P=H.P;P.inv=1e9;
+  const SL=H.LIFT_DBG.tiles=new Set(); // (round 37a: the floor tiles the room pictures draw)
+  let L;try{L=H.load(n,seed,true);}catch(e){H.LIFT_DBG.tiles=null;throw e;}H.banner=null;const f=L.lifts[i],P=H.P;P.inv=1e9;
   const place=()=>{if(f.t==='lift'){const fr=[0,0.5,1][pos];f.y=f.yT+(f.yB-f.yT)*fr;f.tgt=null;L.base[f.rT*L.cols+f.sc]=fr===0?1:0;f.gT=fr===0?1:0;f.gB=fr===1?1:0;
       P.x=f.sc*32+16;P.y=f.y;P.fallY=P.y;P.face=pos===1?1:-f.sT;P.vx=P.vy=0;if(pos===1){P.state='lift';P.lift=f;}else{P.state='stand';P.lift=null;}}
     else{const q=H.chainPos(f,0,H.gameTime);P.x=q.x;P.y=q.y;P.fallY=P.y;P.state='lift';P.lift=f;P.slab=0;P.bx=q.x;P.by=q.y;P.bt=-9;P.face=pos===1?-f.dx:f.dx;}};
@@ -63,7 +72,7 @@ RUN = r'''([n,seed,i,pos,mode])=>{const H=__HK;window.__HKfreeze=true;for(const 
     const g=src.getContext('2d'),img=g.getImageData(0,0,src.width,src.height).data;let mk=null,mw=0,mh=0;
     const MS=H.MS;if(tor&&MS&&MS.c){mw=MS.c.width;mh=MS.c.height;mk=MS.g.getImageData(0,0,mw,mh).data;}
     return {img,w:src.width,h:src.height,VZ:X.VZ,camD:X.camD,camDY:X.camDY,mk,mw,mh,mox:0,moy:0};};
-  const A=grab();
+  let A;try{A=grab();}finally{H.LIFT_DBG.tiles=null;}const slN=SL.size;
   H.LIFT_DBG.off=true;H.LIFT_DBG.rider=!window.__keepRider;let B;try{B=grab();}finally{H.LIFT_DBG.off=false;H.LIFT_DBG.rider=false;}
   // a grating on the shaft's right edge stands in front of everything in the shaft: where it is drawn (a frame with only those
   // gratings, against one with nothing of the lift) the full frame must show it
@@ -107,7 +116,15 @@ RUN = r'''([n,seed,i,pos,mode])=>{const H=__HK;window.__HKfreeze=true;for(const 
       if(d>24){bad++;if(!where)where=[Math.round((px+A.camD)/A.VZ),Math.round((py+A.camDY)/A.VZ)];}}
     if(A.mk){const hx=Math.floor(A.camD/2),hy=Math.floor(A.camDY/2),mx0=Math.max(0,Math.ceil(x*A.VZ/2-hx)+1),mx1=Math.min(A.mw,Math.floor((x+w)*A.VZ/2-hx)-1),my0=Math.max(0,Math.ceil(y*A.VZ/2-hy)+1),my1=Math.min(A.mh,Math.floor((y+h)*A.VZ/2-hy)-1);
       for(let py=my0;py<my1;py++)for(let px=mx0;px<mx1;px++){const o=(py*A.mw+px)*4;if(Math.abs(A.mk[o]-B.mk[o])+Math.abs(A.mk[o+1]-B.mk[o+1])+Math.abs(A.mk[o+2]-B.mk[o+2])>24){badM++;if(!where)where=['mask',Math.round((px*2+A.camD)/A.VZ),Math.round((py*2+A.camDY)/A.VZ),[...A.mk.slice(o,o+3)],[...B.mk.slice(o,o+3)],A.mw,A.mh];}}}}
-  return {bad,badM,badG,near,foot,wedge,wv,relief,where:where||gwhere||nwhere,rects:rects.length,t:f.t,st:P.state,rdx:+(P.rdx||0).toFixed(1)};}'''
+  // (round 37a) pit: no floor tile in the room's picture at the foot of a lift with a pit, one where it has none; flush: the platform at rest
+  // at the foot covers the floors' lip rows and its top the rows above, against the frame with no lift
+  let pit=0,pwhere=null,flush=null;{const C0=L.cols,exp=f.t==='lift'&&(!!f.sand||L.base0[f.rB*C0+f.sc-f.sB]===2),cols=f.t==='chain'?[f.ca,f.cb]:[f.sc];
+    for(const c of cols){const has=SL.has(f.rB*C0+c);if(slN===0||has===exp){pit++;pwhere=['pit',c,f.rB,'tile drawn',has,'pit expected',exp,'tiles drawn',slN];}}
+    if(exp&&pos===2&&Math.abs(f.y-f.yB)<0.01){const ft=(f.rB+1)*64,fx=f.sc*32-8,cov=(y,xa,xb)=>{let k=0,m=0;for(let x=xa;x<=xb;x+=0.5){const [px,py]=pxOf(x,y);if(!inS(px,py))continue;m++;if(dif(C,B,(py*A.w+px)*4)>36)k++;}return m?k/m:1;};
+      let lip=1,top=1,und=0;for(let y=ft+0.5;y<=ft+4.5;y+=0.5)lip=Math.min(lip,cov(y,fx+2,fx+30));for(let y=ft-2;y<=ft-0.5;y+=0.5)top=Math.min(top,cov(y,fx+7,fx+30));
+      for(let y=ft+6.25;y<=ft+7.5;y+=0.25)und=Math.max(und,cov(y,fx+2,fx+30));flush=[+lip.toFixed(2),+top.toFixed(2),+und.toFixed(2)];
+      if(lip<0.6||top<0.6||und>0.3){pit++;if(!pwhere)pwhere=['flush',f.sc,f.rB,flush];}}}
+  return {pit,flush,bad,badM,badG,near,foot,wedge,wv,relief,where:where||gwhere||nwhere||pwhere,rects:rects.length,t:f.t,st:P.state,rdx:+(P.rdx||0).toFixed(1)};}'''
 fails = 0; n_cases = 0; tot = {}
 with sync_playwright() as p:
     b = p.chromium.launch()
@@ -126,10 +143,13 @@ with sync_playwright() as p:
                 r = pg.evaluate(RUN, [n, seed, i, pos, mode]); n_cases += 1
                 k = (mode, t); tot.setdefault(k, [0, 0]); tot[k][0] += 1
                 for q in ('near', 'foot', 'wedge', 'relief'): tot.setdefault(q, 0); tot[q] += 1 if r[q] > (0 if q == 'wedge' else 6) else 0
-                if r['bad'] > 6 or r['badM'] > 3 or r['badG'] > 6 or r['near'] > 6 or r['foot'] > 6 or r['wedge'] or r['relief'] > 6:
+                tot.setdefault('pit', 0); tot['pit'] += 1 if r['pit'] else 0
+                if r['flush']: tot.setdefault('flushed', 0); tot['flushed'] += 1
+                if 'flushlog' in a and r['flush']: print('flush', mode, n, seed, i, r['flush'], flush=True)
+                if r['pit'] or r['bad'] > 6 or r['badM'] > 3 or r['badG'] > 6 or r['near'] > 6 or r['foot'] > 6 or r['wedge'] or r['relief'] > 6:
                     fails += 1; tot[k][1] += 1
-                    print('BAD %-7s n=%d seed=%d lift %d (%s) pos %d: %d px over stone (mask %d), %d over a grating in front, near %d, foot %d, wedge %d %s, relief %d, first at %s, he is %s rdx %s' % (mode, n, seed, i, t, pos, r['bad'], r['badM'], r['badG'], r['near'], r['foot'], r['wedge'], r['wv'], r['relief'], r['where'], r['st'], r['rdx']), flush=True)
+                    print('BAD %-7s n=%d seed=%d lift %d (%s) pos %d: %d px over stone (mask %d), %d over a grating in front, near %d, foot %d, wedge %d %s, relief %d, pit %d %s, first at %s, he is %s rdx %s' % (mode, n, seed, i, t, pos, r['bad'], r['badM'], r['badG'], r['near'], r['foot'], r['wedge'], r['wv'], r['relief'], r['pit'], r['flush'], r['where'], r['st'], r['rdx']), flush=True)
     b.close()
-print('cases', n_cases, ' '.join('%s/%s %d bad of %d' % (k[0], k[1], v[1], v[0]) for k, v in sorted((k, v) for k, v in tot.items() if isinstance(k, tuple))), 'cases failing near %d foot %d wedge %d relief %d' % tuple(tot.get(q, 0) for q in ('near', 'foot', 'wedge', 'relief')), 'errors', errs[:3])
+print('cases', n_cases, ' '.join('%s/%s %d bad of %d' % (k[0], k[1], v[1], v[0]) for k, v in sorted((k, v) for k, v in tot.items() if isinstance(k, tuple))), 'cases failing near %d foot %d wedge %d relief %d pit %d (platforms at rest at a pit checked flush: %d)' % tuple(tot.get(q, 0) for q in ('near', 'foot', 'wedge', 'relief', 'pit', 'flushed')), 'errors', errs[:3])
 print('ALL OK' if fails == 0 and not errs else 'FAILURES %d' % (fails + (1 if errs else 0)))
 sys.exit(1 if fails or errs else 0)

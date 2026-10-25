@@ -816,6 +816,24 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   (it shows only its top, flush). An egSlab's piece above the ceiling's edge (round 14's top pass) is in the ceiling's shade (0.9).
   `liftscan.py` also checks these (near, foot, wedge, relief, and arches/breaches in shafts on the tiles; the paternoster at a slab on its
   bottom run and at the top beside the right landing); pictures `egyptr26a.py`.
+- The lift's foot (round 37a, owner after v81: "The lift shafts, at the very bottom the floor tile should be missing because the moving tile
+  of the lift will replace it"). Until v81 the room's picture drew an ordinary floor tile in the foot cell of every shaft (its feature or base is
+  FLOOR, for play), and the platform resting there was drawn over it: with the platform up (and the bottom mouth slab shut) a plain floor
+  stood at the shaft's foot, and the sand lift's foot showed that tile's lip under the sand. Now the counterweight platform and the sand
+  lift's slab are the floor there: the room's picture draws no tile in the foot cell (`liftPit`, `liftPitDraw` in `drawRoomStatic`; not in
+  `aoFloor` or Classic's embers) but a shallow pit `LP_D` 5 px deep, the platform's own thickness: the shaft's back wall going on down into it,
+  the end of the floor (or the wall) beside it as its left face with a lit top arris, a dark stone floor with its front edge on the front plane
+  in the lips' shade; resting at the foot, the platform's top and lip are exactly a floor tile's (`SURF(rB)`, lip 5 px), and Torchlight's
+  relief is rubbed back over the sand slab at rest there as over the platform (`glRelLifts`). The sand goes on down into the pit (`sandCut`,
+  `sandSegs`, its relief box) and the outlet sits on the pit's floor. Look only: the foot cell stays FLOOR in play, and nobody stands on it
+  while the pit shows: a counterweight lift's bottom mouth is shut while the platform is away, he rides inside the shaft in state `lift` and
+  leaves it only at an end, plates are pressed only by him, and the far side of the foot is wall in 714 of 716 lifts (floors 1-48, 3 seeds);
+  the 2 whose far side opens on a drop (floor 37 seed 60685, floor 44 seed 53683: he could climb onto the foot from the storey below) keep
+  their floor tile. A sand lift's foot is held by its mouth slabs (`f.ms`) until its slab has come down for good. The paternoster's foot
+  keeps its two tiles: its slabs never rest there and he walks into its foot and lands on it (`chainGround`, lifttest (c)), so a pit there
+  would have him stand on air. `liftscan.py` also checks the foot (pit: no floor tile drawn in a pit lift's foot cell, `LIFT_DBG.tiles`, one
+  in the others' and the paternoster's; flush: the platform at rest covers the floor lips' rows and the rows above them and nothing under,
+  against the frame with no lift). Pictures `egyptr37a.py` (r37a_liftfoot.png: v81 | 37a, both modes, each lift kind at and away from the foot).
 - A ceiling at his height (a WALL, or an upper floor's slab, `ceilY`) makes any floor jump the low leap (v60, owner), and the head
   clamp holds every frame; a saw that would sit under such a ceiling becomes spikes in place (the low leap cannot clear it).
   Check with `lowceil.py`.
