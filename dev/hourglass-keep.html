@@ -3493,7 +3493,7 @@ function standOn(){
     else if(f.t==='closer'&&!f.jam){f.press=gameTime;if(f.g.tm>0||f.g.open>0.05){f.g.tm=0;f.g.slam=true;Snd.play('gate');shake(0.9);hint('closer');}}
     else if(f.t==='xplate'){f.press=gameTime;if(!L.door.opening&&L.door.open<1){L.door.opening=true;msg('A heavy door grinds open somewhere on this floor.',3.4);Snd.play('door');}}
   }
-  for(let i=0;i<L.cps.length;i++){const cp=L.cps[i];if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<14){cp.on=true;cp.onAt=gameTime;L.cpIndex=i;S.cp=i;S.floorTime=levelTime;S.cpPlates=pressedPlates();const fill=(S.sands|0)<SANDS;S.sands=SANDS;writeSave();msg(fill?'The sky clock lights, and your hours are restored. If you fall, you rise here.':'The sky clock lights. If you fall, you rise here.',3.2);Snd.play('cp');sparks(cp.x,SURF(cp.r)-26,10,'rgb('+(L.theme.glow||'232,196,127')+')');}}
+  for(let i=0;i<L.cps.length;i++){const cp=L.cps[i];if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<14){cp.on=true;cp.onAt=gameTime;L.cpIndex=i;S.cp=i;S.floorTime=levelTime;S.cpPlates=pressedPlates();const fill=(S.sands|0)<SANDS;S.sands=SANDS;writeSave();msg(fill?'The sky clock lights, and your hours are restored. If you fall, you rise here.':'The sky clock lights. If you fall, you rise here.',3.2);Snd.play('cp');sparks(cpX(cp),SURF(cp.r)-26,10,'rgb('+(L.theme.glow||'232,196,127')+')');}}
 }
 // a jump that ends hanging on a ledge: across a pit (gap, wide) or a storey up with Grab held (jgrab)
 function learnGrab(ys){const jk=P.jumpKind;if(jk!=='run'&&jk!=='stand')return;const dx=Math.abs(P.x-P.jx);if(dx>=40)learn('gap');if(jk==='run'&&ys<P.jy-40)learn('jgrab');else if(jk==='run'&&dx>=80)learn('wide');}
@@ -6289,30 +6289,51 @@ function drawHgPedestal(ctx,th,st,x,fl,h,wear){const q=mulberry32(h),K='#0b0812'
     for(let i=0;i<2+wear;i++){cx+=(q()-0.5)*3;cy+=1.6+q()*1.4;if(cy>fl-0.5)break;ctx.lineTo(cx,cy);}ctx.stroke();}
   for(let i=0;i<(wear-1)*2+1;i++){const rx=x+(q()<0.5?-1:1)*(8.5+q()*4),w=1.2+q()*1.6;ctx.fillStyle=K;ctx.fillRect(rx-0.4,fl-w*0.7-0.4,w+0.8,w*0.7+0.8);ctx.fillStyle=stone[1];ctx.fillRect(rx,fl-w*0.7,w,w*0.7);}}
 function cpClockF(cp){if(!cp.on)return 0;const turn=cp.onAt!==undefined?clamp((gameTime-cp.onAt)/0.7,0,1):1;return turn<1?ease(turn):1-((gameTime-(cp.onAt||0)-0.7)%8)/8;}
+// (round 37c, owner after v81: "The timer checkpoint over the front wall") The clock stands at mid-depth, but a wall's front face (a
+// step's, a low ceiling's) stands HX nearer and HX further left, so in the cell before a wall its right half (Nut's feet, the arch, the
+// pedestal's rubble, its halo) was drawn over that face. Where it is drawn (cpX): moved along its cell clear of the faces beside it, its
+// foot CP_GAP short of the face (as a figure is pressed against a face, wallPress); the trigger, the respawn spot and every timing keep
+// cp.x: look only. And what it draws is cut by those faces (cpCut; the halo too: a light at mid-depth cannot reach a face in front of
+// it), as figures and lifts are; Classic's wide glow (the room light it gives, as a lamp's sprite, and as Torchlight's light map) is not.
+// CP_DBG.off draws only that glow (cpscan.py compares the two frames), CP_DBG.old v81's placement and no cut (pictures).
+const CP_HL=16.4,CP_HR=15.2,CP_GAP=0.6,CP_DBG={off:false,old:false}; // (how far the drawn clock reaches left and right of its x at s 1.9, outline included)
+function cpFace(c,r){if(c<0||c>=L.cols||r<0||r>=L.rows)return 0;if(B(L,c,r)===WALL)return TH;const f=F(L,c,r);return f&&f.t==='low'?TH-34:0;} // (the height of the nearer face in that cell, from its top)
+function cpX(cp){if(CP_DBG.old)return cp.x;let x=cp.x;const X=cp.c*TW;
+  if(cpFace(cp.c+1,cp.r))x=Math.min(x,X+TW-HX-CP_HR-CP_GAP);if(cpFace(cp.c-1,cp.r))x=Math.max(x,X-HX+CP_HL+CP_GAP);return x;}
+function cpCut(ctx,cp){if(CP_DBG.old)return false;let any=false;
+  for(let c=cp.c-1;c<=cp.c+1;c++){const h=cpFace(c,cp.r);if(!h)continue;if(!any){ctx.save();ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);any=true;}ctx.rect(c*TW-HX,cp.r*TH,TW,h);}
+  if(any)ctx.clip('evenodd');return any;}
 function drawHourglass(ctx,cp){
-  const th=L.theme,st=th.style,M=HG_MAT[st]||HG_MAT.palace,gl=th.glow||'255,200,120',x=cp.x,fl=SURF(cp.r)-1;
-  const lit=cp.on,turn=lit&&cp.onAt!==undefined?clamp((gameTime-cp.onAt)/0.7,0,1):1,bob=Math.sin(gameTime*1.7+x*0.05)*1.6;
-  // the pedestal: the theme's own stone and ornament, worn as much as the wall behind it (wearLevel, the same random
-  // patches as the walls: pristine, worn, damaged, partly fallen); the glass above it is never damaged
-  drawHgPedestal(ctx,th,st,x,fl,hash2(cp.c*37+11,cp.r*19+3),wearLevel(x,fl-20));
-  const ptop=fl-11;
-  ctx.fillStyle='rgba(0,0,0,'+(0.32-bob*0.03)+')';ctx.beginPath();ctx.ellipse(x,ptop+0.4,4.6-bob*0.3,0.9,0,0,6.2832);ctx.fill();
-  if(lit){ctx.save();ctx.globalCompositeOperation='lighter';ctx.fillStyle='rgba('+gl+',.35)';ctx.beginPath();ctx.ellipse(x,ptop+0.2,6.5,1.5,0,0,6.2832);ctx.fill();ctx.restore();}
-  const cy=fl-25+bob;
-  ctx.save();ctx.translate(x,cy);
-  if(lit){ // the lit glass: a halo as strong as a lamp's (the light map adds the room light; this carries Classic too)
-    ctx.save();ctx.globalCompositeOperation='lighter';const k=0.85+0.15*Math.sin(gameTime*3+x);
-    let gr=ctx.createRadialGradient(0,0,1,0,0,30);gr.addColorStop(0,'rgba('+gl+','+(0.55*k*turn)+')');gr.addColorStop(1,'rgba('+gl+',0)');ctx.fillStyle=gr;ctx.fillRect(-32,-32,64,64);
-    if(!GFX().light){gr=ctx.createRadialGradient(0,0,4,0,0,70);gr.addColorStop(0,'rgba('+gl+','+(0.22*turn)+')');gr.addColorStop(1,'rgba('+gl+',0)');ctx.fillStyle=gr;ctx.fillRect(-72,-72,144,144);}
+  const th=L.theme,st=th.style,gl=th.glow||'255,200,120',x=cpX(cp),fl=SURF(cp.r)-1,off=CP_DBG.off;
+  const lit=cp.on,turn=lit&&cp.onAt!==undefined?clamp((gameTime-cp.onAt)/0.7,0,1):1,bob=Math.sin(gameTime*1.7+cp.x*0.05)*1.6;
+  const cy=fl-25+bob;let cut=!off&&cpCut(ctx,cp);
+  if(!off){
+    // the pedestal: the theme's own stone and ornament, worn as much as the wall behind it (wearLevel, the same random
+    // patches as the walls: pristine, worn, damaged, partly fallen); the glass above it is never damaged
+    drawHgPedestal(ctx,th,st,x,fl,hash2(cp.c*37+11,cp.r*19+3),wearLevel(cp.x,fl-20));
+    const ptop=fl-11;
+    ctx.fillStyle='rgba(0,0,0,'+(0.32-bob*0.03)+')';ctx.beginPath();ctx.ellipse(x,ptop+0.4,4.6-bob*0.3,0.9,0,0,6.2832);ctx.fill();
+    if(lit){ctx.save();ctx.globalCompositeOperation='lighter';ctx.fillStyle='rgba('+gl+',.35)';ctx.beginPath();ctx.ellipse(x,ptop+0.2,6.5,1.5,0,0,6.2832);ctx.fill();ctx.restore();}
+    if(lit){ // the lit glass: a halo as strong as a lamp's (the light map adds the room light; this carries Classic too)
+      ctx.save();ctx.translate(x,cy);ctx.globalCompositeOperation='lighter';const k=0.85+0.15*Math.sin(gameTime*3+cp.x);
+      const gr=ctx.createRadialGradient(0,0,1,0,0,30);gr.addColorStop(0,'rgba('+gl+','+(0.55*k*turn)+')');gr.addColorStop(1,'rgba('+gl+',0)');ctx.fillStyle=gr;ctx.fillRect(-32,-32,64,64);
+      ctx.restore();}}
+  if(cut){ctx.restore();cut=false;}
+  if(lit&&!GFX().light){ctx.save();ctx.translate(x,cy);ctx.globalCompositeOperation='lighter'; // (Classic's room light: not cut)
+    const gr=ctx.createRadialGradient(0,0,4,0,0,70);gr.addColorStop(0,'rgba('+gl+','+(0.22*turn)+')');gr.addColorStop(1,'rgba('+gl+',0)');ctx.fillStyle=gr;ctx.fillRect(-72,-72,144,144);
     ctx.restore();}
+  if(off)return;
+  cut=cpCut(ctx,cp);
   // the sky clock, large: when he reaches it the sun runs back to Nut's mouth and her stars light; then its night runs out (8 s and
   // round again); unlit it stands dark, its stars out
   const f=cpClockF(cp);
+  ctx.save();ctx.translate(x,cy);
   nutClock(ctx,f,{s:1.9,lit,dim:!lit,t:gameTime,glow:lit,kl:lit?keyLight(x,cy+12):null});
   ctx.restore();
   // drops of light rising round it while it runs (the water's glint), cool as water
-  if(lit){ctx.save();ctx.globalCompositeOperation='lighter';for(let i=0;i<5;i++){const u=(gameTime*0.35+i/5+x*0.01)%1;ctx.globalAlpha=(1-u)*0.7*turn;ctx.fillStyle='rgb(190,232,255)';
+  if(lit){ctx.save();ctx.globalCompositeOperation='lighter';for(let i=0;i<5;i++){const u=(gameTime*0.35+i/5+cp.x*0.01)%1;ctx.globalAlpha=(1-u)*0.7*turn;ctx.fillStyle='rgb(190,232,255)';
       ctx.fillRect(x+Math.sin(u*8+i*1.7)*(7+u*4),cy+10-u*30,1,1);}ctx.restore();}
+  if(cut)ctx.restore();
 }
 // ---- doors: each theme's own (an Egyptian doorway: a lintel under a cavetto cornice in a moulded frame; the Cistern's is vaulted) ----
 // the arch head as a path: round for the Cistern, pointed for the rest; with yb given it is the whole opening down to the floor
@@ -8109,10 +8130,10 @@ function gatherLights(x0,x1,y0,y1){
   for(const g of G)if(g.alive&&!g.gone)add(g.x,g.y-26,56,FILL_COL,0.22,'fill');
   for(const sn of SN)if(sn.alive&&!sn.gone)add(sn.x,sn.y-4,34,'200,230,170',0.25,'fill');
   for(const it of L.items)if(!it.taken){const col=it.type==='heal'||it.type==='big'?'255,90,70':it.type==='life'?'255,210,110':'110,130,255';add(it.x,SURF(it.r)-8,it.type==='big'?42:32,col,it.type==='big'?0.75:0.6,'item',{r:9,a:0.35});}
-  for(const cp of L.cps){const gc=th.glow||'255,214,130',y=SURF(cp.r)-26; // lit, it lights the room like a lamp (torch strength); unlit it keeps a faint glint
-    if(cp.on){const k=cp.onAt!==undefined?clamp((gameTime-cp.onAt)/0.7,0,1):1;add(cp.x,y,150*k,gc,0.95*k,'item',{r:26,a:0.42*k});
-      const q=nutPt(1-cpClockF(cp),0);add(cp.x+q[0]*1.9,SURF(cp.r)-26+Math.sin(gameTime*1.7+cp.x*0.05)*1.6+q[1]*1.9,46,'255,190,100',0.55*k,'trap');} // (the sun's own light, travelling along Nut's arch)
-    else add(cp.x,y,38,gc,0.42,'item');}
+  for(const cp of L.cps){const gc=th.glow||'255,214,130',y=SURF(cp.r)-26,cx=cpX(cp); // lit, it lights the room like a lamp (torch strength); unlit it keeps a faint glint
+    if(cp.on){const k=cp.onAt!==undefined?clamp((gameTime-cp.onAt)/0.7,0,1):1;add(cx,y,150*k,gc,0.95*k,'item',{r:26,a:0.42*k});
+      const q=nutPt(1-cpClockF(cp),0);add(cx+q[0]*1.9,SURF(cp.r)-26+Math.sin(gameTime*1.7+cp.x*0.05)*1.6+q[1]*1.9,46,'255,190,100',0.55*k,'trap');} // (the sun's own light, travelling along Nut's arch)
+    else add(cx,y,38,gc,0.42,'item');}
   if(L.door.open>0){const sw=shaderOn()?exitSwell():0;add(L.door.x+HX,SURF(L.door.r)-26,120*Math.min(1,L.door.open)*(1+0.3*sw),'255,196,120',0.9*Math.min(1,L.door.open)*(1+0.75*sw),'door',{r:28,a:0.3*L.door.open});} // (round 26f: Torchlight's light swells as he goes; its bloom stays as it was; Classic swells drawDoor's sprite)
   for(const o of L.dyn){const f=o.f,X=o.c*TW;if(X<x0-160||X>x1+160)continue;const ys=SURF(o.r);
     if(f.t==='vent'){const ph=cyc(f,t);if(ph>=0.7||ph<0.03){const vs=ventState(ph);add(X+16,ys-24,110,'255,140,60',0.9*vs.k*vs.al,'fire',{r:30,a:0.4*vs.k*vs.al});}} // (lit through the whole danger window)
@@ -12838,7 +12859,7 @@ window.__HK={keyLight,get frameLights(){return frameLights;},jetPlaces,jsSwingPa
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
   get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,ryOps,ryShape,ryProfile,skyBeam,RY,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,plantPose,legIK,mk,drawDynamic,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
-  get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG,secretCues,RJ_K,RJ_DV};
+  get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG,CP_DBG,cpX,secretCues,RJ_K,RJ_DV};
 Object.assign(window.__HK,{guardBudget,snakeBudget,RP,drinkFrame}); // (the fighters' budgets, for guardscan.py; RP and drinkFrame, the run cycle's and the drink's poses, for egyptr21a.py)
 Object.assign(window.__HK,{jumpSpan,jhK,leapPose,LEN,skel,crawlPose,walkPose,climbFrame,swingPose,MCP,MCK,R23B,R23D,R23MUS,setMus,musNow:()=>RD.mus||1,mk,figReach}); // (the skeleton and the poses, for egyptr23.py and figscan.py)
 Object.assign(window.__HK,{respawn,startRewind,die,startEntry,entryOpen,entryX,exitSwell,EXF,EX_N,EX_GONE,EX_CUT,EN_CTL,EN_DROP,EN_FALL,doorHead,ceilOff:(c,r)=>ceilOff(c,r)}); // (round 26f: the exit and the entry, for stairscan.py and egyptr26f.py)

@@ -69,6 +69,8 @@ J += [('liftkick', ['liftkick.py'], tail_check(r'ALL OK'))] # no wall plant or k
 J += [('liftscan', ['liftscan.py', str(n), str(n + 5), '3', 'both'], tail_check(r'ALL OK')) for n in range(3, 61, 6)] # no part of a lift or its rider over a wall's front, a low ceiling or a grating in front of it (Classic and Torchlight)
 J += [('lowceil', ['lowceil.py'], tail_check(r'ALL OK'))] # under a ceiling at his height a jump is the low leap and never goes through the stone
 J += [('wellcorr', ['wellcorr.py', str(n), str(n + 11)], tail_check(r'wellcorr: ok')) for n in range(1, 49, 12)] # (round 30) no sand well stands in a corridor: every well's pit is walled on both sides down to its floor
+if mode != 'quick':
+    J += [('cpscan', ['cpscan.py', str(n), str(n + 11)], tail_check(r'cpscan: ok')) for n in range(1, 49, 12)] # (round 37c) no pixel of the water clock (the checkpoint) over a wall's front face, a step or a low ceiling beside it (both modes)
 # (round 36a) the Crossing between themes: every theme starts and ends, pad, skip, save untouched, never under the bot, both modes;
 # (round 36b) quick: Classic, one theme per setting (about 2 min); otherwise every theme, Classic and Torchlight as two jobs (Torchlight heavy)
 if mode == 'quick': J += [('crossscan', ['crossscan.py', 'quick'], tail_check(r'crossscan: ok'))]
@@ -139,7 +141,7 @@ def go(j, w):
 # Jobs that draw Torchlight (software WebGL in headless Chromium, which spreads each frame over several cores) run at most
 # GPU_JOBS at a time; the other workers take bot jobs meanwhile. Eight of them at once took four times as long each and no
 # less in total, which pushed rendersmoke past its wall budget (v67: 1 alone 53 s, 4 at once 137 s each, 8 at once 300 s each).
-HEAVY = ('rendersmoke', 'liftscan', 'crossscan torch')
+HEAVY = ('rendersmoke', 'liftscan', 'crossscan torch', 'cpscan')
 GPU_JOBS = int(os.environ.get('HK_GPU_JOBS', '3'))
 t0 = time.time(); res = []; QL = queue.Queue(); QH = queue.Queue(); GPU = threading.Semaphore(GPU_JOBS)
 # --resume FILE (or HK_SUITE_JOURNAL): every finished job is appended to FILE as one JSON line, and a run started with the same FILE

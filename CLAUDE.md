@@ -72,6 +72,7 @@ service worker's cache to `hourglass-keep-vN`, which is what makes installed cop
 | `orphanscan.py`, `mazescan.py` | no gate side passage is left without its plate (floors 1 to 27, 20 seeds); maze floors hold at least 1.5 times the gate puzzles of ordinary floors of the band, longway floors always a fork | 0 orphans, ratio >= 1.5, forks >= 1 |
 | `featurescan.py [file]`, `featbot.py` | a floor's featured families hold their share of their category (mean and minimum), flags come about one floor in nine, floors differ more than before (sameness); the bot plays floors forced to every flag and family (`window.__FEAT`) | shares near or over 40%, 0 damage |
 | `wellcorr.py lo hi [seeds]` | no sand well stands in a corridor: every well's pit is walled on both sides down to its floor (round 30) | `wellcorr: ok` |
+| `cpscan.py lo hi [seeds]` | no pixel of the water clock (the checkpoint) over a wall's front face, a step or a low ceiling beside it, both modes (round 37c) | `cpscan: ok` |
 
 Speed: `?bench` in the game's URL (on the phone too) makes the bot (`bot.js`, fetched for the run; `botGen` steps it from the
 game's own frame loop) play six fixed floors live, 20 s each, and shows a table of frame times with a Copy button; the save is
@@ -436,6 +437,20 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   near half laps `JAW_OV` over the far one (`planeClip`'s `ov`), so no wall shows through their seam. Look only: silhouette, hit box, timing,
   beamBlockers, layouts and the bot unchanged. Pictures `egyptr37b.py` (r37b_jaws.png: v81 | 37b, the owner's case, shut, closing and open in
   six themes and hours and with EGP.traps off, both modes, 3x; r37b_jaws.gif: a slice cycle in Torchlight).
+- The checkpoint keeps clear of the walls (round 37c, owner after v81: "The timer checkpoint over the front wall"; iPhone screenshot: the water
+  clock at the end of a run, its right half over the brick front face of the wall block beside it). The clock stands at mid-depth in its cell
+  (`cp.x`, the cell's middle), about 32 px wide at s 1.9; a wall's front face (a step's, a low ceiling's) stands HX nearer and HX to the left of its
+  cell, so with a wall in the next cell Nut's feet, the arch, the pedestal's rubble and the halo lay up to 7 px over that face, and with one in the
+  cell before it the lit halo (30 px) spilled 6 px onto that face. Now it is drawn at `cpX(cp)`: moved along its cell until its foot is `CP_GAP`
+  short of the face (`CP_HL`/`CP_HR`, its reach either side; as wallPress presses a figure against a face; 7.8 px for a wall on the right, never
+  out of its cell), and everything it draws is cut by the faces beside it on its row (`cpCut`, as figures and lifts are cut: a light at mid-depth
+  cannot reach a face in front of it). Classic's wide glow (the room light it gives, as a lamp's sprite) and Torchlight's light map are room light,
+  not cut; both take the drawn x, as do the sparks when it lights. Look only: the trigger (within 14 px of `cp.x`), the respawn spot, the hint and
+  every timing keep `cp.x`; layouts identical (genLevel floors 1-48 x 3 seeds against v81), the bot unchanged. `CP_DBG.off` draws only the room
+  glow, `CP_DBG.old` v81's placement and no cut. `cpscan.py [file] [lo hi] [seeds] [torch|classic|both] [old]` (in suite.py, four jobs) frames
+  every checkpoint with a face beside it on floors 1-48 (seeds 1-3; 88 of 2,136: 40 with the wall on the right, 48 on the left), lit, with and
+  without the clock, and the face's pixels must not change: must print `cpscan: ok` (v81: 88 of 88 in each mode; 0 after). Pictures
+  `egyptr37c.py` (r37c_checkpoint.png: v81 | round 37c, both modes, 3x).
 - The Crossing (round 36a, owner, after the research in `dev/INTERLUDE_RESEARCH.md`: "an interlude between themes"; answers: at each
   theme change, after Climb on, he moves only while the pad is held, wordless but skippable, all twelve themes in their setting,
   Torchlight's glow and a Classic version, the hour from `progOf`, named "the Crossing"). At each change of theme (`crossDue(n)`:
