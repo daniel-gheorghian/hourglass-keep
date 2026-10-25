@@ -55,7 +55,7 @@ nearly still and pumps: a press of the way he will swing next, at human timing, 
 | Situation | What happens |
 |---|---|
 | Missing the bar, or letting go short | a fall into the pit onto fixed spikes ([spikes](spikes.md)) |
-| Caught | state `swing`, `P.bar`; `hint('swing')`; the touch controls ghost while he swings over them (`CTL_WATCH` has `bar`) |
+| Caught | state `swing`, `P.bar`; `hint('swing')`; the Grab button reads Swing while a bar is in reach (`grabLabel`); the touch controls ghost while he swings over them |
 | Approaching a gap of three tiles or more with a bar in the next four cells | `hint('swing')` instead of `wide` |
 | Rewind | `P.swTh`, `P.swOm` (in `P`) and `f.ps`, `f.pw` (on the feature) come back (`swingtest.py`) |
 | Guards | none: they never swing |

@@ -42,7 +42,7 @@ case: from a hang on the lip, Grab and Down take the cloth at once.
 
 | Rule | Example or number | Why |
 |---|---|---|
-| Taking the cloth: falling (`P.vy` > 0) with Grab held and a `banner` in his column at `P.y - 30` (`bannerAt`); a ledge in reach is caught first (`tryGrab` comes before it in `stAir`) | `P.x` snaps to the cell's middle, `P.vx` 0 | PoP's sail stunt: the blade in the cloth |
+| Taking the cloth: falling (`P.vy` > 0) with Grab held and a `banner` in his column at `P.y - 30` (`bannerAt`); a ledge in reach is caught first (`tryGrab` comes before it in `stAir`) | `P.x` snaps to the cell's middle, `P.vx` 0; the Grab button reads Slide while he falls past one (`grabLabel`) | Sands of Time to Two Thrones: the blade sunk in and a braked slide (the old knife-down-the-sail stunt) |
 | From a hang over a hanging, Grab held with Down takes it at once (round 33c) | before, he let go and caught the same lip again | owner, floor 16 |
 | The bite, then the drag: 0.07 s toward 30 px/s (2600 px/s²), then toward `SL_V` 170 at `SL_A` 1100 | | a quick braked drop; the first version crept at 75 px/s, slower than climbing down |
 | No fall damage: `P.fallY` is kept 8 px above him the whole way | he leaves the cloth where the last banner cell ends (about 30 px over the foot's floor, by `bannerAt`) and drops the rest safely | |
