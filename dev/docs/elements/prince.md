@@ -29,7 +29,7 @@ prince-shaped dark stripe lands on the lit face under the ledge. Before round 19
 | Skeleton | CMU subjects 09, 13, 14, 16; ANSUR II 17-20 year olds; `R23B` (th 11.42, sh 13.83, to 14.02, nk 3.52, hd 3.37, ua 8.23, fa 7.66 px); standing 51.5 px; head 1/6.5 of his height | `// <R23-MOCAP>` block, `dev/tools/r23poses.py` (never edit by hand) |
 | Poses | `MCP` single poses, `MCK` cycles (run, walk, crawl, drink, swing bins, leaps, settles); angles from straight down, + forward; `PS[name]=mk(MCP[name])` | FIGURE_SPEC "The poses" |
 | Bulk | `MUS` 1.65 (`R23MUS` levels 1.0-1.85, `RD=R23D`); `__MUS` / `__HK.setMus(m)` for pictures | FIGURE_SPEC rounds 23b, 24 |
-| Back, neck | no hump arms up (26b `BO_CUT`) or down (28a `BT_TOP`, `TR_K`, `RD.dd`); neck `NECK_CUT` 1.0 (23d) | FIGURE_SPEC 23c, 23d, 26b, 28a |
+| Back, neck | no hump arms up (26b `BO_CUT`) or down (28a `BT_TOP`, `TR_K`; the page's `RD.dd`); neck `NECK_CUT` 1.0 (23d); the constants live in `r23poses.py` | FIGURE_SPEC 23c, 23d, 26b, 28a |
 | Supple run | spine curve `sb`, shoulders `soF/soB`, foot pitch `fpF/fpB`, kilt lag `khF/khB` | FIGURE_SPEC 25a |
 | Overlap, settles | `followPose` (`PKR`, `PKRA`, `LAGM`), `settlePose` (`MCK.set_land`, `set_stop`), `turnSettle`, hang swing `HG_*` | FIGURE_SPEC 25f |
 | Jumps | stance `tk`, `flightPose`; running flight on `leapPose` S/L by `P.jS` (round 34); apex `jhK`/`jumpYo` (`JH_S` 2.5, `JH_L` 4, `JH_SJ` 3); tempo `RJ_K` 0.75 (35a) | FIGURE_SPEC 26c-35a |
@@ -115,7 +115,7 @@ drawDynamic, the figures' part
 
 Parts worth knowing: the shendyt gets a seat point `KS` once both hips flex (all fours, round 20b); the straight blade is leaf-shaped
 bronze in two bevels with a bright edge, guard, grip and pommel (round 20b; steel only for a palette without `egy`), sheathed at the hip when
-not drawn (`hasSword`); the khopesh belongs to the captain. Low-detail figures (`drawFigure`) do not draw `p.ox`/`p.oy`.
+not drawn (`hasSword`); the khopesh is the captain's (and the page-only dresses A, B, C). Low-detail figures (`drawFigure`) do not draw `p.ox`/`p.oy`.
 
 What cuts him:
 
@@ -179,7 +179,7 @@ Classic's beam cut and `fillCut`. The sword shows in it only while drawn at a fo
 | A new thing standing across the corridor's depth in front of the back wall must be carved out of the shadow mask | `JAWP` in `glMask` | round 37b |
 | Nothing he carries lights the sky: a new full-screen draw after `drawDynamic` stays under `G2D.na`; no dst-alpha blend may read the scene's alpha | the pale halo that went with him over openings | round 25c |
 | Never key a look on a flickering radius or the one nearest light | `keyLight` | round 20b |
-| No allocation a frame in the figure path (pools: `SIL`, `PTB`, `SHUT`, `tmpP`, `stP`) | | WGL, rounds 29, 26f |
+| A canvas he is drawn into and redrawn every frame is marked `_glv=1`, so Torchlight takes it again each frame | `PTB` (`drawPTint`), `SHUT` (`drawShut`) | unit WGL |
 | A new move needs: a clip (or IK), its `case` in `updatePlayer`'s pose switch, `LAGM` if it should overlap, a bot action if the generator lays it, `figscan.py` | | FIGURE_SPEC "How to add or change a move" |
 
 ## History

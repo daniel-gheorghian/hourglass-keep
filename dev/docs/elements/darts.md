@@ -1,8 +1,8 @@
 # Darts
 
 A shooter in the riser of a one-storey step fires a dart at chest height down the five tiles of run before it, on a fixed
-period: he crouches and crawls under them, or times his run, then climbs the step. Floor 6 on, any style and theme; one per run at
-most, built by the run's menu.
+period: he crouches and crawls under them, or times his run, then climbs the step. Floor 6 on, any style and theme, built by the
+run's menu on the run's lowest row.
 
 ## At a glance
 | | |

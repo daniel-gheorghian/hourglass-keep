@@ -16,21 +16,25 @@ built in place of a banner slide). All live only in turn chambers; the `tower` f
 
 ## Example
 
-A `lift2d` heading right, he on the landing at column c, row r. `liftSeg(2,true)` empties column c+1 for rows r and r+1, lays floor
-c+1..c+3 on row r+2 (the foot and the bottom landing), keeps the walls at c (rows r+1) and c+2 (rows r, r+1), and writes:
+Floor 8, seed 1 (`genLevel(8,1)`): a `lift2d` heading right in a chamber, segment `turn-lift2d` from column 228 row 9 to column 231
+row 11. `liftSeg(2,true)` (c 228, r 9) empties column 229 for rows 9 and 10, lays floor 229..231 on row 11 (the foot and the bottom
+landing), keeps the walls at 228 (row 10) and 230 (rows 9, 10), and writes:
 
 ```
- row r     [lplate e0] |MS| [top mouth]  [wall c+2]        platform rests here (f.y = f.yT); L.base[top mouth] = FLOOR while it does
- row r+1   [wall c]        [shaft]       [wall c+2]
- row r+2                   [foot]  |MS| [lplate e1] [floor c+3]
-             c              c+1          c+2        c+3
+ row 9     [lplate e0] |MS| [top mouth]  [wall 230]        platform rests here (f.y = f.yT); L.base[top mouth] = FLOOR while it does
+ row 10    [wall 228]       [shaft]      [wall 230]
+ row 11    [wall 228]       [foot]  |MS| [lplate e1] [floor 231]
+             228             229           230         231
 ```
 
-He stands on the plate at c: the platform is already at the top (it rests at the end he arrives by). He steps onto it, holds Down:
+He stands on the plate at 228: the platform is already at the top (it rests at the end he arrives by). He steps onto it, holds Down:
 it sinks at 64 px/s, the top mouth slab drops shut behind him, the platform docks two seconds later and the bottom slab rises; he is handed
-back to `stand` with Down still held doing nothing (`P.liftHold`) until he lets go. The bot's action is `{a:'lift',from:c,to:c+3,k:2,up:false}`.
-The far side of this foot (column c, row r+2) decides the pit: wall there (the usual case), the foot cell draws as a 5 px pit, not a
-tile. Floor 37 seed 60685 and floor 44 seed 53683 hold the two lifts (of 716 on floors 1-48 x 3 seeds) whose far side opens on a drop; they keep their tile.
+back to `stand` with Down still held doing nothing (`P.liftHold`) until he lets go. The bot's action is `{a:'lift',from:228,to:231,k:2,up:false}`.
+The far side of the foot (column 228, row 11, `sc - sB`) is wall, so the foot cell draws as a 5 px pit, not a tile (`liftPit`). Floor 37
+seed 60685 and floor 44 seed 53683 hold the two lifts (of 716 on floors 1-48 x 3 seeds) whose far side opens on a drop; they keep their
+tile. Other kinds: floor 8 seed 1 also has a `lift3u` (column 79, rows 6-9); floor 8 seed 2 a sand lift (`turn-sand3`, column 189, rows
+9-12, foot mouths `f.ms` [1,-1]: a corridor runs on past its far side); floor 8 seed 23 a paternoster (`turn-chn2u`, columns 301-302, rows
+11-13, 3 slabs).
 
 ## In play
 

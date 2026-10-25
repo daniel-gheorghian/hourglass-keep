@@ -35,14 +35,14 @@ and when the passage drew a chain (60%) five cracked tiles behind him start to g
 | `big` (large red) | all lives back | at most one a floor (`L.bigFlask`) |
 | `life` (gold) | `S.maxHp` +1 (cap 10) and full health; floor recorded in `S.lifeTaken`, so it is gone on every later visit, respawn or Continue | 3 lives at the start; floors 3, 6, 9 ... |
 | `poison` (dark blue) | `hurt(1, 'poison')`, "Poison. Dark blue flasks hurt." | from floor 8, 20% of floor flasks |
-| Floor flasks | 7% of plain cells after an obstacle on a run | |
+| Floor flasks | 7% of the plain cells a run's step ends on (each piece of the run, flat floor included) | |
 | Alcoves | two a floor planned, at 22% and 60% of the route (30% a step once past): a niche one storey up, opened beside a plain cell, a red flask on its ledge | |
 | Gated side passages | 40% hold a red flask at the far end; 13% (a hash) the large one instead | |
-| Secret passage | `lifeFloor` (n % 3 = 0): a gallery (`gal`, two storeys up: climb, climb) or a cellar (two storeys down through a hole: hang and drop), 2 + floor(3d) obstacles, shorter if it does not fit (`sideTry`, `fewer` 0-2); the gold flask at its far end on a `trigger` tile | |
+| Secret passage | `lifeFloor` (n % 3 = 0): a gallery (`gal`, two storeys up: climb, climb) or a cellar (two storeys down through a hole: hang and drop), 3 + floor(3d) obstacles (d = min(1, (n-1)/24)), fewer (down to 2) if it does not fit (`sideTry`, `fewer` 0-2); the gold flask at its far end on a `trigger` tile | |
 | No room for it | an alcove's flask becomes the gold one; with no alcove the floor has none | |
 | Thinning | the gold flask always stays; then the large and the grating's, alcoves, floor flasks; each kept only `FLASK_GAP` = round(35 x `padK`) (51-53 tiles) of route from a kept one; a grating's flask always stays | |
 | Grating flask (fork kind 4) | with `lp.grate` (20%, 70% on longway floors) the hole is a grating; the flask (`fork: true`, large unless the floor has one) lies below behind a violet gate whose plate is near the end of the upper run | the long way's reward |
-| Secret's chain and ambush | the flask's tile arms them (`armPassage`): chain tiles fall from 2.3 s after, 0.36 s apart; the ambush guard enters 1.1 s after | the drink's 1.3 s is allowed for |
+| Secret's chain and ambush | the flask's tile arms them (`armPassage`): the chain's tiles start to give way 2.3 s after, 0.36 s apart; the ambush guard enters 1.1 s after | the drink's 1.3 s is allowed for |
 | Hints | `secret` (gallery) / `secretdn` (cellar) within 120 px of `L.secret`, one row either way, while the gold flask is not taken | |
 
 ## The prince and the guards
