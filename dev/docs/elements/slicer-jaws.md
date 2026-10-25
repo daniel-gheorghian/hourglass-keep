@@ -43,7 +43,8 @@ plates are carved out of the shadow (it falls on the wall seen between them when
 | Guards | never placed on its tile (`guardOk`); not tested by it |
 
 ## How it is drawn
-Live only (`drawDynamic`); the room picture holds a plain floor slab and no lintel art changes (the open-hall pass leaves the wall over it).
+Live only (`drawDynamic`); the room picture holds a plain floor slab. The open-hall pass leaves the wall over it, so it hangs from a
+one-storey ceiling: a wall, or the slab of the corridor above.
 
 The plate stands in `plane(X,Y,ys,c,r)`: across the corridor's depth through the tile's middle, from `L0 = X+16-HX` on the floor's front
 edge to `R0 = X+16+HX` at the back wall; `fl(x)` the floor line (`ys+HY` to `ys-HY`), `ce(x)` the ceiling's underside, `top = Y+co`

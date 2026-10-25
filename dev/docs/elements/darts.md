@@ -16,8 +16,8 @@ run's menu on the run's lowest row.
 ## Example
 
 Floor 7, a run heading right ends at a step up. Five plain tiles lie before the step's riser; the riser holds a shooter at
-`SURF(r)-34`. Every 1.8 to 2.2 s (`per`, fixed for the shooter) a dart leaves the riser, flies left at 190 px/s and runs out over the first tile of the run
-(`f.x0 = (c+1)*TW+27`), where it tips, drops and fades. Standing in the lane he is hit (one life, pushed back 12 px); crouched or
+`SURF(r)-34`. Every 1.8 to 2.2 s (`per`, fixed for the shooter) a dart leaves the riser, flies left at 190 px/s and runs
+out over the first tile of the run (`f.x0 = (c+1)*TW+27`), where it tips, drops and fades. Standing in the lane he is hit (one life, pushed back 12 px); crouched or
 crawling he is not. The run heads right, so the shooter sits on the wall's hidden left face: no head is drawn, and the darts come out
 from behind the step's front face with only a tick and a hiss to tell of them.
 
@@ -45,7 +45,7 @@ from behind the step's front face with only a tick and a hiss to tell of them.
 | Standing, walking, running in the lane | hit at chest height |
 | Crouching or crawling | safe (`crouch` is in the exempt list; crawling is the `crouch` state moving at `CRAWL`) |
 | Jumping (`air`) | not exempt: the band `P.y-50..P.y-6` still contains the dart at the jump's height |
-| Hanging, climbing the step (`jumpUp`, `hang`, `climb`) | safe: he is out of the lane at the riser |
+| Jumping up, hanging, climbing the step (`jumpUp`, `hang`, `climb`) | safe: exempt states |
 | Guards | darts test only the prince; a guard in the lane is never hit. No guard placement rule refers to darts |
 | Bot | `darts`: walks to a step short of the lane, crouches, crawls to `to`, waits crouched until no dart is within 75 px ahead and the shooter's `lastPh < 0.45` (a dart has just flown), stands and climbs the step (`jumpUp`/`hang`/`climb`) |
 
@@ -63,7 +63,7 @@ So a dart passing him is drawn behind his figure.
 | Part | Look |
 |---|---|
 | Shooter, firing right (`f.dir 1`, runs heading left, built mirrored) | a carved beast's head in profile jutting `SPOUT_L` 12.5 px from the wall's right side face at the darts' height, a spout like a gargoyle's: the theme's carved-fitting stone `FIT_STONE[style]` (shared with the water clock's pedestal) in a vertical gradient, a sliver of its top going back into the wall, its own drop shadow on the wall (0.34 black, offset), mane and locks, lit brow and snout, open jaws with fangs |
-| Ornament by `style` | dungeon an iron band and rivets; palace a gilt collar and carnelian inlay; tile a lapis glaze band, gold star and turquoise edge; forge a glowing seam and rivets (and the eye always faintly lit); crypt a turquoise glaze band (`HG_MAT` colours) |
+| Ornament by `style` | dungeon an iron band and rivets; palace a gilt collar and carnelian inlay; tile a lapis glaze band, gold star and turquoise edge; forge a glowing seam and rivets (and the eye always faintly lit); crypt a turquoise glaze band (the first three in `HG_MAT[style]` colours) |
 | Wear | `wearLevel` at the head: 1, 2 or 4 chips off brow, snout or jaw; a crack from wear 2 (hash `mulberry32(hash2(...))`, no stream) |
 | Tell | the eye and jaws glow amber (`lighter`), a small glow at the mouth; the head shivers `0.45*tell` px |
 | Shooter, firing left (`f.dir -1`, runs heading right) | not drawn (`drawShooter` returns): it sits on the wall's left side face, which the wall's own front face hides from this front-right view |
@@ -79,7 +79,7 @@ So a dart passing him is drawn behind his figure.
 | Key light (`keyLight` sx) | none: the head's lit brow and the dart's lit edge are painted |
 | Lamp shadow mask (`glShadow`, `glMask`) | not carved: the wall the shooter is on is carved as a WALL cell (front face, top, right side); the head beyond it and the darts are not |
 | Relief (`GLFX.relief`) | no rubbing of its own; the `trap` light of a visible shooter gets `glRelief`'s soft neutral ellipse (`glRelEx`, as every `trap` light), which flattens the relief round the head |
-| Metal mask / shader | none: `drawMetalMask` has no `darter` case and `METAL` no dart role (the comment heading "forged metal ... the darts" is older than the table); the head's glint is painted in both modes |
+| Metal mask / shader | none: `drawMetalMask` has no `darter` case and `METAL` no dart role (the section heading "forged metal (... the darts)" names them, but nothing of a dart is masked); the head's glint is painted in both modes |
 | Sky beams | none (`beamBlockers` takes only jaws and granite gates) |
 | Mist / wall looks | none |
 | Floor looks (`floorFx`, marks) | a spent dart lying on the floor is drawn live (alpha 255): floorFx and the footprint keep off it |
@@ -113,6 +113,6 @@ So a dart passing him is drawn behind his figure.
 - (round unknown) `dartSeg`, floor 6 on, on the run's lowest row; bot action `darts`.
 - (round unknown) the shooter becomes a carved beast's head in the theme's material and ornament, worn as the wall, with a 0.35 s tell;
   a shooter firing left (hidden side face) draws no head, its darts come from behind the front face (rule in CLAUDE.md).
-- (round unknown) spent darts tip, drop and fade instead of vanishing (`SPENT`).
+- (round unknown) spent darts tip, drop to the floor, lie a moment and fade (`SPENT`).
 - round 18: "no arrows in the world" applies to hint chevrons only; darts unchanged.
 Details in CLAUDE.md and the comments above `drawShooter`.

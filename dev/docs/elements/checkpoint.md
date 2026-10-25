@@ -69,7 +69,7 @@ rising drops of light (lit: 5 cool specks, 'lighter')              }
   so `x - CP_HL - CP_GAP` clears one in the cell before; never out of its cell. `cpFace` counts a `WALL` (full TH) and a `low` ceiling
   (TH-34 = 30 px) as faces.
 - Cut: `cpCut` clips with an even-odd rectangle per face in the cells c-1..c+1 on its row (the face drawn HX left of its cell).
-- Pedestal: the generator style's stone (`FIT_STONE`, shared with the dart spout) with that style's ornament (iron band, carnelian inlay,
+- Pedestal: the theme's drawing style's stone (`FIT_STONE`, shared with the dart spout) with that style's ornament (iron band, carnelian inlay,
   lapis tile, glowing seam, turquoise glaze), chipped and cracked by `wearLevel` at its place; the clock above it is never damaged.
 - Unlit: `nutClock` with `dim` (stars out, no sun, gold dull). Lit: `glow` on, `kl: keyLight(x, cy+12)` gives her body a thin sheen on the
   lamp's side.
@@ -89,7 +89,7 @@ gate (`gateRoundel`), and the rewind's large clock running back ("The hours turn
 | Lamp shadow mask (`glShadow`) | casts none; not carved, so a figure's shadow on the wall behind it is laid over it |
 | Relief | not rubbed (no `glRel*` names it): the room picture's relief behind it lies over it |
 | Metal | none |
-| Sky beams | not in `beamBlockers` or `ryStand`; drawn live at alpha 255, so `fpGate` keeps beam footprints off it in Torchlight |
+| Sky beams | blocks none (`beamBlockers`); Torchlight: drawn live at alpha 255, so `fpGate` keeps beam footprints off it; Classic: not in `ryStand`, so a footprint is not cut round it |
 | Mist / wall looks | as any live drawing over the wall |
 | Floor looks (`floorFx`) | none of its own; its pixels are 255, so embers and sheen stay off it |
 | Heat, the dark | the dark (`glStorm`, `stormLayer2D`) covers it like everything else; `dkDrain` dims lamps, not the clock |
@@ -116,8 +116,10 @@ gate (`gateRoundel`), and the rewind's large clock running back ("The hours turn
   the faces' pixels with and without the clock and must print `cpscan: ok`.
 - A new face kind (a new near block) must be counted in `cpFace`, or the clock draws over it.
 - `CP_HL`/`CP_HR` are the drawn reach at scale 1.9 with the outline; change them with the scale or the art.
-- The pedestal and clock are hashes of the cell (`hash2(cp.c*37+11, cp.r*19+3)`): no generator stream.
-- New timers in the HUD use `drawGlass` so the HUD's one clock stays one picture (it is redrawn only when its drawing changes).
+- The pedestal's damage is a hash of the cell (`hash2(cp.c*37+11, cp.r*19+3)`) and the bob a function of `cp.x` and the clock: no
+  generator stream.
+- A HUD clock passes the clock's time only while it runs (`drawGlass`): a still clock draws the same calls, so the HUD canvas (redrawn
+  only when its drawing calls change, `hudKey`) is not redrawn for it. New HUD timers use `drawGlass`.
 
 ## History
 

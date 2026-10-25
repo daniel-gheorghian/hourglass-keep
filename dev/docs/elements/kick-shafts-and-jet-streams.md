@@ -101,7 +101,7 @@ own sprites (`spr`, `crossSprites`) for sand streaming off the dunes' brinks and
 
 | Pass / effect | Kick shaft | Jet stream |
 |---|---|---|
-| Light map (`gatherLights`) | a faint `trap` glint 20 px above the foot cell, r 40, `236,228,200`, 0.32; both modes | none: part of the scene, lit with it |
+| Light map (`gatherLights`) | a faint `trap` glint 20 px above the foot cell's top, r 40, `236,228,200`, 0.32; both modes | none: part of the scene, lit with it |
 | Key light (`keyLight` sx) | none | none |
 | Lamp shadow mask (`glShadow`, `glMask`) | the walls and ledge are carved as any wall and floor | not carved |
 | Relief (`glRel*`) | none | none |
@@ -120,7 +120,7 @@ own sprites (`spr`, `crossSprites`) for sand streaming off the dunes' brinks and
 | [banners and slides](banners-and-slides.md) | the same move family (`banners`); no jet stream on banners |
 | [gates](gates.md) | the `G2` gate slot on the ledge at the top |
 | [lamps and light](lamps-and-light.md) | no lamp beside a `shaftfoot` cell (`LAMP_NEXT`) |
-| [stonework](stonework.md) | the shaft's near wall is kept (`keepWall`), so later passes do not open it; no wall hanging near a `shaftfoot` |
+| [stonework](stonework.md) | the shaft's wall on the side he enters from is held (`keepWall`): the open-hall pass never opens it for headroom; no wall hanging near a `shaftfoot` |
 | [the Crossing](the-crossing.md) | reuses `jetStream` with its own sprites |
 | wall run (`wallRunSeg`, bot `wallrun`) | a different way up a wall (a run up one face to a ledge two storeys up, floor 3 on); not a kick shaft, no jet stream |
 

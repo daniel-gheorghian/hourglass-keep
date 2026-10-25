@@ -38,7 +38,7 @@ and when the passage drew a chain (60%) five cracked tiles behind him start to g
 | Floor flasks | 7% of the plain cells a run's step ends on (each piece of the run, flat floor included) | |
 | Alcoves | two a floor planned, at 22% and 60% of the route (30% a step once past): a niche one storey up, opened beside a plain cell, a red flask on its ledge | |
 | Gated side passages | 40% hold a red flask at the far end; 13% (a hash) the large one instead | |
-| Secret passage | `lifeFloor` (n % 3 = 0): a gallery (`gal`, two storeys up: climb, climb) or a cellar (two storeys down through a hole: hang and drop), 3 + floor(3d) obstacles (d = min(1, (n-1)/24)), fewer (down to 2) if it does not fit (`sideTry`, `fewer` 0-2); the gold flask at its far end on a `trigger` tile | |
+| Secret passage | `lifeFloor` (n % 3 = 0): a gallery (`gal`, two storeys up: climb, climb) or a cellar (two storeys down through a hole: hang and drop), 3 + floor(3d) obstacles (d = min(1, (n-1)/24)), fewer (down to 2) if it does not fit (`sideTry`, `fewer` 0-2); the gold flask at its far end (on a `trigger` tile when the passage has a chain or an ambush) | |
 | No room for it | an alcove's flask becomes the gold one; with no alcove the floor has none | |
 | Thinning | the gold flask always stays; then the large and the grating's, alcoves, floor flasks; each kept only `FLASK_GAP` = round(35 x `padK`) (51-53 tiles) of route from a kept one; a grating's flask always stays | |
 | Grating flask (fork kind 4) | with `lp.grate` (20%, 70% on longway floors) the hole is a grating; the flask (`fork: true`, large unless the floor has one) lies below behind a violet gate whose plate is near the end of the upper run | the long way's reward |
@@ -54,7 +54,7 @@ and when the passage drew a chain (60%) five cracked tiles behind him start to g
 | Guards | never drink or take flasks; the ambush guard is part of the floor's budget (`guardBudget`) |
 | Snakes | a `tunnel` piece in a passage may hold one (`snakeOk`) |
 | The bot | drinks the gold flask in the secret passage (`drink` presses Grab standing); passes all others |
-| Rewind | the snapshot keeps `P.drinkIt` by index; taken flasks are restored with the items |
+| Rewind | the snapshot keeps `P.drinkIt` by index and each item's `taken`; `applySnap` restores red and poison flasks only, so a gold or large flask drunk stays drunk |
 | Respawn | the floor is rebuilt: red flasks come back, the gold flask does not (`S.lifeTaken`) |
 
 ## How it is drawn
@@ -90,7 +90,7 @@ drawLooseFlasks (L.flk: the empty one falling, fading)
 | Pass / effect | This element |
 |---|---|
 | Light map (`gatherLights`) | every flask not taken: kind `item`, 8 px over the floor; red 255,90,70 (r 32, a 0.6; large r 42, a 0.75), gold 255,210,110, poison 110,130,255; bloom core r 9. Both modes (Classic through `lightPass`) |
-| Key light (`keyLight` sx) | flask lights count (kind `item`), weakly; the clock-like `trap` kind does not |
+| Key light (`keyLight` sx) | flask lights count (kind `item`) in the balance for nearby figures, weakly (radius 32-42 px) |
 | Lamp shadow mask (`glShadow`) | flasks cast none and are not carved (a figure's shadow on the wall behind lies over them); the held flask is drawn after his figure, not in his silhouette (`glSilhouette` draws `figDraw` only), so it casts none |
 | Relief | not rubbed: the room picture's relief lies over a flask as over any live drawing |
 | Metal | none |
@@ -98,7 +98,7 @@ drawLooseFlasks (L.flk: the empty one falling, fading)
 | Mist / wall looks | as any live drawing |
 | Floor looks (`floorFx`) | its pixels are 255: embers and sheen stay off it |
 | Heat, the dark | covered by the dark like the rest |
-| Bloom, grade, vignette | the light's core blooms; the cue's glow is drawn 'lighter' and may bloom in Torchlight |
+| Bloom, grade, vignette | the light's bloom core; the cue's glow is added light ('lighter') in both modes |
 | Classic equivalents | the same calls and lights; `ryStand` |
 
 ## Relations to other elements
@@ -125,11 +125,13 @@ drawLooseFlasks (L.flk: the empty one falling, fading)
 - Placing a flask on a run uses the main stream; keep the large flask's draw on its hash so layouts do not move.
 - A flask's light and Classic beam cut (`ryStand`) follow `L.items`; a new thing standing on the floor that should not take beam light
   needs the same.
-- The secret's `trigger` must keep the chain's and ambush's delay above the drink's `DR_T`.
+- The chain's and the ambush's delays include the drink's extra length (`DR_T - 0.8` in `armPassage`): a change to `DR_T` keeps the time
+  he has to run for it.
 
 ## History
 
 - v62: the round flasks.
+- round 8: glass jars (replaced).
 - round 9: Egyptian flasks (stoppers, gold, faience).
 - round 17: the gold cue where the climb or drop to the gold flask starts (`secretCues`).
 - round 23: the drink's poses from motion capture (79_38, 81_14); 23c: the drinking hand follows the mouth.

@@ -111,8 +111,8 @@ sparks leaves a lamp in view every 1 to 2.6 s (ambient, look only).
 | lamp (two lights) | `torch` | above | both |
 | window, in the sky beam's colour | `win` | r 84, a 0.42, bloom r 15 | both |
 | forge and crypt window, lit from within | `win` + `sky` | r 92, a 0.5 x `RY_OWN` (0.85), bloom r 21; spill r 58, 18 px under it | both |
-| any opening's glow | `sky` | at its middle, r 0.62 of its height, a 0.55, the sky of the hour plus 60 a channel | both |
-| sky bounce | `sky` | where the beam from the opening's middle lands on its storey's floor, r max(34, 0.6 w + 22), a 0.55 x the beam's strength; dropped where a wall or low ceiling stands between (`solidFront`, rounds 15, 20a); not under an own-light window | Torchlight |
+| any opening's glow | `sky` | at its middle, r 0.62 of its height, a 0.55, the sky of the hour plus 60 a channel | both (Background on) |
+| sky bounce | `sky` | where the beam from the opening's middle lands on its storey's floor, r max(34, 0.6 w + 22), a 0.55 x the beam's strength; dropped where a wall or low ceiling stands between (`solidFront`, rounds 15, 20a); not under an own-light window | Torchlight (Background on) |
 | figures' fill | `fill` | prince, guards, snakes (above) | both |
 | exit door | `door` | at the door, r 120 x open x (1 + 0.3 swell), a 0.9 x open x (1 + 0.75 swell), bloom r 28 | both; the swell in Torchlight |
 | water clock | `item` (+ `trap`) | lit: r 150, a 0.95, eased in over 0.7 s, and the sun moving along Nut's arch; unlit r 38 | both |
@@ -137,7 +137,7 @@ col = the strongest light's colour if m > 0.5, else the theme's window colour
 ```
 
 `sx` is continuous in the lamps' places and steady in time: a lamp coming into reach fades in. Before round 20b it was the nearest lamp
-within its flickering radius (150 x (0.92 + `flK`)), so the granite slab near the edge of a lamp's reach flipped every few frames between
+within 1.6 times its flickering radius (150 x (0.92 + `flK`)), so the granite slab near the edge of a lamp's reach flipped every few frames between
 lit from the right and the default from the left. Read by: the HD figures' rim (`drawActor`), the granite portcullis (`egSlabBody`'s
 `uL` cross-fade of faces and cast shadow), the slicer's jaws, the snakes, the water clock (`nutClock`), `stoneGlints`, `graniteGlints`.
 
@@ -149,7 +149,7 @@ haze around the prince?"). Now:
 
 - Torchlight: the light shader writes the fill's share into the map's alpha; the composite and the bright pass subtract it where the
   scene's alpha says the backdrop shows (`l -= FILL_C x fa x 1.5`, `fa` = map alpha x (1 - scene alpha)); the figures' shadows are
-  scaled by the same alpha. A figure in front of the sky covers it, so he keeps his fill to his outline.
+  scaled by the scene's alpha too. A figure in front of the sky covers it, so he keeps his fill to his outline.
 - Classic: `fillCut` draws the fills in a canvas of their own at the light map's size and cuts them wherever the room pictures are clear
   (an opening, less any block in front of it), except over the figures' silhouettes; it returns null, and the fills are drawn with the
   other lights, when no fill reaches an opening in view.
@@ -172,7 +172,7 @@ See [doors](doors.md).
 
 ### The dark's drain
 
-In a chase `dkDrain(x)` scales each lamp's light (round 29): behind the dark's front, 0 (out, by its fade); ahead of it, at most
+In a chase `dkDrain(x)` scales each lamp's light (round 29): behind the dark's front, out (coming back only as the dark fades); ahead of it, at most
 `DK_DRAIN` 0.36 less, falling off over about 120 px and guttering (two fast sines). The radius takes 0.8 + 0.2 of the drain, the strength
 and bloom all of it; a lamp under 0.01 adds nothing. Only lamps are drained; the lamp is still drawn, under the opaque rip. See
 [the-dark](the-dark.md).
