@@ -29,7 +29,7 @@ BADPX = 24  # (canvas px, at about 4 a world px: 1.5 world px square; a thing's 
 MOVING = ['saw', 'pend', 'bar', 'chomp', 'vent', 'lift', 'banner', 'emissive', 'ambient', 'atmo', 'lamp', 'jet', 'cue']
 
 # every instance of every kind on the floor (world px: x, the floor line y), then views that cover them
-LIST = r'''([n,sd,kinds])=>{const H=__HK;window.__HKfreeze=true;const L=H.load(n,sd,true),C=L.cols,TW=32,TH=64,out=[];
+LIST = r'''([n,sd,kinds])=>{const H=__HK;window.__HKfreeze=true;const L=H.load(n,sd,false),C=L.cols,TW=32,TH=64,out=[]; // (false: with the guards at their posts; the layout is the same)
   const S=r=>(r+1)*TH-4,add=(k,c,r,x,y)=>{if(!kinds||kinds.includes(k))out.push([k,c,r,x===undefined?c*TW+16:x,y===undefined?S(r):y]);};
   for(const o of L.dyn)if(o.f.t!=='low')add(o.f.t,o.c,o.r);
   for(const t of L.torches)if(!t.broken)add('lamp',t.c,t.r);
@@ -46,7 +46,7 @@ LIST = r'''([n,sd,kinds])=>{const H=__HK;window.__HKfreeze=true;const L=H.load(n
 
 # draw the view whole and with each kind left out; compare the front plane's pixels in the page (no screenshots)
 VIEW = r'''([n,sd,cx,cy,kinds,phases,own,vh])=>{const H=__HK;window.__HKfreeze=true;for(const id in H.HINTS)H.S.hints[id]=1;
-  const L=H.L&&H.L.n===n&&H.L.seed===H.levelSeed(n)?H.L:H.load(n,sd,true);H.banner=null;const C=L.cols,TW=32,TH=64,HX=8,HY=4,FHH=5,LOWH=30;
+  const L=H.L&&H.L.n===n&&H.L.seed===H.levelSeed(n)?H.L:H.load(n,sd,false);H.banner=null;const C=L.cols,TW=32,TH=64,HX=8,HY=4,FHH=5,LOWH=30;
   const P=H.P;P.inv=1e9;P.x=-999;P.y=-999;H.cam.x=cx-H.viewW/2;H.cam.y=cy-vh/2;H.cam.gy=H.cam.y;H.mode='play';H.GLP&&(H.GLP.pipe=false);
   const torch=H.S.set.lightMode==='torch'&&H.shaderOn&&H.shaderOn(),src=torch?document.getElementById('glc'):document.getElementById('game');
   const tmp=window.__LYC||(window.__LYC=document.createElement('canvas'));
