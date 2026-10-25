@@ -414,6 +414,7 @@ const APP_VERSION='23'; // set by the build; shown on the title and pause screen
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},learned:prev?prev.learned:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(!s.learned){s.learned={};if(s.level>2){s.learned.gap=s.learned.climb=s.learned.drop=1;}if(s.maxHp>3)s.learned.potion=1;} // an old save: whoever got past floor 2 can run, jump, climb and let go; the rest of the moves come back as hints until done
+    if(s.hints&&s.hints.sandlift)s.learned.sandlift=1; // (round 38b: the sand lift's hint used to show as one started: a save that saw it has ridden one)
     if(s.gen!==GEN){s.gen=GEN;s.cp=-1;s.resume=null;s.floorTime=0;}
     if(!s.chaseLen){s.chaseLen=1;if(s.started&&(s.cp>=0||s.resume||s.floorTime>0))s.legacyFloor=s.level;}return s;}}catch(e){}return null;}
 let S=loadSave()||newSave();
@@ -2841,7 +2842,7 @@ function makePlayer(x,r){return {x,y:SURF(r),face:1,state:'stand',t:0,vx:0,vy:0,
 // cu: extra parry per blow landed in the last 1.4s; ripo: chance to strike straight back after parrying
 const SKEL_KNOCK=12; // how far one landed blow drives a skeleton back (was 17)
 const TIERS=[
- {name:'RECRUIT',parry:0.12,up:0.3,cu:0.12,ripo:0.2,aggr:0.32,wind:0.4,tk:1.25,jit:0.05,reel:0.6,heart:'#8fa3d8',hi:'#b9c6ea'},
+ {name:'RECRUIT',parry:0.12,up:0.3,cu:0.12,ripo:0.2,aggr:0.32,wind:0.4,tk:1.25,jit:0.05,reel:0.6,heart:'#e894a4',hi:'#f6c6cf'}, // (round 38b: rose, was light blue: no guard is blue or white, the HUD's hearts too)
  {name:'SOLDIER',parry:0.32,up:0.55,cu:0.18,ripo:0.45,aggr:0.45,wind:0.34,tk:1,jit:0.1,reel:0.5,heart:'#e08a3c',hi:'#f3b77a'},
  {name:'VETERAN',parry:0.52,up:0.78,cu:0.22,ripo:0.8,aggr:0.6,wind:0.31,tk:0.8,jit:0.12,reel:0.45,heart:'#d9483b',hi:'#f08a7e'}],
  CAPT={name:'CAPTAIN',parry:0.66,up:0.85,cu:0.2,ripo:0.85,aggr:0.68,wind:0.3,tk:0.75,jit:0.12,reel:0.42,heart:'#d8b04a',hi:'#f0d27a'};
@@ -2879,12 +2880,13 @@ const REW_STATES=['stand','run','stop','garde','advance','retreat','crouch','ste
 const cloneE=o=>{const c=Object.assign({},o);if(o.pose)c.pose=Object.assign({},o.pose);if(o.cs)c.cs=Object.assign({},o.cs);if(o.ledge)c.ledge=Object.assign({},o.ledge);return c;};
 function snapAll(){const p=cloneE(P);p.foe=P.foe?G.indexOf(P.foe):-1;p.drinkIt=P.drinkIt?L.items.indexOf(P.drinkIt):-1;
   return {t:gameTime,P:p,G:G.map(cloneE),SN:SN.map(o=>Object.assign({},o)),pg:pendingGuards.map(q=>({at:q.at,src:q.src?G.indexOf(q.src):-1,spec:q.spec})),
-    dyn:L.dyn.map(o=>Object.assign({},o.f)),base:L.base.slice(),debris:L.debris.map(d=>Object.assign({},d)),rubble:[...L.rubble],items:L.items.map(it=>it.taken),
+    dyn:L.dyn.map(o=>{const c=Object.assign({},o.f);if(o.f.bn)c.bn=Object.assign({},o.f.bn);return c;}), // (round 38b: a banner's cut record bn is shared by its cells: copied, so a rewind undoes the cut)
+    base:L.base.slice(),debris:L.debris.map(d=>Object.assign({},d)),rubble:[...L.rubble],items:L.items.map(it=>it.taken),
     door:[L.door.open,L.door.opening],ext:JSON.stringify(L.ext)};}
 function applySnap(sn){gameTime=sn.t;
   L.flk=[];G=sn.G.map(cloneE);P=cloneE(sn.P);P.foe=sn.P.foe>=0?G[sn.P.foe]||null:null;P.drinkIt=sn.P.drinkIt>=0?L.items[sn.P.drinkIt]:null;
   SN=sn.SN.map(o=>Object.assign({},o));pendingGuards=sn.pg.map(q=>({at:q.at,src:q.src>=0?G[q.src]:null,spec:q.spec}));
-  L.dyn.forEach((o,i)=>Object.assign(o.f,sn.dyn[i]));
+  L.dyn.forEach((o,i)=>{const s=sn.dyn[i],bn=o.f.bn;Object.assign(o.f,s);if(bn&&s.bn){o.f.bn=bn;Object.assign(bn,s.bn);}}); // (the shared bn keeps its identity: its values come back)
   {const B0=L.base,C=L.cols,R1=new Set(sn.rubble); // (v53) only the rooms whose tiles or rubble change are drawn again, not every room each step
     for(let i=0;i<B0.length;i++)if(B0[i]!==sn.base[i])invalidateCell(i%C,(i/C)|0);
     for(const k of L.rubble)if(!R1.has(k))invalidateCell(k%C,(k/C)|0);for(const k of R1)if(!L.rubble.has(k))invalidateCell(k%C,(k/C)|0);
@@ -2940,7 +2942,7 @@ const supported=(x=P.x)=>solidBelow(L,Math.floor(x/TW),pRow())||(x===P.x&&L.lift
 const LRN_ST={climb:['climb'],drink:['potion'],push:['block'],pull:['block'],slide:['banner'],wallrun:['wallrun'],climbDown:['drop'],poke:['poke','snake'],lowStrike:['snake']}; // states that mean a move was done
 function learn(...ids){let w=false;for(const id of ids)if(!S.learned[id]){S.learned[id]=1;w=true;}if(w)writeSave();}
 function setState(s){if(P&&P.state==='drink'&&s!=='drink'){dropFlask();if(P.dkG&&!P.dkFx&&s!=='dead'&&s!=='exit')drinkFx();} // knocked out of the drink with the flask in hand: it takes effect at once and the flask falls
-  if(P){const lk=LRN_ST[s];if(lk)learn(...lk);else if(s==='lift'&&P.lift)learn(P.lift.t==='chain'?'chain':'lift');}if((s==='stop'||s==='turn')&&P.state==='run'&&GFX().fx&&Math.abs(P.vx)>60)dust(P.x-P.face*4,P.y,4);if(P){P.state0=P.state;if(P.state==='air'&&s!=='air')P.yo=0;P.lnT=null;if(s!=='run'){P.jLe=null;if(s!=='air')P.jGo=null;}}P.state=s;P.t=0;if(s!=='crouch'&&s!=='poke')P.lowSword=false;if(s!=='air')P.plant=null;
+  if(P){const lk=LRN_ST[s];if(lk)learn(...lk);else if(s==='lift'&&P.lift)learn(P.lift.t==='chain'?'chain':P.lift.sand?'sandlift':'lift');}if((s==='stop'||s==='turn')&&P.state==='run'&&GFX().fx&&Math.abs(P.vx)>60)dust(P.x-P.face*4,P.y,4);if(P){P.state0=P.state;if(P.state==='air'&&s!=='air')P.yo=0;P.lnT=null;if(s!=='run'){P.jLe=null;if(s!=='air')P.jGo=null;}}P.state=s;P.t=0;if(s!=='crouch'&&s!=='poke')P.lowSword=false;if(s!=='air')P.plant=null;
   if(P){if(s==='stop'||s==='turn'){P.stK=s;P.stT=gameTime;P.stS=s==='stop'?clamp(Math.abs(P.vx)/RUN,0.35,1):1;}else if(s!=='stand')P.stK=null; // (round 25f: the settle, see settlePose)
     if(s==='hang'){P.hgT=gameTime;P.hgA=HG_A[P.state0]||HG_A.air;} // (round 25f: the hang's swing, see livePose)
     if(s==='step')P.sEd=0;else if(s==='edgeWalk')P.sx=P.x;else if(s==='stand'&&P.state0==='step'){P.stK='tip';P.stT=gameTime;}}} // (round 33b: look only, see stepPose)
@@ -3509,6 +3511,7 @@ function findLedge(py,any,ny){
       if(B(L,lc,r)===WALL||!solidBelow(L,lc,r))continue;
       for(let s=-1;s<2;s+=2){
         const hc=lc+s;if(B(L,hc,r)!==EMPTY||B(L,hc,r+1)===WALL)continue;
+        {const hf=F(L,hc,r);if(hf&&hf.t==='hurtdrop')continue;} // (round 38b: a damaging drop's broken lip has nothing to grip, from a fall either, as edgeBelow)
         const xe=s>0?(lc+1)*TW:lc*TW,hx=xe+s*7;
         if(Math.abs(P.x-hx)>12)continue;
         const face=-s,jk=P.jumpKind;if(!any&&(face!==P.face||(ys<P.fallY-2&&jk!=='wall'&&jk!=='kick'&&jk!=='slip')))continue;
@@ -3576,7 +3579,7 @@ function stStand(ix){
   if(took('j')){if(wob)return;return tryJump();}
   if(wob&&took('u'))return;
   // a lift: on its platform, Up or Down held rides it
-  {const lf=liftUnder();if(lf&&lf.sand){if(lf.s===0&&Math.abs(P.x-(lf.sc*TW+16))<12){lf.s=1;lf.tm=0;lf.snd=0.2;P.lift=lf;P.vx=0;setState('lift');Snd.play('creak');hint('sandlift');return;}} // (round 16a: on a sand lift's slab, it starts)
+  {const lf=liftUnder();if(lf&&lf.sand){if(lf.s===0&&Math.abs(P.x-(lf.sc*TW+16))<12){lf.s=1;lf.tm=0;lf.snd=0.2;P.lift=lf;P.vx=0;setState('lift');Snd.play('creak');return;}} // (round 16a: on a sand lift's slab, it starts; round 38b: its hint comes as he nears it, checkHints)
   else if(lf&&!wob&&((I.u&&!I.d&&lf.y>lf.yT+0.01)||(I.d&&!I.u&&lf.y<lf.yB-0.01))){P.lift=lf;setState('lift');return;}}
   if(took('u')){if(atDoor()){if(L.door.open>=0.95){setState('exit');P.sword=false;return;}msg('Sealed. A floor plate somewhere opens this door.',3);return;}return tryUp();}
   if(P.liftHold&&!I[P.liftHold])P.liftHold=null;
@@ -4131,7 +4134,10 @@ function updateLift(f,dt){
     if(f.s===1){f.tm+=dt;if(f.tm>=SAND_LW){f.y=Math.min(f.yB,f.y+SAND_LV*dt);if(f.y>=f.yB-0.01){f.y=f.yB;f.s=2;f.arr=1;if(tileVisible(f.sc,f.rB))Snd.play('thud');}
       f.snd-=dt;if(f.snd<=0&&f.s===1&&tileVisible(f.sc,f.rT+1)){Snd.play('rip');f.snd=0.5;}}}
     const q=f.rT*L.cols+f.sc,want=liftDocked(f,true)?FLOOR:EMPTY;if(L.base[q]!==want)L.base[q]=want;
-    f.gT=liftDocked(f,true)?1:0;f.gB=liftDocked(f,false)?1:0;return;}
+    // (round 38b) the top mouth's play plane (gT 0) only while the slab is still within the top storey (his first moments of the ride);
+    // once it has gone below (and when it is down for good) the top is a plain open hole like any pit: he can step in and fall, or
+    // hang from its edge. Nothing is drawn for gT on a sand lift (sandMouth, the relief and the metal mask leave it out)
+    f.gT=liftDocked(f,true)||f.y-f.yT>=TH?1:0;f.gB=liftDocked(f,false)?1:0;return;}
   if(riding){
     const d=(I.d?1:0)-(I.u?1:0);f.tgt=null;
     if(d){f.y=clamp(f.y+d*LIFT_V*dt,f.yT,f.yB);if(f.y===f.yT||f.y===f.yB)f.arr=1;}
@@ -4254,7 +4260,9 @@ function updateFeatures(dt){
   if(L.door.opening&&L.door.open<1)L.door.open=Math.min(1,L.door.open+dt*0.45);
   for(let i=L.debris.length-1;i>=0;i--){const d=L.debris[i];
     d.vy=Math.min(d.vy+(d.g||GRAV)*dt,d.g?720:480);const py=d.y;d.y+=d.vy*dt;
-    if(!d.hitP&&alive&&Math.abs(P.x-d.x)<11&&d.y>P.y-48&&d.y-8<P.y&&!['air'].includes(P.state)&&py<P.y-20){d.hitP=true;hurt(1,'crush');if(P.state!=='dead'&&!['hang','climb'].includes(P.state)){setState('landHurt');}}
+    // (round 38b) a falling block or slab respects his invulnerability as every trap does (trapHit): none while P.inv runs (after a
+    // hit or a rewind), and a hit gives him trapHit's 0.9 s
+    if(!d.hitP&&alive&&P.inv<=0&&Math.abs(P.x-d.x)<11&&d.y>P.y-48&&d.y-8<P.y&&!['air'].includes(P.state)&&py<P.y-20){d.hitP=true;P.inv=0.9;hurt(1,'crush');if(P.state!=='dead'&&!['hang','climb'].includes(P.state)){setState('landHurt');}}
     let landed=false;
     for(let r=Math.floor((py+4)/TH);r<=Math.floor((d.y+4)/TH)-1;r++){const ys=SURF(r);if(py<ys&&d.y>=ys&&solidBelow(L,d.c,r)){landed=true;if(B(L,d.c,r)===FLOOR){L.rubble.add(r*L.cols+d.c);if(d.kind==='slab')jamAt(d.c,r);if(d.kind==='rock'){const so=L.dyn.find(q=>q.c===d.c&&q.r===r&&q.f.t==='stone');if(so)so.f.land=gameTime;}}invalidateCell(d.c,r);if(EGP.traps&&d.kind==='slab'){if(tileVisible(d.c,r))DUSTC.push({x:d.x,y:ys,t:gameTime,sz:d.wl?0.55:1});}else dust(d.x,ys,6);if(tileVisible(d.c,r)){Snd.play('crash');shake(1.4);}break;}}
     if(landed||d.y>L.rows*TH+120)L.debris.splice(i,1);
@@ -4320,12 +4328,12 @@ const HINTS={
   hurtdrop:'A long drop. It will hurt, or take the way round.',
   lift:'Step on the plate to call the lift. Hold up or down to ride.',
   chain:'Step on as a slab passes.',
-  sandlift:'Sand is running out from under this slab: it lowers you down the shaft.',
+  sandlift:'This slab rests on sand. Step onto it and the sand runs out, lowering you down the shaft.',
   double:'Two marked gates. Each answers to the plate of its colour, one above and one below. The one with the sky clock will not stay open.',
 };
 // A hint for a move comes back (once a floor) until the move is done; the moves are the ids in HINT_MOVE, learned by learn() where they succeed.
 // Every other hint is plain information and shows once ever. One hint at a time: while one waits or shows, new ones are dropped (they come again).
-const HINT_MOVE=new Set(['gap','wide','climb','drop','spikes','crawl','fight','parried','poke','snake','potion','plate','block','wallrun','walljump','swing','banner','shaft','collapse','jgrab','lift','chain']);
+const HINT_MOVE=new Set(['gap','wide','climb','drop','spikes','crawl','fight','parried','poke','snake','potion','plate','block','wallrun','walljump','swing','banner','shaft','collapse','jgrab','lift','chain','sandlift']);
 let hintFloor=-1,hintSeen={};
 function hintDue(id){return HINT_MOVE.has(id)?!S.learned[id]&&!hintSeen[id]:!S.hints[id];}
 function hint(id){if(hintQ.length||!hintDue(id))return;hintQ.push({id,t:gameTime});}
@@ -4345,7 +4353,8 @@ function checkHints(){
       if(f){if(f.t==='spikes')hint('spikes');else if(f.t==='loose')hint(f.plank?'bridge':f.drop?'collapse':'loose');else if(f.t==='plate')hint('plate');else if(f.t==='chomp')hint('chomp');else if(f.t==='low')hint('crawl');else if(f.t==='closer')hint(f.slabF?'slabcloser':'closer');else if(f.t==='vent')hint('vent');else if(f.t==='pend')hint('pend');break;}
     }
     if(canClimbUp())hint('climb');
-    for(const f of L.lifts)if((f.rT===r||f.rB===r)&&Math.abs(f.sc*TW+16-P.x)<110)hint(f.t==='chain'?'chain':'lift');
+    for(const f of L.lifts){if(f.sand){if(f.s===0&&f.rT===r&&Math.abs(f.sc*TW+16-P.x)<110)hint('sandlift');continue;} // (round 38b: a sand lift has no plate: its own hint, by its slab while it waits)
+      if((f.rT===r||f.rB===r)&&Math.abs(f.sc*TW+16-P.x)<110)hint(f.t==='chain'?'chain':'lift');}
     {const f0=F(L,pCol(),r),f1=F(L,pCol()+P.face,r);if((f0&&f0.t==='shaftfoot')||(f1&&f1.t==='shaftfoot'))hint('shaft');const fb=F(L,pCol()+P.face,r);if(fb&&fb.t==='banner')hint('banner');}
     {const nc=pCol()+P.face;if(B(L,nc,r)===WALL&&B(L,nc,r-1)===WALL&&B(L,pCol(),r-1)!==WALL&&B(L,pCol(),r-2)===EMPTY&&solidBelow(L,nc,r-2))hint('wallrun');}
     const e=edgeBelow();if(e&&solidBelow(L,e.c+e.s,e.r+2)&&!solidBelow(L,e.c+e.s,e.r+1))hint('drop');
@@ -6054,7 +6063,9 @@ function stoneBox(ctx,kind,x0,yt,w,h,o){const K='#0b0812',S=4,TX=stoneTex(kind,7
 // needs to jump"): lying, it is BLK_W across and BLK_H high, solid to him and to guards below its top (clampMove); his body's box stops 6 px
 // above his feet, so any jump that lifts his feet 4 px clears it: the standing and running jumps, the low leaps under a ceiling; a pair of
 // them side by side (a side passage's) takes a running jump (the full one clears 91 px at that height, the pair needs 66). One who lands on
-// it slides off to the nearer side. It stays where it fell; rewind and respawn restore it with the rest (dyn, rubble).
+// it slides off to the nearer side. It stays where it fell. A rewind restores its state with the rest (dyn, rubble); a respawn rebuilds
+// the floor, so every trap is reset and the block hangs again (as cracked slabs come back); a Continue brings it back as it was saved
+// (fallen ones lie fallen: S.resume's stn, f.s 3).
 const BLK_W=22,BLK_H=10;
 // (round 16a, owner: "the roof block after settling on the ground needs to behave as a low obstacle: now the prince has to do a wide
 // jump to clear them"): it is 10 px high, about 35 cm at his scale (some 50 px tall), knee height. The grid platformers step over
