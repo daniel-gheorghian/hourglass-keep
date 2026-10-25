@@ -570,6 +570,24 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   layers stay under 20 a crossing and their atlases under 4000 px. Look only: layouts identical (genLevel floors 1-48 x 3 seeds against
   origin/main), the bot's frames on floors 3-6 identical. Pictures `egyptr36.py r36d` (r36d_all.png: every theme at every hour in floors 1-180,
   start | beat | doorway, both modes; r36d_wadi_highland.gif; r36d_audit.png: 36c | 36d for each fix).
+  Round 36e (owner's three fixes before v81). The wadi's rockfall ("subtle at its distance"): the spur stands at f 0.3 (was 0.15, twice as
+  near; `hm` 4 m of fan, the spur stepping in at the beds' ledges to a broken top, `RF_SP`/`RF_SL`/`RF_SR`, a dark cleft down its face), placed at
+  `RF_SX` 0.55 of the view at the beat; 0.15 s after the beat `RF_BIG` 6 big stones (0.3-0.46 m, lit on top and the light's side) and 10 gravel break off at
+  the cleft's head, drop down it and bound down the fan in hops that shrink, each big one trailing a dust streak and kicking up dust where it
+  lands; a plume (`RF_PL` puffs of one soft sprite baked once) rises off the fan and drifts on the wind over ~4 s; the stones stay where they
+  rest (a pure function of the clock since the beat). Nothing in the wadi's bed at f 0.5 stands in front of the fan while the camera runs
+  `RF_CW` 200 px on from the beat (`rfClear` moves a tamarisk or boulder aside; the acacia from xb+250 to xb+390, the ravens' boulder to
+  xb+200). Sound: `rockfall` gained a low rumble that swells and dies over 1.8 s and the big stones' thuds. The geese in flight ("white
+  squiggles at small size"): `crossGoose` in flight is a solid bird: a full body, tail, a thick neck and head (darker in flight, `ly.cf`) with
+  the eye patch and a pink bill, and broad wings (root chord `GW_C` 0.36 of its length, stations `GW_S`/`GW_L`/`GW_T`) that turn about the
+  body's axis by `GW_A` flap and are seen a little from below (`GW_E`: the near tip higher than the far), so both strokes are whole shapes; on
+  each wing the white forewing is one panel over the inner half's front, the flight feathers dark behind it and at the pointed tip; the far
+  wing in shade behind the body. Shared by Meroë, Kerma and Siwa, and the garden's ducks (their speculum in the panel). The tilted path ("a
+  small dark wedge bottom right"): the shear lifted the ground and the foreground off the screen's foot at its right edge; both now reach
+  `crossTiltX` past it. crossscan checks the void (the page's dark) in the bottom corners of every wadi crossing's hours at the start, the
+  middle, the beat, the doorway and going into it, both modes (36d: 834-858 px of 6,144; 0 now). Look only, hashes: layouts identical
+  (genLevel floors 1-48 x 3 seeds against release-v81). Pictures `egyptr36.py r36e` (r36e_fixes.png: 36d | 36e at phone size and at 3x, both
+  modes; r36e_wadi.gif).
 - Lift ropes (round 21a, owner: "holes in the slab with the rope threaded through"): all lift ropes are `barRope` in the theme's fibre
   (`liftRope`; `barRope`'s `ph` makes the lay travel with a running rope). The counterweight platform hangs on two bridles (`liftSling`: an
   eye seized `LS_J` above the slab, legs down through two holes near the front and back edges along the depth diagonal, `ropeHole` drawn in

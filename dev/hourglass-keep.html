@@ -2795,7 +2795,7 @@ const Snd={ctx:null,master:null,nb:null,
       case'birdcall':[0,0.16,0.32].forEach(a=>T(420,0.07,{to:400,vol:0.018,type:'sine',at:a}));break; // (round 36c) a hoopoe in the garden: oop-oop-oop
       case'gravelstep':N(0.05,{vol:0.03,f:700});N(0.06,{vol:0.016,f:3600,type:'bandpass',q:0.9,at:0.005});N(0.03,{vol:0.01,f:5200,type:'bandpass',q:1.2,at:0.03});break; // (round 36d) the wadi: a footfall on limestone gravel, a crunch
       case'gravelrun':N(0.045,{vol:0.04,f:820});N(0.05,{vol:0.022,f:3800,type:'bandpass',q:0.9,at:0.004});N(0.03,{vol:0.012,f:5600,type:'bandpass',q:1.2,at:0.025});break;
-      case'rockfall':for(let i=0;i<16;i++){const a=0.25+i*0.09+0.05*Math.sin(i*7.1);N(0.03,{vol:0.03*(1-i/20),f:1800+900*Math.sin(i*3.3),type:'bandpass',q:3,at:a});}N(1.4,{vol:0.02,f:500,att:0.4,at:1.3});break; // (round 36d) stones clattering down the scree, a soft slide at the foot
+      case'rockfall':for(let i=0;i<16;i++){const a=0.25+i*0.09+0.05*Math.sin(i*7.1);N(0.03,{vol:0.03*(1-i/20),f:1800+900*Math.sin(i*3.3),type:'bandpass',q:3,at:a});}N(1.4,{vol:0.02,f:500,att:0.4,at:1.3});for(let i=0;i<6;i++)N(0.5,{vol:[0.05,0.09,0.12,0.11,0.08,0.045][i],f:180+60*i,type:'lowpass',att:0.18,at:0.3+0.26*i});for(let i=0;i<5;i++)T(66-5*i,0.2,{to:40,vol:0.07*(1-i/7),type:'sine',at:0.62+0.33*i+0.04*Math.sin(i*5.1)});break; // (round 36d) stones clattering down the scree, a soft slide at the foot; (round 36e) under them a low rumble that swells and dies over 1.8 s, and the big stones' thuds as they land
       case'raven':T(520,0.16,{to:390,vol:0.03,type:'sawtooth',at:0.55});N(0.14,{vol:0.02,f:900,type:'bandpass',q:2.5,at:0.55});T(500,0.16,{to:370,vol:0.026,type:'sawtooth',at:0.85});for(let i=0;i<5;i++)N(0.08,{vol:0.03*(1-i/7),f:420,type:'bandpass',q:0.9,at:0.4+i*0.24});break; // (round 36d) the ravens lift off: two hoarse croaks, heavy wingbeats
       case'ravenfar':T(480,0.14,{to:380,vol:0.012,type:'sawtooth'});T(470,0.14,{to:360,vol:0.01,type:'sawtooth',at:0.26});break;
       case'cliffwind':T(310,1.6,{to:350,vol:0.008,type:'sine',att:0.6});N(1.8,{vol:0.012,f:700,type:'bandpass',q:6,att:0.7});break; // (round 36d) the wind moaning in the cliffs
@@ -11397,7 +11397,13 @@ function crossPoolPts(P,cr,k){const W=viewW;let n=0;
 function crossPathPts(ctx,P,n){ctx.beginPath();ctx.moveTo(P.sx[0],P.sy[0]);for(let i=1;i<n;i++)ctx.lineTo(P.sx[i],P.sy[i]);ctx.closePath();}
 // an Egyptian goose (sz: its length in px; dir 1 facing right): on the water a rounded body, the neck up, the pale head; flying (fly 1) or
 // running over the water (0.5) the body level, the neck stretched out, both wings beating together (flap -1..1), the white forewing.
-// cb: body, body lit, white, head, dark
+// cb: body, body lit, white, head, dark (and optionally the eye patch, the bill)
+// (round 36e, owner: "the geese in flight are white squiggles at small size") In flight a solid bird at any size: a full body and tail, a
+// thick neck and head (cb[3]) with the eye patch (cb[5]), and broad wings (chord GW_C of its length at the root) that keep their width
+// through the stroke: each wing turns about the body's axis by GW_A flap and is seen a little from below (GW_E: the near wing's tip
+// higher than the far one's, as from the path under them), so up and down strokes are both whole shapes, never an edge-on line; on each
+// wing the forewing's white coverts are one clear panel over the inner half, the flight feathers dark behind it and at the tip. The far
+// wing is drawn first, in shade, behind the body. Ducks (the garden) share the shape with their own colours (cb[2] their speculum)
 function crossGoose(ctx,x,y,sz,dir,fly,flap,cb){const d=dir;
   if(!fly){ctx.fillStyle=cb[0];ctx.beginPath();ctx.ellipse(x,y-sz*0.13,sz*0.42,sz*0.16,0,0,6.2832);ctx.fill();
     ctx.fillStyle=cb[4];ctx.beginPath();ctx.moveTo(x-d*sz*0.3,y-sz*0.2);ctx.lineTo(x-d*sz*0.5,y-sz*0.26);ctx.lineTo(x-d*sz*0.36,y-sz*0.08);ctx.fill();
@@ -11405,18 +11411,36 @@ function crossGoose(ctx,x,y,sz,dir,fly,flap,cb){const d=dir;
     ctx.strokeStyle=cb[3];ctx.lineWidth=Math.max(0.5,sz*0.085);ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x+d*sz*0.27,y-sz*0.2);ctx.quadraticCurveTo(x+d*sz*0.43,y-sz*0.36,x+d*sz*0.36,y-sz*0.58);ctx.stroke();
     ctx.fillStyle=cb[3];ctx.beginPath();ctx.ellipse(x+d*sz*0.39,y-sz*0.61,sz*0.09,sz*0.065,0,0,6.2832);ctx.fill();
     ctx.strokeStyle=cb[4];ctx.lineWidth=Math.max(0.4,sz*0.05);ctx.beginPath();ctx.moveTo(x+d*sz*0.45,y-sz*0.6);ctx.lineTo(x+d*sz*0.53,y-sz*0.57);ctx.stroke();return;}
-  const sx=x+d*sz*0.06,sy=y-sz*0.06,wl=sz*(fly===1?0.95:0.8),wing=(c,o)=>{const ty=sy-wl*flap+o,tx=x-d*sz*0.22;ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(sx+d*sz*0.12,sy);ctx.quadraticCurveTo(sx+d*sz*0.02,(sy+ty)/2-sz*0.08*flap,tx,ty);ctx.lineTo(sx-d*sz*0.2,sy+sz*0.03);ctx.closePath();ctx.fill();return ty;};
-  wing(cb[4],-sz*0.05);
-  ctx.fillStyle=cb[0];ctx.beginPath();ctx.ellipse(x,y,sz*0.4,sz*0.12,-d*0.06,0,6.2832);ctx.fill();
-  ctx.strokeStyle=cb[3];ctx.lineWidth=Math.max(0.5,sz*0.075);ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x+d*sz*0.3,y-sz*0.03);ctx.lineTo(x+d*sz*0.6,y-sz*0.09);ctx.stroke();
-  ctx.fillStyle=cb[3];ctx.beginPath();ctx.ellipse(x+d*sz*0.64,y-sz*0.1,sz*0.08,sz*0.06,0,0,6.2832);ctx.fill();
-  const ty=wing(cb[0],0);ctx.strokeStyle=cb[2];ctx.lineWidth=Math.max(0.5,sz*0.07);ctx.beginPath();ctx.moveTo(sx+d*sz*0.1,sy);ctx.lineTo((sx+x-d*sz*0.22)/2,(sy+ty)/2);ctx.stroke();}
+  const sx=x+d*sz*0.06,sy=y-sz*0.04,wl=sz*(fly===1?0.95:0.8),th=GW_A*flap,cs=Math.cos(th),sn=Math.sin(th),c=sz*GW_C,eye=cb[5]||cb[4];
+  // a wing: along its span (shoulder to tip, swept back) the leading edge GW_L and the trailing edge GW_T of the chord at each station; the
+  // white panel over the inner half's front; the rest (secondaries behind it, the primaries out to the pointed tip) dark
+  const wing=(near,cd,cp)=>{const up=wl*(sn+(near?GW_E:-GW_E)*cs),vx=-d*sz*(0.24+0.12*flap),vy=-up,P=GW_PT;
+      for(let k=0;k<4;k++){const u=GW_S[k],px=sx+vx*u,py=sy+vy*u;P[k*4]=px+d*c*GW_L[k];P[k*4+1]=py;P[k*4+2]=px-d*c*GW_T[k];P[k*4+3]=py+(k===2?(up>0?1:-1)*c*0.08:0);}
+      ctx.fillStyle=cd;ctx.beginPath();ctx.moveTo(P[0],P[1]-sz*0.02);for(let k=1;k<4;k++)ctx.lineTo(P[k*4],P[k*4+1]);for(let k=2;k>=0;k--)ctx.lineTo(P[k*4+2],P[k*4+3]);ctx.closePath();ctx.fill();
+      ctx.fillStyle=cp;ctx.beginPath();ctx.moveTo(P[0],P[1]-sz*0.02);ctx.lineTo(P[4],P[5]);ctx.lineTo(lerp(P[4],P[6],0.6),lerp(P[5],P[7],0.6));ctx.lineTo(lerp(P[0],P[2],0.6),P[1]);ctx.closePath();ctx.fill();};
+  wing(false,cb[4],cb[0]);
+  ctx.fillStyle=cb[4];ctx.beginPath();ctx.moveTo(x-d*sz*0.32,y-sz*0.07);ctx.lineTo(x-d*sz*0.5,y-sz*0.03);ctx.lineTo(x-d*sz*0.32,y+sz*0.07);ctx.closePath();ctx.fill(); // (the tail)
+  ctx.fillStyle=cb[0];ctx.beginPath();ctx.ellipse(x,y,sz*0.37,sz*0.15,-d*0.06,0,6.2832);ctx.fill();
+  ctx.fillStyle=cb[1];ctx.beginPath();ctx.ellipse(x-d*sz*0.02,y-sz*0.06,sz*0.28,sz*0.06,-d*0.06,0,6.2832);ctx.fill();
+  ctx.fillStyle=cb[3];ctx.beginPath();ctx.moveTo(x+d*sz*0.24,y-sz*0.1);ctx.quadraticCurveTo(x+d*sz*0.42,y-sz*0.12,x+d*sz*0.56,y-sz*0.12);ctx.lineTo(x+d*sz*0.57,y-sz*0.04);ctx.quadraticCurveTo(x+d*sz*0.42,y-sz*0.01,x+d*sz*0.26,y+sz*0.08);ctx.closePath();ctx.fill(); // (the neck, thick)
+  ctx.beginPath();ctx.ellipse(x+d*sz*0.6,y-sz*0.09,sz*0.085,sz*0.065,0,0,6.2832);ctx.fill();
+  ctx.fillStyle=eye;ctx.beginPath();ctx.ellipse(x+d*sz*0.61,y-sz*0.1,sz*0.035,sz*0.03,0,0,6.2832);ctx.fill(); // (the eye patch)
+  ctx.fillStyle=cb[6]||cb[4];ctx.beginPath();ctx.moveTo(x+d*sz*0.66,y-sz*0.12);ctx.lineTo(x+d*sz*0.75,y-sz*0.08);ctx.lineTo(x+d*sz*0.66,y-sz*0.06);ctx.closePath();ctx.fill(); // (the bill)
+  wing(true,cb[4],cb[2]);}
 // ---- the garden (round 36c) ----
 // (round 36c) a breeze running along the way as a travelling wave (the beat of the grain and the reed beds): from the moment he passes
 // CROSS_BEAT its front starts off the screen's left (where the camera's left edge is at the beat, a fixed place: no state) and runs along
 // world x at CROSS_WAVE[0] px/s (5.8 m/s), its crest CROSS_WAVE[1] px wide, for CROSS_WAVE[2] s; env rises, holds and fades. A function of
 // the beat's moment and the clock; the front is at one world x at every depth, so on the screen it sweeps the far rows slower (perspective)
+// (round 36e) a flying goose's wing: the turn about the body's axis at full flap (rad), the view from below (tan of it), the root chord
+const GW_A=0.95,GW_E=0.32,GW_C=0.36,GW_S=[0,0.5,0.84,1],GW_L=[0.42,0.4,0.26,0.06],GW_T=[0.58,0.62,0.4,0.1],GW_PT=new Float32Array(16); // (the wing's stations along its span, the chord's lead and trail at each)
 const CROSS_WAVE=[170,46,7.5];
+// (round 36e) the wadi's rockfall: its place in the view at the beat, stones (big ones first), the plume's puffs, two scratch points
+const RF_CW=200,RF_SX=0.55,RF_N=16,RF_BIG=6,RF_PL=10,RF_P=[{x:0,y:0,m:0},{x:0,y:0,m:0}];
+// the spur's outline (x in the fan's half-widths from its axis, y in its heights down from the top), its lit left and right faces
+const RF_SP=[-1,1.7,-0.92,1.25,-0.78,1.2,-0.7,0.8,-0.56,0.76,-0.5,0.35,-0.38,0.3,-0.32,0.04,-0.18,0,0,0.05,0.12,0,0.24,0.06,0.3,0.38,0.42,0.42,0.5,0.82,0.66,0.86,0.74,1.3,0.86,1.7],
+  RF_SL=[-1,1.7,-0.92,1.25,-0.78,1.2,-0.7,0.8,-0.56,0.76,-0.5,0.35,-0.38,0.3,-0.32,0.04,-0.22,0.03,-0.3,0.33,-0.42,0.75,-0.55,1.2,-0.62,1.7],
+  RF_SR=[0.86,1.7,0.74,1.3,0.66,0.86,0.5,0.82,0.42,0.42,0.3,0.38,0.24,0.06,0.15,0.04,0.22,0.4,0.34,0.84,0.5,1.3,0.58,1.7];
 function crossWaveF(cr){if(cr.gust<0)return null;const t=cr.t-cr.gust;if(t<0||t>CROSS_WAVE[2])return null;
   return {xf:cr.xb-viewW*CROSS_CAM-90+CROSS_WAVE[0]*t,env:sstep(t/0.5)*(1-sstep((t-CROSS_WAVE[2]+2.5)/2.5))};}
 function crossWave(cr,X){if(cr.gust<0)return 0;const t=cr.t-cr.gust;if(t<0||t>CROSS_WAVE[2])return 0;
@@ -11533,7 +11557,7 @@ const CROSS_KINDS={
       cr.gst=[[0,f0],[0.1,mixRGB(C.dim,C.hz,0.32)],[0.4,lt],[1,mixRGB(C.dim,C.shd,0.45)]];ly.gr=gr;ly.sh=crossRGB(mixRGB(C.shd,C.dim,0.2),ly.firm?0.26:0.34);ly.lt=crossRGB(mixRGB(C.lit,C.rim,0.45),cr.tod===1?0.14:ly.firm?0.18:0.3);
       // a ripple crest every few px, closer toward the horizon (perspective: each row at its own depth f, moving f of the camera's travel)
       ly.ys=[];for(let y=CROSS_HZ+8;y<ROOM_H+2;y+=1.7+0.11*(y-CROSS_HZ))ly.ys.push(y);},
-    draw(ctx,ly,cr){ctx.fillStyle=ly.gr;ctx.fillRect(0,CROSS_HZ-1,viewW,ROOM_H-CROSS_HZ+1);
+    draw(ctx,ly,cr){ctx.fillStyle=ly.gr;ctx.fillRect(0,CROSS_HZ-1,viewW,ROOM_H-CROSS_HZ+1+crossTiltX(cr)); // (round 36e: under the wadi's tilt, on past the screen's foot)
       const W=viewW,cx=cr.cx,D=CROSS_GY-CROSS_HZ,seg=ly.firm?26:70;
       for(let pass=0;pass<4;pass++){const lit=pass&1,near=pass>>1;ctx.strokeStyle=lit?ly.lt:ly.sh;ctx.lineWidth=near?0.8:0.45;ctx.beginPath();
         for(let r=0;r<ly.ys.length;r++){const y0=ly.ys[r],f=(y0-CROSS_HZ)/D;if((f>=1)!==!!near||(lit&&f<0.32))continue;
@@ -11787,15 +11811,16 @@ const CROSS_KINDS={
   birds:{bake(ly,cr){const r=mulberry32(hash2(cr.seed,ly.id*577+3)),P=ly.pool;ly.g=[];
       for(let i=0;i<ly.n;i++){let X,F;if(P.river){X=ly.Xg+(i-ly.n/2)*24+r()*16;F=lerp(P.fa+0.06,P.fb-0.04,0.5+0.5*r());}else{X=P.Xc+(r()-0.35)*P.Rx*0.75;F=P.fc+(0.1+0.4*r())*P.Rf*0.85;} // (round 36c: the near half of the water)
         ly.g.push({X,F,d:r()<0.55?1:-1,dl:0.2*i+0.3*r(),ph:r()*6.28,sz:0.84+0.1*r()});}
-      ly.g.sort((a,b)=>a.F-b.F);const b=crossLit(cr,[156,122,88]),w=crossLit(cr,[232,228,216]),h=crossLit(cr,[206,188,156]);
-      ly.cb=[crossRGB(b.dim),crossRGB(b.lit),crossRGB(w.lit),crossRGB(h.lit),crossRGB(b.shd)];ly.wk=crossRGB(mixRGB(cr.cols.sky.map(bgRGB)[2],[255,255,255],0.3),0.4);ly.sp=crossRGB(w.lit,0.7);},
+      ly.g.sort((a,b)=>a.F-b.F);const b=crossLit(cr,[150,124,98]),w=crossLit(cr,[236,232,222]),h=crossLit(cr,[206,188,156]),hn=crossLit(cr,[132,110,88]),ep=crossLit(cr,[92,52,34]),bl=crossLit(cr,[204,128,108]);
+      ly.cb=[crossRGB(b.dim),crossRGB(b.lit),crossRGB(w.lit),crossRGB(h.lit),crossRGB(crossMul(b.shd,[0.62,0.6,0.62])),crossRGB(ep.dim),crossRGB(bl.dim)];ly.cf=ly.cb.slice();ly.cf[3]=crossRGB(hn.dim); // (round 36e: in flight a brown-grey body, the head and neck darker with the eye patch, a pink bill, the flight feathers near black)
+      ly.wk=crossRGB(mixRGB(cr.cols.sky.map(bgRGB)[2],[255,255,255],0.3),0.4);ly.sp=crossRGB(w.lit,0.7);},
     draw(ctx,ly,cr){const t=gameTime,b=cr.gust<0?-1:cr.t-cr.gust,fx=GFX().fx;
       for(const q of ly.g){const tb=b<0?-1:b-q.dl,F=q.F,s=29.4*F,sz=q.sz*s;let X=q.X+2.5*Math.sin(t*0.23+q.ph),hgt=0,fly=0,dir=q.d,flap=0;
         let Fd=F,szd=sz;if(tb>=0){dir=1;if(tb<0.7){X+=88*tb*tb;hgt=sz*0.3*tb/0.7;fly=0.5;flap=Math.sin(tb*6.2832*5);}else{const u=tb-0.7;X+=43+95*u+45*u*u;Fd=Math.min(0.95,F+(0.95-F)*sstep(u/2.4));szd=sz*Fd/F;hgt=sz*0.3+29.4*Fd*(1.7*u+1.1*u*u);fly=1;flap=Math.sin(u*6.2832*3.4+q.ph);}} // (round 36c: they climb away toward him a little, over his head's line)
         const x=crossPX(cr,X,Fd),y=crossGYf(Fd)-hgt+(fly?0:0.35*Math.sin(t*1.7+q.ph));if(x<-40||x>viewW+40||y<-30)continue;
         if(fx&&tb<0){const w=(t*0.31+q.ph)%1;ctx.strokeStyle=ly.wk;ctx.globalAlpha=1-w;ctx.lineWidth=0.5;ctx.beginPath();ctx.ellipse(x,y+0.5,sz*(0.5+1.2*w),sz*(0.5+1.2*w)*0.22,0,0,6.2832);ctx.stroke();ctx.globalAlpha=1;}
         if(fx&&tb>=0&&tb<1){ctx.strokeStyle=ly.sp;ctx.globalAlpha=1-tb;ctx.lineWidth=0.6;ctx.beginPath();const wy=crossGYf(F);for(let k=0;k<2;k++){const sx=x-dir*sz*(0.45+0.4*k),hh=sz*(0.12+0.12*Math.abs(Math.sin(t*9+k)));ctx.moveTo(sx,wy);ctx.quadraticCurveTo(sx-dir*1.5,wy-hh,sx-dir*3,wy-hh*0.3);}ctx.stroke();ctx.globalAlpha=1;}
-        crossGoose(ctx,x,y,szd,dir,fly,flap,ly.cb);}}},
+        crossGoose(ctx,x,y,szd,dir,fly,flap,fly?ly.cf:ly.cb);}}},
   // the foreground of an oasis, nearer than he is (f 2.1, faster than he moves): a frond's tip hanging in from above (never below his
   // head's line) and clumps of reeds rising from the screen's foot (never above his feet's): dark, lit only at the rim, swaying
   ofore:{bake(ly,cr){const C=cr.cols,q=VS,col=crossMul(C.shd,cr.tod===1?[0.5,0.56,0.7]:[0.4,0.36,0.38]),rim=crossRGB(mixRGB(col,C.rim,0.3)),cv=document.createElement('canvas');
@@ -12020,22 +12045,51 @@ const CROSS_KINDS={
     draw(ctx,ly,cr){crossStrip(ctx,ly,-cr.cx*ly.f,crossGYf(ly.f)-ly.H+1.5);}},
   // the beat of the wadi: a trickle of stones loosed from a ledge of the near cliff runs down its scree fan, bouncing, with puffs of dust,
   // where the camera will be when he passes CROSS_BEAT (its world x is set so); the fan is drawn always. A function of the beat's moment
+  // (round 36e, owner: "the rockfall moment is subtle at its distance") a spur of rock standing out of the near cliff at f 0.3 (twice
+  // as near as round 36d's), a dark cleft down its face and its scree fan below (ly.hm m high, its flanks at the angle of repose); at the
+  // beat (0.15 s after it) stones break off at the cleft's head with a puff of dust, drop down the cleft trailing dust and bound down the
+  // fan in hops that shrink (RF_BIG of them big, lit on top, the rest gravel), each landing kicking up dust; a plume rises off the fan and
+  // drifts on the wind (left to right), spreading and thinning over ~4 s; the stones stay where they come to rest. All a pure function of
+  // the clock since the beat (no state); the dust is one soft sprite baked once; the fall is at RF_SX of the view at the beat
   rockfall:{bake(ly,cr){const f=ly.f,s=29.4*f,C=cr.cols,cl=crossOasisCols(cr,f),k=cl.lm,r=mulberry32(hash2(cr.seed,ly.id*71+5));
-      ly.X=cr.xb-viewW*CROSS_CAM+viewW/2+(viewW*0.66-viewW/2)/f;ly.fh=ly.hm*s;ly.fw=ly.fh/0.62;ly.st=[];
-      for(let i=0;i<11;i++)ly.st.push({d:0.12*i+0.25*r(),u:(r()-0.5)*0.5,sz:Math.max(0.9,s*(0.18+0.22*r())),hp:0.5+0.5*r(),v:0.8+0.5*r()});
-      ly.c0=crossRGB(mixRGB(C.at(k.dim,f),C.at(k.lit,f),0.62));ly.cb=crossRGB(mixRGB(C.at(k.dim,f),C.at(k.shd,f),0.3));ly.cbl=crossRGB(C.at(C.left?k.lit:k.shd,f),0.5);ly.cbs=crossRGB(C.at(k.shd,f),0.55);ly.c1=crossRGB(C.at(C.left?k.shd:k.lit,f),0.3);ly.cs=crossRGB(crossMul(C.at(k.shd,f),[0.7,0.68,0.72]));ly.cl=crossRGB(C.at(k.lit,f));
-      ly.dust=crossRGB(mixRGB(C.at(k.lit,f),cr.cols.hz,0.3));},
-    draw(ctx,ly,cr){const x=crossPX(cr,ly.X,ly.f),y=crossGYf(ly.f)+1,fh=ly.fh,fw=ly.fw;if(x+fw<-10||x-fw>viewW+10)return;
-      {const b0=x-fw*0.8,b1=x+fw*0.6,bt=y-fh*2.1;ctx.fillStyle=ly.cb;ctx.beginPath();ctx.moveTo(b0,y-fh*0.2);ctx.lineTo(b0+fw*0.06,bt+fh*0.7);ctx.lineTo(b0+fw*0.2,bt+fh*0.5);ctx.lineTo(b0+fw*0.34,bt+fh*0.12);ctx.lineTo(x-fw*0.1,bt);ctx.lineTo(x+fw*0.12,bt+fh*0.18);ctx.lineTo(x+fw*0.3,bt+fh*0.1);ctx.lineTo(b1-fw*0.08,bt+fh*0.55);ctx.lineTo(b1,y-fh*0.2);ctx.closePath();ctx.fill(); // (the spur of the cliff the stones come off)
-        ctx.fillStyle=ly.cbl;ctx.beginPath();ctx.moveTo(b0,y-fh*0.2);ctx.lineTo(b0+fw*0.06,bt+fh*0.7);ctx.lineTo(b0+fw*0.2,bt+fh*0.5);ctx.lineTo(b0+fw*0.3,y-fh*0.2);ctx.closePath();ctx.fill();ctx.fillStyle=ly.cbs;for(let k=1;k<4;k++)ctx.fillRect(b0+1,bt+fh*0.42*k,b1-b0,Math.max(0.5,fh*0.04));}
+      ly.X=cr.xb-viewW*CROSS_CAM+viewW/2+(viewW*RF_SX-viewW/2)/f;ly.fh=ly.hm*s;ly.fw=ly.fh/0.62;ly.st=[];
+      for(let i=0;i<RF_N;i++){const big=i<RF_BIG,nh=big?3+(r()<0.5?1:0):2+(r()<0.5?1:0);
+        ly.st.push({big,d:big?0.13*i+0.08*r():0.1+1.4*r(),ta:0.3+0.12*r(),tr:(big?1.3:0.8)+0.6*r(),nh,h0:ly.fh*(big?0.22+0.1*r():0.08+0.07*r()),u:(r()-0.5)*(big?1.2:1.4),pe:0.85+0.3*r(),
+          sz:big?s*(0.3+0.16*r()):Math.max(0.8,s*(0.08+0.08*r())),sp:(r()<0.5?-1:1)*(4+5*r()),gx:(r()-0.5)*0.05,el:0.62+0.2*r(),rv:[0,1,2,3,4,5].map(()=>0.72+0.42*r())});}
+      const lit=C.at(k.lit,f),dim=C.at(k.dim,f),shd=C.at(k.shd,f);
+      ly.c0=crossRGB(mixRGB(dim,lit,0.7));ly.cb=crossRGB(mixRGB(dim,shd,0.38));ly.cbl=crossRGB(C.left?lit:shd,0.45);ly.cbr=crossRGB(C.left?shd:lit,0.4);ly.cbs=crossRGB(shd,0.5);ly.c1=crossRGB(C.left?shd:lit,0.3);
+      ly.cs=crossRGB(crossMul(shd,[0.62,0.6,0.64]));ly.cl=crossRGB(mixRGB(lit,[255,244,226],0.2));ly.cg=crossRGB(crossMul(shd,[0.4,0.38,0.44]));
+      const dc=mixRGB(mixRGB(lit,cr.cols.hz,0.4),[255,242,222],cr.tod===1?0.05:0.18);ly.dust=crossRGB(dc,0.5);
+      {const cs=dc.map(Math.round).join(','),g=document.createElement('canvas');g.width=g.height=32;const x=g.getContext('2d'),gr=x.createRadialGradient(16,16,0,16,16,16);
+        gr.addColorStop(0,'rgba('+cs+',1)');gr.addColorStop(0.4,'rgba('+cs+',0.85)');gr.addColorStop(0.72,'rgba('+cs+',0.32)');gr.addColorStop(1,'rgba('+cs+',0)');x.fillStyle=gr;x.fillRect(0,0,32,32);ly.spr=g;}},
+    draw(ctx,ly,cr){const x=crossPX(cr,ly.X,ly.f),y=crossGYf(ly.f)+1,fh=ly.fh,fw=ly.fw,bt=y-fh*1.85,L=cr.cols.left?1:-1;if(x+fw*1.8<-10||x-fw*1.2>viewW+10)return;
+      // the spur: stepping in at the beds' ledges to a broken top, the face toward the light lit, the other shaded, the beds' lines, the cleft
+      {const poly=(P,c)=>{ctx.fillStyle=c;ctx.beginPath();for(let i=0;i<P.length;i+=2){const px=x+P[i]*fw,py=bt+P[i+1]*fh;if(i)ctx.lineTo(px,py);else ctx.moveTo(px,py);}ctx.closePath();ctx.fill();};
+        poly(RF_SP,ly.cb);poly(L>0?RF_SL:RF_SR,ly.cbl);poly(L>0?RF_SR:RF_SL,ly.cbr);
+        ctx.fillStyle=ly.cbs;for(let k=1;k<5;k++){const v=0.34*k,hw=0.3+0.32*v;ctx.fillRect(x-fw*hw,bt+fh*v,fw*hw*1.9,Math.max(0.5,fh*0.03));}
+        ctx.fillStyle=ly.cg;ctx.beginPath();ctx.moveTo(x-fw*0.08,bt+fh*0.06);ctx.lineTo(x+fw*0.07,bt+fh*0.1);ctx.lineTo(x+fw*0.045,y-fh*0.9);ctx.lineTo(x-fw*0.035,y-fh*0.88);ctx.closePath();ctx.fill();}
       ctx.fillStyle=ly.c0;ctx.beginPath();ctx.moveTo(x-fw,y);ctx.quadraticCurveTo(x-fw*0.25,y-fh*0.2,x,y-fh);ctx.quadraticCurveTo(x+fw*0.25,y-fh*0.2,x+fw,y);ctx.closePath();ctx.fill();
-      ctx.fillStyle=ly.c1;ctx.beginPath();ctx.moveTo(x,y-fh);ctx.quadraticCurveTo(x+fw*0.25,y-fh*0.2,x+fw,y);ctx.lineTo(x+fw*0.2,y);ctx.closePath();ctx.fill();
-      const tb=cr.gust<0?-1:cr.t-cr.gust-0.3;if(tb<0||tb>5.5||!GFX().fx)return;
-      // the stones: down the fan's middle line, spreading, each hopping (|sin|), faster as it goes; dust where they start and where they stop
-      ctx.fillStyle=ly.cs;ctx.beginPath();for(const q of ly.st){const t=tb-q.d;if(t<0)continue;const p=Math.min(1,(0.25*t+0.35*t*t)*q.v);if(p>=1&&t>3)continue;
-        const yy=y-fh*(1-p)-(p<1?fh*0.1*q.hp*(1-p)*Math.abs(Math.sin(t*9*q.v)):0),xx=x+q.u*fw*p*1.6;ctx.moveTo(xx+q.sz,yy-q.sz*0.5);ctx.ellipse(xx,yy-q.sz*0.5,q.sz,q.sz*0.7,0,0,6.2832);}ctx.fill();
-      ctx.fillStyle=ly.dust;for(const [t0,dx,dy,R] of [[0,0,-fh,0.25],[0.6,0,-fh*0.5,0.35],[1.4,0,-2,0.5],[1.9,fw*0.3,-1,0.4]]){const t=tb-t0;if(t<0||t>2.6)continue;const rr=fh*R*(0.4+t*0.55);ctx.globalAlpha=0.5*(1-t/2.6);ctx.beginPath();ctx.ellipse(x+dx+t*4,y+dy-t*2,rr,rr*0.7,0,0,6.2832);ctx.fill();}
-      ctx.globalAlpha=1;}},
+      ctx.fillStyle=ly.c1;ctx.beginPath();if(L>0){ctx.moveTo(x,y-fh);ctx.quadraticCurveTo(x+fw*0.25,y-fh*0.2,x+fw,y);ctx.lineTo(x+fw*0.2,y);}else{ctx.moveTo(x,y-fh);ctx.quadraticCurveTo(x-fw*0.25,y-fh*0.2,x-fw,y);ctx.lineTo(x-fw*0.2,y);}ctx.closePath();ctx.fill();
+      const tb=cr.gust<0?-1:cr.t-cr.gust-0.15;if(tb<0||!GFX().fx)return;
+      const gx=x,gy=bt+fh*0.16,ay=y-fh,sp=ly.spr;
+      // where stone q is t s after it breaks off: down the cleft (falling), then down the fan in hops that shrink, then at rest
+      const pos=(q,t,o)=>{if(t<=q.ta){const u=t/q.ta;o.x=gx+q.gx*fw*u;o.y=gy+(ay-gy)*u*u;o.m=1;return o;}const v=Math.min(1,(t-q.ta)/q.tr),p=v*(2-v)*q.pe,j=Math.min(q.nh-1,Math.floor(v*q.nh)),ph=v*q.nh-j;
+        o.x=gx+q.gx*fw+q.u*fw*p;o.y=ay+fh*p*(1+0.06*Math.abs(q.u))-(v<1?q.h0*Math.pow(0.5,j)*4*ph*(1-ph):0)-q.sz*0.55;o.m=v<1?1:0;return o;};
+      const A=RF_P[0],B=RF_P[1],puff=(px,py,rr,al)=>{if(!sp||al<0.01||rr<0.3)return;ctx.globalAlpha=Math.min(1,al);ctx.drawImage(sp,px-rr,py-rr,rr*2,rr*2);};
+      // dust behind the stones: at the cleft's head as they break off, where each big stone lands, and the plume off the fan
+      if(tb<6){for(let i=0;i<3;i++){const a=tb-0.2*i;if(a<0||a>2.8)continue;puff(gx+7*a+i*2,gy-7*a,fh*(0.14+0.2*a),0.7*(1-a/2.8));}
+        for(let i=0;i<RF_PL;i++){const a=tb-0.35-0.22*i;if(a<0||a>4.2)continue;const p=0.1+0.9*i/(RF_PL-1),h=hash2(i*7+3,cr.seed)/4294967296,bx=gx+(h-0.5)*fw*0.9*p,by=ay+fh*p,g=1-Math.exp(-a*0.9);
+          puff(bx+12*a+6*g,by-fh*(0.1+0.42*g)-2*a,fh*(0.22+0.45*g),0.85*sstep(a/0.25)*Math.pow(1-a/4.2,1.3));}
+        for(const q of ly.st){if(!q.big)continue;for(let j=1;j<=q.nh;j++){const tj=q.ta+q.tr*(j-1)/q.nh,a=tb-q.d-tj;if(a<0||a>1)continue;pos(q,tj,B);puff(B.x+6*a,B.y+q.sz*0.5-8*a,q.sz*(2+7*a),0.85*(1-a));}}
+        ctx.globalAlpha=1;}
+      // the trails: a streak of dust behind each big stone while it moves
+      ctx.strokeStyle=ly.dust;ctx.lineCap='round';
+      for(const q of ly.st){if(!q.big)continue;const t=tb-q.d;if(t<0.03||t>q.ta+q.tr)continue;ctx.lineWidth=q.sz*1.4;ctx.beginPath();pos(q,t,A);ctx.moveTo(A.x,A.y);for(let k=1;k<=4;k++){pos(q,Math.max(0,t-0.05*k),B);ctx.lineTo(B.x,B.y);}ctx.stroke();}
+      // the stones (each turning as it goes), the big ones lit on top
+      const stone=(cx,cy,q,rot,k)=>{ctx.beginPath();for(let i=0;i<6;i++){const a=rot+i*1.0472,rr=q.sz*q.rv[i]*k;if(i)ctx.lineTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr*q.el);else ctx.moveTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr*q.el);}ctx.closePath();ctx.fill();};
+      for(const q of ly.st){const t=tb-q.d;if(t<0)continue;pos(q,t,A);const rot=q.sp*Math.min(t,q.ta+q.tr);
+        if(q.big){ctx.fillStyle=ly.cl;stone(A.x,A.y,q,rot,1);ctx.fillStyle=ly.cs;stone(A.x+L*q.sz*0.24,A.y+q.sz*0.26,q,rot,0.9);} // (lit on its top and the light's side: a rim left by the body drawn over it, shifted away)
+        else{ctx.fillStyle=ly.cs;stone(A.x,A.y,q,rot,1);}}}},
   // a far hillside of the highland (ly.hm m) at depth f with its terraces: the profile rolling in whole periods, terrace lines following it
   // as contours (each strip's crop: ripe grain gold, green, ploughed brown), their stone risers dark and their lips lit, scattered junipers;
   // ly.st: the stelae standing on a flattened top (Aksum's storeyed stelae on the skyline, far off; nothing Christian), hazed by its depth
@@ -12229,7 +12283,7 @@ const CROSS_KINDS={
   // of desert grass (or stones), sparse, low enough never to cover him
   fore:{bake(ly,cr){const C=cr.cols;ly.col=crossRGB(crossMul(C.shd,cr.tod===1?[0.8,0.8,0.9]:[0.62,0.56,0.6]));ly.gc=crossRGB(crossMul(C.shd,cr.tod===1?[0.6,0.7,0.6]:[0.5,0.52,0.4]));},
     draw(ctx,ly,cr){const W=viewW,cx=cr.cx,D=CROSS_GY-CROSS_HZ,f=2.25,yb=CROSS_HZ+D*f;
-      ctx.fillStyle=ly.col;ctx.beginPath();ctx.moveTo(-2,ROOM_H+2);for(let x=-2;x<=W+2;x+=8){const X=cx+W/2+(x-W/2)/f;ctx.lineTo(x,yb+2-3.4*Math.sin(X*0.019+cr.seed%7)-1.6*Math.sin(X*0.057));}ctx.lineTo(W+2,ROOM_H+2);ctx.closePath();ctx.fill();
+      const yf=ROOM_H+2+crossTiltX(cr);ctx.fillStyle=ly.col;ctx.beginPath();ctx.moveTo(-2,yf);for(let x=-2;x<=W+2;x+=8){const X=cx+W/2+(x-W/2)/f;ctx.lineTo(x,yb+2-3.4*Math.sin(X*0.019+cr.seed%7)-1.6*Math.sin(X*0.057));}ctx.lineTo(W+2,yf);ctx.closePath();ctx.fill();
       const ft=1.92,yt=CROSS_HZ+D*ft,sp=140;ctx.strokeStyle=ly.gc;ctx.fillStyle=ly.gc;ctx.lineCap='round';
       const xa=cx+W/2+(-40-W/2)/ft,xb=cx+W/2+(W+40-W/2)/ft;
       for(let k=Math.floor(xa/sp);k<=Math.ceil(xb/sp);k++){const h=hash2(k*53+11,cr.seed^0x5a5a),u=(h&1023)/1023,v=((h>>>10)&1023)/1023,w2=((h>>>20)&1023)/1023;if(v<0.35)continue;
@@ -12378,12 +12432,17 @@ const CROSS_SETS={
     L2.push(...crossBgart(cr,{skip:['cliffs','hills']}));
     const cliff=(f,hm,W,o)=>L2.push(Object.assign({kind:'cliff',f,z:crossZ(f),hm,W,id:id()},o||{}));
     cliff(0.022,62,900);cliff(0.06,34,1000,{gaps:1});cliff(0.15,11,1100,{gaps:1});
-    L2.push({kind:'rockfall',f:0.15,z:crossZ(0.15)+0.002,hm:6.5,id:id()});
+    L2.push({kind:'rockfall',f:0.3,z:crossZ(0.3)+0.002,hm:4,id:id()}); // (round 36e: nearer, at f 0.3, from 0.15)
+    // (round 36e) nothing in the wadi's bed in front of the fall while it plays: an item at depth f whose screen x comes within the fan's
+    // half-width (and its own) of the fan's axis while the camera runs RF_CW px on from the beat is moved aside the shorter way
+    function rfClear(items,f){const W=viewW,c0=xb-W*CROSS_CAM,RX=c0+W/2+(W*RF_SX-W/2)/0.3,fw=4*29.4*0.3/0.62,d=(X,cx)=>(X-cx-W/2)*f-(RX-cx-W/2)*0.3;
+      for(const it of items){const hw=(it.t==='boulder'?it.w*0.5:it.cw*it.hm*0.5)*29.4*f,lim=fw*1.05+hw,a=d(it.X,c0+RF_CW),b=d(it.X,c0);if(a>=lim||b<=-lim)continue;
+        const up=(lim-a)/f,dn=(b+lim)/f;it.X+=up<dn?up:-dn;}return items;}
     L2.push({kind:'dfield',f:0.26,z:crossZ(0.26)+0.004,W:820,id:id(),ns:4,hk:0.8,nst:22,ntf:4,sk:1.6});
     st(0.24,[...row(0.24,5,X=>({t:'acacia',X,hm:4.5+2*r(),cw:1.1+0.3*r()})),...row(0.24,4,X=>({t:'tamarisk',X,hm:3.5+1.5*r(),cw:0.9+0.3*r()})),{t:'well',X:560}]);
     band([{f0:0.4,f1:0.47,t:'wash'}]);
-    st(0.5,[...row(0.5,3,X=>({t:'tamarisk',X,hm:3+1.2*r(),cw:0.9+0.3*r()})),...row(0.5,4,X=>({t:'boulder',X,w:0.8+1.0*r(),hm:0.5+0.6*r()})),{t:'acacia',X:xb+250,hm:5,cw:1.2}]);
-    const bx=xb+150;st(0.56,[{t:'boulder',X:bx,w:2.2,hm:1.3}]);
+    st(0.5,rfClear([...row(0.5,3,X=>({t:'tamarisk',X,hm:3+1.2*r(),cw:0.9+0.3*r()})),...row(0.5,4,X=>({t:'boulder',X,w:0.8+1.0*r(),hm:0.5+0.6*r()}))],0.5).concat([{t:'acacia',X:xb+390,hm:5,cw:1.2}])); // (round 36e: the acacia from xb+250, off the rockfall)
+    const bx=xb+200;st(0.56,[{t:'boulder',X:bx,w:2.2,hm:1.3}]);
     L2.push({kind:'fauna',sp:'raven',items:[{X:bx-10,F:0.56,d:-1,dl:0.35,ph:r()*6,sz:0.6,lift:1,perch:1.28},{X:bx+14,F:0.565,d:1,dl:0.6,ph:r()*6,sz:0.56,lift:1,perch:1.15}],f:0.56,z:crossZ(0.56)+0.003,id:id()});
     L2.push({kind:'dfield',f:0.78,z:crossZ(0.78)+0.005,W:900,id:id(),ns:3,hk:0.5,nst:14,ntf:4,sk:1.3});
     band([{f0:0.88,f1:1.1,t:'path',gravel:1}]);
@@ -12482,6 +12541,9 @@ function crossLights(c,px,py){const s=crossSun(c),out=c.lights;out.length=0;
 // doorway he turns into its depth, cut at the opening and darkening as the entry's silhouette does, reversed
 // (round 36d) his feet's line at screen x px: the path, tilted where it rises (the wadi)
 const crossFY=(c,px)=>CROSS_GY-(c.tilt||0)*(px-viewW/2);
+// (round 36e) how far below the screen's foot a layer that reaches it must go so that, sheared by the tilt, it still covers the right-hand
+// corner (the shear lifts x = viewW by tilt viewW/2; 0 where the path is level)
+const crossTiltX=c=>c.tilt?Math.ceil(c.tilt*(viewW/2+12))+2:0;
 function crossFigure(ctx,c,gls){const e=c.e,px=c.x-c.cx,py=crossFY(c,px),s=crossSun(c);
   const u=c.phase==='in'||(c.phase==='out')?sstep(c.ti/0.42):0,ox=u*EN_DX,oy=-u*EN_DY,ta=c.phase==='in'||c.phase==='out'?0.92*sstep(c.ti/0.45):0;
   if(u<0.5&&GFX().hero){const sd=s.x<px?1:-1,ln=s.moon?16:Math.min(46,(CROSS_GY-s.y)>40?22:46);ctx.save();ctx.globalAlpha=0.32*(1-u*2);ctx.fillStyle=crossRGB(crossMul(c.cols.shd,[0.5,0.5,0.6]));
@@ -12691,7 +12753,7 @@ function stormProbe(torch,look){const ch=L.ext.chase,out=[];if(!ch)return null;l
     for(let x=kl+7;x<=kl+60;x+=1){const a=A(x,y);if(a>ahead)ahead=a;}
     if(!off)out.push({r,y,cross,ahead});}
   return {gl:!!torch,wx:ch.wx,rows:out};}
-Object.assign(window.__HK,{crossBegin,crossEnd,crossStep,crossDue,crossOn,crossSun,crossGust,nextFloor,levelComplete,CROSS_LOOK,CROSS_SETS,CROSS_KINDS,CROSS_DIST,CROSS_X0,CROSS_FIN,CROSS_SKIP0,CROSS_WALK,CROSS_RUN,CROSS_RUNT}); // (round 36a: the crossing, for crossscan.py and egyptr36.py)
+Object.assign(window.__HK,{crossBegin,crossEnd,crossStep,crossDue,crossGoose,crossOn,crossSun,crossGust,nextFloor,levelComplete,CROSS_LOOK,CROSS_SETS,CROSS_KINDS,CROSS_DIST,CROSS_X0,CROSS_FIN,CROSS_SKIP0,CROSS_WALK,CROSS_RUN,CROSS_RUNT}); // (round 36a: the crossing, for crossscan.py and egyptr36.py)
 Object.defineProperty(window.__HK,'CR',{get(){return CR;}});Object.defineProperty(window.__HK,'levelTime',{get(){return levelTime;}});Object.defineProperty(window.__HK,'crossLast',{get(){return crossLast;}});
 Object.assign(window.__HK,{DKT,GLST,stormLayer2D,dkTable,dkLook,dkDrain,dkArt,stBulge,stormProbe,stormNear,get Snd(){return Snd;}});
 Object.assign(window.__HK,{hazardEdge,grabLabel,updateGrabLabel,glFit,glSet,get I(){return I;},get glShown(){return glShown;},blockCanMove,findFlask,findLedge}); // (the Grab button's label, for its test)

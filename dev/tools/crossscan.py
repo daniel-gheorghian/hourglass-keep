@@ -8,6 +8,8 @@
 #  - a skip (Jump after 0.5 s) ends it within CROSS_SKIPF and a frame;
 #  - never: with S.set.cross off, with ?cross=0, on Continue, Restart or a respawn, or under the bot (runBot plays floor 4 to the card);
 #  - (round 36b) every layer is baked within the fade from white (one a frame, CROSS_FIN at 60 Hz); the longest bake frame is printed;
+#  - (round 36e) under the wadi's tilted path (c.tilt), at every hour it comes: no void (the page's dark) in the screen's bottom corners
+#    at the start, the middle, the beat, the doorway and going into it;
 #  - no page errors; the crossing's render (script ms a frame, crossRender) within budget: median HK_CROSS_MS (default 8 Classic, 40
 #    Torchlight: software WebGL here) and its median within HK_CROSS_K (default 2.5) times a play frame's on the floor before.
 # Arguments (round 36b: the full run takes about 15 min on 4 busy cores, too long for suite.py quick):
@@ -18,7 +20,8 @@
 # reeds and its beat's animals; round 36c: the garden, and per garden theme SETL: the T-pool, lotus, fish, heron, the sunk field, the
 # reeds' breeze, the lake's cat's paw, ibis, ducks) and that the beat fires.
 # Prints one line per crossing and 'crossscan: ok' or 'crossscan: FAILURES n'.
-import os, sys, statistics
+import io, os, sys, statistics
+from PIL import Image
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -58,6 +61,29 @@ STEPS = r'''([k,keys])=>{const H=__HK;for(const q of ['l','r','u','d','j','g'])H
   const c=H.CR;return {on:!!c,x:c?c.x:null,t:c?c.t:null,phase:c?c.phase:null,rk,gust,ms,cue:document.getElementById('pad').classList.contains('cue'),mode:H.mode};}'''
 BAKE = r'''()=>{const H=__HK,c=H.CR;let n=1,mx=0;while(c.layers.some(l=>!l.ok)&&n<120){const t=performance.now();H.render();mx=Math.max(mx,performance.now()-t);n++;}
   return {n,mx,fin:Math.floor(H.CROSS_FIN*60),left:c.layers.some(l=>!l.ok)};}'''
+# (round 36e) the wadi's tilted path: put him at x with the clock at t (the walk's pose as if walking there), render, for a screenshot
+AT = r'''([x,t])=>{const H=__HK,c=H.CR;c.x=x;c.t=t;H.setKey('kb','r',true);for(let i=0;i<12;i++){H.crossStep(1/60);c.x=x;c.t=t;}H.setKey('kb','r',false);
+  for(let k=0;k<4;k++)H.render();return {x:c.x,phase:c.phase,tilt:c.tilt};}'''
+INTO = r'''()=>{const H=__HK,c=H.CR;H.setKey('kb','r',true);for(let i=0;i<600&&H.CR&&H.CR.phase==='walk';i++)H.crossStep(1/60);for(let i=0;i<12&&H.CR;i++)H.crossStep(1/60);
+  H.setKey('kb','r',false);if(H.CR)H.render();return {on:!!H.CR,phase:H.CR?H.CR.phase:null};}'''
+VOID = (7, 5, 11)
+def voids(pg):
+    # pixels of the void (the page's own dark: nothing drawn there) in the screen's bottom corners, 64 px of the 852 x 393 view each side
+    im = Image.open(io.BytesIO(pg.screenshot())).convert('RGB'); w, h = im.size; n = 0
+    for box in ((w - 64, h - 48, w, h), (0, h - 48, 64, h)):
+        d = im.crop(box).tobytes()
+        for i in range(0, len(d), 3):
+            if max(abs(d[i] - VOID[0]), abs(d[i + 1] - VOID[1]), abs(d[i + 2] - VOID[2])) <= 6: n += 1
+    return n
+def corners(pg, n, mode, tag):
+    # (round 36e) the ground and the foreground cover the whole screen under the wadi's tilt: start, the middle, the beat, the doorway, into it
+    pg.evaluate(BEGIN, [n, mode]); pg.evaluate(BAKE); out = []
+    for x, t in ((70, 1.0), (200, 3.0), (330, 4.5), (460, 6.0), (590, 7.5), (657, 9.0)):
+        pg.evaluate(AT, [x, t]); out.append(voids(pg))
+    pg.evaluate(INTO); out.append(voids(pg))
+    pg.evaluate('()=>{if(__HK.CR)__HK.crossEnd();}')
+    if any(out): bad('%s: the void shows in the bottom corners under the tilt (pixels at start .. into the doorway: %s)' % (tag, out))
+    return out
 AFTER = r'''()=>{const H=__HK,X=window.__X0,L=H.L;return {mode:H.mode,state:H.P.state,enG:L.enG,gt:H.gameTime,last:H.crossLast,
   save:X.save===localStorage.getItem('hourglass-keep-v1'),S:X.S===JSON.stringify(H.S),lt:X.lt===H.levelTime,rew:H.REW.length===0&&X.rew===0,level:H.S.level===X.level};}'''
 
@@ -108,6 +134,11 @@ with sync_playwright() as p:
             a2 = pg.evaluate(AFTER)
             if sk2['on'] or not (a2['last'] and a2['last']['skipped']) or a2['state'] != 'enter' or not a2['save']: bad('%s: the skip %s %s' % (tag, sk2, a2))
             print('%-8s floor %3d %-8s %-8s %-5s %-44s render %.2f ms (p95 %.2f; play %.2f)  crossed in %.1f s' % (mode, n, lk, r['set'], ['dusk', 'night', 'dawn'][r['tod']], r['name'], md, p95, r['play'], a['last']['t']))
+            if 'tilt' in r['kinds']:   # (round 36e) every hour this theme's crossing comes in floors 2-180
+                hrs = pg.evaluate('(lk)=>{const H=__HK,o={};for(let n=2;n<=180;n++){if(!H.crossDue(n)||H.themeOf(n).look!==lk)continue;const t=H.progOf(n).tod;if(o[t]===undefined)o[t]=n;}return o;}', lk)
+                for tod, n2 in sorted(hrs.items()):
+                    cv = corners(pg, n2, mode, '%s floor %d %s' % (mode, n2, lk))
+                    print('%-8s floor %3d %-8s tilt: void pixels in the bottom corners %s (%s)' % (mode, n2, lk, cv, ['dusk', 'night', 'dawn'][int(tod)]))
     if 'classic' in MODES:   # (the never cases once: with the Classic run)
         # never: off in the menu, on Continue, Restart, a respawn, an ordinary floor, under the bot
         nv = pg.evaluate(r'''()=>{const H=__HK,o={};H.S.set.lightMode='classic';

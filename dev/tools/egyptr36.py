@@ -26,6 +26,14 @@
 #                            game's own input, Torchlight
 #   r36d_audit.png           before (round 36c's page, 3834f65, written to egypt_themes/r36d_base36c.html) | after, one row per audit fix
 #   arguments: all36d | gif36d | audit36d | r36d (all three)
+# Round 36e (the owner's three fixes before v81):
+#   r36e_fixes.png  before (round 36d's page, 20233ee, written to egypt_themes/r36e_base36d.html) | after, Torchlight and Classic rows: each
+#                   frame whole at the size a phone shows it (852 x 393 CSS px), then the same part of it at 3x (a page at device scale 3, as an
+#                   iPhone draws it): the wadi's rockfall (floor 69, 0.9 s and 1.9 s into it); the geese in flight at Kerma (floor 125), Meroe (13)
+#                   and Siwa (45), and the ducks bursting out of the papyrus (Nun, floor 161); the wadi's tilted path at the doorway (floors 69, 29)
+#                   and the bottom-right corner at 3x
+#   r36e_wadi.gif   the wadi crossing (floor 69, dusk) through the rockfall, Torchlight, played through the game's own input
+#   arguments: fixes36e | gif36e | r36e (both)
 # The scene is stepped by hand (crossStep at 60 Hz, frozen clock) so the pictures are the same every run.
 import io, os, subprocess, sys
 from PIL import Image, ImageDraw
@@ -33,7 +41,7 @@ from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 a = sys.argv[1:]
-KW = ('png', 'gif', 'all', 'dunes36b', 'oasis', 'oasisgif', 'r36b', 'garden', 'gardengif', 'fixes36c', 'r36c', 'all36d', 'gif36d', 'audit36d', 'r36d')
+KW = ('png', 'gif', 'all', 'dunes36b', 'oasis', 'oasisgif', 'r36b', 'garden', 'gardengif', 'fixes36c', 'r36c', 'all36d', 'gif36d', 'audit36d', 'r36d', 'fixes36e', 'gif36e', 'r36e')
 WHAT = a[0] if a and a[0] in KW else 'all'
 a = [x for x in a if x not in KW]
 SRC = os.path.abspath(a[0] if a else os.path.join(HERE, '..', 'hourglass-keep.html'))
@@ -270,7 +278,63 @@ def run36d():
             sheet(rows, labels, os.path.join(OUT, 'r36d_audit.png'), 0.5); pa.close(); pb.close()
         print('errors', errs[:5]); b.close()
 
-if WHAT in ('all36d', 'gif36d', 'audit36d', 'r36d'): run36d()
+def run36e():
+    B = BEGIN.replace('H.S.started=true;', 'H.S.started=true;H.S.seed=36005;')   # (one run's seed in both pages: the crossing's hashes come from it)
+    with sync_playwright() as p:
+        b = p.chromium.launch(); errs = []
+        def page(src, dpr=1):
+            pg = b.new_page(viewport=VP, device_scale_factor=dpr)
+            pg.on('pageerror', lambda e: errs.append(str(e)))
+            pg.goto('file://' + src); pg.wait_for_timeout(300); pg.add_style_tag(content=CSS); return pg
+        if WHAT in ('fixes36e', 'r36e'):
+            base = os.path.join(OUT, 'r36e_base36d.html')
+            if not os.path.exists(base):
+                open(base, 'wb').write(subprocess.run(['git', 'show', '20233ee:dev/hourglass-keep.html'], cwd=HERE, capture_output=True, check=True).stdout)
+            P1 = {'a': page(base), 'b': page(SRC)}; P3 = {'a': page(base, 3), 'b': page(SRC, 3)}; rows, labels = [], []
+            def grab(pg, n, mode, x, t, g, clip=None):
+                pg.evaluate(B, [n, mode]); pg.evaluate(AT, [x, t, g, 0])
+                im = Image.open(io.BytesIO(pg.screenshot(clip=clip) if clip else pg.screenshot())).convert('RGB'); pg.evaluate('()=>__HK.crossEnd()'); return im
+            # (label, floor, x, t, gust seconds ago, crop box (CSS px) before, after)
+            A = [('the rockfall, 0.9 s in: 36d (far, at f 0.15) | 36e (the spur at f 0.3, stones, trails, dust)', 69, 400, 5.0, 1.2, (440, 60, 200, 150), (340, 40, 200, 150)),
+                 ('the rockfall, 1.9 s in', 69, 470, 6.0, 2.2, (420, 60, 200, 150), (300, 40, 200, 150)),
+                 ('the rockfall by moonlight, 1.4 s in', 29, 440, 5.0, 1.7, (420, 60, 200, 150), (320, 40, 200, 150)),
+                 ('the geese in flight: Kerma, the Nile at dusk', 125, 400, 5.0, 1.6, (520, 110, 200, 150), (520, 110, 200, 150)),
+                 ('the geese in flight: Kerma by moonlight', 25, 420, 5.0, 1.9, (600, 0, 200, 150), (600, 0, 200, 150)),
+                 ("the geese in flight: Meroe's hafir", 13, 400, 5.0, 1.8, (540, 100, 200, 150), (540, 100, 200, 150)),
+                 ("the geese in flight: Siwa's spring", 45, 400, 5.0, 1.8, (440, 130, 200, 150), (440, 130, 200, 150)),
+                 ('the ducks out of the papyrus (Nun at dawn; the same drawing)', 161, 400, 5.0, 1.0, (440, 150, 200, 150), (440, 150, 200, 150)),
+                 ("the wadi's tilted path at the doorway: the bottom-right corner", 69, 657, 9.0, -1, (652, 273, 200, 120), (652, 273, 200, 120)),
+                 ("the tilted path by moonlight, the middle of the way", 29, 300, 4.0, -1, (652, 273, 200, 120), (652, 273, 200, 120))]
+            for lab, n, x, t, g, ca, cb in A:
+                for mode in ('torch', 'classic'):
+                    row = [grab(P1['a'], n, mode, x, t, g), grab(P1['b'], n, mode, x, t, g)]
+                    for k, c in (('a', ca), ('b', cb)): row.append(grab(P3[k], n, mode, x, t, g, {'x': c[0], 'y': c[1], 'width': c[2], 'height': c[3]}))
+                    rows.append(row); labels.append('floor %d (%s): %s:   36d | 36e at phone size,   36d | 36e at 3x' % (n, mode, lab))
+            S = Image.new('RGB', (max(sum(im.size[0] + 4 for im in r) for r in rows) + 4, sum(max(im.size[1] for im in r) + 18 for r in rows) + 4), INK); d = ImageDraw.Draw(S); y = 4
+            for r, lab in zip(rows, labels):
+                d.text((6, y), lab, fill=(230, 220, 200)); x = 4
+                for im in r: S.paste(im, (x, y + 14)); x += im.size[0] + 4
+                y += max(im.size[1] for im in r) + 18
+            out = os.path.join(OUT, 'r36e_fixes.png'); S.save(out); print('wrote', out)
+            for q in list(P1.values()) + list(P3.values()): q.close()
+        if WHAT in ('gif36e', 'r36e'):
+            pg = page(SRC); frames = []
+            pg.evaluate(B, [69, 'torch'])
+            for i in range(900):
+                held = i >= 30
+                st = pg.evaluate('''(held)=>{const H=__HK;H.setKey('kb','r',held);if(H.CR){H.crossStep(1/60);H.crossStep(1/60);}else{H.tick(2);}
+                  return {cr:!!H.CR,mode:H.mode,state:H.P.state};}''', held)
+                if i % 3 == 0:
+                    pg.evaluate('()=>__HK.render()'); frames.append(shot(pg).resize((426, 196), Image.LANCZOS))
+                if not st['cr'] and st['state'] != 'enter': break
+            pg.evaluate("()=>__HK.setKey('kb','r',false)")
+            out = os.path.join(OUT, 'r36e_wadi.gif')
+            frames[0].save(out, save_all=True, append_images=frames[1:], duration=100, loop=0); print('wrote', out, len(frames), 'frames')
+            pg.close()
+        print('errors', errs[:5]); b.close()
+
+if WHAT in ('fixes36e', 'gif36e', 'r36e'): run36e()
+elif WHAT in ('all36d', 'gif36d', 'audit36d', 'r36d'): run36d()
 elif WHAT in ('garden', 'gardengif', 'fixes36c', 'r36c'): run36c()
 elif WHAT in ('dunes36b', 'oasis', 'oasisgif', 'r36b'): run36b()
 else: run()
