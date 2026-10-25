@@ -15,7 +15,7 @@ https://daniel-gheorghian.github.io/hourglass-keep/
 | `dev/tools/*.py` | Build, regression and measurement scripts. Many are one-off debug scripts kept for reference. |
 | `dev/tools/hk_vNN_release.html` | Source of each past release, the baseline for comparisons. In git up to v48; later ones are kept locally, untracked (`figscan.py` needs v69's, `layoutcmp.py` takes the newest it finds). |
 | `dev/localize.py` | Run once per new machine (see below). |
-| `dev/docs/` | Reference docs: concept, gameplay, level design, rendering, and one file per game element (play, drawing in both modes, each shader pass, relations, the prince and the guards); `README.md` indexes them. A round that changes an element updates its file in the same commit. |
+| `dev/docs/` | Reference docs: concept, gameplay, level design, rendering, the layers (`layers.md`: what may cover what), and one file per game element (play, drawing in both modes, each shader pass, relations, the prince and the guards); `README.md` indexes them. A round that changes an element updates its file in the same commit. |
 
 ## Setup on a new machine
 
@@ -78,12 +78,13 @@ is a placeholder: only the built `index.html` carries the release number.
 | `cpscan.py lo hi [seeds]` | no pixel of the sky clock (the checkpoint) over a wall's front face, a step or a low ceiling beside it, both modes (round 37c) | `cpscan: ok` |
 | `r38b_tests.py` | round 38b's play faults, one check each: the roof block and `P.inv`, the damaging drop's lip, a banner's rewind, the sand lift's hint and top, the recruit's colour, the timed gates' waits | `r38b: ok` |
 | `sawceil.py lo hi [seeds]` | no saw under a ceiling at his height: each one turned into spikes is tiptoed, and the bot plays its floor (round 38c) | `sawceil: ok` |
+| `layerscan.py lo hi [classic]` (by hand) | nothing in the corridor drawn over the front plane: each kind drawn and left out, the faces' and lips' pixels unchanged (round 39, `dev/docs/layers.md`) | `layerscan: ok` |
 | `lampscan.py`, `slabscan.py`, `sandshaft.py`, `wellscan.py`, `figscan.py` | lamps keep clear (round 19); a slab slides up into stone (25d); every sand lift in a shaft (26e); the wells' sand (21b); the body's poses against v69 (round 23; only where `hk_v69_release.html` is) | `ok`, `slabscan: ok`, `sandshaft: ok`, `ok`, `figscan: ok` |
 | `shadowscan.py lo hi` (release) | no figure's lamp shadow on what stands before the back wall, Torchlight (round 38a) | `shadowscan: ok` |
 | `doorscan.py lo hi`, `openscan.py lo hi`, `tilescan.py lo hi views=2` (release) | no wall art over a doorway (round 15), a window, gate or lift mouth (16c), a floor tile (35c), both modes | every count 0, `tilescan: ok` |
 
 Run by hand, not in `suite.py`: `layoutcmp.py` (layouts identical against a release, for look-only rounds; a generator round differs on
-purpose), `stairscan.py` (about 3 min a floor here), `beamwall.py`, `beamshot.py` and `wgl_cmp.py` (compare two builds' pictures),
+purpose), `layerscan.py` (about 4 min a floor in Classic here), `stairscan.py` (about 3 min a floor here), `beamwall.py`, `beamshot.py` and `wgl_cmp.py` (compare two builds' pictures),
 `swingfeel.py`, `bench.py` (measurements), and each round's `egyptrNN.py` pictures.
 
 Speed: `?bench` in the game's URL (on the phone too) makes the bot (`bot.js`, fetched for the run; `botGen` steps it from the
@@ -520,6 +521,39 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   26a's wedge again (floor 15 seed 49884, Classic: 14 over 10); the quad's top now follows that edge (`pl.ce(b)-3`). And `suiteworker.py`
   refused the GPU flags that `cpscan.py`, `doorscan.py`, `openscan.py`, `tilescan.py` and `shadowscan.py` pass to `launch()` (so `cpscan`
   never ran under the suite since round 37c): it now ignores `args`, the shared browser drawing WebGL as every other suite job.
+- The layering rule (round 39, owner: "We need a layering rule ... background, back wall, corridor, front wall ... take each of the game
+  elements and assign them to one layer ... check that we draw correctly the game elements"; `dev/docs/layers.md`). Far to near: L0 the
+  backdrop (seen only through openings), L1 the back wall and what is fixed on it, L2 the corridor (depth 1 at the back wall to 0 at the
+  front plane: things against the back wall, things across the depth with far and near halves, mid-depth where the figures walk, the
+  floor's top faces, the air), L3 the front plane (wall blocks' front faces, low ceilings' faces, floor slabs' lips, all drawn `HX` left of
+  their cell), L4 the overlay (the dark's rip, HUD, grade, vignette). A part is assigned, not a whole element (a floor's top is L2, its lip
+  L3). R1: a part covers only farther parts; the room picture holds L1 and L3 and every live thing is drawn after it, so L3 in front of a
+  live part is always a cut (`nearCut(ctx,c0,c1,r0,r1,fl)`, `onFace(x,y)`, `airCut`, `faceGap`, besides `wallPress`/`figClip`, `CUT_AT_WALL`,
+  `liftOccl`, `cpCut`). R2: L1 covers L0 but at its openings. R3: the lamp shadow falls on L1 only; the relief belongs to the room picture's
+  stone; beams light L2's air and floor tops, never L3; the fill never lands on L0. Owner's rulings: a banner covers the back wall, so it may
+  lie over windows and wall art ("Banners cover the back wall, so they can be over windows or wall decorations in the back wall"); hanging
+  over open space the ledge's lip and the near half of its top hide all but his hands ("Cut the arms at the lip, keep only the hands",
+  `figClip` modes 3 and 4). Four audits split every element into parts (230) and checked them in code with a census of floors 1-48 x 3 seeds;
+  fixed (front-plane px changed in a test frame, v83 -> v84): a banner's runner 7 px over the next wall's face (1,503 of 2,379 tiles;
+  10,648 -> 0) and the relief on the cloth (`glRelBanners`); the start door 18 px over the next wall's face on floors whose first run heads
+  left (38 of 96; `startDoorX`, `DOOR_HW`: look only, `L.start.x` kept, the entry's walk 14 px there); a sky clock on a sand lift's foot
+  covered by the lift after the ride (33 of 96; `cpOnLift`); the left lift mouth slab drawn whole before the figures (`liftMouthL`: its
+  front face after them); the falling roof block and its trickles over the ceiling's face (411 of 411 for 0.15 s; `roofFallClip`,
+  `glRelRoofFall`); falling slabs, planks, chunks and billow over the walls beside the hole (740 of 1,838 corridor slabs, 181 of 697 planks;
+  `debrisCut`); dead and dying figures (`deadCut`; the last press kept, `g.rdx`); faces on the left (`wallPress` presses and cuts both sides,
+  `wallRows`, `figReach().left`; crouching 18 px into a left wall before); a pushed block's drawn face for the cut; drop-in guards through
+  the ceiling (`dropCeil`); `drawShut` clipped to where the back wall shows; lamp flames under a slab (136 of 6,525; `lampCeil`); `rlEnd`
+  clips rubble by the faces, the hurtdrop's dark shaft drawn in stage 0 (it covered the next lip, a wall's face in 6 layouts and openings
+  in 12 of 77); air (`onFace` skips particles on a face, `airCut` soft sprites, mist cropped to its floor, glints tested at the face); the
+  front stake drawn again after the figures (`drawNeedles`, `SPK_NEAR` 0.45); darts were clipped to an 81 px window and vanished 80 px into a
+  131 px flight while still hitting (all 91 shooters; now cut on the mouth's side only); a hidden flask's stars, the kick shaft's jet stream
+  (limit `X+TW-HX`), Classic's footprint over the clock and lamp stands (`ryStand`), one gate's slot. Side effect: in a kick shaft the
+  corridor at mid-depth is 24 px, narrower than his planted pose, so the walls cut about 4 px of his head. Left as they are (listed in
+  layers.md): the slab's top piece over the lintel's side face (round 14), the swing bar's near pole before him, standing things the lamp
+  shadow does not carve, glows over the sky, the relief on lamps and the clock, the vent's back row after the figures, passes at a figure's
+  play x. `LAYER_DBG` (`hide` a Set of kinds, `glow` false) and `setGT` serve `layerscan.py [file] [lo hi] [seeds] [torch|classic|both]
+  [kinds=] [phases=K]`: each kind drawn and left out at its rest, the front plane's pixels must not change; must print `layerscan: ok`.
+  Look only: layouts identical, hit boxes, timing and the bot unchanged.
 - The Crossing (round 36a, owner, after the research in `dev/INTERLUDE_RESEARCH.md`: "an interlude between themes"; answers: at each
   theme change, after Climb on, he moves only while the pad is held, wordless but skippable, all twelve themes in their setting,
   Torchlight's glow and a Classic version, the hour from `progOf`, named "the Crossing"). At each change of theme (`crossDue(n)`:

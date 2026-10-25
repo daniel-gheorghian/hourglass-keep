@@ -131,3 +131,53 @@ nearer stone in front of a live part (R1). Where a pass is left out of a row, th
 | air (rendering) | motes, gusts, petals, smoke, bats, moths, ash, sparks, drips, FX particles, sword trails and rings | L2 air | `ambientLit`, `atmoPass`, `ambientGlow`, `drawEmissive` | a particle on a face is not drawn (`onFace`) |
 | | floor mist | L2 air on the floor | `atmoPass` | clipped to its floor |
 | | haze strip, grade, vignette, hit and rewind looks, HUD | L4 | last | never cut |
+
+## Checks
+
+| Check | What it holds | Pass |
+|---|---|---|
+| `layerscan.py [file] [lo hi] [seeds] [torch\|classic\|both] [kinds=] [phases=K]` | R1 for everything live at its rest: each kind drawn and left out (`LAYER_DBG.hide`, lamps' drawn glows off in both frames), the front plane's pixels must not change; at K clock phases where a kind moves; guards at their posts | `layerscan: ok` |
+| `cpscan.py`, `liftscan.py`, `stairscan.py`, `doorscan.py`, `openscan.py`, `tilescan.py`, `shadowscan.py`, `beamwall.py` | R1 for the clock, lifts and the exit's climb; R2 for doors and openings; R3 for relief, shadows and beams | as in CLAUDE.md |
+
+`layerscan.py` does not see what exists only in play (darts in flight, debris, dust, trails, the prince's states): round 39's pictures
+cover those (dead, crouched, hanging, pushing, dropping in, falling slabs and planks).
+
+## Round 39: what the audit found and what was done
+
+Four audits (back wall and overlay; floor things; things across the depth; figures and air) split every element into parts, 230 in all,
+and checked each against R1-R3 in code, with a census of floors 1-48 x 3 seeds and pictures. Counts are front-plane pixels the element
+changed in a test frame (canvas px at phone scale, Classic), v83 -> v84.
+
+| Fault (v83) | Seen on | v84 |
+|---|---|---|
+| a banner's runner over the next column's wall face or landing (7 px) | 1,503 of 2,379 banner tiles | cut there (10,648 -> 0); the relief rubbed off the cloth (`glRelBanners`) |
+| the start door over the next wall's face (18 px) when the first run heads left | 38 of 96 floors | drawn clear of it (`startDoorX`); `L.start.x` unchanged |
+| a sky clock on a sand lift's foot covered by the shaft and the slab after the ride | 33 of 96 floors | drawn after the lifts' back half (`cpOnLift`) |
+| the left lift mouth slab drawn whole before the figures: he stood in front of its near face | 497 lifts, 237 sand-lift foot mouths | its front face drawn after the figures (`liftMouthL`) |
+| the falling roof block and its trickles over the ceiling's face and the next wall | 411 of 411 blocks (first 0.15 s) | cut to the slot's hole and below (`roofFallClip`) |
+| a falling cracked slab, plank, their chunks and billow over the walls beside the hole | 740 of 1,838 corridor slabs, 181 of 697 planks | cut row by row (`debrisCut`) |
+| dead and dying figures never cut; a pressed guard snapped 20 px as it died | every death beside a wall | cut by the faces within reach, the last press kept (`deadCut`) |
+| faces on the left never cut a figure (crouch 18 px in) | every left wall | pressed and cut on both sides (`wallPress`, `wallRows`) |
+| pushing a block: cut at the tile's face, not the sliding block's | every push | the block's drawn face |
+| drop-in guards drawn through the ceiling's stone | every reinforcement and ambush | clipped at the ceiling's edge (`dropCeil`) |
+| hanging over open space: forearms and head over the ledge's lip | every such hang and climb | owner: "Cut the arms at the lip, keep only the hands" (`figClip` modes 3, 4) |
+| his pulled-back shadow in a chase painted over the faces in front | every chase climb | clipped to where the back wall shows |
+| lamp tongues, embers and glow over the slab above | 136 of 6,525 lamps | clipped at the ceiling's edge (`lampCeil`) |
+| rubble and the hurtdrop's heap running onto a wall's face; the hurtdrop's dark over the next lip, a wall's face and openings | 199 of 2,450 breaches; 77 hurtdrops | `rlEnd` clips by the faces; the shaft's dark in stage 0 |
+| air never cut: mist, motes, smoke, sparks, bats, petals, dust, glints | every frame | skipped on a face (`onFace`), soft sprites cut (`airCut`), mist cropped to its floor |
+| the front stake drawn before him | every walk across live spikes | drawn again after the figures (`drawNeedles`) |
+| darts clipped to an 81 px window: invisible after 80 px of a 131 px flight, still hitting | all 91 shooters | clipped on the mouth's side only |
+| a hidden flask's stars over the wall face beside it | 23 of 48 | clipped at the face |
+| the kick shaft's jet stream clamped 6 px into the right wall's face | all 236 shafts | limit at the face |
+| Classic's beam footprint over the clock and lamp stands | | `ryStand` boxes |
+| one gate's slot and far half over the lip beside its lintel | 1 of 1,438 | cut there |
+
+Side effect: in a kick shaft the corridor at mid-depth is 24 px wide, narrower than his planted pose, so the walls now cut about 4 px of
+his head (v83 drew him over the far wall).
+
+Left as they are: the slab's top piece above the ceiling's edge over the lintel's side face (round 14, the owner's look); the swing bar's
+near pole and rope drawn before him; standing things not recorded for the lamp shadow (the bar, the lift rig, the paternoster's loop,
+banners, lamp stands and flames, well sand, falling slabs, the vent's flame, darts); additive glows over the sky raising Torchlight's
+alpha a little; the relief on lamp bodies and the clock; the vent's back-row flames drawn after the figures; the beam cut lagging a pushed
+block by up to 40 frames; hint streams and the descending cue's star brushing a face by a few px; the shadow, beam cut and fill cut at a
+figure's play x, not its pressed x; glow sprites of lamps and the exit door, which are light (as the clock's room glow).
