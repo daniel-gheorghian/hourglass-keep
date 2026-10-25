@@ -421,7 +421,7 @@ const skyOf=th=>todSkyCol(th.sky,L&&L.prog?L.prog.tod:0);
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=9;
-const APP_VERSION='81'; // set by the build; shown on the title and pause screens
+const APP_VERSION='82'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},learned:prev?prev.learned:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(!s.learned){s.learned={};if(s.level>2){s.learned.gap=s.learned.climb=s.learned.drop=1;}if(s.maxHp>3)s.learned.potion=1;} // an old save: whoever got past floor 2 can run, jump, climb and let go; the rest of the moves come back as hints until done
@@ -3504,7 +3504,7 @@ function standOn(){
     else if(f.t==='closer'&&!f.jam){f.press=gameTime;if(f.g.tm>0||f.g.open>0.05){f.g.tm=0;f.g.slam=true;Snd.play('gate');shake(0.9);hint('closer');}}
     else if(f.t==='xplate'){f.press=gameTime;if(!L.door.opening&&L.door.open<1){L.door.opening=true;msg('A heavy door grinds open somewhere on this floor.',3.4);Snd.play('door');}}
   }
-  for(let i=0;i<L.cps.length;i++){const cp=L.cps[i];if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<14){cp.on=true;cp.onAt=gameTime;L.cpIndex=i;S.cp=i;S.floorTime=levelTime;S.cpPlates=pressedPlates();const fill=(S.sands|0)<SANDS;S.sands=SANDS;writeSave();msg(fill?'The sky clock lights, and your hours are restored. If you fall, you rise here.':'The sky clock lights. If you fall, you rise here.',3.2);Snd.play('cp');sparks(cp.x,SURF(cp.r)-26,10,'rgb('+(L.theme.glow||'232,196,127')+')');}}
+  for(let i=0;i<L.cps.length;i++){const cp=L.cps[i];if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<14){cp.on=true;cp.onAt=gameTime;L.cpIndex=i;S.cp=i;S.floorTime=levelTime;S.cpPlates=pressedPlates();const fill=(S.sands|0)<SANDS;S.sands=SANDS;writeSave();msg(fill?'The sky clock lights, and your hours are restored. If you fall, you rise here.':'The sky clock lights. If you fall, you rise here.',3.2);Snd.play('cp');sparks(cpX(cp),SURF(cp.r)-26,10,'rgb('+(L.theme.glow||'232,196,127')+')');}}
 }
 // a jump that ends hanging on a ledge: across a pit (gap, wide) or a storey up with Grab held (jgrab)
 function learnGrab(ys){const jk=P.jumpKind;if(jk!=='run'&&jk!=='stand')return;const dx=Math.abs(P.x-P.jx);if(dx>=40)learn('gap');if(jk==='run'&&ys<P.jy-40)learn('jgrab');else if(jk==='run'&&dx>=80)learn('wide');}
@@ -4581,9 +4581,10 @@ function drawRoomStatic(g,rx,ry,stage){
   // 4. floors: walking surface, front lip and open ends
   each((gc,gr,X,Y)=>{
     if(B(L,gc,gr)===WALL||!solidBelow(L,gc,gr))return;
+    if(liftPit(gc,gr)){liftPitDraw(g,X,Y+TH-4,th,B(L,gc+1,gr)===WALL);return;} // (round 37a) a lift's foot: its platform is the floor there, drawn live
     const f=F(L,gc,gr);if(f&&((f.t==='loose'&&f.s<2)||f.t==='plate'||f.t==='xplate'||f.t==='lplate'||f.t==='closer'||f.t==='grate'))return;
     const lo=B(L,gc-1,gr)!==WALL&&!solidBelow(L,gc-1,gr),ro=B(L,gc+1,gr)!==WALL&&!solidBelow(L,gc+1,gr);
-    const ys=Y+TH-4;slab(g,X,ys,th,lo,ro,gc,gr,B(L,gc+1,gr)===WALL,false,true); // (round 31: mark, the floor's own top face for Torchlight's floor looks)
+    const ys=Y+TH-4;slab(g,X,ys,th,lo,ro,gc,gr,B(L,gc+1,gr)===WALL,false,true);if(LIFT_DBG.tiles)LIFT_DBG.tiles.add(gr*L.cols+gc); // (liftscan.py, round 37a: the floor tiles the room pictures draw) // (round 31: mark, the floor's own top face for Torchlight's floor looks)
     if(f&&f.t==='spikes'){gl.fillStyle='rgba(7,5,11,.8)';const m=gc%2?-1:1;for(const [bx,d] of SPK){const q=onFloor(X+16+m*(bx-16),d,ys);gl.beginPath();gl.ellipse(q.x,q.y,2.2,0.9,0,0,Math.PI*2);gl.fill();}}
     if(L.rubble.has(gr*L.cols+gc)){const rnd=mulberry32(hash2(gc,gr+77));for(let i=0;i<6;i++){gl.fillStyle=i%2?th.front:th.lo;const q=onFloor(X+4+rnd()*24,0.2+rnd()*0.6,ys),w=2+rnd()*4;gl.fillRect(q.x,q.y-1,w,1.6+rnd()*1.2);}}
   });
@@ -4647,7 +4648,7 @@ function aoBack(g,rx,ry,B,solidBelow,isLow){const R=AO_K.reach;g.save();g.global
   g.restore();}
 function aoFloor(g,rx,ry,B,solidBelow){const R=AO_K.reach*0.8;g.save();g.globalCompositeOperation='source-atop';
   for(let rr=0;rr<RH;rr++)for(let cc=0;cc<RW;cc++){const gc=rx*RW+cc,gr=ry*RH+rr,X=cc*TW,ys=rr*TH+TH-4;
-    if(B(L,gc,gr)===WALL||!solidBelow(L,gc,gr))continue;const f=F(L,gc,gr);if(f&&(f.t==='loose'||f.t==='plate'||f.t==='xplate'||f.t==='lplate'||f.t==='closer'||f.t==='grate'))continue;
+    if(B(L,gc,gr)===WALL||!solidBelow(L,gc,gr)||liftPit(gc,gr))continue;const f=F(L,gc,gr);if(f&&(f.t==='loose'||f.t==='plate'||f.t==='xplate'||f.t==='lplate'||f.t==='closer'||f.t==='grate'))continue;
     if(B(L,gc+1,gr)===WALL)aoBand(g,X+TW-HX-R,ys-HY,X+TW-HX,ys+HY,true,AO_K.top,true); // the walking surface where it runs into a wall
     if(B(L,gc-1,gr)===WALL)aoBand(g,X-HX,ys-HY,X-HX+R,ys+HY,true,AO_K.top,false);}
   g.restore();}
@@ -5233,6 +5234,31 @@ function isArchTop(gc,gr){return gr>=0&&D0(gc,gr)===EMPTY&&D0(gc,gr+1)===FLOOR&&
 function liftNear(c,r){for(let rr=r-1;rr<=r;rr++)for(let cc=c-1;cc<=c+1;cc++)if(liftCell(cc,rr))return true;return false;}
 function liftCell(c,r){let S=L._lsc;if(!S||S.lv!==L.lifts||S.n!==L.lifts.length){S=L._lsc=new Set();S.lv=L.lifts;S.n=L.lifts.length;for(const f of L.lifts)for(let rr=f.rT;rr<=f.rB;rr++)for(let cc=f.ca;cc<=f.cb;cc++)S.add(rr*L.cols+cc);}
   return c>=0&&c<L.cols&&S.has(r*L.cols+c);}
+// (round 37a, owner after v81: "The lift shafts, at the very bottom the floor tile should be missing because the moving tile of the lift will
+// replace it") the foot of a counterweight lift's or a sand lift's shaft has no floor tile of its own: the platform (or the sand lift's slab) is
+// the floor there when it rests at the foot, its top and lip exactly where a floor tile's are, and while it is away the foot is a shallow pit
+// LP_D deep, the platform's own thickness: the shaft's back wall going on down into it, the end of the floor beside it as its left face, a dark
+// stone floor with its front edge on the front plane. Only where nobody can stand at the foot while the platform is away: a counterweight
+// lift's mouth there is shut while it is away and the far side is wall (2 of 716 on floors 1-48 x 3 seeds open on a drop there: they keep the
+// floor tile), a sand lift's foot is held by its mouth slabs until its slab has come down for good. Look only: the cell stays FLOOR in play
+// (it is never stood on while the pit shows). The paternoster's foot is a floor he walks and lands on, so it keeps its tiles.
+const LP_D=5;
+function liftPit(c,r){let M=L._lpit;if(!M||M.lv!==L.lifts||M.n!==L.lifts.length){M=L._lpit=new Map();M.lv=L.lifts;M.n=L.lifts.length;
+    for(const f of L.lifts)if(f.t==='lift'&&(f.sand||D0(f.sc-f.sB,f.rB)===WALL))M.set(f.rB*L.cols+f.sc,f);}
+  return c>=0&&c<L.cols?M.get(r*L.cols+c)||null:null;}
+// the pit, in the room's picture where the floor tile would be (X, ys: the cell's x and floor line in the picture; wr: a wall on its right,
+// whose front face is nearer than the pit's back right corner)
+function liftPitDraw(g,X,ys,th,wr){const fx=X-HX,fr=fx+TW,ft=ys+HY,bk=ys-HY,D=LP_D,xr=wr?fr:fr+DX;
+  g.save();g.beginPath();g.rect(fx,bk-0.5,xr-fx,ft+D+3-bk+0.5);g.clip();
+  g.fillStyle=th.wall;g.fillRect(fx+DX,bk,TW,D+1);g.fillStyle='rgba(5,3,10,.6)';g.fillRect(fx+DX,bk,TW,D+1); // its back: the shaft's back wall going on down, in the shaft's shade
+  const q=(a,b,c,d)=>{g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.lineTo(c[0],c[1]);g.lineTo(d[0],d[1]);g.closePath();};
+  q([fx,ft+D],[fr,ft+D],[fr+DX,bk+D],[fx+DX,bk+D]);g.fillStyle=th.lo;g.fill(); // its floor, dark: the light falls in only from above
+  const sg=g.createLinearGradient(0,bk+D,0,ft+D);sg.addColorStop(0,'rgba(4,3,8,.74)');sg.addColorStop(1,'rgba(4,3,8,.48)');g.fillStyle=sg;g.fill();
+  g.strokeStyle='rgba(0,0,0,.55)';g.lineWidth=0.8;g.beginPath();g.moveTo(fx+DX,bk+D);g.lineTo(fr+DX,bk+D);g.stroke(); // (the corner where its floor meets its back)
+  q([fx,ft],[fx+DX,bk],[fx+DX,bk+D],[fx,ft+D]);g.fillStyle=th.lo;g.fill();g.fillStyle='rgba(0,0,0,.3)';g.fill(); // its left side: the end of the floor or the wall beside it, seen from the right as a slab's open end is
+  g.strokeStyle='rgba(0,0,0,.5)';g.lineWidth=0.8;g.beginPath();g.moveTo(fx+DX,bk+D);g.lineTo(fx,ft+D);g.stroke();g.strokeStyle='rgba(255,255,255,.14)';g.lineWidth=0.6;g.beginPath();g.moveTo(fx+0.3,ft+0.4);g.lineTo(fx+DX+0.3,bk+0.4);g.stroke(); // (its lit top arris)
+  g.fillStyle=th.front;g.fillRect(fx,ft+D,TW,3);g.fillStyle='rgba(0,0,0,.5)';g.fillRect(fx,ft+D,TW,3); // its floor's front edge, in the shade of the floors' lips beside it
+  g.restore();}
 // only some stretches of arches open onto the view; the rest stay closed, so the keep keeps its walls
 function isOpenArch(gc,gr){if(!isArchTop(gc,gr))return false;const b=Math.floor(gc/4),op=k=>hash2(k*7+3,gr*13+5)%100<40;return op(b)&&!op(b-1);} // never two open stretches in a row
 function inOpening(gc,gr){return isOpenArch(gc,gr)||isOpenArch(gc,gr-1);}
@@ -6274,30 +6300,51 @@ function drawHgPedestal(ctx,th,st,x,fl,h,wear){const q=mulberry32(h),K='#0b0812'
     for(let i=0;i<2+wear;i++){cx+=(q()-0.5)*3;cy+=1.6+q()*1.4;if(cy>fl-0.5)break;ctx.lineTo(cx,cy);}ctx.stroke();}
   for(let i=0;i<(wear-1)*2+1;i++){const rx=x+(q()<0.5?-1:1)*(8.5+q()*4),w=1.2+q()*1.6;ctx.fillStyle=K;ctx.fillRect(rx-0.4,fl-w*0.7-0.4,w+0.8,w*0.7+0.8);ctx.fillStyle=stone[1];ctx.fillRect(rx,fl-w*0.7,w,w*0.7);}}
 function cpClockF(cp){if(!cp.on)return 0;const turn=cp.onAt!==undefined?clamp((gameTime-cp.onAt)/0.7,0,1):1;return turn<1?ease(turn):1-((gameTime-(cp.onAt||0)-0.7)%8)/8;}
+// (round 37c, owner after v81: "The timer checkpoint over the front wall") The clock stands at mid-depth, but a wall's front face (a
+// step's, a low ceiling's) stands HX nearer and HX further left, so in the cell before a wall its right half (Nut's feet, the arch, the
+// pedestal's rubble, its halo) was drawn over that face. Where it is drawn (cpX): moved along its cell clear of the faces beside it, its
+// foot CP_GAP short of the face (as a figure is pressed against a face, wallPress); the trigger, the respawn spot and every timing keep
+// cp.x: look only. And what it draws is cut by those faces (cpCut; the halo too: a light at mid-depth cannot reach a face in front of
+// it), as figures and lifts are; Classic's wide glow (the room light it gives, as a lamp's sprite, and as Torchlight's light map) is not.
+// CP_DBG.off draws only that glow (cpscan.py compares the two frames), CP_DBG.old v81's placement and no cut (pictures).
+const CP_HL=16.4,CP_HR=15.2,CP_GAP=0.6,CP_DBG={off:false,old:false}; // (how far the drawn clock reaches left and right of its x at s 1.9, outline included)
+function cpFace(c,r){if(c<0||c>=L.cols||r<0||r>=L.rows)return 0;if(B(L,c,r)===WALL)return TH;const f=F(L,c,r);return f&&f.t==='low'?TH-34:0;} // (the height of the nearer face in that cell, from its top)
+function cpX(cp){if(CP_DBG.old)return cp.x;let x=cp.x;const X=cp.c*TW;
+  if(cpFace(cp.c+1,cp.r))x=Math.min(x,X+TW-HX-CP_HR-CP_GAP);if(cpFace(cp.c-1,cp.r))x=Math.max(x,X-HX+CP_HL+CP_GAP);return x;}
+function cpCut(ctx,cp){if(CP_DBG.old)return false;let any=false;
+  for(let c=cp.c-1;c<=cp.c+1;c++){const h=cpFace(c,cp.r);if(!h)continue;if(!any){ctx.save();ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);any=true;}ctx.rect(c*TW-HX,cp.r*TH,TW,h);}
+  if(any)ctx.clip('evenodd');return any;}
 function drawHourglass(ctx,cp){
-  const th=L.theme,st=th.style,M=HG_MAT[st]||HG_MAT.palace,gl=th.glow||'255,200,120',x=cp.x,fl=SURF(cp.r)-1;
-  const lit=cp.on,turn=lit&&cp.onAt!==undefined?clamp((gameTime-cp.onAt)/0.7,0,1):1,bob=Math.sin(gameTime*1.7+x*0.05)*1.6;
-  // the pedestal: the theme's own stone and ornament, worn as much as the wall behind it (wearLevel, the same random
-  // patches as the walls: pristine, worn, damaged, partly fallen); the glass above it is never damaged
-  drawHgPedestal(ctx,th,st,x,fl,hash2(cp.c*37+11,cp.r*19+3),wearLevel(x,fl-20));
-  const ptop=fl-11;
-  ctx.fillStyle='rgba(0,0,0,'+(0.32-bob*0.03)+')';ctx.beginPath();ctx.ellipse(x,ptop+0.4,4.6-bob*0.3,0.9,0,0,6.2832);ctx.fill();
-  if(lit){ctx.save();ctx.globalCompositeOperation='lighter';ctx.fillStyle='rgba('+gl+',.35)';ctx.beginPath();ctx.ellipse(x,ptop+0.2,6.5,1.5,0,0,6.2832);ctx.fill();ctx.restore();}
-  const cy=fl-25+bob;
-  ctx.save();ctx.translate(x,cy);
-  if(lit){ // the lit glass: a halo as strong as a lamp's (the light map adds the room light; this carries Classic too)
-    ctx.save();ctx.globalCompositeOperation='lighter';const k=0.85+0.15*Math.sin(gameTime*3+x);
-    let gr=ctx.createRadialGradient(0,0,1,0,0,30);gr.addColorStop(0,'rgba('+gl+','+(0.55*k*turn)+')');gr.addColorStop(1,'rgba('+gl+',0)');ctx.fillStyle=gr;ctx.fillRect(-32,-32,64,64);
-    if(!GFX().light){gr=ctx.createRadialGradient(0,0,4,0,0,70);gr.addColorStop(0,'rgba('+gl+','+(0.22*turn)+')');gr.addColorStop(1,'rgba('+gl+',0)');ctx.fillStyle=gr;ctx.fillRect(-72,-72,144,144);}
+  const th=L.theme,st=th.style,gl=th.glow||'255,200,120',x=cpX(cp),fl=SURF(cp.r)-1,off=CP_DBG.off;
+  const lit=cp.on,turn=lit&&cp.onAt!==undefined?clamp((gameTime-cp.onAt)/0.7,0,1):1,bob=Math.sin(gameTime*1.7+cp.x*0.05)*1.6;
+  const cy=fl-25+bob;let cut=!off&&cpCut(ctx,cp);
+  if(!off){
+    // the pedestal: the theme's own stone and ornament, worn as much as the wall behind it (wearLevel, the same random
+    // patches as the walls: pristine, worn, damaged, partly fallen); the glass above it is never damaged
+    drawHgPedestal(ctx,th,st,x,fl,hash2(cp.c*37+11,cp.r*19+3),wearLevel(cp.x,fl-20));
+    const ptop=fl-11;
+    ctx.fillStyle='rgba(0,0,0,'+(0.32-bob*0.03)+')';ctx.beginPath();ctx.ellipse(x,ptop+0.4,4.6-bob*0.3,0.9,0,0,6.2832);ctx.fill();
+    if(lit){ctx.save();ctx.globalCompositeOperation='lighter';ctx.fillStyle='rgba('+gl+',.35)';ctx.beginPath();ctx.ellipse(x,ptop+0.2,6.5,1.5,0,0,6.2832);ctx.fill();ctx.restore();}
+    if(lit){ // the lit glass: a halo as strong as a lamp's (the light map adds the room light; this carries Classic too)
+      ctx.save();ctx.translate(x,cy);ctx.globalCompositeOperation='lighter';const k=0.85+0.15*Math.sin(gameTime*3+cp.x);
+      const gr=ctx.createRadialGradient(0,0,1,0,0,30);gr.addColorStop(0,'rgba('+gl+','+(0.55*k*turn)+')');gr.addColorStop(1,'rgba('+gl+',0)');ctx.fillStyle=gr;ctx.fillRect(-32,-32,64,64);
+      ctx.restore();}}
+  if(cut){ctx.restore();cut=false;}
+  if(lit&&!GFX().light){ctx.save();ctx.translate(x,cy);ctx.globalCompositeOperation='lighter'; // (Classic's room light: not cut)
+    const gr=ctx.createRadialGradient(0,0,4,0,0,70);gr.addColorStop(0,'rgba('+gl+','+(0.22*turn)+')');gr.addColorStop(1,'rgba('+gl+',0)');ctx.fillStyle=gr;ctx.fillRect(-72,-72,144,144);
     ctx.restore();}
+  if(off)return;
+  cut=cpCut(ctx,cp);
   // the sky clock, large: when he reaches it the sun runs back to Nut's mouth and her stars light; then its night runs out (8 s and
   // round again); unlit it stands dark, its stars out
   const f=cpClockF(cp);
+  ctx.save();ctx.translate(x,cy);
   nutClock(ctx,f,{s:1.9,lit,dim:!lit,t:gameTime,glow:lit,kl:lit?keyLight(x,cy+12):null});
   ctx.restore();
   // drops of light rising round it while it runs (the water's glint), cool as water
-  if(lit){ctx.save();ctx.globalCompositeOperation='lighter';for(let i=0;i<5;i++){const u=(gameTime*0.35+i/5+x*0.01)%1;ctx.globalAlpha=(1-u)*0.7*turn;ctx.fillStyle='rgb(190,232,255)';
+  if(lit){ctx.save();ctx.globalCompositeOperation='lighter';for(let i=0;i<5;i++){const u=(gameTime*0.35+i/5+cp.x*0.01)%1;ctx.globalAlpha=(1-u)*0.7*turn;ctx.fillStyle='rgb(190,232,255)';
       ctx.fillRect(x+Math.sin(u*8+i*1.7)*(7+u*4),cy+10-u*30,1,1);}ctx.restore();}
+  if(cut)ctx.restore();
 }
 // ---- doors: each theme's own (an Egyptian doorway: a lintel under a cavetto cornice in a moulded frame; the Cistern's is vaulted) ----
 // the arch head as a path: round for the Cistern, pointed for the rest; with yb given it is the whole opening down to the floor
@@ -6490,7 +6537,10 @@ let METAL_PAINT_HI=true;
 const MPAL={};
 function tintHex(c,t){const n=parseInt(c.slice(1),16),f=(v,k)=>Math.max(0,Math.min(255,Math.round(v*k)));return '#'+((1<<24)|(f(n>>16,t[0])<<16)|(f((n>>8)&255,t[1])<<8)|f(n&255,t[2])).toString(16).slice(1);}
 function mixHex(a,b,t){const x=parseInt(a.slice(1),16),y=parseInt(b.slice(1),16),f=(s)=>Math.round(((x>>s)&255)*(1-t)+((y>>s)&255)*t);return '#'+((1<<24)|(f(16)<<16)|(f(8)<<8)|f(0)).toString(16).slice(1);}
-function metalPal(role){const st=L.theme.style,k=st+role;let p=MPAL[k];if(!p){const m=METAL[st]||METAL.dungeon;p=MPAL[k]=MKIND[m[role]].map(c=>tintHex(c,m.tint));}return p;}
+// (round 37b) the Egyptian looks (EGP.traps) cast the slicer's jaws in bronze in every style; without them each style's own metal (v61's)
+const METAL_EG={jaw:'bronze'};
+function metalOf(role){const m=METAL[L.theme.style]||METAL.dungeon;return EGP.traps&&METAL_EG[role]||m[role];}
+function metalPal(role){const st=L.theme.style,k=st+role+(EGP.traps&&METAL_EG[role]?'E':'');let p=MPAL[k];if(!p){const m=METAL[st]||METAL.dungeon;p=MPAL[k]=MKIND[metalOf(role)].map(c=>tintHex(c,m.tint));}return p;}
 // ---- shared geometry: the draw code and the shader's metal mask read the same numbers (each fills a reused object, nothing is allocated)
 // Gate: the plane, the open height (drop, below the ceiling line), the x of its NB bars and the offsets of its cross bars.
 const GATE_G={pl:null,NB:5,drop:0,xs:[0,0,0,0,0],nc:0,co:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]};
@@ -7240,8 +7290,8 @@ function ceilOff(c,r){return B(L,c,r-1)===FLOOR?5:0;}
 function plane(X,Y,ys,c,r){const L0=X+16-HX,R0=X+16+HX,W=R0-L0,co=ceilOff(c,r);
   // ce: where the plane meets the underside of the ceiling (receding up with depth); top: the visible cut, the ceiling's front edge
   return {L0,R0,W,co,top:Y+co,fl:x=>ys+HY-DY*(x-L0)/W,ce:x=>Y+co-DY*(x-L0)/W};}
-function planeClip(ctx,pl,X,half){ctx.beginPath();ctx.moveTo(pl.L0-4,pl.top);ctx.lineTo(pl.R0+4,pl.top);ctx.lineTo(pl.R0+4,pl.fl(pl.R0+4));ctx.lineTo(pl.L0-4,pl.fl(pl.L0-4));ctx.closePath();ctx.clip();
-  ctx.beginPath();if(half)ctx.rect(X-40,-1e5,56,2e5);else ctx.rect(X+16,-1e5,60,2e5);ctx.clip();}
+function planeClip(ctx,pl,X,half,ov){ctx.beginPath();ctx.moveTo(pl.L0-4,pl.top);ctx.lineTo(pl.R0+4,pl.top);ctx.lineTo(pl.R0+4,pl.fl(pl.R0+4));ctx.lineTo(pl.L0-4,pl.fl(pl.L0-4));ctx.closePath();ctx.clip();
+  ctx.beginPath();if(half)ctx.rect(X-40,-1e5,56+(ov||0),2e5);else ctx.rect(X+16,-1e5,60,2e5);ctx.clip();} // (ov: the near half laps over the far one, so no wall shows through their seam; round 37b's jaws)
 function gateRoundel(ctx,cx,cy,frac,running){const th=L.theme,T=Math.PI*2;ctx.save();
   ctx.fillStyle='rgba(0,0,0,.32)';ctx.beginPath();ctx.arc(cx+0.9,cy+1.1,9.6,0,T);ctx.fill();          // the rim's shadow on the wall
   ctx.fillStyle=th.wallB;ctx.beginPath();ctx.arc(cx,cy,9.4,0,T);ctx.fill();                           // rim, cut from the wall's own stone
@@ -7289,28 +7339,60 @@ function pairPlaque(ctx,x,y,col){ctx.save();ctx.translate(x,y);const D=(k,dx,dy)
   ctx.fillStyle='rgba(0,0,0,.35)';D(6.2,0.9,1.1);ctx.fill();ctx.fillStyle='#0b0812';D(6,0,0);ctx.fill();
   ctx.fillStyle=col;D(4.4,0,0);ctx.fill();ctx.fillStyle='rgba(255,255,255,.38)';ctx.beginPath();ctx.moveTo(0,-4.4);ctx.lineTo(4.4,0);ctx.lineTo(1.4,0);ctx.lineTo(-1.6,-2.6);ctx.closePath();ctx.fill();
   ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.moveTo(-4.4,0);ctx.lineTo(0,4.4);ctx.lineTo(0.6,1.8);ctx.closePath();ctx.fill();ctx.restore();}
+// (round 37b, owner after v81: "the guillotine jaws needs to look more metallic") each jaw is a cast plate, bronze in the Egyptian looks
+// (EGP.traps; the style's steel or iron without them), opaque: across its face (near edge to far, JAWG) a dark rim, the body, a crisp
+// reflection band and the far edge catching the light; the honed bevel along the teeth (a bright edge over a dark line); a riveted spine
+// (JAW_SP back from the teeth, slides into the slot with the blade); a little verdigris near the root (hashes of the cell); the face darker
+// and its far edge lit when the key light is beyond it (keyLight's sx), its near edge lit when the light is on our side. Silhouette, hit box,
+// timing and beamBlockers unchanged.
+const JAW_SP=12,JAW_SW=3.4,JAW_OV=0.6,JAWG=[[0,0,0],[.06,1,0],[.17,0,1,.5],[.25,1,0],[.3,2,0],[.33,3,0],[.37,2,0],[.46,1,0],[.72,0,1,.35],[.9,1,0],[1,2,0]];
+function jawGrad(ctx,pl,pal){const g=ctx.createLinearGradient(pl.L0,0,pl.R0,0);for(const s of JAWG)g.addColorStop(s[0],s.length>3?mixHex(pal[s[1]],pal[s[2]],s[3]):pal[s[1]]);return g;}
+// a jaw's outline (dir +1: hangs from the ceiling, teeth down; -1: rises from the floor, teeth up) and, when e is given, its toothed edge alone
+function jawPath(pl,dir,off,sh,e){const T=dir>0?CH_UP:CH_LO,sc=0.8,base=x=>dir>0?pl.ce(x)+off:pl.fl(x)-off,anchor=x=>dir>0?pl.ce(x)-6:pl.fl(x)+6;let x=pl.L0;
+  const pth=new Path2D();pth.moveTo(pl.L0,anchor(pl.L0));pth.lineTo(pl.L0,base(pl.L0));if(e)e.moveTo(pl.L0,base(pl.L0));
+  for(let i=0;i<T.length&&x<pl.R0-0.5;i++){const [w,h,ln]=T[(i+sh)%T.length],xa=x,xb=pl.R0-x-w*sc<2?pl.R0:x+w*sc,xm=(xa+xb)/2+ln*0.6;
+    pth.lineTo(xm,base(xm)+dir*h);pth.lineTo(xb,base(xb));if(e){e.lineTo(xm,base(xm)+dir*h);e.lineTo(xb,base(xb));}x=xb;}
+  pth.lineTo(pl.R0,base(pl.R0));pth.lineTo(pl.R0,anchor(pl.R0));pth.closePath();return pth;}
 function drawJaws(ctx,o,f,X,Y,ys,half){
-  const k=chompK(f),pl=plane(X,Y,ys,o.c,o.r),sh=o.c%7,sc=0.8,pal=metalPal('jaw');
+  const k=chompK(f),pl=plane(X,Y,ys,o.c,o.r),sh=o.c%7,pal=metalPal('jaw'),kl=keyLight(X+16,ys),ks=kl.sx*kl.m;
   // measured from the ceiling's underside: open, the upper teeth just clear the ceiling's front edge
   const upOff=lerp(pl.co?2:7,31-pl.co,k),loOff=lerp(3,21,k);
   if(!half)slots(ctx,pl);
-  ctx.save();planeClip(ctx,pl,X,half);
-  const jaw=(dir)=>{ // dir +1: hangs from the ceiling, teeth down; -1: rises from the floor, teeth up
-    const T=dir>0?CH_UP:CH_LO,base=x=>dir>0?pl.ce(x)+upOff:pl.fl(x)-loOff,anchor=x=>dir>0?pl.ce(x)-6:pl.fl(x)+6;let x=pl.L0;
-    const pth=new Path2D();pth.moveTo(pl.L0,anchor(pl.L0));pth.lineTo(pl.L0,base(pl.L0));
-    for(let i=0;i<T.length&&x<pl.R0-0.5;i++){const [w,h,ln]=T[(i+sh)%T.length],xa=x,xb=pl.R0-x-w*sc<2?pl.R0:x+w*sc,xm=(xa+xb)/2+ln*0.6;
-      pth.lineTo(xm,base(xm)+dir*h);pth.lineTo(xb,base(xb));x=xb;}
-    pth.lineTo(pl.R0,base(pl.R0));pth.lineTo(pl.R0,anchor(pl.R0));pth.closePath();
-    if(!half&&MSF.rec){let jp=JAWP.get(o);if(!jp)JAWP.set(o,jp={t:0,a:null,b:null});jp.t=gameTime;if(dir>0)jp.b=pth;else jp.a=pth;} // (unit MS: the metal mask fills the same outlines)
-    ctx.fillStyle=pal[2];ctx.fill(pth);
+  ctx.save();planeClip(ctx,pl,X,half,JAW_OV);
+  const L0=pl.L0,R0=pl.R0,W=pl.W;
+  const jaw=(dir)=>{
+    const off=dir>0?upOff:loOff,base=x=>dir>0?pl.ce(x)+off:pl.fl(x)-off,edge=new Path2D(),pth=jawPath(pl,dir,off,sh,edge);let x=L0;
+    if(!half){let jp=JAWP.get(o);if(!jp)JAWP.set(o,jp={t:0,a:null,b:null});jp.t=gameTime;if(dir>0)jp.b=pth;else jp.a=pth;} // (unit MS: the metal mask fills the same outlines; round 37b: and the lamp shadow is carved by them)
+    ctx.fillStyle=jawGrad(ctx,pl,pal);ctx.fill(pth);
     ctx.save();ctx.clip(pth);
-    const b0=base(pl.L0);
-    if(METAL_PAINT_HI){ctx.strokeStyle='#eef1f6';ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(pl.L0-2,b0-dir*14);ctx.lineTo(pl.L0+10,b0+dir*2-6);ctx.stroke();
-      ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(pl.L0+2,b0-dir*14);ctx.lineTo(pl.L0+14,b0+dir*2-8);ctx.stroke();}
-    ctx.fillStyle=pal[1];ctx.fillRect(pl.R0-3,Y-20,3,TH+30);
+    const ln=(d,a,b)=>{ctx.moveTo(a,base(a)-dir*d);ctx.lineTo(b,base(b)-dir*d);};
+    // brushed along the plate: faint lines parallel to the edge
+    ctx.lineWidth=0.5;ctx.strokeStyle='rgba(255,240,210,.10)';ctx.beginPath();ln(4.6,L0,R0);ln(9.2,L0,R0);ln(JAW_SP+8,L0,R0);ctx.stroke();
+    ctx.strokeStyle='rgba(10,6,4,.14)';ctx.beginPath();ln(6.8,L0,R0);ln(JAW_SP+5,L0,R0);ln(JAW_SP+13,L0,R0);ctx.stroke();
+    // the key light: beyond the plate its face is in shade; on our side the near edge catches it
+    if(ks>0.05){ctx.fillStyle='rgba(8,5,12,'+(0.32*ks).toFixed(3)+')';ctx.fillRect(L0-1,Y-24,W+2,TH+40);}
+    // the spine: a raised band riveted through, its lit edge toward the teeth
+    ctx.lineWidth=JAW_SW;ctx.strokeStyle=mixHex(pal[0],pal[1],0.35);ctx.beginPath();ln(JAW_SP+JAW_SW/2,L0,R0);ctx.stroke();
+    ctx.lineWidth=0.7;ctx.strokeStyle=pal[3];ctx.globalAlpha=0.55;ctx.beginPath();ln(JAW_SP,L0,R0);ctx.stroke();ctx.globalAlpha=1;
+    ctx.strokeStyle='rgba(8,5,4,.5)';ctx.beginPath();ln(JAW_SP+JAW_SW,L0,R0);ctx.stroke();
+    for(const u of [0.2,0.62,0.88]){const rx=L0+u*W,ry=base(rx)-dir*(JAW_SP+JAW_SW/2);
+      ctx.fillStyle=pal[0];ctx.beginPath();ctx.arc(rx+0.25,ry+0.3,1.25,0,6.2832);ctx.fill();ctx.fillStyle=pal[2];ctx.beginPath();ctx.arc(rx-0.15,ry-0.15,0.85,0,6.2832);ctx.fill();
+      ctx.fillStyle=pal[3];ctx.fillRect(rx-0.55,ry-0.6,0.5,0.5);}
+    // verdigris and tarnish toward the root (from the cell: no stream)
+    for(let i=0;i<4;i++){const h=((o.c*73+o.r*31+i*197+(dir>0?0:89))*2654435761>>>0)/4294967296,h2=((o.c*29+i*113+(dir>0?7:3))*2246822519>>>0)/4294967296,px=L0+2+h*(W-4),d=JAW_SP+JAW_SW+2+h2*14;
+      ctx.fillStyle=i&1?'rgba(28,18,10,.22)':'rgba(92,150,124,.42)';ctx.beginPath();ctx.ellipse(px,base(px)-dir*d,1.4+h2,0.8+h*0.5,-0.25,0,6.2832);ctx.fill();}
+    // the honed bevel along the teeth: a dark line where it meets the face, the edge itself bright
+    ctx.lineJoin='round';ctx.lineWidth=3.6;ctx.strokeStyle='rgba(12,7,4,.38)';ctx.stroke(edge);
+    ctx.lineWidth=1.8;ctx.strokeStyle=pal[3];ctx.stroke(edge);
+    if(METAL_PAINT_HI){ctx.lineWidth=0.8;ctx.strokeStyle='rgba(255,252,240,.7)';ctx.stroke(edge);} // (Classic: the edge's glint; Torchlight's metal shader lights it from the lamps)
+    // the root in the slot's shade
+    {const y0=dir>0?pl.top:pl.fl(L0+HX),g=ctx.createLinearGradient(0,y0,0,y0+dir*12);g.addColorStop(0,'rgba(6,4,10,.62)');g.addColorStop(1,'rgba(6,4,10,0)');ctx.fillStyle=g;ctx.fillRect(L0-1,Math.min(y0,y0+dir*12)-DY,W+2,12+2*DY);}
+    // the plate's edges: the far one catching the light (the more so with the light beyond), the near one when the light is on our side
+    ctx.fillStyle=pal[3];ctx.globalAlpha=0.35+0.45*Math.max(0,ks);ctx.fillRect(R0-1.3,Y-24,1.3,TH+40);
+    ctx.globalAlpha=0.5*Math.max(0,-ks);if(ctx.globalAlpha>0.02)ctx.fillRect(L0,Y-24,1.1,TH+40);ctx.globalAlpha=1;
     ctx.restore();
-    ctx.strokeStyle='#0b0812';ctx.lineWidth=1;ctx.stroke(pth);
-    if(f.blood){ctx.fillStyle='rgba(150,14,18,.95)';x=pl.L0;
+    ctx.lineWidth=1;ctx.strokeStyle='#0b0812';ctx.stroke(pth);
+    if(f.blood){const T=dir>0?CH_UP:CH_LO,sc=0.8;ctx.fillStyle='rgba(150,14,18,.95)';x=pl.L0;
       for(let i=0;i<T.length&&x<pl.R0-0.5;i++){const [w,h,ln]=T[(i+sh)%T.length],xm=x+w*sc/2+ln*0.6;if(i%2===(dir>0?1:0)){const by=base(xm);ctx.beginPath();ctx.moveTo(xm-1.3,by+dir*h*0.35);ctx.lineTo(xm,by+dir*h);ctx.lineTo(xm+1.3,by+dir*h*0.35);ctx.fill();
         ctx.fillRect(xm-0.5,by-dir*(dir>0?5:2),1,dir>0?5:7);}x+=w*sc;}}};
   jaw(-1);ceilShade(ctx,pl);jaw(1); // (the upper jaw after the shade: it was lost in the dark under the ceiling)
@@ -7396,7 +7478,7 @@ const CUT_AT_WALL=new Set(['plate','xplate','lplate','closer','loose','spikes'])
 // brackets, verdigris on the bronze in the damp themes, a chipped platform lip, streaks down the shaft; 3 a rotten bite out of the
 // beam's end bound with rope, heavier rust and soot or moss, a cracked platform. Never broken, never like a hurtdrop.
 function liftVisible(f,x0,x1,y0,y1){return (f.cb+1)*TW+80>x0&&f.ca*TW-80<x1&&f.rB*TH+TH+10>y0&&f.rT*TH-40<y1;}
-const LIFT_DBG={off:false,rider:false,gatesR:false}; // (liftscan.py: off leaves the lifts out of a frame, rider the prince, and gatesR draws only the gratings on the shafts' right edges, to compare with frames that have them)
+const LIFT_DBG={off:false,rider:false,gatesR:false,tiles:null}; // (liftscan.py: off leaves the lifts out of a frame, rider the prince, and gatesR draws only the gratings on the shafts' right edges, to compare with frames that have them; tiles, a Set, collects the cells whose floor tile the room pictures draw)
 function drawLift(ctx,f,half){if(LIFT_DBG.off||(LIFT_DBG.gatesR&&f.t==='chain'))return;if(f.sand)drawSandLift(ctx,f,half);else if(f.t==='chain')drawLiftChain(ctx,f,half);else drawLiftCounterweight(ctx,f,half);}
 function liftWear(f){if(f.wl===undefined||f.wn!==L.n){const x=(f.ca+f.cb+1)*TW/2,ym=(f.rT*TH+SURF(f.rB))/2;f.wn=L.n;f.wl=inBreach(x,ym,true)?3:wearLevel(x,ym);}return f.wl;}
 // the front faces of the walls and low ceilings round a lift: cut out of what is drawn next (ctx in world space; save/restore round it)
@@ -7580,14 +7662,14 @@ function sandOpen(f){return clamp((f.y-f.yB+SAND_MD)/SAND_MD,0,1);}
 function sandMouth(ctx,f,s,h){const gx=EGP.traps?(s<0?f.sc*TW-T_SLAB/2:(f.sc+1)*TW+T_SLAB/2):liftGx(f,s);drawGate(ctx,{open:sandOpen(f),latch:true,dur:0,lg:1},gx-16,f.rB*TH,SURF(f.rB),h);}
 function drawSandLift(ctx,f,half){
   if(half||LIFT_DBG.gatesR){for(const s of f.ms)if(s>0)sandMouth(ctx,f,s,half?1:0);return;} // (a right mouth's near half after the rider, as the counterweight's)
-  const th=L.theme,ys=f.y,bot=SURF(f.rB),W=liftWear(f),X=f.sc*TW,top=f.rT*TH,h=ys-f.yT;
+  const th=L.theme,ys=f.y,bot=SURF(f.rB),W=liftWear(f),X=f.sc*TW,top=f.rT*TH,h=ys-f.yT,pd=liftPit(f.sc,f.rB)?LP_D:0; // (round 37a: pd, the foot's pit under the slab's resting place)
   ctx.save();liftOccl(ctx,f);
-  ctx.save();liftOcclSide(ctx,f);ctx.beginPath();ctx.rect(X-HX,f.yT-HY,TW,bot-f.yT+HY);ctx.clip(); // (round 19) seen through the hole only: under the top slab's back edge, between the front planes of the cells beside it (its right groove lay over the next floor tile's top and lip)
+  ctx.save();liftOcclSide(ctx,f);ctx.beginPath();ctx.rect(X-HX,f.yT-HY,TW,bot-f.yT+HY+pd);ctx.clip(); // (round 19) seen through the hole only: under the top slab's back edge, between the front planes of the cells beside it (its right groove lay over the next floor tile's top and lip)
   liftShaftBack(ctx,X,TW,top,bot,W);
-  const ox=X+16+HX;ctx.fillStyle='rgba(6,4,10,.92)';ctx.beginPath();ctx.moveTo(ox-5,bot-HY+0.5);ctx.lineTo(ox-5,bot-HY-5);ctx.quadraticCurveTo(ox,bot-HY-7.5,ox+5,bot-HY-5);ctx.lineTo(ox+5,bot-HY+0.5);ctx.closePath();ctx.fill(); // the outlet
+  const ox=X+16+HX,oy=bot-HY+pd;ctx.fillStyle='rgba(6,4,10,.92)';ctx.beginPath();ctx.moveTo(ox-5,oy+0.5);ctx.lineTo(ox-5,oy-5);ctx.quadraticCurveTo(ox,oy-7.5,ox+5,oy-5);ctx.lineTo(ox+5,oy+0.5);ctx.closePath();ctx.fill(); // the outlet (round 37a: in the pit's back, on its floor)
   ctx.restore();
   ctx.restore();for(const s of f.ms)if(s<0){sandMouth(ctx,f,s,0);sandMouth(ctx,f,s,1);}ctx.save();liftOccl(ctx,f); // (round 26e: a left mouth whole, behind the sand and slab)
-  if(ys<bot-0.5)sandCut(ctx,X-HX,ys+HY+5,bot+HY,f.yT+HY+5,h,f.s===1&&f.tm>=SAND_LW,f.sc*131+f.rT*7);
+  if(ys<bot-0.5)sandCut(ctx,X-HX,ys+HY+5,bot+HY+pd,f.yT+HY+5,h,f.s===1&&f.tm>=SAND_LW,f.sc*131+f.rT*7); // (round 37a: down into the foot's pit)
   if(f.s===1&&f.tm<SAND_LW+0.3){const k=Math.max(0,1-Math.abs(f.tm-SAND_LW)/0.3);if(k>0.02)dustCloud(ctx,X+16-HX,ys+HY+3,0.12+0.2*(1-k),0.6,0.55,0);} // a puff as it first gives
   if(f.s===1&&f.tm>=SAND_LW&&ys>f.yT+2)for(const ex of [X-HX+1.6,X+TW-HX-1.6])sandFlow(ctx,ex,f.yT+HY+5,ys+HY+1,0.16,ex*0.07); // grains left on the shaft's sides running down the gap after it (they stop when it does)
   // (round 19) the cells on the shaft's right are nearer than the slab's back right corner once it has left a landing: a wall's
@@ -7596,7 +7678,7 @@ function drawSandLift(ctx,f,half){
   for(let r=f.rT;r<=f.rB;r++){if(B(L,f.sc+1,r)===WALL)ctx.rect(xr,r*TH,TW,TH);
     else if(solidBelow(L,f.sc+1,r)){const sy=SURF(r);ctx.moveTo(xr,sy+HY+9);ctx.lineTo(xr+TW+DX,sy+HY+9);ctx.lineTo(xr+TW+DX,sy-HY);ctx.lineTo(xr+DX,sy-HY);ctx.lineTo(xr,sy+HY);ctx.closePath();}}
   ctx.clip('evenodd');
-  sandSlab(ctx,X,ys,th,W,hash2(f.sc,f.rB));
+  sandSlab(ctx,X,ys,th,W,hash2(f.sc,f.rB),pd&&ys>=bot-0.5); // (round 37a: at rest in the foot's pit its lip's shadow is the pit floor's edge, already in shade)
   ctx.restore();for(const s of f.ms)if(s>0)sandMouth(ctx,f,s,0);}
 // (round 19, owner: the sand lift's platform "doesn't respect perspective") the slab is a floor tile of the theme's stone, cut to
 // the shaft: its lip (front face) on the front plane over the whole cell, X-HX to X+TW-HX, exactly where the floor tiles' lips are,
@@ -7604,10 +7686,10 @@ function drawSandLift(ctx,f,half){
 // outline round all of it lay over the next floor tile's top and lip (at the top and the bottom of the shaft) and its lip stopped half
 // a pixel short of each edge. Now no side face (beside it there is always either floor it abuts or a wall whose front face is nearer)
 // and no outline over the top; only the slab's left edge and the lip's foot are inked, where it meets the open shaft and its shadow.
-function sandSlab(ctx,X,ys,th,W,seed){
+function sandSlab(ctx,X,ys,th,W,seed,inPit){
   if(!EGP.traps){liftSlab(ctx,X,ys,th,W,seed);return;}
   const fx=X-HX,ft=ys+HY,K='#0b0812';
-  ctx.fillStyle='rgba(0,0,0,.28)';ctx.fillRect(fx,ft+5,TW,3); // the lip's shadow, as under a floor tile's
+  if(!inPit){ctx.fillStyle='rgba(0,0,0,.28)';ctx.fillRect(fx,ft+5,TW,3);} // the lip's shadow, as under a floor tile's
   stoneBox(ctx,THEME_STONE[th.look]||'limestone',fx,ft,TW,5,{top:true,side:false,near:true,wear:W,seed,nostroke:true});
   ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(fx,ft,TW,0.8); // the arris between top and lip, as the floor's
   ctx.strokeStyle=K;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(fx+DX,ys-HY);ctx.lineTo(fx+0.5,ft);ctx.lineTo(fx+0.5,ft+5.5);ctx.lineTo(fx+TW,ft+5.5);ctx.stroke();}
@@ -8059,10 +8141,10 @@ function gatherLights(x0,x1,y0,y1){
   for(const g of G)if(g.alive&&!g.gone)add(g.x,g.y-26,56,FILL_COL,0.22,'fill');
   for(const sn of SN)if(sn.alive&&!sn.gone)add(sn.x,sn.y-4,34,'200,230,170',0.25,'fill');
   for(const it of L.items)if(!it.taken){const col=it.type==='heal'||it.type==='big'?'255,90,70':it.type==='life'?'255,210,110':'110,130,255';add(it.x,SURF(it.r)-8,it.type==='big'?42:32,col,it.type==='big'?0.75:0.6,'item',{r:9,a:0.35});}
-  for(const cp of L.cps){const gc=th.glow||'255,214,130',y=SURF(cp.r)-26; // lit, it lights the room like a lamp (torch strength); unlit it keeps a faint glint
-    if(cp.on){const k=cp.onAt!==undefined?clamp((gameTime-cp.onAt)/0.7,0,1):1;add(cp.x,y,150*k,gc,0.95*k,'item',{r:26,a:0.42*k});
-      const q=nutPt(1-cpClockF(cp),0);add(cp.x+q[0]*1.9,SURF(cp.r)-26+Math.sin(gameTime*1.7+cp.x*0.05)*1.6+q[1]*1.9,46,'255,190,100',0.55*k,'trap');} // (the sun's own light, travelling along Nut's arch)
-    else add(cp.x,y,38,gc,0.42,'item');}
+  for(const cp of L.cps){const gc=th.glow||'255,214,130',y=SURF(cp.r)-26,cx=cpX(cp); // lit, it lights the room like a lamp (torch strength); unlit it keeps a faint glint
+    if(cp.on){const k=cp.onAt!==undefined?clamp((gameTime-cp.onAt)/0.7,0,1):1;add(cx,y,150*k,gc,0.95*k,'item',{r:26,a:0.42*k});
+      const q=nutPt(1-cpClockF(cp),0);add(cx+q[0]*1.9,SURF(cp.r)-26+Math.sin(gameTime*1.7+cp.x*0.05)*1.6+q[1]*1.9,46,'255,190,100',0.55*k,'trap');} // (the sun's own light, travelling along Nut's arch)
+    else add(cx,y,38,gc,0.42,'item');}
   if(L.door.open>0){const sw=shaderOn()?exitSwell():0;add(L.door.x+HX,SURF(L.door.r)-26,120*Math.min(1,L.door.open)*(1+0.3*sw),'255,196,120',0.9*Math.min(1,L.door.open)*(1+0.75*sw),'door',{r:28,a:0.3*L.door.open});} // (round 26f: Torchlight's light swells as he goes; its bloom stays as it was; Classic swells drawDoor's sprite)
   for(const o of L.dyn){const f=o.f,X=o.c*TW;if(X<x0-160||X>x1+160)continue;const ys=SURF(o.r);
     if(f.t==='vent'){const ph=cyc(f,t);if(ph>=0.7||ph<0.03){const vs=ventState(ph);add(X+16,ys-24,110,'255,140,60',0.9*vs.k*vs.al,'fire',{r:30,a:0.4*vs.k*vs.al});}} // (lit through the whole danger window)
@@ -8257,7 +8339,7 @@ function beamBlockers(x0,x1,y0,y1){BLK.n=0;for(const o of L.dyn){const t=o.f.t;i
 const SDMAX=24,SDS={n:0,a:new Float32Array(SDMAX*4),f:new Float32Array(SDMAX)};
 function sdSeg(x0,x1,ta,tb,ft){if(SDS.n>=SDMAX)return;const i=SDS.n*4,a=SDS.a;a[i]=x0;a[i+1]=x1;a[i+2]=ta;a[i+3]=tb;SDS.f[SDS.n++]=ft;}
 function sandSegs(x0,x1,y0,y1){SDS.n=0;if(!L)return 0;
-  for(const f of L.lifts){if(!f.sand)continue;const X=f.sc*TW-HX,bot=SURF(f.rB);if(f.y>=bot-0.5||X+TW<x0||X>x1||bot+HY<y0||f.y>y1)continue;sdSeg(X,X+TW,f.y+HY,f.y+HY,bot+HY);} // (from the slab's front edge: its lip and the sand under it)
+  for(const f of L.lifts){if(!f.sand)continue;const X=f.sc*TW-HX,bot=SURF(f.rB);if(f.y>=bot-0.5||X+TW<x0||X>x1||bot+HY<y0||f.y>y1)continue;sdSeg(X,X+TW,f.y+HY,f.y+HY,bot+HY+(liftPit(f.sc,f.rB)?LP_D:0));} // (round 37a: down into the foot's pit) // (from the slab's front edge: its lip and the sand under it)
   if(EGP.traps)for(const o of L.dyn){if(o.f.t!=='loose'||o.f.plank)continue;const g=wellGroup(o);if(!g||g.os[0]!==o)continue;
     const xa=g.xa,xb=xa+g.n*TW;if(xb<x0||xa>x1||g.ybm<y0||g.top-WELL_CD>y1)continue;wellSolve(g);const S=g.S,per=TW/WELL_DX,M=g.n*per;
     for(let i0=0;i0<M;){const j=(i0/per)|0;let j2=j;while(j2+1<g.n&&g.yb[j2+1]===g.yb[j])j2++;const e=(j2+1)*per;let i1=Math.min(i0+4,e); // (one foot per run of columns)
@@ -8853,7 +8935,7 @@ function classicEmbers(ctx,x0,x1,y0,y1,t){const sp=lightSprite('255,110,40'),r0=
     for(const e of figs)if(Math.abs(e.y+(e.yo||0)-ys)<6&&e.x>x0-20&&e.x<x1+20){if(!clip){ctx.save();ctx.beginPath();ctx.rect(x0-40,ys-HY-2,x1-x0+80,DY+4);clip=true;}ctx.rect(e.x-9,ys+0.5,18,-DY);}
     if(clip)ctx.clip('evenodd');
     for(let k=Math.floor((x0-40)/22);jf(k)<x1+40;k++){const xj=jf(k),c=Math.floor(xj/TW);if(xj-c*TW<0.01)continue;const h=hash2(k*7+3,r*11+5);if(h%5!==0)continue;
-      let ok=true;for(let q=-1;q<=1;q++){const cc=Math.floor((xj+q*HX)/TW);if(B(L,cc,r)===WALL||!solidBelow(L,cc,r)||L.feat[r*L.cols+cc]){ok=false;break;}}
+      let ok=true;for(let q=-1;q<=1;q++){const cc=Math.floor((xj+q*HX)/TW);if(B(L,cc,r)===WALL||!solidBelow(L,cc,r)||L.feat[r*L.cols+cc]||liftPit(cc,r)){ok=false;break;}}
       if(ok)for(const o of L.dyn)if(o.r===r&&o.f.t==='saw'&&xj+HX>o.f.x0-16&&xj-HX<o.f.x1+16){ok=false;break;}
       if(!ok)continue;const e=0.55+0.45*Math.sin(t*1.1+(h>>>8)%60);
       ctx.save();ctx.translate(xj,ys);ctx.transform(1,0,-2,1,0,0); // (the sprite's up is the joint's way back: 2 px right for each px up)
@@ -9724,7 +9806,7 @@ function msPasses(draw,fh,div){const gl=GLP.gl;draw(false);if(!MS.on)return;
 // one mask colour per metal and grain, as a cached string (b = 255: the shapes are opaque, edges blend with the black)
 function msCol(id,cl){const k=id*1000+Math.round(cl*1000);let s=MS.col.get(k);if(!s){s='rgb('+Math.round(id*255/8)+','+Math.round(cl*255)+',255)';MS.col.set(k,s);}return s;}
 const MS_ANY=0.1,MS_UP=0.3,MS_ACROSS=0.5;
-function msKind(role){const m=METAL[L.theme.style]||METAL.dungeon;return MKID[m[role]]||1;}
+function msKind(role){return MKID[metalOf(role)]||1;}
 function msBox(x0,y0,x1,y1){const u=MS.ub4;if(x0<u[0])u[0]=x0;if(y0<u[1])u[1]=y0;if(x1>u[2])u[2]=x1;if(y1>u[3])u[3]=y1; // (u: the box round all of it, world)
   if(MS.nb>=32)return;const o=MS.nb++*4,B=MS.BB;B[o]=x0;B[o+1]=y0;B[o+2]=x1;B[o+3]=y1;}
 function msHit(x0,y0,x1,y1){const B=MS.BB;for(let i=0;i<MS.nb;i++){const o=i*4;if(x1>B[o]&&x0<B[o+2]&&y1>B[o+1]&&y0<B[o+3])return true;}return false;}
@@ -9812,7 +9894,7 @@ function drawMetalMask(VZ,camD,camDY){
   // the near halves of gates and jaws, in front of anyone walking the corridor (as drawDynamic draws them)
   for(const o of L.dyn){if(o.c<c0||o.c>c1||o.r<r0||o.r>r1)continue;const f=o.f,X=o.c*TW,Y=o.r*TH,ys=SURF(o.r);
     if(f.t==='gate'&&!EGP.traps)msGate(g,f,X,Y,ys,1,gid);
-    else if(f.t==='chomp'){const jp=JAWP.get(o);if(!jp||jp.t!==gameTime)continue;const pl=plane(X,Y,ys,o.c,o.r);g.save();planeClip(g,pl,X,1);g.fillStyle=msCol(jid,MS_ANY);g.fill(jp.a);g.fill(jp.b);g.restore();}}
+    else if(f.t==='chomp'){const jp=JAWP.get(o);if(!jp||jp.t!==gameTime)continue;const pl=plane(X,Y,ys,o.c,o.r);g.save();planeClip(g,pl,X,1,JAW_OV);g.fillStyle=msCol(jid,MS_ANY);g.fill(jp.a);g.fill(jp.b);g.restore();}}
   for(const lf of L.lifts)if(liftVisible(lf,x0,x1,y0,y1))msLift(g,lf,1);
   {const u=MS.ub4,cb=MS.cb;cb[0]=Math.max(0,Math.floor(u[0]*VZ/2-hx)-2);cb[1]=Math.max(0,Math.floor(u[1]*VZ/2-hy)-2);cb[2]=Math.min(mw,Math.ceil(u[2]*VZ/2-hx)+2);cb[3]=Math.min(mh,Math.ceil(u[3]*VZ/2-hy)+2);
     MS.pb.set(cb);MS.pv=true;} // the box (mask pixels) the metal passes run in, and next frame's clearing
@@ -10088,6 +10170,12 @@ function glMask(lights,VZ,camD,camDY){
         const f=b!==WALL?F(L,c,r):null;if(f&&f.t==='low'){const by=r*TH,yb=by+LOW_H,rf=F(L,c+1,r),sd=B(L,c+1,r)!==WALL&&!(rf&&rf.t==='low');
           g.moveTo(bx,yb);g.lineTo(bx,by);g.lineTo(bx+TW,by);if(sd){g.lineTo(bx+TW+DX,by-DY);g.lineTo(bx+TW+DX,yb-DY);}g.lineTo(bx+TW,yb);g.closePath();}}
       g.fill();
+      // (round 37b, owner after v81: "The shadow of the prince over the guillotine jaws") the slicer's jaws stand across the corridor in front
+      // of the back wall, so his shadow falls on the wall behind them, not on their faces: carved by their outlines as drawn this frame (JAWP),
+      // inside the plane's visible part; the wall seen between open jaws keeps it
+      for(const o of L.dyn){if(o.f.t!=='chomp'||o.c<c0||o.c>c1||o.r<r0||o.r>r1)continue;const jp=JAWP.get(o);if(!jp||jp.t!==gameTime||!jp.a||!jp.b)continue;
+        const pl=plane(o.c*TW,o.r*TH,SURF(o.r),o.c,o.r);g.save();g.beginPath();g.moveTo(pl.L0-1,pl.top);g.lineTo(pl.R0+1,pl.top);g.lineTo(pl.R0+1,pl.fl(pl.R0+1)+1);g.lineTo(pl.L0-1,pl.fl(pl.L0-1)+1);g.closePath();g.clip();
+        g.fill(jp.a);g.fill(jp.b);g.restore();}
       g.globalCompositeOperation='lighter';any=1;}}
   if(GLFX.heat){
     const green=lightSprite('0,255,0'),forge=L.theme.style==='forge',hk=S.set.calm?0.3:1; // (calm: a third of the shimmer)
@@ -10199,6 +10287,15 @@ function glRelFloors(n,VZ,camD,camDY){const cx=camD/VZ,cy=camDY/VZ,c0=Math.max(0
     n=glRelQ(n,bx,by,bx+TW,by,bx+TW,by+TH,bx,by+TH,VZ,camD,camDY);n=glRelQ(n,bx,by,bx+TW,by,bx+TW+DX,by-DY,bx+DX,by-DY,VZ,camD,camDY);
     n=glRelQ(n,bx+TW,by,bx+TW+DX,by-DY,bx+TW+DX,by+TH-DY,bx+TW,by+TH,VZ,camD,camDY);}
   return n;}
+// (round 37b, owner after v81: the jaws read as a pale glass panel, "the wall's bands show through") the slicer's jaws are opaque plates drawn
+// live in front of the back wall, so the relief embossed the wall's bands and tiles behind them on their faces: rubbed back over each jaw's
+// plate, from the ceiling's edge (or the floor) to half way down its teeth (as beamBlockers takes them), as it moves
+function glRelJaws(n,VZ,camD,camDY){const cx=camD/VZ,cy=camDY/VZ,vw=cv.width/VZ,vh=cv.height/VZ;
+  for(const o of L.dyn){if(o.f.t!=='chomp')continue;const X=o.c*TW,Y=o.r*TH;if(X+TW<cx||X>cx+vw||Y+TH<cy||Y-DY>cy+vh)continue;
+    const k=chompK(o.f),pl=plane(X,Y,SURF(o.r),o.c,o.r),up=lerp(pl.co?2:7,31-pl.co,k)+4,lo=lerp(3,21,k)+4,a=pl.L0,b=pl.R0;
+    n=glRelQ(n,a,pl.top,b,pl.top,b,pl.ce(b)+up,a,pl.ce(a)+up,VZ,camD,camDY);
+    n=glRelQ(n,a,pl.fl(a)-lo,b,pl.fl(b)-lo,b,pl.fl(b)+0.5,a,pl.fl(a)+0.5,VZ,camD,camDY);}
+  return n;}
 function glRelief(lights,VZ,camD,camDY){
   const R=GLREL,gl=GLP.gl,w=cv.width,h=cv.height;R.on=0;if(!GLFX.relief||mode==='cross')return; // (round 36a: no rooms to rake in the crossing)
   let lit=false;for(const q of lights)if(GLSTRONG[q.kind]||q.kind==='fire'){lit=true;break;} // no lamp near: nothing to rake, skip the pass
@@ -10231,8 +10328,10 @@ function glRelief(lights,VZ,camD,camDY){
   // platform, the counterweight and the wheels as they passed. Rubbed back over each of them in view (their boxes, as a mouth slab's)
   n=glRelLifts(n,VZ,camD,camDY);
   n=glRelFloors(n,VZ,camD,camDY); // (round 35c) the floor tiles drawn live
+  n=glRelJaws(n,VZ,camD,camDY); // (round 37b) the slicers' jaws
   if(EGP.traps){for(const o of L.dyn){const g=o.f.wg;if(o.f.t!=='loose'||!g||g.os[0]!==o)continue;n=glRelWell(n,g,VZ,camD,camDY);} // (round 21b) sand is not embossed with the wall's art behind it
-    for(const f of L.lifts)if(f.sand&&f.y<SURF(f.rB)-0.5)n=glRelBox(n,f.sc*TW-HX,f.y+HY+5-DY,f.sc*TW-HX+TW,SURF(f.rB)+HY,VZ,camD,camDY);}
+    for(const f of L.lifts)if(f.sand){const pd=liftPit(f.sc,f.rB)?LP_D:0;if(f.y<SURF(f.rB)-0.5)n=glRelBox(n,f.sc*TW-HX,f.y+HY+5-DY,f.sc*TW-HX+TW,SURF(f.rB)+HY+pd,VZ,camD,camDY);
+      else if(pd)n=glRelBox(n,f.sc*TW-HX,f.y-HY-1,f.sc*TW-HX+TW+DX,f.y+HY+8,VZ,camD,camDY);}} // (round 37a) its slab at rest in the foot's pit: the pit's edges in the room's picture under it are not embossed on it (as glRelLifts' platform)
   gl.bindFramebuffer(gl.FRAMEBUFFER,R.fb.f);gl.viewport(0,0,fw,fh);gl.clearColor(.5,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);
   if(!nr)return;
   gl.bindBuffer(gl.ARRAY_BUFFER,R.buf);gl.bufferSubData(gl.ARRAY_BUFFER,0,R.V,0,n*24);
@@ -12771,7 +12870,7 @@ window.__HK={keyLight,get frameLights(){return frameLights;},jetPlaces,jsSwingPa
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
   get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,ryOps,ryShape,ryProfile,skyBeam,RY,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,plantPose,legIK,mk,drawDynamic,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
-  get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG,secretCues,RJ_K,RJ_DV};
+  get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG,CP_DBG,cpX,secretCues,RJ_K,RJ_DV};
 Object.assign(window.__HK,{guardBudget,snakeBudget,RP,drinkFrame}); // (the fighters' budgets, for guardscan.py; RP and drinkFrame, the run cycle's and the drink's poses, for egyptr21a.py)
 Object.assign(window.__HK,{jumpSpan,jhK,leapPose,LEN,skel,crawlPose,walkPose,climbFrame,swingPose,MCP,MCK,R23B,R23D,R23MUS,setMus,musNow:()=>RD.mus||1,mk,figReach}); // (the skeleton and the poses, for egyptr23.py and figscan.py)
 Object.assign(window.__HK,{respawn,startRewind,die,startEntry,entryOpen,entryX,exitSwell,EXF,EX_N,EX_GONE,EX_CUT,EN_CTL,EN_DROP,EN_FALL,doorHead,ceilOff:(c,r)=>ceilOff(c,r)}); // (round 26f: the exit and the entry, for stairscan.py and egyptr26f.py)
