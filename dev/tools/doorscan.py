@@ -13,7 +13,7 @@ NUM = [int(x) for x in a if x.isdigit()]
 LO, HI = (NUM + [1, 48])[:2] if len(NUM) >= 2 else (1, 48)
 OUT = next((x for x in a if x.endswith('.png')), os.path.join(HERE, 'doorscan.png'))
 SHOW = r'''([n,exit,noart])=>{const H=__HK;window.__HKfreeze=true;for(const id in H.HINTS)H.S.hints[id]=1;const L=H.load(n,4400+n,true);H.banner=null;H.EGP.noart=noart;H.EGP.nocut=window.__NOCUT||false;H.clearRooms();
-  const d=exit?L.door:{x:(L.start.door===undefined?1:L.start.door)*32+16,r:L.start.r,c:L.start.door===undefined?1:L.start.door};if(exit){d.opening=true;d.open=1;}
+  const d=exit?L.door:{x:H.startDoorX?H.startDoorX():(L.start.door===undefined?1:L.start.door)*32+16,r:L.start.r,c:L.start.door===undefined?1:L.start.door}; // (round 39: where the start door is drawn, clear of a face beside it)if(exit){d.opening=true;d.open=1;}
   const P=H.P;P.inv=1e9;P.x=-999;H.cam.x=d.x-H.viewW/2;H.cam.y=(d.r+1)*64-64*1.6;H.cam.gy=H.cam.y;H.mode='play';H.GLP&&(H.GLP.pipe=false);H.gameTime=10;
   H.render();H.render();H.render();const X=H.XF,cv=[...document.querySelectorAll('canvas')].find(c=>c.getBoundingClientRect().width>0),R=cv.getBoundingClientRect(),
   m=(x,y)=>[R.left+(x*X.VZ-X.camD)/cv.width*R.width,R.top+(y*X.VZ-X.camDY)/cv.height*R.height];
