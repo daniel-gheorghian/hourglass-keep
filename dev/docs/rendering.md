@@ -20,7 +20,7 @@ in the index below. The architecture's history is in `dev/WEBGL_PLAN.md`; workin
 | [#metal](#metal) | unit MS, `drawMetalMask` | `metal`, `metalGlint` | painted highlights (`METAL_PAINT_HI`) |
 | [#sky-beams](#sky-beams) | unit RY, S pass, `beamBlockers`, `fpGate` | `shafts`, `fpgate` | `ryBeams2D` |
 | [#atmosphere](#atmosphere) | S3-C M pass: mist, theme looks; caustics | `mist`, `lookfx`, `caustics` | `atmoPass`, `classicLookFx`, `lampGlints` |
-| [#floor-looks](#floor-looks) | `floorFx`: sheen, embers; alpha marks | `sheen` (embers by `LFX`) | `classicEmbers` |
+| [#floor-looks](#floor-looks) | `floorFx`: sheen, embers; alpha marks | `sheen`; embers under `lookfx` | `classicEmbers` |
 | [#bloom-grade-vignette](#bloom-grade-vignette) | bright pass, blur, composite | `grade` | `bloomPass`, grade strip, vignette gradients |
 | [#ao](#ao) | corner shading baked in the room picture | `ao` | same (both modes) |
 | [#distance-blur](#distance-blur) | backdrop layers softened at bake | `bgblur` | same (both modes) |
@@ -42,7 +42,8 @@ last-life pulse, not low ceilings.
 | HUD | drawn on the same canvas after the scene | drawn on the 2D canvas above the GL canvas, only when `hudKey` changes |
 
 - Fallback: a lost context (`webglcontextlost`) or a frame that throws in `glPrep`/`glSubmit` calls `glKill`, which sets the save to
-  Classic (otherwise the screen would be black). Slow frames never switch modes (v63, owner).
+  Classic (otherwise the screen would be black). No WebGL at all: `glInit` fails, `shaderOn()` is false and the frame is drawn as
+  Classic. Slow frames never switch modes (v63, owner).
 - Render scale: `GLP.rs` (1, 0.75, 0.5) scales only the scene target. Two 2 s windows in a row averaging over 38 ms step down
   (`glTime`); three windows under `UP_MS` (17.2 ms) step back up; a step up that turns slow within `UP_BACK` (10 s) doubles the windows
   needed (up to `UP_MAX` 30), reset each floor. Not stepped up in Battery saver or under `?prof`. `glauto.py` checks this.
@@ -99,18 +100,28 @@ Oblique depth: the back of every block is drawn `DX` 16 px right and `DY` 8 px u
 `SURF(r)=(r+1)*TH-4`. `onFloor(x,d,ys)` places a point at depth `d` (0 the front edge, 1 the back edge) on the floor at `ys`.
 
 ```
- a wall block at cell c (X=c*TW), row r (Y=r*TH)         a floor cell (ys=SURF(r), fx=X-HX)
+ a wall block at cell c (X=c*TW), row r (Y=r*TH)
 
-        X-HX+DX                X-HX+TW+DX                  fx+DX            fx+TW+DX
-     Y-DY +---------------------+                     ys-HY +----------------+    back edge, d=1
-         /       top face      /|                          /   top face     /
-  Y  +--+---------------------+ |                  ys  . . . walking line . .     d=0.5
-     |  X-HX                  | | side face        ys+HY +----------------+       front edge, d=0
-     |      front face        | | (X+TW-HX ..           |  lip, FHH 5 px |
-     |      (wallCell)        | |  +DX)                 +----------------+
-     |                        |/
-Y+TH +------------------------+
-     ^ the front face stands HX left of the cell; the back wall (backCell) fills the cell's own rectangle
+        (X-HX+DX, Y-DY) +------------------------+ (X-HX+TW+DX, Y-DY)
+                       /        top face        /|
+        (X-HX, Y)     +------------------------+ |
+                      |                        | |  right side face (sideFace):
+                      |       front face       | |  X+TW-HX to X+TW-HX+DX
+                      |       (wallCell)       | |
+                      |                        | + (X+TW-HX+DX, Y+TH-DY)
+                      |                        |/
+        (X-HX, Y+TH)  +------------------------+ (X+TW-HX, Y+TH)
+
+ the back wall behind an open cell (backCell) fills the cell's own rectangle X..X+TW, Y..Y+TH
+
+ a floor cell (ys=SURF(r), fx=X-HX)
+
+        (fx+DX, ys-HY) +------------------------+ (fx+TW+DX, ys-HY)    back edge, d=1
+                      /  top face; figures walk /
+                     /   on ys at d=0.5        /
+        (fx, ys+HY)  +------------------------+ (fx+TW, ys+HY)         front edge, d=0
+                     |   lip, FHH 5 px         |
+                     +------------------------+
 ```
 
 - The front plane is the plane of the front faces (depth 0). A wall's front face, a low ceiling's face (`lowCeil`, the top `LOW_H`
@@ -358,7 +369,7 @@ colour. Skipped when nothing of it is on screen and in the Crossing.
 | Effect | Where | Switch |
 |---|---|---|
 | floor mist (height fog, lit by the light map) | crypt and dungeon styles, themes with dust, night except in the forge | `GLFX.mist` |
-| caustics (in the S pass) | the Cistern's open arches near water (`lfx().caus`) | `GLFX.caustics` |
+| caustics (in the S pass) | round the open arches near water where the look has `caus` (Waters of Nun, Foggaras of Garama) | `GLFX.caustics` |
 | theme looks (`LFX`): salt, glaze, faience walls, granite, incense, arch dust | per theme, in the lamps' light only (the light map less the ambient) | `GLFX.lookfx` |
 
 Rule (round 27d): no travelling bands in a look effect. The Blue Chambers' glaze was a sine of x and y that slid as slanted bars over
@@ -368,8 +379,8 @@ near lamps), `classicLookFx` (embers, incense), the haze strip (`hazePass`, both
 
 ### Floor looks
 
-`floorFx` in the composite (`GLSL_FL`, round 31): the wet flagstones' sheen (dungeon and crypt looks, `GLFX.sheen`) and the Forges'
-embers in the flagstones' joints (`LFX.embers`; joints from `FLOOR_FT`, one texel a tile, as `slab()` draws them). They lie only on the
+`floorFx` in the composite (`GLSL_FL`, round 31): the wet flagstones' sheen (dungeon and crypt styles unless the look is `dry`: Nun, Garama, Osiris, Aksum; `GLFX.sheen`) and the Forges'
+embers in the flagstones' joints (`lfx().embers`, under `GLFX.lookfx`; joints from `FLOOR_FT`, one texel a tile, as `slab()` draws them). They lie only on the
 floor's own top face as the scene still shows it, read from the scene's alpha:
 
 | Scene alpha | Meaning | Set by | `floorFx` | Footprint (`fpGate`) |
@@ -378,7 +389,9 @@ floor's own top face as the scene still shows it, read from the scene's alpha:
 | 254 on an `FT_FLAT` tile (128 in `FLOOR_FT`) | a flat thing drawn live (plate, cracked slab, plank, closer, grate, vent grate) | `fpMark` | no | yes |
 | 251 (`RL_A`) | what the room picture lays on the face: rubble, fallen stones and lamps, spike holes, a broken end | `rlBegin`/`rlEnd` | no | yes |
 | 255 | anything drawn live over the face: a figure, saw blade and slot, stakes, a flask, a lamp stand, a block | any opaque live drawing | no | no |
-| under 254.5, over 251 | a soft shadow drawn over the floor | live drawing | no | yes |
+
+Between the marks the gates fade: `floorFx` is full from 252 to 254 and fades out toward 251 and toward 255; the footprint is full up to
+254.5 and fades out toward 255. So a soft shadow drawn over the face (which raises 254 a little toward 255) keeps most of both.
 
 The sheen is a reflection: its streak stands vertical under the light, mirrored about the wall's foot, brightest at the front edge; the
 embers keep v76's mean strength (owner). A new floor look goes in `floorFx`, never back in the mist pass. The `?wgl=0` path has no

@@ -15,12 +15,23 @@ under it as on a trapeze and lets go with Jump to land on the far side. In the r
 
 ## Example
 
-`swingSeg` at lip column c on row r: columns c+1..c+4 become the pit (row r+1 open, row r+2 floor with fixed spikes), c+5..c+7 the far
-floor, and the bar hangs over c+2 at `SURF(r) - 80`, from the ceiling two rows up (that cell must be wall). The bot runs from c-2,
-jumps 44 px short of c's middle and catches the bar in the air (every jump arms `P.autoGrab`). A running catch keeps `SW_ETA` 0.7 of
-his speed along the swing, which is already past `SW_CLEAR`: the chime sounds at once, the grip glows, and Jump on the forward swing
-throws him onto c+5..c+7. From a standing catch instead he hangs nearly still and pumps: a press of the way he will swing next, at
-human timing, about three presses and 1.4 s to the chime (`swingfeel.py`).
+Floor 6, seed 502 (`genLevel(6,502)`), heading left on row 27: the lip is column 185, the pit columns 181-184 (row 28 open, row 29
+floor with fixed spikes), the far floor 178-180; the bar hangs over column 183 (`f.x` 5872, `f.y` 1708 = `SURF(27) - 80`) from the
+ceiling two rows up (cell 183,25 must be wall). Rows 26 to 29 over columns 176-188 (`=` floor, `#` wall, `.` open):
+
+```
+ 26  .............
+ 27  =====....====     he comes from the right; the bar over the third pit cell from the lip
+ 28  #####....####
+ 29  #####====####     spikes (fixed) on the pit's floor
+     176  181 185
+```
+
+The bot's action is `{a:'swing',from:185,to:180}`: it runs from 187, jumps 44 px short of 185's middle and catches the bar in the air
+(every jump arms `P.autoGrab`). A running catch keeps `SW_ETA` 0.7 of his speed along the swing, which is already past `SW_CLEAR`: the
+chime sounds at once, the grip glows, and Jump on the forward swing throws him onto 178-180. From a standing catch instead he hangs
+nearly still and pumps: a press of the way he will swing next, at human timing, about three presses and 1.4 s to the chime
+(`swingfeel.py`).
 
 ## In play
 

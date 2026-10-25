@@ -17,8 +17,8 @@ on every floor; the generator places them, everything else is look and the two s
 ## Example
 
 He reaches a sealed exit and presses Up: "Sealed. A floor plate somewhere opens this door." He finds the `xplate` ("A heavy door grinds
-open somewhere on this floor."); the leaf rises at 0.45 a second. Back at the door he presses Up 14 px left of its middle, facing left.
-He turns (`EX_TURN`), walks to the middle at 40 px/s, turns again to face the stairs (they recede to the right), and climbs: 3.2 treads a
+open somewhere on this floor."); the leaf rises at 0.45 a second. Back at the door he presses Up 14 px right of its middle, facing left.
+He walks left to the middle at 40 px/s, turns to face the stairs (they recede to the right; `EX_TURN` 0.16 s) and climbs: 3.2 treads a
 second, one footfall each. From the first rise (`EX_CUT`) he is cut at the doorway's lintel and jambs, as SDLPoP's `clip_char` cuts the kid
 at the level door; his own pixels warm and whiten toward the stair light and fade; he is gone at tread 3.5 (`EX_GONE`), his steps go on
 out of sight (`stairsaway`), the doorway's light swells, and the card comes at tread 4.6 (`EX_N`).
@@ -48,7 +48,7 @@ out of sight (`stairsaway`), the doorway's light swells, and the card comes at t
 | His drawing in the entrance | drawn `P.enU * EN_DX` right and `P.enU * EN_DY` up (deep in the doorway), cut by the entrance's opening while `P.enU > 0.3`, as a dark silhouette (`rgb(7,5,11)` at `P.enK`, 0.92 fading to 0 by `EN_LIT`) taking its colours as he reaches the light |
 | His poses | `walkPose` on the approach (0.93 strides a second); on the stairs half a stride a tread, the stride moving only while he rises (a planted foot stays put); the turn is `turnSettle` |
 | Shadow and beams | no lamp shadow and no beam occlusion during `exit`, nor while deep in the entrance (`P.enU > 0`) |
-| The bot | ends every run with `door`; plays the entry only with `opts.entry` |
+| The bot | ends every floor with `door`; plays the entry only with `opts.entry` |
 
 ## How it is drawn
 
@@ -83,9 +83,9 @@ The exit on the stairs, by tread count `k = P.exS` (`EXF.look` true):
 
 | From | What changes |
 |---|---|
+| 0.5 | his pixels start to take the stair light's tint, up to 0.86 by about 2.9 (`exitTint`: amber `EXT0` to pale gold `EXT1`, by `(k-1.2)/1.8`) |
 | `EX_CUT` 0.55 | cut at the opening's head and jambs (`doorClip`, open below the floor) |
-| 0.5 | his pixels tinted toward the stair light, up to 0.86 by about 2.9 (`exitTint`: amber `EXT0` to pale gold `EXT1`, by `(k-1.2)/1.8`) |
-| 1.8 | faded out by `EX_GONE` 3.5 |
+| 1.8 | he starts to fade, gone by `EX_GONE` 3.5 |
 | `EX_SW0` 2.6 | the doorway's light swells (`exitSwell`), peaks as he is gone, eases before the card; `exitlight` sounds |
 | `EX_GONE` 3.5 | gone; `stairsaway` (four fading steps over 0.5 s) |
 | `EX_N` 4.6 | the card |

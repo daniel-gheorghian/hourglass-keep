@@ -17,9 +17,22 @@ decoration (`TAP` hangings, `drawHangings`) are [stonework](stonework.md)'s.
 
 ## Example
 
-`bannerSeg(3)` at column c, row r: column c+1 is opened for rows r to r+2, each cell carrying a `banner` feature that shares one `bn`
-(`bn.top` = r TH + 9, `bn.bot` 16 px above the last cell's foot), and c+1..c+3 on row r+3 become the foot's floor (a `G3` gate goes on
-c+2 if the turn holds one). He walks off the landing; in the air Grab is held: as he falls past the cloth he is set on the cell's middle,
+Floor 6, seed 502 (`genLevel(6,502)`), heading left: `bannerSeg(3)` from the landing at column 126, row 30, opens column 125 for
+rows 30 to 32, each cell carrying a `banner` feature that shares one `bn` (`bn.top` = 30 TH + 9, `bn.bot` 16 px above row 32's foot),
+and lays the foot's floor on row 33 (columns 123-125; a `G3` gate would go on 124 if the turn held one). The bot's action is
+`{a:'slide',from:126,to:123}`. Row 32 is open on both sides of the shaft (the hall's headroom over the foot's floor): a banner's walls
+are not kept (`keepWall`), unlike a sand lift's.
+
+```
+ 29  ####....
+ 30  ####.===     he walks off 126 into the shaft (column 125)
+ 31  ####.###
+ 32  ##......     the shaft's last storey, open on both sides
+ 33  ##======     the foot: he lands on 125 and walks on to 123
+     121 125
+```
+
+He walks off the landing; in the air Grab is held: as he falls past the cloth he is set on the cell's middle,
 `P.vy` capped at 140, state `slide`. For 0.07 s the blade bites (speed toward 30 px/s, sound `swish`), then the drag holds him near 170
 px/s, a little uneven (+-10% at 31 rad/s) as the weave gives; the cloth parts above his hands, `rip` fourteen times a second, lint
 flying. Three storeys take a little over a second. Floor 16 seed 1 (the hanging in column 250 from row 17, its lip in column 251) is round 33c's
