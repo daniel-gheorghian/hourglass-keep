@@ -11437,10 +11437,11 @@ const GW_A=0.95,GW_E=0.32,GW_C=0.36,GW_S=[0,0.5,0.84,1],GW_L=[0.42,0.4,0.26,0.06
 const CROSS_WAVE=[170,46,7.5];
 // (round 36e) the wadi's rockfall: its place in the view at the beat, stones (big ones first), the plume's puffs, two scratch points
 const RF_CW=200,RF_SX=0.55,RF_N=16,RF_BIG=6,RF_PL=10,RF_P=[{x:0,y:0,m:0},{x:0,y:0,m:0}];
-// the spur's outline (x in the fan's half-widths from its axis, y in its heights down from the top), its lit left and right faces
-const RF_SP=[-1,1.7,-0.92,1.25,-0.78,1.2,-0.7,0.8,-0.56,0.76,-0.5,0.35,-0.38,0.3,-0.32,0.04,-0.18,0,0,0.05,0.12,0,0.24,0.06,0.3,0.38,0.42,0.42,0.5,0.82,0.66,0.86,0.74,1.3,0.86,1.7],
-  RF_SL=[-1,1.7,-0.92,1.25,-0.78,1.2,-0.7,0.8,-0.56,0.76,-0.5,0.35,-0.38,0.3,-0.32,0.04,-0.22,0.03,-0.3,0.33,-0.42,0.75,-0.55,1.2,-0.62,1.7],
-  RF_SR=[0.86,1.7,0.74,1.3,0.66,0.86,0.5,0.82,0.42,0.42,0.3,0.38,0.24,0.06,0.15,0.04,0.22,0.4,0.34,0.84,0.5,1.3,0.58,1.7];
+// the spur's outline (u across in the fan's half-widths, + away from the light; v up in the fan's heights), foot to foot: leaning, higher and
+// steeper on the far side, its ledges at different heights on each side; the gully's centre line from its head to its mouth (u, v) and its
+// half-widths there
+const RF_SP=[-1.45,0,-1.36,0.3,-1.22,0.34,-1.14,0.6,-0.98,0.65,-0.9,0.95,-0.74,1.0,-0.66,1.18,-0.46,1.22,-0.3,1.34,-0.12,1.38,0.06,1.5,0.28,1.54,0.42,1.46,0.5,1.28,0.6,1.24,0.68,0.96,0.84,0.9,0.92,0.58,1.04,0.53,1.12,0.24,1.32,0],
+  RF_GC=[-0.32,1.3,-0.24,1.22,-0.27,1.14,-0.15,1.08,-0.14,1.02,-0.03,0.96,0.0,0.92],RF_GW=[0.025,0.035,0.05,0.07,0.1,0.17,0.27];
 function crossWaveF(cr){if(cr.gust<0)return null;const t=cr.t-cr.gust;if(t<0||t>CROSS_WAVE[2])return null;
   return {xf:cr.xb-viewW*CROSS_CAM-90+CROSS_WAVE[0]*t,env:sstep(t/0.5)*(1-sstep((t-CROSS_WAVE[2]+2.5)/2.5))};}
 function crossWave(cr,X){if(cr.gust<0)return 0;const t=cr.t-cr.gust;if(t<0||t>CROSS_WAVE[2])return 0;
@@ -12036,56 +12037,91 @@ const CROSS_KINDS={
       for(let i=0;i<W/(s*9);i++){const hx=r()*W,hy=H-Ya(hx)*(0.25+0.6*r());g.fillStyle=crossRGB(crossMul(shd,[0.6,0.6,0.7]),0.45);g.beginPath();g.ellipse(hx,hy,s*(0.4+0.8*r()),s*(0.2+0.3*r()),0,0,T);g.fill();}
       g.restore();
       g.strokeStyle=crossRGB(C.at(C.rim,f),0.5);g.lineWidth=Math.max(0.4,s*0.07);g.beginPath();for(let i=0;i<=n;i+=2){if(i===0)g.moveTo(i,H-Y[i]+0.3);else g.lineTo(i,H-Y[i]+0.3);}g.stroke();
-      // the scree fans below the gullies, concave, at the angle of repose, a little paler than the face
-      const sf=mixRGB(dim,lit,0.42);for(const [gx,gw] of gl){const fh=Math.min(Ya(gx)*0.7,Hm*(0.16+0.18*r())),fw=fh/0.62;
-        for(const o of [-W,0,W]){const cx=gx+o;if(cx+fw<0||cx-fw>W)continue;g.fillStyle=crossRGB(sf);g.beginPath();g.moveTo(cx-fw,H+1);g.quadraticCurveTo(cx-fw*0.25,H-fh*0.2,cx,H-fh);g.quadraticCurveTo(cx+fw*0.25,H-fh*0.2,cx+fw,H+1);g.closePath();g.fill();
-          g.fillStyle=crossRGB(shd,0.22);g.beginPath();if(L>0){g.moveTo(cx,H-fh);g.quadraticCurveTo(cx+fw*0.25,H-fh*0.2,cx+fw,H+1);g.lineTo(cx+fw*0.2,H+1);}else{g.moveTo(cx,H-fh);g.quadraticCurveTo(cx-fw*0.25,H-fh*0.2,cx-fw,H+1);g.lineTo(cx-fw*0.2,H+1);}g.closePath();g.fill();
-          if(s>2.5){g.fillStyle=crossRGB(shd,0.4);for(let j=0;j<fw*0.4;j++){const u=r()*2-1,yy=H-fh*(1-Math.abs(u))*r(),rr=Math.max(0.35,s*0.04*(1+r()));g.fillRect(cx+u*fw*0.9,yy,rr,rr*0.7);}}}}
+      // the scree below the gullies (round 36e, owner: they read as little pyramids): a talus apron along the whole foot, and out of each
+      // gully's mouth a fan whose flanks are concave, steep under the mouth and flattening into the ground, one longer than the other, its
+      // top narrow and in the gully's shade (never a peak), a little paler than the face; its stones thickest near the foot
+      const sf=mixRGB(dim,lit,0.42),k1=7,k2=19,p1=r()*T,p2=r()*T;
+      g.fillStyle=crossRGB(mixRGB(sf,dim,0.3));g.beginPath();g.moveTo(0,H+1);for(let i=0;i<=n;i+=2){const u=i/W*T;g.lineTo(i,H-Hm*(0.035+0.02*Math.sin(k1*u+p1)+0.012*Math.sin(k2*u+p2)));}g.lineTo(W,H+1);g.closePath();g.fill();
+      for(const [gx,gw] of gl){const fh=Math.min(Ya(gx)*0.5,Hm*(0.11+0.12*r())),fl=fh/0.62*(1.1+0.5*r()),fr=fh/0.62*(0.8+0.4*r()),w0=Math.max(0.8,gw*0.26),sd=r()<0.5?1:-1,ax=gx+(r()-0.5)*gw*0.1;
+        for(const o of [-W,0,W]){const cx=ax+o,lw=sd>0?fl:fr,rw=sd>0?fr:fl;if(cx+rw<0||cx-lw>W)continue;const yA=H-fh,fan=()=>{g.beginPath();g.moveTo(cx-lw,H+1);g.bezierCurveTo(cx-lw*0.5,H+1-fh*0.03,cx-w0-lw*0.1,H-fh*0.5,cx-w0,yA);
+            g.lineTo(cx+w0,yA-fh*0.02);g.bezierCurveTo(cx+w0+rw*0.1,H-fh*0.5,cx+rw*0.5,H+1-fh*0.03,cx+rw,H+1);g.closePath();};
+          fan();g.fillStyle=crossRGB(sf);g.fill();g.save();fan();g.clip();
+          g.fillStyle=crossRGB(shd,0.2);if(L>0)g.fillRect(cx+w0*0.2,yA-1,rw+2,fh+2);else g.fillRect(cx-lw-2,yA-1,lw+2-w0*0.2,fh+2);
+          {const sg=g.createLinearGradient(0,yA,0,yA+fh*0.4);sg.addColorStop(0,crossRGB(shd,0.42));sg.addColorStop(1,crossRGB(shd,0));g.fillStyle=sg;g.fillRect(cx-lw,yA-1,lw+rw,fh*0.4+1);}
+          if(s>2.5){g.fillStyle=crossRGB(shd,0.32);for(let j=0;j<(lw+rw)*0.12;j++){const u=r()*2-1,yy=H-fh*Math.pow(1-Math.abs(u),2.2)*r()*0.9,rr=Math.max(0.35,s*0.035*(1+r()));g.fillRect(cx+u*(u<0?lw:rw)*0.9,yy,rr,rr*0.7);}}
+          g.restore();}}
       crossRim(cv,cr,q,f<0.05?0.3:0.5);ly.c=cv;ly.W=W;ly.H=H;},
     draw(ctx,ly,cr){crossStrip(ctx,ly,-cr.cx*ly.f,crossGYf(ly.f)-ly.H+1.5);}},
   // the beat of the wadi: a trickle of stones loosed from a ledge of the near cliff runs down its scree fan, bouncing, with puffs of dust,
   // where the camera will be when he passes CROSS_BEAT (its world x is set so); the fan is drawn always. A function of the beat's moment
-  // (round 36e, owner: "the rockfall moment is subtle at its distance") a spur of rock standing out of the near cliff at f 0.3 (twice
-  // as near as round 36d's), a dark cleft down its face and its scree fan below (ly.hm m high, its flanks at the angle of repose); at the
-  // beat (0.15 s after it) stones break off at the cleft's head with a puff of dust, drop down the cleft trailing dust and bound down the
-  // fan in hops that shrink (RF_BIG of them big, lit on top, the rest gravel), each landing kicking up dust; a plume rises off the fan and
-  // drifts on the wind (left to right), spreading and thinning over ~4 s; the stones stay where they come to rest. All a pure function of
-  // the clock since the beat (no state); the dust is one soft sprite baked once; the fall is at RF_SX of the view at the beat
-  rockfall:{bake(ly,cr){const f=ly.f,s=29.4*f,C=cr.cols,cl=crossOasisCols(cr,f),k=cl.lm,r=mulberry32(hash2(cr.seed,ly.id*71+5));
-      ly.X=cr.xb-viewW*CROSS_CAM+viewW/2+(viewW*RF_SX-viewW/2)/f;ly.fh=ly.hm*s;ly.fw=ly.fh/0.62;ly.st=[];
+  // (round 36e, owner: "the rockfall moment is subtle at its distance") a spur of the limestone at f 0.3 (twice as near as round 36d's)
+  // standing out of the near cliff's foot, its top about the cliff's own height so it is seen against the cliff, not the sky: irregular and
+  // leaning (higher and steeper on one side), its outline broken by ledges at different heights (RF_SP); a jagged gully runs down it on the
+  // diagonal (RF_GC, RF_GW), widening to its mouth, and the scree fan comes out of the mouth: concave flanks flattening into the ground,
+  // asymmetric, its top hidden in the gully, a talus apron along the spur's foot (spur and fan baked once, ly.c). At the beat (0.15 s after
+  // it) stones break off at the gully's head with a puff of dust, drop down it trailing dust and bound down the fan in hops that shrink
+  // (RF_BIG of them big, lit on top, the rest gravel), each landing kicking up dust; a plume rises off the fan and drifts on the wind (left to
+  // right), spreading and thinning over ~4 s; the stones stay where they come to rest. All a pure function of the clock since the beat (no
+  // state); the dust is one soft sprite baked once; the fall is at RF_SX of the view at the beat
+  rockfall:{bake(ly,cr){const f=ly.f,s=29.4*f,C=cr.cols,cl=crossOasisCols(cr,f),k=cl.lm,r=mulberry32(hash2(cr.seed,ly.id*71+5)),L=C.left?1:-1;
+      ly.X=cr.xb-viewW*CROSS_CAM+viewW/2+(viewW*RF_SX-viewW/2)/f;const fh=ly.fh=ly.hm*s,fw=ly.fw=fh/0.62;ly.st=[];
       for(let i=0;i<RF_N;i++){const big=i<RF_BIG,nh=big?3+(r()<0.5?1:0):2+(r()<0.5?1:0);
-        ly.st.push({big,d:big?0.13*i+0.08*r():0.1+1.4*r(),ta:0.3+0.12*r(),tr:(big?1.3:0.8)+0.6*r(),nh,h0:ly.fh*(big?0.22+0.1*r():0.08+0.07*r()),u:(r()-0.5)*(big?1.2:1.4),pe:0.85+0.3*r(),
+        ly.st.push({big,d:big?0.13*i+0.08*r():0.1+1.4*r(),ta:0.3+0.12*r(),tr:(big?1.3:0.8)+0.6*r(),nh,h0:fh*(big?0.22+0.1*r():0.08+0.07*r()),u:(r()-0.5)*(big?1.2:1.4),pe:0.85+0.3*r(),
           sz:big?s*(0.3+0.16*r()):Math.max(0.8,s*(0.08+0.08*r())),sp:(r()<0.5?-1:1)*(4+5*r()),gx:(r()-0.5)*0.05,el:0.62+0.2*r(),rv:[0,1,2,3,4,5].map(()=>0.72+0.42*r())});}
-      const lit=C.at(k.lit,f),dim=C.at(k.dim,f),shd=C.at(k.shd,f);
-      ly.c0=crossRGB(mixRGB(dim,lit,0.7));ly.cb=crossRGB(mixRGB(dim,shd,0.38));ly.cbl=crossRGB(C.left?lit:shd,0.45);ly.cbr=crossRGB(C.left?shd:lit,0.4);ly.cbs=crossRGB(shd,0.5);ly.c1=crossRGB(C.left?shd:lit,0.3);
-      ly.cs=crossRGB(crossMul(shd,[0.62,0.6,0.64]));ly.cl=crossRGB(mixRGB(lit,[255,244,226],0.2));ly.cg=crossRGB(crossMul(shd,[0.4,0.38,0.44]));
+      const lit=C.at(k.lit,f),dim=C.at(k.dim,f),shd=C.at(k.shd,f),body=mixRGB(dim,shd,0.3);
+      ly.cs=crossRGB(crossMul(shd,[0.62,0.6,0.64]));ly.cl=crossRGB(mixRGB(lit,[255,244,226],0.2));
       const dc=mixRGB(mixRGB(lit,cr.cols.hz,0.4),[255,242,222],cr.tod===1?0.05:0.18);ly.dust=crossRGB(dc,0.5);
       {const cs=dc.map(Math.round).join(','),g=document.createElement('canvas');g.width=g.height=32;const x=g.getContext('2d'),gr=x.createRadialGradient(16,16,0,16,16,16);
-        gr.addColorStop(0,'rgba('+cs+',1)');gr.addColorStop(0.4,'rgba('+cs+',0.85)');gr.addColorStop(0.72,'rgba('+cs+',0.32)');gr.addColorStop(1,'rgba('+cs+',0)');x.fillStyle=gr;x.fillRect(0,0,32,32);ly.spr=g;}},
-    draw(ctx,ly,cr){const x=crossPX(cr,ly.X,ly.f),y=crossGYf(ly.f)+1,fh=ly.fh,fw=ly.fw,bt=y-fh*1.85,L=cr.cols.left?1:-1;if(x+fw*1.8<-10||x-fw*1.2>viewW+10)return;
-      // the spur: stepping in at the beds' ledges to a broken top, the face toward the light lit, the other shaded, the beds' lines, the cleft
-      {const poly=(P,c)=>{ctx.fillStyle=c;ctx.beginPath();for(let i=0;i<P.length;i+=2){const px=x+P[i]*fw,py=bt+P[i+1]*fh;if(i)ctx.lineTo(px,py);else ctx.moveTo(px,py);}ctx.closePath();ctx.fill();};
-        poly(RF_SP,ly.cb);poly(L>0?RF_SL:RF_SR,ly.cbl);poly(L>0?RF_SR:RF_SL,ly.cbr);
-        ctx.fillStyle=ly.cbs;for(let k=1;k<5;k++){const v=0.34*k,hw=0.3+0.32*v;ctx.fillRect(x-fw*hw,bt+fh*v,fw*hw*1.9,Math.max(0.5,fh*0.03));}
-        ctx.fillStyle=ly.cg;ctx.beginPath();ctx.moveTo(x-fw*0.08,bt+fh*0.06);ctx.lineTo(x+fw*0.07,bt+fh*0.1);ctx.lineTo(x+fw*0.045,y-fh*0.9);ctx.lineTo(x-fw*0.035,y-fh*0.88);ctx.closePath();ctx.fill();}
-      ctx.fillStyle=ly.c0;ctx.beginPath();ctx.moveTo(x-fw,y);ctx.quadraticCurveTo(x-fw*0.25,y-fh*0.2,x,y-fh);ctx.quadraticCurveTo(x+fw*0.25,y-fh*0.2,x+fw,y);ctx.closePath();ctx.fill();
-      ctx.fillStyle=ly.c1;ctx.beginPath();if(L>0){ctx.moveTo(x,y-fh);ctx.quadraticCurveTo(x+fw*0.25,y-fh*0.2,x+fw,y);ctx.lineTo(x+fw*0.2,y);}else{ctx.moveTo(x,y-fh);ctx.quadraticCurveTo(x-fw*0.25,y-fh*0.2,x-fw,y);ctx.lineTo(x-fw*0.2,y);}ctx.closePath();ctx.fill();
+        gr.addColorStop(0,'rgba('+cs+',1)');gr.addColorStop(0.4,'rgba('+cs+',0.85)');gr.addColorStop(0.72,'rgba('+cs+',0.32)');gr.addColorStop(1,'rgba('+cs+',0)');x.fillStyle=gr;x.fillRect(0,0,32,32);ly.spr=g;}
+      // the spur and its fan, baked: (u, v) in fan half-widths across (+ toward the light's far side when it comes from the right) and fan
+      // heights up; jittered along each edge so no line is straight
+      const ox=ly.ox=1.55*fw,oy=ly.oy=1.62*fh,W=ly.cw=3.1*fw,H=ly.ch=oy+2,q=VS,cv=document.createElement('canvas');cv.width=Math.ceil(W*q);cv.height=Math.ceil(H*q);
+      const g=cv.getContext('2d');g.setTransform(q,0,0,q,0,0);const X=u=>ox+L*u*fw,Y=v=>oy-v*fh,J=a=>(r()-0.5)*a;
+      const pts=[];for(let i=0;i+3<RF_SP.length;i+=2){const u0=RF_SP[i],v0=RF_SP[i+1],u1=RF_SP[i+2],v1=RF_SP[i+3];pts.push([X(u0),Y(v0)]);
+        const n=Math.abs(v1-v0)>0.15?3:1;for(let j=1;j<=n;j++){const t=j/(n+1);pts.push([X(u0+(u1-u0)*t)+J(fw*0.06),Y(v0+(v1-v0)*t)+J(fh*0.04)]);}}
+      pts.push([X(RF_SP[RF_SP.length-2]),Y(RF_SP[RF_SP.length-1])]);
+      const spur=()=>{g.beginPath();g.moveTo(pts[0][0],H);for(const p of pts)g.lineTo(p[0],p[1]);g.lineTo(pts[pts.length-1][0],H);g.closePath();};
+      const gr=g.createLinearGradient(X(-1.45),0,X(1.35),0);gr.addColorStop(0,crossRGB(mixRGB(body,lit,0.5)));gr.addColorStop(0.5,crossRGB(body));gr.addColorStop(1,crossRGB(mixRGB(body,shd,0.45)));
+      spur();g.fillStyle=gr;g.fill();g.save();spur();g.clip();
+      // ledges where the outline steps (a lit top, the shadow under its lip), broken beds at their own heights, joints, hollows
+      for(let i=2;i+3<RF_SP.length;i+=2){const v0=RF_SP[i+1],v1=RF_SP[i+3];if(Math.abs(v1-v0)>0.08)continue;const a=X(RF_SP[i]),b=X(RF_SP[i+2]),y0=Y(v0),l=Math.abs(b-a)*(1.6+r());
+        const x0=Math.min(a,b)-(L*(RF_SP[i]+RF_SP[i+2])<0?0:l*0.5);g.fillStyle=crossRGB(mixRGB(lit,C.at(C.rim,f),0.3),0.55);g.fillRect(x0,y0,l,Math.max(0.5,s*0.07));g.fillStyle=crossRGB(shd,0.45);g.fillRect(x0,y0+Math.max(0.5,s*0.07),l,Math.max(0.6,s*0.14));}
+      for(let i=0;i<7;i++){const v=0.15+1.3*r(),a=-1.3+2.4*r(),l=fw*(0.25+0.6*r());g.fillStyle=crossRGB(shd,0.35);g.fillRect(X(a)-l/2,Y(v)+J(1),l,Math.max(0.5,s*0.06));}
+      for(let i=0;i<5;i++){const a=-1.2+2.3*r(),v=0.2+1.1*r();g.fillStyle=crossRGB(shd,0.3);g.fillRect(X(a),Y(v),Math.max(0.4,s*0.05),fh*(0.12+0.25*r()));}
+      for(let i=0;i<4;i++){const a=-1.1+2.1*r(),v=0.3+1.0*r();g.fillStyle=crossRGB(crossMul(shd,[0.6,0.6,0.7]),0.45);g.beginPath();g.ellipse(X(a),Y(v),s*(0.3+0.5*r()),s*(0.15+0.25*r()),0,0,6.2832);g.fill();}
+      // the gully: down the face on the diagonal, jagged, widening to its mouth; its wall toward the light lit
+      const gl=[],gr2=[];for(let i=0;i<RF_GC.length;i+=2){const hw=RF_GW[i/2]*fw,jx=i&&i<RF_GC.length-2?J(fw*0.05):0;gl.push([X(RF_GC[i])-hw+jx,Y(RF_GC[i+1])]);gr2.push([X(RF_GC[i])+hw+jx,Y(RF_GC[i+1])]);}
+      g.fillStyle=crossRGB(crossMul(shd,[0.42,0.4,0.46]));g.beginPath();g.moveTo(gl[0][0],gl[0][1]);for(const p of gl)g.lineTo(p[0],p[1]);for(let i=gr2.length-1;i>=0;i--)g.lineTo(gr2[i][0],gr2[i][1]);g.closePath();g.fill();
+      g.fillStyle=crossRGB(lit,0.4);g.beginPath();const lw=L>0?gr2:gl;g.moveTo(lw[0][0],lw[0][1]);for(const p of lw)g.lineTo(p[0],p[1]);for(let i=lw.length-1;i>=0;i--)g.lineTo(lw[i][0]-L*Math.max(0.6,RF_GW[i]*fw*0.35),lw[i][1]);g.closePath();g.fill();
+      g.restore();
+      // the talus along the spur's foot, then the fan out of the gully's mouth: concave flanks flattening into the ground, one longer
+      const sf=mixRGB(dim,lit,0.62),tal=()=>{g.beginPath();g.moveTo(X(-1.6),H);for(let i=0;i<=24;i++){const u=-1.6+3.05*i/24,e=Math.max(0,1-Math.abs(u+0.15)/1.45);g.lineTo(X(u),Y(0.04+0.16*e*e+0.03*Math.sin(u*9)));}g.lineTo(X(1.45),H);g.closePath();};
+      tal();g.fillStyle=crossRGB(mixRGB(sf,body,0.25));g.fill();
+      const w0=0.2*fw,fa=X(0)-L*w0,fb=X(0)+L*w0,lf=1.15*fw,rf=0.85*fw,yA=Y(0.98),fan=()=>{g.beginPath();g.moveTo(X(0)-L*lf,H);g.bezierCurveTo(X(0)-L*lf*0.5,H-fh*0.03,fa-L*lf*0.1,Y(0.5),fa,yA);
+        g.lineTo(fb,yA-fh*0.02);g.bezierCurveTo(fb+L*rf*0.1,Y(0.5),X(0)+L*rf*0.5,H-fh*0.03,X(0)+L*rf,H);g.closePath();};
+      fan();g.fillStyle=crossRGB(sf);g.fill();g.save();fan();g.clip();
+      g.fillStyle=crossRGB(shd,0.24);g.beginPath();g.moveTo(fb,yA);g.bezierCurveTo(fb+L*rf*0.1,Y(0.5),X(0)+L*rf*0.5,H-fh*0.03,X(0)+L*rf,H);g.lineTo(X(0)+L*rf*0.15,H);g.quadraticCurveTo(X(0.02),Y(0.4),fb,yA);g.fill();
+      {const sg=g.createLinearGradient(0,yA,0,Y(0.62));sg.addColorStop(0,crossRGB(shd,0.45));sg.addColorStop(1,crossRGB(shd,0));g.fillStyle=sg;g.fillRect(0,yA-1,W,Y(0.62)-yA+1);} // (its top in the gully's shade)
+      g.fillStyle=crossRGB(shd,0.35);for(let i=0;i<26;i++){const u=(r()*2-1),hgt=Math.pow(1-Math.abs(u),2.2)*r(),rr=Math.max(0.35,s*0.035*(1+r()));g.fillRect(X(0)+u*(u<0?lf:rf)*L*0.9,Y(hgt*0.9),rr,rr*0.7);}
+      g.restore();crossRim(cv,cr,q,0.5);ly.c=cv;},
+    draw(ctx,ly,cr){const x=crossPX(cr,ly.X,ly.f),y=crossGYf(ly.f)+1,fh=ly.fh,fw=ly.fw,L=cr.cols.left?1:-1;if(x+ly.cw<-10||x-ly.cw>viewW+10)return;
+      ctx.drawImage(ly.c,x-ly.ox,y-ly.oy,ly.cw,ly.ch);
       const tb=cr.gust<0?-1:cr.t-cr.gust-0.15;if(tb<0||!GFX().fx)return;
-      const gx=x,gy=bt+fh*0.16,ay=y-fh,sp=ly.spr;
-      // where stone q is t s after it breaks off: down the cleft (falling), then down the fan in hops that shrink, then at rest
-      const pos=(q,t,o)=>{if(t<=q.ta){const u=t/q.ta;o.x=gx+q.gx*fw*u;o.y=gy+(ay-gy)*u*u;o.m=1;return o;}const v=Math.min(1,(t-q.ta)/q.tr),p=v*(2-v)*q.pe,j=Math.min(q.nh-1,Math.floor(v*q.nh)),ph=v*q.nh-j;
-        o.x=gx+q.gx*fw+q.u*fw*p;o.y=ay+fh*p*(1+0.06*Math.abs(q.u))-(v<1?q.h0*Math.pow(0.5,j)*4*ph*(1-ph):0)-q.sz*0.55;o.m=v<1?1:0;return o;};
+      const gx=x+L*RF_GC[0]*fw,gy=y-RF_GC[1]*fh,ax=x,ay=y-fh*0.98,sp=ly.spr;
+      // where stone q is t s after it breaks off: down the gully (falling), then down the fan in hops that shrink, then at rest
+      const pos=(q,t,o)=>{if(t<=q.ta){const u=t/q.ta;o.x=gx+(ax-gx)*u+q.gx*fw*u;o.y=gy+(ay-gy)*u*u;o.m=1;return o;}const v=Math.min(1,(t-q.ta)/q.tr),p=v*(2-v)*q.pe,j=Math.min(q.nh-1,Math.floor(v*q.nh)),ph=v*q.nh-j;
+        o.x=ax+q.gx*fw+q.u*fw*p;o.y=ay+fh*0.98*p*(1+0.06*Math.abs(q.u))-(v<1?q.h0*Math.pow(0.5,j)*4*ph*(1-ph):0)-q.sz*0.55;o.m=v<1?1:0;return o;};
       const A=RF_P[0],B=RF_P[1],puff=(px,py,rr,al)=>{if(!sp||al<0.01||rr<0.3)return;ctx.globalAlpha=Math.min(1,al);ctx.drawImage(sp,px-rr,py-rr,rr*2,rr*2);};
-      // dust behind the stones: at the cleft's head as they break off, where each big stone lands, and the plume off the fan
+      // dust behind the stones: at the gully's head as they break off, where each big stone lands, and the plume off the fan
       if(tb<6){for(let i=0;i<3;i++){const a=tb-0.2*i;if(a<0||a>2.8)continue;puff(gx+7*a+i*2,gy-7*a,fh*(0.14+0.2*a),0.7*(1-a/2.8));}
-        for(let i=0;i<RF_PL;i++){const a=tb-0.35-0.22*i;if(a<0||a>4.2)continue;const p=0.1+0.9*i/(RF_PL-1),h=hash2(i*7+3,cr.seed)/4294967296,bx=gx+(h-0.5)*fw*0.9*p,by=ay+fh*p,g=1-Math.exp(-a*0.9);
+        for(let i=0;i<RF_PL;i++){const a=tb-0.35-0.22*i;if(a<0||a>4.2)continue;const p=0.1+0.9*i/(RF_PL-1),h=hash2(i*7+3,cr.seed)/4294967296,bx=ax+(h-0.5)*fw*0.9*p,by=ay+fh*p,g=1-Math.exp(-a*0.9);
           puff(bx+12*a+6*g,by-fh*(0.1+0.42*g)-2*a,fh*(0.22+0.45*g),0.85*sstep(a/0.25)*Math.pow(1-a/4.2,1.3));}
         for(const q of ly.st){if(!q.big)continue;for(let j=1;j<=q.nh;j++){const tj=q.ta+q.tr*(j-1)/q.nh,a=tb-q.d-tj;if(a<0||a>1)continue;pos(q,tj,B);puff(B.x+6*a,B.y+q.sz*0.5-8*a,q.sz*(2+7*a),0.85*(1-a));}}
         ctx.globalAlpha=1;}
       // the trails: a streak of dust behind each big stone while it moves
       ctx.strokeStyle=ly.dust;ctx.lineCap='round';
       for(const q of ly.st){if(!q.big)continue;const t=tb-q.d;if(t<0.03||t>q.ta+q.tr)continue;ctx.lineWidth=q.sz*1.4;ctx.beginPath();pos(q,t,A);ctx.moveTo(A.x,A.y);for(let k=1;k<=4;k++){pos(q,Math.max(0,t-0.05*k),B);ctx.lineTo(B.x,B.y);}ctx.stroke();}
-      // the stones (each turning as it goes), the big ones lit on top
+      // the stones (each turning as it goes), the big ones lit on top and the light's side
       const stone=(cx,cy,q,rot,k)=>{ctx.beginPath();for(let i=0;i<6;i++){const a=rot+i*1.0472,rr=q.sz*q.rv[i]*k;if(i)ctx.lineTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr*q.el);else ctx.moveTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr*q.el);}ctx.closePath();ctx.fill();};
       for(const q of ly.st){const t=tb-q.d;if(t<0)continue;pos(q,t,A);const rot=q.sp*Math.min(t,q.ta+q.tr);
         if(q.big){ctx.fillStyle=ly.cl;stone(A.x,A.y,q,rot,1);ctx.fillStyle=ly.cs;stone(A.x+L*q.sz*0.24,A.y+q.sz*0.26,q,rot,0.9);} // (lit on its top and the light's side: a rim left by the body drawn over it, shifted away)
@@ -12241,9 +12277,15 @@ const CROSS_KINDS={
         g.fillStyle=A(mixRGB(lit,C.rim,0.3),0.7);g.fillRect(ra-1,rt-1,rb-ra+2,1);g.fillRect(L>0?ra-1:rb,rt,1,yb-rt);
         g.strokeStyle=A(shd,0.25);g.lineWidth=0.4;g.beginPath();for(let i=0;i<30;i++){const cx2=ra+3+rnd()*(rb-ra-6),cy2=rt+4+rnd()*(yb-rt-8);g.moveTo(cx2,cy2);g.lineTo(cx2+1.5,cy2+0.8);}g.stroke(); // chisel marks
         // the scree fan at the foot of the ledges, at the angle of repose, its stones
-        const sf=mixRGB(dim,lit,0.5),fx=62,ft=yb-36,fr=x0-12;g.fillStyle=A(sf);g.beginPath();g.moveTo(20,yb+1.5);g.quadraticCurveTo(fx-26,yb-6,fx,ft);g.quadraticCurveTo(fx+14,yb-6,fr,yb+1.5);g.closePath();g.fill();
-        g.fillStyle=A(L>0?shd:lit,0.22);g.beginPath();g.moveTo(fx,ft);g.quadraticCurveTo(fx+14,yb-6,fr,yb+1);g.lineTo(fx+6,yb+1);g.closePath();g.fill();
-        for(let i=0;i<60;i++){const sx=20+rnd()*(fr-20),hf=sx<fx?36*Math.pow((sx-20)/(fx-20),1.6):36*Math.pow(1-(sx-fx)/(fr-fx),1.6),sy=yb-hf*rnd()+1,rr=0.5+1.3*rnd()*rnd();g.fillStyle=A(rnd()<0.5?shd:mixRGB(dim,shd,0.4),0.55);g.beginPath();g.ellipse(sx,sy,rr*1.3,rr*0.8,0,0,T);g.fill();g.fillStyle=A(lit,0.6);g.fillRect(sx-L*rr*0.5-rr*0.3,sy-rr*0.7,rr*0.7,0.5);}
+        // (round 36e, owner: it read as a little pyramid) a talus leaning on the end face, fed by a chute down it: its top against the face
+        // under the chute, concave flanks flattening into the ground, the long one toward the doorway
+        const sf=mixRGB(dim,lit,0.5),fx=50,ft=yb-29,fr=x0-12,ch=[[53,yb-28,3.2],[50,yb-38,2.6],[52,yb-46,2],[47,yb-55,1.6],[48.5,yb-63,1.2],[44.5,yb-72,0.7]];
+        g.fillStyle=A(crossMul(shd,[0.5,0.48,0.55]),0.8);g.beginPath();for(const [cx2,cy2,w2] of ch)g.lineTo(cx2-w2,cy2);for(let i=ch.length-1;i>=0;i--)g.lineTo(ch[i][0]+ch[i][2],ch[i][1]);g.closePath();g.fill(); // (the chute, jagged, on the diagonal, widening down)
+        g.fillStyle=A(lit,0.35);g.beginPath();for(const [cx2,cy2,w2] of ch)g.lineTo(cx2-L*w2,cy2);for(let i=ch.length-1;i>=0;i--)g.lineTo(ch[i][0]-L*(ch[i][2]+0.7),ch[i][1]);g.closePath();g.fill();
+        const tl=()=>{g.beginPath();g.moveTo(27,yb+1.5);g.quadraticCurveTo(35,yb-3,39,yb-16);g.lineTo(38.6,yb-31);g.lineTo(47,yb-32);g.lineTo(56,yb-29);g.bezierCurveTo(62,yb-12,fr-26,yb+0.5,fr,yb+1.5);g.closePath();}; // (its left edge on the end face's foot: the heap leans on the cliff)
+        tl();g.fillStyle=A(sf);g.fill();g.save();tl();g.clip();g.fillStyle=A(L>0?shd:lit,0.2);g.fillRect(fx+4,ft-1,fr-fx,yb-ft+3);
+        {const sg=g.createLinearGradient(0,ft,0,ft+12);sg.addColorStop(0,A(shd,0.45));sg.addColorStop(1,A(shd,0));g.fillStyle=sg;g.fillRect(10,ft-1,fr,13);}g.restore();
+        for(let i=0;i<46;i++){const sx=30+rnd()*(fr-30),hf=sx<fx?30*Math.pow(Math.max(0,(sx-28)/(fx-28)),2.4):30*Math.pow(Math.max(0,1-(sx-fx)/(fr-fx)),2.4),sy=yb-hf*rnd()*0.9+1,rr=0.5+1.1*rnd()*rnd();g.fillStyle=A(rnd()<0.5?shd:mixRGB(dim,shd,0.4),0.55);g.beginPath();g.ellipse(sx,sy,rr*1.3,rr*0.8,0,0,T);g.fill();g.fillStyle=A(lit,0.6);g.fillRect(sx-L*rr*0.5-rr*0.3,sy-rr*0.7,rr*0.7,0.5);}
         g.fillStyle=A(mixRGB(dim,lit,0.35));g.fillRect(ra-6,yb-1,rb-ra+12,2.5);g.fillStyle=A(mixRGB(lit,C.rim,0.3),0.7);g.fillRect(ra-6,yb-1.2,rb-ra+12,0.8);}
       else if(gv==='granite'){ // Aksum: rubble courses between timber beams with their round ends ('monkey heads'), recesses and projections
         const rb0=crossLit(cr,[152,136,116]),gn=crossLit(cr,[148,142,138]),wd=crossLit(cr,[112,80,54]),mt=crossMul(rb0.dim,[0.7,0.66,0.62]),wt=yb-92;
@@ -12432,10 +12474,10 @@ const CROSS_SETS={
     L2.push(...crossBgart(cr,{skip:['cliffs','hills']}));
     const cliff=(f,hm,W,o)=>L2.push(Object.assign({kind:'cliff',f,z:crossZ(f),hm,W,id:id()},o||{}));
     cliff(0.022,62,900);cliff(0.06,34,1000,{gaps:1});cliff(0.15,11,1100,{gaps:1});
-    L2.push({kind:'rockfall',f:0.3,z:crossZ(0.3)+0.002,hm:4,id:id()}); // (round 36e: nearer, at f 0.3, from 0.15)
+    L2.push({kind:'rockfall',f:0.3,z:crossZ(0.3)+0.002,hm:3.2,id:id()}); // (round 36e: nearer, at f 0.3, from 0.15)
     // (round 36e) nothing in the wadi's bed in front of the fall while it plays: an item at depth f whose screen x comes within the fan's
     // half-width (and its own) of the fan's axis while the camera runs RF_CW px on from the beat is moved aside the shorter way
-    function rfClear(items,f){const W=viewW,c0=xb-W*CROSS_CAM,RX=c0+W/2+(W*RF_SX-W/2)/0.3,fw=4*29.4*0.3/0.62,d=(X,cx)=>(X-cx-W/2)*f-(RX-cx-W/2)*0.3;
+    function rfClear(items,f){const W=viewW,c0=xb-W*CROSS_CAM,RX=c0+W/2+(W*RF_SX-W/2)/0.3,fw=1.2*3.2*29.4*0.3/0.62,d=(X,cx)=>(X-cx-W/2)*f-(RX-cx-W/2)*0.3;
       for(const it of items){const hw=(it.t==='boulder'?it.w*0.5:it.cw*it.hm*0.5)*29.4*f,lim=fw*1.05+hw,a=d(it.X,c0+RF_CW),b=d(it.X,c0);if(a>=lim||b<=-lim)continue;
         const up=(lim-a)/f,dn=(b+lim)/f;it.X+=up<dn?up:-dn;}return items;}
     L2.push({kind:'dfield',f:0.26,z:crossZ(0.26)+0.004,W:820,id:id(),ns:4,hk:0.8,nst:22,ntf:4,sk:1.6});

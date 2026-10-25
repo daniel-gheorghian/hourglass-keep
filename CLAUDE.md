@@ -571,9 +571,9 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   origin/main), the bot's frames on floors 3-6 identical. Pictures `egyptr36.py r36d` (r36d_all.png: every theme at every hour in floors 1-180,
   start | beat | doorway, both modes; r36d_wadi_highland.gif; r36d_audit.png: 36c | 36d for each fix).
   Round 36e (owner's three fixes before v81). The wadi's rockfall ("subtle at its distance"): the spur stands at f 0.3 (was 0.15, twice as
-  near; `hm` 4 m of fan, the spur stepping in at the beds' ledges to a broken top, `RF_SP`/`RF_SL`/`RF_SR`, a dark cleft down its face), placed at
+  near; `hm` 3.2 m of fan), placed at
   `RF_SX` 0.55 of the view at the beat; 0.15 s after the beat `RF_BIG` 6 big stones (0.3-0.46 m, lit on top and the light's side) and 10 gravel break off at
-  the cleft's head, drop down it and bound down the fan in hops that shrink, each big one trailing a dust streak and kicking up dust where it
+  the gully's head, drop down it and bound down the fan in hops that shrink, each big one trailing a dust streak and kicking up dust where it
   lands; a plume (`RF_PL` puffs of one soft sprite baked once) rises off the fan and drifts on the wind over ~4 s; the stones stay where they
   rest (a pure function of the clock since the beat). Nothing in the wadi's bed at f 0.5 stands in front of the fan while the camera runs
   `RF_CW` 200 px on from the beat (`rfClear` moves a tamarisk or boulder aside; the acacia from xb+250 to xb+390, the ravens' boulder to
@@ -588,6 +588,14 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   middle, the beat, the doorway and going into it, both modes (36d: 834-858 px of 6,144; 0 now). Look only, hashes: layouts identical
   (genLevel floors 1-48 x 3 seeds against release-v81). Pictures `egyptr36.py r36e` (r36e_fixes.png: 36d | 36e at phone size and at 3x, both
   modes; r36e_wadi.gif).
+  Second pass (owner's review: shapes in the wadi read as built monuments): nothing in the wadi may read as a pyramid, tower or door but the
+  real doorway. The spur is an irregular limestone outcrop out of the near cliff's foot, its top at about the cliff's height so it is seen
+  against the cliff, not the sky: leaning, higher and steeper on its far side, its outline broken by ledges at different heights on each
+  side (`RF_SP`, jittered along every edge), broken beds, joints and hollows; a jagged gully runs down it on the diagonal (`RF_GC`,
+  `RF_GW`), widening to its mouth; spur and fan are baked once (`ly.c`). Scree is never a peaked cone: a fan comes out of a gully's mouth
+  with concave flanks (steep under the mouth, flattening into the ground), one longer than the other, its top as wide as the mouth and in
+  the gully's shade; the cliffs (`cliff`) also lay a talus apron along their whole foot that the fans merge into; the rock doorway's scree is
+  a talus leaning on the cliff's end face, fed by a jagged chute down it, its long flank toward the step.
 - Lift ropes (round 21a, owner: "holes in the slab with the rope threaded through"): all lift ropes are `barRope` in the theme's fibre
   (`liftRope`; `barRope`'s `ph` makes the lay travel with a running rope). The counterweight platform hangs on two bridles (`liftSling`: an
   eye seized `LS_J` above the slab, legs down through two holes near the front and back edges along the depth diagonal, `ropeHole` drawn in

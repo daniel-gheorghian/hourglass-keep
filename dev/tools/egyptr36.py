@@ -29,7 +29,7 @@
 # Round 36e (the owner's three fixes before v81):
 #   r36e_fixes.png  before (round 36d's page, 20233ee, written to egypt_themes/r36e_base36d.html) | after, Torchlight and Classic rows: each
 #                   frame whole at the size a phone shows it (852 x 393 CSS px), then the same part of it at 3x (a page at device scale 3, as an
-#                   iPhone draws it): the wadi's rockfall (floor 69, 0.9 s and 1.9 s into it); the geese in flight at Kerma (floor 125), Meroe (13)
+#                   iPhone draws it): the spur and the scree (36e's second pass), the wadi's rockfall (floor 69, 0.9 s and 1.9 s into it); the geese in flight at Kerma (floor 125), Meroe (13)
 #                   and Siwa (45), and the ducks bursting out of the papyrus (Nun, floor 161); the wadi's tilted path at the doorway (floors 69, 29)
 #                   and the bottom-right corner at 3x
 #   r36e_wadi.gif   the wadi crossing (floor 69, dusk) through the rockfall, Torchlight, played through the game's own input
@@ -295,7 +295,10 @@ def run36e():
                 pg.evaluate(B, [n, mode]); pg.evaluate(AT, [x, t, g, 0])
                 im = Image.open(io.BytesIO(pg.screenshot(clip=clip) if clip else pg.screenshot())).convert('RGB'); pg.evaluate('()=>__HK.crossEnd()'); return im
             # (label, floor, x, t, gust seconds ago, crop box (CSS px) before, after)
-            A = [('the rockfall, 0.9 s in: 36d (far, at f 0.15) | 36e (the spur at f 0.3, stones, trails, dust)', 69, 400, 5.0, 1.2, (440, 60, 200, 150), (340, 40, 200, 150)),
+            A = [('the spur and the scree before the beat (36e: an irregular spur joined to the cliff, a jagged gully, fans and aprons, never a peak)', 69, 330, 4.4, -1, (230, 40, 300, 200), (230, 40, 300, 200)),
+                 ("the scree at the doorway: 36d's cone | 36e's talus leaning on the cliff, fed by a chute", 69, 657, 9.0, -1, (280, 100, 200, 170), (280, 100, 200, 170)),
+                 ('the spur and the scree at dawn', 109, 330, 4.4, -1, (230, 40, 300, 200), (230, 40, 300, 200)),
+                 ('the rockfall, 0.9 s in: 36d (far, at f 0.15) | 36e (the spur at f 0.3, stones, trails, dust)', 69, 400, 5.0, 1.2, (440, 60, 200, 150), (340, 40, 200, 150)),
                  ('the rockfall, 1.9 s in', 69, 470, 6.0, 2.2, (420, 60, 200, 150), (300, 40, 200, 150)),
                  ('the rockfall by moonlight, 1.4 s in', 29, 440, 5.0, 1.7, (420, 60, 200, 150), (320, 40, 200, 150)),
                  ('the geese in flight: Kerma, the Nile at dusk', 125, 400, 5.0, 1.6, (520, 110, 200, 150), (520, 110, 200, 150)),
