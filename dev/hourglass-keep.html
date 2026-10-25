@@ -7517,8 +7517,9 @@ const CUT_AT_WALL=new Set(['plate','xplate','lplate','closer','loose','spikes'])
 // brackets, verdigris on the bronze in the damp themes, a chipped platform lip, streaks down the shaft; 3 a rotten bite out of the
 // beam's end bound with rope, heavier rust and soot or moss, a cracked platform. Never broken, never like a hurtdrop.
 function liftVisible(f,x0,x1,y0,y1){return (f.cb+1)*TW+80>x0&&f.ca*TW-80<x1&&f.rB*TH+TH+10>y0&&f.rT*TH-40<y1;}
+const LAYER_DBG={hide:null,glow:true};function lyOff(k){return LAYER_DBG.hide!==null&&LAYER_DBG.hide.has(k);} // (round 39: layerscan.py leaves one kind of thing out of a frame, a Set of kinds: 'lamp', 'door', 'clock', 'lift', a feature's type, 'block', 'dart', 'cue', 'jet', 'flask', 'well', 'dust', 'debris', 'snake', 'guard', 'prince', 'trail', 'sand', 'emissive', 'ambient', 'atmo', 'haze'; glow false: no lamp's drawn glow, which is light, GLOWK)
 const LIFT_DBG={off:false,rider:false,gatesR:false,tiles:null}; // (liftscan.py: off leaves the lifts out of a frame, rider the prince, and gatesR draws only the gratings on the shafts' right edges, to compare with frames that have them; tiles, a Set, collects the cells whose floor tile the room pictures draw)
-function drawLift(ctx,f,half){if(LIFT_DBG.off||(LIFT_DBG.gatesR&&f.t==='chain'))return;if(f.sand)drawSandLift(ctx,f,half);else if(f.t==='chain')drawLiftChain(ctx,f,half);else drawLiftCounterweight(ctx,f,half);}
+function drawLift(ctx,f,half){if(LIFT_DBG.off||lyOff('lift')||(LIFT_DBG.gatesR&&f.t==='chain'))return;if(f.sand)drawSandLift(ctx,f,half);else if(f.t==='chain')drawLiftChain(ctx,f,half);else drawLiftCounterweight(ctx,f,half);}
 function liftWear(f){if(f.wl===undefined||f.wn!==L.n){const x=(f.ca+f.cb+1)*TW/2,ym=(f.rT*TH+SURF(f.rB))/2;f.wn=L.n;f.wl=inBreach(x,ym,true)?3:wearLevel(x,ym);}return f.wl;}
 // the front faces of the walls and low ceilings round a lift: cut out of what is drawn next (ctx in world space; save/restore round it)
 // (a floor's lip and its shadow lie over the top of the wall under it, so that strip is left open: a platform docked there shows its own)
@@ -7954,12 +7955,12 @@ function drawDynamic(ctx,x0,x1,y0,y1){
   hudStones.length=0;
   const th=L.theme,c0=Math.floor(x0/TW)-1,c1=Math.floor(x1/TW)+1,r0=Math.floor(y0/TH)-1,r1=Math.floor(y1/TH)+1;
   const inRoom=(c,r)=>c>=c0&&c<=c1&&r>=r0&&r<=r1;
-  for(const t of L.torches)if(!t.broken&&inRoom(t.c,t.r))drawLight(ctx,t,th);
-  {const sd=L.start.door===undefined?1:L.start.door;if(inRoom(sd,L.start.r))drawDoor(ctx,sd*TW+16,L.start.r,entryOpen(),false);} // (round 26f: open while he comes out, then dropping)
-  if(inRoom(L.door.c,L.door.r))drawDoor(ctx,L.door.x,L.door.r,L.door.open,true);
-  for(const cp of L.cps)if(inRoom(cp.c,cp.r))drawHourglass(ctx,cp);
+  for(const t of L.torches)if(!t.broken&&inRoom(t.c,t.r)&&!lyOff('lamp'))drawLight(ctx,t,th);
+  {const sd=L.start.door===undefined?1:L.start.door;if(inRoom(sd,L.start.r)&&!lyOff('door'))drawDoor(ctx,sd*TW+16,L.start.r,entryOpen(),false);} // (round 26f: open while he comes out, then dropping)
+  if(inRoom(L.door.c,L.door.r)&&!lyOff('door'))drawDoor(ctx,L.door.x,L.door.r,L.door.open,true);
+  for(const cp of L.cps)if(inRoom(cp.c,cp.r)&&!lyOff('clock'))drawHourglass(ctx,cp);
   for(const lf of L.lifts)if(liftVisible(lf,x0,x1,y0,y1))drawLift(ctx,lf,0);
-  for(const o of L.dyn){if(!inRoom(o.c,o.r))continue;const f=o.f,X=o.c*TW,Y=o.r*TH,ys=SURF(o.r);
+  for(const o of L.dyn){if(!inRoom(o.c,o.r)||lyOff(o.f.t))continue;const f=o.f,X=o.c*TW,Y=o.r*TH,ys=SURF(o.r);
     // a tile's top runs back and to the right of it; against a wall on that side its back corner is behind the wall's
     // face (the plain floor stops there too), so these are cut at the face
     const cut=CUT_AT_WALL.has(f.t)&&B(L,o.c+1,o.r)===WALL;
@@ -8048,22 +8049,22 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     }
     if(cut)ctx.restore();
   }
-  for(const bl of L.ext.blocks){if(inRoom(bl.c,bl.r))drawBlock(ctx,bl,th);}
-  for(const d of L.ext.darts){if(d.x<x0-10||d.x>x1+10)continue;const dd=d.dir||-1; // (only the part that has left the spout's jaws)
+  for(const bl of L.ext.blocks){if(inRoom(bl.c,bl.r)&&!lyOff('block'))drawBlock(ctx,bl,th);}
+  for(const d of L.ext.darts){if(d.x<x0-10||d.x>x1+10||lyOff('dart'))continue;const dd=d.dir||-1; // (only the part that has left the spout's jaws)
     if(d.mx!==undefined){if((d.x+dd*5-d.mx)*dd<=0)continue;ctx.save();ctx.beginPath();ctx.rect(dd>0?d.mx-0.5:d.mx-80.5,d.y-12,81,24);ctx.clip();}
     drawDart(ctx,d.x,d.y,dd,0,1,true);if(d.mx!==undefined)ctx.restore();}
-  for(const q of SPENT){if(q.on&&q.x>x0-10&&q.x<x1+10)drawDart(ctx,q.x,q.y,q.dd,q.ang,q.gy||q.t<1.2?1:Math.max(0,1-(q.t-1.2)/0.4),false);}
-  for(const it of L.items){if(!it.hidden||it.taken||!inRoom(it.c,it.r))continue; // the secret's cue sits on the hidden flask itself: a few slow four-point stars
+  for(const q of SPENT){if(q.on&&q.x>x0-10&&q.x<x1+10&&!lyOff('dart'))drawDart(ctx,q.x,q.y,q.dd,q.ang,q.gy||q.t<1.2?1:Math.max(0,1-(q.t-1.2)/0.4),false);}
+  for(const it of L.items){if(!it.hidden||it.taken||!inRoom(it.c,it.r)||lyOff('cue'))continue; // the secret's cue sits on the hidden flask itself: a few slow four-point stars
     const sx=it.x,sy=SURF(it.r)-16;
     for(let i=0;i<3;i++){const a=gameTime*1.1+i*2.1,k=(Math.sin(a)+1)/2,px=sx+Math.cos(i*2.1+gameTime*0.3)*9,py=sy+Math.sin(i*1.3+gameTime*0.4)*7,R=1.5+3.6*k;
       ctx.fillStyle='rgba(255,230,150,'+(0.35+0.6*k)+')';ctx.beginPath();ctx.moveTo(px,py-R);ctx.lineTo(px+R*0.22,py-R*0.22);ctx.lineTo(px+R,py);ctx.lineTo(px+R*0.22,py+R*0.22);ctx.lineTo(px,py+R);ctx.lineTo(px-R*0.22,py+R*0.22);ctx.lineTo(px-R,py);ctx.lineTo(px-R*0.22,py-R*0.22);ctx.closePath();ctx.fill();}}
-  drawSecretCue(ctx,x0,x1,y0,y1);
-  drawJetHints(x0,x1,y0,y1,ctx);
-  for(const it of L.items)if(!it.taken&&inRoom(it.c,it.r))drawFlask(ctx,it);
-  drawLooseFlasks(ctx);
-  if(EGP.traps)for(const o of L.dyn){if(o.f.t!=='loose'||o.f.plank)continue;const g=wellGroup(o);if(!g||g.os[0]!==o||!(inRoom(g.c0,g.r)||inRoom(g.c0+g.n-1,g.r)))continue;drawWellGroup(ctx,g);} // (round 21b: once for a row of slabs over one pit)
-  for(let i=DUSTC.length-1;i>=0;i--){const q=DUSTC[i],age=gameTime-q.t;if(age<0||age>0.7){DUSTC.splice(i,1);continue;}dustCloud(ctx,q.x,q.y,age,0.7,q.sz,1);}
-  for(const d of L.debris){ctx.save();ctx.translate(d.x-16,d.y);
+  if(!lyOff('cue'))drawSecretCue(ctx,x0,x1,y0,y1);
+  if(!lyOff('jet'))drawJetHints(x0,x1,y0,y1,ctx);
+  for(const it of L.items)if(!it.taken&&inRoom(it.c,it.r)&&!lyOff('flask'))drawFlask(ctx,it);
+  if(!lyOff('flask'))drawLooseFlasks(ctx);
+  if(EGP.traps&&!lyOff('well'))for(const o of L.dyn){if(o.f.t!=='loose'||o.f.plank)continue;const g=wellGroup(o);if(!g||g.os[0]!==o||!(inRoom(g.c0,g.r)||inRoom(g.c0+g.n-1,g.r)))continue;drawWellGroup(ctx,g);} // (round 21b: once for a row of slabs over one pit)
+  for(let i=DUSTC.length-1;i>=0;i--){const q=DUSTC[i],age=gameTime-q.t;if(age<0||age>0.7){DUSTC.splice(i,1);continue;}if(!lyOff('dust'))dustCloud(ctx,q.x,q.y,age,0.7,q.sz,1);}
+  for(const d of L.debris){if(lyOff('debris'))continue;ctx.save();ctx.translate(d.x-16,d.y);
     if(EGP.traps&&(d.kind==='slab'||d.kind==='rock')){if(d.y0===undefined)d.y0=d.y;const age=debAge(d);ctx.restore();ctx.save(); // (re-skinned: a sand floor's slab, the roof block)
       if(d.kind==='rock')egRoofFall(ctx,d);
       else{ // (round 13, owner: "after the tile falls, the sand still trickles in two columns". Round 16a: no sand follows it down at all;
@@ -8087,12 +8088,12 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     else if(d.kind==='rock'){const rk=[[4,-11],[9,-15],[19,-14],[27,-10],[28,-2],[21,1],[8,1],[4,-4]];ctx.beginPath();rk.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();ctx.fillStyle=th.wallB;ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=1.4;ctx.stroke();
       ctx.fillStyle=th.hi;ctx.fillRect(9,-14,10,1.2);ctx.strokeStyle='rgba(0,0,0,.6)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(14,-14);ctx.lineTo(12,-7);ctx.lineTo(16,0);ctx.moveTo(22,-12);ctx.lineTo(20,-5);ctx.stroke();}
     else slab(ctx,0,0,th,true,true);ctx.restore();}
-  for(const sn of SN){if(sn.gone||sn.x<x0-30||sn.x>x1+30||sn.y<y0||sn.y>y1+20)continue;if(GFX().hd)drawSnakeHD(ctx,sn);else drawSnake(ctx,sn);}
-  for(const g of G){if(g.gone)continue;if(g.x<x0-30||g.x>x1+30||g.y<y0-10||g.y>y1+70)continue;
+  for(const sn of SN){if(sn.gone||lyOff('snake')||sn.x<x0-30||sn.x>x1+30||sn.y<y0||sn.y>y1+20)continue;if(GFX().hd)drawSnakeHD(ctx,sn);else drawSnake(ctx,sn);}
+  for(const g of G){if(g.gone||lyOff('guard'))continue;if(g.x<x0-30||g.x>x1+30||g.y<y0-10||g.y>y1+70)continue;
     const wc=g.alive?wallPress(g.x,g.y,g.face,g.pose):null;ctx.save();figClip(ctx,0,null,wc);
     if(!g.alive&&DISS.on&&g.t>DISS.t0)dissolveGuard(ctx,g,(g.t-DISS.t0)/DISS.dur,c=>drawActor(c,g,g.x,g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:false,hasSword:!g.skel,pale:true,flash:g.flash})); // S3-A: crumbles into sand
     else{if(g.dz)g.dz.on=false;drawActor(ctx,g,g.x+(wc?wc.dx:0),g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:(g.alive&&g.state!=='idle'&&g.state!=='drop'),hasSword:!g.skel,pale:true,flash:g.flash,alpha:g.alive||DISS.on?undefined:clamp(1-(g.t-1.1)/0.8,0,1)});}ctx.restore();}
-  if(P&&!(P.state==='dead'&&P.cause==='fall'&&P.y>L.rows*TH)&&!LIFT_DBG.rider){
+  if(P&&!(P.state==='dead'&&P.cause==='fall'&&P.y>L.rows*TH)&&!LIFT_DBG.rider&&!lyOff('prince')){
     // behind a wall's face (jumping up to, hanging from, climbing onto or down from a ledge on the wall's near side) the wall covers
     // him as in PoP1: SDLPoP draws every wall's front piece over the Kid (draw_tile_fore: tiles_20_wall into the foretable) and
     // clip_char cuts his sprite at the wall's edge while he hangs or climbs facing left; the Apple II draws block fronts on the
@@ -8115,13 +8116,13 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     if(P.state==='drink'&&P.dkG&&!P.dkRel&&P.drinkIt)drawHeldFlask(ctx);
     ctx.restore();
   }
-  if(GFX().fx){drawTrails(ctx);drawRings(ctx);}
+  if(GFX().fx&&!lyOff('trail')){drawTrails(ctx);drawRings(ctx);}
   // the near half of gates and jaws crosses in front of anyone walking the corridor
-  for(const o of L.dyn){if(!inRoom(o.c,o.r))continue;const X=o.c*TW,Y=o.r*TH,ys=SURF(o.r);if(o.f.t==='gate')drawGate(ctx,o.f,X,Y,ys,1);else if(o.f.t==='chomp')drawJaws(ctx,o,o.f,X,Y,ys,1);
+  for(const o of L.dyn){if(!inRoom(o.c,o.r)||lyOff(o.f.t))continue;const X=o.c*TW,Y=o.r*TH,ys=SURF(o.r);if(o.f.t==='gate')drawGate(ctx,o.f,X,Y,ys,1);else if(o.f.t==='chomp')drawJaws(ctx,o,o.f,X,Y,ys,1);
     else if(o.f.t==='stone'&&EGP.traps&&o.f.s>=2&&L.rubble.has(o.r*L.cols+o.c))egRoofLying(ctx,o,o.f,1);} // (and a fallen roof block's near half)
   for(const lf of L.lifts)if(liftVisible(lf,x0,x1,y0,y1))drawLift(ctx,lf,1);
-  sandDraw(ctx); // (before the light pass: shaded like stone)
-  if(!GFX().light)drawEmissive(ctx,x0,x1,y0,y1);
+  if(!lyOff('sand'))sandDraw(ctx); // (before the light pass: shaded like stone)
+  if(!GFX().light&&!lyOff('emissive'))drawEmissive(ctx,x0,x1,y0,y1);
 }
 // things that give off their own light: drawn after the lighting pass so it never dims them
 function drawEmissive(ctx,x0,x1,y0,y1){
@@ -10997,7 +10998,7 @@ function render(){PF.s();
   GLP.subd=false;GLP.first=sh&&!GLP.used;if(!sh)GLP.pend=null;if(GLP.first&&!GLP.inSession){GLP.rs=1;GLP.inSession=true;}if(!sh&&S.set.lightMode!=='torch')GLP.inSession=false; // (the scale found is kept while Torchlight stays on)
   else if(GLP.pend){PF.gl=GLP.gl;try{GLP.subd=glSubmit();}catch(e){glKill(String(e&&e.message||e));return render();}PF.p('gl');PF.gl=null;} // last frame's picture to WebGL (glPrep)
   if(sh){if(!GLP.used){GLP.skip=true;GLP.wsum=GLP.wn=0;}GLP.cv.style.display='';glSize();}else if(GLP.cv&&GLP.cv.style.display!=='none')GLP.cv.style.display='none';
-  GLP.used=sh;GLOWK=sh?0.5:1;
+  GLP.used=sh;GLOWK=LAYER_DBG.glow===false?0:sh?0.5:1;
   METAL_PAINT_HI=!(sh&&GLFX.metal&&MS.ok);MSF.n=0;MSF.rec=sh&&GLFX.metal&&MS.ok; // (unit MS) Torchlight's metal shader carries the highlights; note the figures' metal
   const gls=GLP.gls=sh&&GLS.ok&&GLFX.wgl; // (unit WGL) Torchlight's scene drawn by WebGL2 through the facade, or (no WebGL2) in 2D and copied
   if(sh&&!gls&&(GLP.sceneC.width!==cv.width||GLP.sceneC.height!==cv.height)){GLP.sceneC.width=cv.width;GLP.sceneC.height=cv.height;}
@@ -11022,16 +11023,16 @@ function render(){PF.s();
   ctx.save();ctx.beginPath();ctx.rect(cx,cy,vw,vh);ctx.clip();
   SHC.n=SHC.np=0;SHC.on=sh&&GLFX.shadow; // (round 38a) the outlines glMask carves out of the lamp shadow, recorded as drawDynamic draws them
   PF.p('lights');drawDynamic(ctx,cx,cx+vw,cy,cy+vh);SHC.on=false;PF.p('dyn');if(gls)ctx.na=1; // (round 25c) the grade, glows and haze over the whole view are not things in front of the sky
-  if(gf.atmo)ambientLit(ctx,cx,cx+vw,cy,cy+vh);
+  if(gf.atmo&&!lyOff('ambient'))ambientLit(ctx,cx,cx+vw,cy,cy+vh);
   if(sh){if(gf.grade)lightPass(ctx,frameLights,VZ,camD,camDY,true); // (the shader adds the lights and the bloom)
     if(gf.light&&!GLFX.shafts)ryBeams2D(ctx,RY_2D*1.9);} // the beams as in Classic (unless the shader casts them)
   else{if(gf.light||gf.grade)lightPass(ctx,frameLights,VZ,camD,camDY);
   if(gf.light)bloomPass(ctx,frameLights);}
-  PF.p('light2d');if(gf.atmo){atmoPass(ctx,frameLights,cx,cx+vw,cy,cy+vh);ambientGlow(ctx,cx,cx+vw,cy,cy+vh);}
-  if(gf.light)drawEmissive(ctx,cx,cx+vw,cy,cy+vh);
+  PF.p('light2d');if(gf.atmo&&!lyOff('atmo')){atmoPass(ctx,frameLights,cx,cx+vw,cy,cy+vh);ambientGlow(ctx,cx,cx+vw,cy,cy+vh);}
+  if(gf.light&&!lyOff('emissive'))drawEmissive(ctx,cx,cx+vw,cy,cy+vh);
   ctx.restore();
   ctx.setTransform(VS,0,0,VS,0,0);
-  if(gf.atmo)hazePass(ctx);
+  if(gf.atmo&&!lyOff('haze'))hazePass(ctx);
   if(L.ext.chase&&L.ext.chase.on&&!stormGL()){ctx.save();ctx.setTransform(VZ,0,0,VZ,-camD,-camDY);ctx.beginPath();ctx.rect(cx,cy,vw,vh);ctx.clip();drawDark2D(ctx,cx,cx+vw,cy,cy+vh);ctx.restore();ctx.setTransform(VS,0,0,VS,0,0);} // (round 29)
   PF.p('atmo2d');if(sh)PF.gl=GLP.gl;
   if(sh){try{glPrep(frameLights,VZ,camD,camDY,L.theme);}catch(e){glKill(String(e&&e.message||e));return render();}
@@ -12972,7 +12973,7 @@ window.__HK={keyLight,get frameLights(){return frameLights;},jetPlaces,jsSwingPa
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
   get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,ryOps,ryShape,ryProfile,skyBeam,RY,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,plantPose,legIK,mk,drawDynamic,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
-  get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG,CP_DBG,cpX,secretCues,RJ_K,RJ_DV};
+  get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG,LAYER_DBG,setGT:v=>{gameTime=v;},CP_DBG,cpX,secretCues,RJ_K,RJ_DV};
 Object.assign(window.__HK,{guardBudget,snakeBudget,RP,drinkFrame}); // (the fighters' budgets, for guardscan.py; RP and drinkFrame, the run cycle's and the drink's poses, for egyptr21a.py)
 Object.assign(window.__HK,{jumpSpan,jhK,leapPose,LEN,skel,crawlPose,walkPose,climbFrame,swingPose,MCP,MCK,R23B,R23D,R23MUS,setMus,musNow:()=>RD.mus||1,mk,figReach}); // (the skeleton and the poses, for egyptr23.py and figscan.py)
 Object.assign(window.__HK,{respawn,startRewind,die,startEntry,entryOpen,entryX,exitSwell,EXF,EX_N,EX_GONE,EX_CUT,EN_CTL,EN_DROP,EN_FALL,doorHead,ceilOff:(c,r)=>ceilOff(c,r)}); // (round 26f: the exit and the entry, for stairscan.py and egyptr26f.py)

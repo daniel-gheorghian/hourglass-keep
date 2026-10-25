@@ -52,7 +52,7 @@ room picture, so the face hides the blade only if the blade's drawing is cut the
 
 | Pass | May touch | Never | How it is kept |
 |---|---|---|---|
-| lamp shadow (Torchlight, effect mask r) | L1, L2's floor tops | an L2 thing that stands, L3 | `glMask` carves faces, floors, figures, `JAWP`, `SHC` (`shadowscan.py`) |
+| lamp shadow (Torchlight, effect mask r) | L1 only (the lamps hang on the back wall; floor tops are carved too) | L2, L3 | `glMask` carves faces, floors and lips, figures, `JAWP`, `SHC` (`shadowscan.py`) |
 | relief | the stone of the room picture: L1, L3 | any live L2 thing over it | `glRel*` rubbings (`tilescan.py`, `liftscan.py`) |
 | sky beams | L2's air (haze), L2's floor tops and flat things (footprint), L1's opening (rim, pane) | L3, L1 round the opening, sand | tile texture, `sandSegs`, `beamBlockers`, `fpGate` (`beamwall.py`) |
 | figures' fill light | L1, L2, L3 | L0 | the scene's alpha (round 25c) |

@@ -7,7 +7,8 @@
 # each view is drawn whole and then with one kind left out (LAYER_DBG.hide, which leaves its light, shadow carve and relief rubbing as
 # they are), at K clock phases where a kind moves (default 4: saws, pendulums, bars, jaws, vents, lifts' parts), and the pixels of the
 # front plane (1 canvas px in from each face's edge; not the kind's own tile where it is drawn live, nor a lift's shaft) must not
-# change (lamps' drawn glows are left out of both frames: they are light, LAYER_DBG.glow). A kind is bad in a view when more than 4 of those pixels differ by more than 24 (sum of channels). The prince is moved out
+# change (lamps' drawn glows are left out of both frames: they are light, LAYER_DBG.glow). A kind is bad in a view when more than 24 of those
+# canvas pixels (about 4 to a world px at the phone's scale) differ by more than 24 (sum of channels). The prince is moved out
 # of the view; things that only exist in play (darts, debris, dust, trails, the prince's states) are not covered here.
 # Prints a line per kind (views, bad, worst), 'layerscan: ok' or 'layerscan: FAIL', and a sheet of the worst cases (layerscan.png).
 # Run from dev/tools.
@@ -24,6 +25,7 @@ OUT = next((x for x in a if x.endswith('.png')), os.path.join(HERE, 'layerscan.p
 MODES = ['torch', 'classic'] if 'both' in a or not ('torch' in a or 'classic' in a) else (['torch'] if 'torch' in a else ['classic'])
 KINDS = next((x[6:].split(',') for x in a if x.startswith('kinds=')), None)
 NPH = int(next((x[7:] for x in a if x.startswith('phases=')), '4'))
+BADPX = 24  # (canvas px, at about 4 a world px: 1.5 world px square; a thing's foot anti-aliased onto its own lip is under it)
 MOVING = ['saw', 'pend', 'bar', 'chomp', 'vent', 'lift', 'banner', 'emissive', 'ambient', 'atmo', 'lamp', 'jet', 'cue']
 
 # every instance of every kind on the floor (world px: x, the floor line y), then views that cover them
@@ -54,7 +56,7 @@ VIEW = r'''([n,sd,cx,cy,kinds,phases,own,vh])=>{const H=__HK;window.__HKfreeze=t
   const X=H.XF,sx=src.width/(document.getElementById('game').width),W=src.width,IN=0.75*X.VZ*sx;
   const m=(x,y)=>[(x*X.VZ-X.camD)*sx,(y*X.VZ-X.camDY)*sx];
   // the front plane's faces in view, by cell; lift shafts left out (liftscan.py's)
-  const shaft=new Set();for(const lf of L.lifts)for(let r=lf.rT;r<=lf.rB;r++)for(let c=lf.ca;c<=lf.cb;c++)shaft.add(r*C+c);
+  const shaft=new Set();for(const lf of L.lifts)for(let r=lf.rT;r<=lf.rB+1;r++)for(let c=lf.ca;c<=lf.cb;c++)shaft.add(r*C+c); // (and the face under the foot: the platform rests in its 5 px pit, round 37a)
   const c0=Math.max(0,Math.floor((cx-H.viewW/2)/TW)-1),c1=Math.min(C-1,Math.floor((cx+H.viewW/2)/TW)+1),r0=Math.max(0,Math.floor((cy-vh/2)/TH)-1),r1=Math.min(L.rows-1,Math.floor((cy+vh/2)/TH)+1);
   const faces=[];for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++){const b=L.base[r*C+c],f=L.feat[r*C+c];if(shaft.has(r*C+c))continue;
     const X0=c*TW-HX,Y0=r*TH;
@@ -73,6 +75,7 @@ VIEW = r'''([n,sd,cx,cy,kinds,phases,own,vh])=>{const H=__HK;window.__HKfreeze=t
 
 # the cells whose tile a kind draws live itself (its own top and lip, and the top of the face under it, are its own drawing)
 OWN = {'loose', 'plate', 'xplate', 'lplate', 'closer', 'grate', 'vent'}
+ABOVE = {'gate'}  # (a gate's timer dial and pair plaque are fixed on its lintel's face: L3 itself)
 
 
 def page(b, mode):
@@ -117,11 +120,12 @@ if __name__ == '__main__':
                         own = {}
                         for k in ks:
                             if k in OWN: own[k] = [rr * li['cols'] + q[1] for q in inst if q[0] == k for rr in (q[2], q[2] + 1)]
+                            if k in ABOVE: own[k] = [(q[2] - 1) * li['cols'] + q[1] for q in inst if q[0] == k]
                         r = pg.evaluate(VIEW, [n, sd, cx, cy, [{'k': k, 'mv': k in MOVING} for k in ks], phases, own, li['vh']])
                         for k, o in r['res'].items():
                             s = stats.setdefault((mode, k), {'views': 0, 'bad': 0, 'worst': 0, 'where': []})
                             s['views'] += 1
-                            if o['n'] > 4:
+                            if o['n'] > BADPX:
                                 s['bad'] += 1; s['worst'] = max(s['worst'], o['n'])
                                 if len(s['where']) < 6: s['where'].append('%d/%d c%d r%d %s %dpx t%.2f' % (n, sd, o['face'][0], o['face'][1], o['face'][2], o['n'], o['ph']))
                                 if k != '_noise' and len(worst) < 24 and sum(1 for w in worst if w[0] == (mode, k)) < 3:
