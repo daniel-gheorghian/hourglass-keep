@@ -4107,7 +4107,7 @@ function cyc(f,T){return (((T+f.off)%f.per)+f.per)%f.per/f.per;}
 function sawX(f,T){const p=cyc(f,T);return f.x0+(f.x1-f.x0)*(0.5-0.5*Math.cos(p*6.2832));}
 function danger(f,T){if(f.t==='chomp'){const s=gameTime;gameTime=T;const k=chompK(f);gameTime=s;return k>0.3;}if(f.t==='vent'){const p=cyc(f,T);return p>0.7||p<0.03;}return false;}
 // spike needles, back to front: [x in tile, depth 0 front..1 back, height, lean]; guillotine teeth: [width, length, tip offset]
-const SPK=[[25,0.78,10,3],[7,0.66,16,-1.9],[19,0.48,21,0.6],[12.5,0.26,11,-0.8]];
+const SPK=[[25,0.78,10,3],[7,0.66,16,-1.9],[19,0.48,21,0.6],[12.5,0.26,11,-0.8]];const SPK_NEAR=0.45; // (round 39e: a stake rooted nearer than this is in front of a figure at mid-depth: drawNeedles)
 const CH_UP=[[4,8,0.4],[3.5,5,0],[4.5,11,-0.6],[3.5,4,0.3],[4,9,0.5],[4.5,6,-0.3],[4,10,0.2]];
 const CH_LO=[[2,5,-0.4],[4,9,0.3],[4,5,0],[4.5,10,-0.5],[3.5,4,0.2],[4,8,0.4],[4,6,-0.2],[2,4,0.3]];
 function chompK(f){const p=(((gameTime+f.off)%f.per)+f.per)%f.per/f.per;if(p<0.07)return p/0.07;if(p<0.15)return 1;if(p<0.3)return 1-(p-0.15)/0.15;return 0;}
@@ -6112,13 +6112,22 @@ function egRoofSlot(ctx,R){const x0=R.xc-BLK_W/2,y0=R.cy-BLK_H;ctx.save();ctx.be
 function egRoofHang(ctx,o,f){const R=roofStone(o),k=f.s===1?sandK(f.tm,0.15,0.06):0.05,sag=f.s===1?0.6+k*1.6:0.4,x0=R.xc-BLK_W/2,yt=R.cy-BLK_H+sag;
   const TX=stoneBox(ctx,R.kind,x0,yt,BLK_W,BLK_H,{wear:R.W,seed:R.sd});
   ctx.fillStyle='rgba(6,4,10,.75)';ctx.fillRect(x0-0.6,R.cy-0.4,BLK_W+1.2,0.8+sag*0.6); // its joint with the ceiling opening as it shifts
-  for(const sx of [-BLK_W/2,BLK_W/2]){const x=o.c*TW+16+sx;sandFlow(ctx,x,R.cy,R.ys,k,sx>0?0.5:0.1);if(k>0.2)egHeap(ctx,x,R.ys,6+10*k,1+2.4*k);}
+  const c1=o.c+1,rc=R.cy/TH-1;ctx.save();nearCut(ctx,c1,c1,B(L,c1,rc)!==WALL&&solidBelow(L,c1,rc)?rc:rc+1,o.r-1,true); // (round 39e: the right trickle at X+27 ran down over the next column's front plane: a wall's face under a high ceiling (floor 41), a ledge's lip and top; on its own floor only a wall's face, as the heap lies on across the floors' join)
+  if(B(L,c1,o.r)===WALL){ctx.beginPath();ctx.rect(o.c*TW-TW,R.cy-TH,2*TW-HX,R.ys-R.cy+2*TH);ctx.clip();}
+  for(const sx of [-BLK_W/2,BLK_W/2]){const x=o.c*TW+16+sx;sandFlow(ctx,x,R.cy,R.ys,k,sx>0?0.5:0.1);if(k>0.2)egHeap(ctx,x,R.ys,6+10*k,1+2.4*k);}ctx.restore();
   if(STONES[R.kind].cry)stoneGlints(ctx,TX,(u,v)=>u<28&&v>12&&v<12+BLK_H?[x0+u,yt+v-12]:null,R.sd);}
+// (round 39e, dev/docs/layers.md R1) it was drawn unclipped: for its first 0.15 s its top and right side lay over the ceiling's face round the
+// slot and the next column's face (411 of 411), and under a high ceiling (floor 41 seeds 1 and 3) the whole fall crossed the face of a wall in
+// the next column. Now it, the sand pouring after it and the billow are drawn only in the slot's hole and below the ceiling's edge, with the
+// next column's front plane cut out (nearCut: walls' faces, floors' tops and lips, from the ceiling's row down); its shadow carve (SHC) is
+// clipped at the hole's top and glRelRoof rubs only what is drawn (glRelRoofFall)
+function roofFallClip(ctx,o,R){const x0=R.xc-BLK_W/2;ctx.beginPath();ctx.rect(x0,R.cy-BLK_H,BLK_W,BLK_H);ctx.rect(x0-60,R.cy,BLK_W+120,R.ys-R.cy+40);ctx.clip();nearCut(ctx,o.c+1,o.c+1,R.cy/TH-1,o.r,true);}
 function egRoofFall(ctx,d){const o=L.dyn.find(q=>q.c===d.c&&q.f.t==='stone'&&(d.r===undefined||q.r===d.r));if(!o)return;const R=roofStone(o),y0=d.y0-14,p=clamp((d.y-d.y0)/Math.max(1,R.ys-d.y0),0,1),yt=lerp(R.cy-BLK_H,R.ys+HY-BLK_H,p),x0=R.xc-BLK_W/2,age=debAge(d);
+  ctx.save();roofFallClip(ctx,o,R);
   for(const sx of [-BLK_W/2+2,BLK_W/2-2])sandFlow(ctx,o.c*TW+16+sx,R.cy,yt,0.8*(1-p),sx>0?0.5:0.1); // the sand still pouring from the slot behind it
-  if(shcBeg(-1e5,-1e5,1e5,1e5,5)){shcBox(x0-0.8,yt-0.8,BLK_W+1.6,BLK_H+1.6,1,true,true);shcEnd();} // (round 38a: carved out of the lamp shadow, SHC)
+  if(shcBeg(-1e5,R.cy-BLK_H,1e5,1e5,5)){shcBox(x0-0.8,yt-0.8,BLK_W+1.6,BLK_H+1.6,1,true,true);shcEnd();} // (round 38a: carved out of the lamp shadow, SHC; round 39e: from the hole's top, as drawn: above it is the ceiling's face, carved as a wall's)
   stoneBox(ctx,R.kind,x0,yt,BLK_W,BLK_H,{top:true,side:true,wear:R.W,seed:R.sd});
-  sandBillow(ctx,o.c*TW+16,R.cy+3,age,0.8,0.45);}
+  sandBillow(ctx,o.c*TW+16,R.cy+3,age,0.8,0.45);ctx.restore();}
 // (round 13, owner: "the feet and the slab": he stood at its left end and the block was drawn under his feet. It spans the corridor's whole
 // depth and he walks its middle, so its near half (depth 0 to 0.5) is in front of him: that half is drawn again after the figures (half),
 // and his toes stop at its face at his depth. It sits flat on the floor's top, its front foot on the floor's front edge; the rubble lies
@@ -6341,6 +6350,11 @@ function cpX(cp){if(CP_DBG.old)return cp.x;let x=cp.x;const X=cp.c*TW;
 function cpCut(ctx,cp){if(CP_DBG.old)return false;let any=false;
   for(let c=cp.c-1;c<=cp.c+1;c++){const h=cpFace(c,cp.r);if(!h)continue;if(!any){ctx.save();ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);any=true;}ctx.rect(c*TW-HX,cp.r*TH,TW,h);}
   if(any)ctx.clip('evenodd');return any;}
+// (round 39e, dev/docs/layers.md R1) a sky clock in a sand lift's foot cell (33 of 96 floors, floors 1-48 seeds 1-2; none in other lifts) was
+// drawn before the lift: after the ride the shaft's dark back and channel lay over its left half and the slab it stands on over its pedestal's
+// foot. Once the slab rests at the foot it is drawn after that lift's back half (still before the figures, who pass in front of it); until
+// then it stays under the sand as before
+function cpOnLift(cp){for(const f of L.lifts)if(f.sand&&f.sc===cp.c&&f.rB===cp.r&&f.y>=SURF(f.rB)-0.5)return true;return false;}
 function drawHourglass(ctx,cp){
   const th=L.theme,st=th.style,gl=th.glow||'255,200,120',x=cpX(cp),fl=SURF(cp.r)-1,off=CP_DBG.off;
   const lit=cp.on,turn=lit&&cp.onAt!==undefined?clamp((gameTime-cp.onAt)/0.7,0,1):1,bob=Math.sin(gameTime*1.7+cp.x*0.05)*1.6;
@@ -7735,6 +7749,13 @@ function liftMouth(ctx,f,e,h){const rr=e?f.rB:f.rT,s=e?f.sB:f.sT,gx=EGP.traps?(s
 function liftMouthCut(ctx,f,e){const rr=e?f.rB:f.rT,s=e?f.sB:f.sT,gx=s<0?f.sc*TW-T_SLAB/2:(f.sc+1)*TW+T_SLAB/2;gateGeom(gx-16,rr*TH,SURF(rr),{open:e?f.gB:f.gT});
   const pl=GATE_G.pl,dr=GATE_G.drop;if(dr<2)return;const T=T_SLAB,a=pl.L0,b=pl.R0,yd=Math.min(72,dr+3),yA=pl.ce(a)-3+yd,yB=pl.ce(b)-3+yd;
   ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);ctx.moveTo(a-T/2-0.8,pl.top-DY-6);ctx.lineTo(b+T/2+0.8,pl.top-DY-6);ctx.lineTo(b+T/2+0.8,yB+0.8);ctx.lineTo(a+T/2+0.8,yA+0.9);ctx.lineTo(a-T/2-0.8,yA+0.9);ctx.closePath();ctx.clip('evenodd');}
+// (round 39e, dev/docs/layers.md R1) a left mouth's slab (landing e) stands outside the shaft, its front face on the shaft's edge (X-HX): that
+// face is nearer than a figure on the landing, who was drawn over it (the slab went whole before the shaft's contents). Its near half is now
+// split there: the front face (k 1, x < X-HX) goes after the figures with the lift's front half, as a right mouth's near half does; the rest
+// (k 0: the broad face's first quarter, the shaft's left side) stays before the shaft's contents, which stand in front of it (the platform,
+// the sand lift's slab, sand and the grains running down the shaft's side). Rect clips on a whole canvas pixel: no seam where they meet
+function liftMouthL(ctx,f,e,k){const VZ=renderXf.VZ||1,xs=Math.round((f.sc*TW-HX)*VZ)/VZ;ctx.save();ctx.beginPath();if(k)ctx.rect(xs-4096,-1e5,4096,2e5);else ctx.rect(xs,-1e5,4096,2e5);ctx.clip();
+  if(f.sand)sandMouth(ctx,f,-1,1);else liftMouth(ctx,f,e,1);ctx.restore();}
 function drawLiftCounterweight(ctx,f,half){
   const th=L.theme,ys=f.y,bot=SURF(f.rB),W=liftWear(f),R=liftRig(f),X=R.X;
   // the mouth gratings stand on the shaft's edges. (liftocc2) Seen in this view (depth runs up and to the right), a grating on the
@@ -7744,7 +7765,7 @@ function drawLiftCounterweight(ctx,f,half){
   // thickness of the slab the outer tile"): the stone slab stands wholly outside the shaft, its inner face on the shaft's edge, and the call
   // plate is drawn beyond it; the gate's plane for play (liftGx) is unchanged
   const gate=(e,h)=>liftMouth(ctx,f,e,h);
-  if(half||LIFT_DBG.gatesR){for(let e=0;e<2;e++)if((e?f.sB:f.sT)>0)gate(e,half?1:0);return;}
+  if(half||LIFT_DBG.gatesR){for(let e=0;e<2;e++){if((e?f.sB:f.sT)>0)gate(e,half?1:0);else if(half&&!LIFT_DBG.gatesR)liftMouthL(ctx,f,e,1);}return;} // (round 39e: and a left mouth's near half, liftMouthL)
   ctx.save();liftOccl(ctx,f);liftNearCut(ctx,f,f.sc+1,false);
   ctx.save();liftOcclSide(ctx,f);
   liftShaftBack(ctx,X,TW,R.top,bot,W);
@@ -7765,7 +7786,7 @@ function drawLiftCounterweight(ctx,f,half){
   // (round 16c) a slab on the shaft's left edge: its broad face is the shaft's left side, from the front plane to the back wall, so it stands in
   // front of the back wall's shade, channel and counterweight (drawn before it, they had darkened its back half: the sheared look) and
   // behind the ropes, beam and platform in the shaft
-  ctx.restore();for(let e=0;e<2;e++)if((e?f.sB:f.sT)<0){gate(e,0);gate(e,1);}ctx.save();liftOccl(ctx,f);liftNearCut(ctx,f,f.sc+1,false);
+  ctx.restore();for(let e=0;e<2;e++)if((e?f.sB:f.sT)<0){gate(e,0);liftMouthL(ctx,f,e,0);}ctx.save();liftOccl(ctx,f);liftNearCut(ctx,f,f.sc+1,false);
   // the hoist beam: from inside the wall on side ws out over the shaft to the mouth's edge, a brace under it into the same wall
   const ws=R.ws,xw=ws>0?X+TW+10:X-10,xo=ws>0?X-3:X+TW+3;
   liftTimber(ctx,xw,R.by+3,xo,R.by+3,6,W,true);
@@ -7787,14 +7808,14 @@ const SAND_MD=28;
 function sandOpen(f){return clamp((f.y-f.yB+SAND_MD)/SAND_MD,0,1);}
 function sandMouth(ctx,f,s,h){const gx=EGP.traps?(s<0?f.sc*TW-T_SLAB/2:(f.sc+1)*TW+T_SLAB/2):liftGx(f,s);drawGate(ctx,{open:sandOpen(f),latch:true,dur:0,lg:1},gx-16,f.rB*TH,SURF(f.rB),h);}
 function drawSandLift(ctx,f,half){
-  if(half||LIFT_DBG.gatesR){for(const s of f.ms)if(s>0)sandMouth(ctx,f,s,half?1:0);return;} // (a right mouth's near half after the rider, as the counterweight's)
+  if(half||LIFT_DBG.gatesR){for(const s of f.ms){if(s>0)sandMouth(ctx,f,s,half?1:0);else if(half&&!LIFT_DBG.gatesR)liftMouthL(ctx,f,1,1);}return;} // (a right mouth's near half after the rider, as the counterweight's; round 39e: a left one's too, liftMouthL)
   const th=L.theme,ys=f.y,bot=SURF(f.rB),W=liftWear(f),X=f.sc*TW,top=f.rT*TH,h=ys-f.yT,pd=liftPit(f.sc,f.rB)?LP_D:0; // (round 37a: pd, the foot's pit under the slab's resting place)
   ctx.save();liftOccl(ctx,f);
   ctx.save();liftOcclSide(ctx,f);ctx.beginPath();ctx.rect(X-HX,f.yT-HY,TW,bot-f.yT+HY+pd);ctx.clip(); // (round 19) seen through the hole only: under the top slab's back edge, between the front planes of the cells beside it (its right groove lay over the next floor tile's top and lip)
   liftShaftBack(ctx,X,TW,top,bot,W);
   const ox=X+16+HX,oy=bot-HY+pd;ctx.fillStyle='rgba(6,4,10,.92)';ctx.beginPath();ctx.moveTo(ox-5,oy+0.5);ctx.lineTo(ox-5,oy-5);ctx.quadraticCurveTo(ox,oy-7.5,ox+5,oy-5);ctx.lineTo(ox+5,oy+0.5);ctx.closePath();ctx.fill(); // the outlet (round 37a: in the pit's back, on its floor)
   ctx.restore();
-  ctx.restore();for(const s of f.ms)if(s<0){sandMouth(ctx,f,s,0);sandMouth(ctx,f,s,1);}ctx.save();liftOccl(ctx,f); // (round 26e: a left mouth whole, behind the sand and slab)
+  ctx.restore();for(const s of f.ms)if(s<0){sandMouth(ctx,f,s,0);liftMouthL(ctx,f,1,0);}ctx.save();liftOccl(ctx,f); // (round 26e: a left mouth behind the sand and slab; round 39e: its near half, but for the strip the sand and slab stand in front of, after the figures)
   if(ys<bot-0.5)sandCut(ctx,X-HX,ys+HY+5,bot+HY+pd,f.yT+HY+5,h,f.s===1&&f.tm>=SAND_LW,f.sc*131+f.rT*7); // (round 37a: down into the foot's pit)
   if(f.s===1&&f.tm<SAND_LW+0.3){const k=Math.max(0,1-Math.abs(f.tm-SAND_LW)/0.3);if(k>0.02)dustCloud(ctx,X+16-HX,ys+HY+3,0.12+0.2*(1-k),0.6,0.55,0);} // a puff as it first gives
   if(f.s===1&&f.tm>=SAND_LW&&ys>f.yT+2)for(const ex of [X-HX+1.6,X+TW-HX-1.6])sandFlow(ctx,ex,f.yT+HY+5,ys+HY+1,0.16,ex*0.07); // grains left on the shaft's sides running down the gap after it (they stop when it does)
@@ -8036,6 +8057,18 @@ function drawJetHints(x0,x1,y0,y1,ctx){const J=jetPlaces(),pc=P?pCol():-1,pr=P?p
   if(!S.learned.jgrab)for(const q of J.jg)jetStream(ctx,q.p,0.85,95,3.6,q.seed,x0,x1,y0,y1,null);
   if(P&&P.state==='swing'&&P.bar&&P.swRdy){const k=clamp((gameTime-(P.swGl||0))/0.4,0,1),fw=P.swOm>0?1:0.5; // (stronger while he swings forward: Jump now)
     jetStream(ctx,jsSwingPath(),k*fw*(S.learned.swing?0.75:1),125,4,517,x0,x1,y0,y1,null);}}
+// (round 39e, dev/docs/layers.md R1) the stakes, SPK far to near: the front one (depth .26) is nearer than a figure at mid-depth, who was drawn
+// over it tiptoeing across (spikes.md's "he stands in front of them" described the order, it was no rule): it is drawn after the figures (near,
+// from the near-halves loop, under the same CUT_AT_WALL cut); the others before them. The shadow's carve (SHC) still records all four, with the far ones
+function drawNeedles(ctx,o,f,X,ys,near){const e=f.ext;if(e<=0.02)return;const m=o.c%2?-1:1,sc=!near&&shcBeg(-1e5,-1e5,1e5,1e5,2); // (round 38a: each needle carved out of the lamp shadow, SHC)
+  // a few thin needles of uneven height and lean, rooted at slightly different depths of the floor
+  for(const [bx,d,hh,ln] of SPK){const q=onFloor(X+16+m*(bx-16),d,ys),x=q.x,b=q.y,tx=x+m*ln*e,tip=b-hh*e;if(sc){shcPt(x-3.3,b+1.2);shcPt(tx-1.2,tip-2.2);shcPt(tx+1.2,tip-2.2);shcPt(x+3.3,b+1.2);shcRing();} // (a little wider than drawn, as the mask is a quarter size and read blurred: a needle is thinner than its texels)
+    if((d<SPK_NEAR)!==!!near)continue;
+    ctx.fillStyle='rgba(8,6,12,.55)';ctx.beginPath();ctx.ellipse(x,b+0.6,3.4,1.3,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#0b0812';ctx.beginPath();ctx.moveTo(x-2.8,b+0.9);ctx.lineTo(tx,tip-1.6);ctx.lineTo(x+2.8,b+0.9);ctx.fill();
+    ctx.fillStyle=EGP.traps?'#c8a060':'#eef0f5';ctx.beginPath();ctx.moveTo(x-1.3,b);ctx.lineTo(tx,tip);ctx.lineTo(x+0.15,b);ctx.fill();
+    if(EGP.traps){ctx.fillStyle='#7a5a36';ctx.beginPath();ctx.moveTo(x-1.3,b);ctx.lineTo(x+(tx-x)*0.55,b+(tip-b)*0.55);ctx.lineTo(x+1.3,b);ctx.fill();} // acacia shafts, bronze tips
+    ctx.fillStyle=EGP.traps?'#6a4a20':'#8d94a2';ctx.beginPath();ctx.moveTo(x+0.15,b);ctx.lineTo(tx,tip);ctx.lineTo(x+1.3,b);ctx.fill();}
+  if(sc)shcEnd();}
 function drawDynamic(ctx,x0,x1,y0,y1){
   hudStones.length=0;
   const th=L.theme,c0=Math.floor(x0/TW)-1,c1=Math.floor(x1/TW)+1,r0=Math.floor(y0/TH)-1,r1=Math.floor(y1/TH)+1;
@@ -8043,8 +8076,9 @@ function drawDynamic(ctx,x0,x1,y0,y1){
   for(const t of L.torches)if(!t.broken&&inRoom(t.c,t.r)&&!lyOff('lamp'))drawLight(ctx,t,th);
   {const sd=L.start.door===undefined?1:L.start.door;if(inRoom(sd,L.start.r)&&!lyOff('door'))drawDoor(ctx,sd*TW+16,L.start.r,entryOpen(),false);} // (round 26f: open while he comes out, then dropping)
   if(inRoom(L.door.c,L.door.r)&&!lyOff('door'))drawDoor(ctx,L.door.x,L.door.r,L.door.open,true);
-  for(const cp of L.cps)if(inRoom(cp.c,cp.r)&&!lyOff('clock'))drawHourglass(ctx,cp);
+  for(const cp of L.cps)if(inRoom(cp.c,cp.r)&&!lyOff('clock')&&!cpOnLift(cp))drawHourglass(ctx,cp);
   for(const lf of L.lifts)if(liftVisible(lf,x0,x1,y0,y1))drawLift(ctx,lf,0);
+  for(const cp of L.cps)if(inRoom(cp.c,cp.r)&&!lyOff('clock')&&cpOnLift(cp))drawHourglass(ctx,cp); // (round 39e: one standing on a sand lift's slab at rest, after the shaft's back and the slab, before the figures)
   for(const o of L.dyn){if(!inRoom(o.c,o.r)||lyOff(o.f.t))continue;const f=o.f,X=o.c*TW,Y=o.r*TH,ys=SURF(o.r);
     // a tile's top runs back and to the right of it; against a wall on that side its back corner is behind the wall's
     // face (the plain floor stops there too), so these are cut at the face
@@ -8071,7 +8105,8 @@ function drawDynamic(ctx,x0,x1,y0,y1){
         ctx.fillStyle='#07050b';ctx.fillRect(sx-15,ys-0.6,30,1.6);ctx.fillStyle=rim[1];ctx.fillRect(sx-15,ys-2.6,3,1);ctx.fillRect(sx+12,ys-2.6,3,1);
         ctx.fillStyle=rim[3];ctx.fillRect(sx-14,ys-2.6,1.4,0.7);ctx.fillRect(sx+12.6,ys-2.6,1.4,0.7);break;}
       case'darter':drawShooter(ctx,f);break;
-      case'banner':drawBannerTile(ctx,X,Y,f,th);break;
+      case'banner':{const c1=o.c+1;ctx.save();if(B(L,c1,o.r)===WALL){ctx.beginPath();ctx.rect(X-TW,Y-TH,2*TW-HX,3*TH);ctx.clip();}else nearCut(ctx,c1,c1,o.r>0&&B(L,c1,o.r-1)!==WALL&&solidBelow(L,c1,o.r-1)?o.r-1:o.r,o.r,true); // (round 39e: the runner, rod and fringe reach X+31, past the next column's front plane at X+24: its wall's face (a rect clip), a low ceiling's, a landing's top and lip, the lip of a floor above, are nearer than the cloth)
+        drawBannerTile(ctx,X,Y,f,th);ctx.restore();break;}
       case'bar':drawBar(ctx,o,f);break;
       case'pend':drawPend(ctx,o,f);break;
       case'vent':drawVentBase(ctx,o,f);fpMark(ctx,X,ys);break;
@@ -8111,15 +8146,9 @@ function drawDynamic(ctx,x0,x1,y0,y1){
         if(f.t==='xplate'){const q=onFloor(X+16,0.5,ys);ctx.fillStyle='#0b0812';ctx.beginPath();ctx.ellipse(q.x,q.y,1.6,0.9,0,0,Math.PI*2);ctx.fill();}ctx.restore();fpMark(ctx,X,ys,lift);if(f.jam)drawHeap(ctx,o,X,ys,th);
         if(cut)ctx.restore();
         break;}
-      case'spikes':{const e=f.ext;if(e<=0.02)break;const m=o.c%2?-1:1,sc=shcBeg(-1e5,-1e5,1e5,1e5,2); // (round 38a: each needle carved out of the lamp shadow, SHC)
-        // a few thin needles of uneven height and lean, rooted at slightly different depths of the floor
-        for(const [bx,d,hh,ln] of SPK){const q=onFloor(X+16+m*(bx-16),d,ys),x=q.x,b=q.y,tx=x+m*ln*e,tip=b-hh*e;if(sc){shcPt(x-3.3,b+1.2);shcPt(tx-1.2,tip-2.2);shcPt(tx+1.2,tip-2.2);shcPt(x+3.3,b+1.2);shcRing();} // (a little wider than drawn, as the mask is a quarter size and read blurred: a needle is thinner than its texels)
-          ctx.fillStyle='rgba(8,6,12,.55)';ctx.beginPath();ctx.ellipse(x,b+0.6,3.4,1.3,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#0b0812';ctx.beginPath();ctx.moveTo(x-2.8,b+0.9);ctx.lineTo(tx,tip-1.6);ctx.lineTo(x+2.8,b+0.9);ctx.fill();
-          ctx.fillStyle=EGP.traps?'#c8a060':'#eef0f5';ctx.beginPath();ctx.moveTo(x-1.3,b);ctx.lineTo(tx,tip);ctx.lineTo(x+0.15,b);ctx.fill();
-          if(EGP.traps){ctx.fillStyle='#7a5a36';ctx.beginPath();ctx.moveTo(x-1.3,b);ctx.lineTo(x+(tx-x)*0.55,b+(tip-b)*0.55);ctx.lineTo(x+1.3,b);ctx.fill();} // acacia shafts, bronze tips
-          ctx.fillStyle=EGP.traps?'#6a4a20':'#8d94a2';ctx.beginPath();ctx.moveTo(x+0.15,b);ctx.lineTo(tx,tip);ctx.lineTo(x+1.3,b);ctx.fill();}
-        if(sc)shcEnd();break;}
-      case'gate':drawGate(ctx,f,X,Y,ys,0);break;
+      case'spikes':drawNeedles(ctx,o,f,X,ys,0);break;
+      case'gate':{const lc=o.r>0&&B(L,o.c,o.r-1)===WALL&&B(L,o.c+1,o.r-1)!==WALL&&solidBelow(L,o.c+1,o.r-1);if(lc){ctx.save();nearCut(ctx,o.c+1,o.c+1,o.r-1,o.r-1,true);} // (round 39e: beside its lintel the next column's floor hangs its lip down to Y+5; the slots' shade and the far half reached X+31 over it: floor 33 seed 2, 1 of 1,438)
+        drawGate(ctx,f,X,Y,ys,0);if(lc)ctx.restore();break;}
       case'grate':{ // an iron grating over a shaft: you see the dark below through the bars
         floorQuad(ctx,X,X+TW,0,1,ys,0);ctx.fillStyle='#04030a';ctx.fill();
         ctx.strokeStyle='#0b0812';ctx.lineWidth=2.4;ctx.beginPath();for(let i=0;i<6;i++){const a=onFloor(X+3+i*5.2,0.04,ys),b=onFloor(X+3+i*5.2,0.96,ys);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}ctx.stroke();
@@ -8136,13 +8165,14 @@ function drawDynamic(ctx,x0,x1,y0,y1){
   }
   for(const bl of L.ext.blocks){if(inRoom(bl.c,bl.r)&&!lyOff('block'))drawBlock(ctx,bl,th);}
   for(const d of L.ext.darts){if(d.x<x0-10||d.x>x1+10||lyOff('dart'))continue;const dd=d.dir||-1; // (only the part that has left the spout's jaws)
-    if(d.mx!==undefined){if((d.x+dd*5-d.mx)*dd<=0)continue;ctx.save();ctx.beginPath();ctx.rect(dd>0?d.mx-0.5:d.mx-80.5,d.y-12,81,24);ctx.clip();}
+    if(d.mx!==undefined){if((d.x+dd*5-d.mx)*dd<=0)continue;ctx.save();ctx.beginPath();ctx.rect(dd>0?d.mx-0.5:d.mx+0.5-4096,d.y-12,4096,24);ctx.clip();} // (round 39e: cut on the mouth's side only; an 81 px window lost the dart 80 px into its flight while it still hit)
     drawDart(ctx,d.x,d.y,dd,0,1,true);if(d.mx!==undefined)ctx.restore();}
   for(const q of SPENT){if(q.on&&q.x>x0-10&&q.x<x1+10&&!lyOff('dart'))drawDart(ctx,q.x,q.y,q.dd,q.ang,q.gy||q.t<1.2?1:Math.max(0,1-(q.t-1.2)/0.4),false);}
   for(const it of L.items){if(!it.hidden||it.taken||!inRoom(it.c,it.r)||lyOff('cue'))continue; // the secret's cue sits on the hidden flask itself: a few slow four-point stars
-    const sx=it.x,sy=SURF(it.r)-16;
+    const sx=it.x,sy=SURF(it.r)-16,wl=B(L,it.c-1,it.r)===WALL,wr=B(L,it.c+1,it.r)===WALL;ctx.save(); // (round 39e: they orbit up to 14 px out, past a wall's face beside the flask (23 of 48): cut there, by a rect (they keep under a low ceiling's face))
+    if(wl||wr){const xa=wl?it.c*TW-HX:sx-40,xb=wr?(it.c+1)*TW-HX:sx+40;ctx.beginPath();ctx.rect(xa,sy-40,xb-xa,80);ctx.clip();}
     for(let i=0;i<3;i++){const a=gameTime*1.1+i*2.1,k=(Math.sin(a)+1)/2,px=sx+Math.cos(i*2.1+gameTime*0.3)*9,py=sy+Math.sin(i*1.3+gameTime*0.4)*7,R=1.5+3.6*k;
-      ctx.fillStyle='rgba(255,230,150,'+(0.35+0.6*k)+')';ctx.beginPath();ctx.moveTo(px,py-R);ctx.lineTo(px+R*0.22,py-R*0.22);ctx.lineTo(px+R,py);ctx.lineTo(px+R*0.22,py+R*0.22);ctx.lineTo(px,py+R);ctx.lineTo(px-R*0.22,py+R*0.22);ctx.lineTo(px-R,py);ctx.lineTo(px-R*0.22,py-R*0.22);ctx.closePath();ctx.fill();}}
+      ctx.fillStyle='rgba(255,230,150,'+(0.35+0.6*k)+')';ctx.beginPath();ctx.moveTo(px,py-R);ctx.lineTo(px+R*0.22,py-R*0.22);ctx.lineTo(px+R,py);ctx.lineTo(px+R*0.22,py+R*0.22);ctx.lineTo(px,py+R);ctx.lineTo(px-R*0.22,py+R*0.22);ctx.lineTo(px-R,py);ctx.lineTo(px-R*0.22,py-R*0.22);ctx.closePath();ctx.fill();}ctx.restore();}
   if(!lyOff('cue'))drawSecretCue(ctx,x0,x1,y0,y1);
   if(!lyOff('jet'))drawJetHints(x0,x1,y0,y1,ctx);
   for(const it of L.items)if(!it.taken&&inRoom(it.c,it.r)&&!lyOff('flask'))drawFlask(ctx,it);
@@ -8209,7 +8239,8 @@ function drawDynamic(ctx,x0,x1,y0,y1){
   if(GFX().fx&&!lyOff('trail')){drawTrails(ctx);drawRings(ctx);}
   // the near half of gates and jaws crosses in front of anyone walking the corridor
   for(const o of L.dyn){if(!inRoom(o.c,o.r)||lyOff(o.f.t))continue;const X=o.c*TW,Y=o.r*TH,ys=SURF(o.r);if(o.f.t==='gate')drawGate(ctx,o.f,X,Y,ys,1);else if(o.f.t==='chomp')drawJaws(ctx,o,o.f,X,Y,ys,1);
-    else if(o.f.t==='stone'&&EGP.traps&&o.f.s>=2&&L.rubble.has(o.r*L.cols+o.c))egRoofLying(ctx,o,o.f,1);} // (and a fallen roof block's near half)
+    else if(o.f.t==='stone'&&EGP.traps&&o.f.s>=2&&L.rubble.has(o.r*L.cols+o.c))egRoofLying(ctx,o,o.f,1); // (and a fallen roof block's near half)
+    else if(o.f.t==='spikes'&&o.f.ext>0.02){const cut=B(L,o.c+1,o.r)===WALL;if(cut){ctx.save();ctx.beginPath();ctx.rect(X-200,Y-200,TW-HX+200,TH+400);ctx.clip();}drawNeedles(ctx,o,o.f,X,ys,1);if(cut)ctx.restore();}} // (round 39e: the front stake, cut as the case in the loop above cuts it)
   for(const lf of L.lifts)if(liftVisible(lf,x0,x1,y0,y1))drawLift(ctx,lf,1);
   if(!lyOff('sand'))sandDraw(ctx); // (before the light pass: shaded like stone)
   if(!GFX().light&&!lyOff('emissive'))drawEmissive(ctx,x0,x1,y0,y1);
@@ -10431,8 +10462,11 @@ function glRelEx(n,x,y,hx,hy,VZ,camD,camDY){if(n>=GLREL_Q)return n;const sx=x*VZ
 // (only a gate on the move was rubbed back, by an ellipse that left its corners). Rubbed back over its whole box: the quad's coordinates
 // run to 0.4 only, so the soft ellipse of the rubbing shader is near full strength to its edges
 function glRelSlab(n,X,Y,ys,open,VZ,camD,camDY){if(n>=GLREL_Q)return n;gateGeom(X,Y,ys,{open});const pl=GATE_G.pl,dr=GATE_G.drop;if(dr<2)return n;
-  const x0=(pl.L0-T_SLAB/2-1)*VZ-camD,x1=(pl.R0+T_SLAB/2+1)*VZ-camD,y0=(pl.top-DY)*VZ-camDY,y1=(pl.ce(pl.L0)+Math.min(72,dr+3)+1)*VZ-camDY;
-  if(x1<0||x0>cv.width||y1<0||y0>cv.height)return n;glRelQuad(n,x0,y0,x1,y1,-0.4,0.4,0.4,-0.4);return n+1;}
+  const x0=(pl.L0-T_SLAB/2-1)*VZ-camD,x1=(pl.R0+T_SLAB/2+1)*VZ-camD,y0=pl.top*VZ-camDY,y1=(pl.ce(pl.L0)+Math.min(72,dr+3)+1)*VZ-camDY; // (round 39e: from the ceiling's edge, not DY over it: that flattened the lintel's face)
+  if(x1<0||x0>cv.width||y1<0||y0>cv.height)return n;
+  const c=Math.floor((X+1)/TW),r=Math.floor((pl.top+1)/TH),xe=(c+1)*TW-HX,tp=r>0&&B(L,c,r-1)===WALL&&B(L,c+1,r-1)!==WALL&&pl.R0+T_SLAB/2>xe,lc=tp&&solidBelow(L,c+1,r-1),xw=(xe*VZ-camD); // (tp: egSlab's piece above the edge where the ceiling ends beside it; lc: a floor there, its lip hanging beside the lintel, which drawGate's far half is cut by)
+  if(lc){glRelQuad(n,x0,y0,xw,y1,-0.4,0.4,0.4,-0.4);n++;n=glRelBox(n,xe,pl.top+FHH,pl.R0+T_SLAB/2+1,(y1+camDY)/VZ,VZ,camD,camDY);}else{glRelQuad(n,x0,y0,x1,y1,-0.4,0.4,0.4,-0.4);n++;}
+  return tp?lc?glRelQ(n,xe,pl.top-DY-4,pl.R0+T_SLAB/2+2,pl.top-DY-4,pl.R0+T_SLAB/2+2,pl.top-(pl.R0+T_SLAB/2+2-xe)*DY/DX,xe,pl.top,VZ,camD,camDY):glRelBox(n,xe,pl.top-DY-4,pl.R0+T_SLAB/2+2,pl.top+1,VZ,camD,camDY):n;}
 // (round 21b, owner: "sand has wall motif") the sand of a well or a sand lift is drawn over the shaft's back wall, so the relief, which
 // reads the room's picture, embossed the wall's courses and friezes on it: rubbed back over the sand in view, cell by cell from its
 // surface (and the top's depth) down to the shaft's floor, like a stone slab (glRelSlab)
@@ -10473,12 +10507,29 @@ function glRelFloors(n,VZ,camD,camDY){const cx=camD/VZ,cy=camDY/VZ,c0=Math.max(0
   // the relief embossed the flagstones' joints and the wall's dado and posts on it (round 35c's fault): its front, top and side, as a pushed
   // block's; and one falling (egRoofFall, on its way down), whose ellipse (glRelEx at the debris) left its corners half rubbed
   if(EGP.traps){for(const o of L.dyn)if(o.f.t==='stone'&&o.f.s>=2&&L.rubble.has(o.r*L.cols+o.c))n=glRelRoof(n,o.c*TW+16-HX-BLK_W/2,SURF(o.r)+HY-BLK_H,VZ,camD,camDY);
-    for(const d of L.debris)if(d.kind==='rock'&&d.y0!==undefined&&d.r!==undefined){const yc=ceilingY(d.c,d.r),ys=SURF(d.r),p=clamp((d.y-d.y0)/Math.max(1,ys-d.y0),0,1);n=glRelRoof(n,d.c*TW+16-HX-BLK_W/2,lerp(yc-BLK_H,ys+HY-BLK_H,p),VZ,camD,camDY);}}
+    for(const d of L.debris)if(d.kind==='rock'&&d.y0!==undefined&&d.r!==undefined){const yc=ceilingY(d.c,d.r),ys=SURF(d.r),p=clamp((d.y-d.y0)/Math.max(1,ys-d.y0),0,1);n=glRelRoofFall(n,d.c,lerp(yc-BLK_H,ys+HY-BLK_H,p),yc,VZ,camD,camDY);}}
   return n;}
 // (round 38a) a roof block's box (stoneBox: front x0..x0+BLK_W from yt down BLK_H, its top and right side going back the whole depth), rubbed back
 function glRelRoof(n,x0,yt,VZ,camD,camDY){const cx=camD/VZ,cy=camDY/VZ;if(x0+BLK_W+DX<cx||x0>cx+cv.width/VZ||yt+BLK_H<cy||yt-DY>cy+cv.height/VZ)return n;
   n=glRelQ(n,x0,yt,x0+BLK_W,yt,x0+BLK_W,yt+BLK_H,x0,yt+BLK_H,VZ,camD,camDY);n=glRelQ(n,x0,yt,x0+BLK_W,yt,x0+BLK_W+DX,yt-DY,x0+DX,yt-DY,VZ,camD,camDY);
   return glRelQ(n,x0+BLK_W,yt,x0+BLK_W+DX,yt-DY,x0+BLK_W+DX,yt+BLK_H-DY,x0+BLK_W,yt+BLK_H,VZ,camD,camDY);}
+// (round 39e) a falling roof block's box rubbed back only where egRoofFall draws it (roofFallClip): each face cut by row to below the ceiling's
+// edge or inside the slot's hole, and short of the next column's front face on a row where it has one. RCP holds the polygon being cut
+const RCP=new Float64Array(32),RCP2=new Float64Array(32);
+function rcpCut(k,a,b,c){const A=RCP,Z=RCP2;let m=0;for(let i=0;i<k;i++){const j=(i+1)%k,px=A[2*i],py=A[2*i+1],qx=A[2*j],qy=A[2*j+1],dp=a*px+b*py-c,dq=a*qx+b*qy-c; // (Sutherland-Hodgman: keep a x + b y <= c)
+    if(dp<=0){Z[2*m]=px;Z[2*m+1]=py;m++;}if(dp*dq<0){const t=dp/(dp-dq);Z[2*m]=px+t*(qx-px);Z[2*m+1]=py+t*(qy-py);m++;}}
+  for(let i=0;i<2*m;i++)A[i]=Z[i];return m;}
+function glRelRoofFall(n,c,yt,yc,VZ,camD,camDY){const x0=c*TW+16-HX-BLK_W/2,cx=camD/VZ,cy=camDY/VZ;if(x0+BLK_W+DX<cx||x0>cx+cv.width/VZ||yt+BLK_H<cy||yt-DY>cy+cv.height/VZ)return n;
+  const P=RCP,xr=(c+1)*TW-HX,rA=Math.floor((yt-DY)/TH),rB=Math.floor((yt+BLK_H)/TH);
+  for(let q=0;q<3;q++)for(let rr=rA;rr<=rB;rr++)for(let h=0;h<2;h++){ // (front, top, right side; by row; below the ceiling's edge (h 0) or in the hole (h 1))
+    if(q===0){P[0]=x0;P[1]=yt;P[2]=x0+BLK_W;P[3]=yt;P[4]=x0+BLK_W;P[5]=yt+BLK_H;P[6]=x0;P[7]=yt+BLK_H;}
+    else if(q===1){P[0]=x0;P[1]=yt;P[2]=x0+BLK_W;P[3]=yt;P[4]=x0+BLK_W+DX;P[5]=yt-DY;P[6]=x0+DX;P[7]=yt-DY;}
+    else{P[0]=x0+BLK_W;P[1]=yt;P[2]=x0+BLK_W+DX;P[3]=yt-DY;P[4]=x0+BLK_W+DX;P[5]=yt+BLK_H-DY;P[6]=x0+BLK_W;P[7]=yt+BLK_H;}
+    let k=rcpCut(4,0,-1,-rr*TH);k=rcpCut(k,0,1,(rr+1)*TH);
+    if(h){k=rcpCut(k,0,1,yc);k=rcpCut(k,0,-1,BLK_H-yc);k=rcpCut(k,-1,0,-x0);k=rcpCut(k,1,0,x0+BLK_W);}else k=rcpCut(k,0,-1,-yc);
+    if(k>2&&cpFace(c+1,rr))k=rcpCut(k,1,0,xr);
+    for(let i=1;i+1<k;i+=2){const j=Math.min(i+2,k-1);n=glRelQ(n,P[0],P[1],P[2*i],P[2*i+1],P[2*i+2],P[2*i+3],P[2*j],P[2*j+1],VZ,camD,camDY);}}
+  return n;}
 // (round 37b, owner after v81: the jaws read as a pale glass panel, "the wall's bands show through") the slicer's jaws are opaque plates drawn
 // live in front of the back wall, so the relief embossed the wall's bands and tiles behind them on their faces: rubbed back over each jaw's
 // plate, from the ceiling's edge (or the floor) to half way down its teeth (as beamBlockers takes them), as it moves
@@ -10487,6 +10538,21 @@ function glRelJaws(n,VZ,camD,camDY){const cx=camD/VZ,cy=camDY/VZ,vw=cv.width/VZ,
     const k=chompK(o.f),pl=plane(X,Y,SURF(o.r),o.c,o.r),up=lerp(pl.co?2:7,31-pl.co,k)+4,lo=lerp(3,21,k)+4,a=pl.L0,b=pl.R0;
     n=glRelQ(n,a,pl.top,b,pl.top,b,pl.ce(b)+up,a,pl.ce(a)+up,VZ,camD,camDY);
     n=glRelQ(n,a,pl.fl(a)-lo,b,pl.fl(b)-lo,b,pl.fl(b)+0.5,a,pl.fl(a)+0.5,VZ,camD,camDY);}
+  return n;}
+// (round 39e, dev/docs/layers.md R3: a live thing that hides the room's picture is rubbed) a banner's runner hangs in front of the back wall, so the
+// relief, which reads the room's picture, embossed the wall's courses, posts and friezes on the cloth (floor 12 seed 3, 264,19): rubbed back over each
+// tile in view as drawBannerTile draws it (rod, runner, fringe), short of the next column's front plane where the cloth is cut (a wall's or low
+// ceiling's face, a landing's lip and top keep their own relief), and leaving open the gap a cut runner parts round (the wall shows through it)
+function glRelBanners(n,VZ,camD,camDY){const cx=camD/VZ,cy=camDY/VZ,vw=cv.width/VZ,vh=cv.height/VZ;
+  for(const o of L.dyn){const f=o.f;if(f.t!=='banner')continue;const X=o.c*TW,Y=o.r*TH;if(X+TW<cx||X>cx+vw||Y+TH<cy||Y>cy+vh)continue;
+    const ya=f.top?Y+4:Y,yb=f.bot?Y+TH-11:Y+TH,xa=X+1,xr=X+TW-HX,xe=X+31,bn=f.bn,c1=o.c+1;
+    if(bn&&bn.a>=0&&bn.b>bn.a+0.5&&bn.a<yb&&bn.b>ya){const g0=Math.max(ya,bn.a),g1=bn.b>=bn.bot-0.5?yb:Math.min(yb,bn.b),hg=Math.min(9.5,4.5+(bn.b-bn.a)*0.045)/2+1; // (the gap, at most mg wide round the middle, drawBannerTile's)
+      if(g0-ya>0.5)n=glRelQ(n,xa,ya,xr,ya,xr,g0,xa,g0,VZ,camD,camDY);if(yb-g1>0.5)n=glRelQ(n,xa,g1,xr,g1,xr,yb,xa,yb,VZ,camD,camDY);
+      n=glRelQ(n,xa,g0,X+16-hg,g0,X+16-hg,g1,xa,g1,VZ,camD,camDY);n=glRelQ(n,X+16+hg,g0,xr,g0,xr,g1,X+16+hg,g1,VZ,camD,camDY);}
+    else n=glRelQ(n,xa,ya,xr,ya,xr,yb,xa,yb,VZ,camD,camDY);
+    if(B(L,c1,o.r)===WALL)continue; // (past X+TW-HX: only where the next column shows the back wall)
+    const q=F(L,c1,o.r),y0=Math.max(ya,q&&q.t==='low'?Y+LOW_H:o.r>0&&B(L,c1,o.r-1)!==WALL&&solidBelow(L,c1,o.r-1)?Y+FHH:Y),sl=solidBelow(L,c1,o.r),yl=sl?Math.min(yb,SURF(o.r)+HY):yb,yr=sl?Math.min(yb,SURF(o.r)+HY-(xe-xr)*DY/DX):yb;
+    if(yr>y0+0.5)n=glRelQ(n,xr,y0,xe,y0,xe,yr,xr,yl,VZ,camD,camDY);}
   return n;}
 function glRelief(lights,VZ,camD,camDY){
   const R=GLREL,gl=GLP.gl,w=cv.width,h=cv.height;R.on=0;if(!GLFX.relief||mode==='cross')return; // (round 36a: no rooms to rake in the crossing)
@@ -10521,6 +10587,7 @@ function glRelief(lights,VZ,camD,camDY){
   n=glRelLifts(n,VZ,camD,camDY);
   n=glRelFloors(n,VZ,camD,camDY); // (round 35c) the floor tiles drawn live
   n=glRelJaws(n,VZ,camD,camDY); // (round 37b) the slicers' jaws
+  n=glRelBanners(n,VZ,camD,camDY); // (round 39e) the banners' runners
   if(EGP.traps){for(const o of L.dyn){const g=o.f.wg;if(o.f.t!=='loose'||!g||g.os[0]!==o)continue;n=glRelWell(n,g,VZ,camD,camDY);} // (round 21b) sand is not embossed with the wall's art behind it
     for(const f of L.lifts)if(f.sand){const pd=liftPit(f.sc,f.rB)?LP_D:0;if(f.y<SURF(f.rB)-0.5)n=glRelBox(n,f.sc*TW-HX,f.y+HY+5-DY,f.sc*TW-HX+TW,SURF(f.rB)+HY+pd,VZ,camD,camDY);
       else if(pd)n=glRelBox(n,f.sc*TW-HX,f.y-HY-1,f.sc*TW-HX+TW+DX,f.y+HY+8,VZ,camD,camDY);}} // (round 37a) its slab at rest in the foot's pit: the pit's edges in the room's picture under it are not embossed on it (as glRelLifts' platform)
