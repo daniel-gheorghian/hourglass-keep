@@ -120,7 +120,7 @@ nearer stone in front of a live part (R1). Where a pass is left out of a row, th
 | | jet stream grains | air | live | clamped to the shaft, its right limit the face (`X+TW-HX`) |
 | [flasks and secrets](elements/flasks-and-secrets.md) | flask, a hidden flask's stars | L2m | live | placement; the stars cut at the face |
 | | the secret's cue | L2f, on the lip's top | live | n/a |
-| [prince](elements/prince.md) | body in every state, blade | L2m | live, after every L2 far part | `wallPress` (faces on either side, a moving block's drawn face) and `figClip`; figClip modes 1-2 behind a near ledge's wall (hands only, approved); `liftOccl` in a shaft; `doorClip`; dead: clipped without pressing |
+| [prince](elements/prince.md) | body in every state, blade | L2m | live, after every L2 far part | `wallPress` (faces on either side, a moving block's drawn face) and `figClip`; figClip modes 1-2 behind a near ledge's wall (hands only, approved); hanging over open space, the ledge's lip and the near half of its top hide all but his hands (owner, round 39); `liftOccl` in a shaft; `doorClip`; dead: clipped without pressing |
 | | contact shadow | L2f | with him | the same |
 | [guards and snakes](elements/guards-and-snakes.md) | guards alive, dying, dissolving, dropping in | L2m | live | as the prince; a drop-in guard clipped at the ceiling's edge |
 | | snakes | L2m at the floor | live | placement (no face within 34 px) |
