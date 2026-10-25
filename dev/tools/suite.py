@@ -142,7 +142,19 @@ def go(j, w):
 HEAVY = ('rendersmoke', 'liftscan', 'crossscan torch')
 GPU_JOBS = int(os.environ.get('HK_GPU_JOBS', '3'))
 t0 = time.time(); res = []; QL = queue.Queue(); QH = queue.Queue(); GPU = threading.Semaphore(GPU_JOBS)
-for j in J: (QH if j[0] in HEAVY else QL).put(j)
+# --resume FILE (or HK_SUITE_JOURNAL): every finished job is appended to FILE as one JSON line, and a run started with the same FILE
+# skips the jobs it already holds and reports them with the rest (a machine that restarts mid-run loses only the jobs in flight)
+JOURNAL = args[args.index('--resume') + 1] if '--resume' in args else os.environ.get('HK_SUITE_JOURNAL')
+JLOCK = threading.Lock(); done = set()
+if JOURNAL and os.path.exists(JOURNAL):
+    for l in open(JOURNAL):
+        try: r = json.loads(l)
+        except Exception: continue
+        s = tuple(r['s']) if isinstance(r['s'], list) else r['s']
+        res.append((r['g'], r['a'], r['ok'], s, r['dt'], r['out'])); done.add(json.dumps(r['a']))
+    print('resumed %d finished jobs from %s' % (len(done), JOURNAL), flush=True)
+for j in J:
+    if json.dumps(j[1]) not in done: (QH if j[0] in HEAVY else QL).put(j)
 def take():
     """-> (job, holds_gpu) or (None, False) when both queues are empty."""
     while True:
@@ -161,7 +173,10 @@ def loop():
         while True:
             j, gpu = take()
             if j is None: return
-            try: res.append(go(j, w))
+            try:
+                r = go(j, w); res.append(r)
+                if JOURNAL:
+                    with JLOCK, open(JOURNAL, 'a') as f: f.write(json.dumps({'g': r[0], 'a': r[1], 'ok': r[2], 's': r[3], 'dt': r[4], 'out': r[5]}) + '\n')
             finally:
                 if gpu: GPU.release()
     finally: w.stop()
