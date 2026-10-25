@@ -16,7 +16,7 @@ run's menu on the run's lowest row.
 ## Example
 
 Floor 7, a run heading right ends at a step up. Five plain tiles lie before the step's riser; the riser holds a shooter at
-`SURF(r)-34`. Every 1.6 to 2.0 s a dart leaves the riser, flies left at 190 px/s and runs out over the first tile of the run
+`SURF(r)-34`. Every 1.8 to 2.2 s (`per`, fixed for the shooter) a dart leaves the riser, flies left at 190 px/s and runs out over the first tile of the run
 (`f.x0 = (c+1)*TW+27`), where it tips, drops and fades. Standing in the lane he is hit (one life, pushed back 12 px); crouched or
 crawling he is not. The run heads right, so the shooter sits on the wall's hidden left face: no head is drawn, and the darts come out
 from behind the step's front face with only a tick and a hiss to tell of them.
