@@ -6479,7 +6479,10 @@ let METAL_PAINT_HI=true;
 const MPAL={};
 function tintHex(c,t){const n=parseInt(c.slice(1),16),f=(v,k)=>Math.max(0,Math.min(255,Math.round(v*k)));return '#'+((1<<24)|(f(n>>16,t[0])<<16)|(f((n>>8)&255,t[1])<<8)|f(n&255,t[2])).toString(16).slice(1);}
 function mixHex(a,b,t){const x=parseInt(a.slice(1),16),y=parseInt(b.slice(1),16),f=(s)=>Math.round(((x>>s)&255)*(1-t)+((y>>s)&255)*t);return '#'+((1<<24)|(f(16)<<16)|(f(8)<<8)|f(0)).toString(16).slice(1);}
-function metalPal(role){const st=L.theme.style,k=st+role;let p=MPAL[k];if(!p){const m=METAL[st]||METAL.dungeon;p=MPAL[k]=MKIND[m[role]].map(c=>tintHex(c,m.tint));}return p;}
+// (round 37b) the Egyptian looks (EGP.traps) cast the slicer's jaws in bronze in every style; without them each style's own metal (v61's)
+const METAL_EG={jaw:'bronze'};
+function metalOf(role){const m=METAL[L.theme.style]||METAL.dungeon;return EGP.traps&&METAL_EG[role]||m[role];}
+function metalPal(role){const st=L.theme.style,k=st+role+(EGP.traps&&METAL_EG[role]?'E':'');let p=MPAL[k];if(!p){const m=METAL[st]||METAL.dungeon;p=MPAL[k]=MKIND[metalOf(role)].map(c=>tintHex(c,m.tint));}return p;}
 // ---- shared geometry: the draw code and the shader's metal mask read the same numbers (each fills a reused object, nothing is allocated)
 // Gate: the plane, the open height (drop, below the ceiling line), the x of its NB bars and the offsets of its cross bars.
 const GATE_G={pl:null,NB:5,drop:0,xs:[0,0,0,0,0],nc:0,co:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]};
@@ -7229,8 +7232,8 @@ function ceilOff(c,r){return B(L,c,r-1)===FLOOR?5:0;}
 function plane(X,Y,ys,c,r){const L0=X+16-HX,R0=X+16+HX,W=R0-L0,co=ceilOff(c,r);
   // ce: where the plane meets the underside of the ceiling (receding up with depth); top: the visible cut, the ceiling's front edge
   return {L0,R0,W,co,top:Y+co,fl:x=>ys+HY-DY*(x-L0)/W,ce:x=>Y+co-DY*(x-L0)/W};}
-function planeClip(ctx,pl,X,half){ctx.beginPath();ctx.moveTo(pl.L0-4,pl.top);ctx.lineTo(pl.R0+4,pl.top);ctx.lineTo(pl.R0+4,pl.fl(pl.R0+4));ctx.lineTo(pl.L0-4,pl.fl(pl.L0-4));ctx.closePath();ctx.clip();
-  ctx.beginPath();if(half)ctx.rect(X-40,-1e5,56,2e5);else ctx.rect(X+16,-1e5,60,2e5);ctx.clip();}
+function planeClip(ctx,pl,X,half,ov){ctx.beginPath();ctx.moveTo(pl.L0-4,pl.top);ctx.lineTo(pl.R0+4,pl.top);ctx.lineTo(pl.R0+4,pl.fl(pl.R0+4));ctx.lineTo(pl.L0-4,pl.fl(pl.L0-4));ctx.closePath();ctx.clip();
+  ctx.beginPath();if(half)ctx.rect(X-40,-1e5,56+(ov||0),2e5);else ctx.rect(X+16,-1e5,60,2e5);ctx.clip();} // (ov: the near half laps over the far one, so no wall shows through their seam; round 37b's jaws)
 function gateRoundel(ctx,cx,cy,frac,running){const th=L.theme,T=Math.PI*2;ctx.save();
   ctx.fillStyle='rgba(0,0,0,.32)';ctx.beginPath();ctx.arc(cx+0.9,cy+1.1,9.6,0,T);ctx.fill();          // the rim's shadow on the wall
   ctx.fillStyle=th.wallB;ctx.beginPath();ctx.arc(cx,cy,9.4,0,T);ctx.fill();                           // rim, cut from the wall's own stone
@@ -7278,28 +7281,60 @@ function pairPlaque(ctx,x,y,col){ctx.save();ctx.translate(x,y);const D=(k,dx,dy)
   ctx.fillStyle='rgba(0,0,0,.35)';D(6.2,0.9,1.1);ctx.fill();ctx.fillStyle='#0b0812';D(6,0,0);ctx.fill();
   ctx.fillStyle=col;D(4.4,0,0);ctx.fill();ctx.fillStyle='rgba(255,255,255,.38)';ctx.beginPath();ctx.moveTo(0,-4.4);ctx.lineTo(4.4,0);ctx.lineTo(1.4,0);ctx.lineTo(-1.6,-2.6);ctx.closePath();ctx.fill();
   ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.moveTo(-4.4,0);ctx.lineTo(0,4.4);ctx.lineTo(0.6,1.8);ctx.closePath();ctx.fill();ctx.restore();}
+// (round 37b, owner after v81: "the guillotine jaws needs to look more metallic") each jaw is a cast plate, bronze in the Egyptian looks
+// (EGP.traps; the style's steel or iron without them), opaque: across its face (near edge to far, JAWG) a dark rim, the body, a crisp
+// reflection band and the far edge catching the light; the honed bevel along the teeth (a bright edge over a dark line); a riveted spine
+// (JAW_SP back from the teeth, slides into the slot with the blade); a little verdigris near the root (hashes of the cell); the face darker
+// and its far edge lit when the key light is beyond it (keyLight's sx), its near edge lit when the light is on our side. Silhouette, hit box,
+// timing and beamBlockers unchanged.
+const JAW_SP=12,JAW_SW=3.4,JAW_OV=0.6,JAWG=[[0,0,0],[.06,1,0],[.17,0,1,.5],[.25,1,0],[.3,2,0],[.33,3,0],[.37,2,0],[.46,1,0],[.72,0,1,.35],[.9,1,0],[1,2,0]];
+function jawGrad(ctx,pl,pal){const g=ctx.createLinearGradient(pl.L0,0,pl.R0,0);for(const s of JAWG)g.addColorStop(s[0],s.length>3?mixHex(pal[s[1]],pal[s[2]],s[3]):pal[s[1]]);return g;}
+// a jaw's outline (dir +1: hangs from the ceiling, teeth down; -1: rises from the floor, teeth up) and, when e is given, its toothed edge alone
+function jawPath(pl,dir,off,sh,e){const T=dir>0?CH_UP:CH_LO,sc=0.8,base=x=>dir>0?pl.ce(x)+off:pl.fl(x)-off,anchor=x=>dir>0?pl.ce(x)-6:pl.fl(x)+6;let x=pl.L0;
+  const pth=new Path2D();pth.moveTo(pl.L0,anchor(pl.L0));pth.lineTo(pl.L0,base(pl.L0));if(e)e.moveTo(pl.L0,base(pl.L0));
+  for(let i=0;i<T.length&&x<pl.R0-0.5;i++){const [w,h,ln]=T[(i+sh)%T.length],xa=x,xb=pl.R0-x-w*sc<2?pl.R0:x+w*sc,xm=(xa+xb)/2+ln*0.6;
+    pth.lineTo(xm,base(xm)+dir*h);pth.lineTo(xb,base(xb));if(e){e.lineTo(xm,base(xm)+dir*h);e.lineTo(xb,base(xb));}x=xb;}
+  pth.lineTo(pl.R0,base(pl.R0));pth.lineTo(pl.R0,anchor(pl.R0));pth.closePath();return pth;}
 function drawJaws(ctx,o,f,X,Y,ys,half){
-  const k=chompK(f),pl=plane(X,Y,ys,o.c,o.r),sh=o.c%7,sc=0.8,pal=metalPal('jaw');
+  const k=chompK(f),pl=plane(X,Y,ys,o.c,o.r),sh=o.c%7,pal=metalPal('jaw'),kl=keyLight(X+16,ys),ks=kl.sx*kl.m;
   // measured from the ceiling's underside: open, the upper teeth just clear the ceiling's front edge
   const upOff=lerp(pl.co?2:7,31-pl.co,k),loOff=lerp(3,21,k);
   if(!half)slots(ctx,pl);
-  ctx.save();planeClip(ctx,pl,X,half);
-  const jaw=(dir)=>{ // dir +1: hangs from the ceiling, teeth down; -1: rises from the floor, teeth up
-    const T=dir>0?CH_UP:CH_LO,base=x=>dir>0?pl.ce(x)+upOff:pl.fl(x)-loOff,anchor=x=>dir>0?pl.ce(x)-6:pl.fl(x)+6;let x=pl.L0;
-    const pth=new Path2D();pth.moveTo(pl.L0,anchor(pl.L0));pth.lineTo(pl.L0,base(pl.L0));
-    for(let i=0;i<T.length&&x<pl.R0-0.5;i++){const [w,h,ln]=T[(i+sh)%T.length],xa=x,xb=pl.R0-x-w*sc<2?pl.R0:x+w*sc,xm=(xa+xb)/2+ln*0.6;
-      pth.lineTo(xm,base(xm)+dir*h);pth.lineTo(xb,base(xb));x=xb;}
-    pth.lineTo(pl.R0,base(pl.R0));pth.lineTo(pl.R0,anchor(pl.R0));pth.closePath();
-    if(!half&&MSF.rec){let jp=JAWP.get(o);if(!jp)JAWP.set(o,jp={t:0,a:null,b:null});jp.t=gameTime;if(dir>0)jp.b=pth;else jp.a=pth;} // (unit MS: the metal mask fills the same outlines)
-    ctx.fillStyle=pal[2];ctx.fill(pth);
+  ctx.save();planeClip(ctx,pl,X,half,JAW_OV);
+  const L0=pl.L0,R0=pl.R0,W=pl.W;
+  const jaw=(dir)=>{
+    const off=dir>0?upOff:loOff,base=x=>dir>0?pl.ce(x)+off:pl.fl(x)-off,edge=new Path2D(),pth=jawPath(pl,dir,off,sh,edge);let x=L0;
+    if(!half){let jp=JAWP.get(o);if(!jp)JAWP.set(o,jp={t:0,a:null,b:null});jp.t=gameTime;if(dir>0)jp.b=pth;else jp.a=pth;} // (unit MS: the metal mask fills the same outlines; round 37b: and the lamp shadow is carved by them)
+    ctx.fillStyle=jawGrad(ctx,pl,pal);ctx.fill(pth);
     ctx.save();ctx.clip(pth);
-    const b0=base(pl.L0);
-    if(METAL_PAINT_HI){ctx.strokeStyle='#eef1f6';ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(pl.L0-2,b0-dir*14);ctx.lineTo(pl.L0+10,b0+dir*2-6);ctx.stroke();
-      ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(pl.L0+2,b0-dir*14);ctx.lineTo(pl.L0+14,b0+dir*2-8);ctx.stroke();}
-    ctx.fillStyle=pal[1];ctx.fillRect(pl.R0-3,Y-20,3,TH+30);
+    const ln=(d,a,b)=>{ctx.moveTo(a,base(a)-dir*d);ctx.lineTo(b,base(b)-dir*d);};
+    // brushed along the plate: faint lines parallel to the edge
+    ctx.lineWidth=0.5;ctx.strokeStyle='rgba(255,240,210,.10)';ctx.beginPath();ln(4.6,L0,R0);ln(9.2,L0,R0);ln(JAW_SP+8,L0,R0);ctx.stroke();
+    ctx.strokeStyle='rgba(10,6,4,.14)';ctx.beginPath();ln(6.8,L0,R0);ln(JAW_SP+5,L0,R0);ln(JAW_SP+13,L0,R0);ctx.stroke();
+    // the key light: beyond the plate its face is in shade; on our side the near edge catches it
+    if(ks>0.05){ctx.fillStyle='rgba(8,5,12,'+(0.32*ks).toFixed(3)+')';ctx.fillRect(L0-1,Y-24,W+2,TH+40);}
+    // the spine: a raised band riveted through, its lit edge toward the teeth
+    ctx.lineWidth=JAW_SW;ctx.strokeStyle=mixHex(pal[0],pal[1],0.35);ctx.beginPath();ln(JAW_SP+JAW_SW/2,L0,R0);ctx.stroke();
+    ctx.lineWidth=0.7;ctx.strokeStyle=pal[3];ctx.globalAlpha=0.55;ctx.beginPath();ln(JAW_SP,L0,R0);ctx.stroke();ctx.globalAlpha=1;
+    ctx.strokeStyle='rgba(8,5,4,.5)';ctx.beginPath();ln(JAW_SP+JAW_SW,L0,R0);ctx.stroke();
+    for(const u of [0.2,0.62,0.88]){const rx=L0+u*W,ry=base(rx)-dir*(JAW_SP+JAW_SW/2);
+      ctx.fillStyle=pal[0];ctx.beginPath();ctx.arc(rx+0.25,ry+0.3,1.25,0,6.2832);ctx.fill();ctx.fillStyle=pal[2];ctx.beginPath();ctx.arc(rx-0.15,ry-0.15,0.85,0,6.2832);ctx.fill();
+      ctx.fillStyle=pal[3];ctx.fillRect(rx-0.55,ry-0.6,0.5,0.5);}
+    // verdigris and tarnish toward the root (from the cell: no stream)
+    for(let i=0;i<4;i++){const h=((o.c*73+o.r*31+i*197+(dir>0?0:89))*2654435761>>>0)/4294967296,h2=((o.c*29+i*113+(dir>0?7:3))*2246822519>>>0)/4294967296,px=L0+2+h*(W-4),d=JAW_SP+JAW_SW+2+h2*14;
+      ctx.fillStyle=i&1?'rgba(28,18,10,.22)':'rgba(92,150,124,.42)';ctx.beginPath();ctx.ellipse(px,base(px)-dir*d,1.4+h2,0.8+h*0.5,-0.25,0,6.2832);ctx.fill();}
+    // the honed bevel along the teeth: a dark line where it meets the face, the edge itself bright
+    ctx.lineJoin='round';ctx.lineWidth=3.6;ctx.strokeStyle='rgba(12,7,4,.38)';ctx.stroke(edge);
+    ctx.lineWidth=1.8;ctx.strokeStyle=pal[3];ctx.stroke(edge);
+    if(METAL_PAINT_HI){ctx.lineWidth=0.8;ctx.strokeStyle='rgba(255,252,240,.7)';ctx.stroke(edge);} // (Classic: the edge's glint; Torchlight's metal shader lights it from the lamps)
+    // the root in the slot's shade
+    {const y0=dir>0?pl.top:pl.fl(L0+HX),g=ctx.createLinearGradient(0,y0,0,y0+dir*12);g.addColorStop(0,'rgba(6,4,10,.62)');g.addColorStop(1,'rgba(6,4,10,0)');ctx.fillStyle=g;ctx.fillRect(L0-1,Math.min(y0,y0+dir*12)-DY,W+2,12+2*DY);}
+    // the plate's edges: the far one catching the light (the more so with the light beyond), the near one when the light is on our side
+    ctx.fillStyle=pal[3];ctx.globalAlpha=0.35+0.45*Math.max(0,ks);ctx.fillRect(R0-1.3,Y-24,1.3,TH+40);
+    ctx.globalAlpha=0.5*Math.max(0,-ks);if(ctx.globalAlpha>0.02)ctx.fillRect(L0,Y-24,1.1,TH+40);ctx.globalAlpha=1;
     ctx.restore();
-    ctx.strokeStyle='#0b0812';ctx.lineWidth=1;ctx.stroke(pth);
-    if(f.blood){ctx.fillStyle='rgba(150,14,18,.95)';x=pl.L0;
+    ctx.lineWidth=1;ctx.strokeStyle='#0b0812';ctx.stroke(pth);
+    if(f.blood){const T=dir>0?CH_UP:CH_LO,sc=0.8;ctx.fillStyle='rgba(150,14,18,.95)';x=pl.L0;
       for(let i=0;i<T.length&&x<pl.R0-0.5;i++){const [w,h,ln]=T[(i+sh)%T.length],xm=x+w*sc/2+ln*0.6;if(i%2===(dir>0?1:0)){const by=base(xm);ctx.beginPath();ctx.moveTo(xm-1.3,by+dir*h*0.35);ctx.lineTo(xm,by+dir*h);ctx.lineTo(xm+1.3,by+dir*h*0.35);ctx.fill();
         ctx.fillRect(xm-0.5,by-dir*(dir>0?5:2),1,dir>0?5:7);}x+=w*sc;}}};
   jaw(-1);ceilShade(ctx,pl);jaw(1); // (the upper jaw after the shade: it was lost in the dark under the ceiling)
@@ -9713,7 +9748,7 @@ function msPasses(draw,fh,div){const gl=GLP.gl;draw(false);if(!MS.on)return;
 // one mask colour per metal and grain, as a cached string (b = 255: the shapes are opaque, edges blend with the black)
 function msCol(id,cl){const k=id*1000+Math.round(cl*1000);let s=MS.col.get(k);if(!s){s='rgb('+Math.round(id*255/8)+','+Math.round(cl*255)+',255)';MS.col.set(k,s);}return s;}
 const MS_ANY=0.1,MS_UP=0.3,MS_ACROSS=0.5;
-function msKind(role){const m=METAL[L.theme.style]||METAL.dungeon;return MKID[m[role]]||1;}
+function msKind(role){return MKID[metalOf(role)]||1;}
 function msBox(x0,y0,x1,y1){const u=MS.ub4;if(x0<u[0])u[0]=x0;if(y0<u[1])u[1]=y0;if(x1>u[2])u[2]=x1;if(y1>u[3])u[3]=y1; // (u: the box round all of it, world)
   if(MS.nb>=32)return;const o=MS.nb++*4,B=MS.BB;B[o]=x0;B[o+1]=y0;B[o+2]=x1;B[o+3]=y1;}
 function msHit(x0,y0,x1,y1){const B=MS.BB;for(let i=0;i<MS.nb;i++){const o=i*4;if(x1>B[o]&&x0<B[o+2]&&y1>B[o+1]&&y0<B[o+3])return true;}return false;}
@@ -9801,7 +9836,7 @@ function drawMetalMask(VZ,camD,camDY){
   // the near halves of gates and jaws, in front of anyone walking the corridor (as drawDynamic draws them)
   for(const o of L.dyn){if(o.c<c0||o.c>c1||o.r<r0||o.r>r1)continue;const f=o.f,X=o.c*TW,Y=o.r*TH,ys=SURF(o.r);
     if(f.t==='gate'&&!EGP.traps)msGate(g,f,X,Y,ys,1,gid);
-    else if(f.t==='chomp'){const jp=JAWP.get(o);if(!jp||jp.t!==gameTime)continue;const pl=plane(X,Y,ys,o.c,o.r);g.save();planeClip(g,pl,X,1);g.fillStyle=msCol(jid,MS_ANY);g.fill(jp.a);g.fill(jp.b);g.restore();}}
+    else if(f.t==='chomp'){const jp=JAWP.get(o);if(!jp||jp.t!==gameTime)continue;const pl=plane(X,Y,ys,o.c,o.r);g.save();planeClip(g,pl,X,1,JAW_OV);g.fillStyle=msCol(jid,MS_ANY);g.fill(jp.a);g.fill(jp.b);g.restore();}}
   for(const lf of L.lifts)if(liftVisible(lf,x0,x1,y0,y1))msLift(g,lf,1);
   {const u=MS.ub4,cb=MS.cb;cb[0]=Math.max(0,Math.floor(u[0]*VZ/2-hx)-2);cb[1]=Math.max(0,Math.floor(u[1]*VZ/2-hy)-2);cb[2]=Math.min(mw,Math.ceil(u[2]*VZ/2-hx)+2);cb[3]=Math.min(mh,Math.ceil(u[3]*VZ/2-hy)+2);
     MS.pb.set(cb);MS.pv=true;} // the box (mask pixels) the metal passes run in, and next frame's clearing
@@ -10077,6 +10112,12 @@ function glMask(lights,VZ,camD,camDY){
         const f=b!==WALL?F(L,c,r):null;if(f&&f.t==='low'){const by=r*TH,yb=by+LOW_H,rf=F(L,c+1,r),sd=B(L,c+1,r)!==WALL&&!(rf&&rf.t==='low');
           g.moveTo(bx,yb);g.lineTo(bx,by);g.lineTo(bx+TW,by);if(sd){g.lineTo(bx+TW+DX,by-DY);g.lineTo(bx+TW+DX,yb-DY);}g.lineTo(bx+TW,yb);g.closePath();}}
       g.fill();
+      // (round 37b, owner after v81: "The shadow of the prince over the guillotine jaws") the slicer's jaws stand across the corridor in front
+      // of the back wall, so his shadow falls on the wall behind them, not on their faces: carved by their outlines as drawn this frame (JAWP),
+      // inside the plane's visible part; the wall seen between open jaws keeps it
+      for(const o of L.dyn){if(o.f.t!=='chomp'||o.c<c0||o.c>c1||o.r<r0||o.r>r1)continue;const jp=JAWP.get(o);if(!jp||jp.t!==gameTime||!jp.a||!jp.b)continue;
+        const pl=plane(o.c*TW,o.r*TH,SURF(o.r),o.c,o.r);g.save();g.beginPath();g.moveTo(pl.L0-1,pl.top);g.lineTo(pl.R0+1,pl.top);g.lineTo(pl.R0+1,pl.fl(pl.R0+1)+1);g.lineTo(pl.L0-1,pl.fl(pl.L0-1)+1);g.closePath();g.clip();
+        g.fill(jp.a);g.fill(jp.b);g.restore();}
       g.globalCompositeOperation='lighter';any=1;}}
   if(GLFX.heat){
     const green=lightSprite('0,255,0'),forge=L.theme.style==='forge',hk=S.set.calm?0.3:1; // (calm: a third of the shimmer)
@@ -10188,6 +10229,15 @@ function glRelFloors(n,VZ,camD,camDY){const cx=camD/VZ,cy=camDY/VZ,c0=Math.max(0
     n=glRelQ(n,bx,by,bx+TW,by,bx+TW,by+TH,bx,by+TH,VZ,camD,camDY);n=glRelQ(n,bx,by,bx+TW,by,bx+TW+DX,by-DY,bx+DX,by-DY,VZ,camD,camDY);
     n=glRelQ(n,bx+TW,by,bx+TW+DX,by-DY,bx+TW+DX,by+TH-DY,bx+TW,by+TH,VZ,camD,camDY);}
   return n;}
+// (round 37b, owner after v81: the jaws read as a pale glass panel, "the wall's bands show through") the slicer's jaws are opaque plates drawn
+// live in front of the back wall, so the relief embossed the wall's bands and tiles behind them on their faces: rubbed back over each jaw's
+// plate, from the ceiling's edge (or the floor) to half way down its teeth (as beamBlockers takes them), as it moves
+function glRelJaws(n,VZ,camD,camDY){const cx=camD/VZ,cy=camDY/VZ,vw=cv.width/VZ,vh=cv.height/VZ;
+  for(const o of L.dyn){if(o.f.t!=='chomp')continue;const X=o.c*TW,Y=o.r*TH;if(X+TW<cx||X>cx+vw||Y+TH<cy||Y-DY>cy+vh)continue;
+    const k=chompK(o.f),pl=plane(X,Y,SURF(o.r),o.c,o.r),up=lerp(pl.co?2:7,31-pl.co,k)+4,lo=lerp(3,21,k)+4,a=pl.L0,b=pl.R0;
+    n=glRelQ(n,a,pl.top,b,pl.top,b,pl.ce(b)+up,a,pl.ce(a)+up,VZ,camD,camDY);
+    n=glRelQ(n,a,pl.fl(a)-lo,b,pl.fl(b)-lo,b,pl.fl(b)+0.5,a,pl.fl(a)+0.5,VZ,camD,camDY);}
+  return n;}
 function glRelief(lights,VZ,camD,camDY){
   const R=GLREL,gl=GLP.gl,w=cv.width,h=cv.height;R.on=0;if(!GLFX.relief||mode==='cross')return; // (round 36a: no rooms to rake in the crossing)
   let lit=false;for(const q of lights)if(GLSTRONG[q.kind]||q.kind==='fire'){lit=true;break;} // no lamp near: nothing to rake, skip the pass
@@ -10220,6 +10270,7 @@ function glRelief(lights,VZ,camD,camDY){
   // platform, the counterweight and the wheels as they passed. Rubbed back over each of them in view (their boxes, as a mouth slab's)
   n=glRelLifts(n,VZ,camD,camDY);
   n=glRelFloors(n,VZ,camD,camDY); // (round 35c) the floor tiles drawn live
+  n=glRelJaws(n,VZ,camD,camDY); // (round 37b) the slicers' jaws
   if(EGP.traps){for(const o of L.dyn){const g=o.f.wg;if(o.f.t!=='loose'||!g||g.os[0]!==o)continue;n=glRelWell(n,g,VZ,camD,camDY);} // (round 21b) sand is not embossed with the wall's art behind it
     for(const f of L.lifts)if(f.sand&&f.y<SURF(f.rB)-0.5)n=glRelBox(n,f.sc*TW-HX,f.y+HY+5-DY,f.sc*TW-HX+TW,SURF(f.rB)+HY,VZ,camD,camDY);}
   gl.bindFramebuffer(gl.FRAMEBUFFER,R.fb.f);gl.viewport(0,0,fw,fh);gl.clearColor(.5,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);

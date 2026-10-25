@@ -420,6 +420,22 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   a corridor, 61 of 64 over a well, 19 of 20 planks, 37 of 45 plates of all kinds, 1 block; Classic 0; 0 after). Torchlight's wet sheen (round 31) is
   off in it unless `sheen`: it mirrors lit wall art (a pale post in a sky beam) onto wet floors by design, a reflection. Pictures `egyptr35c.py`
   (r35c_wallart.png: v80 | round 35c, both modes).
+- The slicer's jaws (round 37b, owner after v81, Torchlight, the Blue Chambers: "The shadow of the prince over the guillotine jaws. Also the
+  guillotine jaws needs to look more metallic"). The jaws (`drawJaws`) are two plates standing across the corridor's depth (`plane`), in front
+  of the back wall, but Torchlight's lamp shadow (`glShadow`, effect mask r) was carved only out of walls, floors and low ceilings, so his
+  shadow (and a guard's) was painted across their face as if they were the wall; and the relief, which reads the room's picture, embossed the
+  wall's bands and tiles behind them on their face, so with the pale flat steel fill and two white streaks they read as a glass panel. Now
+  `glMask` carves each jaw out of the shadow by its outline as drawn this frame (`JAWP`, now recorded in both modes, inside the plane's visible
+  part: the wall seen between open jaws keeps the shadow), and `glRelJaws` rubs the relief back over each jaw's plate to half way down its
+  teeth (as beamBlockers takes them). The look (`jawPath`, `jawGrad`): bronze in the Egyptian looks (`METAL_EG`, `metalOf`: `metalPal` and the
+  metal mask's `msKind` read it; with `EGP.traps` off each style's v61 steel or iron), opaque; across the face a dark near rim, the body, a crisp
+  reflection band (`JAWG`) and the far edge catching the light; faint brushing along the plate; a riveted spine `JAW_SP` back from the teeth
+  that slides into the slot with the blade; verdigris and tarnish toward the root (hashes of the cell); the honed bevel along the teeth (a
+  dark line where it meets the face, the edge bright; Classic adds a glint where Torchlight's metal shader lights it); the root in the slot's
+  shade; the key light (`keyLight` sx) shades the face when the lamp is beyond the plate and lights its near edge when it is on our side. The
+  near half laps `JAW_OV` over the far one (`planeClip`'s `ov`), so no wall shows through their seam. Look only: silhouette, hit box, timing,
+  beamBlockers, layouts and the bot unchanged. Pictures `egyptr37b.py` (r37b_jaws.png: v81 | 37b, the owner's case, shut, closing and open in
+  six themes and hours and with EGP.traps off, both modes, 3x; r37b_jaws.gif: a slice cycle in Torchlight).
 - The Crossing (round 36a, owner, after the research in `dev/INTERLUDE_RESEARCH.md`: "an interlude between themes"; answers: at each
   theme change, after Climb on, he moves only while the pad is held, wordless but skippable, all twelve themes in their setting,
   Torchlight's glow and a Classic version, the hour from `progOf`, named "the Crossing"). At each change of theme (`crossDue(n)`:
