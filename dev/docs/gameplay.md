@@ -1,6 +1,6 @@
 # Gameplay
 
-How Dawnward plays as of v82: the controls, every move of the prince with its numbers, falls, lives, death and the sands, timed
+How Dawnward plays as of v84 (round 39 changed only how things are drawn): the controls, every move of the prince with its numbers, falls, lives, death and the sands, timed
 gates, fighting and the chase. Numbers are the code's (`dev/hourglass-keep.html`); the elements' own rules live in `elements/`, the
 generator's in [level-design.md](level-design.md), the figure's poses in `dev/FIGURE_SPEC.md`.
 

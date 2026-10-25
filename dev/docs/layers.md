@@ -80,10 +80,10 @@ nearer stone in front of a live part (R1). Where a pass is left out of a row, th
 | | rubble, breach rubble, fallen lamps and cloth, the hurtdrop's bites | L2f, laid on the floor | stage 2 scratch canvas (`rlEnd`) | `rlEnd`'s face clip |
 | [openings and backdrop](elements/openings-and-backdrop.md) | sky, sun, moon, stars, far land | L0 | `drawBackdrop`, first, only inside the openings | n/a (R2) |
 | | sky beams: rim and pane / haze / footprint | L1 / L2 air / L2f | S pass; Classic `ryBeams2D` | tile texture, `ryLow`, `sandSegs`, `beamBlockers` |
-| [doors](elements/doors.md) | posts, lintel, frame, reveal; the opening, the leaf and the stairs beyond | L1 | live, right after the lamps | placed clear of a nearer face (`doorX`); he is cut at the opening (`doorClip`) |
-| [lamps and light](elements/lamps-and-light.md) | bracket, shelf, socket on the wall | L1 | live, first | clipped at a ceiling over the cell |
+| [doors](elements/doors.md) | posts, lintel, frame, reveal; the opening, the leaf and the stairs beyond | L1 | live, right after the lamps | placed clear of a nearer face (`startDoorX`); he is cut at the opening (`doorClip`) |
+| [lamps and light](elements/lamps-and-light.md) | bracket, shelf, socket on the wall | L1 | live, first | clipped at the ceiling's edge over its column and the next (`lampCeil`) |
 | | a free lamp's stand | L2b | live, first | placement (`lampClear`) |
-| | flame, tongues, embers | air at d ~1 | live, first | clipped at a ceiling over the cell |
+| | flame, tongues, embers | air at d ~1 | live, first | the same (`lampCeil`) |
 | | glows and lights | light | glow sprites, light map | not cut (room light) |
 | [checkpoint](elements/checkpoint.md) | pedestal, clock, halo, drops of light | L2m | live; after a lift it stands in | `cpX` places it, `cpCut` |
 | | Classic's wide glow | light | | not cut (round 37c) |

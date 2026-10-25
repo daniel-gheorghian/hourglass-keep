@@ -3,7 +3,8 @@
 How a frame of Dawnward is drawn in both modes, in what order, what cuts what, and every Torchlight pass: what it reads, what it
 writes, its switch, how an element joins it or stays out of it, and what Classic does instead. Element docs link here by the anchors
 in the index below. The architecture's history is in `dev/WEBGL_PLAN.md`; working practice for the WebGL path is in
-`dev/WEBGL_LESSONS.md`. This file states the code as of v82 with round 38a's fixes.
+`dev/WEBGL_LESSONS.md`. Which layer every part of every element belongs to, and what may cover what, is [layers.md](layers.md); the cuts
+that keep that order are below. This file states the code as of v84 (round 39, the layering rule).
 
 ## Index of passes
 
@@ -62,10 +63,10 @@ render()                                  ctx = GLS.F (Torchlight) | GLP.sceneG 
  |- room pictures in view                 drawImage(roomCanvas(rx,ry)); from here na=0 (alpha 1: not sky)
  |- gatherLights -> frameLights           this frame's lights (keyLight and every pass read them)
  |- drawDynamic                           everything live, see "Draw order"
- |- na=1; ambientLit                      ambient motes, trickles, petals, smoke, bats
+ |- na=1; ambientLit                      ambient motes, trickles, petals, smoke, bats (none on a face: onFace, airCut, faceGap)
  |- Torchlight: lightPass(gradeOnly)      the grade strip multiplied; ryBeams2D only if !GLFX.shafts
  |  Classic:    lightPass + bloomPass     light canvas multiplied; lights' bloom sprites; ryBeams2D
- |- atmoPass, ambientGlow, drawEmissive   mist sprites, moths, glints; vent fire, FX particles
+ |- atmoPass, ambientGlow, drawEmissive   mist sprites (cropped to their floor), moths, glints; vent fire, FX particles (none on a face)
  |- hazePass                              the theme's haze strip at the top of the view
  |- drawDark2D                            in a chase, unless glStorm draws the dark (stormGL)
  |- Classic only: vignette, lowEdge2D
@@ -126,7 +127,8 @@ Oblique depth: the back of every block is drawn `DX` 16 px right and `DY` 8 px u
 
 - The front plane is the plane of the front faces (depth 0). A wall's front face, a low ceiling's face (`lowCeil`, the top `LOW_H`
   px of its cell) and a floor's lip are all drawn `HX` left of their cell, so anything at mid-depth in the cell to their left can be
-  overlapped by them. Every rule about faces (shadow carving, beam cuts, `cpX`, `wallPress`) uses that offset.
+  overlapped by them. A wall on the left hides a mid-depth point left of its cell's right edge (its front face and the near half of its
+  side face). Every rule about faces (shadow carving, beam cuts, `cpX`, `startDoorX`, `wallPress`, `nearCut`, `onFace`) uses that offset.
 - A thing lying on the floor runs along the depth diagonal (`DX`, `-DY`); a reflection stands vertical (round 31).
 
 ## Draw order
@@ -138,45 +140,76 @@ seam; the canvas clips at the room's edge):
 stage 0 back plane   backCell + decor per cell (clipped to the cell; no decor on walls, low ceilings, openings)
                      arch recesses -> breaches -> arch frames -> windows
                      drawWallScars, drawHangings (EGP.noover leaves them out)
-                     doorway cut-outs: flat th.wall under each door and frame (EGP.nocut leaves them)
+                     a hurtdrop's shaft: its back wall darkened, source-atop over its two cells (openings stay open; round 39)
+                     doorway cut-outs: flat th.wall under each door and frame, the start door's at startDoorX (EGP.nocut leaves them)
                      aoBack (GLFX.ao)
 stage 1 wall faces   side faces (behind the front plane) -> front faces: wallCell at X-HX, cornice, lowCeil
 stage 2 floors       slab(...,mark) per floor cell, except live tiles (loose s<2, plate, xplate, lplate, closer, grate)
                      and lift pits (liftPitDraw)
-                     on the rlBegin scratch canvas: spike holes, rubble, hurtdrop shafts, bites and heaps, breach rubble,
-                     fallen lamps and cloth -> rlEnd (laid on, marked RL_A 251)
+                     on the rlBegin scratch canvas: spike holes, rubble, a hurtdrop's hanging stones, chips and heap, breach
+                     rubble, fallen lamps and cloth -> rlEnd (laid on cut by the walls' and low ceilings' faces, marked RL_A 251);
+                     a hurtdrop's lip bites on the room itself
                      aoFloor
 ```
 
 Between rooms: `render()` draws the room pictures row by row, left to right. They do not overlap, so nothing in one room picture
 covers another. Every live thing is drawn after all room pictures, so the stone in a room picture never hides a live thing by itself:
-stone in front of a figure, lift or clock is a clip (see "Cuts").
+the room picture holds the back wall (L1) and the front plane (L3) together, and stone in front of anything live is a clip (see "Cuts";
+the layering rule's R1, [layers.md](layers.md)). Inside `drawDynamic` the things fixed on the back wall come first, then the corridor's
+far halves, its mid-depth, its near halves.
 
 Live, in `drawDynamic`:
 
 ```
-lamps (drawLight)  -> start door, exit door -> sky clocks -> lifts (back half) -> L.dyn features by type
+lamps (drawLight: lampCeil) -> start door (startDoorX), exit door -> sky clocks (not one on a resting sand lift)
+-> lifts (back half) -> a sky clock on a sand lift's resting slab (cpOnLift) -> L.dyn features by type (banners in nearCut,
+   the three far stakes, a gate's far half in nearCut beside a lip)
 -> movable blocks -> darts, spent darts -> hidden flasks' stars, secret cues, jet hints -> flasks
--> sand wells (once per group) -> dust clouds -> debris -> snakes -> guards -> the prince
--> trails and rings (Graphics' Effects) -> near halves of gates, jaws, a fallen roof block -> lifts (front half)
--> sandDraw -> drawEmissive (only when Lighting is off)
+-> sand wells (once per group) -> dust clouds (airCut) -> debris (debrisCut, roofFallClip) -> snakes -> guards -> the prince
+-> trails and rings (Graphics' Effects) -> near halves of gates, jaws, a fallen roof block; the front stake (drawNeedles)
+-> lifts (front half: right mouths' near half, left mouths' front face, liftMouthL)
+-> sandDraw (the crumbling guard's heap in deadCut, grains behind stone skipped) -> drawEmissive (only when Lighting is off)
 ```
 
 ## Cuts
 
+Every cut keeps the nearer stone in front of a live part (the layering rule's R1, [layers.md](layers.md)); round 39 added the shared
+helpers (`nearCut`, `onFace`, `airCut`, `faceGap`) and the rows marked 39.
+
 | Cut | What it removes | Used by |
 |---|---|---|
-| `wallPress` + `figClip(...,wc)` | a figure reaching past the front face of a wall in the next column: pushed back (up to `HX`+12 px, eased in `P.rdx`), the rest clipped from the face (`wc.fx`) rightward over the wall's rows | prince, guards |
+| `wallPress` + `figClip(...,wc)` | a figure reaching past a face beside it. On the right (the next column's front face): pushed left up to `HX`+12 px. On the left (39: the column before's front face and its side face's near half hide a mid-depth point left of that cell's right edge; `figReach`'s `left`): pushed right up to `HX`+4. Between two where it does not fit (a kick shaft, 24 px at mid-depth): drawn in the middle. Eased in `P.rdx`; the rest clipped at each face over its rows (`wallRows`, which takes a moving block's drawn face, not its cells; 39) | prince, guards |
 | `figClip` modes 1 and 2 | behind a wall's face while jumping up to, hanging from or climbing a ledge on its near side: only the hands above the ledge show (round 19) | prince (`P.hideMode`, `P.hideLg`); `glMask` applies the same clip, so the hidden part casts no shadow |
-| `CUT_AT_WALL` | a floor feature's top that would run behind a wall face on its right (plate, xplate, lplate, closer, loose, spikes) | `drawDynamic` |
+| `figClip` modes 3 and 4 (39) | at a ledge with no wall below on his side (3: the slab on his right; 4: on his left), hanging, jumping up, climbing or climbing down: the slab's lip and the near half of its top face (and of its end) cut him, so below its mid line only the hands' grip shows (owner: "Cut the arms at the lip, keep only the hands") | prince; `glMask` too |
+| `deadCut` (39) | a figure lying dead, a guard crumbling, its sand heap: not pressed (its reach does not know it lies flat), it keeps its last press (`P.rdx`, `g.rdx`) and is cut by every wall's or low ceiling's face within 28 px, from the face's left edge to its cell's right edge; a falling grain behind stone is skipped (`midHid`) | prince, guards, `sandDraw` |
+| `dropCeil` (39) | a guard dropping in, above the ceiling's lower edge (a wall's foot; under the storey above's floor slab its lip's foot), in the drawing and in his silhouette | guards, `glSilhouette` |
+| `CUT_AT_WALL` | a floor feature's top that would run behind a wall face on its right (plate, xplate, lplate, closer, loose, spikes); the front stake in the near-halves loop takes the same rectangle (39) | `drawDynamic` |
 | `planeClip` | a gate's or jaw's far half (drawn before figures) and near half (after; `JAW_OV` overlap) | gates, jaws, their metal mask |
-| `liftOccl`, `liftNearCut`, `liftMouthCut` | lift parts and the rider behind the faces in front of the shaft; what stands nearer in the column right of it | [lifts](elements/lifts.md) |
-| `doorClip` (`doorHead`) | the prince at the opening's head and jambs on the exit's stairs and coming out of the entry | [doors](elements/doors.md) |
+| `nearCut(ctx,c0,c1,r0,r1,fl)` (39) | the front plane in a block of cells as one even-odd clip: walls' front faces and low ceilings' faces (`HX` left of their cells); with `fl` also the floor slabs' top faces and lips (a slab ends at a wall's face on its right, as the room picture trims it; the strip under a slab's lip is that slab's) | a banner's next column, a gate's far half beside a lip, the hanging roof block's trickles, `roofFallClip`, `debrisCut`, `airCut` |
+| `debrisCut` (39) | what falls through a hole (a plank, a corridor's cracked slab with its chunks and billow, the rock and slab with `EGP.traps` off): the next column's faces and floor slabs on every row it passes, the column before's faces and lip on the hole's row | the debris loop |
+| the well's clip in the debris loop | a well's slab falling into its shaft, inside the group's columns (`g.xa`, `g.n` tiles), behind the walls' faces | [cracked-slabs-and-sand-wells](elements/cracked-slabs-and-sand-wells.md) |
+| `roofFallClip` (39) | the falling roof block, its sand and billow outside the slot's hole and above the ceiling's edge, and the next column's front plane (`nearCut`) | `egRoofFall` |
+| `liftOccl`, `liftNearCut`, `liftMouthCut` | lift parts and the rider behind the faces in front of the shaft; what stands nearer in the column right of it; a left mouth slab's front face is drawn after the figures instead (`liftMouthL`, 39) | [lifts](elements/lifts.md) |
+| `doorClip` (`doorHead`) | the prince at the opening's head and jambs on the exit's stairs and coming out of the entry (at `startDoorX`, 39) | [doors](elements/doors.md) |
 | `cpCut` | the sky clock by the faces beside it on its row | [checkpoint](elements/checkpoint.md) |
-| clip in the debris loop | a cracked slab falling into its shaft, behind the walls' faces | [cracked-slabs-and-sand-wells](elements/cracked-slabs-and-sand-wells.md) |
+| `lampCeil` (39) | a lamp's tongues, embers, smoke and drawn glow above the ceiling over its column and the next: one rectangle where they match, else an even-odd path of the stone in front only | `drawLight` |
+| `drawShut`'s clip (39) | his pulled-back shadow outside the back wall as it shows (cell by cell: under a wall's foot, a slab's lip, a low ceiling's face, short of the next face); its smear off anything but the floors' top faces | [the dark](elements/the-dark.md) |
+| `rlEnd`'s face clip (39) | the floor's scratch layer (rubble, specks, breach rubble, fallen things, a hurtdrop's heap) on the walls' and low ceilings' faces | room picture stage 2 |
+| `onFace(x,y)` (39) | a point of air on a wall's or low ceiling's face or a slab's lip: not drawn | motes, gusts, petals, bats, ash, moths, flies, sparks, wisps' trails, the torches' motes, FX particles, the sword's rings, `lampGlints`, the granite crystals |
+| `airCut(ctx,x,y,w,h,fl)` (39) | a soft sprite of air: a rectangle (a scissor in Torchlight, so the stencil stays small), then `nearCut` in its cells | smoke puffs, wisps' glows, the landing dust cloud (`DUSTC`) |
+| `faceGap(x,r,y0,y1)`, `FGX` (39) | the corridor's run between the nearest faces on a row: a trickle or drip on a face is not drawn, its pool or splash cut at the faces beside it | `ambientLit` trickles, `drawDrips` |
+| the mist's source rectangle (39) | the floor mist past its floor's front edge and the faces ending its run on that row (the sprite cropped, no clip) | `atmoPass` |
+| single clips (39) | a banner at a wall's face in the next column (a rectangle), a hidden flask's stars at a wall's face, a dart in flight on its mouth's side only, the kick shaft's jet stream inside the right wall's face (`wx1` `X+TW-HX`) | their elements |
+| placement | `cpX` and `startDoorX` (39) move a drawing along the back wall off a nearer face; `lampClear`, the saw's slot, the pendulum's hall and the snakes keep away from faces | checkpoint, doors, lamps, saws, pendulum, snakes |
 
 Light is cut the same way: no beam, haze or footprint on a front face, a low ceiling's face or sand ([#sky-beams](#sky-beams)); no lamp
-shadow on a face ([#lamp-shadows](#lamp-shadows)); a mid-depth light (the sky clock's glow) is not cut, being room light.
+shadow on a face ([#lamp-shadows](#lamp-shadows)); a mid-depth light (the sky clock's glow) is not cut, being room light, nor are the lamps'
+and the exit's glow sprites (a lamp's drawn glow is cut at the ceiling over it, `lampCeil`).
+
+Left as they are (round 39): the swing bar's near pole segment and near rope are drawn before him; the vent's back-row flames after the
+figures; a figure's shadow, beam cut, fill cut, relief ellipse and trails use its play x, not the pressed x; the hint streams and the
+descending secret cue brush a face's end by a few px; in Classic a lamp's light band lies on the foot of a face. `layerscan.py` checks the
+rest (below).
 
 ## Torchlight's passes
 
@@ -239,7 +272,8 @@ light and the dark's drain are detailed in [lamps-and-light](elements/lamps-and-
 `keyLight(x,y)` returns which side the lamps light a point from (`sx` -1..1, `dir` its sign), how much a lamp rather than the default
 carries it (`m`), a strength `k` and a colour. Every lamp in reach pulls by a smooth falloff over its steady radius, with a weak pull
 from the left; never the nearest lamp, never a flickering radius (round 20b). Both modes. Read by the HD figures' rim (`drawActor`), the
-granite portcullis' faces (`egSlab`, `uL`), the jaws, snakes, the sky clock, `stoneGlints` and `graniteGlints`. Details:
+granite portcullis' faces (`egSlab`, `uL`), the jaws, snakes, the sky clock and `stoneGlints` (`graniteGlints` reads it too, but nothing
+calls `graniteGlints`). Details:
 [lamps-and-light](elements/lamps-and-light.md#the-key-light).
 
 ### Effect mask
@@ -262,7 +296,9 @@ blurred over five taps.
 each wall block as drawn (front face `HX` left, top, right side; round 19: carving at the cell left a prince-shaped stripe on a lit face),
 each floor's top and lip, a low ceiling's front face and its side face at a tunnel's right end (round 20a), the slicer's jaws by
 their outline this frame (`JAWP`, inside the plane's visible part; round 37b), and after the jaws `shcCarve`: every outline in `SHC`
-(round 38a). Composite: `sh` (times the scene's alpha: never on the sky) takes `0.85 sh` of the light and `0.4 sh` of the colour.
+(round 38a). Before the carving, the prince's silhouette is clipped by `figClip` in every hide mode (1-4, round 39), so what a ledge's
+wall or slab hides of him casts no shadow, and a guard dropping in is drawn into his silhouette only below the ceiling (`dropCeil`).
+Composite: `sh` (times the scene's alpha: never on the sky) takes `0.85 sh` of the light and `0.4 sh` of the colour.
 
 `SHC` holds typed arrays filled again each frame (`SHC_E` 64 entries, `SHC_PN` 2048 points; nothing allocated): each entry is rings of
 points in world px (a NaN x ends a ring) with the drawing's own rectangle clip and a kind (`SHC_K`). `render` sets `SHC.on` (Torchlight
@@ -271,7 +307,7 @@ with `GLFX.shadow`) around `drawDynamic`, so the drawings record only then. Thin
 
 | Carved by `SHC` (kind) | Not carved |
 |---|---|
-| a portcullis or a lift's or sand lift's mouth slab that is down (`slab`; `egSlab`, recorded whole: two half clips meeting at X+16 left a line), the stakes (`stakes`), a saw's blade within its slot's clip (`saw`), the pendulum's blade and arm (`pend`), a falling or lying roof block (`roof`), the sky clock and its pedestal (`clock`; the wall inside the arch keeps the shadow), flasks (`flask`), a lift's platform and paternoster slabs (`liftslab`), the platform's ropes, its sling legs and the paternoster's upright ropes (`rope`), the sand lift's slab (`sandslab`) | the hanging roof block (inside the wall's carved face), the counterweight (in the back wall), banners, lamps, doors, the swing bar; the iron gate (`EGP.traps` off) |
+| a portcullis or a lift's or sand lift's mouth slab that is down (`slab`; `egSlab`, recorded whole: two half clips meeting at X+16 left a line), the stakes (`stakes`, all four in the far pass), a saw's blade within its slot's clip (`saw`), the pendulum's blade and arm (`pend`), a falling roof block from the slot's hole down (round 39) or a lying one (`roof`), the sky clock and its pedestal (`clock`; the wall inside the arch keeps the shadow), flasks (`flask`), a lift's platform and paternoster slabs (`liftslab`), the platform's ropes, its sling legs and the paternoster's upright ropes (`rope`), the sand lift's slab (`sandslab`) | the hanging roof block (inside the wall's carved face), the counterweight (in the back wall), banners, lamps (a free lamp's stand and the flame too), doors, the swing bar, the lift's rig, the paternoster's loop and wheels, a well's sand, falling slabs, the vent's flame, darts, a let-go flask (round 39 left these: a figure's lamp shadow can land on them; lamps keep clear of most); the iron gate (`EGP.traps` off) |
 
 `shadowscan.py [file] [lo hi] [seeds] [kinds=] [per=K]` stands the prince beside each kind with a torch behind him and draws Torchlight
 with the shadow on and off: the thing's pixels (1.7 px in from its outline) must not change; it must print `shadowscan: ok` (floors 1-48
@@ -295,7 +331,8 @@ the shafts' shader uses the same name for the sand). Classic: `drawDark2D`. See 
 `PAL_HERO`, `guardPal(e)`, `PAL_SKEL`) with its sword when drawn. WebGL: a 192 px slot of target `sil` (twelve; a thirteenth figure gets
 `null`). `d2` or the v60 path: a 2D canvas from `SIL.pool`. Cached per figure per frame (`SIL.m`, `SIL.m2`, cleared by `glPrep`).
 
-Read by: `glShadow`, the beams' figure mask (`glcOcc`), the metal carve, Classic's `fillCut` and `ryBeams2D`. A palette key that
+Read by: `glShadow`, the beams' figure mask (`glcOcc`), the metal carve, Classic's `fillCut` and `ryBeams2D`. A guard dropping in is drawn
+into it only below the ceiling's lower edge (`dropCeil`, round 39), as he is drawn. A palette key that
 `drawFigureHD` reads must exist in every palette that reaches it: from round 7 to 27b the robbers' `khat` was missing from the old
 silhouette palette, `figDraw` threw, and every guard cast no shadow and was drawn under the beams (round 27c).
 
@@ -316,16 +353,19 @@ quads `glRelief` lays rubbing quads that set the factor back to neutral (`GLRS.e
 | Rubbing | Over | Round |
 |---|---|---|
 | `glRelEx` (soft ellipse) | the prince, guards, lamp flames, `item`/`trap`/`fire` lights, small fills, debris; a moving iron gate with `EGP.traps` off | S3 unit B |
-| `glRelSlab` | a granite portcullis whenever down, lift mouth slabs, a sand lift's foot mouths | 16c, 26e |
+| `glRelSlab` | a granite portcullis whenever down, lift mouth slabs, a sand lift's foot mouths; from the ceiling's edge (it started `DY` above it and flattened 8 px of the lintel's face), the top piece above the edge too, short of a floor's lip beside the lintel | 16c, 26e, 39 |
 | `glRelLifts` | paternoster slabs and wheels, the counterweight platform, its weight and wheel | 26a |
 | `glRelBox` | a sand lift's sand (and its slab at rest in the foot's pit) | 21b, 37a |
 | `glRelWell` | each sand well's body, cell by cell from its surface down | 21b |
 | `glRelFloors` (`glRelQ`, `glRelLive`) | every run of live floor tiles (cracked slab, plate, xplate, lplate, closer, grate): exactly the top face and lip; pushed blocks (front, top, side) | 35c |
 | `glRelJaws` | each jaw's plate to half way down its teeth | 37b |
-| `glRelRoof` (called from `glRelFloors`) | a roof block falling or lying (`L.debris` rock, `stone` with `s` >= 2): its front, top and right side as `stoneBox` draws them; `EGP.traps` only | 38a |
+| `glRelRoof` (called from `glRelFloors`) | a lying roof block (`stone` with `s` >= 2): its front, top and right side as `stoneBox` draws them; `EGP.traps` only | 38a |
+| `glRelRoofFall` (called from `glRelFloors`) | a falling roof block (`L.debris` rock) only where `roofFallClip` lets it be drawn: each face cut by row to below the ceiling's edge or inside the slot's hole and short of the next column's face (`rcpCut`, Sutherland-Hodgman), laid as a fan of quads; `EGP.traps` only | 39 |
+| `glRelBanners` (after `glRelJaws`) | each banner tile in view as `drawBannerTile` draws it (rod, runner, fringe), short of the next column's front plane where the cloth is cut, the gap of a cut runner left open (the wall shows through it) | 39 |
 
 The room picture also flattens the back wall's art under each doorway (`drawRoomStatic`'s doorway cut-outs, round 15) so the doors drawn
-live are not embossed. Checks: `tilescan.py`, `openscan.py`, `doorscan.py`, `liftscan.py`.
+live are not embossed. Left as they are (round 39): lamp bodies, free lamp stands and the sky clock are rubbed only by their lights'
+ellipses (`glRelEx`: a flask and most of the clock are covered). Checks: `tilescan.py`, `openscan.py`, `doorscan.py`, `liftscan.py`.
 
 ### Metal
 
@@ -376,8 +416,9 @@ How an element relates to the beams:
   round 38a). Anything else drawn live on the floor's face is alpha 255 and gets no footprint (`fpGate`, round 35b).
 
 Classic: the beam sprites are cut by the walls' and low ceilings' faces (`ryLow`), the sand (`rySandCut`), what stands on the floor
-(`ryStand`, `ryStandCut`) and blockers in a beam's haze (`ryHull`, drawn `RY_SH` 5 times so the shadow fades and widens toward the floor);
-figures cut the haze to `RY_FIG2D`. Classic draws no figure shadow in the haze. Checks: `beamshot.py`, `beamwall.py`.
+(`ryStand`, `ryStandCut`: a saw's slot and blade, raised stakes, a lying roof block, flasks, and since round 39 a sky clock's pedestal
+and a free lamp's floor stand; their own contact shadows stay lit floor) and blockers in a beam's haze (`ryHull`, drawn `RY_SH` 5 times
+so the shadow fades and widens toward the floor); figures cut the haze to `RY_FIG2D`. Classic draws no figure shadow in the haze. Checks: `beamshot.py`, `beamwall.py`.
 
 ### Atmosphere
 
@@ -392,8 +433,11 @@ colour. Skipped when nothing of it is on screen and in the Crossing.
 
 Rule (round 27d): no travelling bands in a look effect. The Blue Chambers' glaze was a sine of x and y that slid as slanted bars over
 windows and beams; it is now soft noise patches that swell in place, times the scene's alpha (never on the sky). Sharp single glints stay
-in 2D at full resolution (`lampGlints`, `stoneGlints`, `graniteGlints`, both modes). Classic: `atmoPass` (mist sprites on floors, motes
-near lamps), `classicLookFx` (embers, incense), the haze strip (`hazePass`, both modes).
+in 2D at full resolution (`lampGlints`, `stoneGlints`, and Aksum's granite crystals in `classicLookFx`, both modes; `graniteGlints` is
+defined but never called). A glint or crystal on a wall's or low ceiling's face or a slab's lip is not drawn (`onFace`; round 39: they
+tested the cell, so a face's left `HX` px kept them). Classic: `atmoPass` (mist sprites on floors, cropped through the sprite's source
+rectangle to the floor's front edge and the faces ending its run, round 39; motes near lamps, none on a face), `classicLookFx` (embers,
+incense), the haze strip (`hazePass`, both modes).
 
 ### Floor looks
 
@@ -470,7 +514,7 @@ A new element drawn live over the room picture must:
 | Must | Why | Round that taught it |
 |---|---|---|
 | be drawn with ordinary Canvas2D calls in the shared code and checked in Classic, Torchlight and `?wgl=0` | one drawing code, three paths | v61 (WGL) |
-| be rubbed out of the relief if it hides the back wall (`glRelFloors`/`glRelLive` for a tile type, `glRelBox`/`glRelQ` for a box or quad, `glRelSlab` for a slab) | the relief reads the room picture, so the wall's art is embossed on anything drawn over it | 16c slabs, 21b sand, 26a lifts, 35c tiles, 37b jaws, 38a roof blocks |
+| be rubbed out of the relief if it hides the back wall (`glRelFloors`/`glRelLive` for a tile type, `glRelBox`/`glRelQ` for a box or quad, `glRelSlab` for a slab), only where it is drawn | the relief reads the room picture, so the wall's art is embossed on anything drawn over it | 16c slabs, 21b sand, 26a lifts, 35c tiles, 37b jaws, 38a roof blocks, 39 banners, the falling block |
 | have every palette key it reads in every palette that reaches it (`silPal`, `guardPal`, `PAL_HERO`, `PAL_SKEL`) | a missing key throws inside `figDraw`; the silhouette goes null and its shadow, beam cut, metal carve and fill cut with it | 27c |
 | record its outline in `SHC` as drawn (`shcBeg` ... `shcEnd`, thin parts 1.2 px wider) if it stands in front of the back wall, so `glMask` carves it out of the lamp shadow; check with `shadowscan.py` | otherwise a figure's shadow is painted across its face | 19 walls, 20a low ceilings, 37b jaws, 38a the rest |
 | add a quad to `beamBlockers` if it stands across the corridor's depth | otherwise a beam passes through it and its haze lies over it | 20a, 38a lift mouth slabs |
@@ -481,9 +525,12 @@ A new element drawn live over the room picture must:
 | use rectangle clips where it can and no pass of its own (a new mask goes in the atlas) | stencil clips and passes cost more than their pixels on a tile GPU | v61 rounds 3-4 |
 | take no jitter per low-resolution pixel and no travelling bands | staircases and crawling bars | v61b march, 27d glaze |
 | light through `gatherLights`, not paint light into the scene; key looks on `keyLight`'s `sx`, never on one lamp or a flickering radius | both modes read the same lights; flicker flipped the slab's lit face | 20b |
-| be cut by what stands nearer (wall faces `HX` left of their cell, low ceilings, lift columns) as figures and lifts are | live drawing comes after every room picture | 19, 26a, 37c |
+| have its parts' rows in [layers.md](layers.md) and be cut by the stone nearer than its layer: `nearCut` (walls' and low ceilings' faces `HX` left of their cells; with `fl` the floor slabs) for a part, `onFace` for a particle, `airCut` for a soft sprite, `wallPress`/`figClip` for a figure, `liftOccl`/`liftNearCut` in a shaft; a part nearer than the figures is drawn after them (the near-halves loop); check with `layerscan.py` (`layerscan: ok`) | live drawing comes after every room picture, which holds the back wall and the front plane together, so the stone in front is never given by draw order | 19, 26a, 37c, 39 |
 | be a pure function of the clock and its tiles where it animates (hashes, no generator stream) | rewind-safe, layouts unchanged | 21b, 26d |
 
 Checks for rendering: `rendersmoke.py` (both modes, every floor), `glauto.py`, `metaltest.py`, `tilescan.py`, `openscan.py`,
-`doorscan.py`, `liftscan.py`, `beamshot.py`, `beamwall.py`, `cpscan.py`, `shadowscan.py`, `stormfair.py`; pixel comparisons `wgl_cmp.py`,
-`wgl_maskcmp.py`, `wgl_parity.py`, `wgl_relcmp.py`; cost `wgl_calls.py`, `wgl_gputime.py`, `?prof`, `?bench`.
+`doorscan.py`, `liftscan.py`, `beamshot.py`, `beamwall.py`, `cpscan.py`, `shadowscan.py`, `stormfair.py`;
+`layerscan.py [file] [lo hi] [seeds] [torch|classic|both] [kinds=] [phases=K]` (round 39, by hand, not yet in `suite.py`: views covering
+every instance of each kind, each drawn whole and with that kind left out by `LAYER_DBG.hide`; the front plane's pixels must not change;
+must print `layerscan: ok`);
+pixel comparisons `wgl_cmp.py`, `wgl_maskcmp.py`, `wgl_parity.py`, `wgl_relcmp.py`; cost `wgl_calls.py`, `wgl_gputime.py`, `?prof`, `?bench`.

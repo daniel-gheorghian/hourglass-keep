@@ -2,13 +2,14 @@
 
 What the game is, how it plays, how floors are built, and one file per game element: how it plays, how it is drawn in Classic and
 Torchlight, what each shader pass does with it, how it relates to the other elements, and what the prince and the guards can do with it.
-They describe the code as of v83 (`dev/hourglass-keep.html`), checked against it function by function.
+They describe the code as of v84 (`dev/hourglass-keep.html`), checked against it function by function; round 39's layering rule is
+[layers.md](layers.md).
 
 `CLAUDE.md` stays the log: the owner's rules round by round, with the reasons and numbers. These files are the state those rounds left.
 Where the two disagree, the code is right, and the list at the end says where.
 
 Example of use: to add a new trap that stands across the corridor (like the slicer), read [rendering.md#checklist](rendering.md#checklist)
-for what a live thing over the room picture must do (relief rubbing, palette keys, `beamBlockers`, its outline in `SHC` for the lamp shadow, `fpMark`), then
+for what a live thing over the room picture must do (its rows in [layers.md](layers.md) and its cut by the nearer stone, relief rubbing, palette keys, `beamBlockers`, its outline in `SHC` for the lamp shadow, `fpMark`), then
 [slicer-jaws](elements/slicer-jaws.md) for the nearest existing case, then [level-design.md](level-design.md) for where the generator
 may place it and which stream it may draw from.
 
@@ -20,6 +21,7 @@ may place it and which stream it may draw from.
 | [gameplay.md](gameplay.md) | controls and the pause menu, every move with its numbers, physics, falls, lives and flasks, what hurts, death and rewind, timed gates, fighting, the chase, hints, the bot |
 | [level-design.md](level-design.md) | seed to floor: routes, runs, turns and chambers, forks, the spice and flags, puzzles, trap density, budgets, secrets, the damaging drop's test, timers, the random streams, invariants and their checks |
 | [rendering.md](rendering.md) | both modes, the frame, draw order, the view and its cuts, every Torchlight pass (anchors below), floor alpha marks, the checklist for a new live element |
+| [layers.md](layers.md) | the layering rule (round 39): L0 backdrop, L1 back wall, L2 corridor with its depths and air, L3 front plane, L4 overlay; what may cover what, what each light pass may touch, the approved exceptions, and every element's parts with their layer and the cut that keeps the nearer stone in front |
 
 | Element | Covers |
 |---|---|
@@ -50,7 +52,7 @@ may place it and which stream it may draw from.
 | [the dark](elements/the-dark.md) | the chase |
 | [the Crossing](elements/the-crossing.md) | the interlude between themes |
 
-Every element file has the same sections: At a glance (code, generator, bot, checks, pictures), Example, In play, The prince and the
+Every element file has the same sections: At a glance (code, layer, generator, bot, checks, pictures), Example, In play, The prince and the
 guards, How it is drawn, Light shadows and effects (one row per pass), Relations to other elements, Rules for changing it, History.
 
 Rendering anchors: [G2D](rendering.md#g2d-and-the-replay), [light map](rendering.md#light-map), [key light](rendering.md#key-light),
@@ -63,7 +65,8 @@ Rendering anchors: [G2D](rendering.md#g2d-and-the-replay), [light map](rendering
 ## Elements against the passes
 
 Short answers; the element's own file has the detail. "Lamp shadow" is whether a figure's Torchlight shadow is carved out of it
-(`glMask`, `SHC`) or lands on it; "floor looks" is round 31's embers and sheen.
+(`glMask`, `SHC`) or lands on it; "floor looks" is round 31's embers and sheen. Each element's layer is in its At a glance table and in
+[layers.md](layers.md).
 
 | Element | Light map | Lamp shadow | Relief | Metal | Sky beams | Floor looks | Blocks beams | Hurts him | Guards |
 |---|---|---|---|---|---|---|---|---|---|
@@ -79,7 +82,7 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [pendulum](elements/pendulum.md) | a glint on the blade | blade and arm carved (`SHC`) | glint rubbed | yes (steel, gold fittings) | no | n/a | no | 1 life (not crouched) | never placed or hit |
 | [fire vent](elements/fire-vent.md) | fire light (110 px) | casts shadows; not carved | glint rubbed | no (lights the metal) | footprint on the grate | off its tile (`FT_FLAT`) | no | 1 life (no height test) | never placed or hit |
 | [darts](elements/darts.md) | visible shooter only | no | no (trap-light ellipse) | no (glint painted) | no | spent dart 255 | no | 1 life | no / no |
-| [roof blocks](elements/roof-blocks.md) | while hanging and falling | falling and lying carved (`SHC`) | `glRelRoof` (falling, lying) | no | footprint cut | block 255, rubble 251 | no | 1 life | stop at it / no |
+| [roof blocks](elements/roof-blocks.md) | while hanging and falling | falling and lying carved (`SHC`) | `glRelRoofFall` (falling, as clipped), `glRelRoof` (lying) | no | footprint cut | block 255, rubble 251 | no | 1 life | stop at it / no |
 | [movable blocks](elements/movable-blocks.md) | no | carved as a wall | `glRelFloors` | no | as a wall | 255 | yes, as a wall cell | no | blocked / no |
 | [hurtdrop](elements/hurtdrop.md) | no | no | from the room picture | no | no footprint in the hole | 251 marks | no | 1 life (the fall) | no / no |
 | [gates](elements/gates.md) | a timed gate's roundel | down slabs carved (`SHC`) | `glRelSlab` | iron gate only | no footprint; the grating's bars take one | slab 255 | portcullis and lift mouth slabs down | no (blocks only) | blocks guards; never pressed by them |
@@ -87,12 +90,80 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [cracked slabs and sand wells](elements/cracked-slabs-and-sand-wells.md) | glint; warm light below while breaking | slab carved, sand not | `glRelFloors`, `glRelWell` | no | sand cut (`sandSegs`); the slab takes a footprint | off (`FT_FLAT`) | the sand | the fall (stakes, two storeys); crush 1 life | no |
 | [lifts](elements/lifts.md) | trap glint | platform, ropes, slabs carved (`SHC`); the counterweight not | `glRelLifts`, `glRelSlab`, `glRelBox` | none (iron only with `EGP.traps` off) | no openings in shafts; sand cut out | none | the sand column; mouth slabs down | no (an empty shaft is a fall) | no |
 | [swing bar](elements/swing-bar.md) | trap glint, ready glow | not carved | no | no (wood and rope) | no | no | no | no (spikes under it do) | no |
-| [banners and slides](elements/banners-and-slides.md) | none | not carved | no | no | no | no | no | no (the slide is safe) | no |
+| [banners and slides](elements/banners-and-slides.md) | none | not carved | `glRelBanners` | no | no | no | no | no (the slide is safe) | no |
 | [kick shafts and jet streams](elements/kick-shafts-and-jet-streams.md) | trap glint at the foot; the jet none | walls carved as stone | no | no | no | no | no | falls only | no |
-| [checkpoint](elements/checkpoint.md) | lit: an item light (r 150) | clock and pedestal carved (`SHC`) | no | no | no footprint (255) | no | no | no | no |
-| [flasks and secrets](elements/flasks-and-secrets.md) | a coloured item light | flasks carved (`SHC`) | no | no | no footprint (255) | no | no | poison: 1 life | an ambush guard at the gold flask |
+| [checkpoint](elements/checkpoint.md) | lit: an item light (r 150) | clock and pedestal carved (`SHC`) | partly: its lights' ellipses (`glRelEx`) | no | no footprint (255) | no | no | no | no |
+| [flasks and secrets](elements/flasks-and-secrets.md) | a coloured item light | flasks carved (`SHC`) | its light's ellipse (`glRelEx`) | no | no footprint (255) | no | no | poison: 1 life | an ambush guard at the gold flask |
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
+
+## What round 39 found, and what v84 did
+
+Round 39 (owner: "We need a layering rule ... background, back wall, corridor, front wall ... take each of the game elements and assign
+them to one layer ... check that we draw correctly the game elements"). [layers.md](layers.md) states the rule (L0 backdrop, L1 back wall,
+L2 corridor with its depths and air, L3 front plane, L4 overlay; R1 order, R2 openings, R3 passes per layer) and every element's parts.
+Four audits checked the code against it (the back wall and what is fixed on it; floor things; things across the depth and hanging;
+figures and air); v84 is rounds 39d (figures, falling things), 39e (hanging, across the depth, floor things) and 39f (the back wall and
+the air). Look only: layouts identical against v83 (`layoutcmp.py` floors 1-24, seeds 1-2); hit boxes, timing, `estPath` and the bot
+unchanged. Each element's file has a Layer row and a round 39 History line.
+
+### In the game
+
+Pixels are the audits' counts over the front plane in their frames (v83 -> v84).
+
+| Finding (v83) | Where | v84 | Seen in |
+|---|---|---|---|
+| A dead prince, a dying or dead guard and its crumbling were never cut by a face; the press was dropped, so a pressed guard slid up to 20 px into the face as he died | `drawDynamic`, `figClip` | fixed (39d): the last press kept (`P.rdx`, `g.rdx`), cut by the faces within 28 px (`deadCut`; grains `midHid`); dead prince 1,878 px -> 0 | [prince](elements/prince.md), [guards](elements/guards-and-snakes.md) |
+| A face on a figure's left never cut it (crouching at a left wall, head and hands up to 18 px past it; hanging with the wall below on his left pulled him 6 px into its side face) | `wallPress` | fixed (39d): `wallPress` two-sided (`wallRows`, `figReach.left`), pressed right up to `HX`+4; the hang pulls 2 px; crouch 3,713 px -> 0, run 1,243 -> 0 | [prince](elements/prince.md) |
+| Pushing or pulling, he was cut at the block's two cells, not its drawn face (hands 13 px over it, or arms 18 px short) | `wallPress` | fixed (39d): `wallRows` takes the moving block's drawn face; the press holds at -13.1 px (v83 -8 to -20) | [movable blocks](elements/movable-blocks.md) |
+| A guard dropping in was drawn over the ceiling's stone for about 0.35 s | `drawDynamic`, `glSilhouette` | fixed (39d): `dropCeil` clips him and his silhouette at the ceiling's lower edge; 7,952 / 6,525 px -> 0 | [guards](elements/guards-and-snakes.md) |
+| Hanging over open space, his forearms and head lay over the ledge's lip | `figClip` | owner: "Cut the arms at the lip, keep only the hands": `figClip` modes 3 and 4 (39d), his shadow too; 425 px -> 0 | [prince](elements/prince.md) |
+| `drawShut`'s copies lay over the wall he hides behind in a chase and the faces beside him | `drawShut` | fixed (39d): only where the back wall shows; the smear only on floor tops; 2,089 px -> 0 | [the dark](elements/the-dark.md) |
+| A falling plank and a corridor's cracked slab (chunks, billow) went over the next cell's lip and the pit wall's face | debris loop | fixed (39d): `debrisCut`; plank 1,031 px -> 0, slab 7,070 -> 0; the landing cloud in `airCut` (39f) | [cracked slabs](elements/cracked-slabs-and-sand-wells.md) |
+| A banner's runner, rod and fringe ran 7 px onto the next column's face, the landing's top and lip (floor 4 seed 1, column 85) | `case 'banner'` | fixed (39e): cut at that column's front plane (`nearCut`); 10,648 px -> 0 Classic, 9,275 -> 0 Torchlight. Owner: a banner covers the back wall, so it may be over windows and wall art | [banners](elements/banners-and-slides.md) |
+| A banner had no relief rubbing: the wall's art was embossed on it | `glRelief` | fixed (39e): `glRelBanners`; 1,324 px -> 0 | [banners](elements/banners-and-slides.md) |
+| A lift's left mouth slab was drawn whole before the figures, so a figure on the landing covered its front face | `drawLiftCounterweight`, `drawSandLift` | fixed (39e): its front face after the figures (`liftMouthL`); 1,901 px -> 0, sand lift mouth 1,278 -> 0 | [lifts](elements/lifts.md) |
+| The falling roof block was unclipped: over the ceiling's face round the slot for 0.15 s (411 of 411), over a wall's face under a high ceiling (floor 41); the hanging block's trickle crossed the next column's face | `egRoofFall`, `egRoofHang` | fixed (39e): `roofFallClip`, the trickles cut, the `SHC` record from the hole's top, `glRelRoofFall`; 2,207 / 5,934 / 5,720 px -> 0 | [roof blocks](elements/roof-blocks.md) |
+| A sky clock on a sand lift's foot (33 of 96 floors) was drawn before the lift: after the ride the shaft's back covered half of it | `drawDynamic` | fixed (39e): `cpOnLift`; the clock's visible px 4,475 -> 7,863 | [checkpoint](elements/checkpoint.md) |
+| Darts vanished about 80 px into a 131 px flight (an 81 px clip window) while they still hit | dart loop | fixed (39e): cut on the mouth's side only; a dart 100 px out 391 -> 1,187 px drawn | [darts](elements/darts.md) |
+| A hidden flask's stars reached past a wall's face beside it (23 of 48) | `drawDynamic` | fixed (39e): a rectangle at the face; 112 px -> 0 | [flasks](elements/flasks-and-secrets.md) |
+| The front stake (depth .26) was drawn before him, so he covered it | spikes | fixed (39e): `drawNeedles`, `SPK_NEAR`: drawn after the figures; it covers 454 px of him | [spikes](elements/spikes.md) |
+| A gate's far half and slots lay over a floor's lip beside its lintel (floor 33 seed 2, 1 of 1,438); `glRelSlab` flattened 8 px of the lintel's face | `drawGate`, `glRelSlab` | fixed (39e): cut at the lip (`nearCut`); the rubbing from the ceiling's edge; 397 px -> 0 | [gates](elements/gates.md) |
+| On floors whose first run heads left the start door's frame lay 18 px over the next wall's face (38 of 96 floors) | `drawDoor`, the entry | fixed (39f): `startDoorX` (`DOOR_HW` 18) for the door, the cut-out, the entry and `doorClip`; `L.start.x` unchanged; `doorscan.py` frames it there | [doors](elements/doors.md) |
+| A lamp's tongues, embers, smoke and glow lay over the slab's lip and top above it (136 of 6,525 lamps with a floor overhead) | `drawLight` | fixed (39f): `lampCeil` (260 lamps take its even-odd path) | [lamps](elements/lamps-and-light.md) |
+| What the room picture lays on a floor ran onto the faces (a breach's rubble 7.5 px, 199 of 2,450 breaches; specks; the hurtdrop's heap); the hurtdrop's dark shaft darkened every right neighbour's lip, put a black band on a wall's face (6 layouts) and blacked out 12 of 77 shafts' openings | `rlEnd`, `drawRoomStatic` | fixed (39f): `rlEnd` cuts the scratch layer at the faces; the shaft's dark is its back wall, in stage 0 (a window in it now shows the sky) | [stonework](elements/stonework.md), [hurtdrop](elements/hurtdrop.md) |
+| Classic's beam footprint lay over a sky clock's pedestal and a free lamp's floor stand | `ryStand` | fixed (39f): their boxes | [checkpoint](elements/checkpoint.md), [lamps](elements/lamps-and-light.md) |
+| Air was drawn over the faces: motes, gusts, petals, bats, ash, moths, flies, sparks, wisps, FX particles, the sword's rings, smoke, the landing cloud, trickles, drips, the floor mist | `ambientLit`, `atmoPass`, `ambientGlow`, `drawEmissive` | fixed (39f): `onFace`, `airCut`, `faceGap`, the mist cropped | [rendering](rendering.md#cuts), [stonework](elements/stonework.md) |
+| `lampGlints` and the granite crystals tested the cell, not the face (a face's left `HX` px kept them) | `lampGlints`, `classicLookFx` | fixed (39f): `onFace` | [lamps](elements/lamps-and-light.md), [stonework](elements/stonework.md) |
+| The kick shaft's jet stream ran 6 px onto the right wall's face (236 of 236) | `jetPlaces` | fixed (39f): `wx1` `X+TW-HX` | [kick shafts](elements/kick-shafts-and-jet-streams.md) |
+
+`layerscan.py` (round 39, by hand; floors 3-8, Classic): banner 86 bad views -> 0; air 238, door 1, lamp 6 -> 0; lift, clock, stone and
+gate 0. `liftscan.py` floors 3-8 Classic and 6-8 Torchlight `ALL OK`.
+
+Side effect: in a kick shaft (24 px at mid-depth) he is now cut by both walls, so his head loses about 4 px at the walls (v83 drew him
+19.5 px into the far wall).
+
+Left as they are (decisions or low): the gate slab's top piece above the ceiling's edge over the lintel's side face (round 14's look; the
+owner's call); the swing bar's near pole segment and near rope drawn before him; things not recorded in `SHC` (bar, lift rig, paternoster
+loop and wheels, banner, free lamp stand and flame, well sand, falling slabs, vent flame, darts, a let-go flask); additive glows drawn in
+`drawDynamic` over the sky raise Torchlight's scene alpha; the relief on lamp bodies, free stands and the clock (only their lights'
+ellipses rub them); the vent's back-row flames after the figures; blocks' beam tile map rebuilt every 40th call and both cells carved
+during a move; the hint streams and the descending cue brushing a face's end by a few px; a figure's shadow, beam cut, fill cut, relief and
+trails at its play x, not its pressed x; the lamps' and the exit's glow sprites (light); in Classic a lamp's light band on the foot of a
+face; `graniteGlints` never called.
+
+### The docs against the code (round 39)
+
+| The docs said (v83) | The code (the docs now say so) |
+|---|---|
+| spikes: "He is drawn after the stakes, so he stands in front of them" | v83's draw order, not a rule; now the front stake is drawn after him and covers him |
+| flasks: the relief "not rubbed" | the soft ellipse round its `item` light (`glRelEx`) covers the flask |
+| checkpoint: the relief "not rubbed (no `glRel*` names it)" | partly: its lights' ellipses (`glRelEx`) cover most of it |
+| checkpoint: Classic's footprint "not in `ryStand`" | it is now (round 39) |
+| banners: "Nothing cuts the banner" | the next column's front plane does (round 39) |
+| gates: "What cuts it: its own clips only" | and a floor's lip beside the lintel (round 39) |
+| doors: `doorscan.py` and `stairscan.py` "Neither is in `suite.py`" | `doorscan.py` is in the release tier since round 38c; `stairscan.py` by hand |
+| rendering, lamps and light: `graniteGlints` among the 2D glints drawn in both modes, and among `keyLight`'s readers | defined but never called; the granite crystals are `classicLookFx`'s (`fx.granite`) |
 
 ## What the docs found, and what v83 did
 
@@ -186,5 +257,5 @@ seeds". v83 (round 38c):
 
 ## Keeping them current
 
-A round that changes an element updates that element's file in the same commit (its rules, passes and relations), and adds its History
-line; CLAUDE.md keeps the round's entry as before. A new element gets a file on the template above and a row in both tables here.
+A round that changes an element updates that element's file in the same commit (its layer, rules, passes and relations) and its rows in
+[layers.md](layers.md), and adds its History line; CLAUDE.md keeps the round's entry as before. A new element gets a file on the template above and a row in both tables here.
