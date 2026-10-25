@@ -87,6 +87,13 @@ if os.path.exists(os.path.join(HERE, 'hk_v69_release.html')): # (its baseline is
     J += [('figscan', ['figscan.py'], tail_check(r'figscan: ok'))] # (round 23) the body's poses: held hands, crown, soles, the keyed jumps and steps
 if mode == 'release':
     J += [('shadowscan', ['shadowscan.py', str(n), str(n + 5)], tail_check(r'shadowscan: ok')) for n in range(1, 49, 6)] # (round 38a) no figure's lamp shadow on what stands before the back wall (Torchlight)
+def art_check(out): # doorscan / openscan print counts per kind and mode: every count of bad must be 0, and no page errors
+    ok = 'errors []' in out and not re.search(r'(torch|classic) [1-9]\d*( of|,| \()', out)
+    return (ok, ' | '.join(l.strip()[:60] for l in out.strip().splitlines()[-2:]))
+if mode == 'release': # (the art-over-openings scans of rounds 15, 16c and 35c, both modes; all twelve themes over floors 1-48)
+    J += [('doorscan', ['doorscan.py', str(n), str(n + 11)], art_check) for n in range(1, 49, 12)]
+    J += [('openscan', ['openscan.py', str(n), str(n + 11)], art_check) for n in range(1, 49, 12)]
+    J += [('tilescan', ['tilescan.py', str(n), str(n + 11), 'views=2'], tail_check(r'tilescan: ok')) for n in range(1, 49, 12)]
 # longest jobs first so the tail of the run isn't one slow floor
 RANK = {'liftscan': 0, 'crossscan torch': 0, 'shadowscan': 1, 'crossscan': 2, 'featbot fight': 0, 'run2 fight': 1, 'rendersmoke': 2, 'puzzlescan': 3, 'primtest': 3, 'lifttest': 3, 'featbot': 3, 'metrics40': 4, 'featurescan': 4, 'forktest': 5, 'run2': 6}
 def floor_of(a): return max([int(x) for x in a[1:] if x.isdigit() and int(x) < 100] or [0]) # (the run2 seed base is not a floor)
@@ -152,7 +159,7 @@ def go(j, w):
 # Jobs that draw Torchlight (software WebGL in headless Chromium, which spreads each frame over several cores) run at most
 # GPU_JOBS at a time; the other workers take bot jobs meanwhile. Eight of them at once took four times as long each and no
 # less in total, which pushed rendersmoke past its wall budget (v67: 1 alone 53 s, 4 at once 137 s each, 8 at once 300 s each).
-HEAVY = ('rendersmoke', 'liftscan', 'crossscan torch', 'cpscan', 'shadowscan')
+HEAVY = ('rendersmoke', 'liftscan', 'crossscan torch', 'cpscan', 'shadowscan', 'doorscan', 'openscan', 'tilescan')
 GPU_JOBS = int(os.environ.get('HK_GPU_JOBS', '3'))
 t0 = time.time(); res = []; QL = queue.Queue(); QH = queue.Queue(); GPU = threading.Semaphore(GPU_JOBS)
 # --resume FILE (or HK_SUITE_JOURNAL): every finished job is appended to FILE as one JSON line, and a run started with the same FILE

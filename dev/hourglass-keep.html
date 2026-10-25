@@ -6083,9 +6083,9 @@ function stoneBox(ctx,kind,x0,yt,w,h,o){const K='#0b0812',S=4,TX=stoneTex(kind,7
 // depth of the corridor and lies there, chipped and dusty from the fall. The sand: thin slow trickles from its joints while it waits (the
 // warning), growing exponentially through the 0.3 s it shifts, a billow as it lets go and another as it lands, the dust settling after.
 // (gameplay, round 12, owner: "collapses to the floor, occupies the full width of the corridor and becomes an obstacle over which the prince
-// needs to jump"): lying, it is BLK_W across and BLK_H high, solid to him and to guards below its top (clampMove); his body's box stops 6 px
-// above his feet, so any jump that lifts his feet 4 px clears it: the standing and running jumps, the low leaps under a ceiling; a pair of
-// them side by side (a side passage's) takes a running jump (the full one clears 91 px at that height, the pair needs 66). One who lands on
+// needs to jump"): lying, it is BLK_W across and BLK_H high; since round 16a solid only to guards below its top (clampMove), he steps over it (blockStep). Before, his body's box stopped 6 px
+// above his feet, so any jump that lifted his feet 4 px cleared it: the standing and running jumps, the low leaps under a ceiling; a pair of
+// them side by side (a side passage's) took a running jump (the full one clears 91 px at that height, the pair needs 66). One who lands on
 // it slides off to the nearer side. It stays where it fell. A rewind restores its state with the rest (dyn, rubble); a respawn rebuilds
 // the floor, so every trap is reset and the block hangs again (as cracked slabs come back); a Continue brings it back as it was saved
 // (fallen ones lie fallen: S.resume's stn, f.s 3).

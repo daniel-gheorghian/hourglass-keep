@@ -57,7 +57,7 @@ Ranks and hit points (`d = min(1,(n-1)/24)`):
 
 | Rank | Dress, weapon | Parry | Riposte | Aggression | Wind-up s | HUD |
 |---|---|---|---|---|---|---|
-| recruit (`TIERS[0]`) | ochre head cloth, club | 0.12 | 0.2 | 0.32 | 0.40 | name and hearts in `#8fa3d8` |
+| recruit (`TIERS[0]`) | ochre head cloth, club | 0.12 | 0.2 | 0.32 | 0.40 | name and hearts in rose `#e894a4`, the hearts' line `#f6c6cf` (round 38b; light blue `#8fa3d8` before) |
 | soldier (1) | green head cloth, axe | 0.32 | 0.45 | 0.45 | 0.34 | `#e08a3c` |
 | veteran (2) | crimson tunic, leather cap, axe | 0.52 | 0.8 | 0.6 | 0.31 | `#d9483b` |
 | captain (`CAPT`) | leather corselet and cap, violet sash, khopesh | 0.66 | 0.85 | 0.68 | 0.30 | `#d8b04a` |
@@ -149,7 +149,7 @@ for each guard in view (not gone):
 |---|---|---|
 | Light map (`gatherLights`) | fill `FILL_COL`, r 56, a 0.22, while alive | fill `200,230,170`, r 34, a 0.25 |
 | Key light (`keyLight` sx) | lit side in `drawFigureHD` | lit side in `drawSnakeHD` |
-| Lamp shadow mask (`glShadow`) | yes, alive and in view: silhouette in `guardPal` (`silPal`), carved like the prince's (stone as drawn, low ceilings, jaws) | none (no silhouette) |
+| Lamp shadow mask (`glShadow`) | yes, alive and in view: silhouette in `guardPal` (`silPal`), carved like the prince's (stone as drawn, low ceilings, jaws, the outlines in `SHC`) | none (no silhouette) |
 | Relief | rubbed by `glRelEx` 24 x 40 px about `y-30` | rubbed through the small-fill rule (14 x 12 px) |
 | Metal mask / shader | axe heads and the khopesh by `msFig` (`MKID.bronze`); the club none; a live guard's silhouette carves the metal behind it | none |
 | Sky beams | Torchlight: in the figures' mask (`glcOcc`), the capped `RY_FIG` light, soft shadow in the haze; Classic: the haze over them cut to `RY_FIG2D` | none |
@@ -196,5 +196,7 @@ for each guard in view (not gone):
 - round 27c: silhouettes in each figure's own palette (`silPal`): robbers cast shadows and cut the beams again.
 - round 28b: soft figure shadows down the beams' haze (guards share it).
 - round 37b: the jaws carved out of every figure's shadow.
+- round 38a: what stands in front of the back wall (`SHC`) carved out of every figure's shadow.
+- round 38b: the recruit's HUD name and hearts rose (`#e894a4`, line `#f6c6cf`), not light blue: no guard colour is blue or white, the HUD's too.
 
 Details in CLAUDE.md (Fighters bullet, rounds 24, 27c).

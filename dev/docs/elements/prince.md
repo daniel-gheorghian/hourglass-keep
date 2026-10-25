@@ -136,7 +136,7 @@ Variants: `crossPal(tod)` multiplies `PAL_HERO`'s colours for the Crossing's hou
 |---|---|
 | Light map (`gatherLights`) | carries a fill light: `FILL_COL` 205,195,225, r 84, a 0.42 at `P.y-26` (none after falling out of the floor); Torchlight keeps the fill's share in the light map's alpha and the composite takes it off where the scene shows backdrop (round 25c) |
 | Key light (`keyLight` sx) | his lit side and lamp tint in `drawFigureHD` (`o.lt`) |
-| Lamp shadow mask (`glShadow`, effect mask r) | Torchlight: his `glSilhouette` cast on the back wall by up to two strong lights (`GLSTRONG`: torch, fire, door, win; r >= 84, within 1.5 r), offset away and stretched, alpha up to 0.85, 0.62 high when crouching, sliding or striking low; clipped by `figClip` when hidden; none when dead, exiting, deep in the entry. Then carved out (cyan multiply): the figures themselves, wall blocks as drawn (front face, top, right side), floor lips and tops, low ceilings' faces (round 20a), the slicer's jaws by `JAWP` (round 37b) |
+| Lamp shadow mask (`glShadow`, effect mask r) | Torchlight: his `glSilhouette` cast on the back wall by up to two strong lights (`GLSTRONG`: torch, fire, door, win; r >= 84, within 1.5 r), offset away and stretched, alpha up to 0.85, 0.62 high when crouching, sliding or striking low; clipped by `figClip` when hidden; none when dead, exiting, deep in the entry. Then carved out (cyan multiply): the figures themselves, wall blocks as drawn (front face, top, right side), floor lips and tops, low ceilings' faces (round 20a), the slicer's jaws by `JAWP` (round 37b), then every outline in `SHC` (round 38a: down slabs, stakes, a saw's blade, the pendulum, fallen roof blocks, the sky clock, flasks, lift platforms, slabs and ropes; see [rendering](../rendering.md#lamp-shadows)) |
 | Relief (`GLFX.relief`) | rubbed back by a neutral ellipse (`glRelEx`, 22 x 40 px about `P.y-30`) |
 | Metal mask / shader | his blade goes into the mask by `msFig` (`MKID.bronze`); near metal, his silhouette carves the mask behind him (multiply) before the figures' own blades are laid in |
 | Sky beams | Torchlight: a weak cool light on the side toward the beam, capped (`RY_FIG` 0.2, `RY_FIGC` 0.14), no bloom, no pane, rim or footprint on him; his shadow down the haze is soft (`glcOcc` at a quarter, `figC` 1-2-1 taps, round 28b; `u_of` skips it when no figure is near a beam). Classic (`ryBeams2D`): the haze over him cut to `RY_FIG2D` 0.7 and footprints cut by his silhouette; no shadow in the haze |
@@ -176,7 +176,7 @@ Classic's beam cut and `fillCut`. The sword shows in it only while drawn at a fo
 | A new palette key read by `drawFigureHD` must exist in every palette that reaches it (`PAL_HERO`, each `GUARD_PAL` rank, `crossPal`'s copy) | a missing `khat` threw in `shadeHex` and nulled every robber's silhouette, rounds 7 to 27b | round 27c |
 | Anything that hides part of him hides its shadow too (clip `glShadow` the same way) | `figClip` inside `glMask` | round 19 |
 | A shadow carve follows the stone as drawn (faces `HX` left of the cell), never the cell | the stripe on the lit face under a ledge | rounds 19, 20a |
-| A new thing standing across the corridor's depth in front of the back wall must be carved out of the shadow mask | `JAWP` in `glMask` | round 37b |
+| A new thing standing in front of the back wall must be carved out of the shadow mask: record its outline in `SHC` as drawn | `JAWP` in `glMask`; `SHC`, `shcCarve`, `shadowscan.py` | rounds 37b, 38a |
 | Nothing he carries lights the sky: a new full-screen draw after `drawDynamic` stays under `G2D.na`; no dst-alpha blend may read the scene's alpha | the pale halo that went with him over openings | round 25c |
 | Never key a look on a flickering radius or the one nearest light | `keyLight` | round 20b |
 | A canvas he is drawn into and redrawn every frame is marked `_glv=1`, so Torchlight takes it again each frame | `PTB` (`drawPTint`), `SHUT` (`drawShut`) | unit WGL |
@@ -198,5 +198,6 @@ Classic's beam cut and `fillCut`. The sword shows in it only while drawn at a fo
 - round 32: PoP's jump structure on the clips; 33a: the drawn apex; 33b: the careful step; 33c: from the hang to the cloth.
 - round 34: the running flight upright again (`leapPose`); 35a: the running jump's tempo (`RJ_K` 0.75).
 - round 36a: drawn in the Crossing (`crossPal`, `drawPTint`); round 37b: jaws carved out of his shadow.
+- round 38a: everything else drawn live in front of the back wall carved out of his shadow (`SHC`).
 
 Details in CLAUDE.md and `dev/FIGURE_SPEC.md`.

@@ -72,7 +72,7 @@ relief reads that picture and embossed the courses and friezes on the door and t
 | Part | Rule |
 |---|---|
 | Opening | 24 px wide, from `y0 = ctop + 6` down to the floor's back edge; nothing of the doorway shows above the ceiling's front edge |
-| Head (`doorHead`) | the dungeon style (Nun, Garama, Hawara: "the Cistern's") a round vault of radius 12; every other style a flat lintel 2 px under `y0` |
+| Head (`doorHead`) | the dungeon style (Nun, Garama, Hawara) a round vault of radius 12; every other style a flat lintel 2 px under `y0` |
 | Inside | the open exit: a stair light (`#fff0c8` to `#b8552e`) and 8 treads, each `EX_RS` 6.2 high and `EX_SX`, `EX_SY` (0.22 of the room's depth) deeper, the same in every style; otherwise dark (`#07050b`) |
 | Leaf (`doorLeaf`) by style | dungeon: oak planks, iron straps and rivets; palace: walnut, a gold star, brass studs; tile: painted blue, a gold star of the tomb ceilings, a turquoise border; forge: riveted blackened iron, its seams still glowing; crypt: verdigris bronze, a pale star medallion, turquoise glaze bands |
 | Jamb and threshold | the left jamb's inside face and the threshold, nearer than the leaf, dithered; warmed when lit |

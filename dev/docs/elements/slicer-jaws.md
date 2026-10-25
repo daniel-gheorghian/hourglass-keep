@@ -96,7 +96,7 @@ plate. While k < 0.6 a faint dust shaft joins the jaws.
 | Lamp shadow mask (`glShadow`, `glMask`) | carved: `glMask` fills both jaws' outlines from `JAWP` (only if recorded this frame, `jp.t === gameTime`) inside the plane's visible quad; the wall seen between open jaws keeps his shadow (round 37b) |
 | Relief (`glRelJaws`) | two quads rubbed back each frame: the ceiling's front edge to `upOff+4` under `ce`, and `loOff+4` over the floor line down to it, moving with k |
 | Metal mask / shader (unit MS) | the same `JAWP` outlines filled (any grain), the far half before the figures are carved out, the near half after (`planeClip` half 1 with `JAW_OV`); id `msKind('jaw')` (bronze with `EGP.traps`); lit from the four strongest lamps |
-| Sky beams | a blocker (`beamBlockers`, in both looks): two quads, the upper from the ceiling's front edge to `upOff+5`, the lower from `loOff+5` to the floor (half the teeth), the floor `ys+HY` where the shadow ends. Torchlight: `u_bk` (`glcBlk` passes the first four quads inside the shafts' box, so two slicers; tested exactly, softened over the march's step); the beam behind is shaded, only the near half of the haze lies over them, no footprint, no figure light. Classic: `ryHull`, drawn `RY_SH` 5 times at a fifth (penumbra), only for one in a beam's haze (`ryBlkLit`) |
+| Sky beams | a blocker (`beamBlockers`, in both looks): two quads, the upper from the ceiling's front edge to `upOff+5`, the lower from `loOff+5` to the floor (half the teeth), the floor `ys+HY` where the shadow ends. Torchlight: `u_bk[16]` (`glcBlk` passes up to `GLC_BK` 8 quads inside the shafts' box, four slicers; when more stand there, those in a beam's haze first, `GLCBL` by `ryBlkLit`; round 38a, four before; tested exactly by `blkC`, which skips a quad whose box the pixel misses, softened over the march's step); the beam behind is shaded, only the near half of the haze lies over them, no footprint, no figure light. Classic: `ryHull`, drawn `RY_SH` 5 times at a fifth (penumbra), only for one in a beam's haze (`ryBlkLit`) |
 | Mist / wall looks | none |
 | Floor looks (`floorFx`) | none of its own; where the plates and slot are drawn the scene is 255, so the embers and sheen keep off them |
 | Heat, the dark | none |
@@ -106,7 +106,7 @@ plate. While k < 0.6 a faint dust shaft joins the jaws.
 ## Relations to other elements
 | Element | Relation |
 |---|---|
-| [gates](gates.md) | the same plane and draw split (`plane`, `planeClip`, `slots`, `ceilShade`; far half before the figures, near half after), and both are beam blockers (the granite portcullis `egSlab` only with `EGP.traps`). Open point: `glMask` has a carve for `chomp` only, none for a gate, so a granite portcullis that is down still takes his lamp shadow on its face, the fault the jaws had before round 37b (found in the code, not checked in a picture). The portcullis is already rubbed out of the relief (`glRelSlab`) and is not metal |
+| [gates](gates.md) | the same plane and draw split (`plane`, `planeClip`, `slots`, `ceilShade`; far half before the figures, near half after), and both are beam blockers (the granite portcullis `egSlab` only with `EGP.traps`). Both are carved out of the lamp shadow: the jaws by `JAWP`, a portcullis that is down by its outline in `SHC` (round 38a, `shcCarve` after the jaws). The portcullis is rubbed out of the relief (`glRelSlab`) and is not metal |
 | [lamps and light](lamps-and-light.md) | `chomp` is not in `LAMP_NEXT`: a lamp may burn beside a slicer (the owner's case); `lampSpot` keeps one off its tile |
 | [stonework](stonework.md) | `ceilOff`: hung from a floor slab's lip or a wall; the open-hall pass keeps the lintel over it; hangings keep out of its column |
 | [prince](prince.md) | the near half crosses in front of him; his silhouette is carved out of the metal mask |
@@ -119,8 +119,8 @@ plate. While k < 0.6 a faint dust shaft joins the jaws.
   the same paths. `beamBlockers` and `glRelJaws` recompute `upOff`/`loOff` from `chompK` by hand: change the offsets in all three.
 - Wear and blemishes from hashes of the cell, never a generator stream.
 - A new metal look is a `METAL_EG` role read by `metalOf`, `metalPal` (cached in `MPAL` by style, role and `E`) and `msKind`.
-- A new thing standing across the corridor in front of the back wall needs its carve in `glMask`, its rubbing in the relief and, if
-  solid to light, a `beamBlockers` quad.
+- A new thing standing across the corridor in front of the back wall needs its outline in `SHC` (carved by `glMask`), its rubbing in the
+  relief and, if solid to light, a `beamBlockers` quad.
 
 ## History
 - PoP1: the slicer.
@@ -130,4 +130,5 @@ plate. While k < 0.6 a faint dust shaft joins the jaws.
 - Round 37b (v82; owner after v81: "The shadow of the prince over the guillotine jaws. Also the guillotine jaws needs to look more
   metallic"): bronze, opaque, `JAWG`'s reflection band, the bevel, the spine, verdigris, the key light, `JAW_OV`, the `glMask` carve,
   `glRelJaws`, `JAWP` recorded in both modes.
+- Round 38a: the shafts' shader tests up to 8 blockers (`GLC_BK`), those in a beam's haze first.
 - Details in CLAUDE.md.

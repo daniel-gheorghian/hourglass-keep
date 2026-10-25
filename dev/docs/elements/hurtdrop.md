@@ -28,7 +28,7 @@ hole. `hdtest.py` finds such floors (floors 5, 8, ... 26; seeds `40000+s*131+n*1
 | Geometry | hole cell EMPTY with the feature, the cell under it EMPTY, FLOOR two rows down; floor on both sides of the hole on its own row (`hurtGapSeg`; a fork's `drop2` builds the same) | 128 px: over 100 hurts, under 170 kills |
 | Damage | `land`: `dist >= 100` -> `hurt(1,'fall')`, white flash, shake, `landHurt`, stumble `0.6 + 0.85*(dist-100)/70 + 0.28*(maxHp-hp)` s (about 0.94 s at full health) | exactly one life; with one left it kills |
 | No grip | `edgeBelow` skips a cell with a `hurtdrop`: Down at the lip does not hang him from it (so no hanging drop of 71 px) | "a ragged, broken lip with nothing to grip" |
-| Grab in a fall | `findLedge` (Grab held in the air) has no `hurtdrop` test; whether a fall into the hole can catch the broken lip is (unverified) | |
+| Grab in a fall | `findLedge` (Grab held in the air) skips a `hurtdrop` as `edgeBelow` does: walking off either lip with Grab held, he never catches it and lands two storeys down, one life lost (round 38b; v82: 64 of 64 such falls caught a lip and let go 71 px unhurt) | the same rule from a fall |
 | Worth it, chamber | kept only if (a) a landing obstacle or guard lies on the skipped part (a seg after `hd.sg` that is not `turn-*`), (b) `tL - tS >= 0.25 tC` and (c) `(tL - tS)/0.34 >= 10`: `tL` = `estPath` of the safe way from the hole (+6 s for each `guard` seg), `tS` = 0.34 s a tile along the lower floor + 1 s, `tC` = the whole chamber's `estPath`. Else the kit is tried again without it | owner's rule: a life only for a real saving |
 | Worth it, fork | `forkWorth`: the long way at least 10 tiles longer and `tLong - tShort >= 0.25 tLong` (`tLong` 0.34 s a tile + 4 s; `tShort` the shortcut's `estPath` + 1 s); `forkFoot` also requires something on the long way after the hole (a seg not `turn-`, `fork-` or a move) | same rule |
 | Fork kinds | kind 2: a damaging descent beside the long safe way (its kit any of down, drop2, banners, collapse, jumpdown); kind 4: one-way, its kit only `down` and `drop2`; both start with the `drop2` at the hole. Weights 2/4: floors 6-9 0.25/0.40, 10-17 0.20/0.25, 18 on 0.20/0.20; longway flag: all kind 4 below floor 10, then half kind 3, half kind 4 | kind 2 after PoP1 levels 5 and 7 |
@@ -106,7 +106,7 @@ feature marked `fork`, and lifts are "never broken, never like a hurtdrop".
 - Owner (2026-10-14): a drop that costs health must be worth it and must look like one. Keep the worth tests (obstacle or guard
   skipped, 25% of the route by `estPath`, 10 tiles); if they fail, place nothing.
 - Its look comes from the tile type only: never a spiked pit's or a plain gap's look, never theme art in its place.
-- Exactly one life at full health: keep the drop at two storeys (128 px) and the lip ungrippable (`edgeBelow`).
+- Exactly one life at full health: keep the drop at two storeys (128 px) and the lip ungrippable (`edgeBelow`, `findLedge`).
 - The bot and the length metrics take the safe way; `hdtest.py` and `forktest.py` take the damaging one. A new placement records
   itself in `L.hurtdrops` or `L.forks` so they can find it.
 - Looks use hashes, no generator stream; the chamber roll uses `vrng`, the forks `frng`.
@@ -117,4 +117,5 @@ feature marked `fork`, and lifts are "never broken, never like a hurtdrop".
 - Forks of kinds 2 and 4 from floor 6 (PoP1 levels 5 and 7: "climb down at the expense of one life bullet").
 - The chamber shortcut `hgap` from floor 5; later kept only where it saves a quarter of the chamber and ten tiles (`hdtest.py`).
 - round 18: no jet stream on hurtdrops.
+- round 38b: the lip cannot be caught from a fall with Grab held either (`findLedge` skips a hurtdrop; `r38b_tests.py` `hurtdrop`).
 Details in CLAUDE.md.

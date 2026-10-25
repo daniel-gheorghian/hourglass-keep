@@ -80,7 +80,7 @@ So a dart passing him is drawn behind his figure.
 | Lamp shadow mask (`glShadow`, `glMask`) | not carved: the wall the shooter is on is carved as a WALL cell (front face, top, right side); the head beyond it and the darts are not |
 | Relief (`GLFX.relief`) | no rubbing of its own; the `trap` light of a visible shooter gets `glRelief`'s soft neutral ellipse (`glRelEx`, as every `trap` light), which flattens the relief round the head |
 | Metal mask / shader | none: `drawMetalMask` has no `darter` case and `METAL` no dart role (the section heading "forged metal (... the darts)" names them, but nothing of a dart is masked); the head's glint is painted in both modes |
-| Sky beams | none (`beamBlockers` takes only jaws and granite gates) |
+| Sky beams | none (`beamBlockers` takes only jaws, granite gates and lift mouth slabs) |
 | Mist / wall looks | none |
 | Floor looks (`floorFx`, marks) | a spent dart lying on the floor is drawn live (alpha 255): floorFx and the footprint keep off it |
 | Heat, the dark | none |

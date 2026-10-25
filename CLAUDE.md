@@ -80,6 +80,11 @@ is a placeholder: only the built `index.html` carries the release number.
 | `sawceil.py lo hi [seeds]` | no saw under a ceiling at his height: each one turned into spikes is tiptoed, and the bot plays its floor (round 38c) | `sawceil: ok` |
 | `lampscan.py`, `slabscan.py`, `sandshaft.py`, `wellscan.py`, `figscan.py` | lamps keep clear (round 19); a slab slides up into stone (25d); every sand lift in a shaft (26e); the wells' sand (21b); the body's poses against v69 (round 23; only where `hk_v69_release.html` is) | `ok`, `slabscan: ok`, `sandshaft: ok`, `ok`, `figscan: ok` |
 | `shadowscan.py lo hi` (release) | no figure's lamp shadow on what stands before the back wall, Torchlight (round 38a) | `shadowscan: ok` |
+| `doorscan.py lo hi`, `openscan.py lo hi`, `tilescan.py lo hi views=2` (release) | no wall art over a doorway (round 15), a window, gate or lift mouth (16c), a floor tile (35c), both modes | every count 0, `tilescan: ok` |
+
+Run by hand, not in `suite.py`: `layoutcmp.py` (layouts identical against a release, for look-only rounds; a generator round differs on
+purpose), `stairscan.py` (about 3 min a floor here), `beamwall.py`, `beamshot.py` and `wgl_cmp.py` (compare two builds' pictures),
+`swingfeel.py`, `bench.py` (measurements), and each round's `egyptrNN.py` pictures.
 
 Speed: `?bench` in the game's URL (on the phone too) makes the bot (`bot.js`, fetched for the run; `botGen` steps it from the
 game's own frame loop) play six fixed floors live, 20 s each, and shows a table of frame times with a Copy button; the save is

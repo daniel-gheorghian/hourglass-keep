@@ -169,12 +169,20 @@ puzzles'); timed side gates latched "two in five" (`%100<62`); `CYC` keeps the p
 the dark drawn in Classic's emissive pass (after `hazePass`); the fire vent "lit through the whole window" from phase .70 (it hurts from .75, `on=ph>=0.75`; .70 is the bot's `danger` window); `doorHead`'s "pointed" kind (a flat lintel); every rank its own weapon
 (soldier and veteran both the axe); `drawBar`'s pull "drawn only" (`swingPlace` uses it).
 
-### Checks that the suite does not run
+### Checks that the suite did not run
 
-`suite.py` runs none of `doorscan.py`, `stairscan.py`, `openscan.py`, `tilescan.py`, `beamwall.py`, `lampscan.py`, `slabscan.py`,
-`wellscan.py`, `figscan.py`, `sandshaft.py`, `swingfeel.py`: they are run by hand when their round's element changes. `guardscan.py` is in
-the suite but not in CLAUDE.md's table. There is no standard tool for "layouts identical on floors 1-48 x 3 seeds" (rounds did it ad hoc;
-`samelayout.py` hashes floors 1-40 x 5 seeds and has old paths).
+v82's `suite.py` ran none of `doorscan.py`, `stairscan.py`, `openscan.py`, `tilescan.py`, `beamwall.py`, `lampscan.py`, `slabscan.py`,
+`wellscan.py`, `figscan.py`, `sandshaft.py`, `swingfeel.py`, and there was no standard tool for "layouts identical on floors 1-48 x 3
+seeds". v83 (round 38c):
+
+| Check | v83 |
+|---|---|
+| `lampscan.py`, `slabscan.py`, `sandshaft.py`, `wellscan.py` (9-75 s each), `r38b_tests.py`, `sawceil.py` | every tier |
+| `figscan.py` | every tier where `hk_v69_release.html` is (kept locally, not in git) |
+| `shadowscan.py`, `doorscan.py`, `openscan.py`, `tilescan.py` | release tier, split by floors (Torchlight jobs) |
+| `stairscan.py` (about 3 min a floor here), `beamwall.py`, `swingfeel.py` | by hand |
+| `layoutcmp.py` (round 38a; holds 38b's `layoutcmp_play.py`) | by hand: a generator round differs on purpose |
+| `guardscan.py` | in the suite, and now in CLAUDE.md's table |
 
 ## Keeping them current
 

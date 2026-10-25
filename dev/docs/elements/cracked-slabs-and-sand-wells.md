@@ -31,7 +31,7 @@ their support, and so on until all five are corridor slabs: grit and dust, no sa
 | Standing on it | he falls with it (no support); hanging from it, he drops (`case'hang'`) | run over it: at RUN 100 px/s a tile takes 0.32 s |
 | Under it | the loose obstacle's pit (1 or 2 storeys) has fixed stakes at its foot: landing there kills (`die('spikes')`); a cellar passage's slabs the same; a gallery passage's drop 2 storeys (128 px) to the corridor costs a life; the collapse ledge drops one storey (64 px) onto its landing, safe | the obstacle is a pit to run over, the collapse a move |
 | Sturdy chain | `sturdy` slabs only creak (once) when walked; the passage's plate (or flask `trigger`) arms them: slab k counts from `tm = -(1.8 + 0.36 k)` s (plus the drink's extra for a trigger), shakes from -0.7 s, falls at 0.5 s | "The cracked floor behind you is starting to give way. Run!" |
-| Falling on someone | a slab hits a prince below once (`hitP`): within 11 px of his x, between his head and feet, having started above his head, he not in the air: 1 life (`crush`), `landHurt` unless hanging or climbing | |
+| Falling on someone | a slab hits a prince below once (`hitP`): within 11 px of his x, between his head and feet, having started above his head, he not in the air, `P.inv` run out: 1 life (`crush`) and `P.inv` 0.9 s, `landHurt` unless hanging or climbing | round 38b: as `trapHit`, none while `P.inv` runs |
 | Landing | on a floor cell: rubble there (`L.rubble`), `jamAt` (a plate is held for good, a closer jammed: see [plates](plates.md)), `crash` and `shake(1.4)` when in view | P2 and P3 are built on it |
 | Sounds | `creak` on trigger (planks also on falling), `crumble` as it falls, `crash` on landing | |
 | Rewind | `applySnap` restores `s`, `tm`, the base tiles, debris and rubble; the room picture redraws only changed rooms (`rewindrooms.py`) | |
@@ -108,7 +108,7 @@ slab takes its neighbours' support, repeated until none fails. Planks are never 
 |---|---|
 | Light map (`gatherLights`) | a whole slab keeps the faint `trap` glint (r 30, 0.36); a slab giving way (with `EGP.traps`) instead a warm light 26 px under its surface (r 44, `255,236,196`, 0.34); both modes |
 | Key light | none (the sand's slopes are shaded as from the left) |
-| Lamp shadow mask | the slab's lip and top are carved as floor (no figure's shadow on them); the sand's cut face is not carved (`glMask` carves walls, floor lips and tops, low ceilings, jaws) |
+| Lamp shadow mask | the slab's lip and top are carved as floor (no figure's shadow on them); the sand's cut face and a falling slab are not carved (`glMask` carves walls, floor lips and tops, low ceilings, jaws and the outlines in `SHC`, which records neither) |
 | Relief | `glRelFloors` rubs the art back off a slab while `s < 2` (top face, lip, plus 3 px for its sinking; 36 of 41 corridor slabs and 61 of 64 well slabs were embossed before round 35c); `glRelWell` rubs each group's sand, cell by cell from its highest surface point down to its floor, with `glRelBox` (round 21b) |
 | Metal | none |
 | Sky beams | the sand stands in front of the room's whole depth like a wall's face (round 35b): `sandSegs` sends its outline this frame (the surface as drawn, flat stretches merged, at most 24 segments) to the shafts' and mist shaders (`u_sd`, `u_sf`, `sdC`): no haze, rim, pane, footprint, floor mist or wall look on it; above the surface the pit is air (a drained well is lit). Classic cuts the same outline with the walls (`rySandCut` in `ryBeams2D`). The slab itself takes a footprint (`fpMark` 254) except while it tips or cracks |
@@ -147,4 +147,5 @@ slab takes its neighbours' support, repeated until none fails. Planks are never 
 - round 30: the whole-run test in `looseWell` (`f.wl`); `wellcorr.py`.
 - round 35b: sand stands in front of the depth for sky beams (`sandSegs`, `rySandCut`).
 - round 35c: live slabs rubbed out of the relief (`glRelFloors`); the lip's cracks.
+- round 38b: a falling slab respects `P.inv` (none while it runs, a hit gives 0.9 s), as every trap.
 - Details in CLAUDE.md (Themes: 16a, Sand wells 21b/26d/30, 35b, 35c).
