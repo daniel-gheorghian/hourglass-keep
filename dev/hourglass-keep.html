@@ -7549,6 +7549,22 @@ function liftNearCut(ctx,f,cc,foot){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);
     else if(solidBelow(L,cc,r)){const sy=SURF(r);ctx.moveTo(xr,sy+HY+9);ctx.lineTo(xr+TW+DX,sy+HY+9);ctx.lineTo(xr+TW+DX,sy-HY);ctx.lineTo(xr+DX,sy-HY);ctx.lineTo(xr,sy+HY);ctx.closePath();}}
   if(foot)ctx.rect(f.ca*TW-HX,f.yB+HY,(f.cb-f.ca+1)*TW,10);
   ctx.clip('evenodd');}
+// (round 39, dev/docs/layers.md R1) the front plane in cells c0..c1, rows r0..r1, cut out of what is drawn next: walls' front faces and
+// low ceilings' faces (drawn HX left of their cell); with fl, the floor slabs there too (top face and lip, as liftNearCut: what stands at
+// mid-depth beside a slab's end is behind its near half). Call between save and restore; returns whether it clipped.
+function nearCut(ctx,c0,c1,r0,r1,fl){let any=false;
+  for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++){if(c<0||c>=L.cols||r<0||r>=L.rows)continue;const b=B(L,c,r),xr=c*TW-HX;let h=0;
+    if(b===WALL)h=TH;else{const q=F(L,c,r);if(q&&q.t==='low')h=TH-34;}
+    const sl=fl&&!h&&solidBelow(L,c,r);if(!h&&!sl)continue;
+    if(!any){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);any=true;}
+    if(h){const lip=fl&&r>r0&&solidBelow(L,c,r-1)&&B(L,c,r-1)!==WALL?FHH:0;ctx.rect(xr,r*TH+lip,TW,h-lip);} // (the strip under a slab's lip is that slab's)
+    else{const sy=SURF(r);ctx.moveTo(xr,sy+HY+FHH);ctx.lineTo(xr+TW,sy+HY+FHH);ctx.lineTo(xr+TW,sy+HY);ctx.lineTo(xr+TW+DX,sy-HY);ctx.lineTo(xr+DX,sy-HY);ctx.lineTo(xr,sy+HY);ctx.closePath();}}
+  if(any)ctx.clip('evenodd');return any;}
+// (round 39) is the world point x,y on the front plane: a wall's or low ceiling's face, or a floor slab's lip? Air drawn in the corridor
+// (motes, smoke, sparks, bats) is not drawn where it is: the stone in front hides it.
+function onFace(x,y){const c=Math.floor((x+HX)/TW),r=Math.floor(y/TH);if(c<0||c>=L.cols||r<0||r>=L.rows)return false;const b=B(L,c,r);
+  if(b===WALL)return true;const q=F(L,c,r);if(q&&q.t==='low'&&y<r*TH+TH-34)return true;
+  return r>0&&y<r*TH+FHH&&B(L,c,r-1)!==WALL&&solidBelow(L,c,r-1);}
 // the lift whose shaft he is in (riding it, or standing or falling inside it), or null
 function liftAround(){if(P.state==='lift'&&P.lift)return P.lift;const c=pCol(),ra=rowOf(P.y-40),rb=rowOf(P.y-1);for(const f of L.lifts)if(c>=f.ca&&c<=f.cb&&rb>=f.rT&&ra<=f.rB)return f;return null;}
 // The Egyptian lifts (round 13, owner: "egyptianise the lifts: rope instead of chain, stone slabs instead of grates, wooden wheels";
