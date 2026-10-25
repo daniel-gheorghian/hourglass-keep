@@ -21,7 +21,7 @@ ceiling two rows up (cell 183,25 must be wall). Rows 26 to 29 over columns 176-1
 
 ```
  26  .............
- 27  =====....====     he comes from the right; the bar over the third pit cell from the lip
+ 27  =====....====     he comes from the right; the bar over the second pit cell from the lip
  28  #####....####
  29  #####====####     spikes (fixed) on the pit's floor
      176  181 185
@@ -58,7 +58,7 @@ nearly still and pumps: a press of the way he will swing next, at human timing, 
 | Caught | state `swing`, `P.bar`; `hint('swing')`; the touch controls ghost while he swings over them (`CTL_WATCH` has `bar`) |
 | Approaching a gap of three tiles or more with a bar in the next four cells | `hint('swing')` instead of `wide` |
 | Rewind | `P.swTh`, `P.swOm` (in `P`) and `f.ps`, `f.pw` (on the feature) come back (`swingtest.py`) |
-| Guards | none: never placed in a run's pit, never swing |
+| Guards | none: they never swing |
 | The bot | pumps by holding the way he moves while the amplitude is under 0.8, then lets go of the pad and presses Jump moving forward at 0.15 to 0.3 rad; on a hang it climbs; fails with "missed the bar" or "swing short" |
 
 His body through the swing is CMU 43_02 keyed by the swing's phase (`swingPose`, `MCK.swing`, round 23), the arms solved each frame to
@@ -99,7 +99,8 @@ Fibre and timber by look (`BARM[look]` = fibre, timber, ply; colours `BARF`, `BA
 | shali, foggara, wells | palm | tamarisk | 3 |
 | aksum | halfa | juniper | 2 |
 
-No metal anywhere (round 18b). The bar's place moves with its ropes (`barPos`); while he swings it is pulled a little toward him (drawn only).
+No metal anywhere (round 18b). The bar's place moves with its ropes (`barPos`), and `swingPlace` hangs him from that place, so the ropes'
+swing carries him a little too.
 
 ## Light, shadows and effects
 
@@ -110,7 +111,7 @@ No metal anywhere (round 18b). The bar's place moves with its ropes (`barPos`); 
 | Lamp shadow mask (`glShadow`, `glMask`) | not carved |
 | Relief (`glRel*`) | no rubbing |
 | Metal mask / metal shader | none: wood and rope, left out of the metal mask's feature list (round 18b) |
-| Sky beams | not a blocker; breaches are never set beside it (`breaches`' `okCell`) |
+| Sky beams | not a blocker; no breach in its cell (`breaches`' `okCell`) |
 | Mist, floor looks, heat, the dark | none |
 | Bloom, grade, vignette | as the scene; the ready glint and glow are additive sprites in the scene |
 | Jet stream | while ready, the throw's path (`jsSwingPath`) carries the theme's sand; see [kick shafts and jet streams](kick-shafts-and-jet-streams.md) |
@@ -124,7 +125,7 @@ No metal anywhere (round 18b). The bar's place moves with its ropes (`barPos`); 
 | [spikes](spikes.md) | the pit's floor is fixed spikes (`pit`) |
 | [lifts](lifts.md) | `barRope` and `ropeOf` are the lifts' ropes too (round 21a) |
 | [lamps and light](lamps-and-light.md) | no lamp beside a `bar` cell (`LAMP_NEXT`) |
-| [stonework](stonework.md) | no breach and no wall hanging over a bar's cell; it hangs from the ceiling two rows up |
+| [stonework](stonework.md) | no breach in its cell, no wall hanging within a column of it; it hangs from the ceiling two rows up |
 | [the prince](prince.md) | `swingPose`; a jump whose arc passes a bar is drawn rising onto the true arc before the catch (`jumpSpan`'s `P.jKe`, `JH_RT`, round 33a) |
 
 ## Rules for changing it

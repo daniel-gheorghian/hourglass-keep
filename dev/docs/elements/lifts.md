@@ -67,7 +67,7 @@ tile. Other kinds: floor 8 seed 1 also has a `lift3u` (column 79, rows 6-9); flo
 | Kicking or planting on a shaft wall | never: `wallTouch` returns 0 inside any lift's shaft (`inLiftShaft`); he slides down as down a smooth wall (owner, v59; `liftkick.py`) |
 | Riding | state `lift`, `P.lift`; `P.slab` on a paternoster; learns `lift` or `chain` (`setState`) |
 | Guards | never posted in or beside a shaft (`guardOk`: columns `ca-1..cb+1`, rows `rT..rB`); they never ride; a shut mouth stops them as it stops him (`clampMove`) |
-| Hints | `lift` (a plate pressed, or on a lift's row within 110 px), `chain`, `sandlift` (as it starts) |
+| Hints | `lift` (a plate pressed, or on a lift's top or foot row within 110 px), `chain`, `sandlift` (as it starts). As the code stands the row test also fires `lift` beside a sand lift (it is `t:'lift'`), whose text speaks of a plate it does not have, and riding a sand lift learns `lift` |
 | The bot | `lift`: stands on the call plate until the platform is there and its mouth is over 0.9 open, walks on, holds Up/Down to the far end, walks off; paternoster: presses toward the shaft only on a frame a slab passes, holds on toward the far landing; `sandlift`: walks onto the slab and waits |
 
 ## How it is drawn
@@ -113,7 +113,7 @@ bottom run. No mouths, no rig over the shaft.
 The sand lift (`drawSandLift`): the shaft's back seen only through the hole, the outlet on the pit's floor; left foot mouths whole;
 the sand (`sandCut`, the wells' `sandTex`) from the slab's front edge down into the pit, a puff (`dustCloud`) as it gives, grains running
 down the sides (`sandFlow`); the slab (`sandSlab`: a floor tile of the theme's stone, lip over the whole cell from X-HX, no side face),
-cut by the right column's wall faces and floor tops; right foot mouths' far half, near half after the actors. No rope (`liftRope` none).
+cut by the right column's wall faces and floor tops; right foot mouths' far half, near half after the actors. No rope, no rig.
 
 | Variant | Look |
 |---|---|

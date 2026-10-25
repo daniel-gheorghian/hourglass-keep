@@ -15,11 +15,10 @@ style and theme, from the run menu.
 
 ## Example
 
-Floor 7, `blockSeg`, push variant: nine floor tiles; a block on tile 2, a plate on tile 4, a gate on tile 8 with `dur 0.2` (it falls
-0.2 s after the plate is let go). He walks to the block, holds Grab and the pad toward it: the block slides one tile in 0.55 s and he
-follows it; twice more is too far (its range is tiles 2 to 5), so after two pushes it sits on the plate and the gate stays open. He
-climbs onto the block, drops off its far side and walks through. In the pull variant the block starts on tile 5 and one pull brings
-it onto the plate.
+Floor 7, `blockSeg`, push variant: nine floor tiles; a block on tile 2, a plate on tile 4, a gate on tile 8 with `dur 0.2` (it starts
+to fall 0.2 s after the plate is let go). He walks to the block, holds Grab and the pad toward it: the block slides one tile in 0.55 s
+and he follows it. After two pushes it sits on the plate and the gate stays open (its range ends at tile 5). He climbs onto the block,
+drops off its far side and walks through. In the pull variant the block starts on tile 5 and one pull brings it onto the plate.
 
 ## In play
 
@@ -44,7 +43,7 @@ it onto the plate.
 |---|---|
 | Pushing | pose `push` (lean 0.5 forward, both arms forward) on the run cycle; P.x eased over the tile |
 | Pulling | pose `pull` (lean 0.3 back, arms forward) on the reversed cycle; he steps back a tile |
-| Climbing onto it, hanging from it | as a wall: `wallBelow` counts a block under the ledge, so he is hidden behind its face as behind a wall's (figure cut, hands only) |
+| Jumping up to, hanging from, climbing onto its top | as a wall: `wallBelow` counts a block under the ledge, so on its near side he is hidden behind its face as behind a wall's (hands only) |
 | Guards | collide with it as a wall (`clampMove` reads `B`); cannot move it; a guard in the target cell blocks the move |
 | Bot | `push`: approaches from a tile further back (tiptoeing with Grab beside a block would push it), edges in with Grab and forward, counts `n` pushes; `pull`: walks beside it and pulls `n` times; then `climb`, `drop`, `walk` through the gate |
 
