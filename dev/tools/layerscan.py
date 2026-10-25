@@ -133,6 +133,7 @@ if __name__ == '__main__':
                                 if len(s['where']) < 6: s['where'].append('%d/%d c%d r%d %s %dpx t%.2f' % (n, sd, o['face'][0], o['face'][1], o['face'][2], o['n'], o['ph']))
                                 if k != '_noise' and len(worst) < 24 and sum(1 for w in worst if w[0] == (mode, k)) < 3:
                                     worst.append(((mode, k), n, sd, cx, cy, o, r['th'], li['vh']))
+                    print('%s floor %d done, %.0f s' % (mode, n, time.time() - t0), flush=True)
                 errs += pg.errs
             pg.close()
         # pictures of the worst: the view drawn whole, the bad box marked

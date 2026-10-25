@@ -421,7 +421,7 @@ const skyOf=th=>todSkyCol(th.sky,L&&L.prog?L.prog.tod:0);
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=9;
-const APP_VERSION='83'; // set by the build; shown on the title and pause screens
+const APP_VERSION='84'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},learned:prev?prev.learned:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(!s.learned){s.learned={};if(s.level>2){s.learned.gap=s.learned.climb=s.learned.drop=1;}if(s.maxHp>3)s.learned.potion=1;} // an old save: whoever got past floor 2 can run, jump, climb and let go; the rest of the moves come back as hints until done
@@ -4118,7 +4118,7 @@ function cyc(f,T){return (((T+f.off)%f.per)+f.per)%f.per/f.per;}
 function sawX(f,T){const p=cyc(f,T);return f.x0+(f.x1-f.x0)*(0.5-0.5*Math.cos(p*6.2832));}
 function danger(f,T){if(f.t==='chomp'){const s=gameTime;gameTime=T;const k=chompK(f);gameTime=s;return k>0.3;}if(f.t==='vent'){const p=cyc(f,T);return p>0.7||p<0.03;}return false;}
 // spike needles, back to front: [x in tile, depth 0 front..1 back, height, lean]; guillotine teeth: [width, length, tip offset]
-const SPK=[[25,0.78,10,3],[7,0.66,16,-1.9],[19,0.48,21,0.6],[12.5,0.26,11,-0.8]];
+const SPK=[[25,0.78,10,3],[7,0.66,16,-1.9],[19,0.48,21,0.6],[12.5,0.26,11,-0.8]];const SPK_NEAR=0.45; // (round 39e: a stake rooted nearer than this is in front of a figure at mid-depth: drawNeedles)
 const CH_UP=[[4,8,0.4],[3.5,5,0],[4.5,11,-0.6],[3.5,4,0.3],[4,9,0.5],[4.5,6,-0.3],[4,10,0.2]];
 const CH_LO=[[2,5,-0.4],[4,9,0.3],[4,5,0],[4.5,10,-0.5],[3.5,4,0.2],[4,8,0.4],[4,6,-0.2],[2,4,0.3]];
 function chompK(f){const p=(((gameTime+f.off)%f.per)+f.per)%f.per/f.per;if(p<0.07)return p/0.07;if(p<0.15)return 1;if(p<0.3)return 1-(p-0.15)/0.15;return 0;}
@@ -4490,7 +4490,15 @@ const EX_N=4.6,EX_GONE=3.5,EX_SW0=2.6,EX_CUT=0.55,EX_TURN=0.16,EXF={look:true},E
 // (round 26f) the entry: EN_OUT out of the doorway's depth (EN_DX, EN_DY: from inside the opening to the floor's middle depth), lit by
 // EN_LIT, control at EN_CTL; the leaf starts down at EN_DROP and falls in EN_FALL, speeding up (PoP's 5, 17, 99 px a frame at 12 fps)
 const EN_OUT=0.36,EN_LIT=0.42,EN_CTL=0.62,EN_DROP=0.42,EN_FALL=0.24,EN_DX=9,EN_DY=4.5;
-const entryX=()=>(L.start.door===undefined?1:L.start.door)*TW+16;
+// (round 39, the layering rule R1) the start door drawn clear of the front face of a wall (or a low ceiling) in the next cell: that face
+// stands HX nearer and HX further left than the back wall the doorway is cut in, so on a floor whose first run heads left (the door's cell
+// has a wall on its right) the frame lay 18 px over the face. Moved along the back wall as cpX moves the sky clock, its frame's edge on the
+// face's: the live door, the doorway cut out of the room's art (drawRoomStatic), the entry he comes out of (entryX, doorClip) and the ceiling
+// over the cells it spans. Look only: L.start.x, the respawn spot and play keep the cell (the entry's walk from the opening is 14 px, not 32)
+const DOOR_HW=18; // (the frame's half width at the back wall: posts and lintel, x0-6 to x1+6)
+function startDoorX(){const d=L.start.door===undefined?1:L.start.door,r=L.start.r;let x=d*TW+16;
+  if(cpFace(d+1,r))x=Math.min(x,(d+1)*TW-2*HX-DOOR_HW);if(cpFace(d-1,r))x=Math.max(x,d*TW-2*HX+DOOR_HW);return x;}
+const entryX=()=>startDoorX();
 function entryOpen(){if(!L||L.enG===undefined)return 0;const t=gameTime-L.enG;if(t<EN_DROP)return 1;const k=(t-EN_DROP)/EN_FALL;return k>=1?0:1-k*k*k;}
 function startEntry(){L.enG=gameTime;L.enS=0;P.enXs=P.x;P.x=entryX();P.enU=1;P.enK=0.92;setState('enter');P.vx=0;}
 function entryTick(){if(L.enG===undefined||L.enS>=2)return;const t=gameTime-L.enG;
@@ -4566,10 +4574,18 @@ function drawRoomStatic(g,rx,ry,stage){
   for(const w of L.windows){if(Math.floor(w.c/RW)!==rx||Math.floor(w.r/RH)!==ry)continue;if(bgOn&&inOpening(w.c,w.r))continue;if(inBreach(w.c*TW+16,w.r*TH+38,true))continue;drawWindow(g,(w.c%RW)*TW+16,(w.r%RH)*TH+38,th,w.c,bgOn);}
   if(!EGP.noover){drawWallScars(g,rx,ry,th);drawHangings(g,rx,ry,th);} // (openscan.py: EGP.noover leaves out what is hung on the wall after the windows)
   if(EGP.noart){g.save();if(EGP.noart==='atop')g.globalCompositeOperation='source-atop';g.fillStyle=th.wall;g.fillRect(-TW,-TH,ROOM_W+2*TW,ROOM_H+2*TH);g.restore();} // (doorscan.py: the back wall without its art; 'atop', tilescan.py: and its openings left open, so the sky's light is the same)
+  // (round 39, the layering rule R1) the damaging drop's darker shaft is its back wall: laid on the back plane of its two cells after the art
+  // (source-atop: an opening in it stays open), under the faces and lips in front of it. On the floor's scratch layer (rlEnd) it was laid over
+  // them: every right neighbour's lip, a 16 px band of black on the face of a wall beside the shaft (6 mirrored layouts on floors 1-48), and 12
+  // of 77 shafts' openings 84-93% black
+  for(let rr=0;rr<RH;rr++)for(let cc=0;cc<RW;cc++){const gc=rx*RW+cc,gr=ry*RH+rr,fu=F(L,gc,gr-1),fu2=F(L,gc,gr-2),u1=!!(fu&&fu.t==='hurtdrop');if(!u1&&!(fu2&&fu2.t==='hurtdrop'))continue;
+    const X=cc*TW,Y=rr*TH,hh=u1?TH:TH-18,sg=g.createLinearGradient(0,Y,0,Y+hh);sg.addColorStop(0,'rgba(2,4,16,.84)');sg.addColorStop(1,'rgba(2,3,12,.93)');
+    g.save();g.globalCompositeOperation='source-atop';g.fillStyle=sg;g.fillRect(X,Y,TW,hh);g.restore();}
   // (round 15, owner: "wall decoration over door") the doorways cut out of the back wall's art: the doors are drawn live over the room, but
   // Torchlight's relief is taken from the room's picture, so the stone courses and friezes behind a doorway were embossed over the door
   // and the lit stair. Under each doorway and its frame the back wall is one flat tone (the door covers it)
-  if(!EGP.nocut)for(const d of [{x:(L.start.door===undefined?1:L.start.door)*TW+16,r:L.start.r},L.door]){const c=Math.floor(d.x/TW);if(Math.floor(c/RW)!==rx&&Math.floor((c+1)/RW)!==rx||Math.floor(d.r/RH)!==ry)continue;
+  if(!EGP.nocut)for(const d of [{x:startDoorX(),r:L.start.r},L.door]){ // (round 39: where the start door is drawn)
+    const c=Math.floor(d.x/TW);if(Math.floor(c/RW)!==rx&&Math.floor((c+1)/RW)!==rx||Math.floor(d.r/RH)!==ry)continue;
     const ctop=d.r*TH+Math.max(ceilOff(c,d.r),ceilOff(c+1,d.r)),xc=d.x+HX-rx*ROOM_W,yb=SURF(d.r)-HY-ry*ROOM_H,y=ctop-ry*ROOM_H;g.fillStyle=th.wall;g.fillRect(xc-12-6,y,24+12,yb-y+1);}
   if(GLFX.ao)aoBack(g,rx,ry,B,solidBelow,isLow);
   }
@@ -4601,8 +4617,7 @@ function drawRoomStatic(g,rx,ry,stage){
   // and a pile of the fallen stone on the floor it lands on. Drawn from the tile type, so every such drop looks the same.
   each((gc,gr,X,Y)=>{
     const f0=F(L,gc,gr),fu=F(L,gc,gr-1),fu2=F(L,gc,gr-2);
-    if((fu&&fu.t==='hurtdrop')||(fu2&&fu2.t==='hurtdrop')){ // the shaft: the two empty cells
-      const hh=fu&&fu.t==='hurtdrop'?TH:TH-18,sg=gl.createLinearGradient(0,Y,0,Y+hh);sg.addColorStop(0,'rgba(2,4,16,.84)');sg.addColorStop(1,'rgba(2,3,12,.93)');gl.fillStyle=sg;gl.fillRect(X-HX,Y,TW+DX,hh);
+    if((fu&&fu.t==='hurtdrop')||(fu2&&fu2.t==='hurtdrop')){ // the shaft: the two empty cells (round 39: its dark is its back wall, laid in stage 0)
       if(fu&&fu.t==='hurtdrop'){const sr=mulberry32(hash2(gc*3+9,gr*5+2));gl.fillStyle=th.lo; // a few stones still hanging from the broken floor above
         for(let i=0;i<3;i++){const sx=X-HX+3+sr()*(TW-8),sw=4+sr()*5,sh=3+sr()*5;gl.beginPath();gl.moveTo(sx,Y);gl.lineTo(sx+sw,Y);gl.lineTo(sx+sw*0.6,Y+sh);gl.lineTo(sx+sw*0.2,Y+sh*0.7);gl.closePath();gl.fill();}}}
     if(fu2&&fu2.t==='hurtdrop'&&B(L,gc,gr)!==WALL){drawHeap(gl,{c:gc,r:gr},X,Y+TH-4,th,true);}
@@ -4610,18 +4625,18 @@ function drawRoomStatic(g,rx,ry,stage){
     const fr2=F(L,gc+1,gr),fl2=F(L,gc-1,gr),rh=fr2&&fr2.t==='hurtdrop',lh=fl2&&fl2.t==='hurtdrop';
     if(!rh&&!lh)return;
     const ys=Y+TH-4,fx=X-HX,ft=ys+HY,rnd=mulberry32(hash2(gc*5+1,gr*7+3));
-    gl.fillStyle='rgba(4,3,8,.92)';
-    // bites out of the lip and the surface at the broken end: jagged triangles of different sizes
+    // bites out of the lip and the surface at the broken end: jagged triangles of different sizes (round 39: the lip's and the face's under it
+    // are those faces' own breaks, drawn on the room (g), not on the scratch layer that rlEnd now cuts by the faces; the surface's stay on it)
     const dir=rh?-1:1,ex=rh?fx+TW:fx; // (right end / left end)
-    gl.fillStyle='rgba(60,50,44,.45)';gl.beginPath();gl.ellipse(ex+dir*9,ft+3,9,2.2,0,0,6.3);gl.fill(); // soot and dust on the slab behind the lip
-    gl.fillStyle='rgba(2,3,10,.96)';
+    g.fillStyle='rgba(60,50,44,.45)';g.beginPath();g.ellipse(ex+dir*9,ft+3,9,2.2,0,0,6.3);g.fill(); // soot and dust on the slab behind the lip
+    g.fillStyle='rgba(2,3,10,.96)';
     for(let i=0;i<6;i++){const w=5+rnd()*5,hgt=4+rnd()*5,yy=ft+i*2.2+rnd()*2;
-      gl.beginPath();gl.moveTo(ex,yy);gl.lineTo(ex+dir*w,yy+hgt*0.4);gl.lineTo(ex+dir*w*0.3,yy+hgt);gl.lineTo(ex,yy+hgt*0.7);gl.closePath();gl.fill();
-      gl.strokeStyle='rgba(236,220,186,.55)';gl.lineWidth=0.8;gl.beginPath();gl.moveTo(ex,yy);gl.lineTo(ex+dir*w,yy+hgt*0.4);gl.lineTo(ex+dir*w*0.3,yy+hgt);gl.stroke();}
+      g.beginPath();g.moveTo(ex,yy);g.lineTo(ex+dir*w,yy+hgt*0.4);g.lineTo(ex+dir*w*0.3,yy+hgt);g.lineTo(ex,yy+hgt*0.7);g.closePath();g.fill();
+      g.strokeStyle='rgba(236,220,186,.55)';g.lineWidth=0.8;g.beginPath();g.moveTo(ex,yy);g.lineTo(ex+dir*w,yy+hgt*0.4);g.lineTo(ex+dir*w*0.3,yy+hgt);g.stroke();}
     gl.fillStyle='rgba(2,3,10,.96)';
     for(let i=0;i<4;i++){const q=onFloor((rh?X+TW-2:X+2)-(rh?1:-1)*rnd()*9,0.1+rnd()*0.85,ys),w=2+rnd()*4;
       gl.beginPath();gl.moveTo(q.x,q.y);gl.lineTo(q.x+(rh?w:-w),q.y+1.6);gl.lineTo(q.x+(rh?w*0.4:-w*0.4),q.y-1.5);gl.closePath();gl.fill();}
-    gl.strokeStyle='rgba(255,255,255,.14)';gl.lineWidth=0.7;gl.beginPath();const ex2=rh?fx+TW-6:fx+6;gl.moveTo(ex2,ft);gl.lineTo(ex2+(rh?2:-2),ft+3);gl.lineTo(ex2+(rh?-1:1),ft+FHH);gl.stroke();
+    g.strokeStyle='rgba(255,255,255,.14)';g.lineWidth=0.7;g.beginPath();const ex2=rh?fx+TW-6:fx+6;g.moveTo(ex2,ft);g.lineTo(ex2+(rh?2:-2),ft+3);g.lineTo(ex2+(rh?-1:1),ft+FHH);g.stroke();
   });
   drawBreachRubble(gl,rx,ry,th);drawFallen(gl,rx,ry,th);
   rlEnd(g,gl,each,B,solidBelow);
@@ -4634,7 +4649,12 @@ function drawRoomStatic(g,rx,ry,stage){
 const RL_A=251,RLS={c:null,g:null};
 function rlBegin(g){const W=g.canvas.width,H=g.canvas.height;if(!RLS.c){RLS.c=document.createElement('canvas');RLS.g=RLS.c.getContext('2d');}
   if(RLS.c.width!==W||RLS.c.height!==H){RLS.c.width=W;RLS.c.height=H;}const q=RLS.g;q.setTransform(1,0,0,1,0,0);q.globalAlpha=1;q.globalCompositeOperation='source-over';q.clearRect(0,0,W,H);q.setTransform(g.getTransform());return q;}
-function rlEnd(g,q,each,B,solidBelow){const m=g.getTransform();g.save();g.setTransform(1,0,0,1,0,0);g.drawImage(RLS.c,0,0);g.setTransform(m);
+// (round 39, the layering rule R1) the layer is laid on the room cut by the front plane drawn in stage 1 (walls' front faces, low ceilings'
+// faces, HX left of their cells): what lies on a floor stays behind the face of a wall that ends it (a breach's rubble mound ran 7.5 px onto
+// it in 199 of 2,450 breaches, the damaging drop's landing heap to X+42, rubble specks). Paid once per room picture
+function rlEnd(g,q,each,B,solidBelow){const m=g.getTransform();g.save();
+  g.beginPath();g.rect(-2*TW,-2*TH,ROOM_W+4*TW,ROOM_H+4*TH);each((gc,gr,X,Y)=>{const b=B(L,gc,gr),f=b===WALL?null:F(L,gc,gr),h=b===WALL?TH:f&&f.t==='low'?TH-34:0;if(h)g.rect(X-HX,Y,TW,h);});g.clip('evenodd');
+  g.setTransform(1,0,0,1,0,0);g.drawImage(RLS.c,0,0);g.setTransform(m);
   g.beginPath();each((gc,gr,X,Y)=>{if(B(L,gc,gr)===WALL||!solidBelow(L,gc,gr))return;const ys=Y+TH-4,fx=X-HX,fr=fx+TW,br=B(L,gc+1,gr)===WALL?fr:fr+DX;
     g.moveTo(fx,ys+HY);g.lineTo(fr,ys+HY);g.lineTo(br,ys-HY);g.lineTo(fx+DX,ys-HY);g.closePath();});g.clip();
   g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='destination-out';g.globalAlpha=(255-RL_A)/255;g.drawImage(RLS.c,0,0);g.restore();}
@@ -6123,13 +6143,22 @@ function egRoofSlot(ctx,R){const x0=R.xc-BLK_W/2,y0=R.cy-BLK_H;ctx.save();ctx.be
 function egRoofHang(ctx,o,f){const R=roofStone(o),k=f.s===1?sandK(f.tm,0.15,0.06):0.05,sag=f.s===1?0.6+k*1.6:0.4,x0=R.xc-BLK_W/2,yt=R.cy-BLK_H+sag;
   const TX=stoneBox(ctx,R.kind,x0,yt,BLK_W,BLK_H,{wear:R.W,seed:R.sd});
   ctx.fillStyle='rgba(6,4,10,.75)';ctx.fillRect(x0-0.6,R.cy-0.4,BLK_W+1.2,0.8+sag*0.6); // its joint with the ceiling opening as it shifts
-  for(const sx of [-BLK_W/2,BLK_W/2]){const x=o.c*TW+16+sx;sandFlow(ctx,x,R.cy,R.ys,k,sx>0?0.5:0.1);if(k>0.2)egHeap(ctx,x,R.ys,6+10*k,1+2.4*k);}
+  const c1=o.c+1,rc=R.cy/TH-1;ctx.save();nearCut(ctx,c1,c1,B(L,c1,rc)!==WALL&&solidBelow(L,c1,rc)?rc:rc+1,o.r-1,true); // (round 39e: the right trickle at X+27 ran down over the next column's front plane: a wall's face under a high ceiling (floor 41), a ledge's lip and top; on its own floor only a wall's face, as the heap lies on across the floors' join)
+  if(B(L,c1,o.r)===WALL){ctx.beginPath();ctx.rect(o.c*TW-TW,R.cy-TH,2*TW-HX,R.ys-R.cy+2*TH);ctx.clip();}
+  for(const sx of [-BLK_W/2,BLK_W/2]){const x=o.c*TW+16+sx;sandFlow(ctx,x,R.cy,R.ys,k,sx>0?0.5:0.1);if(k>0.2)egHeap(ctx,x,R.ys,6+10*k,1+2.4*k);}ctx.restore();
   if(STONES[R.kind].cry)stoneGlints(ctx,TX,(u,v)=>u<28&&v>12&&v<12+BLK_H?[x0+u,yt+v-12]:null,R.sd);}
+// (round 39e, dev/docs/layers.md R1) it was drawn unclipped: for its first 0.15 s its top and right side lay over the ceiling's face round the
+// slot and the next column's face (411 of 411), and under a high ceiling (floor 41 seeds 1 and 3) the whole fall crossed the face of a wall in
+// the next column. Now it, the sand pouring after it and the billow are drawn only in the slot's hole and below the ceiling's edge, with the
+// next column's front plane cut out (nearCut: walls' faces, floors' tops and lips, from the ceiling's row down); its shadow carve (SHC) is
+// clipped at the hole's top and glRelRoof rubs only what is drawn (glRelRoofFall)
+function roofFallClip(ctx,o,R){const x0=R.xc-BLK_W/2;ctx.beginPath();ctx.rect(x0,R.cy-BLK_H,BLK_W,BLK_H);ctx.rect(x0-60,R.cy,BLK_W+120,R.ys-R.cy+40);ctx.clip();nearCut(ctx,o.c+1,o.c+1,R.cy/TH-1,o.r,true);}
 function egRoofFall(ctx,d){const o=L.dyn.find(q=>q.c===d.c&&q.f.t==='stone'&&(d.r===undefined||q.r===d.r));if(!o)return;const R=roofStone(o),y0=d.y0-14,p=clamp((d.y-d.y0)/Math.max(1,R.ys-d.y0),0,1),yt=lerp(R.cy-BLK_H,R.ys+HY-BLK_H,p),x0=R.xc-BLK_W/2,age=debAge(d);
+  ctx.save();roofFallClip(ctx,o,R);
   for(const sx of [-BLK_W/2+2,BLK_W/2-2])sandFlow(ctx,o.c*TW+16+sx,R.cy,yt,0.8*(1-p),sx>0?0.5:0.1); // the sand still pouring from the slot behind it
-  if(shcBeg(-1e5,-1e5,1e5,1e5,5)){shcBox(x0-0.8,yt-0.8,BLK_W+1.6,BLK_H+1.6,1,true,true);shcEnd();} // (round 38a: carved out of the lamp shadow, SHC)
+  if(shcBeg(-1e5,R.cy-BLK_H,1e5,1e5,5)){shcBox(x0-0.8,yt-0.8,BLK_W+1.6,BLK_H+1.6,1,true,true);shcEnd();} // (round 38a: carved out of the lamp shadow, SHC; round 39e: from the hole's top, as drawn: above it is the ceiling's face, carved as a wall's)
   stoneBox(ctx,R.kind,x0,yt,BLK_W,BLK_H,{top:true,side:true,wear:R.W,seed:R.sd});
-  sandBillow(ctx,o.c*TW+16,R.cy+3,age,0.8,0.45);}
+  sandBillow(ctx,o.c*TW+16,R.cy+3,age,0.8,0.45);ctx.restore();}
 // (round 13, owner: "the feet and the slab": he stood at its left end and the block was drawn under his feet. It spans the corridor's whole
 // depth and he walks its middle, so its near half (depth 0 to 0.5) is in front of him: that half is drawn again after the figures (half),
 // and his toes stop at its face at his depth. It sits flat on the floor's top, its front foot on the floor's front edge; the rubble lies
@@ -6142,7 +6171,27 @@ function egRoofLying(ctx,o,f,half){const R=roofStone(o),x0=R.xc-BLK_W/2,yt=R.ys+
   stoneBox(ctx,R.kind,x0,yt,BLK_W,BLK_H,{top:true,side:true,wear:Math.min(3,R.W+1),seed:R.sd+1,dust:true}); // fresh chips and dust from the fall
   wearRubble(ctx,x0,x0+BLK_W+DX,R.ys,Math.max(2,R.W),R.sd+9);
   if(age<1.3){sandBillow(ctx,o.c*TW+16,R.ys,age,1.25,0.6);sandSettle(ctx,o.c*TW+16,R.ys,age,22);}}
-function drawLight(ctx,t,th){if(EGP.lamps&&drawLampEg(ctx,t,th))return;
+// (round 39, the layering rule R1) a lamp hangs on the back wall, so under a ceiling (a floor slab's lip over its row, a wall's face, a low
+// ceiling's face) its flame's tongues, embers, smoke and glow end at the ceiling: they were drawn over the slab's lip and top (136 of 6,525
+// lamps with a floor overhead). The flame and its sparks keep within its own column and the next (a ceiling cell's face is HX left of it; the
+// glow's faint rim reaches further, under 0.07). Where those two columns have the same ceiling, everything above its edge is cut (one
+// rectangle: a scissor in Torchlight); where they differ (a ledge's end, a one-cell ledge over it; 260 of 6,525 lamps on floors 1-48, seeds
+// 1-2), only the stone in front is cut (an even-odd path: the slabs' lips and tops, the walls' faces and the side face of one that ends,
+// a low ceiling's face), so the glow goes on round a ledge's end and over it, with no edge in the air
+const LCY=new Float64Array(2);
+function lampCeil(ctx,t){const r=t.r,c=t.c,Y=r*TH,top=Y-3*TH,bot=Y+2*TH;
+  for(let i=0;i<2;i++){const a=B(L,c+i,r-1),f=F(L,c+i,r);let y=a===EMPTY?top:Y+(a===FLOOR?FHH:0);if(f&&f.t==='low')y=Math.max(y,Y+TH-34);LCY[i]=y;}
+  if(LCY[0]===top&&LCY[1]===top)return false;ctx.save();ctx.beginPath();const x0=(c-2)*TW-HX,x1=(c+4)*TW-HX;
+  if(LCY[0]===LCY[1]){ctx.rect(x0,LCY[0],x1-x0,bot-LCY[0]);ctx.clip();return true;}
+  ctx.rect(x0,top,x1-x0,bot-top);
+  for(let cc=c-1;cc<=c+2;cc++){const xr=cc*TW-HX,a=B(L,cc,r-1),an=B(L,cc+1,r-1),f=F(L,cc,r),fn=F(L,cc+1,r),lw=f&&f.t==='low',opn=an===EMPTY&&!(fn&&fn.t==='low');
+    if(a===WALL){ctx.rect(xr,top,TW,Y-top);if(an!==WALL){ctx.moveTo(xr+TW,top);ctx.lineTo(xr+TW+DX,top);ctx.lineTo(xr+TW+DX,Y-DY);ctx.lineTo(xr+TW,Y);ctx.closePath();}} // (its face, and its side face over an open or floored cell)
+    else if(a===FLOOR){const rb=an===WALL?xr+TW:xr+TW+DX;ctx.moveTo(xr,Y+FHH);ctx.lineTo(xr+TW,Y+FHH);ctx.lineTo(xr+TW,Y);ctx.lineTo(rb,Y-DY);ctx.lineTo(xr+DX,Y-DY);ctx.lineTo(xr,Y);ctx.closePath(); // (lip and top)
+      if(opn){ctx.moveTo(xr+TW,Y);ctx.lineTo(xr+TW+DX,Y-DY);ctx.lineTo(xr+TW+DX,Y-DY+FHH);ctx.lineTo(xr+TW,Y+FHH);ctx.closePath();}} // (the end face of a ledge)
+    if(lw){const l=a===FLOOR?FHH:0;ctx.rect(xr,Y+l,TW,TH-34-l);}}
+  ctx.clip('evenodd');return true;}
+function drawLight(ctx,t,th){const cl=lampCeil(ctx,t);drawLight0(ctx,t,th);if(cl)ctx.restore();}
+function drawLight0(ctx,t,th){if(EGP.lamps&&drawLampEg(ctx,t,th))return;
   const free=lampFree(t),base=SURF(t.r)-HY+1.5,key=(t.r-1)*TH+11;
   const x=t.c*TW+16,st=th.style,y=SURF(t.r)-38-(free&&(st==='palace'||st==='tile')?28:0),tm=gameTime,seed=(t.c*7+t.r*13)%10,f=Math.sin(tm*13+seed)*0.6+Math.sin(tm*7.3+seed*1.7)*0.4;
   const wl=warmLamp(t),gcl=wl?'255,188,100':th.glow; // (in the crypt some lamps burn amber: a second colour among the green)
@@ -6352,6 +6401,11 @@ function cpX(cp){if(CP_DBG.old)return cp.x;let x=cp.x;const X=cp.c*TW;
 function cpCut(ctx,cp){if(CP_DBG.old)return false;let any=false;
   for(let c=cp.c-1;c<=cp.c+1;c++){const h=cpFace(c,cp.r);if(!h)continue;if(!any){ctx.save();ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);any=true;}ctx.rect(c*TW-HX,cp.r*TH,TW,h);}
   if(any)ctx.clip('evenodd');return any;}
+// (round 39e, dev/docs/layers.md R1) a sky clock in a sand lift's foot cell (33 of 96 floors, floors 1-48 seeds 1-2; none in other lifts) was
+// drawn before the lift: after the ride the shaft's dark back and channel lay over its left half and the slab it stands on over its pedestal's
+// foot. Once the slab rests at the foot it is drawn after that lift's back half (still before the figures, who pass in front of it); until
+// then it stays under the sand as before
+function cpOnLift(cp){for(const f of L.lifts)if(f.sand&&f.sc===cp.c&&f.rB===cp.r&&f.y>=SURF(f.rB)-0.5)return true;return false;}
 function drawHourglass(ctx,cp){
   const th=L.theme,st=th.style,gl=th.glow||'255,200,120',x=cpX(cp),fl=SURF(cp.r)-1,off=CP_DBG.off;
   const lit=cp.on,turn=lit&&cp.onAt!==undefined?clamp((gameTime-cp.onAt)/0.7,0,1):1,bob=Math.sin(gameTime*1.7+cp.x*0.05)*1.6;
@@ -7283,12 +7337,30 @@ function drawShut(ctx){const ch=L.ext.chase;if(!ch||!ch.on||ch.done||!P||P.state
   const g=SHUT.g;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,192,192);g.setTransform(2,0,0,2,0,0);
   try{figDraw(g,48,80,P.face||1,P.pose,PAL_HERO,{mono:'#000',hasSword:false,sword:false,time:gameTime});}catch(e){return;}
   const ys=SURF(r),wb=ys-HY,ax=P.x+HX*0.6,ay=wb+0.5,t=gameTime;
-  const cy=ceilingY(Math.floor(P.x/TW),r)-1,cx0=ch.wx-6,cx1=P.x+26;
-  ctx.save();ctx.beginPath();ctx.rect(cx0,cy,cx1-cx0,wb+0.6-cy);for(const o of openingsIn(cx0,cx1,cy,wb))ctx.rect(o[0],o[1],o[2],o[3]);ctx.clip('evenodd'); // (never on the sky through an opening)
+  const cx0=ch.wx-6,cx1=P.x+26;let cy=1e9;
+  // (round 39, D6) only where the back wall shows: it was cut at the ceiling of his own column only (and past a floor slab above, to the
+  // first wall), so the copies lay over the wall he hangs or climbs behind and the faces and slabs beside him. Each open cell of his row and
+  // the open cells over it: from its back wall's left edge (the cell's + HX) to the next cell's face; the strip HX either side of the next
+  // cell's edge where that cell is open and no slab's end or lip stands there; under a wall from its foot, under a floor slab from its lip's
+  // foot, under a low ceiling from its face's. Rectangles (one clip, nonzero: they may touch)
+  ctx.save();ctx.beginPath();
+  for(let c=Math.floor(cx0/TW)-1;c<=Math.floor(cx1/TW);c++){if(c<0||c>=L.cols-1||B(L,c,r)===WALL)continue;
+    let rt=r;while(rt>0&&B(L,c,rt-1)===EMPTY)rt--;const y0=rt>0&&B(L,c,rt-1)===FLOOR?SURF(rt-1)+HY+FHH:rt*TH,xa=Math.max(cx0,c*TW+HX),xm=Math.min(cx1,(c+1)*TW-HX),xb=Math.min(cx1,(c+1)*TW+HX);
+    for(let rr=rt;rr<=r;rr++){const q=F(L,c,rr),ya=Math.max(rr===rt?y0:rr*TH,q&&q.t==='low'?rr*TH+LOW_H:0),yb=rr===r?wb+0.6:(rr+1)*TH;if(yb<=ya)continue;
+      if(xm>xa){ctx.rect(xa,ya,xm-xa,yb-ya);cy=Math.min(cy,ya);}
+      const xs=Math.max(xa,xm),nq=F(L,c+1,rr);if(B(L,c+1,rr)===WALL||xb<=xs)continue;let s0=ya,s1=yb;
+      if(nq&&nq.t==='low')s0=Math.max(s0,rr*TH+LOW_H);if(rr<r&&solidBelow(L,c+1,rr))s1=Math.min(s1,SURF(rr)-HY);
+      if(rr>rt&&B(L,c+1,rr-1)!==WALL&&solidBelow(L,c+1,rr-1))s0=Math.max(s0,rr*TH+FHH);
+      if(s1>s0){ctx.rect(xs,s0,xb-xs,s1-s0);cy=Math.min(cy,s0);}}}
+  if(cy>wb){ctx.restore();return;}ctx.clip();
+  {const op=openingsIn(cx0,cx1,cy,wb);if(op.length){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);for(const o of op)ctx.rect(o[0],o[1],o[2],o[3]);ctx.clip('evenodd');}} // (never on the sky through an opening)
   for(let i=2;i>=0;i--){const sk=k*(0.3+0.55*i)+0.04*Math.sin(t*2.3+i),sx=1+k*(0.25+0.6*i),off=k*(6+20*i);
     ctx.save();ctx.translate(ax,ay);ctx.transform(sx,0,sk,1+0.05*i*k,-off,0);ctx.globalAlpha=Math.min(1,k*1.4)*[0.86,0.55,0.3][i];ctx.drawImage(SHUT.c,-48,-80,96,96);ctx.restore();}
   ctx.restore();
-  ctx.save();ctx.beginPath();ctx.rect(ch.wx-6,wb,P.x+12-(ch.wx-6),2*HY);ctx.clip();ctx.translate(P.x-26*k,ys);ctx.scale(1,0.1); // and smeared along the floor
+  ctx.save();ctx.beginPath();ctx.rect(ch.wx-6,wb,P.x+12-(ch.wx-6),2*HY);ctx.clip();
+  ctx.beginPath();for(let c=Math.floor((ch.wx-6)/TW)-1;c<=Math.floor((P.x+12)/TW);c++){if(B(L,c,r)===WALL||!solidBelow(L,c,r))continue;const fx=c*TW-HX,w=B(L,c+1,r)===WALL; // (round 39, D6: on the floors' top faces only, cut at a wall's face)
+    ctx.moveTo(fx,ys+HY);ctx.lineTo(fx+TW,ys+HY);ctx.lineTo(fx+TW+(w?0:DX),ys-HY);ctx.lineTo(fx+DX,ys-HY);ctx.closePath();}
+  ctx.clip();ctx.translate(P.x-26*k,ys);ctx.scale(1,0.1); // and smeared along the floor
   const gr=ctx.createRadialGradient(0,0,2,0,0,40+40*k);gr.addColorStop(0,'rgba(0,0,0,'+(0.45*k)+')');gr.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=gr;ctx.fillRect(-80-40*k,-80-40*k,160+80*k,160+80*k);ctx.restore();}
 function drawPlank(ctx,X,ys,sh){
   ctx.save();ctx.translate(0,sh);const fx=X-HX,ft=ys+HY;
@@ -7449,36 +7521,71 @@ function drawJaws(ctx,o,f,X,Y,ys,half){
   if(k<0.6){const gl=ctx.createLinearGradient(0,pl.ce(pl.L0+HX)+24,0,pl.fl(pl.L0+HX)-20);gl.addColorStop(0,'rgba(220,226,240,0)');gl.addColorStop(0.5,'rgba(220,226,240,.13)');gl.addColorStop(1,'rgba(220,226,240,0)');ctx.fillStyle=gl;ctx.fillRect(pl.L0+3,pl.ce(pl.L0+HX)+24,pl.R0-pl.L0-6,Math.max(0,pl.fl(pl.L0+HX)-pl.ce(pl.L0+HX)-44));} // a faint dust shaft joins the two jaws while open
   ctx.restore();
 }
-// The leading edge of a wall stands on the front plane, nearer than anyone walking the corridor: copy that
-// sliver of the pre-drawn room back over the actors (the old foreground-layer trick).
+// (round 39, D12) A cell's tile as the room's picture takes it (drawRoomStatic reads L.base the same way): a movable block's cell holds WALL
+// in L.base (both of its cells while it moves), the picture the tile under it (blockUnder; the block is drawn live, drawBlock), and a
+// counterweight lift's top mouth open. wallBelow asks it, and blockAtCell for the block itself
 function terrainAt(c,r){const u=L.blockUnder?L.blockUnder.get(r*L.cols+c):undefined;return u!==undefined?u:B(L,c,r);}
 // A figure walks at mid-depth, but a wall's front face stands HX nearer and HX further left. Rather than let a
 // figure sink into that face (or slice it with a sliver of wall), draw it pressed against the face instead.
-// How far a figure's pose reaches to its right of x, and how high it stands (crouching leans the head well forward).
-function figReach(face,pose){const s=skel(pose),hd=GFX().hd;let mx=-1e9,top=1e9;
+// How far a figure's pose reaches to its right of x (and to its left, round 39), and how high it stands (crouching leans the head well forward).
+function figReach(face,pose){const s=skel(pose),hd=GFX().hd;let mx=-1e9,mn=1e9,top=1e9;
   // the new bodies are fuller: slipper toes reach well past the foot, the pants and vest are wider
   const pad=hd?[[s.kF,4],[s.fF,7.5],[s.kB,4],[s.fB,7.5],[s.sh,5],[s.hd,5.5],[s.eF,2],[s.hF,1.6],[s.eB,2],[s.hB,1.6]]:[[s.kF,0],[s.fF,0],[s.kB,0],[s.fB,0],[s.sh,0],[s.hd,0],[s.eF,0],[s.hF,0],[s.eB,0],[s.hB,0]];
-  for(const [j,m] of pad){const x=j[0]*face+(face>0?m:m*0.4);if(x>mx)mx=x;if(j[1]<top)top=j[1];}
-  return {right:mx+(hd?1:3),top:top-s.hipH-5*LEN.hd/4.6};} // (the head's top; round 22b: by the head's size)
-// Pressed against the front face of a wall (or block, or low ceiling) on its right: how far to draw the figure to the
-// left so it doesn't sink into the face, and the face itself, to cut off anything still poking in (a lowered sword).
-function wallPress(x,y,face,pose){
-  const R=figReach(face,pose),xr=x+Math.max(BW+1,R.right),cw=Math.floor(x/TW)+1,fx=cw*TW-HX;
-  if(xr<=fx)return null;
-  const yt=y+R.top,yb=y-3;
+  for(const [j,m] of pad){const x=j[0]*face;if(x+(face>0?m:m*0.4)>mx)mx=x+(face>0?m:m*0.4);if(x-(face<0?m:m*0.4)<mn)mn=x-(face<0?m:m*0.4);if(j[1]<top)top=j[1];}
+  return {right:mx+(hd?1:3),left:mn-(hd?1:3),top:top-s.hipH-5*LEN.hd/4.6};} // (the head's top; round 22b: by the head's size)
+// (round 39, D2/D3) the solid cells of column cc beside a figure from yt to yb: the rows of the first one it overlaps, on down through walls
+// (WPR.wt, WPR.wb), or null; a block being pushed or pulled (both its cells hold WALL while it moves) gives its drawn x (drawBlock's bx) in WPR.bx
+const WPR={wt:0,wb:0,bx:NaN};
+function wallRows(cc,yt,yb){
   for(let r=Math.floor(yt/TH);r<=Math.floor(yb/TH);r++){
     let top=r*TH,bot=top+TH;
-    if(B(L,cw,r)!==WALL){const f=F(L,cw,r);if(f&&f.t==='low')bot=top+TH-34;else continue;}
-    if(yb>top&&yt<bot){let wt=top,wb=bot;for(let r2=r+1;r2<=Math.floor(yb/TH);r2++){if(B(L,cw,r2)===WALL)wb=(r2+1)*TH;else break;}
-      return {dx:Math.max(-HX-12,fx-xr),fx,wt,wb};}
+    if(B(L,cc,r)!==WALL){const f=F(L,cc,r);if(f&&f.t==='low')bot=top+TH-34;else continue;}
+    if(yb>top&&yt<bot){let wb=bot;for(let r2=r+1;r2<=Math.floor(yb/TH);r2++){if(B(L,cc,r2)===WALL)wb=(r2+1)*TH;else break;}
+      WPR.wt=top;WPR.wb=wb;WPR.bx=NaN;for(const bl of L.ext.blocks)if(bl.mv&&bl.r*TH>=top&&bl.r*TH<wb&&(bl.mv.from===cc||bl.mv.to===cc)){WPR.bx=lerp(bl.mv.from,bl.mv.to,ease(Math.min(1,bl.mv.t/bl.mv.dur)))*TW-HX;break;}
+      return WPR;}
   }
   return null;
 }
+// Pressed against the front face of a wall (or block, or low ceiling) on its right: how far to draw the figure to the
+// left so it doesn't sink into the face, and the face itself, to cut off anything still poking in (a lowered sword).
+// (round 39, D2) and against one on its left: that one hides a mid-depth point left of its cell's right edge (its front face and its side
+// face's near half), so the figure is drawn to the right by the mirror of the same reach, at most HX+4 (the right press's HX+12 less the HX
+// a left face stands further off: clampMove keeps him BW from both), and cut there. Between two (a kick shaft, 24 px at mid-depth) where he
+// does not fit, he is drawn in the middle and both cut him (the faced one alone pressing took his head into the other: planted on a shaft's
+// right wall, 19.5 px). (D3) A block being pushed or pulled cuts and presses at its drawn face, not at its two cells.
+// The result is one shared object (WP), used at once by the caller; fx 1e9 / lx -1e9 when that side has no face.
+const WP={dx:0,fx:0,wt:0,wb:0,lx:0,lt:0,lb:0};
+function wallPress(x,y,face,pose){
+  const R=figReach(face,pose),c=Math.floor(x/TW),xr=x+Math.max(BW+1,R.right),xl=x+Math.min(-BW-1,R.left),yt=y+R.top,yb=y-3;
+  let fx=1e9,lx=-1e9,w;
+  if((w=wallRows(c+1,yt,yb))){fx=w.bx===w.bx?w.bx:(c+1)*TW-HX;WP.wt=w.wt;WP.wb=w.wb;}
+  if((w=wallRows(c-1,yt,yb))){lx=w.bx===w.bx?w.bx+TW+HX:c*TW;WP.lt=w.wt;WP.lb=w.wb;}
+  if(xr<=fx&&xl>=lx)return null;
+  let dx=xr>fx?fx-xr:0;if(xl+dx<lx)dx=xr-xl<=fx-lx?lx-xl:(lx-xl+fx-xr)/2;
+  WP.dx=clamp(dx,-HX-12,HX+4);WP.fx=fx;WP.lx=lx;return WP;
+}
 function pushOut(x,y,face,pose){const w=wallPress(x,y,face,pose);return w?w.dx:0;}
+// (round 39, D1) a figure lying dead (and a guard crumbling, and its heap of sand): figReach does not know the body is turned flat, so it is
+// not pressed but cut by every face within reach (rx either side of x, from yt to yb): a wall's or a low ceiling's from its face's left edge
+// to its cell's right edge, where a mid-depth point is behind its front face or its side face's near half. A cell beside another starts where
+// that one's leaves off (so nothing overlaps: one even-odd clip). Call between save and restore
+function deadCut(ctx,x,y,rx,yt){const c0=Math.floor((x-rx)/TW),c1=Math.floor((x+rx+HX)/TW),r0=Math.floor(yt/TH),r1=Math.floor((y-1)/TH);let any=false;
+  for(let r=r0;r<=r1;r++){if(r<0||r>=L.rows)continue;let pc=-9,ph=0;
+    for(let c=c0;c<=c1;c++){if(c<0||c>=L.cols){pc=-9;continue;}let h=0;if(B(L,c,r)===WALL)h=TH;else{const q=F(L,c,r);if(q&&q.t==='low')h=TH-34;}
+      if(!h){pc=-9;continue;}if(!any){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);any=true;}
+      if(pc===c-1&&ph>=h)ctx.rect(c*TW,r*TH,TW,h); // (the cell before covers its face)
+      else{if(pc===c-1)ctx.rect(c*TW-HX,r*TH+ph,HX,h-ph);ctx.rect(pc===c-1?c*TW:c*TW-HX,r*TH,pc===c-1?TW:TW+HX,h);}
+      pc=c;ph=h;}}
+  if(any)ctx.clip('evenodd');}
+// (round 39, owner on D5: "Cut the arms at the lip, keep only the hands") the ledge's slab where no wall below hides him (mode 3: the slab on his
+// right, open below; mode 4: the slab on his left): its lip and the near half of its top face (and the near half of its end) are nearer than he
+// is, so of what is below its top face's mid line only the hands' grip (above ys+1.5, as mode 2) shows
 function figClip(ctx,mode,lg,wc){
   if(mode===2){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,1e5+lg.ys+1.5);ctx.clip();}           // only what's above the ledge
   else if(mode===1){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);ctx.rect(lg.xe-HX,lg.ys+1.5,TW,HANG+16);ctx.clip('evenodd');} // behind the wall's face
-  if(wc){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);ctx.rect(wc.fx,wc.wt,1e4,wc.wb-wc.wt);ctx.clip('evenodd');}
+  else if(mode===3){const xe=lg.xe,ys=lg.ys;ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);ctx.moveTo(xe-HX,ys+HY+FHH);ctx.lineTo(xe+TW+HX,ys+HY+FHH);ctx.lineTo(xe+TW+HX,ys+1.5);ctx.lineTo(xe-3,ys+1.5);ctx.lineTo(xe-HX,ys+HY);ctx.closePath();ctx.clip('evenodd');}
+  else if(mode===4){const xe=lg.xe,ys=lg.ys;ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);ctx.moveTo(xe-TW-HX,ys+HY+FHH);ctx.lineTo(xe-HX,ys+HY+FHH);ctx.lineTo(xe,ys+FHH);ctx.lineTo(xe,ys+1.5);ctx.lineTo(xe-TW-HX,ys+1.5);ctx.closePath();ctx.clip('evenodd');}
+  if(wc){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);if(wc.fx<1e8)ctx.rect(wc.fx,wc.wt,1e4,wc.wb-wc.wt);if(wc.lx>-1e8)ctx.rect(wc.lx-1e4,wc.lt,1e4,wc.lb-wc.lt);ctx.clip('evenodd');}
 }
 function ledgeOf(){const st=P.state;
   if(st==='hang'||st==='climb')return P.ledge;
@@ -7488,17 +7595,21 @@ function wallBelow(lg){return terrainAt(lg.c,lg.r+1)===WALL||!!blockAtCell(lg.c,
 // mid-depth while hanging, and the wall in front of him when he hangs on its near face.
 function updateLook(dt){
   if(!P)return;const st=P.state,lg=ledgeOf();let tdx=0,tdy=0,mode=0;
-  if(lg){const k=st==='hang'?1:st==='climb'?1-Math.min(1,P.t/0.45):st==='climbDown'?Math.max(0,(P.t/0.5-0.5)/0.5):clamp((P.t-0.1)/0.22,0,1);
-    tdx=lerp(st==='jumpUp'?pushOut(P.x,P.y,P.face,P.pose):0,-lg.s*6,k);tdy=-2*k;
+  if(lg){const k=st==='hang'?1:st==='climb'?1-Math.min(1,P.t/0.45):st==='climbDown'?Math.max(0,(P.t/0.5-0.5)/0.5):clamp((P.t-0.1)/0.22,0,1),wb=wallBelow(lg);
+    // (round 39, D2) with the wall below the ledge on his left, only as far as puts his hands on its corner: the full 6 px took his chest and
+    // head into that wall's side face (its near half hides a mid-depth point left of xe); what still reaches past xe there is cut (wallPress)
+    tdx=lerp(st==='jumpUp'?pushOut(P.x,P.y,P.face,P.pose):0,lg.s>0&&wb?-2:-lg.s*6,k);tdy=-2*k;
     // jumping up at a wall's near face he slips behind its front face; once hanging the wall hides all but his hands
-    if(lg.s<0&&wallBelow(lg))mode=st==='jumpUp'?1:2;}
-  else tdx=st==='dead'?0:pushOut(P.x,P.y,P.face,P.pose);
+    // (round 39, D5) elsewhere the ledge's slab hides what is below its top face's mid line but the hands (figClip modes 3 and 4)
+    mode=lg.s<0?(wb?(st==='jumpUp'?1:2):3):4;}
+  else tdx=st==='dead'?(P.rdx||0):pushOut(P.x,P.y,P.face,P.pose); // (round 39, D1: dead, he stays where he was drawn, cut by the faces near him, deadCut)
   if(!lg)tdy-=blockStep(P.x,P.y,st); // (round 16a) on a fallen roof block: his feet on its top
   // (liftocc2) in a lift's shaft there is no room to be pressed back into: at most to the shaft's left side (his back against it);
-  // what still reaches past the wall's front face on his right is cut by it (liftOccl, when he is drawn)
-  if(tdx<0&&L.lifts.length){const lf=liftAround();if(lf)tdx=Math.max(tdx,Math.min(0,lf.ca*TW+10-P.x));}
+  // what still reaches past the wall's front face on his right is cut by it (liftOccl, when he is drawn); (round 39) nor to the right
+  // past its right side's face
+  if(tdx&&L.lifts.length&&st!=='dead'&&(tdx<0||!lg)){const lf=liftAround();if(lf)tdx=tdx<0?Math.max(tdx,Math.min(0,lf.ca*TW+10-P.x)):Math.min(tdx,Math.max(0,(lf.cb+1)*TW-HX-10-P.x));}
   const a=1-Math.exp(-dt*28);
-  if((P.hideMode||0)>0&&!mode){P.rdx=tdx;P.rdy=tdy;} // stepping out from behind the wall: no slide in plain view
+  if((P.hideMode===1||P.hideMode===2)&&!mode){P.rdx=tdx;P.rdy=tdy;} // stepping out from behind the wall: no slide in plain view
   else{P.rdx=(P.rdx||0)+(tdx-(P.rdx||0))*a;P.rdy=(P.rdy||0)+(tdy-(P.rdy||0))*a;}
   P.hideMode=mode;if(mode)P.hideLg=lg;
 }
@@ -7528,8 +7639,9 @@ const CUT_AT_WALL=new Set(['plate','xplate','lplate','closer','loose','spikes'])
 // brackets, verdigris on the bronze in the damp themes, a chipped platform lip, streaks down the shaft; 3 a rotten bite out of the
 // beam's end bound with rope, heavier rust and soot or moss, a cracked platform. Never broken, never like a hurtdrop.
 function liftVisible(f,x0,x1,y0,y1){return (f.cb+1)*TW+80>x0&&f.ca*TW-80<x1&&f.rB*TH+TH+10>y0&&f.rT*TH-40<y1;}
+const LAYER_DBG={hide:null,glow:true};function lyOff(k){return LAYER_DBG.hide!==null&&LAYER_DBG.hide.has(k);} // (round 39: layerscan.py leaves one kind of thing out of a frame, a Set of kinds: 'lamp', 'door', 'clock', 'lift', a feature's type, 'block', 'dart', 'cue', 'jet', 'flask', 'well', 'dust', 'debris', 'snake', 'guard', 'prince', 'trail', 'sand', 'emissive', 'ambient', 'atmo', 'haze'; glow false: no lamp's drawn glow, which is light, GLOWK)
 const LIFT_DBG={off:false,rider:false,gatesR:false,tiles:null}; // (liftscan.py: off leaves the lifts out of a frame, rider the prince, and gatesR draws only the gratings on the shafts' right edges, to compare with frames that have them; tiles, a Set, collects the cells whose floor tile the room pictures draw)
-function drawLift(ctx,f,half){if(LIFT_DBG.off||(LIFT_DBG.gatesR&&f.t==='chain'))return;if(f.sand)drawSandLift(ctx,f,half);else if(f.t==='chain')drawLiftChain(ctx,f,half);else drawLiftCounterweight(ctx,f,half);}
+function drawLift(ctx,f,half){if(LIFT_DBG.off||lyOff('lift')||(LIFT_DBG.gatesR&&f.t==='chain'))return;if(f.sand)drawSandLift(ctx,f,half);else if(f.t==='chain')drawLiftChain(ctx,f,half);else drawLiftCounterweight(ctx,f,half);}
 function liftWear(f){if(f.wl===undefined||f.wn!==L.n){const x=(f.ca+f.cb+1)*TW/2,ym=(f.rT*TH+SURF(f.rB))/2;f.wn=L.n;f.wl=inBreach(x,ym,true)?3:wearLevel(x,ym);}return f.wl;}
 // the front faces of the walls and low ceilings round a lift: cut out of what is drawn next (ctx in world space; save/restore round it)
 // (a floor's lip and its shadow lie over the top of the wall under it, so that strip is left open: a platform docked there shows its own)
@@ -7559,6 +7671,43 @@ function liftNearCut(ctx,f,cc,foot){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);
     else if(solidBelow(L,cc,r)){const sy=SURF(r);ctx.moveTo(xr,sy+HY+9);ctx.lineTo(xr+TW+DX,sy+HY+9);ctx.lineTo(xr+TW+DX,sy-HY);ctx.lineTo(xr+DX,sy-HY);ctx.lineTo(xr,sy+HY);ctx.closePath();}}
   if(foot)ctx.rect(f.ca*TW-HX,f.yB+HY,(f.cb-f.ca+1)*TW,10);
   ctx.clip('evenodd');}
+// (round 39, dev/docs/layers.md R1) the front plane in cells c0..c1, rows r0..r1, cut out of what is drawn next: walls' front faces and
+// low ceilings' faces (drawn HX left of their cell); with fl, the floor slabs there too (top face and lip, as liftNearCut: what stands at
+// mid-depth beside a slab's end is behind its near half). Call between save and restore; returns whether it clipped.
+function nearCut(ctx,c0,c1,r0,r1,fl){let any=false;
+  for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++){if(c<0||c>=L.cols||r<0||r>=L.rows)continue;const b=B(L,c,r),xr=c*TW-HX;let h=0;
+    if(b===WALL)h=TH;else{const q=F(L,c,r);if(q&&q.t==='low')h=TH-34;}
+    const sl=fl&&!h&&solidBelow(L,c,r);if(!h&&!sl)continue;
+    if(!any){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);any=true;}
+    if(h){const lip=fl&&r>r0&&solidBelow(L,c,r-1)&&B(L,c,r-1)!==WALL?FHH:0;ctx.rect(xr,r*TH+lip,TW,h-lip);} // (the strip under a slab's lip is that slab's)
+    else{const sy=SURF(r),wr=c+1<L.cols&&B(L,c+1,r)===WALL;ctx.moveTo(xr,sy+HY+FHH);ctx.lineTo(xr+TW,sy+HY+FHH);if(wr)ctx.lineTo(xr+TW,sy-HY);else{ctx.lineTo(xr+TW,sy+HY);ctx.lineTo(xr+TW+DX,sy-HY);}ctx.lineTo(xr+DX,sy-HY);ctx.lineTo(xr,sy+HY);ctx.closePath();}} // (a slab ends at a wall's face on its right, as the room picture trims it: no overlap for the even-odd fill to leave uncut)
+  if(any)ctx.clip('evenodd');return any;}
+// (round 39) is the world point x,y on the front plane: a wall's or low ceiling's face, or a floor slab's lip? Air drawn in the corridor
+// (motes, smoke, sparks, bats) is not drawn where it is: the stone in front hides it.
+function onFace(x,y){const c=Math.floor((x+HX)/TW),r=Math.floor(y/TH);if(c<0||c>=L.cols||r<0||r>=L.rows)return false;const b=B(L,c,r);
+  if(b===WALL)return true;const q=F(L,c,r);if(q&&q.t==='low'&&y<r*TH+TH-34)return true;
+  return r>0&&y<r*TH+FHH&&B(L,c,r-1)!==WALL&&solidBelow(L,c,r-1);}
+// (round 39, D7, B3, B4) what falls through a hole in the floor (a plank, a corridor's cracked slab and its chunks and the billow out of the
+// hole; the rock and the slab with EGP.traps off) goes down behind what stands nearer beside it: the next column's faces and floor slabs on
+// every row it passes (nearCut: the right neighbour's lip and the near part of its top face stand in front of the hole's right edge), and the
+// column before's faces and its floor's lip on the hole's own row (that slab's top face never stands in front of anything in the hole: it is
+// behind it). Two clips; call between save and restore
+function debrisCut(ctx,d){const r0=Math.floor((d.y0+4)/TH)-1,r1=Math.floor((Math.max(d.y,d.y0+48)+HY+FHH)/TH),cl=d.c-1,xl=cl*TW-HX;
+  nearCut(ctx,d.c+1,d.c+1,r0,r1,true);if(cl<0)return;let any=false,lip=0;
+  for(let r=Math.max(0,r0);r<=r1&&r<L.rows;r++){const b=B(L,cl,r),q=b===WALL?null:F(L,cl,r);let y0=0,y1=0;
+    if(b===WALL){y0=r*TH+lip;y1=(r+1)*TH;}else if(q&&q.t==='low'){y0=r*TH+lip;y1=r*TH+LOW_H;}else if(r===r0&&solidBelow(L,cl,r)){y0=SURF(r)+HY;y1=y0+FHH;}
+    lip=r===r0&&b!==WALL&&solidBelow(L,cl,r)?FHH:0;if(y1<=y0)continue;
+    if(!any){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);any=true;}ctx.rect(xl,y0,TW,y1-y0);}
+  if(any)ctx.clip('evenodd');}
+// (round 39) the corridor's run on row r round world x, between the faces (walls', and low ceilings' over y0..y1) nearest it within three
+// cells: FGX[0] (where the face on the left ends), FGX[1] (where the one on the right starts), +-1e9 where none; false when x is on one
+const FGX=new Float64Array(2);
+function fgHit(c,r,y0,y1){const h=cpFace(c,r);return h>0&&y0<r*TH+h&&y1>r*TH;}
+function faceGap(x,r,y0,y1){const c=Math.floor((x+HX)/TW);if(fgHit(c,r,y0,y1))return false;FGX[0]=-1e9;FGX[1]=1e9;
+  for(let k=1;k<=3;k++)if(fgHit(c+k,r,y0,y1)){FGX[1]=(c+k)*TW-HX;break;}for(let k=1;k<=3;k++)if(fgHit(c-k,r,y0,y1)){FGX[0]=(c-k+1)*TW-HX;break;}return true;}
+// (round 39) a soft sprite of air (a smoke puff, a wisp's glow, a dust cloud) in box x,y,w,h cut by the front plane round it: a rectangle (a
+// scissor in Torchlight, so the stencil of nearCut is only that big), then the faces in its cells (fl: the slabs' too). Call between save and restore
+function airCut(ctx,x,y,w,h,fl){ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();nearCut(ctx,Math.floor((x+HX)/TW),Math.floor((x+w+HX)/TW),Math.floor((y-FHH)/TH),Math.floor((y+h)/TH),fl);} // (from the row above when its slab's lip reaches the box)
 // the lift whose shaft he is in (riding it, or standing or falling inside it), or null
 function liftAround(){if(P.state==='lift'&&P.lift)return P.lift;const c=pCol(),ra=rowOf(P.y-40),rb=rowOf(P.y-1);for(const f of L.lifts)if(c>=f.ca&&c<=f.cb&&rb>=f.rT&&ra<=f.rB)return f;return null;}
 // The Egyptian lifts (round 13, owner: "egyptianise the lifts: rope instead of chain, stone slabs instead of grates, wooden wheels";
@@ -7660,6 +7809,13 @@ function liftMouth(ctx,f,e,h){const rr=e?f.rB:f.rT,s=e?f.sB:f.sT,gx=EGP.traps?(s
 function liftMouthCut(ctx,f,e){const rr=e?f.rB:f.rT,s=e?f.sB:f.sT,gx=s<0?f.sc*TW-T_SLAB/2:(f.sc+1)*TW+T_SLAB/2;gateGeom(gx-16,rr*TH,SURF(rr),{open:e?f.gB:f.gT});
   const pl=GATE_G.pl,dr=GATE_G.drop;if(dr<2)return;const T=T_SLAB,a=pl.L0,b=pl.R0,yd=Math.min(72,dr+3),yA=pl.ce(a)-3+yd,yB=pl.ce(b)-3+yd;
   ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);ctx.moveTo(a-T/2-0.8,pl.top-DY-6);ctx.lineTo(b+T/2+0.8,pl.top-DY-6);ctx.lineTo(b+T/2+0.8,yB+0.8);ctx.lineTo(a+T/2+0.8,yA+0.9);ctx.lineTo(a-T/2-0.8,yA+0.9);ctx.closePath();ctx.clip('evenodd');}
+// (round 39e, dev/docs/layers.md R1) a left mouth's slab (landing e) stands outside the shaft, its front face on the shaft's edge (X-HX): that
+// face is nearer than a figure on the landing, who was drawn over it (the slab went whole before the shaft's contents). Its near half is now
+// split there: the front face (k 1, x < X-HX) goes after the figures with the lift's front half, as a right mouth's near half does; the rest
+// (k 0: the broad face's first quarter, the shaft's left side) stays before the shaft's contents, which stand in front of it (the platform,
+// the sand lift's slab, sand and the grains running down the shaft's side). Rect clips on a whole canvas pixel: no seam where they meet
+function liftMouthL(ctx,f,e,k){const VZ=renderXf.VZ||1,xs=Math.round((f.sc*TW-HX)*VZ)/VZ;ctx.save();ctx.beginPath();if(k)ctx.rect(xs-4096,-1e5,4096,2e5);else ctx.rect(xs,-1e5,4096,2e5);ctx.clip();
+  if(f.sand)sandMouth(ctx,f,-1,1);else liftMouth(ctx,f,e,1);ctx.restore();}
 function drawLiftCounterweight(ctx,f,half){
   const th=L.theme,ys=f.y,bot=SURF(f.rB),W=liftWear(f),R=liftRig(f),X=R.X;
   // the mouth gratings stand on the shaft's edges. (liftocc2) Seen in this view (depth runs up and to the right), a grating on the
@@ -7669,7 +7825,7 @@ function drawLiftCounterweight(ctx,f,half){
   // thickness of the slab the outer tile"): the stone slab stands wholly outside the shaft, its inner face on the shaft's edge, and the call
   // plate is drawn beyond it; the gate's plane for play (liftGx) is unchanged
   const gate=(e,h)=>liftMouth(ctx,f,e,h);
-  if(half||LIFT_DBG.gatesR){for(let e=0;e<2;e++)if((e?f.sB:f.sT)>0)gate(e,half?1:0);return;}
+  if(half||LIFT_DBG.gatesR){for(let e=0;e<2;e++){if((e?f.sB:f.sT)>0)gate(e,half?1:0);else if(half&&!LIFT_DBG.gatesR)liftMouthL(ctx,f,e,1);}return;} // (round 39e: and a left mouth's near half, liftMouthL)
   ctx.save();liftOccl(ctx,f);liftNearCut(ctx,f,f.sc+1,false);
   ctx.save();liftOcclSide(ctx,f);
   liftShaftBack(ctx,X,TW,R.top,bot,W);
@@ -7690,7 +7846,7 @@ function drawLiftCounterweight(ctx,f,half){
   // (round 16c) a slab on the shaft's left edge: its broad face is the shaft's left side, from the front plane to the back wall, so it stands in
   // front of the back wall's shade, channel and counterweight (drawn before it, they had darkened its back half: the sheared look) and
   // behind the ropes, beam and platform in the shaft
-  ctx.restore();for(let e=0;e<2;e++)if((e?f.sB:f.sT)<0){gate(e,0);gate(e,1);}ctx.save();liftOccl(ctx,f);liftNearCut(ctx,f,f.sc+1,false);
+  ctx.restore();for(let e=0;e<2;e++)if((e?f.sB:f.sT)<0){gate(e,0);liftMouthL(ctx,f,e,0);}ctx.save();liftOccl(ctx,f);liftNearCut(ctx,f,f.sc+1,false);
   // the hoist beam: from inside the wall on side ws out over the shaft to the mouth's edge, a brace under it into the same wall
   const ws=R.ws,xw=ws>0?X+TW+10:X-10,xo=ws>0?X-3:X+TW+3;
   liftTimber(ctx,xw,R.by+3,xo,R.by+3,6,W,true);
@@ -7712,14 +7868,14 @@ const SAND_MD=28;
 function sandOpen(f){return clamp((f.y-f.yB+SAND_MD)/SAND_MD,0,1);}
 function sandMouth(ctx,f,s,h){const gx=EGP.traps?(s<0?f.sc*TW-T_SLAB/2:(f.sc+1)*TW+T_SLAB/2):liftGx(f,s);drawGate(ctx,{open:sandOpen(f),latch:true,dur:0,lg:1},gx-16,f.rB*TH,SURF(f.rB),h);}
 function drawSandLift(ctx,f,half){
-  if(half||LIFT_DBG.gatesR){for(const s of f.ms)if(s>0)sandMouth(ctx,f,s,half?1:0);return;} // (a right mouth's near half after the rider, as the counterweight's)
+  if(half||LIFT_DBG.gatesR){for(const s of f.ms){if(s>0)sandMouth(ctx,f,s,half?1:0);else if(half&&!LIFT_DBG.gatesR)liftMouthL(ctx,f,1,1);}return;} // (a right mouth's near half after the rider, as the counterweight's; round 39e: a left one's too, liftMouthL)
   const th=L.theme,ys=f.y,bot=SURF(f.rB),W=liftWear(f),X=f.sc*TW,top=f.rT*TH,h=ys-f.yT,pd=liftPit(f.sc,f.rB)?LP_D:0; // (round 37a: pd, the foot's pit under the slab's resting place)
   ctx.save();liftOccl(ctx,f);
   ctx.save();liftOcclSide(ctx,f);ctx.beginPath();ctx.rect(X-HX,f.yT-HY,TW,bot-f.yT+HY+pd);ctx.clip(); // (round 19) seen through the hole only: under the top slab's back edge, between the front planes of the cells beside it (its right groove lay over the next floor tile's top and lip)
   liftShaftBack(ctx,X,TW,top,bot,W);
   const ox=X+16+HX,oy=bot-HY+pd;ctx.fillStyle='rgba(6,4,10,.92)';ctx.beginPath();ctx.moveTo(ox-5,oy+0.5);ctx.lineTo(ox-5,oy-5);ctx.quadraticCurveTo(ox,oy-7.5,ox+5,oy-5);ctx.lineTo(ox+5,oy+0.5);ctx.closePath();ctx.fill(); // the outlet (round 37a: in the pit's back, on its floor)
   ctx.restore();
-  ctx.restore();for(const s of f.ms)if(s<0){sandMouth(ctx,f,s,0);sandMouth(ctx,f,s,1);}ctx.save();liftOccl(ctx,f); // (round 26e: a left mouth whole, behind the sand and slab)
+  ctx.restore();for(const s of f.ms)if(s<0){sandMouth(ctx,f,s,0);liftMouthL(ctx,f,1,0);}ctx.save();liftOccl(ctx,f); // (round 26e: a left mouth behind the sand and slab; round 39e: its near half, but for the strip the sand and slab stand in front of, after the figures)
   if(ys<bot-0.5)sandCut(ctx,X-HX,ys+HY+5,bot+HY+pd,f.yT+HY+5,h,f.s===1&&f.tm>=SAND_LW,f.sc*131+f.rT*7); // (round 37a: down into the foot's pit)
   if(f.s===1&&f.tm<SAND_LW+0.3){const k=Math.max(0,1-Math.abs(f.tm-SAND_LW)/0.3);if(k>0.02)dustCloud(ctx,X+16-HX,ys+HY+3,0.12+0.2*(1-k),0.6,0.55,0);} // a puff as it first gives
   if(f.s===1&&f.tm>=SAND_LW&&ys>f.yT+2)for(const ex of [X-HX+1.6,X+TW-HX-1.6])sandFlow(ctx,ex,f.yT+HY+5,ys+HY+1,0.16,ex*0.07); // grains left on the shaft's sides running down the gap after it (they stop when it does)
@@ -7934,14 +8090,14 @@ function jetPlaces(){if(L._jet)return L._jet;const out={shafts:[],jg:[]};
     jsQuad(p,X+16,y1+20,xs,y1,6);                                    // up into the wall on the ledge's side
     for(let k=1;k<=nl;k++){const ax=p.x[p.n-1],bx=k%2?xo:xs,by=y1-R*k/nl;jsQuad(p,ax+(bx-ax)*0.15,by,bx,by,8);} // kick to kick, each arc topping out at the far wall
     jsQuad(p,xs,ly-hb-8,xs+sd*16,ly-hb,6);jsAdd(p,xs+sd*34,ly-hb+2);   // over the lip and out onto the ledge
-    out.shafts.push({p,c,r0:tr,r1:r,seed:hash2(c,r)&1023,wall:{wx0:X,wx1:X+TW,wy:ly}});}
+    out.shafts.push({p,c,r0:tr,r1:r,seed:hash2(c,r)&1023,wall:{wx0:X,wx1:X+TW-HX,wy:ly}});} // (round 39: the right wall's front face starts HX left of its cell: grains kept to X+30 ran 6 px onto it)
   for(const a of L.path){if(a.a!=='jgrab')continue;const d=a.to>a.from?1:-1;let r=-1;
     for(let rr=1;rr<L.rows-1&&r<0;rr++){const f=F(L,a.from+d,rr);if(f&&f.t==='jgrab')r=rr;}
     if(r<1)continue;const ys=SURF(r),ly=SURF(r-1),xe=d>0?a.to*TW-HX+2:(a.to+1)*TW-HX-2,x0=a.from*TW+16+d*14,p=jsPath();jsReset(p);
     jsAdd(p,x0-d*30,ys-22);jsAdd(p,x0,ys-26);                     // the run-up
     jsQuad(p,(x0+xe)/2,ly-62,xe-d*6,ly+12,12);                     // the leap, caught at the ledge's edge (Grab held)
     jsQuad(p,xe-d*4,ly-28,xe+d*16,ly-30,6);jsAdd(p,xe+d*32,ly-28);   // pulled up onto it
-    out.jg.push({p,seed:hash2(a.from,r)&1023});}
+    out.jg.push({p,seed:hash2(a.from,r)&1023,c:a.to,r:r-1});}
   return (L._jet=out);}
 const JS_SW=jsPath();
 // the swing's throw: from the back of his swing through the bottom, then the flight his Jump would give at the bottom at this
@@ -7957,20 +8113,33 @@ function jsSwingPath(){const p=jsReset(JS_SW),f=P.bar,bp=barPos(f),fc=P.face,A=M
 function drawJetHints(x0,x1,y0,y1,ctx){const J=jetPlaces(),pc=P?pCol():-1,pr=P?pRow():-1;
   for(const q of J.shafts){if(q.p.bx1<x0-24||q.p.bx0>x1+24||q.p.by1<y0-24||q.p.by0>y1+24)continue;
     const inIt=P&&pc===q.c&&pr>=q.r0&&pr<=q.r1&&P.state!=='stand';
-    jetStream(ctx,q.p,(S.learned.shaft?0.65:1)*(inIt?0.85:1),90,3,q.seed,x0,x1,y0,y1,q.wall);}
-  if(!S.learned.jgrab)for(const q of J.jg)jetStream(ctx,q.p,0.85,95,3.6,q.seed,x0,x1,y0,y1,null);
+    ctx.save();ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,1e5+SURF(q.r1));ctx.clip();nearCut(ctx,q.c-1,q.c+1,q.r0-1,q.r1,false);jetStream(ctx,q.p,(S.learned.shaft?0.65:1)*(inIt?0.85:1),90,3,q.seed,x0,x1,y0,y1,q.wall);ctx.restore();} // (round 39: the haze wisps are wider than the grains' clamp: the shaft's walls in front cut them, and the foot's floor what the entry draws in below its line)
+  if(!S.learned.jgrab)for(const q of J.jg){ctx.save();nearCut(ctx,q.c,q.c,q.r,q.r+1,true);jetStream(ctx,q.p,0.85,95,3.6,q.seed,x0,x1,y0,y1,null);ctx.restore();} // (round 39: the ledge he catches stands nearer than the stream curling up onto it: its slab and the face under it cut it)
   if(P&&P.state==='swing'&&P.bar&&P.swRdy){const k=clamp((gameTime-(P.swGl||0))/0.4,0,1),fw=P.swOm>0?1:0.5; // (stronger while he swings forward: Jump now)
     jetStream(ctx,jsSwingPath(),k*fw*(S.learned.swing?0.75:1),125,4,517,x0,x1,y0,y1,null);}}
+// (round 39e, dev/docs/layers.md R1) the stakes, SPK far to near: the front one (depth .26) is nearer than a figure at mid-depth, who was drawn
+// over it tiptoeing across (spikes.md's "he stands in front of them" described the order, it was no rule): it is drawn after the figures (near,
+// from the near-halves loop, under the same CUT_AT_WALL cut); the others before them. The shadow's carve (SHC) still records all four, with the far ones
+function drawNeedles(ctx,o,f,X,ys,near){const e=f.ext;if(e<=0.02)return;const m=o.c%2?-1:1,sc=!near&&shcBeg(-1e5,-1e5,1e5,1e5,2); // (round 38a: each needle carved out of the lamp shadow, SHC)
+  // a few thin needles of uneven height and lean, rooted at slightly different depths of the floor
+  for(const [bx,d,hh,ln] of SPK){const q=onFloor(X+16+m*(bx-16),d,ys),x=q.x,b=q.y,tx=x+m*ln*e,tip=b-hh*e;if(sc){shcPt(x-3.3,b+1.2);shcPt(tx-1.2,tip-2.2);shcPt(tx+1.2,tip-2.2);shcPt(x+3.3,b+1.2);shcRing();} // (a little wider than drawn, as the mask is a quarter size and read blurred: a needle is thinner than its texels)
+    if((d<SPK_NEAR)!==!!near)continue;
+    ctx.fillStyle='rgba(8,6,12,.55)';ctx.beginPath();ctx.ellipse(x,b+0.6,3.4,1.3,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#0b0812';ctx.beginPath();ctx.moveTo(x-2.8,b+0.9);ctx.lineTo(tx,tip-1.6);ctx.lineTo(x+2.8,b+0.9);ctx.fill();
+    ctx.fillStyle=EGP.traps?'#c8a060':'#eef0f5';ctx.beginPath();ctx.moveTo(x-1.3,b);ctx.lineTo(tx,tip);ctx.lineTo(x+0.15,b);ctx.fill();
+    if(EGP.traps){ctx.fillStyle='#7a5a36';ctx.beginPath();ctx.moveTo(x-1.3,b);ctx.lineTo(x+(tx-x)*0.55,b+(tip-b)*0.55);ctx.lineTo(x+1.3,b);ctx.fill();} // acacia shafts, bronze tips
+    ctx.fillStyle=EGP.traps?'#6a4a20':'#8d94a2';ctx.beginPath();ctx.moveTo(x+0.15,b);ctx.lineTo(tx,tip);ctx.lineTo(x+1.3,b);ctx.fill();}
+  if(sc)shcEnd();}
 function drawDynamic(ctx,x0,x1,y0,y1){
   hudStones.length=0;
   const th=L.theme,c0=Math.floor(x0/TW)-1,c1=Math.floor(x1/TW)+1,r0=Math.floor(y0/TH)-1,r1=Math.floor(y1/TH)+1;
   const inRoom=(c,r)=>c>=c0&&c<=c1&&r>=r0&&r<=r1;
-  for(const t of L.torches)if(!t.broken&&inRoom(t.c,t.r))drawLight(ctx,t,th);
-  {const sd=L.start.door===undefined?1:L.start.door;if(inRoom(sd,L.start.r))drawDoor(ctx,sd*TW+16,L.start.r,entryOpen(),false);} // (round 26f: open while he comes out, then dropping)
-  if(inRoom(L.door.c,L.door.r))drawDoor(ctx,L.door.x,L.door.r,L.door.open,true);
-  for(const cp of L.cps)if(inRoom(cp.c,cp.r))drawHourglass(ctx,cp);
+  for(const t of L.torches)if(!t.broken&&inRoom(t.c,t.r)&&!lyOff('lamp'))drawLight(ctx,t,th);
+  {const sd=L.start.door===undefined?1:L.start.door;if(inRoom(sd,L.start.r)&&!lyOff('door'))drawDoor(ctx,startDoorX(),L.start.r,entryOpen(),false);} // (round 26f: open while he comes out, then dropping; round 39: clear of a face beside it, startDoorX)
+  if(inRoom(L.door.c,L.door.r)&&!lyOff('door'))drawDoor(ctx,L.door.x,L.door.r,L.door.open,true);
+  for(const cp of L.cps)if(inRoom(cp.c,cp.r)&&!lyOff('clock')&&!cpOnLift(cp))drawHourglass(ctx,cp);
   for(const lf of L.lifts)if(liftVisible(lf,x0,x1,y0,y1))drawLift(ctx,lf,0);
-  for(const o of L.dyn){if(!inRoom(o.c,o.r))continue;const f=o.f,X=o.c*TW,Y=o.r*TH,ys=SURF(o.r);
+  for(const cp of L.cps)if(inRoom(cp.c,cp.r)&&!lyOff('clock')&&cpOnLift(cp))drawHourglass(ctx,cp); // (round 39e: one standing on a sand lift's slab at rest, after the shaft's back and the slab, before the figures)
+  for(const o of L.dyn){if(!inRoom(o.c,o.r)||lyOff(o.f.t))continue;const f=o.f,X=o.c*TW,Y=o.r*TH,ys=SURF(o.r);
     // a tile's top runs back and to the right of it; against a wall on that side its back corner is behind the wall's
     // face (the plain floor stops there too), so these are cut at the face
     const cut=CUT_AT_WALL.has(f.t)&&B(L,o.c+1,o.r)===WALL;
@@ -7996,7 +8165,8 @@ function drawDynamic(ctx,x0,x1,y0,y1){
         ctx.fillStyle='#07050b';ctx.fillRect(sx-15,ys-0.6,30,1.6);ctx.fillStyle=rim[1];ctx.fillRect(sx-15,ys-2.6,3,1);ctx.fillRect(sx+12,ys-2.6,3,1);
         ctx.fillStyle=rim[3];ctx.fillRect(sx-14,ys-2.6,1.4,0.7);ctx.fillRect(sx+12.6,ys-2.6,1.4,0.7);break;}
       case'darter':drawShooter(ctx,f);break;
-      case'banner':drawBannerTile(ctx,X,Y,f,th);break;
+      case'banner':{const c1=o.c+1;ctx.save();if(B(L,c1,o.r)===WALL){ctx.beginPath();ctx.rect(X-TW,Y-TH,2*TW-HX,3*TH);ctx.clip();}else nearCut(ctx,c1,c1,o.r>0&&B(L,c1,o.r-1)!==WALL&&solidBelow(L,c1,o.r-1)?o.r-1:o.r,o.r,true); // (round 39e: the runner, rod and fringe reach X+31, past the next column's front plane at X+24: its wall's face (a rect clip), a low ceiling's, a landing's top and lip, the lip of a floor above, are nearer than the cloth)
+        drawBannerTile(ctx,X,Y,f,th);ctx.restore();break;}
       case'bar':drawBar(ctx,o,f);break;
       case'pend':drawPend(ctx,o,f);break;
       case'vent':drawVentBase(ctx,o,f);fpMark(ctx,X,ys);break;
@@ -8036,15 +8206,9 @@ function drawDynamic(ctx,x0,x1,y0,y1){
         if(f.t==='xplate'){const q=onFloor(X+16,0.5,ys);ctx.fillStyle='#0b0812';ctx.beginPath();ctx.ellipse(q.x,q.y,1.6,0.9,0,0,Math.PI*2);ctx.fill();}ctx.restore();fpMark(ctx,X,ys,lift);if(f.jam)drawHeap(ctx,o,X,ys,th);
         if(cut)ctx.restore();
         break;}
-      case'spikes':{const e=f.ext;if(e<=0.02)break;const m=o.c%2?-1:1,sc=shcBeg(-1e5,-1e5,1e5,1e5,2); // (round 38a: each needle carved out of the lamp shadow, SHC)
-        // a few thin needles of uneven height and lean, rooted at slightly different depths of the floor
-        for(const [bx,d,hh,ln] of SPK){const q=onFloor(X+16+m*(bx-16),d,ys),x=q.x,b=q.y,tx=x+m*ln*e,tip=b-hh*e;if(sc){shcPt(x-3.3,b+1.2);shcPt(tx-1.2,tip-2.2);shcPt(tx+1.2,tip-2.2);shcPt(x+3.3,b+1.2);shcRing();} // (a little wider than drawn, as the mask is a quarter size and read blurred: a needle is thinner than its texels)
-          ctx.fillStyle='rgba(8,6,12,.55)';ctx.beginPath();ctx.ellipse(x,b+0.6,3.4,1.3,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#0b0812';ctx.beginPath();ctx.moveTo(x-2.8,b+0.9);ctx.lineTo(tx,tip-1.6);ctx.lineTo(x+2.8,b+0.9);ctx.fill();
-          ctx.fillStyle=EGP.traps?'#c8a060':'#eef0f5';ctx.beginPath();ctx.moveTo(x-1.3,b);ctx.lineTo(tx,tip);ctx.lineTo(x+0.15,b);ctx.fill();
-          if(EGP.traps){ctx.fillStyle='#7a5a36';ctx.beginPath();ctx.moveTo(x-1.3,b);ctx.lineTo(x+(tx-x)*0.55,b+(tip-b)*0.55);ctx.lineTo(x+1.3,b);ctx.fill();} // acacia shafts, bronze tips
-          ctx.fillStyle=EGP.traps?'#6a4a20':'#8d94a2';ctx.beginPath();ctx.moveTo(x+0.15,b);ctx.lineTo(tx,tip);ctx.lineTo(x+1.3,b);ctx.fill();}
-        if(sc)shcEnd();break;}
-      case'gate':drawGate(ctx,f,X,Y,ys,0);break;
+      case'spikes':drawNeedles(ctx,o,f,X,ys,0);break;
+      case'gate':{const lc=o.r>0&&B(L,o.c,o.r-1)===WALL&&B(L,o.c+1,o.r-1)!==WALL&&solidBelow(L,o.c+1,o.r-1);if(lc){ctx.save();nearCut(ctx,o.c+1,o.c+1,o.r-1,o.r-1,true);} // (round 39e: beside its lintel the next column's floor hangs its lip down to Y+5; the slots' shade and the far half reached X+31 over it: floor 33 seed 2, 1 of 1,438)
+        drawGate(ctx,f,X,Y,ys,0);if(lc)ctx.restore();break;}
       case'grate':{ // an iron grating over a shaft: you see the dark below through the bars
         floorQuad(ctx,X,X+TW,0,1,ys,0);ctx.fillStyle='#04030a';ctx.fill();
         ctx.strokeStyle='#0b0812';ctx.lineWidth=2.4;ctx.beginPath();for(let i=0;i<6;i++){const a=onFloor(X+3+i*5.2,0.04,ys),b=onFloor(X+3+i*5.2,0.96,ys);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}ctx.stroke();
@@ -8059,23 +8223,24 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     }
     if(cut)ctx.restore();
   }
-  for(const bl of L.ext.blocks){if(inRoom(bl.c,bl.r))drawBlock(ctx,bl,th);}
-  for(const d of L.ext.darts){if(d.x<x0-10||d.x>x1+10)continue;const dd=d.dir||-1; // (only the part that has left the spout's jaws)
-    if(d.mx!==undefined){if((d.x+dd*5-d.mx)*dd<=0)continue;ctx.save();ctx.beginPath();ctx.rect(dd>0?d.mx-0.5:d.mx-80.5,d.y-12,81,24);ctx.clip();}
+  for(const bl of L.ext.blocks){if(inRoom(bl.c,bl.r)&&!lyOff('block'))drawBlock(ctx,bl,th);}
+  for(const d of L.ext.darts){if(d.x<x0-10||d.x>x1+10||lyOff('dart'))continue;const dd=d.dir||-1; // (only the part that has left the spout's jaws)
+    if(d.mx!==undefined){if((d.x+dd*5-d.mx)*dd<=0)continue;ctx.save();ctx.beginPath();ctx.rect(dd>0?d.mx-0.5:d.mx+0.5-4096,d.y-12,4096,24);ctx.clip();} // (round 39e: cut on the mouth's side only; an 81 px window lost the dart 80 px into its flight while it still hit)
     drawDart(ctx,d.x,d.y,dd,0,1,true);if(d.mx!==undefined)ctx.restore();}
-  for(const q of SPENT){if(q.on&&q.x>x0-10&&q.x<x1+10)drawDart(ctx,q.x,q.y,q.dd,q.ang,q.gy||q.t<1.2?1:Math.max(0,1-(q.t-1.2)/0.4),false);}
-  for(const it of L.items){if(!it.hidden||it.taken||!inRoom(it.c,it.r))continue; // the secret's cue sits on the hidden flask itself: a few slow four-point stars
-    const sx=it.x,sy=SURF(it.r)-16;
+  for(const q of SPENT){if(q.on&&q.x>x0-10&&q.x<x1+10&&!lyOff('dart'))drawDart(ctx,q.x,q.y,q.dd,q.ang,q.gy||q.t<1.2?1:Math.max(0,1-(q.t-1.2)/0.4),false);}
+  for(const it of L.items){if(!it.hidden||it.taken||!inRoom(it.c,it.r)||lyOff('cue'))continue; // the secret's cue sits on the hidden flask itself: a few slow four-point stars
+    const sx=it.x,sy=SURF(it.r)-16,wl=B(L,it.c-1,it.r)===WALL,wr=B(L,it.c+1,it.r)===WALL;ctx.save(); // (round 39e: they orbit up to 14 px out, past a wall's face beside the flask (23 of 48): cut there, by a rect (they keep under a low ceiling's face))
+    if(wl||wr){const xa=wl?it.c*TW-HX:sx-40,xb=wr?(it.c+1)*TW-HX:sx+40;ctx.beginPath();ctx.rect(xa,sy-40,xb-xa,80);ctx.clip();}
     for(let i=0;i<3;i++){const a=gameTime*1.1+i*2.1,k=(Math.sin(a)+1)/2,px=sx+Math.cos(i*2.1+gameTime*0.3)*9,py=sy+Math.sin(i*1.3+gameTime*0.4)*7,R=1.5+3.6*k;
-      ctx.fillStyle='rgba(255,230,150,'+(0.35+0.6*k)+')';ctx.beginPath();ctx.moveTo(px,py-R);ctx.lineTo(px+R*0.22,py-R*0.22);ctx.lineTo(px+R,py);ctx.lineTo(px+R*0.22,py+R*0.22);ctx.lineTo(px,py+R);ctx.lineTo(px-R*0.22,py+R*0.22);ctx.lineTo(px-R,py);ctx.lineTo(px-R*0.22,py-R*0.22);ctx.closePath();ctx.fill();}}
-  drawSecretCue(ctx,x0,x1,y0,y1);
-  drawJetHints(x0,x1,y0,y1,ctx);
-  for(const it of L.items)if(!it.taken&&inRoom(it.c,it.r))drawFlask(ctx,it);
-  drawLooseFlasks(ctx);
-  if(EGP.traps)for(const o of L.dyn){if(o.f.t!=='loose'||o.f.plank)continue;const g=wellGroup(o);if(!g||g.os[0]!==o||!(inRoom(g.c0,g.r)||inRoom(g.c0+g.n-1,g.r)))continue;drawWellGroup(ctx,g);} // (round 21b: once for a row of slabs over one pit)
-  for(let i=DUSTC.length-1;i>=0;i--){const q=DUSTC[i],age=gameTime-q.t;if(age<0||age>0.7){DUSTC.splice(i,1);continue;}dustCloud(ctx,q.x,q.y,age,0.7,q.sz,1);}
-  for(const d of L.debris){ctx.save();ctx.translate(d.x-16,d.y);
-    if(EGP.traps&&(d.kind==='slab'||d.kind==='rock')){if(d.y0===undefined)d.y0=d.y;const age=debAge(d);ctx.restore();ctx.save(); // (re-skinned: a sand floor's slab, the roof block)
+      ctx.fillStyle='rgba(255,230,150,'+(0.35+0.6*k)+')';ctx.beginPath();ctx.moveTo(px,py-R);ctx.lineTo(px+R*0.22,py-R*0.22);ctx.lineTo(px+R,py);ctx.lineTo(px+R*0.22,py+R*0.22);ctx.lineTo(px,py+R);ctx.lineTo(px-R*0.22,py+R*0.22);ctx.lineTo(px-R,py);ctx.lineTo(px-R*0.22,py-R*0.22);ctx.closePath();ctx.fill();}ctx.restore();}
+  if(!lyOff('cue'))drawSecretCue(ctx,x0,x1,y0,y1);
+  if(!lyOff('jet'))drawJetHints(x0,x1,y0,y1,ctx);
+  for(const it of L.items)if(!it.taken&&inRoom(it.c,it.r)&&!lyOff('flask'))drawFlask(ctx,it);
+  if(!lyOff('flask'))drawLooseFlasks(ctx);
+  if(EGP.traps&&!lyOff('well'))for(const o of L.dyn){if(o.f.t!=='loose'||o.f.plank)continue;const g=wellGroup(o);if(!g||g.os[0]!==o||!(inRoom(g.c0,g.r)||inRoom(g.c0+g.n-1,g.r)))continue;drawWellGroup(ctx,g);} // (round 21b: once for a row of slabs over one pit)
+  for(let i=DUSTC.length-1;i>=0;i--){const q=DUSTC[i],age=gameTime-q.t;if(age<0||age>0.7){DUSTC.splice(i,1);continue;}if(!lyOff('dust')){const fy=SURF(Math.round((q.y+4)/TH)-1)+HY;ctx.save();airCut(ctx,q.x-48,q.y-34,96,fy-q.y+34,false);dustCloud(ctx,q.x,q.y,age,0.7,q.sz,1);ctx.restore();}} // (round 39: the landing cloud rolls along its floor behind the front plane: cut at its front edge and the faces round it)
+  for(const d of L.debris){if(lyOff('debris'))continue;ctx.save();if(!(EGP.traps&&(d.kind==='slab'||d.kind==='rock')))debrisCut(ctx,d);ctx.translate(d.x-16,d.y); // (round 39: behind the faces beside the hole, debrisCut)
+    if(EGP.traps&&(d.kind==='slab'||d.kind==='rock')){if(d.y0===undefined)d.y0=d.y;const age=debAge(d);ctx.restore();ctx.save();if(d.kind==='slab'&&!d.wl)debrisCut(ctx,d); // (re-skinned: a sand floor's slab, the roof block)
       if(d.kind==='rock')egRoofFall(ctx,d);
       else{ // (round 13, owner: "after the tile falls, the sand still trickles in two columns". Round 16a: no sand follows it down at all;
         // over a well its two halves fold into the emptied shaft, over a corridor it parts in four pieces in a billow of dust)
@@ -8093,17 +8258,21 @@ function drawDynamic(ctx,x0,x1,y0,y1){
           slabHalves(ctx,X,d.y,Math.min(0.8,0.14+age*4),bd,org?[d.c,rr]:null);}
           if(org&&age<0.6){ctx.restore();ctx.save();dustCloud(ctx,d.x+(wellH(d.c,rr,22)-0.5)*12,d.y0+HY+4,age-0.05*wellH(d.c,rr,23),0.5,0.4+0.35*wellH(d.c,rr,24),0);}} // (dust tumbling out of the hole as it goes, each its own)
           else slabChunks(ctx,X,d.y,age,bd);}
-      ctx.restore();ctx.save();if(d.kind==='slab'&&!d.wl)dustCloud(ctx,d.x,d.y0+HY+3,age,0.45,1.25,0);ctx.restore();ctx.save();}
+      ctx.restore();ctx.save();if(d.kind==='slab'&&!d.wl){debrisCut(ctx,d);dustCloud(ctx,d.x,d.y0+HY+3,age,0.45,1.25,0);}ctx.restore();ctx.save();}
     else if(d.kind==='plank')drawPlank(ctx,0,0,0);
     else if(d.kind==='rock'){const rk=[[4,-11],[9,-15],[19,-14],[27,-10],[28,-2],[21,1],[8,1],[4,-4]];ctx.beginPath();rk.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();ctx.fillStyle=th.wallB;ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=1.4;ctx.stroke();
       ctx.fillStyle=th.hi;ctx.fillRect(9,-14,10,1.2);ctx.strokeStyle='rgba(0,0,0,.6)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(14,-14);ctx.lineTo(12,-7);ctx.lineTo(16,0);ctx.moveTo(22,-12);ctx.lineTo(20,-5);ctx.stroke();}
     else slab(ctx,0,0,th,true,true);ctx.restore();}
-  for(const sn of SN){if(sn.gone||sn.x<x0-30||sn.x>x1+30||sn.y<y0||sn.y>y1+20)continue;if(GFX().hd)drawSnakeHD(ctx,sn);else drawSnake(ctx,sn);}
-  for(const g of G){if(g.gone)continue;if(g.x<x0-30||g.x>x1+30||g.y<y0-10||g.y>y1+70)continue;
-    const wc=g.alive?wallPress(g.x,g.y,g.face,g.pose):null;ctx.save();figClip(ctx,0,null,wc);
-    if(!g.alive&&DISS.on&&g.t>DISS.t0)dissolveGuard(ctx,g,(g.t-DISS.t0)/DISS.dur,c=>drawActor(c,g,g.x,g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:false,hasSword:!g.skel,pale:true,flash:g.flash})); // S3-A: crumbles into sand
-    else{if(g.dz)g.dz.on=false;drawActor(ctx,g,g.x+(wc?wc.dx:0),g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:(g.alive&&g.state!=='idle'&&g.state!=='drop'),hasSword:!g.skel,pale:true,flash:g.flash,alpha:g.alive||DISS.on?undefined:clamp(1-(g.t-1.1)/0.8,0,1)});}ctx.restore();}
-  if(P&&!(P.state==='dead'&&P.cause==='fall'&&P.y>L.rows*TH)&&!LIFT_DBG.rider){
+  for(const sn of SN){if(sn.gone||lyOff('snake')||sn.x<x0-30||sn.x>x1+30||sn.y<y0||sn.y>y1+20)continue;if(GFX().hd)drawSnakeHD(ctx,sn);else drawSnake(ctx,sn);}
+  for(const g of G){if(g.gone||lyOff('guard'))continue;if(g.x<x0-30||g.x>x1+30||g.y<y0-10||g.y>y1+70){if(g.alive)g.rdx=0;continue;} // (out of view: no stale press to die with)
+    const wc=g.alive?wallPress(g.x,g.y,g.face,g.pose):null;if(g.alive)g.rdx=wc?wc.dx:0;ctx.save();figClip(ctx,0,null,wc);
+    // (round 39, D1) dying or dead he stays where he was last drawn (g.rdx: dropping the press slid the body up to 20 px into the face) and is
+    // cut by the faces near him, the crumbling too; (D4) one dropping in from above comes out from under the ceiling's stone, not over it
+    if(!g.alive)deadCut(ctx,g.x+(g.rdx||0),g.y,28,g.y-54);
+    else{const yc=dropCeil(g);if(yc!==null){ctx.beginPath();ctx.rect(-1e5,yc,2e5,2e5);ctx.clip();}}
+    if(!g.alive&&DISS.on&&g.t>DISS.t0){ctx.translate(Math.round(g.rdx||0),0);dissolveGuard(ctx,g,(g.t-DISS.t0)/DISS.dur,c=>drawActor(c,g,g.x,g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:false,hasSword:!g.skel,pale:true,flash:g.flash}));} // S3-A: crumbles into sand
+    else{if(g.dz)g.dz.on=false;drawActor(ctx,g,g.x+(g.rdx||0),g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:(g.alive&&g.state!=='idle'&&g.state!=='drop'),hasSword:!g.skel,pale:true,flash:g.flash,alpha:g.alive||DISS.on?undefined:clamp(1-(g.t-1.1)/0.8,0,1)});}ctx.restore();}
+  if(P&&!(P.state==='dead'&&P.cause==='fall'&&P.y>L.rows*TH)&&!LIFT_DBG.rider&&!lyOff('prince')){
     // behind a wall's face (jumping up to, hanging from, climbing onto or down from a ledge on the wall's near side) the wall covers
     // him as in PoP1: SDLPoP draws every wall's front piece over the Kid (draw_tile_fore: tiles_20_wall into the foretable) and
     // clip_char cuts his sprite at the wall's edge while he hangs or climbs facing left; the Apple II draws block fronts on the
@@ -8112,6 +8281,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     if(L.ext.chase)drawShut(ctx); // (round 29) his shadow pulled back toward the dark
     ctx.save();{const lf=L.lifts.length?liftAround():null;if(lf)liftOccl(ctx,lf);} // (in a lift's shaft the walls' front faces round it are nearer than he is)
     figClip(ctx,P.hideMode,P.hideLg,P.state==='dead'?null:wallPress(P.x,P.y,P.face,P.pose));
+    if(P.state==='dead')deadCut(ctx,P.x+(P.rdx||0),P.y+(P.rdy||0),28,P.y-54); // (round 39, D1: lying flat, cut by the faces near him)
     // (round 26f) on the exit's stairs (from the first rise) he is cut at the opening's head (the lintel, or the round arch: doorHead) and at its
     // jambs, as SDLPoP's clip_char cuts the kid at the level door: head and shoulders go behind the wall first; then his own pixels warm and
     // whiten toward the stair light and fade (exitLook: a tint of his figure only, no glow round him). Coming out of the entrance he is cut by
@@ -8126,13 +8296,14 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     if(P.state==='drink'&&P.dkG&&!P.dkRel&&P.drinkIt)drawHeldFlask(ctx);
     ctx.restore();
   }
-  if(GFX().fx){drawTrails(ctx);drawRings(ctx);}
+  if(GFX().fx&&!lyOff('trail')){drawTrails(ctx);drawRings(ctx);}
   // the near half of gates and jaws crosses in front of anyone walking the corridor
-  for(const o of L.dyn){if(!inRoom(o.c,o.r))continue;const X=o.c*TW,Y=o.r*TH,ys=SURF(o.r);if(o.f.t==='gate')drawGate(ctx,o.f,X,Y,ys,1);else if(o.f.t==='chomp')drawJaws(ctx,o,o.f,X,Y,ys,1);
-    else if(o.f.t==='stone'&&EGP.traps&&o.f.s>=2&&L.rubble.has(o.r*L.cols+o.c))egRoofLying(ctx,o,o.f,1);} // (and a fallen roof block's near half)
+  for(const o of L.dyn){if(!inRoom(o.c,o.r)||lyOff(o.f.t))continue;const X=o.c*TW,Y=o.r*TH,ys=SURF(o.r);if(o.f.t==='gate')drawGate(ctx,o.f,X,Y,ys,1);else if(o.f.t==='chomp')drawJaws(ctx,o,o.f,X,Y,ys,1);
+    else if(o.f.t==='stone'&&EGP.traps&&o.f.s>=2&&L.rubble.has(o.r*L.cols+o.c))egRoofLying(ctx,o,o.f,1); // (and a fallen roof block's near half)
+    else if(o.f.t==='spikes'&&o.f.ext>0.02){const cut=B(L,o.c+1,o.r)===WALL;if(cut){ctx.save();ctx.beginPath();ctx.rect(X-200,Y-200,TW-HX+200,TH+400);ctx.clip();}drawNeedles(ctx,o,o.f,X,ys,1);if(cut)ctx.restore();}} // (round 39e: the front stake, cut as the case in the loop above cuts it)
   for(const lf of L.lifts)if(liftVisible(lf,x0,x1,y0,y1))drawLift(ctx,lf,1);
-  sandDraw(ctx); // (before the light pass: shaded like stone)
-  if(!GFX().light)drawEmissive(ctx,x0,x1,y0,y1);
+  if(!lyOff('sand'))sandDraw(ctx); // (before the light pass: shaded like stone)
+  if(!GFX().light&&!lyOff('emissive'))drawEmissive(ctx,x0,x1,y0,y1);
 }
 // things that give off their own light: drawn after the lighting pass so it never dims them
 function drawEmissive(ctx,x0,x1,y0,y1){
@@ -8141,7 +8312,8 @@ function drawEmissive(ctx,x0,x1,y0,y1){
   if(chs&&chs.on){const D=chs.diss;
     if(((chs.fade||0)<1||(D&&!D.over))&&GFX().atmo)drawStormHD(ctx,chs,x0,x1,y0,y1); // (the dark itself: drawDark2D, after the haze)
     if(D&&!D.over)drawStormDiss(ctx,x0,x1,y0,y1);}}
-  for(const p of FX){ctx.globalAlpha=Math.max(0,1-p.t/p.life);ctx.fillStyle=p.col;ctx.fillRect(p.x-p.sz/2,p.y-p.sz/2,p.sz,p.sz);}
+  // (round 39) the FX particles (sparks off a saw, a vent or a sword, dust, a dart's puff) are air in the corridor: none on a face
+  for(const p of FX){if(onFace(p.x,p.y))continue;ctx.globalAlpha=Math.max(0,1-p.t/p.life);ctx.fillStyle=p.col;ctx.fillRect(p.x-p.sz/2,p.y-p.sz/2,p.sz,p.sz);}
   ctx.globalAlpha=1;
 }
 // ================= modern look (each part can be switched off under Graphics) =================
@@ -8442,6 +8614,11 @@ function ryStand(x0,x1,y0,y1){RYST.length=0;const add=(x,y,w,h)=>{if(x+w>=x0&&x<
     else if(f.t==='spikes'&&f.ext>0.02)add(X-HX-2,ys-22*f.ext-3,TW+DX+4,22*f.ext+3+HY);
     else if(f.t==='stone'&&EGP.traps&&f.s>=2){const R=roofStone(o);add(R.xc-BLK_W/2-1,R.ys+HY-BLK_H-DY-1,BLK_W+DX+2,BLK_H+DY+2);}}
   for(const it of L.items)if(!it.taken)add(it.x-7,SURF(it.r)-22,14,22+HY);
+  // (round 39) and the sky clock's pedestal (its base, 17 px with its outline; drawn at cpX) and a free lamp's floor stand (its splayed feet,
+  // at the stand's own x: Siwa's hangs from a cord), which the footprint was drawn over; their own contact shadows stay lit floor
+  for(const cp of L.cps){const x=cpX(cp),fl=SURF(cp.r)-1;add(x-9,fl-12,18,12.6);}
+  if(EGP.lamps&&L.theme.look!=='shali')for(const t of L.torches){const X=t.c*TW,ys=SURF(t.r);if(t.broken||X+40<x0||X-10>x1||ys+8<y0||ys-12>y1||!lampFree(t))continue;const st=L.theme.style,lo=st==='palace'?0:(LAMP[st]||LAMP.dungeon)[0],lk=L.theme.look,
+    sx=t.c*TW+16+lo+(lk==='meroe'?-6:lk==='foggara'?-2:0),base=SURF(t.r)-HY+1.5;add(sx-6,base-4.6,12,5.8);}
   return RYST.length;}
 function ryStandCut(g,x,y,w,h){for(let i=0;i<RYST.length;i+=4){const a=RYST[i],b=RYST[i+1],c=RYST[i+2],d=RYST[i+3];if(a>x+w||a+c<x||b>y+h||b+d<y)continue;
     g.beginPath();g.rect(x-1,y-1,w+2,h+2);g.rect(a,b,c,d);g.clip('evenodd');}} // (one clip each: two boxes that overlap would cancel in one even-odd path)
@@ -8519,10 +8696,15 @@ function atmoPass(ctx,lights,x0,x1,y0,y1){
   const mist=lightSprite(lk.mist);
   for(let r=Math.max(0,Math.floor(y0/TH));r<=Math.min(L.rows-1,Math.floor(y1/TH));r++){const ys=SURF(r);
     for(let c=Math.max(0,(Math.floor(x0/TW)-1)&~1);c<=Math.min(L.cols-1,Math.floor(x1/TW)+1);c+=2){if(B(L,c,r)===WALL||!solidBelow(L,c,r))continue;
-      const h=hash2(c,r*7+3),x=c*TW+32+Math.sin(t*0.25+h%17)*14,w=84+h%30,fk=FOGK[th.style]||1;ctx.globalAlpha=Math.min(0.5,(0.12+0.05*Math.sin(t*0.4+h%11))*fk);ctx.drawImage(mist,x-w/2,ys-8-6*(fk-1),w,16+12*(fk-1));}}
+      const h=hash2(c,r*7+3),x=c*TW+32+Math.sin(t*0.25+h%17)*14,w=84+h%30,fk=FOGK[th.style]||1,my=ys-8-6*(fk-1),mh=16+12*(fk-1);
+      // (round 39, the layering rule: the mist lies on its floor, behind the front plane) the sprite cropped (its source rectangle: no clip) to
+      // the floor's front edge and to the faces of the walls that end its run on this row: it spilled over the floor's own lip and the foot of
+      // a wall's face up to two cells off
+      let xa=x-w/2,xb=x+w/2;const yb=Math.min(my+mh,ys+HY);for(let k=1;k<=3;k++)if(B(L,c+k,r)===WALL){xb=Math.min(xb,(c+k)*TW-HX);break;}for(let k=1;k<=2;k++)if(B(L,c-k,r)===WALL){xa=Math.max(xa,(c-k+1)*TW-HX);break;}
+      if(xb-xa<1)continue;const sw=mist.width/w,sh=mist.height/mh;ctx.globalAlpha=Math.min(0.5,(0.12+0.05*Math.sin(t*0.4+h%11))*fk);ctx.drawImage(mist,(xa-x+w/2)*sw,0,(xb-xa)*sw,(yb-my)*sh,xa,my,xb-xa,yb-my);}}
   for(const q of lights){if(q.kind!=='torch'||q.r<100)continue;const sd=Math.floor(q.x*7+q.y*3); // (v58b: the windows' motes are in their beams: ryMotes2D, GLCSH.s)
     for(let i=0;i<16;i++){const h=hash2(sd,i),u=((h%1000)/1000+t*(0.006+(h>>>12)%7*0.002))%1,v=(((h>>>10)%1000)/1000+t*(0.012+(h>>>16)%5*0.003))%1;
-      const px=q.x+(u-0.5)*150+Math.sin(t*0.7+i)*4,py=q.y+50-v*130,d=Math.hypot(px-q.x,py-q.y)/(q.kind==='win'?90:120);if(d>1)continue;
+      const px=q.x+(u-0.5)*150+Math.sin(t*0.7+i)*4,py=q.y+50-v*130,d=Math.hypot(px-q.x,py-q.y)/(q.kind==='win'?90:120);if(d>1||onFace(px,py))continue; // (round 39: none on a face)
       ctx.globalAlpha=(1-d)*(0.45+0.3*Math.sin(t*3+i*1.7));ctx.fillStyle=q.kind==='win'?'rgb('+q.col+')':'rgb(255,236,200)';ctx.fillRect(px,py,0.9,0.9);}
   } // (the torches' own sparks are drawn with the flames by embers(), cooling as they rise)
   ctx.restore();
@@ -8626,7 +8808,7 @@ function drawTrails(ctx){ctx.save();ctx.globalCompositeOperation='lighter';
   ctx.restore();}
 const RINGS=[];
 function ring(x,y,col,size){if(GFX().fx)RINGS.push({x,y,col,size,t:0});}
-function drawRings(ctx){ctx.save();ctx.globalCompositeOperation='lighter';for(const r of RINGS){const k=r.t/0.22,n=6,a0=(r.x*7.3+r.y*3.1)%6.28; // short spark lines flying out of the contact point, and a small core
+function drawRings(ctx){ctx.save();ctx.globalCompositeOperation='lighter';for(const r of RINGS){if(onFace(r.x,r.y))continue;const k=r.t/0.22,n=6,a0=(r.x*7.3+r.y*3.1)%6.28; // short spark lines flying out of the contact point, and a small core (round 39: none on a face)
   ctx.globalAlpha=Math.max(0,1-k);ctx.strokeStyle=r.col;ctx.lineWidth=1.5*(1-k)+0.4;ctx.beginPath();
   for(let i=0;i<n;i++){const an=a0+i*Math.PI*2/n+(i%2?0.2:-0.2),r1=r.size*(0.25+k*0.9),r2=r1+r.size*(0.35+0.25*(i%2));ctx.moveTo(r.x+Math.cos(an)*r1,r.y+Math.sin(an)*r1);ctx.lineTo(r.x+Math.cos(an)*r2,r.y+Math.sin(an)*r2);}ctx.stroke();
   ctx.globalAlpha=Math.max(0,0.6-k*1.6);ctx.fillStyle=r.col;ctx.beginPath();ctx.arc(r.x,r.y,Math.min(4,r.size*0.3)*(1-k),0,Math.PI*2);ctx.fill();}ctx.restore();}
@@ -8948,19 +9130,23 @@ function updateAmbient(dt){
 }
 const smokeSprite=(()=>{let c=null;return()=>{if(c)return c;c=document.createElement('canvas');c.width=c.height=48;const g=c.getContext('2d'),gr=g.createRadialGradient(24,24,0,24,24,24);gr.addColorStop(0,'rgba(24,14,12,.55)');gr.addColorStop(1,'rgba(24,14,12,0)');g.fillStyle=gr;g.fillRect(0,0,48,48);return c;};})();
 function fadeIO(p,a=0.8){return Math.min(1,p.t/a,(p.life-p.t)/a);}
-// things lit by the room: drawn before the lighting so the dark falls on them too
+// things lit by the room: drawn before the lighting so the dark falls on them too. (round 39, the layering rule: air in the corridor is behind
+// the front plane, and every pass of it comes after the room pictures that hold that plane: a mote, gust, petal or bat on a face (onFace) is
+// not drawn, a smoke puff or a trickle's pool is cut at the faces round it. The simulation is as it was)
 function ambientLit(ctx,x0,x1,y0,y1){
   const st=L.theme.style,t=gameTime;ctx.save();
   for(const p of AMB){const a=fadeIO(p);if(a<=0)continue;
     switch(p.k){
-      case'mote':ctx.globalAlpha=a*0.55;ctx.fillStyle='rgb(236,226,206)';ctx.fillRect(p.x,p.y,p.sz,p.sz);break;
-      case'trickle':{const k=Math.min(1,p.t/0.15)*Math.min(1,(p.life-p.t)/0.4);ctx.globalAlpha=0.7*k;ctx.fillStyle='rgb(196,170,128)';
+      case'mote':if(onFace(p.x,p.y))break;ctx.globalAlpha=a*0.55;ctx.fillStyle='rgb(236,226,206)';ctx.fillRect(p.x,p.y,p.sz,p.sz);break;
+      case'trickle':{const k=Math.min(1,p.t/0.15)*Math.min(1,(p.life-p.t)/0.4);if(!faceGap(p.x+0.8,Math.floor((p.floor-1)/TH),p.y,p.floor+1))break; // (round 39: off a face, cut at the faces beside it: its pool spreads)
+        const cg=FGX[0]>p.x-12||FGX[1]<p.x+12;if(cg){const a0=Math.max(FGX[0],p.x-40);ctx.save();ctx.beginPath();ctx.rect(a0,p.y-2,Math.min(FGX[1],p.x+40)-a0,p.floor-p.y+6);ctx.clip();}
+        ctx.globalAlpha=0.7*k;ctx.fillStyle='rgb(196,170,128)';
         for(let i=0;i<10;i++){const u=((t*1.6+i/10)%1),y=p.y+(p.floor-p.y)*u*u;ctx.fillRect(p.x+Math.sin(i*2.3)*0.8,y,0.8,1.6);}
-        ctx.globalAlpha=0.35*k;ctx.beginPath();ctx.ellipse(p.x,p.floor,3+p.t*2,0.9,0,0,Math.PI*2);ctx.fill();break;}
-      case'gust':ctx.globalAlpha=a*0.6;ctx.fillStyle='rgb(222,186,128)';ctx.fillRect(p.x,p.y,p.len*Math.sign(p.vx),0.7);break;
-      case'petal':ctx.globalAlpha=a*0.85;ctx.fillStyle=p.col;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.scale(1,0.45+0.4*Math.abs(Math.sin(p.rot*1.3)));ctx.beginPath();ctx.ellipse(0,0,1.9,1.1,0,0,Math.PI*2);ctx.fill();ctx.restore();break;
-      case'smoke':ctx.globalAlpha=a*0.8;ctx.drawImage(smokeSprite(),p.x-p.sz,p.y-p.sz*0.5,p.sz*2,p.sz);break;
-      case'bat':{ctx.globalAlpha=Math.min(1,p.t/0.3);ctx.fillStyle='#0d0a12';const fl=Math.sin(p.t*22+p.ph),sx=Math.sign(p.vx);ctx.save();ctx.translate(p.x,p.y);ctx.scale(sx,1);
+        ctx.globalAlpha=0.35*k;ctx.beginPath();ctx.ellipse(p.x,p.floor,3+p.t*2,0.9,0,0,Math.PI*2);ctx.fill();if(cg)ctx.restore();break;}
+      case'gust':if(onFace(p.x,p.y)||onFace(p.x+p.len*Math.sign(p.vx),p.y))break;ctx.globalAlpha=a*0.6;ctx.fillStyle='rgb(222,186,128)';ctx.fillRect(p.x,p.y,p.len*Math.sign(p.vx),0.7);break;
+      case'petal':if(onFace(p.x,p.y))break;ctx.globalAlpha=a*0.85;ctx.fillStyle=p.col;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.scale(1,0.45+0.4*Math.abs(Math.sin(p.rot*1.3)));ctx.beginPath();ctx.ellipse(0,0,1.9,1.1,0,0,Math.PI*2);ctx.fill();ctx.restore();break;
+      case'smoke':if(onFace(p.x,p.y))break;ctx.save();airCut(ctx,p.x-p.sz,p.y-p.sz*0.5,p.sz*2,p.sz,true);ctx.globalAlpha=a*0.8;ctx.drawImage(smokeSprite(),p.x-p.sz,p.y-p.sz*0.5,p.sz*2,p.sz);ctx.restore();break; // (round 39: under the ceiling's lip and behind the faces)
+      case'bat':{if(onFace(p.x,p.y))break;ctx.globalAlpha=Math.min(1,p.t/0.3);ctx.fillStyle='#0d0a12';const fl=Math.sin(p.t*22+p.ph),sx=Math.sign(p.vx);ctx.save();ctx.translate(p.x,p.y);ctx.scale(sx,1);
         ctx.beginPath();ctx.ellipse(0,0,2.2,1.4,0,0,Math.PI*2);ctx.fill();
         for(const w of [-1,1]){ctx.beginPath();ctx.moveTo(w*1,0);ctx.quadraticCurveTo(w*4,-3*fl-1,w*7.5,-4*fl);ctx.lineTo(w*5.5,-1*fl+0.8);ctx.lineTo(w*3.4,-1.2*fl+1.2);ctx.closePath();ctx.fill();}
         ctx.beginPath();ctx.moveTo(1.6,-0.9);ctx.lineTo(2.2,-2.2);ctx.lineTo(2.6,-0.8);ctx.fill();ctx.restore();break;}
@@ -8972,18 +9158,21 @@ function ambientLit(ctx,x0,x1,y0,y1){
 function drawDrips(ctx,x0,x1,y0,y1){const t=gameTime;{for(let r=Math.max(1,Math.floor(y0/TH));r<=Math.min(L.rows-1,Math.floor(y1/TH));r++)for(let c=Math.max(0,Math.floor(x0/TW));c<=Math.min(L.cols-1,Math.floor(x1/TW));c++){
       const h=hash2(c*3+1,r*7+2);if(h%4!==0||!hasCeil(c,r)||!solidBelow(L,c,r))continue;
       const x=c*TW+6+(h>>>4)%20,cy=r*TH+ceilOff(c,r),fy=SURF(r),per=2.2+((h>>>9)%300)/100,ph=((t+(h>>>13)%100/10)%per),swell=0.7,fall=Math.sqrt(2*(fy-cy)/700);
+      if(!faceGap(x,r,cy,fy+2))continue;const cg=ph>=swell+fall&&ph<swell+fall+0.7&&(FGX[0]>x-12||FGX[1]<x+12); // (round 39: none on a face, the splash cut at the faces beside it)
+      if(cg){const a0=Math.max(FGX[0],x-14);ctx.save();ctx.beginPath();ctx.rect(a0,cy-2,Math.min(FGX[1],x+14)-a0,fy-cy+6);ctx.clip();}
       ctx.fillStyle='rgba(200,225,255,.95)';
       if(ph<swell){const k=ph/swell;ctx.beginPath();ctx.ellipse(x,cy+1+k*1.4,0.6+k*0.7,0.8+k*1.1,0,0,Math.PI*2);ctx.fill();}
       else if(ph<swell+fall){const u=ph-swell,y=cy+2+0.5*700*u*u;ctx.fillRect(x-0.6,y-3.2,1.2,4);}
       else if(ph<swell+fall+0.7){const k=(ph-swell-fall)/0.7;ctx.strokeStyle='rgba(200,225,255,'+(0.85*(1-k))+')';ctx.lineWidth=0.9;ctx.beginPath();ctx.ellipse(x,fy,2+k*9,0.6+k*2,0,0,Math.PI*2);ctx.stroke();
-        if(k<0.4){ctx.fillStyle='rgba(190,215,240,'+(0.8*(1-k/0.4))+')';for(const s of [-1,1])ctx.fillRect(x+s*(1+k*9),fy-3*Math.sin(k/0.4*Math.PI),0.8,0.8);}}}}
+        if(k<0.4){ctx.fillStyle='rgba(190,215,240,'+(0.8*(1-k/0.4))+')';for(const s of [-1,1])ctx.fillRect(x+s*(1+k*9),fy-3*Math.sin(k/0.4*Math.PI),0.8,0.8);}}
+      if(cg)ctx.restore();}}
 }
 // salt and glaze, single crystals and tiles flashing, in both modes (Torchlight adds a soft shimmer in its mist pass): near each lit lamp, fixed points on the floor's top face and
 // the wall (salt) or along the faience dado (glaze) catch the flame in turn, a short twinkle each on its own beat
 function lampGlints(ctx,x0,x1,y0,y1,salt){const t=gameTime,col=salt?'255,246,226':'226,246,255';ctx.save();ctx.globalCompositeOperation='lighter';
   for(const q of L.torches){if(q.broken)continue;const lx=q.c*TW+16,ly=SURF(q.r)-38;if(lx<x0-80||lx>x1+80||ly<y0-60||ly>y1+60)continue;
     for(let i=0;i<(salt?14:9);i++){const h=hash2(q.c*31+i*7,q.r*17+i),fx=((h&1023)/1023-0.5)*120,u=((h>>>10)&1023)/1023,fy=salt?(u<0.45?SURF(q.r)-3+u*6:SURF(q.r)-10-u*44):SURF(q.r)-4-u*30;
-      const x=lx+fx,ph=(h>>>20)%100/16,b=Math.pow(Math.max(0,Math.sin(t*(1.3+((h>>>4)&7)*0.35)+ph)),14)*(1-Math.abs(fx)/70);if(b<0.05||(!salt&&B(L,Math.floor(x/TW),q.r)===WALL))continue;
+      const x=lx+fx,ph=(h>>>20)%100/16,b=Math.pow(Math.max(0,Math.sin(t*(1.3+((h>>>4)&7)*0.35)+ph)),14)*(1-Math.abs(fx)/70);if(b<0.05||onFace(x-2.5,fy)||onFace(x+2.5,fy))continue; // (round 39: a face hides it and its sprite, salt too; was the cell x is in, a face's left HX px missed)
       ctx.globalAlpha=Math.min(1,b);ctx.drawImage(lightSprite(col),x-3,fy-3,6,6);ctx.fillStyle='rgb('+col+')';ctx.fillRect(x-0.5,fy-1.5,1,3);ctx.fillRect(x-1.5,fy-0.5,3,1);}}
   ctx.restore();}
 // (round 31) Classic's embers lie in the floor's joints as Torchlight's do (floorFx): a glow along the depth diagonal of one joint in five (as faint as v76's, its mean light over the floor within 20%),
@@ -9009,27 +9198,29 @@ function classicLookFx(ctx,x0,x1,y0,y1){const fx=lfx(),t=gameTime;ctx.save();ctx
   const cl=!GLP.used;if(cl&&fx.embers)classicEmbers(ctx,x0,x1,y0,y1,t);
   if(cl&&fx.incense){ctx.globalAlpha=1;for(let i=0;i<4;i++){const yy=y0+(i+0.5)*(y1-y0)/4+Math.sin(t*0.2+i*1.7)*10,g=ctx.createLinearGradient(0,yy-6,0,yy+6);g.addColorStop(0,'rgba(150,220,180,0)');g.addColorStop(0.5,'rgba(150,220,180,.07)');g.addColorStop(1,'rgba(150,220,180,0)');ctx.fillStyle=g;ctx.fillRect(x0,yy-6,x1-x0,12);}}
   if(fx.granite){for(const q of L.torches){if(q.broken)continue;const lx=q.c*TW+16,ly=SURF(q.r)-38;if(lx<x0-70||lx>x1+70||ly<y0-60||ly>y1+60)continue;
-      for(let i=0;i<12;i++){const h=hash2(q.c*13+i,q.r*7+i*3),px=lx+((h&1023)/1023-0.5)*110,py=ly+(((h>>>10)&1023)/1023-0.5)*70,tw=Math.sin(t*(0.7+((h>>>20)&7)*0.25)+(h>>>24));if(tw<0.6||B(L,Math.floor(px/TW),Math.floor(py/TH))===WALL)continue;
+      for(let i=0;i<12;i++){const h=hash2(q.c*13+i,q.r*7+i*3),px=lx+((h&1023)/1023-0.5)*110,py=ly+(((h>>>10)&1023)/1023-0.5)*70,tw=Math.sin(t*(0.7+((h>>>20)&7)*0.25)+(h>>>24));if(tw<0.6||onFace(px,py))continue; // (round 39: the face, not the cell)
         ctx.globalAlpha=(tw-0.6)*2.2;ctx.fillStyle='#fff6ea';ctx.fillRect(px-0.6,py-0.6,1.2,1.2);ctx.drawImage(lightSprite('255,230,200'),px-2.5,py-2.5,5,5);}}}
   ctx.restore();}
-// things that give their own light, or catch it: drawn after the lighting
+// things that give their own light, or catch it: drawn after the lighting (round 39: air as in ambientLit: ash, moths, flies, wisps' trails
+// and sparks on a face are not drawn, drips not on one, a wisp's glow and a drip's splash cut at the faces round them)
 function ambientGlow(ctx,x0,x1,y0,y1){
   const st=L.theme.style,t=gameTime;ctx.save();
   if(lfx().drip)drawDrips(ctx,x0,x1,y0,y1);
   if(lfx().salt||lfx().glaze)lampGlints(ctx,x0,x1,y0,y1,!!lfx().salt);
   if(lfx().granite||(!GLP.used&&(lfx().embers||lfx().incense)))classicLookFx(ctx,x0,x1,y0,y1); // (embers and incense: Torchlight does them in its mist pass; the granite's crystals are sharp points, drawn here in both modes)
-  for(const p of AMB)if(p.k==='ash'){const a=fadeIO(p);if(a<=0)continue;ctx.globalAlpha=a*0.55;ctx.fillStyle=p.sz>1.8?'rgb(255,170,90)':'rgb(186,176,170)';ctx.fillRect(p.x,p.y,p.sz,p.sz*0.7);}
+  for(const p of AMB)if(p.k==='ash'){const a=fadeIO(p);if(a<=0||onFace(p.x,p.y))continue;ctx.globalAlpha=a*0.55;ctx.fillStyle=p.sz>1.8?'rgb(255,170,90)':'rgb(186,176,170)';ctx.fillRect(p.x,p.y,p.sz,p.sz*0.7);}
   ctx.globalAlpha=1;ctx.globalCompositeOperation='lighter';
   // moths around every lamp in view (everywhere)
   for(const q of L.torches){if(q.broken)continue;const lo=st==='palace'&&lampFree(q)?[0,0]:LAMP[st]||LAMP.dungeon,lx=q.c*TW+16+lo[0],ly=SURF(q.r)-38+lo[1];if(lx<x0-30||lx>x1+30||ly<y0-30||ly>y1+30)continue;
-    for(let i=0;i<2;i++){const sd=q.c*3+q.r*7+i*11,mx=lx+8*Math.sin(t*2.1+sd)+3*Math.sin(t*6.7+sd*2),my=ly-6+6*Math.sin(t*2.9+sd*1.3)+2*Math.cos(t*8.3+sd),w=Math.abs(Math.sin(t*28+sd));
+    for(let i=0;i<2;i++){const sd=q.c*3+q.r*7+i*11,mx=lx+8*Math.sin(t*2.1+sd)+3*Math.sin(t*6.7+sd*2),my=ly-6+6*Math.sin(t*2.9+sd*1.3)+2*Math.cos(t*8.3+sd),w=Math.abs(Math.sin(t*28+sd));if(onFace(mx-2.5,my)||onFace(mx+2.5,my))continue; // (round 39: its glow's width off a face)
       ctx.globalAlpha=0.3;ctx.drawImage(lightSprite('255,190,110'),mx-3,my-3,6,6);ctx.globalAlpha=0.55;ctx.fillStyle='rgb(255,206,140)';const mw=w>0.5?1.5:1;ctx.fillRect(mx-mw/2,my-0.5,mw,1);}} // a warm speck in the lamp's glow, its wings a two-frame flicker
   for(const p of AMB){const a=fadeIO(p);if(a<=0)continue;
     switch(p.k){
-      case'fly':{const b=0.5+0.5*Math.sin(t*3.1+p.ph);ctx.globalAlpha=a*(0.15+0.85*b*b);ctx.drawImage(lightSprite('210,255,120'),p.x-5,p.y-5,10,10);ctx.fillStyle='rgb(240,255,190)';ctx.fillRect(p.x-0.5,p.y-0.5,1,1);break;}
-      case'wisp':{for(let i=0;i<p.trail.length;i+=2){const q=p.trail[i],k=i/p.trail.length;ctx.globalAlpha=a*0.25*k;ctx.drawImage(lightSprite('140,255,200'),q[0]-3*k,q[1]-3*k,6*k,6*k);}
-        const pu=0.75+0.25*Math.sin(t*4+p.ph);ctx.globalAlpha=a*0.55*pu;ctx.drawImage(lightSprite('140,255,200'),p.x-14,p.y-14,28,28);ctx.globalAlpha=a*pu;ctx.drawImage(lightSprite('220,255,235'),p.x-3.5,p.y-3.5,7,7);break;}
-      case'spark':ctx.globalAlpha=a;ctx.fillStyle=p.t<0.4?'rgb(255,226,140)':'rgb(255,140,60)';ctx.fillRect(p.x-0.7,p.y-0.7,1.5,1.5);ctx.globalAlpha=a*0.35;ctx.drawImage(lightSprite('255,150,60'),p.x-4,p.y-4,8,8);break;
+      case'fly':{if(onFace(p.x-3,p.y)||onFace(p.x+3,p.y))break;const b=0.5+0.5*Math.sin(t*3.1+p.ph);ctx.globalAlpha=a*(0.15+0.85*b*b);ctx.drawImage(lightSprite('210,255,120'),p.x-5,p.y-5,10,10);ctx.fillStyle='rgb(240,255,190)';ctx.fillRect(p.x-0.5,p.y-0.5,1,1);break;}
+      case'wisp':{for(let i=0;i<p.trail.length;i+=2){const q=p.trail[i],k=i/p.trail.length;if(onFace(q[0],q[1]))continue;ctx.globalAlpha=a*0.25*k;ctx.drawImage(lightSprite('140,255,200'),q[0]-3*k,q[1]-3*k,6*k,6*k);}
+        if(onFace(p.x,p.y))break;const pu=0.75+0.25*Math.sin(t*4+p.ph);ctx.save();airCut(ctx,p.x-14,p.y-14,28,28,p.y-Math.floor(p.y/TH)*TH<32); // (round 39: its glow cut by the faces round it, and by a slab's lip over it)
+        ctx.globalAlpha=a*0.55*pu;ctx.drawImage(lightSprite('140,255,200'),p.x-14,p.y-14,28,28);ctx.globalAlpha=a*pu;ctx.drawImage(lightSprite('220,255,235'),p.x-3.5,p.y-3.5,7,7);ctx.restore();break;}
+      case'spark':if(onFace(p.x,p.y))break;ctx.globalAlpha=a;ctx.fillStyle=p.t<0.4?'rgb(255,226,140)':'rgb(255,140,60)';ctx.fillRect(p.x-0.7,p.y-0.7,1.5,1.5);ctx.globalAlpha=a*0.35;ctx.drawImage(lightSprite('255,150,60'),p.x-4,p.y-4,8,8);break;
     }}
   ctx.restore();
 }
@@ -9765,16 +9956,19 @@ function sandHeapDraw(ctx,h){const g=Math.min(1,h.t/DISS.dur),e=Math.pow(g,1.4),
   ctx.fillStyle=SAND_COL[4];ctx.beginPath();ctx.moveTo(x-hw*0.55,y-ht*0.4*sl);ctx.lineTo(x-hw*0.3,y-ht*0.78*sl);ctx.lineTo(x-hw*0.05,y-ht*0.9*sl);ctx.lineTo(x-hw*0.1,y-ht*0.45*sl);ctx.closePath();ctx.fill(); // lit side
   const n=Math.round(10+hw*0.6);for(let i=0;i<n;i++){const u=(i*0.618034+0.13)%1,v=(i*0.381966+0.27)%1,px=x+(u*2-1)*hw*(1-v*0.8),py=y-v*ht*sl*0.9;ctx.fillStyle=SAND_COL[i%5];ctx.fillRect(Math.floor(px),Math.floor(py),1,1);}
   ctx.globalAlpha=1;}
+// (round 39, D1) the crumbling guard's sand is where the body was, at mid-depth: the heap is cut by the faces near it as the body was (deadCut),
+// and a grain is not drawn where the stone in front hides that point (midHid)
+function midHid(x,y){if(onFace(x,y))return true;const c=Math.floor(x/TW),r=Math.floor(y/TH);if(c<0||c>=L.cols||r<0||r>=L.rows)return false;if(B(L,c,r)===WALL)return true;const q=F(L,c,r);return !!(q&&q.t==='low'&&y<r*TH+TH-34);}
 function sandDraw(ctx){if(PF.off.sand)return;
-  for(const h of SAND_HP)if(h.on)sandHeapDraw(ctx,h);
-  for(let k=0;k<5;k++){let on=false;for(let o=0;o<sandP.length;o+=SAND_S){if(sandP[o+6]<=0||sandP[o+7]!==k)continue;if(!on){ctx.fillStyle=SAND_COL[k];on=true;}const z=sandP[o+8];ctx.fillRect(Math.round(sandP[o]-z/2),Math.round(sandP[o+1]-z/2),z,z);}}
-  ctx.fillStyle='rgb(196,174,132)';for(let o=0;o<sandP.length;o+=SAND_S){if(sandP[o+6]<=0||sandP[o+7]!==5)continue;const f=sandP[o+5]/sandP[o+6];ctx.globalAlpha=0.3*(1-f);const z=sandP[o+8]*(1+f);ctx.fillRect(sandP[o]-z/2,sandP[o+1]-z/2,z,z);}
+  for(const h of SAND_HP)if(h.on){ctx.save();deadCut(ctx,h.x,h.y,h.hw+2,h.y-h.hw);sandHeapDraw(ctx,h);ctx.restore();}
+  for(let k=0;k<5;k++){let on=false;for(let o=0;o<sandP.length;o+=SAND_S){if(sandP[o+6]<=0||sandP[o+7]!==k||midHid(sandP[o],sandP[o+1]))continue;if(!on){ctx.fillStyle=SAND_COL[k];on=true;}const z=sandP[o+8];ctx.fillRect(Math.round(sandP[o]-z/2),Math.round(sandP[o+1]-z/2),z,z);}}
+  ctx.fillStyle='rgb(196,174,132)';for(let o=0;o<sandP.length;o+=SAND_S){if(sandP[o+6]<=0||sandP[o+7]!==5||midHid(sandP[o],sandP[o+1]))continue;const f=sandP[o+5]/sandP[o+6];ctx.globalAlpha=0.3*(1-f);const z=sandP[o+8]*(1+f);ctx.fillRect(sandP[o]-z/2,sandP[o+1]-z/2,z,z);}
   ctx.globalAlpha=1;}
 function dissGrains(g,dt){const z=g.dz;if(!z||!z.pts||!z.n)return;
-  if(!z.hp){z.hp=true;let a=1e9,b=-1e9;for(let i=0;i<z.n;i++){a=Math.min(a,z.pts[i*3]);b=Math.max(b,z.pts[i*3]);}z.cx=(a+b)/2;z.hw=clamp((b-a)*0.36,11,19);sandHeap(g.x+z.cx,g.y,z.hw);} // the heap forms where the body lay
+  if(!z.hp){z.hp=true;let a=1e9,b=-1e9;for(let i=0;i<z.n;i++){a=Math.min(a,z.pts[i*3]);b=Math.max(b,z.pts[i*3]);}z.cx=(a+b)/2;z.hw=clamp((b-a)*0.36,11,19);sandHeap(g.x+(g.rdx||0)+z.cx,g.y,z.hw);} // the heap forms where the body lay (round 39: as drawn, g.rdx)
   const q=clamp((g.t-DISS.t0)/DISS.dur,0,1)*(1+DISS.w);z.acc+=dt*(S.set.calm?260:560);
   while(z.acc>=1){z.acc--;const k=(Math.random()*z.n|0)*3,v=dissN[z.pts[k+2]|0];if(v>q||v<q-0.3)continue; // a spot of the body that is crumbling just now
-    const x=g.x+z.pts[k]+(Math.random()-0.5)*2,y=g.y+z.pts[k+1],h=Math.max(0,g.y-y),vy=Math.random()*20,tf=(-vy+Math.sqrt(vy*vy+2*640*h))/640+0.02,tx=g.x+z.cx+(Math.random()-0.5)*z.hw*1.2; // the stream pours toward the heap
+    const x=g.x+(g.rdx||0)+z.pts[k]+(Math.random()-0.5)*2,y=g.y+z.pts[k+1],h=Math.max(0,g.y-y),vy=Math.random()*20,tf=(-vy+Math.sqrt(vy*vy+2*640*h))/640+0.02,tx=g.x+(g.rdx||0)+z.cx+(Math.random()-0.5)*z.hw*1.2; // the stream pours toward the heap
     sandAdd(x,y,(tx-x)/tf,vy,g.y,1.5,(Math.random()*5)|0,Math.random()<0.5?1:2);}}
 // ================= unit MS: the metal shader (Torchlight only; GLFX.metal, GLFX.metalGlint) =================
 // Gates, jaws, saws, the pendulum, lift chains and wheels, hanging bars, gratings, and the figures' swords and helmets are drawn
@@ -10213,15 +10407,19 @@ const SIL={pool:[],m:new Map(),m2:new Map(),v:[]};
 // own palette (guardPal): PAL_GSIL, gone, had no khat colour, so the head cloth's tied ends (round 7) threw in shadeHex and every robber's silhouette was
 // null: no shadow from a lamp, no cut in the beams (both modes), no carve in the metal or the fill. The shape is his own (weapon, cap)
 function silPal(e){return e.skel?PAL_SKEL:e===P?PAL_HERO:guardPal(e);}
+// (round 39, D4) a guard dropping in comes out from under the ceiling's stone over him: its lower edge (a wall's foot, under the storey above's
+// floor slab its lip's foot), or null where it is open above. Drawn (drawDynamic) and in his silhouette (shadow, beam cuts) only below it
+function dropCeil(e){if(e===P||e.state!=='drop')return null;const b=B(L,Math.floor(e.x/TW),e.r-1);return b===WALL?e.r*TH:b===FLOOR?SURF(e.r-1)+HY+FHH:null;}
 function glSilhouette(e,d2){const M=d2&&GLP.gls?SIL.m2:SIL.m;let c=M.get(e);if(c!==undefined)return c; // (d2: a 2D canvas even when WebGL draws the masks)
   if(GLP.gls&&!d2){const i=SIL.m.size;if(i>=12){SIL.m.set(e,null);return null;} // (unit WGL) a 192 px slot of one target (4 x 3), drawn by WebGL
-    const g=g2Mk('sil',768,576,[0,0,0,0]),x=(i&3)*192,y=(i>>2)*192;g.setTransform(1,0,0,1,0,0);g.save();g.beginPath();g.rect(x,y,192,192);g.clip();g.setTransform(2,0,0,2,x,y);
+    const g=g2Mk('sil',768,576,[0,0,0,0]),x=(i&3)*192,y=(i>>2)*192,yc=dropCeil(e);g.setTransform(1,0,0,1,0,0);g.save();g.beginPath();g.rect(x,y,192,192);g.clip();g.setTransform(2,0,0,2,x,y);
+    if(yc!==null){g.beginPath();g.rect(0,yc-(e.y+(e.yo||0)-80),96,200);g.clip();}
     try{figDraw(g,48,80,e.face||1,e.pose,silPal(e),{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});c=SIL.v[i]||(SIL.v[i]={isView:true,tgt:GLS.sil,x,y,width:192,height:192});}catch(err){c=null;}
     g.restore();SIL.m.set(e,c);return c;}
   c=SIL.pool[M.size+(M===SIL.m2?6:0)];if(!c){c=document.createElement('canvas');c.width=c.height=192;c._g=c.getContext('2d');SIL.pool.push(c);}
-  const g=c._g;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,192,192);g.setTransform(2,0,0,2,0,0);
+  const g=c._g,yc=dropCeil(e);g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,192,192);g.setTransform(2,0,0,2,0,0);if(yc!==null){g.save();g.beginPath();g.rect(0,yc-(e.y+(e.yo||0)-80),96,200);g.clip();}
   try{figDraw(g,48,80,e.face||1,e.pose,silPal(e),{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});}catch(err){c=null;}
-  M.set(e,c);return c;}
+  if(yc!==null)g.restore();M.set(e,c);return c;}
 function glShadow(g,x,y,sc,lights,spr,e){
   const sil=e&&e.pose?glSilhouette(e):null;
   let b1=null,b2=null,d1=1e9,d2=1e9;const cy=y-26;
@@ -10344,8 +10542,11 @@ function glRelEx(n,x,y,hx,hy,VZ,camD,camDY){if(n>=GLREL_Q)return n;const sx=x*VZ
 // (only a gate on the move was rubbed back, by an ellipse that left its corners). Rubbed back over its whole box: the quad's coordinates
 // run to 0.4 only, so the soft ellipse of the rubbing shader is near full strength to its edges
 function glRelSlab(n,X,Y,ys,open,VZ,camD,camDY){if(n>=GLREL_Q)return n;gateGeom(X,Y,ys,{open});const pl=GATE_G.pl,dr=GATE_G.drop;if(dr<2)return n;
-  const x0=(pl.L0-T_SLAB/2-1)*VZ-camD,x1=(pl.R0+T_SLAB/2+1)*VZ-camD,y0=(pl.top-DY)*VZ-camDY,y1=(pl.ce(pl.L0)+Math.min(72,dr+3)+1)*VZ-camDY;
-  if(x1<0||x0>cv.width||y1<0||y0>cv.height)return n;glRelQuad(n,x0,y0,x1,y1,-0.4,0.4,0.4,-0.4);return n+1;}
+  const x0=(pl.L0-T_SLAB/2-1)*VZ-camD,x1=(pl.R0+T_SLAB/2+1)*VZ-camD,y0=pl.top*VZ-camDY,y1=(pl.ce(pl.L0)+Math.min(72,dr+3)+1)*VZ-camDY; // (round 39e: from the ceiling's edge, not DY over it: that flattened the lintel's face)
+  if(x1<0||x0>cv.width||y1<0||y0>cv.height)return n;
+  const c=Math.floor((X+1)/TW),r=Math.floor((pl.top+1)/TH),xe=(c+1)*TW-HX,tp=r>0&&B(L,c,r-1)===WALL&&B(L,c+1,r-1)!==WALL&&pl.R0+T_SLAB/2>xe,lc=tp&&solidBelow(L,c+1,r-1),xw=(xe*VZ-camD); // (tp: egSlab's piece above the edge where the ceiling ends beside it; lc: a floor there, its lip hanging beside the lintel, which drawGate's far half is cut by)
+  if(lc){glRelQuad(n,x0,y0,xw,y1,-0.4,0.4,0.4,-0.4);n++;n=glRelBox(n,xe,pl.top+FHH,pl.R0+T_SLAB/2+1,(y1+camDY)/VZ,VZ,camD,camDY);}else{glRelQuad(n,x0,y0,x1,y1,-0.4,0.4,0.4,-0.4);n++;}
+  return tp?lc?glRelQ(n,xe,pl.top-DY-4,pl.R0+T_SLAB/2+2,pl.top-DY-4,pl.R0+T_SLAB/2+2,pl.top-(pl.R0+T_SLAB/2+2-xe)*DY/DX,xe,pl.top,VZ,camD,camDY):glRelBox(n,xe,pl.top-DY-4,pl.R0+T_SLAB/2+2,pl.top+1,VZ,camD,camDY):n;}
 // (round 21b, owner: "sand has wall motif") the sand of a well or a sand lift is drawn over the shaft's back wall, so the relief, which
 // reads the room's picture, embossed the wall's courses and friezes on it: rubbed back over the sand in view, cell by cell from its
 // surface (and the top's depth) down to the shaft's floor, like a stone slab (glRelSlab)
@@ -10386,12 +10587,29 @@ function glRelFloors(n,VZ,camD,camDY){const cx=camD/VZ,cy=camDY/VZ,c0=Math.max(0
   // the relief embossed the flagstones' joints and the wall's dado and posts on it (round 35c's fault): its front, top and side, as a pushed
   // block's; and one falling (egRoofFall, on its way down), whose ellipse (glRelEx at the debris) left its corners half rubbed
   if(EGP.traps){for(const o of L.dyn)if(o.f.t==='stone'&&o.f.s>=2&&L.rubble.has(o.r*L.cols+o.c))n=glRelRoof(n,o.c*TW+16-HX-BLK_W/2,SURF(o.r)+HY-BLK_H,VZ,camD,camDY);
-    for(const d of L.debris)if(d.kind==='rock'&&d.y0!==undefined&&d.r!==undefined){const yc=ceilingY(d.c,d.r),ys=SURF(d.r),p=clamp((d.y-d.y0)/Math.max(1,ys-d.y0),0,1);n=glRelRoof(n,d.c*TW+16-HX-BLK_W/2,lerp(yc-BLK_H,ys+HY-BLK_H,p),VZ,camD,camDY);}}
+    for(const d of L.debris)if(d.kind==='rock'&&d.y0!==undefined&&d.r!==undefined){const yc=ceilingY(d.c,d.r),ys=SURF(d.r),p=clamp((d.y-d.y0)/Math.max(1,ys-d.y0),0,1);n=glRelRoofFall(n,d.c,lerp(yc-BLK_H,ys+HY-BLK_H,p),yc,VZ,camD,camDY);}}
   return n;}
 // (round 38a) a roof block's box (stoneBox: front x0..x0+BLK_W from yt down BLK_H, its top and right side going back the whole depth), rubbed back
 function glRelRoof(n,x0,yt,VZ,camD,camDY){const cx=camD/VZ,cy=camDY/VZ;if(x0+BLK_W+DX<cx||x0>cx+cv.width/VZ||yt+BLK_H<cy||yt-DY>cy+cv.height/VZ)return n;
   n=glRelQ(n,x0,yt,x0+BLK_W,yt,x0+BLK_W,yt+BLK_H,x0,yt+BLK_H,VZ,camD,camDY);n=glRelQ(n,x0,yt,x0+BLK_W,yt,x0+BLK_W+DX,yt-DY,x0+DX,yt-DY,VZ,camD,camDY);
   return glRelQ(n,x0+BLK_W,yt,x0+BLK_W+DX,yt-DY,x0+BLK_W+DX,yt+BLK_H-DY,x0+BLK_W,yt+BLK_H,VZ,camD,camDY);}
+// (round 39e) a falling roof block's box rubbed back only where egRoofFall draws it (roofFallClip): each face cut by row to below the ceiling's
+// edge or inside the slot's hole, and short of the next column's front face on a row where it has one. RCP holds the polygon being cut
+const RCP=new Float64Array(32),RCP2=new Float64Array(32);
+function rcpCut(k,a,b,c){const A=RCP,Z=RCP2;let m=0;for(let i=0;i<k;i++){const j=(i+1)%k,px=A[2*i],py=A[2*i+1],qx=A[2*j],qy=A[2*j+1],dp=a*px+b*py-c,dq=a*qx+b*qy-c; // (Sutherland-Hodgman: keep a x + b y <= c)
+    if(dp<=0){Z[2*m]=px;Z[2*m+1]=py;m++;}if(dp*dq<0){const t=dp/(dp-dq);Z[2*m]=px+t*(qx-px);Z[2*m+1]=py+t*(qy-py);m++;}}
+  for(let i=0;i<2*m;i++)A[i]=Z[i];return m;}
+function glRelRoofFall(n,c,yt,yc,VZ,camD,camDY){const x0=c*TW+16-HX-BLK_W/2,cx=camD/VZ,cy=camDY/VZ;if(x0+BLK_W+DX<cx||x0>cx+cv.width/VZ||yt+BLK_H<cy||yt-DY>cy+cv.height/VZ)return n;
+  const P=RCP,xr=(c+1)*TW-HX,rA=Math.floor((yt-DY)/TH),rB=Math.floor((yt+BLK_H)/TH);
+  for(let q=0;q<3;q++)for(let rr=rA;rr<=rB;rr++)for(let h=0;h<2;h++){ // (front, top, right side; by row; below the ceiling's edge (h 0) or in the hole (h 1))
+    if(q===0){P[0]=x0;P[1]=yt;P[2]=x0+BLK_W;P[3]=yt;P[4]=x0+BLK_W;P[5]=yt+BLK_H;P[6]=x0;P[7]=yt+BLK_H;}
+    else if(q===1){P[0]=x0;P[1]=yt;P[2]=x0+BLK_W;P[3]=yt;P[4]=x0+BLK_W+DX;P[5]=yt-DY;P[6]=x0+DX;P[7]=yt-DY;}
+    else{P[0]=x0+BLK_W;P[1]=yt;P[2]=x0+BLK_W+DX;P[3]=yt-DY;P[4]=x0+BLK_W+DX;P[5]=yt+BLK_H-DY;P[6]=x0+BLK_W;P[7]=yt+BLK_H;}
+    let k=rcpCut(4,0,-1,-rr*TH);k=rcpCut(k,0,1,(rr+1)*TH);
+    if(h){k=rcpCut(k,0,1,yc);k=rcpCut(k,0,-1,BLK_H-yc);k=rcpCut(k,-1,0,-x0);k=rcpCut(k,1,0,x0+BLK_W);}else k=rcpCut(k,0,-1,-yc);
+    if(k>2&&cpFace(c+1,rr))k=rcpCut(k,1,0,xr);
+    for(let i=1;i+1<k;i+=2){const j=Math.min(i+2,k-1);n=glRelQ(n,P[0],P[1],P[2*i],P[2*i+1],P[2*i+2],P[2*i+3],P[2*j],P[2*j+1],VZ,camD,camDY);}}
+  return n;}
 // (round 37b, owner after v81: the jaws read as a pale glass panel, "the wall's bands show through") the slicer's jaws are opaque plates drawn
 // live in front of the back wall, so the relief embossed the wall's bands and tiles behind them on their faces: rubbed back over each jaw's
 // plate, from the ceiling's edge (or the floor) to half way down its teeth (as beamBlockers takes them), as it moves
@@ -10400,6 +10618,21 @@ function glRelJaws(n,VZ,camD,camDY){const cx=camD/VZ,cy=camDY/VZ,vw=cv.width/VZ,
     const k=chompK(o.f),pl=plane(X,Y,SURF(o.r),o.c,o.r),up=lerp(pl.co?2:7,31-pl.co,k)+4,lo=lerp(3,21,k)+4,a=pl.L0,b=pl.R0;
     n=glRelQ(n,a,pl.top,b,pl.top,b,pl.ce(b)+up,a,pl.ce(a)+up,VZ,camD,camDY);
     n=glRelQ(n,a,pl.fl(a)-lo,b,pl.fl(b)-lo,b,pl.fl(b)+0.5,a,pl.fl(a)+0.5,VZ,camD,camDY);}
+  return n;}
+// (round 39e, dev/docs/layers.md R3: a live thing that hides the room's picture is rubbed) a banner's runner hangs in front of the back wall, so the
+// relief, which reads the room's picture, embossed the wall's courses, posts and friezes on the cloth (floor 12 seed 3, 264,19): rubbed back over each
+// tile in view as drawBannerTile draws it (rod, runner, fringe), short of the next column's front plane where the cloth is cut (a wall's or low
+// ceiling's face, a landing's lip and top keep their own relief), and leaving open the gap a cut runner parts round (the wall shows through it)
+function glRelBanners(n,VZ,camD,camDY){const cx=camD/VZ,cy=camDY/VZ,vw=cv.width/VZ,vh=cv.height/VZ;
+  for(const o of L.dyn){const f=o.f;if(f.t!=='banner')continue;const X=o.c*TW,Y=o.r*TH;if(X+TW<cx||X>cx+vw||Y+TH<cy||Y>cy+vh)continue;
+    const ya=f.top?Y+4:Y,yb=f.bot?Y+TH-11:Y+TH,xa=X+1,xr=X+TW-HX,xe=X+31,bn=f.bn,c1=o.c+1;
+    if(bn&&bn.a>=0&&bn.b>bn.a+0.5&&bn.a<yb&&bn.b>ya){const g0=Math.max(ya,bn.a),g1=bn.b>=bn.bot-0.5?yb:Math.min(yb,bn.b),hg=Math.min(9.5,4.5+(bn.b-bn.a)*0.045)/2+1; // (the gap, at most mg wide round the middle, drawBannerTile's)
+      if(g0-ya>0.5)n=glRelQ(n,xa,ya,xr,ya,xr,g0,xa,g0,VZ,camD,camDY);if(yb-g1>0.5)n=glRelQ(n,xa,g1,xr,g1,xr,yb,xa,yb,VZ,camD,camDY);
+      n=glRelQ(n,xa,g0,X+16-hg,g0,X+16-hg,g1,xa,g1,VZ,camD,camDY);n=glRelQ(n,X+16+hg,g0,xr,g0,xr,g1,X+16+hg,g1,VZ,camD,camDY);}
+    else n=glRelQ(n,xa,ya,xr,ya,xr,yb,xa,yb,VZ,camD,camDY);
+    if(B(L,c1,o.r)===WALL)continue; // (past X+TW-HX: only where the next column shows the back wall)
+    const q=F(L,c1,o.r),y0=Math.max(ya,q&&q.t==='low'?Y+LOW_H:o.r>0&&B(L,c1,o.r-1)!==WALL&&solidBelow(L,c1,o.r-1)?Y+FHH:Y),sl=solidBelow(L,c1,o.r),yl=sl?Math.min(yb,SURF(o.r)+HY):yb,yr=sl?Math.min(yb,SURF(o.r)+HY-(xe-xr)*DY/DX):yb;
+    if(yr>y0+0.5)n=glRelQ(n,xr,y0,xe,y0,xe,yr,xr,yl,VZ,camD,camDY);}
   return n;}
 function glRelief(lights,VZ,camD,camDY){
   const R=GLREL,gl=GLP.gl,w=cv.width,h=cv.height;R.on=0;if(!GLFX.relief||mode==='cross')return; // (round 36a: no rooms to rake in the crossing)
@@ -10434,6 +10667,7 @@ function glRelief(lights,VZ,camD,camDY){
   n=glRelLifts(n,VZ,camD,camDY);
   n=glRelFloors(n,VZ,camD,camDY); // (round 35c) the floor tiles drawn live
   n=glRelJaws(n,VZ,camD,camDY); // (round 37b) the slicers' jaws
+  n=glRelBanners(n,VZ,camD,camDY); // (round 39e) the banners' runners
   if(EGP.traps){for(const o of L.dyn){const g=o.f.wg;if(o.f.t!=='loose'||!g||g.os[0]!==o)continue;n=glRelWell(n,g,VZ,camD,camDY);} // (round 21b) sand is not embossed with the wall's art behind it
     for(const f of L.lifts)if(f.sand){const pd=liftPit(f.sc,f.rB)?LP_D:0;if(f.y<SURF(f.rB)-0.5)n=glRelBox(n,f.sc*TW-HX,f.y+HY+5-DY,f.sc*TW-HX+TW,SURF(f.rB)+HY+pd,VZ,camD,camDY);
       else if(pd)n=glRelBox(n,f.sc*TW-HX,f.y-HY-1,f.sc*TW-HX+TW+DX,f.y+HY+8,VZ,camD,camDY);}} // (round 37a) its slab at rest in the foot's pit: the pit's edges in the room's picture under it are not embossed on it (as glRelLifts' platform)
@@ -11008,7 +11242,7 @@ function render(){PF.s();
   GLP.subd=false;GLP.first=sh&&!GLP.used;if(!sh)GLP.pend=null;if(GLP.first&&!GLP.inSession){GLP.rs=1;GLP.inSession=true;}if(!sh&&S.set.lightMode!=='torch')GLP.inSession=false; // (the scale found is kept while Torchlight stays on)
   else if(GLP.pend){PF.gl=GLP.gl;try{GLP.subd=glSubmit();}catch(e){glKill(String(e&&e.message||e));return render();}PF.p('gl');PF.gl=null;} // last frame's picture to WebGL (glPrep)
   if(sh){if(!GLP.used){GLP.skip=true;GLP.wsum=GLP.wn=0;}GLP.cv.style.display='';glSize();}else if(GLP.cv&&GLP.cv.style.display!=='none')GLP.cv.style.display='none';
-  GLP.used=sh;GLOWK=sh?0.5:1;
+  GLP.used=sh;GLOWK=LAYER_DBG.glow===false?0:sh?0.5:1;
   METAL_PAINT_HI=!(sh&&GLFX.metal&&MS.ok);MSF.n=0;MSF.rec=sh&&GLFX.metal&&MS.ok; // (unit MS) Torchlight's metal shader carries the highlights; note the figures' metal
   const gls=GLP.gls=sh&&GLS.ok&&GLFX.wgl; // (unit WGL) Torchlight's scene drawn by WebGL2 through the facade, or (no WebGL2) in 2D and copied
   if(sh&&!gls&&(GLP.sceneC.width!==cv.width||GLP.sceneC.height!==cv.height)){GLP.sceneC.width=cv.width;GLP.sceneC.height=cv.height;}
@@ -11033,16 +11267,16 @@ function render(){PF.s();
   ctx.save();ctx.beginPath();ctx.rect(cx,cy,vw,vh);ctx.clip();
   SHC.n=SHC.np=0;SHC.on=sh&&GLFX.shadow; // (round 38a) the outlines glMask carves out of the lamp shadow, recorded as drawDynamic draws them
   PF.p('lights');drawDynamic(ctx,cx,cx+vw,cy,cy+vh);SHC.on=false;PF.p('dyn');if(gls)ctx.na=1; // (round 25c) the grade, glows and haze over the whole view are not things in front of the sky
-  if(gf.atmo)ambientLit(ctx,cx,cx+vw,cy,cy+vh);
+  if(gf.atmo&&!lyOff('ambient'))ambientLit(ctx,cx,cx+vw,cy,cy+vh);
   if(sh){if(gf.grade)lightPass(ctx,frameLights,VZ,camD,camDY,true); // (the shader adds the lights and the bloom)
     if(gf.light&&!GLFX.shafts)ryBeams2D(ctx,RY_2D*1.9);} // the beams as in Classic (unless the shader casts them)
   else{if(gf.light||gf.grade)lightPass(ctx,frameLights,VZ,camD,camDY);
   if(gf.light)bloomPass(ctx,frameLights);}
-  PF.p('light2d');if(gf.atmo){atmoPass(ctx,frameLights,cx,cx+vw,cy,cy+vh);ambientGlow(ctx,cx,cx+vw,cy,cy+vh);}
-  if(gf.light)drawEmissive(ctx,cx,cx+vw,cy,cy+vh);
+  PF.p('light2d');if(gf.atmo&&!lyOff('atmo')){atmoPass(ctx,frameLights,cx,cx+vw,cy,cy+vh);ambientGlow(ctx,cx,cx+vw,cy,cy+vh);}
+  if(gf.light&&!lyOff('emissive'))drawEmissive(ctx,cx,cx+vw,cy,cy+vh);
   ctx.restore();
   ctx.setTransform(VS,0,0,VS,0,0);
-  if(gf.atmo)hazePass(ctx);
+  if(gf.atmo&&!lyOff('haze'))hazePass(ctx);
   if(L.ext.chase&&L.ext.chase.on&&!stormGL()){ctx.save();ctx.setTransform(VZ,0,0,VZ,-camD,-camDY);ctx.beginPath();ctx.rect(cx,cy,vw,vh);ctx.clip();drawDark2D(ctx,cx,cx+vw,cy,cy+vh);ctx.restore();ctx.setTransform(VS,0,0,VS,0,0);} // (round 29)
   PF.p('atmo2d');if(sh)PF.gl=GLP.gl;
   if(sh){try{glPrep(frameLights,VZ,camD,camDY,L.theme);}catch(e){glKill(String(e&&e.message||e));return render();}
@@ -12983,10 +13217,10 @@ window.__HK={keyLight,get frameLights(){return frameLights;},jetPlaces,jsSwingPa
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
   get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,ryOps,ryShape,ryProfile,skyBeam,RY,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,plantPose,legIK,mk,drawDynamic,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
   levelCompleteHook:null,render,layout,startLevel,
-  get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG,CP_DBG,cpX,secretCues,RJ_K,RJ_DV};
+  get S(){return S;},get GLP(){return GLP;},GLFX,GLC,glInit,shaderOn,glTime,get REW(){return REW;},get PGQ(){return pendingGuards;},get XF(){return renderXf;},resolveStrike,wearLevel,breaches,inBreach,drawRoomStatic,drawBreaches,GFX,wallTouch,SW_W,SW_CLEAR,SW_MAX,swAmp,barPos,snapAll,applySnap,sawX,canRewind,startRewind,get SN(){return SN;},get gameTime(){return gameTime;},danger,pendTip,get cam(){return cam;},get viewW(){return viewW;},snapshotResume,applyResume,themeName,chainPos,chainWin,chainLanding,liftDocked,LIFT_V,CHAIN_V,LIFT_DBG,LAYER_DBG,setGT:v=>{gameTime=v;},CP_DBG,cpX,secretCues,RJ_K,RJ_DV};
 Object.assign(window.__HK,{guardBudget,snakeBudget,RP,drinkFrame}); // (the fighters' budgets, for guardscan.py; RP and drinkFrame, the run cycle's and the drink's poses, for egyptr21a.py)
 Object.assign(window.__HK,{jumpSpan,jhK,leapPose,LEN,skel,crawlPose,walkPose,climbFrame,swingPose,MCP,MCK,R23B,R23D,R23MUS,setMus,musNow:()=>RD.mus||1,mk,figReach}); // (the skeleton and the poses, for egyptr23.py and figscan.py)
-Object.assign(window.__HK,{respawn,startRewind,die,startEntry,entryOpen,entryX,exitSwell,EXF,EX_N,EX_GONE,EX_CUT,EN_CTL,EN_DROP,EN_FALL,doorHead,ceilOff:(c,r)=>ceilOff(c,r)}); // (round 26f: the exit and the entry, for stairscan.py and egyptr26f.py)
+Object.assign(window.__HK,{respawn,startRewind,die,startEntry,entryOpen,entryX,startDoorX,exitSwell,EXF,EX_N,EX_GONE,EX_CUT,EN_CTL,EN_DROP,EN_FALL,doorHead,ceilOff:(c,r)=>ceilOff(c,r)}); // (round 26f: the exit and the entry, for stairscan.py and egyptr26f.py)
 Object.defineProperty(window.__HK,'intro',{get(){return intro;},set(v){intro=v;}}); // (the floor's title banner, for egyptprop.py)
 Object.assign(window.__HK,{GATE_G,liftCell,windowPath,gateGeom,stoneTex,STONES,THEME_STONE,SLAB_STONE,stoneLying,BLK_W,BLK_H,looseWell,WELL_V,blockStep,wellGroup,wellSolve,wellTip,sandTex});
 Object.assign(window.__HK,{EGP,nutClock,conceptClock2,barqueClock,conceptClock,flaskBody,flaskR,heart,setHero,HERO_VAR,PAL_HERO,SCHED,floorsOf,BGART,bgArt,LFX,themeOf,get PF(){return PF;}}); // (the themes' backdrops and effects, for egyptshot.py and egyptfx.py)
