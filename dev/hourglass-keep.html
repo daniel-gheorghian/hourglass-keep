@@ -7272,12 +7272,30 @@ function drawShut(ctx){const ch=L.ext.chase;if(!ch||!ch.on||ch.done||!P||P.state
   const g=SHUT.g;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,192,192);g.setTransform(2,0,0,2,0,0);
   try{figDraw(g,48,80,P.face||1,P.pose,PAL_HERO,{mono:'#000',hasSword:false,sword:false,time:gameTime});}catch(e){return;}
   const ys=SURF(r),wb=ys-HY,ax=P.x+HX*0.6,ay=wb+0.5,t=gameTime;
-  const cy=ceilingY(Math.floor(P.x/TW),r)-1,cx0=ch.wx-6,cx1=P.x+26;
-  ctx.save();ctx.beginPath();ctx.rect(cx0,cy,cx1-cx0,wb+0.6-cy);for(const o of openingsIn(cx0,cx1,cy,wb))ctx.rect(o[0],o[1],o[2],o[3]);ctx.clip('evenodd'); // (never on the sky through an opening)
+  const cx0=ch.wx-6,cx1=P.x+26;let cy=1e9;
+  // (round 39, D6) only where the back wall shows: it was cut at the ceiling of his own column only (and past a floor slab above, to the
+  // first wall), so the copies lay over the wall he hangs or climbs behind and the faces and slabs beside him. Each open cell of his row and
+  // the open cells over it: from its back wall's left edge (the cell's + HX) to the next cell's face; the strip HX either side of the next
+  // cell's edge where that cell is open and no slab's end or lip stands there; under a wall from its foot, under a floor slab from its lip's
+  // foot, under a low ceiling from its face's. Rectangles (one clip, nonzero: they may touch)
+  ctx.save();ctx.beginPath();
+  for(let c=Math.floor(cx0/TW)-1;c<=Math.floor(cx1/TW);c++){if(c<0||c>=L.cols-1||B(L,c,r)===WALL)continue;
+    let rt=r;while(rt>0&&B(L,c,rt-1)===EMPTY)rt--;const y0=rt>0&&B(L,c,rt-1)===FLOOR?SURF(rt-1)+HY+FHH:rt*TH,xa=Math.max(cx0,c*TW+HX),xm=Math.min(cx1,(c+1)*TW-HX),xb=Math.min(cx1,(c+1)*TW+HX);
+    for(let rr=rt;rr<=r;rr++){const q=F(L,c,rr),ya=Math.max(rr===rt?y0:rr*TH,q&&q.t==='low'?rr*TH+LOW_H:0),yb=rr===r?wb+0.6:(rr+1)*TH;if(yb<=ya)continue;
+      if(xm>xa){ctx.rect(xa,ya,xm-xa,yb-ya);cy=Math.min(cy,ya);}
+      const xs=Math.max(xa,xm),nq=F(L,c+1,rr);if(B(L,c+1,rr)===WALL||xb<=xs)continue;let s0=ya,s1=yb;
+      if(nq&&nq.t==='low')s0=Math.max(s0,rr*TH+LOW_H);if(rr<r&&solidBelow(L,c+1,rr))s1=Math.min(s1,SURF(rr)-HY);
+      if(rr>rt&&B(L,c+1,rr-1)!==WALL&&solidBelow(L,c+1,rr-1))s0=Math.max(s0,rr*TH+FHH);
+      if(s1>s0){ctx.rect(xs,s0,xb-xs,s1-s0);cy=Math.min(cy,s0);}}}
+  if(cy>wb){ctx.restore();return;}ctx.clip();
+  {const op=openingsIn(cx0,cx1,cy,wb);if(op.length){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);for(const o of op)ctx.rect(o[0],o[1],o[2],o[3]);ctx.clip('evenodd');}} // (never on the sky through an opening)
   for(let i=2;i>=0;i--){const sk=k*(0.3+0.55*i)+0.04*Math.sin(t*2.3+i),sx=1+k*(0.25+0.6*i),off=k*(6+20*i);
     ctx.save();ctx.translate(ax,ay);ctx.transform(sx,0,sk,1+0.05*i*k,-off,0);ctx.globalAlpha=Math.min(1,k*1.4)*[0.86,0.55,0.3][i];ctx.drawImage(SHUT.c,-48,-80,96,96);ctx.restore();}
   ctx.restore();
-  ctx.save();ctx.beginPath();ctx.rect(ch.wx-6,wb,P.x+12-(ch.wx-6),2*HY);ctx.clip();ctx.translate(P.x-26*k,ys);ctx.scale(1,0.1); // and smeared along the floor
+  ctx.save();ctx.beginPath();ctx.rect(ch.wx-6,wb,P.x+12-(ch.wx-6),2*HY);ctx.clip();
+  ctx.beginPath();for(let c=Math.floor((ch.wx-6)/TW)-1;c<=Math.floor((P.x+12)/TW);c++){if(B(L,c,r)===WALL||!solidBelow(L,c,r))continue;const fx=c*TW-HX,w=B(L,c+1,r)===WALL; // (round 39, D6: on the floors' top faces only, cut at a wall's face)
+    ctx.moveTo(fx,ys+HY);ctx.lineTo(fx+TW,ys+HY);ctx.lineTo(fx+TW+(w?0:DX),ys-HY);ctx.lineTo(fx+DX,ys-HY);ctx.closePath();}
+  ctx.clip();ctx.translate(P.x-26*k,ys);ctx.scale(1,0.1); // and smeared along the floor
   const gr=ctx.createRadialGradient(0,0,2,0,0,40+40*k);gr.addColorStop(0,'rgba(0,0,0,'+(0.45*k)+')');gr.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=gr;ctx.fillRect(-80-40*k,-80-40*k,160+80*k,160+80*k);ctx.restore();}
 function drawPlank(ctx,X,ys,sh){
   ctx.save();ctx.translate(0,sh);const fx=X-HX,ft=ys+HY;
@@ -7438,36 +7456,71 @@ function drawJaws(ctx,o,f,X,Y,ys,half){
   if(k<0.6){const gl=ctx.createLinearGradient(0,pl.ce(pl.L0+HX)+24,0,pl.fl(pl.L0+HX)-20);gl.addColorStop(0,'rgba(220,226,240,0)');gl.addColorStop(0.5,'rgba(220,226,240,.13)');gl.addColorStop(1,'rgba(220,226,240,0)');ctx.fillStyle=gl;ctx.fillRect(pl.L0+3,pl.ce(pl.L0+HX)+24,pl.R0-pl.L0-6,Math.max(0,pl.fl(pl.L0+HX)-pl.ce(pl.L0+HX)-44));} // a faint dust shaft joins the two jaws while open
   ctx.restore();
 }
-// The leading edge of a wall stands on the front plane, nearer than anyone walking the corridor: copy that
-// sliver of the pre-drawn room back over the actors (the old foreground-layer trick).
+// (round 39, D12) A cell's tile as the room's picture takes it (drawRoomStatic reads L.base the same way): a movable block's cell holds WALL
+// in L.base (both of its cells while it moves), the picture the tile under it (blockUnder; the block is drawn live, drawBlock), and a
+// counterweight lift's top mouth open. wallBelow asks it, and blockAtCell for the block itself
 function terrainAt(c,r){const u=L.blockUnder?L.blockUnder.get(r*L.cols+c):undefined;return u!==undefined?u:B(L,c,r);}
 // A figure walks at mid-depth, but a wall's front face stands HX nearer and HX further left. Rather than let a
 // figure sink into that face (or slice it with a sliver of wall), draw it pressed against the face instead.
-// How far a figure's pose reaches to its right of x, and how high it stands (crouching leans the head well forward).
-function figReach(face,pose){const s=skel(pose),hd=GFX().hd;let mx=-1e9,top=1e9;
+// How far a figure's pose reaches to its right of x (and to its left, round 39), and how high it stands (crouching leans the head well forward).
+function figReach(face,pose){const s=skel(pose),hd=GFX().hd;let mx=-1e9,mn=1e9,top=1e9;
   // the new bodies are fuller: slipper toes reach well past the foot, the pants and vest are wider
   const pad=hd?[[s.kF,4],[s.fF,7.5],[s.kB,4],[s.fB,7.5],[s.sh,5],[s.hd,5.5],[s.eF,2],[s.hF,1.6],[s.eB,2],[s.hB,1.6]]:[[s.kF,0],[s.fF,0],[s.kB,0],[s.fB,0],[s.sh,0],[s.hd,0],[s.eF,0],[s.hF,0],[s.eB,0],[s.hB,0]];
-  for(const [j,m] of pad){const x=j[0]*face+(face>0?m:m*0.4);if(x>mx)mx=x;if(j[1]<top)top=j[1];}
-  return {right:mx+(hd?1:3),top:top-s.hipH-5*LEN.hd/4.6};} // (the head's top; round 22b: by the head's size)
-// Pressed against the front face of a wall (or block, or low ceiling) on its right: how far to draw the figure to the
-// left so it doesn't sink into the face, and the face itself, to cut off anything still poking in (a lowered sword).
-function wallPress(x,y,face,pose){
-  const R=figReach(face,pose),xr=x+Math.max(BW+1,R.right),cw=Math.floor(x/TW)+1,fx=cw*TW-HX;
-  if(xr<=fx)return null;
-  const yt=y+R.top,yb=y-3;
+  for(const [j,m] of pad){const x=j[0]*face;if(x+(face>0?m:m*0.4)>mx)mx=x+(face>0?m:m*0.4);if(x-(face<0?m:m*0.4)<mn)mn=x-(face<0?m:m*0.4);if(j[1]<top)top=j[1];}
+  return {right:mx+(hd?1:3),left:mn-(hd?1:3),top:top-s.hipH-5*LEN.hd/4.6};} // (the head's top; round 22b: by the head's size)
+// (round 39, D2/D3) the solid cells of column cc beside a figure from yt to yb: the rows of the first one it overlaps, on down through walls
+// (WPR.wt, WPR.wb), or null; a block being pushed or pulled (both its cells hold WALL while it moves) gives its drawn x (drawBlock's bx) in WPR.bx
+const WPR={wt:0,wb:0,bx:NaN};
+function wallRows(cc,yt,yb){
   for(let r=Math.floor(yt/TH);r<=Math.floor(yb/TH);r++){
     let top=r*TH,bot=top+TH;
-    if(B(L,cw,r)!==WALL){const f=F(L,cw,r);if(f&&f.t==='low')bot=top+TH-34;else continue;}
-    if(yb>top&&yt<bot){let wt=top,wb=bot;for(let r2=r+1;r2<=Math.floor(yb/TH);r2++){if(B(L,cw,r2)===WALL)wb=(r2+1)*TH;else break;}
-      return {dx:Math.max(-HX-12,fx-xr),fx,wt,wb};}
+    if(B(L,cc,r)!==WALL){const f=F(L,cc,r);if(f&&f.t==='low')bot=top+TH-34;else continue;}
+    if(yb>top&&yt<bot){let wb=bot;for(let r2=r+1;r2<=Math.floor(yb/TH);r2++){if(B(L,cc,r2)===WALL)wb=(r2+1)*TH;else break;}
+      WPR.wt=top;WPR.wb=wb;WPR.bx=NaN;for(const bl of L.ext.blocks)if(bl.mv&&bl.r*TH>=top&&bl.r*TH<wb&&(bl.mv.from===cc||bl.mv.to===cc)){WPR.bx=lerp(bl.mv.from,bl.mv.to,ease(Math.min(1,bl.mv.t/bl.mv.dur)))*TW-HX;break;}
+      return WPR;}
   }
   return null;
 }
+// Pressed against the front face of a wall (or block, or low ceiling) on its right: how far to draw the figure to the
+// left so it doesn't sink into the face, and the face itself, to cut off anything still poking in (a lowered sword).
+// (round 39, D2) and against one on its left: that one hides a mid-depth point left of its cell's right edge (its front face and its side
+// face's near half), so the figure is drawn to the right by the mirror of the same reach, at most HX+4 (the right press's HX+12 less the HX
+// a left face stands further off: clampMove keeps him BW from both), and cut there. Between two (a kick shaft, 24 px at mid-depth) where he
+// does not fit, he is drawn in the middle and both cut him (the faced one alone pressing took his head into the other: planted on a shaft's
+// right wall, 19.5 px). (D3) A block being pushed or pulled cuts and presses at its drawn face, not at its two cells.
+// The result is one shared object (WP), used at once by the caller; fx 1e9 / lx -1e9 when that side has no face.
+const WP={dx:0,fx:0,wt:0,wb:0,lx:0,lt:0,lb:0};
+function wallPress(x,y,face,pose){
+  const R=figReach(face,pose),c=Math.floor(x/TW),xr=x+Math.max(BW+1,R.right),xl=x+Math.min(-BW-1,R.left),yt=y+R.top,yb=y-3;
+  let fx=1e9,lx=-1e9,w;
+  if((w=wallRows(c+1,yt,yb))){fx=w.bx===w.bx?w.bx:(c+1)*TW-HX;WP.wt=w.wt;WP.wb=w.wb;}
+  if((w=wallRows(c-1,yt,yb))){lx=w.bx===w.bx?w.bx+TW+HX:c*TW;WP.lt=w.wt;WP.lb=w.wb;}
+  if(xr<=fx&&xl>=lx)return null;
+  let dx=xr>fx?fx-xr:0;if(xl+dx<lx)dx=xr-xl<=fx-lx?lx-xl:(lx-xl+fx-xr)/2;
+  WP.dx=clamp(dx,-HX-12,HX+4);WP.fx=fx;WP.lx=lx;return WP;
+}
 function pushOut(x,y,face,pose){const w=wallPress(x,y,face,pose);return w?w.dx:0;}
+// (round 39, D1) a figure lying dead (and a guard crumbling, and its heap of sand): figReach does not know the body is turned flat, so it is
+// not pressed but cut by every face within reach (rx either side of x, from yt to yb): a wall's or a low ceiling's from its face's left edge
+// to its cell's right edge, where a mid-depth point is behind its front face or its side face's near half. A cell beside another starts where
+// that one's leaves off (so nothing overlaps: one even-odd clip). Call between save and restore
+function deadCut(ctx,x,y,rx,yt){const c0=Math.floor((x-rx)/TW),c1=Math.floor((x+rx+HX)/TW),r0=Math.floor(yt/TH),r1=Math.floor((y-1)/TH);let any=false;
+  for(let r=r0;r<=r1;r++){if(r<0||r>=L.rows)continue;let pc=-9,ph=0;
+    for(let c=c0;c<=c1;c++){if(c<0||c>=L.cols){pc=-9;continue;}let h=0;if(B(L,c,r)===WALL)h=TH;else{const q=F(L,c,r);if(q&&q.t==='low')h=TH-34;}
+      if(!h){pc=-9;continue;}if(!any){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);any=true;}
+      if(pc===c-1&&ph>=h)ctx.rect(c*TW,r*TH,TW,h); // (the cell before covers its face)
+      else{if(pc===c-1)ctx.rect(c*TW-HX,r*TH+ph,HX,h-ph);ctx.rect(pc===c-1?c*TW:c*TW-HX,r*TH,pc===c-1?TW:TW+HX,h);}
+      pc=c;ph=h;}}
+  if(any)ctx.clip('evenodd');}
+// (round 39, owner on D5: "Cut the arms at the lip, keep only the hands") the ledge's slab where no wall below hides him (mode 3: the slab on his
+// right, open below; mode 4: the slab on his left): its lip and the near half of its top face (and the near half of its end) are nearer than he
+// is, so of what is below its top face's mid line only the hands' grip (above ys+1.5, as mode 2) shows
 function figClip(ctx,mode,lg,wc){
   if(mode===2){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,1e5+lg.ys+1.5);ctx.clip();}           // only what's above the ledge
   else if(mode===1){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);ctx.rect(lg.xe-HX,lg.ys+1.5,TW,HANG+16);ctx.clip('evenodd');} // behind the wall's face
-  if(wc){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);ctx.rect(wc.fx,wc.wt,1e4,wc.wb-wc.wt);ctx.clip('evenodd');}
+  else if(mode===3){const xe=lg.xe,ys=lg.ys;ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);ctx.moveTo(xe-HX,ys+HY+FHH);ctx.lineTo(xe+TW+HX,ys+HY+FHH);ctx.lineTo(xe+TW+HX,ys+1.5);ctx.lineTo(xe-3,ys+1.5);ctx.lineTo(xe-HX,ys+HY);ctx.closePath();ctx.clip('evenodd');}
+  else if(mode===4){const xe=lg.xe,ys=lg.ys;ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);ctx.moveTo(xe-TW-HX,ys+HY+FHH);ctx.lineTo(xe-HX,ys+HY+FHH);ctx.lineTo(xe,ys+FHH);ctx.lineTo(xe,ys+1.5);ctx.lineTo(xe-TW-HX,ys+1.5);ctx.closePath();ctx.clip('evenodd');}
+  if(wc){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);if(wc.fx<1e8)ctx.rect(wc.fx,wc.wt,1e4,wc.wb-wc.wt);if(wc.lx>-1e8)ctx.rect(wc.lx-1e4,wc.lt,1e4,wc.lb-wc.lt);ctx.clip('evenodd');}
 }
 function ledgeOf(){const st=P.state;
   if(st==='hang'||st==='climb')return P.ledge;
@@ -7477,17 +7530,21 @@ function wallBelow(lg){return terrainAt(lg.c,lg.r+1)===WALL||!!blockAtCell(lg.c,
 // mid-depth while hanging, and the wall in front of him when he hangs on its near face.
 function updateLook(dt){
   if(!P)return;const st=P.state,lg=ledgeOf();let tdx=0,tdy=0,mode=0;
-  if(lg){const k=st==='hang'?1:st==='climb'?1-Math.min(1,P.t/0.45):st==='climbDown'?Math.max(0,(P.t/0.5-0.5)/0.5):clamp((P.t-0.1)/0.22,0,1);
-    tdx=lerp(st==='jumpUp'?pushOut(P.x,P.y,P.face,P.pose):0,-lg.s*6,k);tdy=-2*k;
+  if(lg){const k=st==='hang'?1:st==='climb'?1-Math.min(1,P.t/0.45):st==='climbDown'?Math.max(0,(P.t/0.5-0.5)/0.5):clamp((P.t-0.1)/0.22,0,1),wb=wallBelow(lg);
+    // (round 39, D2) with the wall below the ledge on his left, only as far as puts his hands on its corner: the full 6 px took his chest and
+    // head into that wall's side face (its near half hides a mid-depth point left of xe); what still reaches past xe there is cut (wallPress)
+    tdx=lerp(st==='jumpUp'?pushOut(P.x,P.y,P.face,P.pose):0,lg.s>0&&wb?-2:-lg.s*6,k);tdy=-2*k;
     // jumping up at a wall's near face he slips behind its front face; once hanging the wall hides all but his hands
-    if(lg.s<0&&wallBelow(lg))mode=st==='jumpUp'?1:2;}
-  else tdx=st==='dead'?0:pushOut(P.x,P.y,P.face,P.pose);
+    // (round 39, D5) elsewhere the ledge's slab hides what is below its top face's mid line but the hands (figClip modes 3 and 4)
+    mode=lg.s<0?(wb?(st==='jumpUp'?1:2):3):4;}
+  else tdx=st==='dead'?(P.rdx||0):pushOut(P.x,P.y,P.face,P.pose); // (round 39, D1: dead, he stays where he was drawn, cut by the faces near him, deadCut)
   if(!lg)tdy-=blockStep(P.x,P.y,st); // (round 16a) on a fallen roof block: his feet on its top
   // (liftocc2) in a lift's shaft there is no room to be pressed back into: at most to the shaft's left side (his back against it);
-  // what still reaches past the wall's front face on his right is cut by it (liftOccl, when he is drawn)
-  if(tdx<0&&L.lifts.length){const lf=liftAround();if(lf)tdx=Math.max(tdx,Math.min(0,lf.ca*TW+10-P.x));}
+  // what still reaches past the wall's front face on his right is cut by it (liftOccl, when he is drawn); (round 39) nor to the right
+  // past its right side's face
+  if(tdx&&L.lifts.length&&st!=='dead'&&(tdx<0||!lg)){const lf=liftAround();if(lf)tdx=tdx<0?Math.max(tdx,Math.min(0,lf.ca*TW+10-P.x)):Math.min(tdx,Math.max(0,(lf.cb+1)*TW-HX-10-P.x));}
   const a=1-Math.exp(-dt*28);
-  if((P.hideMode||0)>0&&!mode){P.rdx=tdx;P.rdy=tdy;} // stepping out from behind the wall: no slide in plain view
+  if((P.hideMode===1||P.hideMode===2)&&!mode){P.rdx=tdx;P.rdy=tdy;} // stepping out from behind the wall: no slide in plain view
   else{P.rdx=(P.rdx||0)+(tdx-(P.rdx||0))*a;P.rdy=(P.rdy||0)+(tdy-(P.rdy||0))*a;}
   P.hideMode=mode;if(mode)P.hideLg=lg;
 }
@@ -7565,6 +7622,18 @@ function nearCut(ctx,c0,c1,r0,r1,fl){let any=false;
 function onFace(x,y){const c=Math.floor((x+HX)/TW),r=Math.floor(y/TH);if(c<0||c>=L.cols||r<0||r>=L.rows)return false;const b=B(L,c,r);
   if(b===WALL)return true;const q=F(L,c,r);if(q&&q.t==='low'&&y<r*TH+TH-34)return true;
   return r>0&&y<r*TH+FHH&&B(L,c,r-1)!==WALL&&solidBelow(L,c,r-1);}
+// (round 39, D7, B3, B4) what falls through a hole in the floor (a plank, a corridor's cracked slab and its chunks and the billow out of the
+// hole; the rock and the slab with EGP.traps off) goes down behind what stands nearer beside it: the next column's faces and floor slabs on
+// every row it passes (nearCut: the right neighbour's lip and the near part of its top face stand in front of the hole's right edge), and the
+// column before's faces and its floor's lip on the hole's own row (that slab's top face never stands in front of anything in the hole: it is
+// behind it). Two clips; call between save and restore
+function debrisCut(ctx,d){const r0=Math.floor((d.y0+4)/TH)-1,r1=Math.floor((Math.max(d.y,d.y0+48)+HY+FHH)/TH),cl=d.c-1,xl=cl*TW-HX;
+  nearCut(ctx,d.c+1,d.c+1,r0,r1,true);if(cl<0)return;let any=false,lip=0;
+  for(let r=Math.max(0,r0);r<=r1&&r<L.rows;r++){const b=B(L,cl,r),q=b===WALL?null:F(L,cl,r);let y0=0,y1=0;
+    if(b===WALL){y0=r*TH+lip;y1=(r+1)*TH;}else if(q&&q.t==='low'){y0=r*TH+lip;y1=r*TH+LOW_H;}else if(r===r0&&solidBelow(L,cl,r)){y0=SURF(r)+HY;y1=y0+FHH;}
+    lip=r===r0&&b!==WALL&&solidBelow(L,cl,r)?FHH:0;if(y1<=y0)continue;
+    if(!any){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);any=true;}ctx.rect(xl,y0,TW,y1-y0);}
+  if(any)ctx.clip('evenodd');}
 // the lift whose shaft he is in (riding it, or standing or falling inside it), or null
 function liftAround(){if(P.state==='lift'&&P.lift)return P.lift;const c=pCol(),ra=rowOf(P.y-40),rb=rowOf(P.y-1);for(const f of L.lifts)if(c>=f.ca&&c<=f.cb&&rb>=f.rT&&ra<=f.rB)return f;return null;}
 // The Egyptian lifts (round 13, owner: "egyptianise the lifts: rope instead of chain, stone slabs instead of grates, wooden wheels";
@@ -8080,8 +8149,8 @@ function drawDynamic(ctx,x0,x1,y0,y1){
   if(!lyOff('flask'))drawLooseFlasks(ctx);
   if(EGP.traps&&!lyOff('well'))for(const o of L.dyn){if(o.f.t!=='loose'||o.f.plank)continue;const g=wellGroup(o);if(!g||g.os[0]!==o||!(inRoom(g.c0,g.r)||inRoom(g.c0+g.n-1,g.r)))continue;drawWellGroup(ctx,g);} // (round 21b: once for a row of slabs over one pit)
   for(let i=DUSTC.length-1;i>=0;i--){const q=DUSTC[i],age=gameTime-q.t;if(age<0||age>0.7){DUSTC.splice(i,1);continue;}if(!lyOff('dust'))dustCloud(ctx,q.x,q.y,age,0.7,q.sz,1);}
-  for(const d of L.debris){if(lyOff('debris'))continue;ctx.save();ctx.translate(d.x-16,d.y);
-    if(EGP.traps&&(d.kind==='slab'||d.kind==='rock')){if(d.y0===undefined)d.y0=d.y;const age=debAge(d);ctx.restore();ctx.save(); // (re-skinned: a sand floor's slab, the roof block)
+  for(const d of L.debris){if(lyOff('debris'))continue;ctx.save();if(!(EGP.traps&&(d.kind==='slab'||d.kind==='rock')))debrisCut(ctx,d);ctx.translate(d.x-16,d.y); // (round 39: behind the faces beside the hole, debrisCut)
+    if(EGP.traps&&(d.kind==='slab'||d.kind==='rock')){if(d.y0===undefined)d.y0=d.y;const age=debAge(d);ctx.restore();ctx.save();if(d.kind==='slab'&&!d.wl)debrisCut(ctx,d); // (re-skinned: a sand floor's slab, the roof block)
       if(d.kind==='rock')egRoofFall(ctx,d);
       else{ // (round 13, owner: "after the tile falls, the sand still trickles in two columns". Round 16a: no sand follows it down at all;
         // over a well its two halves fold into the emptied shaft, over a corridor it parts in four pieces in a billow of dust)
@@ -8099,16 +8168,20 @@ function drawDynamic(ctx,x0,x1,y0,y1){
           slabHalves(ctx,X,d.y,Math.min(0.8,0.14+age*4),bd,org?[d.c,rr]:null);}
           if(org&&age<0.6){ctx.restore();ctx.save();dustCloud(ctx,d.x+(wellH(d.c,rr,22)-0.5)*12,d.y0+HY+4,age-0.05*wellH(d.c,rr,23),0.5,0.4+0.35*wellH(d.c,rr,24),0);}} // (dust tumbling out of the hole as it goes, each its own)
           else slabChunks(ctx,X,d.y,age,bd);}
-      ctx.restore();ctx.save();if(d.kind==='slab'&&!d.wl)dustCloud(ctx,d.x,d.y0+HY+3,age,0.45,1.25,0);ctx.restore();ctx.save();}
+      ctx.restore();ctx.save();if(d.kind==='slab'&&!d.wl){debrisCut(ctx,d);dustCloud(ctx,d.x,d.y0+HY+3,age,0.45,1.25,0);}ctx.restore();ctx.save();}
     else if(d.kind==='plank')drawPlank(ctx,0,0,0);
     else if(d.kind==='rock'){const rk=[[4,-11],[9,-15],[19,-14],[27,-10],[28,-2],[21,1],[8,1],[4,-4]];ctx.beginPath();rk.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();ctx.fillStyle=th.wallB;ctx.fill();ctx.strokeStyle='#0b0812';ctx.lineWidth=1.4;ctx.stroke();
       ctx.fillStyle=th.hi;ctx.fillRect(9,-14,10,1.2);ctx.strokeStyle='rgba(0,0,0,.6)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(14,-14);ctx.lineTo(12,-7);ctx.lineTo(16,0);ctx.moveTo(22,-12);ctx.lineTo(20,-5);ctx.stroke();}
     else slab(ctx,0,0,th,true,true);ctx.restore();}
   for(const sn of SN){if(sn.gone||lyOff('snake')||sn.x<x0-30||sn.x>x1+30||sn.y<y0||sn.y>y1+20)continue;if(GFX().hd)drawSnakeHD(ctx,sn);else drawSnake(ctx,sn);}
-  for(const g of G){if(g.gone||lyOff('guard'))continue;if(g.x<x0-30||g.x>x1+30||g.y<y0-10||g.y>y1+70)continue;
-    const wc=g.alive?wallPress(g.x,g.y,g.face,g.pose):null;ctx.save();figClip(ctx,0,null,wc);
-    if(!g.alive&&DISS.on&&g.t>DISS.t0)dissolveGuard(ctx,g,(g.t-DISS.t0)/DISS.dur,c=>drawActor(c,g,g.x,g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:false,hasSword:!g.skel,pale:true,flash:g.flash})); // S3-A: crumbles into sand
-    else{if(g.dz)g.dz.on=false;drawActor(ctx,g,g.x+(wc?wc.dx:0),g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:(g.alive&&g.state!=='idle'&&g.state!=='drop'),hasSword:!g.skel,pale:true,flash:g.flash,alpha:g.alive||DISS.on?undefined:clamp(1-(g.t-1.1)/0.8,0,1)});}ctx.restore();}
+  for(const g of G){if(g.gone||lyOff('guard'))continue;if(g.x<x0-30||g.x>x1+30||g.y<y0-10||g.y>y1+70){if(g.alive)g.rdx=0;continue;} // (out of view: no stale press to die with)
+    const wc=g.alive?wallPress(g.x,g.y,g.face,g.pose):null;if(g.alive)g.rdx=wc?wc.dx:0;ctx.save();figClip(ctx,0,null,wc);
+    // (round 39, D1) dying or dead he stays where he was last drawn (g.rdx: dropping the press slid the body up to 20 px into the face) and is
+    // cut by the faces near him, the crumbling too; (D4) one dropping in from above comes out from under the ceiling's stone, not over it
+    if(!g.alive)deadCut(ctx,g.x+(g.rdx||0),g.y,28,g.y-54);
+    else{const yc=dropCeil(g);if(yc!==null){ctx.beginPath();ctx.rect(-1e5,yc,2e5,2e5);ctx.clip();}}
+    if(!g.alive&&DISS.on&&g.t>DISS.t0){ctx.translate(Math.round(g.rdx||0),0);dissolveGuard(ctx,g,(g.t-DISS.t0)/DISS.dur,c=>drawActor(c,g,g.x,g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:false,hasSword:!g.skel,pale:true,flash:g.flash}));} // S3-A: crumbles into sand
+    else{if(g.dz)g.dz.on=false;drawActor(ctx,g,g.x+(g.rdx||0),g.y,g.face,g.pose,g.skel?PAL_SKEL:guardPal(g),{sword:(g.alive&&g.state!=='idle'&&g.state!=='drop'),hasSword:!g.skel,pale:true,flash:g.flash,alpha:g.alive||DISS.on?undefined:clamp(1-(g.t-1.1)/0.8,0,1)});}ctx.restore();}
   if(P&&!(P.state==='dead'&&P.cause==='fall'&&P.y>L.rows*TH)&&!LIFT_DBG.rider&&!lyOff('prince')){
     // behind a wall's face (jumping up to, hanging from, climbing onto or down from a ledge on the wall's near side) the wall covers
     // him as in PoP1: SDLPoP draws every wall's front piece over the Kid (draw_tile_fore: tiles_20_wall into the foretable) and
@@ -8118,6 +8191,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     if(L.ext.chase)drawShut(ctx); // (round 29) his shadow pulled back toward the dark
     ctx.save();{const lf=L.lifts.length?liftAround():null;if(lf)liftOccl(ctx,lf);} // (in a lift's shaft the walls' front faces round it are nearer than he is)
     figClip(ctx,P.hideMode,P.hideLg,P.state==='dead'?null:wallPress(P.x,P.y,P.face,P.pose));
+    if(P.state==='dead')deadCut(ctx,P.x+(P.rdx||0),P.y+(P.rdy||0),28,P.y-54); // (round 39, D1: lying flat, cut by the faces near him)
     // (round 26f) on the exit's stairs (from the first rise) he is cut at the opening's head (the lintel, or the round arch: doorHead) and at its
     // jambs, as SDLPoP's clip_char cuts the kid at the level door: head and shoulders go behind the wall first; then his own pixels warm and
     // whiten toward the stair light and fade (exitLook: a tint of his figure only, no glow round him). Coming out of the entrance he is cut by
@@ -9771,16 +9845,19 @@ function sandHeapDraw(ctx,h){const g=Math.min(1,h.t/DISS.dur),e=Math.pow(g,1.4),
   ctx.fillStyle=SAND_COL[4];ctx.beginPath();ctx.moveTo(x-hw*0.55,y-ht*0.4*sl);ctx.lineTo(x-hw*0.3,y-ht*0.78*sl);ctx.lineTo(x-hw*0.05,y-ht*0.9*sl);ctx.lineTo(x-hw*0.1,y-ht*0.45*sl);ctx.closePath();ctx.fill(); // lit side
   const n=Math.round(10+hw*0.6);for(let i=0;i<n;i++){const u=(i*0.618034+0.13)%1,v=(i*0.381966+0.27)%1,px=x+(u*2-1)*hw*(1-v*0.8),py=y-v*ht*sl*0.9;ctx.fillStyle=SAND_COL[i%5];ctx.fillRect(Math.floor(px),Math.floor(py),1,1);}
   ctx.globalAlpha=1;}
+// (round 39, D1) the crumbling guard's sand is where the body was, at mid-depth: the heap is cut by the faces near it as the body was (deadCut),
+// and a grain is not drawn where the stone in front hides that point (midHid)
+function midHid(x,y){if(onFace(x,y))return true;const c=Math.floor(x/TW),r=Math.floor(y/TH);if(c<0||c>=L.cols||r<0||r>=L.rows)return false;if(B(L,c,r)===WALL)return true;const q=F(L,c,r);return !!(q&&q.t==='low'&&y<r*TH+TH-34);}
 function sandDraw(ctx){if(PF.off.sand)return;
-  for(const h of SAND_HP)if(h.on)sandHeapDraw(ctx,h);
-  for(let k=0;k<5;k++){let on=false;for(let o=0;o<sandP.length;o+=SAND_S){if(sandP[o+6]<=0||sandP[o+7]!==k)continue;if(!on){ctx.fillStyle=SAND_COL[k];on=true;}const z=sandP[o+8];ctx.fillRect(Math.round(sandP[o]-z/2),Math.round(sandP[o+1]-z/2),z,z);}}
-  ctx.fillStyle='rgb(196,174,132)';for(let o=0;o<sandP.length;o+=SAND_S){if(sandP[o+6]<=0||sandP[o+7]!==5)continue;const f=sandP[o+5]/sandP[o+6];ctx.globalAlpha=0.3*(1-f);const z=sandP[o+8]*(1+f);ctx.fillRect(sandP[o]-z/2,sandP[o+1]-z/2,z,z);}
+  for(const h of SAND_HP)if(h.on){ctx.save();deadCut(ctx,h.x,h.y,h.hw+2,h.y-h.hw);sandHeapDraw(ctx,h);ctx.restore();}
+  for(let k=0;k<5;k++){let on=false;for(let o=0;o<sandP.length;o+=SAND_S){if(sandP[o+6]<=0||sandP[o+7]!==k||midHid(sandP[o],sandP[o+1]))continue;if(!on){ctx.fillStyle=SAND_COL[k];on=true;}const z=sandP[o+8];ctx.fillRect(Math.round(sandP[o]-z/2),Math.round(sandP[o+1]-z/2),z,z);}}
+  ctx.fillStyle='rgb(196,174,132)';for(let o=0;o<sandP.length;o+=SAND_S){if(sandP[o+6]<=0||sandP[o+7]!==5||midHid(sandP[o],sandP[o+1]))continue;const f=sandP[o+5]/sandP[o+6];ctx.globalAlpha=0.3*(1-f);const z=sandP[o+8]*(1+f);ctx.fillRect(sandP[o]-z/2,sandP[o+1]-z/2,z,z);}
   ctx.globalAlpha=1;}
 function dissGrains(g,dt){const z=g.dz;if(!z||!z.pts||!z.n)return;
-  if(!z.hp){z.hp=true;let a=1e9,b=-1e9;for(let i=0;i<z.n;i++){a=Math.min(a,z.pts[i*3]);b=Math.max(b,z.pts[i*3]);}z.cx=(a+b)/2;z.hw=clamp((b-a)*0.36,11,19);sandHeap(g.x+z.cx,g.y,z.hw);} // the heap forms where the body lay
+  if(!z.hp){z.hp=true;let a=1e9,b=-1e9;for(let i=0;i<z.n;i++){a=Math.min(a,z.pts[i*3]);b=Math.max(b,z.pts[i*3]);}z.cx=(a+b)/2;z.hw=clamp((b-a)*0.36,11,19);sandHeap(g.x+(g.rdx||0)+z.cx,g.y,z.hw);} // the heap forms where the body lay (round 39: as drawn, g.rdx)
   const q=clamp((g.t-DISS.t0)/DISS.dur,0,1)*(1+DISS.w);z.acc+=dt*(S.set.calm?260:560);
   while(z.acc>=1){z.acc--;const k=(Math.random()*z.n|0)*3,v=dissN[z.pts[k+2]|0];if(v>q||v<q-0.3)continue; // a spot of the body that is crumbling just now
-    const x=g.x+z.pts[k]+(Math.random()-0.5)*2,y=g.y+z.pts[k+1],h=Math.max(0,g.y-y),vy=Math.random()*20,tf=(-vy+Math.sqrt(vy*vy+2*640*h))/640+0.02,tx=g.x+z.cx+(Math.random()-0.5)*z.hw*1.2; // the stream pours toward the heap
+    const x=g.x+(g.rdx||0)+z.pts[k]+(Math.random()-0.5)*2,y=g.y+z.pts[k+1],h=Math.max(0,g.y-y),vy=Math.random()*20,tf=(-vy+Math.sqrt(vy*vy+2*640*h))/640+0.02,tx=g.x+(g.rdx||0)+z.cx+(Math.random()-0.5)*z.hw*1.2; // the stream pours toward the heap
     sandAdd(x,y,(tx-x)/tf,vy,g.y,1.5,(Math.random()*5)|0,Math.random()<0.5?1:2);}}
 // ================= unit MS: the metal shader (Torchlight only; GLFX.metal, GLFX.metalGlint) =================
 // Gates, jaws, saws, the pendulum, lift chains and wheels, hanging bars, gratings, and the figures' swords and helmets are drawn
@@ -10219,15 +10296,19 @@ const SIL={pool:[],m:new Map(),m2:new Map(),v:[]};
 // own palette (guardPal): PAL_GSIL, gone, had no khat colour, so the head cloth's tied ends (round 7) threw in shadeHex and every robber's silhouette was
 // null: no shadow from a lamp, no cut in the beams (both modes), no carve in the metal or the fill. The shape is his own (weapon, cap)
 function silPal(e){return e.skel?PAL_SKEL:e===P?PAL_HERO:guardPal(e);}
+// (round 39, D4) a guard dropping in comes out from under the ceiling's stone over him: its lower edge (a wall's foot, under the storey above's
+// floor slab its lip's foot), or null where it is open above. Drawn (drawDynamic) and in his silhouette (shadow, beam cuts) only below it
+function dropCeil(e){if(e===P||e.state!=='drop')return null;const b=B(L,Math.floor(e.x/TW),e.r-1);return b===WALL?e.r*TH:b===FLOOR?SURF(e.r-1)+HY+FHH:null;}
 function glSilhouette(e,d2){const M=d2&&GLP.gls?SIL.m2:SIL.m;let c=M.get(e);if(c!==undefined)return c; // (d2: a 2D canvas even when WebGL draws the masks)
   if(GLP.gls&&!d2){const i=SIL.m.size;if(i>=12){SIL.m.set(e,null);return null;} // (unit WGL) a 192 px slot of one target (4 x 3), drawn by WebGL
-    const g=g2Mk('sil',768,576,[0,0,0,0]),x=(i&3)*192,y=(i>>2)*192;g.setTransform(1,0,0,1,0,0);g.save();g.beginPath();g.rect(x,y,192,192);g.clip();g.setTransform(2,0,0,2,x,y);
+    const g=g2Mk('sil',768,576,[0,0,0,0]),x=(i&3)*192,y=(i>>2)*192,yc=dropCeil(e);g.setTransform(1,0,0,1,0,0);g.save();g.beginPath();g.rect(x,y,192,192);g.clip();g.setTransform(2,0,0,2,x,y);
+    if(yc!==null){g.beginPath();g.rect(0,yc-(e.y+(e.yo||0)-80),96,200);g.clip();}
     try{figDraw(g,48,80,e.face||1,e.pose,silPal(e),{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});c=SIL.v[i]||(SIL.v[i]={isView:true,tgt:GLS.sil,x,y,width:192,height:192});}catch(err){c=null;}
     g.restore();SIL.m.set(e,c);return c;}
   c=SIL.pool[M.size+(M===SIL.m2?6:0)];if(!c){c=document.createElement('canvas');c.width=c.height=192;c._g=c.getContext('2d');SIL.pool.push(c);}
-  const g=c._g;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,192,192);g.setTransform(2,0,0,2,0,0);
+  const g=c._g,yc=dropCeil(e);g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,192,192);g.setTransform(2,0,0,2,0,0);if(yc!==null){g.save();g.beginPath();g.rect(0,yc-(e.y+(e.yo||0)-80),96,200);g.clip();}
   try{figDraw(g,48,80,e.face||1,e.pose,silPal(e),{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});}catch(err){c=null;}
-  M.set(e,c);return c;}
+  if(yc!==null)g.restore();M.set(e,c);return c;}
 function glShadow(g,x,y,sc,lights,spr,e){
   const sil=e&&e.pose?glSilhouette(e):null;
   let b1=null,b2=null,d1=1e9,d2=1e9;const cy=y-26;
