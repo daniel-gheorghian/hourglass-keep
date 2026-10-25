@@ -37,7 +37,7 @@ their support, and so on until all five are corridor slabs: grit and dust, no sa
 | Rewind | `applySnap` restores `s`, `tm`, the base tiles, debris and rubble; the room picture redraws only changed rooms (`rewindrooms.py`) | |
 | Continue | fallen slabs (`fallen`) come back fallen (`tm` 9), rubble and jams restored (`applyResume`) | |
 | Respawn | the floor is rebuilt whole; only jams on plates and closers pressed before the checkpoint are remade with their slab fallen (`jamRestore`) | |
-| Rotten flag | the floor's featured move is the collapse and its featured obstacle `loose` (`OB('loose')` weighed up; a down step tries the collapse at 65% of spots, by hash, against 50% on other collapse floors) | "The floors here are rotten." |
+| Rotten flag | the floor's featured move is the collapse and its featured obstacle `loose` (`OB('loose')` weighed up; a down step tries the collapse at 65% of spots, by hash: 50% on other floors featuring the collapse, 22% on most others) | "The floors here are rotten." |
 
 Counts (probed: floors 1-48, seeds 4400+n and 4497+n): plain slabs 1,556 well / 195 corridor; collapse ledges 889, all corridor (their
 landing is open); planks 483, corridor by rule; chain slabs 210 well / 150 corridor. Well groups: 826 of one slab, 365 of two, 42 of
@@ -140,8 +140,8 @@ slab takes its neighbours' support, repeated until none fails. Planks are never 
 
 ## History
 - round 12: the sand-filled shaft under a slab (the re-skinned "sand floor").
-- round 13: slabs fall under `DROP_G` 1400; no sand trickles after the fall.
-- round 16a: two looks by `looseWell`: the well draining at `WELL_V` with a funnel crater and the slab folding in two; the corridor's four pieces, billow and landing cloud.
+- round 13: slabs (and roof blocks) fall under the heavier `DROP_G` 1400 (owner: the slab's fall too slow).
+- round 16a: two looks by `looseWell`: the well draining at `WELL_V` with a funnel crater and the slab folding in two; the corridor's four pieces, billow and landing cloud; no sand follows a slab down.
 - round 21b: a row of slabs over one pit is one body of sand (`wellGroup`, `wellSolve`), the angle of repose, the domino tip; `sandTex`, `sandShade`; relief rubbed off the sand.
 - round 26d: rows of three or more drawn organically (`g.org`, `wellH` hashes).
 - round 30: the whole-run test in `looseWell` (`f.wl`); `wellcorr.py`.

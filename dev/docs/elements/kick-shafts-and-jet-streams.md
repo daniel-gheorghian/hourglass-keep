@@ -90,7 +90,7 @@ Where it is drawn (`drawJetHints`, in `drawDynamic` after the secret cues, befor
 
 | Place | Path | Strength | v, w |
 |---|---|---|---|
-| Every kick shaft, ledge on either side (`L._jet.shafts`, from each `shaftfoot` with a ledge within five rows) | drawn in at the foot, up into the wall on the ledge's side, kick to kick (an arc per 96 px of rise, at least two, each topping out at the far wall), over the lip onto the ledge; `wall` = the shaft's faces | 1 until `shaft` is learned, then 0.65; x0.85 while he is in it and not standing | 90, 3 |
+| Every kick shaft, ledge on either side (`L._jet.shafts`, from each `shaftfoot` with a ledge within five rows) | drawn in at the foot, up into the wall on the ledge's side, kick to kick (2 x round(rise / 96) arcs, at least two, each topping out at the far wall), over the lip onto the ledge; `wall` = the shaft's faces | 1 until `shaft` is learned, then 0.65; x0.85 while he is in it and not standing | 90, 3 |
 | The jump up to a ledge across a pit (bot action `jgrab`, `L._jet.jg`) | the run-up, the leap caught at the ledge's edge, pulled up onto it | 0.85, only until `jgrab` is learned (a running jump catching a ledge over 40 px up, `learnGrab`) | 95, 3.6 |
 | The swing's throw while `P.swRdy` (`jsSwingPath`, rebuilt each frame in `JS_SW`) | from the back of his swing through the bottom, then the flight the release would give at this amplitude, to where he lands or meets a wall | ramps in over 0.4 s from the cue; x1 swinging forward, x0.5 back; x0.75 once `swing` is learned | 125, 4 |
 
