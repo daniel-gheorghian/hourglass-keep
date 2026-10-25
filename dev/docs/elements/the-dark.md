@@ -65,7 +65,7 @@ for the shader. Both modes draw from it.
           ~~~ ragged top (Tt) ~~~       head and tongues lean far ahead only above the top row
    ######\                            <- tatters only from head height up (d 44-62) and above the top row
    ########\   jackal (at his height)
-   ########|  <- from feet to waist: within ~2 px of wx+4 (stBulge), a gold crest on the floor at the line
+   ########|  <- from feet to waist: within a few px of the kill line wx+4, a gold crest on the floor at the line
 ===========+============ floor (row rTop..rBot)
    ######/
    ~~~ ragged foot (Tb) ~~~
@@ -73,7 +73,7 @@ for the shader. Both modes draw from it.
 ```
 
 - The tear: `dkTear`, piecewise-linear value noise at three scales sliding along the edge (straight runs and sharp corners, never a
-  billow), and `dkSplint`, a splinter now and then; the lean (`stBulge` in the table): a small sway from the feet to the waist, then
+  billow), and `dkSplint`, a splinter now and then; the lean (in `dkTable`, after `stBulge`): a small sway from the feet to the waist, then
   straight runs at head height and a big forward lean only above the top row, where nobody stands.
 - Opening: `dkOpen` widens the rip from a 3 px crack to the whole corridor over 0.6 s after it wakes.
 - Gold (`DK_GOLD` 226,180,92): along the tear in three strengths, along the top inside it, and a crest along each floor at the kill line,

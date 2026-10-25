@@ -53,7 +53,7 @@ tile. Other kinds: floor 8 seed 1 also has a `lift3u` (column 79, rows 6-9); flo
 | `estPath` | `lift`: careful 1.5 + 1.1 k (else 1.2 + k); paternoster 3.8 (3.5) + (64k+32)/`CHAIN_V`; `sandlift` 4.0 (2.2) | gate timers |
 | A turn that holds a plate's gate never holds a paternoster (`CYC` in `buildTurn`'s `fit`) | | its wait cannot be sized |
 | A switchback's last move is never a lift (`randKits`) | | the way back runs through its foot |
-| No lift in a fork's short way (`forkBuild`; `sandOr` false there) | | the long way may pass the foot, where sand stands until it is ridden |
+| No lift in a fork's short way: its moves are `down`, `drop2`, banners, `collapse`, `jumpdown` (`forkKits`), and `sandOr` is false while `forkBuild` | | the long way may pass the foot, where sand stands until it is ridden |
 | Rewind: `f.y`, `f.tgt`, `f.gT`, `f.gB`, `f.s`, `f.tm` are on the feature (`snapAll` copies `L.dyn`); the paternoster is the clock | | |
 | Continue: no resume save is taken in or beside a lift's columns between its levels (`snapshotResume`) | | the floor rebuilds every lift at its first end (`lifttest.py` (d)) |
 
@@ -80,16 +80,19 @@ sits in the lips' shade. `liftPit` is true for every sand lift and for a counter
 `L.base0`; the paternoster's foot keeps its two tiles (he walks and lands on it). At rest at the foot the platform's top and lip are
 exactly a floor tile's (`SURF(rB)`, a 5 px lip).
 
-Draw order of a counterweight lift, far to near (numbers in the section below):
+Draw order of a counterweight lift, far to near (the example's `lift2d`, platform docked at the top; numbers as in the table below):
 
 ```
-            ====[ lintel: beam (3) + sheave (3) in its slot, liftRig by = top-9 ]====
-  top       |MS(2)|   ropes (3) to the bridles         |
-  landing   |     |   [===== platform (3) =====]       |  the counterweight (1) in its channel (1),
-            |     |       |                    [cw]    |  always at the other height from the platform
-            |     |  back wall: shade, grooves (1)     |
-  foot      |pit  |  floor of the pit (room picture)   |MS(4,6)| bottom landing
-            the walls' front faces round the shaft (liftOccl) and the column right of it (liftNearCut) cut 1-4
+             wall 228   shaft 229 (one cell, drawn wide here)        wall 230
+            ---------- ==lintel (kept, 25d)======================== ----------
+  row 9     [lplate] MS2 | hoist beam (3), sheave (3) in its slot  |
+  top                    | ropes (3) to the bridles     rope (1)   |
+  landing   ============ | [===== platform (3), docked =====]  |   |
+  row 10    wall         | back wall: shade, two grooves (1)   |   |  wall
+                         |                       channel (1) [cw]  |    the counterweight (1): low while the platform is high
+  row 11    wall         | the pit (room picture, 37a)             | MS4,6 [lplate] floor 231
+  foot                   =========================================   ===================
+            the walls' front faces round the shaft (liftOccl) and the column right of it (liftNearCut) cut 1 and 3
 ```
 
 | # | What | Clip |
