@@ -3,7 +3,7 @@
 How a frame of Dawnward is drawn in both modes, in what order, what cuts what, and every Torchlight pass: what it reads, what it
 writes, its switch, how an element joins it or stays out of it, and what Classic does instead. Element docs link here by the anchors
 in the index below. The architecture's history is in `dev/WEBGL_PLAN.md`; working practice for the WebGL path is in
-`dev/WEBGL_LESSONS.md`. This file states the code as of v82.
+`dev/WEBGL_LESSONS.md`. This file states the code as of v82 with round 38a's fixes.
 
 ## Index of passes
 
@@ -12,7 +12,7 @@ in the index below. The architecture's history is in `dev/WEBGL_PLAN.md`; workin
 | [#g2d-and-the-replay](#g2d-and-the-replay) | G2D facade, `g2Replay`, targets, atlas | `wgl` | the real 2D context |
 | [#light-map](#light-map) | `gatherLights` and the light map | none (Graphics' Lighting) | `lightPass` |
 | [#key-light](#key-light) | `keyLight` | none | same |
-| [#lamp-shadows](#lamp-shadows) | effect mask r, `glShadow`, carving in `glMask` | `shadow` | none |
+| [#lamp-shadows](#lamp-shadows) | effect mask r, `glShadow`, carving in `glMask` (`SHC`, `shcCarve`) | `shadow` | none |
 | [#heat](#heat) | effect mask g | `heat` | none |
 | [#the-darks-veil](#the-darks-veil) | effect mask b | `storm` | `drawDark2D`'s shade |
 | [#silhouettes](#silhouettes) | `glSilhouette`, `silPal` | none | same canvases (`d2`) |
@@ -254,15 +254,28 @@ blurred over five taps.
 | Reads | the prince (not dead, dying, exiting, deep in the entry, or fallen off the level) and live guards in view; lights of a `GLSTRONG` kind with r >= 84 |
 | Writes | effect mask r |
 | Switch | `GLFX.shadow` |
-| Join | stone or metal standing in front of the back wall must be carved out, or a figure's shadow is painted across its face |
+| Join | anything drawn live in front of the back wall records its outline as drawn this frame in `SHC` (`shcBeg`, `shcRect`/`shcLine`/`shcEll`/`shcBox`, `shcEnd`), or a figure's shadow is painted across its face |
 | Classic | none (the contact shadow ellipse under a standing figure, `drawActor`, is drawn in both modes) |
 
 `glShadow` draws each figure's silhouette for its two nearest strong lights within 1.5 r (the second at 0.7), pushed away from the lamp
 (`ox` clamp(0.6 dx ± 8, ±44), widened by `1.15+|ox|/50`), alpha up to 0.85. Then `glMask` carves in multiply: the figures themselves,
 each wall block as drawn (front face `HX` left, top, right side; round 19: carving at the cell left a prince-shaped stripe on a lit face),
-each floor's top and lip, a low ceiling's front face and its side face at a tunnel's right end (round 20a), and the slicer's jaws by
-their outline this frame (`JAWP`, inside the plane's visible part; round 37b). Composite: `sh` (times the scene's alpha: never on the
-sky) takes `0.85 sh` of the light and `0.4 sh` of the colour.
+each floor's top and lip, a low ceiling's front face and its side face at a tunnel's right end (round 20a), the slicer's jaws by
+their outline this frame (`JAWP`, inside the plane's visible part; round 37b), and after the jaws `shcCarve`: every outline in `SHC`
+(round 38a). Composite: `sh` (times the scene's alpha: never on the sky) takes `0.85 sh` of the light and `0.4 sh` of the colour.
+
+`SHC` holds typed arrays filled again each frame (`SHC_E` 64 entries, `SHC_PN` 2048 points; nothing allocated): each entry is rings of
+points in world px (a NaN x ends a ring) with the drawing's own rectangle clip and a kind (`SHC_K`). `render` sets `SHC.on` (Torchlight
+with `GLFX.shadow`) around `drawDynamic`, so the drawings record only then. Thin things are recorded 1.2 px wider than drawn (the mask is
+¼ size and read blurred). `SHC.off` skips `shcCarve` (v82's look, for counts before).
+
+| Carved by `SHC` (kind) | Not carved |
+|---|---|
+| a portcullis or a lift's or sand lift's mouth slab that is down (`slab`; `egSlab`, recorded whole: two half clips meeting at X+16 left a line), the stakes (`stakes`), a saw's blade within its slot's clip (`saw`), the pendulum's blade and arm (`pend`), a falling or lying roof block (`roof`), the sky clock and its pedestal (`clock`; the wall inside the arch keeps the shadow), flasks (`flask`), a lift's platform and paternoster slabs (`liftslab`), the platform's ropes, its sling legs and the paternoster's upright ropes (`rope`), the sand lift's slab (`sandslab`) | the hanging roof block (inside the wall's carved face), the counterweight (in the back wall), banners, lamps, doors, the swing bar; the iron gate (`EGP.traps` off) |
+
+`shadowscan.py [file] [lo hi] [seeds] [kinds=] [per=K]` stands the prince beside each kind with a torch behind him and draws Torchlight
+with the shadow on and off: the thing's pixels (1.7 px in from its outline) must not change; it must print `shadowscan: ok` (floors 1-48
+seed 1: 266 of 300 things before round 38a, 0 after).
 
 #### Heat
 
@@ -309,6 +322,7 @@ quads `glRelief` lays rubbing quads that set the factor back to neutral (`GLRS.e
 | `glRelWell` | each sand well's body, cell by cell from its surface down | 21b |
 | `glRelFloors` (`glRelQ`, `glRelLive`) | every run of live floor tiles (cracked slab, plate, xplate, lplate, closer, grate): exactly the top face and lip; pushed blocks (front, top, side) | 35c |
 | `glRelJaws` | each jaw's plate to half way down its teeth | 37b |
+| `glRelRoof` (called from `glRelFloors`) | a roof block falling or lying (`L.debris` rock, `stone` with `s` >= 2): its front, top and right side as `stoneBox` draws them; `EGP.traps` only | 38a |
 
 The room picture also flattens the back wall's art under each doorway (`drawRoomStatic`'s doorway cut-outs, round 15) so the doors drawn
 live are not embossed. Checks: `tilescan.py`, `openscan.py`, `doorscan.py`, `liftscan.py`.
@@ -352,10 +366,14 @@ the mask at ¼, three taps across the light).
 How an element relates to the beams:
 - Stands in front of the room's whole depth (a wall's or low ceiling's front face, sand): no beam light, haze, rim or footprint on it.
   Faces come from the tile texture; sand from `sandSegs` (at most `SDMAX` 24 segments; round 35b).
-- Stands across the corridor's depth (a slicer's blades, a granite portcullis that is down): a quad in `beamBlockers` (`BLKMAX` 12,
-  the shader tests four), so the beam behind it is shaded and only the near half of the haze lies over it (round 20a).
+- Stands across the corridor's depth (a slicer's blades; with `EGP.traps` a granite portcullis, a lift's or sand lift's mouth slab that
+  is down, the slabs by `blkSlab` through one shared gate state `BLKG`, round 38a): a quad in `beamBlockers` (up to `BLKMAX` 12), read by
+  both modes, so the beam behind it is shaded and only the near half of the haze lies over it (round 20a). The shafts' shader tests up to
+  `GLC_BK` 8 exactly (`u_bk[16]`; four before round 38a); when more than eight stand in the beams' box, those in a beam's haze go first
+  (`glcBlk`, `GLCBL`, by `ryBlkLit`, Classic's test). `blkC` skips a blocker whose box the pixel's disc misses (same result, less work).
 - Lies flat on the floor and is drawn live (plates, cracked slabs, planks, closers, a vent's grate): `fpMark` keeps the footprint on it
-  (alpha 254, `FPM_A`). Anything else drawn live on the floor's face is alpha 255 and gets no footprint (`fpGate`, round 35b).
+  (alpha 254, `FPM_A`); the fork's grating marks only its bars (`fpMarkGrate`: one path 2.4 px wide; the dark between them stays 255,
+  round 38a). Anything else drawn live on the floor's face is alpha 255 and gets no footprint (`fpGate`, round 35b).
 
 Classic: the beam sprites are cut by the walls' and low ceilings' faces (`ryLow`), the sand (`rySandCut`), what stands on the floor
 (`ryStand`, `ryStandCut`) and blockers in a beam's haze (`ryHull`, drawn `RY_SH` 5 times so the shadow fades and widens toward the floor);
@@ -386,7 +404,7 @@ floor's own top face as the scene still shows it, read from the scene's alpha:
 | Scene alpha | Meaning | Set by | `floorFx` | Footprint (`fpGate`) |
 |---|---|---|---|---|
 | 254 | the floor's own top face | the room picture: `slab(...,mark)` | yes (on a plain floor tile) | yes |
-| 254 on an `FT_FLAT` tile (128 in `FLOOR_FT`) | a flat thing drawn live (plate, cracked slab, plank, closer, grate, vent grate) | `fpMark` | no | yes |
+| 254 on an `FT_FLAT` tile (128 in `FLOOR_FT`) | a flat thing drawn live (plate, cracked slab, plank, closer, vent grate; the fork's grating on its bars only) | `fpMark`; `fpMarkGrate` | no | yes |
 | 251 (`RL_A`) | what the room picture lays on the face: rubble, fallen stones and lamps, spike holes, a broken end | `rlBegin`/`rlEnd` | no | yes |
 | 255 | anything drawn live over the face: a figure, saw blade and slot, stakes, a flask, a lamp stand, a block | any opaque live drawing | no | no |
 
@@ -452,11 +470,11 @@ A new element drawn live over the room picture must:
 | Must | Why | Round that taught it |
 |---|---|---|
 | be drawn with ordinary Canvas2D calls in the shared code and checked in Classic, Torchlight and `?wgl=0` | one drawing code, three paths | v61 (WGL) |
-| be rubbed out of the relief if it hides the back wall (`glRelFloors`/`glRelLive` for a tile type, `glRelBox`/`glRelQ` for a box or quad, `glRelSlab` for a slab) | the relief reads the room picture, so the wall's art is embossed on anything drawn over it | 16c slabs, 21b sand, 26a lifts, 35c tiles, 37b jaws |
+| be rubbed out of the relief if it hides the back wall (`glRelFloors`/`glRelLive` for a tile type, `glRelBox`/`glRelQ` for a box or quad, `glRelSlab` for a slab) | the relief reads the room picture, so the wall's art is embossed on anything drawn over it | 16c slabs, 21b sand, 26a lifts, 35c tiles, 37b jaws, 38a roof blocks |
 | have every palette key it reads in every palette that reaches it (`silPal`, `guardPal`, `PAL_HERO`, `PAL_SKEL`) | a missing key throws inside `figDraw`; the silhouette goes null and its shadow, beam cut, metal carve and fill cut with it | 27c |
-| be carved out of the lamp shadow in `glMask` if it stands in front of the back wall | otherwise a figure's shadow is painted across its face | 19 walls, 20a low ceilings, 37b jaws |
-| add a quad to `beamBlockers` if it stands across the corridor's depth | otherwise a beam passes through it and its haze lies over it | 20a |
-| call `fpMark` if it lies flat on the floor's face | otherwise its opaque pixels refuse the beam's footprint (255) | 35b |
+| record its outline in `SHC` as drawn (`shcBeg` ... `shcEnd`, thin parts 1.2 px wider) if it stands in front of the back wall, so `glMask` carves it out of the lamp shadow; check with `shadowscan.py` | otherwise a figure's shadow is painted across its face | 19 walls, 20a low ceilings, 37b jaws, 38a the rest |
+| add a quad to `beamBlockers` if it stands across the corridor's depth | otherwise a beam passes through it and its haze lies over it | 20a, 38a lift mouth slabs |
+| call `fpMark` if it lies flat on the floor's face (or mark only its solid parts, as `fpMarkGrate`) | otherwise its opaque pixels refuse the beam's footprint (255) | 35b, 38a grating |
 | keep off the sky: draw under `G2D.na` only full-view effects that are not things; never read the scene's alpha with a new dst-alpha blend on the main scene | the composite reads that alpha for the fill, shadows and floor marks | 25c |
 | be marked `_glv=1` if it is a canvas redrawn every frame (better: draw it through the facade) | otherwise WebGL keeps its first upload; a marked canvas costs a readback every frame | v61 |
 | allocate nothing per frame (cached sprites, gradients kept over their largest alpha, typed arrays) | GC pauses and ramp rows on the phone | v61 (WEBGL_LESSONS) |
@@ -467,5 +485,5 @@ A new element drawn live over the room picture must:
 | be a pure function of the clock and its tiles where it animates (hashes, no generator stream) | rewind-safe, layouts unchanged | 21b, 26d |
 
 Checks for rendering: `rendersmoke.py` (both modes, every floor), `glauto.py`, `metaltest.py`, `tilescan.py`, `openscan.py`,
-`doorscan.py`, `liftscan.py`, `beamshot.py`, `beamwall.py`, `cpscan.py`, `stormfair.py`; pixel comparisons `wgl_cmp.py`,
+`doorscan.py`, `liftscan.py`, `beamshot.py`, `beamwall.py`, `cpscan.py`, `shadowscan.py`, `stormfair.py`; pixel comparisons `wgl_cmp.py`,
 `wgl_maskcmp.py`, `wgl_parity.py`, `wgl_relcmp.py`; cost `wgl_calls.py`, `wgl_gputime.py`, `?prof`, `?bench`.

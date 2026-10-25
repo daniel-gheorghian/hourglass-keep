@@ -76,8 +76,19 @@ if mode != 'quick':
 if mode == 'quick': J += [('crossscan', ['crossscan.py', 'quick'], tail_check(r'crossscan: ok'))]
 else: J += [('crossscan', ['crossscan.py', 'classic'], tail_check(r'crossscan: ok')), ('crossscan torch', ['crossscan.py', 'torch'], tail_check(r'crossscan: ok'))]
 J += [('gratepeek', ['gratepeek.py', '6', '27', '6'], tail_check(r'tested [1-9]\d* bad 0 '))] # crouching on a grating shows the flask below
+# (round 38c) checks that ran only by hand until the reference docs listed them (each guards a rule in CLAUDE.md; a few seconds to a minute each)
+J += [('r38b_tests', ['r38b_tests.py'], tail_check(r'r38b: ok'))] # round 38b's play faults, one check each (roof block and P.inv, hurtdrop lip, banner rewind, sand lift hint and top, recruit colour, timed gates' waits)
+J += [('sawceil', ['sawceil.py'], tail_check(r'sawceil: ok'))] # a saw under a ceiling at his height became spikes, tiptoed; the bot plays each such floor
+J += [('lampscan', ['lampscan.py'], tail_check(r'(?m)^ok$'))] # (round 19) every lamp keeps clear
+J += [('slabscan', ['slabscan.py'], tail_check(r'slabscan: ok'))] # (round 25d) a slab always slides up into stone
+J += [('sandshaft', ['sandshaft.py'], tail_check(r'sandshaft: ok'))] # (round 26e) every sand lift stands in a shaft
+J += [('wellscan', ['wellscan.py'], tail_check(r'(?m)^ok$'))] # (round 21b) the sand wells' slope, volume, break timing and rewind
+if os.path.exists(os.path.join(HERE, 'hk_v69_release.html')): # (its baseline is kept locally, not in git)
+    J += [('figscan', ['figscan.py'], tail_check(r'figscan: ok'))] # (round 23) the body's poses: held hands, crown, soles, the keyed jumps and steps
+if mode == 'release':
+    J += [('shadowscan', ['shadowscan.py', str(n), str(n + 5)], tail_check(r'shadowscan: ok')) for n in range(1, 49, 6)] # (round 38a) no figure's lamp shadow on what stands before the back wall (Torchlight)
 # longest jobs first so the tail of the run isn't one slow floor
-RANK = {'liftscan': 0, 'crossscan torch': 0, 'crossscan': 2, 'featbot fight': 0, 'run2 fight': 1, 'rendersmoke': 2, 'puzzlescan': 3, 'primtest': 3, 'lifttest': 3, 'featbot': 3, 'metrics40': 4, 'featurescan': 4, 'forktest': 5, 'run2': 6}
+RANK = {'liftscan': 0, 'crossscan torch': 0, 'shadowscan': 1, 'crossscan': 2, 'featbot fight': 0, 'run2 fight': 1, 'rendersmoke': 2, 'puzzlescan': 3, 'primtest': 3, 'lifttest': 3, 'featbot': 3, 'metrics40': 4, 'featurescan': 4, 'forktest': 5, 'run2': 6}
 def floor_of(a): return max([int(x) for x in a[1:] if x.isdigit() and int(x) < 100] or [0]) # (the run2 seed base is not a floor)
 J.sort(key=lambda j: (RANK.get(j[0], 7), -floor_of(j[1])))
 TIMEOUT = 1500 # seconds a single job may take (the slowest healthy ones take under 5 min); a job over it fails and its worker is replaced
@@ -141,7 +152,7 @@ def go(j, w):
 # Jobs that draw Torchlight (software WebGL in headless Chromium, which spreads each frame over several cores) run at most
 # GPU_JOBS at a time; the other workers take bot jobs meanwhile. Eight of them at once took four times as long each and no
 # less in total, which pushed rendersmoke past its wall budget (v67: 1 alone 53 s, 4 at once 137 s each, 8 at once 300 s each).
-HEAVY = ('rendersmoke', 'liftscan', 'crossscan torch', 'cpscan')
+HEAVY = ('rendersmoke', 'liftscan', 'crossscan torch', 'cpscan', 'shadowscan')
 GPU_JOBS = int(os.environ.get('HK_GPU_JOBS', '3'))
 t0 = time.time(); res = []; QL = queue.Queue(); QH = queue.Queue(); GPU = threading.Semaphore(GPU_JOBS)
 # --resume FILE (or HK_SUITE_JOURNAL): every finished job is appended to FILE as one JSON line, and a run started with the same FILE

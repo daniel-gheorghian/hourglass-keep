@@ -13,7 +13,7 @@ https://daniel-gheorghian.github.io/hourglass-keep/
 | `manifest.webmanifest`, `icons/` | PWA files. |
 | `dev/tools/bot.js` | The test bot: plays a floor through the game's own input (`runBot(n, seed, opts)`). |
 | `dev/tools/*.py` | Build, regression and measurement scripts. Many are one-off debug scripts kept for reference. |
-| `dev/tools/hk_vNN_release.html` | Source of each past release, the baseline for comparisons. |
+| `dev/tools/hk_vNN_release.html` | Source of each past release, the baseline for comparisons. In git up to v48; later ones are kept locally, untracked (`figscan.py` needs v69's, `layoutcmp.py` takes the newest it finds). |
 | `dev/localize.py` | Run once per new machine (see below). |
 | `dev/docs/` | Reference docs: concept, gameplay, level design, rendering, and one file per game element (play, drawing in both modes, each shader pass, relations, the prince and the guards); `README.md` indexes them. A round that changes an element updates its file in the same commit. |
 
@@ -39,7 +39,8 @@ python3 dev/tools/build.py dev/hourglass-keep.html index.html sw.js N
 ```
 
 It stamps `APP_VERSION`, wraps the page with the PWA head and service-worker boot, and sets the
-service worker's cache to `hourglass-keep-vN`, which is what makes installed copies update.
+service worker's cache to `hourglass-keep-vN`, which is what makes installed copies update. The source's own `APP_VERSION` ('23')
+is a placeholder: only the built `index.html` carries the release number.
 
 ## Release routine
 
@@ -75,6 +76,10 @@ service worker's cache to `hourglass-keep-vN`, which is what makes installed cop
 | `featurescan.py [file]`, `featbot.py` | a floor's featured families hold their share of their category (mean and minimum), flags come about one floor in nine, floors differ more than before (sameness); the bot plays floors forced to every flag and family (`window.__FEAT`) | shares near or over 40%, 0 damage |
 | `wellcorr.py lo hi [seeds]` | no sand well stands in a corridor: every well's pit is walled on both sides down to its floor (round 30) | `wellcorr: ok` |
 | `cpscan.py lo hi [seeds]` | no pixel of the sky clock (the checkpoint) over a wall's front face, a step or a low ceiling beside it, both modes (round 37c) | `cpscan: ok` |
+| `r38b_tests.py` | round 38b's play faults, one check each: the roof block and `P.inv`, the damaging drop's lip, a banner's rewind, the sand lift's hint and top, the recruit's colour, the timed gates' waits | `r38b: ok` |
+| `sawceil.py lo hi [seeds]` | no saw under a ceiling at his height: each one turned into spikes is tiptoed, and the bot plays its floor (round 38c) | `sawceil: ok` |
+| `lampscan.py`, `slabscan.py`, `sandshaft.py`, `wellscan.py`, `figscan.py` | lamps keep clear (round 19); a slab slides up into stone (25d); every sand lift in a shaft (26e); the wells' sand (21b); the body's poses against v69 (round 23; only where `hk_v69_release.html` is) | `ok`, `slabscan: ok`, `sandshaft: ok`, `ok`, `figscan: ok` |
+| `shadowscan.py lo hi` (release) | no figure's lamp shadow on what stands before the back wall, Torchlight (round 38a) | `shadowscan: ok` |
 
 Speed: `?bench` in the game's URL (on the phone too) makes the bot (`bot.js`, fetched for the run; `botGen` steps it from the
 game's own frame loop) play six fixed floors live, 20 s each, and shows a table of frame times with a Copy button; the save is
@@ -459,6 +464,49 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   every checkpoint with a face beside it on floors 1-48 (seeds 1-3; 88 of 2,136: 40 with the wall on the right, 48 on the left), lit, with and
   without the clock, and the face's pixels must not change: must print `cpscan: ok` (v81: 88 of 88 in each mode; 0 after). Pictures
   `egyptr37c.py` (r37c_checkpoint.png: v81 | round 37c, both modes, 3x).
+- The faults the reference docs found (round 38, owner: "Correct all Claude.md and all of the faults, then release"; `dev/docs/README.md`
+  lists each finding and what v83 did with it).
+  Round 38a, look faults. No chains (round 18b): `backCell`'s dungeon fitting under a ceiling (one cell in 13, v61's six iron links) is
+  `backRope`, a short laid rope in the theme's fibre (`BARM`, `BARF`, worn with the wall), knotted with a frayed tail or a sling of three
+  cords holding a small jar (a bare loop read as a noose); the chain only with `EGP.lamps` and `EGP.traps` off. Lamp shadows (round 37b did
+  the jaws): `glMask` carved walls, floors, low ceilings and the jaws only, so a figure's shadow was painted across what stands in front of
+  the back wall. Now each such thing records its outline as drawn this frame in `SHC` (typed arrays, rings of points with the drawing's rect
+  clip; recorded only while Torchlight's shadow runs, `SHC.on`), cut by `shcCarve` after the jaws: a portcullis or lift/sand lift mouth slab
+  that is down (recorded whole: two half clips meeting at X+16 left a line), the stakes, a saw's blade, the pendulum's blade and arm, a
+  falling or lying roof block, the sky clock and pedestal (the wall inside the arch keeps it), flasks, a lift's platform, its ropes and
+  sling legs, the paternoster's slabs and ropes, the sand lift's slab; thin things 1.2 px wider than drawn (the mask is a quarter size, read
+  blurred). Not carved: the hanging roof block (inside the wall's carved face), the counterweight (in the back wall), banners, lamps, doors,
+  the swing bar, `EGP` off. `SHC.off` draws v82's. `shadowscan.py [file] [lo hi] [seeds] [kinds=] [per=K]` frames the prince beside each
+  kind with a torch behind him, Torchlight with the shadow on and off: the thing's pixels (1.7 px in) must not change; must print
+  `shadowscan: ok` (floors 1-48 seed 1: v82 266 of 300 things, 0 now). A fallen roof block (lying or falling) is rubbed out of the relief
+  (`glRelRoof`, from `glRelFloors`; the dado was embossed on 31 of 32, 0 now). The fork's grating takes a beam's footprint on its bars
+  (`fpMarkGrate`, `FPM_A`; the gaps stay 255; Classic already lit them). Beam blockers: lift and sand lift mouth slabs that are down block
+  beams in both modes (`blkSlab`; 224 stood in a beam's haze, floors 4-48 seeds 1-2); the shafts' shader tests up to `GLC_BK` 8 (four
+  before), those in a beam's haze first (`GLCBL`, `ryBlkLit`; 79 views had a lit one past the first four), and `blkC` skips a blocker
+  outside its box (same pixels); no cost measurable here (interleaved timing, against a v82 control). Look only: layouts identical
+  (`layoutcmp.py`, floors 1-48 x 3 seeds against v82), the bot unchanged. Pictures `egyptr38a.py` (r38a_rope.png, r38a_shadow.png,
+  r38a_roof.png, r38a_grate.png, r38a_blk.png; `cost`).
+  Round 38b, play faults, each shown in play on v82 and checked by `r38b_tests.py` (one check per fault, must print `r38b: ok`). A falling
+  roof block (any `L.debris`) respects his invulnerability as `trapHit` does: none while `P.inv` runs, a hit gives 0.9 s (v82: `P.inv` 1.2
+  still cost a life). A damaging drop's broken lip has nothing to grip from a fall either: `findLedge` skips a `hurtdrop` as `edgeBelow`
+  does (v82: 64 of 64 falls with Grab held caught a lip and let go 71 px unhurt; 0 now). A rewind undoes a banner's cut: `snapAll` copies
+  the shared `bn`, `applySnap` puts its values back into the same object. The sand lift has its own move hint, `sandlift` ("This slab rests
+  on sand. Step onto it and the sand runs out, lowering you down the shaft."), shown on its top row while its slab waits and learned by
+  riding it; `lift` is the plate lifts' alone (a save that saw the old sandlift hint counts it learned; one whose sand ride learned `lift`
+  keeps it, so the plate lift's hint stays away for it). Its top mouth's plane (`f.gT` 0) stands only while the slab is within the top
+  storey; after that the top is an open hole (he can step in, a killing drop, or hang from its edge). The recruit's HUD hearts and rank are
+  rose (`#e894a4`, line `#f6c6cf`; were `#8fa3d8`). Gate timers against the bot's waits (floors 1-48 x 3 seeds, and P4 forced): no timed
+  stretch holds a saw or darts; the slicer, vents (`timed`) and crawls that do occur already have `estPath` entries, and the bot passed all
+  23 such gates with 1.7-5.5 s left, so no timer changes (`estPath` has no `saw` entry and needs none). The roof block's comment now says
+  what a respawn does (it rebuilds the floor, so blocks hang again, as every trap resets; a rewind restores their state, a Continue brings
+  them back fallen): not a fault. Layouts and the bot's frames identical (floors 1-48 x 3 seeds, timers too).
+  Round 38c: the stale comments the docs found are corrected (14, and `drawBar`'s pull, which is the ropes' own swing `f.ps`: `barPos`, so
+  `swingPlace` hangs him from it). `sawceil.py [file] [lo hi] [seeds] [nobot]`: no saw left under a ceiling at his height, each one turned
+  into spikes has spikes on its run, a tiptoe action over it and no saw action or seg, and the bot plays its floor with no damage; must
+  print `sawceil: ok` (4 conversions on floors 1-48 x 3 seeds; a build without the conversion fails 4). `layoutcmp.py [baseline] [lo hi]
+  [seeds] [file=] [notimers]` holds round 38b's layoutcmp_play.py (gone): tiles, features at any depth, the bot's path, start, exit, lights,
+  windows, checkpoints, items, guards, snakes, lifts, `L.dyn`, forks and hurtdrops; must print `layoutcmp: same`; run by hand for look-only
+  rounds (a generator round differs on purpose). `hinttest.py` checks that a sand lift ride learns `sandlift`.
 - The Crossing (round 36a, owner, after the research in `dev/INTERLUDE_RESEARCH.md`: "an interlude between themes"; answers: at each
   theme change, after Climb on, he moves only while the pad is held, wordless but skippable, all twelve themes in their setting,
   Torchlight's glow and a Classic version, the hour from `progOf`, named "the Crossing"). At each change of theme (`crossDue(n)`:
@@ -762,8 +810,8 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   `LOW_R` in the tile map's r (walls 255; under .5, so mist and looks read it as open), read exactly (`lowC`) for the face cut and as an
   occluder in the march; Classic cuts it (`ryLow`: the space under it too, past the tunnel's first cell) and drops footprints there; the
   bounce light tests `solidFront`. A slicer's blades and a granite portcullis that is down stand across the corridor's whole depth
-  (`beamBlockers`, quads from drawJaws'/egSlab's geometry): Torchlight tests them exactly in the shader (`u_bk`, `blkC`: up to four; the
-  march softens them over at least its step, or a thin blade leaves a staircase), so the beam behind them is shaded and only the near half
+  (`beamBlockers`, quads from drawJaws'/egSlab's geometry): Torchlight tests them exactly in the shader (`u_bk`, `blkC`: up to four, `GLC_BK` 8 since round 38a, those in a beam's haze
+  first; a lift's or sand lift's mouth slab that is down blocks too, both modes, `blkSlab`; the march softens them over at least its step, or a thin blade leaves a staircase), so the beam behind them is shaded and only the near half
   of the haze lies over them, no footprint, no figure light; Classic clips them and their shadow (`ryHull`: the
   quad swept along the light, a clip; only for one in a beam's haze, `ryBlkLit`) out of haze and footprint. Pictures and numbers: `egyptr20a.py`.
   Round 20b (owner: the wedge to the floor read crude): Classic draws such a beam `RY_SH` (5) times at a fifth of its strength, each cut by
@@ -880,7 +928,7 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   against the frame with no lift). Pictures `egyptr37a.py` (r37a_liftfoot.png: v81 | 37a, both modes, each lift kind at and away from the foot).
 - A ceiling at his height (a WALL, or an upper floor's slab, `ceilY`) makes any floor jump the low leap (v60, owner), and the head
   clamp holds every frame; a saw that would sit under such a ceiling becomes spikes in place (the low leap cannot clear it).
-  Check with `lowceil.py`.
+  Check with `lowceil.py` (the jumps) and `sawceil.py` (the saws, round 38c: 4 of 519 saws on floors 1-48 x 3 seeds, the bot played over each).
 - The chase is the dark (round 29, owner: "instead of a sandstorm I want a storm of darkness ... think of Anubis"; "100% black opaque,
   like rips in the scene, and on that background the eyes, the jackal"; the granite plug and the sandstorm (v60's boiling dust, `STB`, its
   bakes) are gone). The burial ground's night drives the thief out; its material is Tutankhamun's Anubis (Cairo JE 61444: black over the

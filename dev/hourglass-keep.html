@@ -336,7 +336,7 @@ const THEMES=[
 ];
 const GEN_STYLE=['dungeon','palace','tile','forge','crypt'];
 // each theme's own effects, on top of its style's (Torchlight unless said; Classic has the 2D ones): caus, water caustics thrown up
-// through the open arches and the water's glints (as the Cistern had); drip, water dripping from the ceiling (both modes); heat, how
+// through the open arches and the water's glints (nun, foggara); drip, water dripping from the ceiling (both modes); heat, how
 // much each flame's air shimmers (style default: forge .5, tile 0, else .25); dust [strength, height, wind], a low drifting dust
 // along the floors instead of the style's mist (the mist pass, its noise blown sideways), with sand gusts in both modes; dry, no wet
 // sheen on the floors; salt, lamp-lit sparkle of salt crystals in the kershef (both modes); glaze, glints running across the faience
@@ -915,7 +915,7 @@ function buildLevel(n,seed,test,legacy,att){
   }
 
   // ---- puzzles of the plate-opens-a-gate kind in other shapes (see the menu at puzzlePick) ----
-  // The puzzles' own random stream, so the floor's other draws are left alone.
+  // The turns' kits' own random stream (randKits), so the floor's other draws are left alone; the puzzles draw from zrng.
   const krng=mulberry32(hash2(seed,7919));
   const zrng=mulberry32(hash2(seed,8209)),zr=()=>zrng(),zi=(a,b)=>a+Math.floor(zr()*(b-a+1));
   // A fill of ordinary obstacles for a stretch of corridor that a puzzle leaves between its parts; the bot's actions for it
@@ -1357,7 +1357,7 @@ function buildLevel(n,seed,test,legacy,att){
     up:{dr:-1,w:1,n:1,wt:0.7},wallrun:{dr:-2,w:5,n:3,wt:1.8},shaft2:{dr:-2,w:3,n:5,wt:1.6},shaft3:{dr:-3,w:3,n:5,wt:1.3},jumpup:{dr:-1,w:6,n:4,wt:2.4},
     lift2d:{dr:2,w:3,n:3,wt:LW[0]},lift3d:{dr:3,w:3,n:3,wt:LW[1]},lift2u:{dr:-2,w:3,n:3,wt:LW[0]},lift3u:{dr:-3,w:3,n:3,wt:LW[1]},
     chn2d:{dr:2,w:4,n:8,wt:LW[2]},chn3d:{dr:3,w:4,n:8,wt:LW[3]},chn2u:{dr:-2,w:4,n:8,wt:LW[2]},chn3u:{dr:-3,w:4,n:8,wt:LW[3]}};
-  const CYC=new Set(['chn2d','chn3d','chn2u','chn3u']); // (a chain-loop lift is never in a turn that holds a timed gate: its wait cannot be sized)
+  const CYC=new Set(['chn2d','chn3d','chn2u','chn3u']); // (a chain-loop lift is never in a turn that holds a plate's gate (any gate slot): a timed one's wait cannot be sized)
   // G4: three tiles of floor between two moves of a turn, a gate on the middle one
   function gateSlotSeg(){
     if(!W(c+1,r)||!W(c+2,r)||!W(c+3,r))return false;
@@ -1901,7 +1901,7 @@ function buildLevel(n,seed,test,legacy,att){
     for(let cc=a;cc<=b;cc++){const f={t:'spikes',fixed:false,ext:0,hold:0};L.feat[o.r*cols+cc]=f;L.dyn.push({c:cc,r:o.r,f});}
     const act=sawAct.get(o.f);if(act)act.a='tiptoe'; // (the same object in L.path or a fork's short way)
     for(const q of L.segs)if(q.k==='saw'&&q.r0===o.r&&Math.min(q.c0,q.c1)<=a&&Math.max(q.c0,q.c1)>=b)q.k='spikes';}
-  // fewer timed side-passage gates: about two in five of them are let stay open once their plate is found (decided by a
+  // fewer timed side-passage gates: about three in five (62%) of them are let stay open once their plate is found (decided by a
   // hash, so the layout itself does not change)
   for(const o of L.dyn){const g=o.f;if(g.t!=='gate'||!g.far||g.latch||g.pair!==undefined||!(g.dur>0))continue;
     if(!g.slab&&!g.fix&&hash2((seed|0)+o.c*5,o.r*17+n)%100<62){g.latch=true;g.dur=0;for(const q of L.dyn)if(q.f.t==='plate'&&q.f.g===g)q.f.latch=true;
@@ -2638,8 +2638,8 @@ const PAL_HERO={skin:'#c98f60',skinD:'#a8734a',tunic:'#3b4aa6',tunicD:'#2c387e',
 // Escalation: recruits ochre and rust, soldiers green and cream, veterans crimson and gold, captains violet, gold and a white plume.
 // The guards are tomb robbers (round 7, owner): the workmen and officials of the tomb-robbery papyri, in the same plain style as the
 // prince: kilts of undyed linen, head cloths, bare chests and bare feet; the veteran in a short tunic and a leather cap, the captain in a
-// leather corselet. Each tier keeps its colour (ochre, green, crimson, violet: its cloth and sash) and has its own weapon (a club, an
-// axe, a khopesh), drawn along the sword's line: their fighting, reach and timing are the swordsmen's.
+// leather corselet. Each tier keeps its colour (ochre, green, crimson, violet: its cloth and sash) and carries a weapon (the recruit a club,
+// the soldier and the veteran an axe, the captain a khopesh), drawn along the sword's line: their fighting, reach and timing are the swordsmen's.
 const GUARD_PAL={
   0:{egy:'rob',bare:1,head:'cloth',khat:'#d9a032',weapon:'club',skin:'#b4805a',skinD:'#8f6140',tunic:'#b4805a',tunicD:'#8f6140',pants:'#bba985',pantsD:'#8f8064',sash:'#8c3a18',trim:'#f3d98a',boot:'#8f6140'}, // recruit: ochre
   1:{egy:'rob',bare:1,head:'cloth',khat:'#3fd03a',weapon:'axe',skin:'#8c5c3c',skinD:'#6d4429',tunic:'#8c5c3c',tunicD:'#6d4429',pants:'#bba985',pantsD:'#8f8064',sash:'#17692f',trim:'#f0d060',boot:'#6d4429'}, // soldier: green
@@ -6373,8 +6373,8 @@ function drawHourglass(ctx,cp){
       ctx.fillRect(x+Math.sin(u*8+i*1.7)*(7+u*4),cy+10-u*30,1,1);}ctx.restore();}
   if(cut)ctx.restore();
 }
-// ---- doors: each theme's own (an Egyptian doorway: a lintel under a cavetto cornice in a moulded frame; the Cistern's is vaulted) ----
-// the arch head as a path: round for the Cistern, pointed for the rest; with yb given it is the whole opening down to the floor
+// ---- doors: each theme's own (an Egyptian doorway: a flat lintel block, a winged sun disc over palace, tile and crypt doors, a torus frame on palace and tile; the dungeon's is vaulted) ----
+// the arch head as a path: round for the dungeon style's vault, a flat lintel for the rest ('point' is the lintel's kind); with yb given it is the whole opening down to the floor
 function doorHead(g,x0,x1,y0,kind,yb){const cx=(x0+x1)/2,sp=y0+(kind==='round'?(x1-x0)/2:11);
   if(yb!==null){g.beginPath();g.moveTo(x0,yb);g.lineTo(x0,sp);}else g.moveTo(x0,sp);
   if(kind==='round')g.arc(cx,sp,(x1-x0)/2,Math.PI,0);else{g.lineTo(x0,y0+2);g.lineTo(x1,y0+2);g.lineTo(x1,sp);} // a lintel
@@ -6546,7 +6546,7 @@ function drawSnake(ctx,sn){
   if(!dead&&(sn.state!=='slither'||(sn.ph%0.9)<0.18)){ctx.strokeStyle='#d9483a';ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(h[0]+4.4,h[1]+0.4);ctx.lineTo(h[0]+7.4,h[1]+0.2);ctx.lineTo(h[0]+8.4,h[1]-0.8);ctx.moveTo(h[0]+7.4,h[1]+0.2);ctx.lineTo(h[0]+8.4,h[1]+1.2);ctx.stroke();}
   ctx.restore();
 }
-// ================= forged metal (the saw, the jaws, gates, chains, the pendulum, the darts) =================
+// ================= forged metal (the saw, the jaws, the iron gate, chains, the pendulum; the darts' glint is painted, they are not in METAL) =================
 // One table per theme says which metal each fitting is made of; MKIND gives each metal a ramp [dark, mid, light, glint]
 // (mid-tones on purpose: the Torchlight metal shader that follows needs headroom above the painted body), and the theme's
 // tint nudges the ramp toward its light. metalPal(role) -> the ramp for the current floor's theme, built once and cached.
@@ -6715,7 +6715,7 @@ function drawShooter(ctx,f){
 // lamps' side. Fibre and timber follow the theme (BARM): papyrus, halfa grass or palm fibre; acacia, sycomore fig, imported cedar,
 // tamarisk in the Sahara, juniper at Aksum; the grip is bound in rawhide, dark and shiny where hands have held it. Nothing is metal
 // (no part goes to the metal mask). Worn (wearLevel): darker, greyer fibre, more loose fibres and a longer fray. While he swings the
-// pole is pulled a little toward him (drawn only). Ready (SW_CLEAR): a glint of light runs up the near rope's fibres to the log, and the
+// pole is pulled a little toward him (the ropes' own swing, f.ps: barPos, so swingPlace hangs him from it too). Ready (SW_CLEAR): a glint of light runs up the near rope's fibres to the log, and the
 // grip keeps its warm glow; the sound is the rope's creak (ropecreak).
 const BARW={acacia:['#3e2414','#6a3e22','#8e5a34','#b47e4e'],cedar:['#4a2418','#7a4028','#a05a38','#c88460'],sycomore:['#54422a','#7e6640','#a68a5c','#c8ae7c'],
   tamarisk:['#463a2c','#6c5c46','#92806a','#b4a48a'],juniper:['#3a2016','#623624','#884e34','#ae7452']};
@@ -6825,8 +6825,8 @@ function drawVentBase(ctx,o,f){
   if(warm>0&&ph<0.75){ctx.fillStyle='rgba(60,50,48,'+(0.35*warm*(ph<0.12?Math.min(1,ph/0.04):1))+')';for(let i=0;i<3;i++){const u=((gameTime*1.3+i/3)%1);ctx.beginPath();ctx.arc(x+Math.sin(u*7+i)*3,ys-2-u*16,1.6+u*2.6,0,Math.PI*2);ctx.fill();}}
 }
 // The vent's LOOK at cycle phase ph, kept apart from the drawing so a GLSL flame can take over drawVentFlame later. Only the look:
-// the cycle (cyc), the danger window (ph > 0.7 or < 0.03) and the hit test are untouched. What hurts is lit through the whole window:
-// a low pilot flame from .70, the whoomp at .75 (flash, sparks, the flame catching with a little overshoot), the roar to .96, the
+// the cycle (cyc), the danger window (ph > 0.7 or < 0.03) and the hit test are untouched. What hurts (from .75, on=ph>=0.75) is lit,
+// and the bot's danger window before it: a low pilot flame from .70, the whoomp at .75 (flash, sparks, the flame catching with a little overshoot), the roar to .96, the
 // die-down to 1.00 (red, shrinking) and a small red tail until .03. h: 1 is the full 40 units; k: light strength; cool: mix toward the
 // red row of the sheet; ig: 0..1 while it catches (else -1); al: fade of the last moment of the tail.
 const VST={on:false,h:0,w:1,k:0,cool:0,ig:-1,al:1};
@@ -7020,7 +7020,7 @@ function drawGlass(ctx,x,y,frac,cap,dim,rev){ctx.save();ctx.translate(x,y+0.5);c
 // anyone on a storm row the edge stays within 5 px of that line (stormfair.py), with a gold crest along each floor right at it; the
 // head and its tongues lean far forward only above the top row, where nobody stands. Both modes draw from one table (dkTable, made
 // once a frame: the edge per world px of height, the top and the foot per px of width): Torchlight in glStorm over the finished frame
-// at full resolution (a rip must be crisp; the sand was a quarter-size pass), Classic in the emissive pass. Look only: the front's
+// at full resolution (a rip must be crisp; the sand was a quarter-size pass), Classic in drawDark2D after hazePass. Look only: the front's
 // speed, the kill line, the rows and the bot are unchanged.
 const DK_GOLD=[226,180,92],DK_GS='226,180,92',DK_DRAIN=0.36;
 const stS=(a,b,x)=>sstep((x-a)/(b-a));
@@ -9032,8 +9032,8 @@ const renderXf={VZ:1,camD:0,camDY:0}; // the last frame's world-to-canvas transf
 // Four more effects ride on the composite (GLFX below switches each off in code): soft shadows of the prince and guards on the
 // back wall, heat shimmer over vents (and forge torches), haze and a wave at the sandstorm's front, and a per-theme colour grade.
 // They share one small mask (glMask): red = shadow, green = heat, blue = storm, drawn in 2D at the light map's resolution.
-// If WebGL is missing, the context is lost or a frame throws, the game goes back to Classic by itself; so does a
-// frame time that stays above ~22 ms while the shader is on.
+// If WebGL is missing, the context is lost or a frame throws, the game goes back to Classic by itself (glKill). Slow frames
+// never switch modes (v63): they only scale Torchlight's scene down (GLP.rs, glTime).
 // ?prof: a profile taken on the device itself. Each stage of a frame is timed (the GL stages after gl.finish, so their times are
 // true, though the frame runs a little slower than it would), and every few seconds one effect is left out to show what it
 // costs; the table is drawn over the HUD. Torchlight does not fall back to Classic meanwhile. Nothing is stored.
@@ -10581,7 +10581,7 @@ function glFrame(lights,VZ,camD,camDY,th){
 }
 // ---- atmosphere (unit S3-C): light shafts, floor mist, water caustics, wet-floor sheen. Torchlight only. ----
 // Two extra quarter-resolution passes between the light map and the composite, each skipped when nothing of it is on screen:
-//  S (glcS): light that falls on things: shafts from windows, open arches and breaches, and the caustics around the Cistern's
+//  S (glcS): light that falls on things: shafts from windows, open arches and breaches, and the caustics (LFX.caus: nun, foggara) around the
 //    arches. Its alpha is the share that is haze in the air: the composite adds the rest as light on the scene (the floor where a
 //    beam lands, a figure in it, a window's pane, the caustics) and the haze as light of its own, faded where the scene is lit.
 //  M (glcM): what lies in the air or on the floor's skin: low mist on the floors and the sheen of wet flagstones; the composite
@@ -10593,7 +10593,7 @@ function glFrame(lights,VZ,camD,camDY,th){
 // Light shafts: the scattering idea of GPU Gems 3 ch. 13 (march from each pixel toward the light, occluders cut the light),
 // turned for light from far away (moon, sky) into parallel beams: every source is a rectangle (a window, one arch between
 // two piers, a breach) and a pixel is in its beam when it lies inside the rectangle swept along the light's direction; that
-// test is exact and costs nothing, so the march (12 steps, jittered) only runs inside beams, to find what stands between
+// test is exact and costs nothing, so the march (12 steps, the same for every pixel: a jitter per pixel made blocky edges) only runs inside beams, to find what stands between
 // the pixel and the opening: walls, the floor slab and the figures. The piers between arches make the gaps between beams.
 // (v58, owner: 'the moonlight looks painted, not part of the room') The light has depth (skyBeam): it comes through the back
 // wall toward the viewer, so it lights no wall; the air it crosses glows by how much of the eye's ray through the pixel lies in
@@ -10762,7 +10762,7 @@ function glcRy(gl){
   if(all)for(const s of RY.shapes.values()){if(s.prof)gl.texSubImage2D(gl.TEXTURE_2D,0,0,s.row,RYW,1,gl.RGBA,gl.UNSIGNED_BYTE,s.prof);}
   else for(const s of RY.dirty)gl.texSubImage2D(gl.TEXTURE_2D,0,0,s.row,RYW,1,gl.RGBA,gl.UNSIGNED_BYTE,s.prof);
   RY.dirty.length=0;gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);}
-// the tile texture: r wall, g floor (a walkable surface at the cell's foot), b near the water (Cistern, around open arches), a open arch (1 its top cell, .5 the one below)
+// the tile texture: r wall, g floor (a walkable surface at the cell's foot), b near the water (the looks with LFX.caus, around open arches), a open arch (1 its top cell, .5 the one below)
 function glcTiles(gl){
   const bg=GFX().bg,key=(L.seed|0)+':'+L.cols+':'+L.rows+':'+bg+':'+L.theme.look;
   if(GLC.lv===L&&GLC.key===key&&(GLC.tk++%40))return true;

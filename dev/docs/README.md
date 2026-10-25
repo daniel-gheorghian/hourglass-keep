@@ -2,13 +2,13 @@
 
 What the game is, how it plays, how floors are built, and one file per game element: how it plays, how it is drawn in Classic and
 Torchlight, what each shader pass does with it, how it relates to the other elements, and what the prince and the guards can do with it.
-They describe the code as of v82 (`dev/hourglass-keep.html`), checked against it function by function.
+They describe the code as of v83 (`dev/hourglass-keep.html`), checked against it function by function.
 
 `CLAUDE.md` stays the log: the owner's rules round by round, with the reasons and numbers. These files are the state those rounds left.
 Where the two disagree, the code is right, and the list at the end says where.
 
 Example of use: to add a new trap that stands across the corridor (like the slicer), read [rendering.md#checklist](rendering.md#checklist)
-for what a live thing over the room picture must do (relief rubbing, palette keys, `beamBlockers`, `glMask` carve, `fpMark`), then
+for what a live thing over the room picture must do (relief rubbing, palette keys, `beamBlockers`, its outline in `SHC` for the lamp shadow, `fpMark`), then
 [slicer-jaws](elements/slicer-jaws.md) for the nearest existing case, then [level-design.md](level-design.md) for where the generator
 may place it and which stream it may draw from.
 
@@ -63,7 +63,7 @@ Rendering anchors: [G2D](rendering.md#g2d-and-the-replay), [light map](rendering
 ## Elements against the passes
 
 Short answers; the element's own file has the detail. "Lamp shadow" is whether a figure's Torchlight shadow is carved out of it
-(`glMask`) or lands on it; "floor looks" is round 31's embers and sheen.
+(`glMask`, `SHC`) or lands on it; "floor looks" is round 31's embers and sheen.
 
 | Element | Light map | Lamp shadow | Relief | Metal | Sky beams | Floor looks | Blocks beams | Hurts him | Guards |
 |---|---|---|---|---|---|---|---|---|---|
@@ -73,54 +73,61 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [openings and backdrop](elements/openings-and-backdrop.md) | windows, sky, bounce | never on the sky | no | no | the sources | no | no (bars streak them) | no | no |
 | [doors](elements/doors.md) | the exit door's light | falls on it; none from him while he exits | none (art flattened under it) | no | no | no | no | no | ignore him in exit and entry |
 | [lamps and light](elements/lamps-and-light.md) | the source | they cast it | rakes it; the flame rubbed | lights it; not in the mask | no | the sheen mirrors them | no | no | no |
-| [spikes](elements/spikes.md) | trap glint | not carved | glint rubbed; holes in the picture | no (stakes painted bronze) | footprint on the holes, off the stakes | off holes and stakes | no | kills (landing on them, running in) | never placed or hit |
-| [saws](elements/saws.md) | a glint rides the blade | not carved | glint rubbed | yes (the spun disc) | footprint off blade and slot | off (255) | no | 1 life | never placed or hit |
+| [spikes](elements/spikes.md) | trap glint | stakes carved (`SHC`) | glint rubbed; holes in the picture | no (stakes painted bronze) | footprint on the holes, off the stakes | off holes and stakes | no | kills (landing on them, running in) | never placed or hit |
+| [saws](elements/saws.md) | a glint rides the blade | blade carved (`SHC`) | glint rubbed | yes (the spun disc) | footprint off blade and slot | off (255) | no | 1 life | never placed or hit |
 | [slicer jaws](elements/slicer-jaws.md) | trap glint | carved (`JAWP`) | `glRelJaws` | yes (bronze, `METAL_EG`) | a blocker | off (255) | yes | kills | never placed or hit |
-| [pendulum](elements/pendulum.md) | a glint on the blade | not carved | glint rubbed | yes (steel, gold fittings) | no | n/a | no | 1 life (not crouched) | never placed or hit |
+| [pendulum](elements/pendulum.md) | a glint on the blade | blade and arm carved (`SHC`) | glint rubbed | yes (steel, gold fittings) | no | n/a | no | 1 life (not crouched) | never placed or hit |
 | [fire vent](elements/fire-vent.md) | fire light (110 px) | casts shadows; not carved | glint rubbed | no (lights the metal) | footprint on the grate | off its tile (`FT_FLAT`) | no | 1 life (no height test) | never placed or hit |
 | [darts](elements/darts.md) | visible shooter only | no | no (trap-light ellipse) | no (glint painted) | no | spent dart 255 | no | 1 life | no / no |
-| [roof blocks](elements/roof-blocks.md) | while hanging and falling | no | falling only (ellipse) | no | footprint cut | block 255, rubble 251 | no | 1 life | stop at it / no |
+| [roof blocks](elements/roof-blocks.md) | while hanging and falling | falling and lying carved (`SHC`) | `glRelRoof` (falling, lying) | no | footprint cut | block 255, rubble 251 | no | 1 life | stop at it / no |
 | [movable blocks](elements/movable-blocks.md) | no | carved as a wall | `glRelFloors` | no | as a wall | 255 | yes, as a wall cell | no | blocked / no |
 | [hurtdrop](elements/hurtdrop.md) | no | no | from the room picture | no | no footprint in the hole | 251 marks | no | 1 life (the fall) | no / no |
-| [gates](elements/gates.md) | a timed gate's roundel | **lands on the slab** (not carved) | `glRelSlab` | iron gate only | no footprint | slab 255 | portcullis down | no (blocks only) | blocks guards; never pressed by them |
+| [gates](elements/gates.md) | a timed gate's roundel | down slabs carved (`SHC`) | `glRelSlab` | iron gate only | no footprint; the grating's bars take one | slab 255 | portcullis and lift mouth slabs down | no (blocks only) | blocks guards; never pressed by them |
 | [plates](elements/plates.md) | trap glint | carved (floor) | `glRelFloors` | no | footprint yes (254) | off (`FT_FLAT`) | no | no | no |
 | [cracked slabs and sand wells](elements/cracked-slabs-and-sand-wells.md) | glint; warm light below while breaking | slab carved, sand not | `glRelFloors`, `glRelWell` | no | sand cut (`sandSegs`); the slab takes a footprint | off (`FT_FLAT`) | the sand | the fall (stakes, two storeys); crush 1 life | no |
-| [lifts](elements/lifts.md) | trap glint | not carved | `glRelLifts`, `glRelSlab`, `glRelBox` | none (iron only with `EGP.traps` off) | no openings in shafts; sand cut out | none | the sand column only | no (an empty shaft is a fall) | no |
+| [lifts](elements/lifts.md) | trap glint | platform, ropes, slabs carved (`SHC`); the counterweight not | `glRelLifts`, `glRelSlab`, `glRelBox` | none (iron only with `EGP.traps` off) | no openings in shafts; sand cut out | none | the sand column; mouth slabs down | no (an empty shaft is a fall) | no |
 | [swing bar](elements/swing-bar.md) | trap glint, ready glow | not carved | no | no (wood and rope) | no | no | no | no (spikes under it do) | no |
 | [banners and slides](elements/banners-and-slides.md) | none | not carved | no | no | no | no | no | no (the slide is safe) | no |
 | [kick shafts and jet streams](elements/kick-shafts-and-jet-streams.md) | trap glint at the foot; the jet none | walls carved as stone | no | no | no | no | no | falls only | no |
-| [checkpoint](elements/checkpoint.md) | lit: an item light (r 150) | no | no | no | no footprint (255) | no | no | no | no |
-| [flasks and secrets](elements/flasks-and-secrets.md) | a coloured item light | no | no | no | no footprint (255) | no | no | poison: 1 life | an ambush guard at the gold flask |
+| [checkpoint](elements/checkpoint.md) | lit: an item light (r 150) | clock and pedestal carved (`SHC`) | no | no | no footprint (255) | no | no | no | no |
+| [flasks and secrets](elements/flasks-and-secrets.md) | a coloured item light | flasks carved (`SHC`) | no | no | no footprint (255) | no | no | poison: 1 life | an ambush guard at the gold flask |
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
 
-## What the docs found
+## What the docs found, and what v83 did
 
-Found while checking the docs against the code. None of it is changed; the first table needs the owner's decision.
+Found while checking the docs against v82's code. The owner's answer was "Correct all Claude.md and all of the faults, then release":
+v83 is rounds 38a (looks), 38b (play) and 38c (comments and checks); CLAUDE.md's round 38 entry has the numbers.
 
-### In the game (possible faults)
+### In the game
 
-| Finding | Where | Seen in |
-|---|---|---|
-| An iron chain is still drawn: six links on the back wall in about one cell in 13 under a ceiling, dungeon style (Nun, Garama, Hawara), not behind `EGP`. Round 18b: no chains | `backCell` | [stonework](elements/stonework.md) |
-| A figure's lamp shadow lands on a lowered portcullis and on lift mouth slabs as if they were the back wall: `glMask` carves walls, floors, low ceilings and the jaws only (the fault round 37b fixed for the jaws) | `glMask` | [gates](elements/gates.md) |
-| The falling roof block hurts through invulnerability: `hurt(1,'crush')` without the `P.inv` test `trapHit` makes | roof block update | [roof blocks](elements/roof-blocks.md) |
-| A fallen roof block gets no relief rubbing, so Torchlight may emboss the wall's art on it (round 35c's fault, for tiles and pushed blocks) | `glRelFloors` | [roof blocks](elements/roof-blocks.md) |
-| The damaging drop's lip may be grippable: `edgeBelow` skips a `hurtdrop`, `findLedge` (Grab held while falling) does not (unverified in play) | `findLedge` | [hurtdrop](elements/hurtdrop.md) |
-| A rewind does not undo a banner's cut: the cut record `bn` is shared by reference and `snapAll` copies shallowly | `snapAll` | [banners and slides](elements/banners-and-slides.md) |
-| Beside a sand lift the `lift` hint says "Step on the plate", and there is no plate; riding a sand lift learns `lift` | `checkHints` | [lifts](elements/lifts.md) |
-| Once a sand lift's slab has left, its top mouth's play plane shuts (`f.gT` 0) with no slab drawn there | sand lift update | [lifts](elements/lifts.md) |
-| Roof blocks hang again after a respawn (it rebuilds the floor); a rewind and a Continue restore them fallen. The code's comment says a respawn restores them | respawn | [roof blocks](elements/roof-blocks.md) |
-| The stakes, the saw's blade and the pendulum are not carved out of the lamp shadow either, so his shadow can fall across their upper parts (unverified in a picture) | `glMask` | [spikes](elements/spikes.md), [saws](elements/saws.md), [pendulum](elements/pendulum.md) |
-| Torchlight's shafts test only the first four blocker quads in view (`glcBlk`: two slicers); the CPU side holds 12 (`BLKMAX`) and Classic uses all | `beamBlockers` | [slicer jaws](elements/slicer-jaws.md) |
-| No test covers a saw turned into spikes under a low ceiling (3 of about 467 saws on floors 5-48, seeds 1-3; floor 16 seed 2, columns 427-429); CLAUDE.md names `lowceil.py`, which has no saw | end of `buildLevel` | [saws](elements/saws.md) |
-| `estPath`'s action table has no `saw` entry, so a saw's stretch adds nothing to a gate's timer (intended or not is not stated) | `estPath` | [saws](elements/saws.md) |
-| The fork's grating takes no beam footprint (no `fpMark`) | grating draw | [gates](elements/gates.md) |
-| The recruit's HUD hearts and rank name are light blue (`#8fa3d8`) under the rule "no guard in blue or white" (HUD only; the dress is ochre) | `TIERS[0]` | [guards and snakes](elements/guards-and-snakes.md) |
+| Finding (v82) | Where | v83 | Seen in |
+|---|---|---|---|
+| An iron chain is still drawn: six links on the back wall in about one cell in 13 under a ceiling, dungeon style (Nun, Garama, Hawara), not behind `EGP`. Round 18b: no chains | `backCell` | fixed (38a): `backRope`, a knotted rope or a sling holding a jar | [stonework](elements/stonework.md) |
+| A figure's lamp shadow lands on a lowered portcullis and on lift mouth slabs as if they were the back wall: `glMask` carves walls, floors, low ceilings and the jaws only | `glMask` | fixed (38a): each thing before the wall records its outline in `SHC`, cut by `shcCarve`; `shadowscan.py`: 266 of 300 things took his shadow, 0 now | [gates](elements/gates.md) |
+| The falling roof block hurts through invulnerability | roof block update | fixed (38b): it tests `P.inv` and gives 0.9 s, as `trapHit` | [roof blocks](elements/roof-blocks.md) |
+| A fallen roof block gets no relief rubbing | `glRelFloors` | fixed (38a): `glRelRoof` (the wall's art was embossed on 31 of 32, 0 now) | [roof blocks](elements/roof-blocks.md) |
+| The damaging drop's lip may be grippable from a fall with Grab held | `findLedge` | confirmed (64 of 64 falls caught it) and fixed (38b): `findLedge` skips a `hurtdrop` | [hurtdrop](elements/hurtdrop.md) |
+| A rewind does not undo a banner's cut (`bn` shared, `snapAll` shallow) | `snapAll` | fixed (38b): the cut record is copied and put back | [banners and slides](elements/banners-and-slides.md) |
+| Beside a sand lift the `lift` hint says "Step on the plate", and there is no plate; riding a sand lift learns `lift` | `checkHints` | fixed (38b): its own hint and learned move, `sandlift` | [lifts](elements/lifts.md) |
+| Once a sand lift's slab has left, its top mouth's play plane shuts (`f.gT` 0) with no slab drawn there | sand lift update | fixed (38b): the plane stands only while the slab is within the top storey | [lifts](elements/lifts.md) |
+| Roof blocks hang again after a respawn | respawn | not a fault: a respawn rebuilds the floor and every trap resets; the comment now says so (38b) | [roof blocks](elements/roof-blocks.md) |
+| The stakes, the saw's blade and the pendulum are not carved out of the lamp shadow either | `glMask` | confirmed and fixed with the slabs (38a) | [spikes](elements/spikes.md), [saws](elements/saws.md), [pendulum](elements/pendulum.md) |
+| Torchlight's shafts test only the first four blocker quads in view | `beamBlockers` | fixed (38a): `GLC_BK` 8, those in a beam's haze first; lift mouth slabs block too, both modes | [slicer jaws](elements/slicer-jaws.md) |
+| No test covers a saw turned into spikes under a low ceiling | end of `buildLevel` | `sawceil.py` (38c): 4 of 519 saws on floors 1-48 x 3 seeds; the bot plays each | [saws](elements/saws.md) |
+| `estPath` has no `saw` entry | `estPath` | no change: no timed stretch holds a saw or darts (38b, floors 1-48 x 3 seeds and P4 forced) | [saws](elements/saws.md) |
+| The fork's grating takes no beam footprint | grating draw | fixed (38a): `fpMarkGrate` marks its bars | [gates](elements/gates.md) |
+| The recruit's HUD hearts and rank name are light blue (`#8fa3d8`) under the rule "no guard in blue or white" | `TIERS[0]` | fixed (38b): rose `#e894a4` | [guards and snakes](elements/guards-and-snakes.md) |
+
+Left as they are (found while fixing): the hanging roof block's shadow is not scanned (it sits inside the wall's carved face); about
+1 px of unshadowed wall beside a stake or a rope inside his shadow (the carve is widened for the quarter-size mask); `JAWP` makes a
+`Path2D` per jaw a frame (round 37b); a save whose sand-lift ride learned `lift` keeps it, so the plate lift's hint stays away for it.
 
 ### CLAUDE.md against the code
 
-| CLAUDE.md says | The code |
+All corrected in CLAUDE.md before v83 (and `dev/FIGURE_SPEC.md`'s body table); kept here as the record.
+
+| CLAUDE.md said (v82) | The code (CLAUDE.md now says so) |
 |---|---|
 | the checkpoint is the water clock (Karnak clepsydra) (Themes; round 37c; `cpscan.py`'s wording) | Nut's sky clock from round 8 (`nutClock`); the game's words are "sky clock"; round 7's barque clock is for pictures only |
 | `estPath` times a careful pace (`WALK_T`); every timer is `estPath` at that pace x 0.84-1.08 | no `WALK_T`. Three ways: P4 `estPath(...,true)` (0.55 s a tile); detours and double gates the plain pace (0.34) x `timerK()` + 0.3 s; in-line gates `(m*TW+16+BW)/RUN` + extras x 1.15-1.03 |
@@ -155,7 +162,8 @@ Found while checking the docs against the code. None of it is changed; the first
 
 ### Stale comments in the code
 
-Torchlight's header (falls back to Classic over ~22 ms: since v63 only `GLP.rs`); the shafts' march "jittered" (same steps every pixel);
+All corrected in v83 (round 38c), `drawBar` included (the pull is the ropes' own swing `f.ps`, which `barPos` and so `swingPlace` use).
+They were: Torchlight's header (falls back to Classic over ~22 ms: since v63 only `GLP.rs`); the shafts' march "jittered" (same steps every pixel);
 caustics "round the Cistern's arches" (`LFX.caus` is nun and foggara); `krng` "the puzzles' stream" (it draws turn kits; `zrng` is the
 puzzles'); timed side gates latched "two in five" (`%100<62`); `CYC` keeps the paternoster out of turns with a timed gate (any gate slot);
 the dark drawn in Classic's emissive pass (after `hazePass`); the fire vent "lit through the whole window" from phase .70 (it hurts from .75, `on=ph>=0.75`; .70 is the bot's `danger` window); `doorHead`'s "pointed" kind (a flat lintel); every rank its own weapon

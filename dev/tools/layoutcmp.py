@@ -1,26 +1,42 @@
-# layoutcmp.py [baseline.html] [lo hi] [seeds] [file=other.html]: layouts identical (round 38a; rounds since 16a checked this by hand). For floors
-# lo..hi (default 1-48) and seeds (default 1,2,3), genLevel(n, seed, true) in the baseline (default dev/tools/hk_v82_release.html) and in the
-# source (dev/hourglass-keep.html, or file=) must give the same tiles (L.base), features (L.feat: every plain field, nested objects one level
-# down), bot path (L.path), start, exit (L.door), lights (L.torches), windows, checkpoints, items, guards, snakes and lifts. Prints
-# 'layoutcmp: same' or the first differences (floor, seed, what, the first index that differs and both values). Run from dev/tools.
-import os, sys
+# layoutcmp.py [baseline.html] [lo hi] [seeds] [file=other.html] [notimers]: layouts identical (round 38a; round 38b's layoutcmp_play.py
+# merged in, round 38c). For floors lo..hi (default 1-48) and seeds (default 1,2,3; one number n means 1..n), genLevel(n, seed, true) in
+# the baseline (default: the newest hk_vNN_release.html in dev/tools) and in the source (dev/hourglass-keep.html, or file=) must give the
+# same tiles (L.base), features (L.feat, every field at any depth; a shared object is named by its first place), bot path (L.path), start,
+# exit (L.door), lights (L.torches), windows, checkpoints, items, guards, snakes, lifts, the dynamic list (L.dyn), forks and hurtdrops.
+# 'notimers' leaves the gates' timer durations (dur, est) out, for a round that only resizes timers. Prints 'layoutcmp: same' or the
+# first differences (floor, seed, part, the first entry that differs and both values). A round that changes the generator on purpose
+# differs, so this is run by hand for look-only rounds, not in suite.py. Run from dev/tools.
+import os, re, sys
 from playwright.sync_api import sync_playwright
 HERE = os.path.dirname(os.path.abspath(__file__))
 a = sys.argv[1:]
-BASE = os.path.abspath(next((x for x in a if x.endswith('.html') and '=' not in x), os.path.join(HERE, 'hk_v82_release.html')))
+def newest():
+    rel = [(int(m[1]), f) for f in os.listdir(HERE) for m in [re.match(r'hk_v(\d+)_release\.html$', f)] if m]
+    return os.path.join(HERE, max(rel)[1]) if rel else None
+BASE = next((x for x in a if x.endswith('.html') and '=' not in x), None) or newest()
+if not BASE: sys.exit('layoutcmp: no baseline (no hk_vNN_release.html in dev/tools; pass one)')
+BASE = os.path.abspath(BASE)
 SRC = os.path.abspath(next((x[5:] for x in a if x.startswith('file=')), os.path.join(HERE, '..', 'hourglass-keep.html')))
+NOTIMERS = 'notimers' in a
 NUM = [int(x) for x in a if x.isdigit()]
-LO, HI = (NUM + [1, 48])[:2] if len(NUM) >= 2 else (1, 48)
-SEEDS = [int(s) for s in next((x for x in a if ',' in x and '=' not in x), str(NUM[2]) if len(NUM) > 2 else '1,2,3').split(',')]
-# each part of the floor as a list of strings, one an element (plain values only; objects one level down; no functions; cycles cut)
-DUMP = r'''([n,sd])=>{const H=__HK,L=H.genLevel(n,sd,true);
-  const v=(x,d)=>{if(x===null||x===undefined)return String(x);const t=typeof x;if(t==='function')return 'fn';if(t!=='object')return t==='number'?String(Math.round(x*1000)/1000):String(x);
-    if(d<=0)return Array.isArray(x)?'['+x.length+']':'{}';if(x instanceof Set)return 'Set('+[...x].sort().join(',')+')';
-    if(Array.isArray(x)||ArrayBuffer.isView(x))return '['+Array.from(x,y=>v(y,d-1)).join(',')+']';
-    return '{'+Object.keys(x).sort().map(k=>k+':'+v(x[k],d-1)).join(',')+'}';};
-  const ls=(a,d)=>a?Array.from(a,x=>v(x,d)):['none'];
-  return {base:[Array.from(L.base).join('')],feat:Array.from(L.feat,f=>f?v(f,2):''),path:ls(L.path,2),start:[v(L.start,2)],exit:[v(L.door,2)],lights:ls(L.torches,2),
-    windows:ls(L.windows,2),cps:ls(L.cps,2),items:ls(L.items,2),guards:ls(L.guards,2),snakes:ls(L.snakeSpecs,2),lifts:ls(L.lifts,1),dyn:ls(L.dyn,1),rows:[L.rows+'x'+L.cols]};}'''
+LO, HI = (NUM[0], NUM[1]) if len(NUM) >= 2 else (1, 48)
+SL = next((x for x in a if ',' in x and '=' not in x), None)
+SEEDS = [int(s) for s in SL.split(',')] if SL else list(range(1, NUM[2] + 1)) if len(NUM) > 2 else [1, 2, 3]
+# each part as a list of strings, one an element; one walk a part, so an object met again (a plate's gate, a lift's feature) is
+# '#k', its first place in that part; numbers to 1/1000; functions 'fn'
+DUMP = r'''([n,sd,notimers])=>{delete window.__FEAT;delete window.__PZ;const L=__HK.genLevel(n,sd,true);
+  const part=a=>{if(!a)return ['none'];const seen=new Map();let k=0;
+    const v=x=>{if(x===null||x===undefined)return String(x);const t=typeof x;if(t==='function')return 'fn';
+      if(t!=='object')return t==='number'?String(Math.round(x*1000)/1000):JSON.stringify(x);
+      if(seen.has(x))return '#'+seen.get(x);seen.set(x,k++);
+      if(x instanceof Set)return 'Set('+[...x].map(v).sort().join(',')+')';
+      if(x instanceof Map)return 'Map('+[...x].map(([p,q])=>v(p)+'>'+v(q)).join(',')+')';
+      if(Array.isArray(x)||ArrayBuffer.isView(x))return '['+Array.from(x,v).join(',')+']';
+      return '{'+Object.keys(x).sort().filter(q=>!(notimers&&x.t==='gate'&&(q==='dur'||q==='est'))).map(q=>q+':'+v(x[q])).join(',')+'}';};
+    return Array.from(a,v);};
+  return {base:[Array.from(L.base).join('')],rows:[L.rows+'x'+L.cols],feat:part(L.feat),path:part(L.path),start:part([L.start]),exit:part([L.door]),
+    lights:part(L.torches),windows:part(L.windows),cps:part(L.cps),items:part(L.items),guards:part(L.guards),snakes:part(L.snakeSpecs),
+    lifts:part(L.lifts),dyn:part(L.dyn),forks:part(L.forks),hurtdrops:part(L.hurtdrops)};}'''
 
 
 def page(b, src):
@@ -38,7 +54,7 @@ if __name__ == '__main__':
         diffs, n_ok = [], 0
         for n in range(LO, HI + 1):
             for sd in SEEDS:
-                A, Bv = pa.evaluate(DUMP, [n, sd]), pb.evaluate(DUMP, [n, sd])
+                A, Bv = pa.evaluate(DUMP, [n, sd, NOTIMERS]), pb.evaluate(DUMP, [n, sd, NOTIMERS])
                 same = True
                 for k in A:
                     x, y = A[k], Bv.get(k)
@@ -53,5 +69,7 @@ if __name__ == '__main__':
         errs = pa.errs + pb.errs
         if diffs:
             print('\n'.join(diffs[:20]))
-        print('layoutcmp: %s (%d of %d floors identical; floors %d-%d seeds %s; %s against %s)' % ('same' if not diffs and not errs else 'DIFFERENT', n_ok, (HI - LO + 1) * len(SEEDS), LO, HI, ','.join(map(str, SEEDS)), os.path.basename(SRC), os.path.basename(BASE)), 'errors', errs[:3])
+        ok = not diffs and not errs
+        print('layoutcmp: %s (%d of %d floors identical; floors %d-%d seeds %s%s; %s against %s)' % ('same' if ok else 'DIFFERENT', n_ok, (HI - LO + 1) * len(SEEDS), LO, HI, ','.join(map(str, SEEDS)), ', gate timers left out' if NOTIMERS else '', os.path.basename(SRC), os.path.basename(BASE)), 'errors', errs[:3])
         b.close()
+        sys.exit(0 if ok else 1)

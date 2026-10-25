@@ -10,7 +10,8 @@ hi = int(sys.argv[2]) if len(sys.argv) > 2 else lo
 f = '/Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'
 ACT = {'jgrab': ['jgrab', 'gap'], 'climb': ['climb'], 'crawl': ['crawl'], 'tiptoe': ['spikes'], 'walljump': ['walljump', 'shaft'],
        'wallrun': ['wallrun'], 'slide': ['banner'], 'swing': ['swing'], 'collapse': ['collapse'], 'drink': ['potion'], 'push': ['block'], 'pull': ['block'],
-       'lift': ['lift'], 'chain': ['chain']}  # (a chain lift is a 'lift' action with chn: it learns 'chain', not 'lift')
+       'lift': ['lift'], 'chain': ['chain'], 'sandlift': ['sandlift']}  # (a chain lift is a 'lift' action with chn: it learns 'chain', not 'lift';
+       # a sand lift's ride learns its own 'sandlift' from round 38b)
 JS = r'''async ([n,seed,act])=>{const H=__HK,S=H.S,bad=[];
   const shows=(id,secs)=>{H.banner=null;H.hint(id);H.tick(160+Math.round((secs||1)*60));const b=H.banner;const r=!!(b&&b.kind==='hint'&&b.text===H.HINTS[id]);H.banner=null;H.tick(30);return r;};
   const note=m=>bad.push(m);

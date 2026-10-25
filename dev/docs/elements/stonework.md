@@ -114,7 +114,7 @@ The stonework is drawn by `style`; the theme gives only the colours (`THEMES`: `
 
 | Style (themes) | Front face (`STONE`: courses x stone width) | Back wall | Its own marks | Arches, windows |
 |---|---|---|---|---|
-| dungeon (Nun, Garama, Hawara) | 4 x 32 | 16 x 8 bricks, two tones, 1 in 11 missing | damp moss along the foot, green streaks, rust under an iron fitting, an iron ring, a short hanging chain | round vault, voussoir ring, stone piers; barred slit |
+| dungeon (Nun, Garama, Hawara) | 4 x 32 | 16 x 8 bricks, two tones, 1 in 11 missing | damp moss along the foot, green streaks, rust under an iron fitting, an iron ring, a short hanging rope under a ceiling (`backRope`: knotted with a frayed tail, or a sling of three cords holding a small jar; v61's iron chain only with `EGP.lamps` and `EGP.traps` off) | round vault, voussoir ring, stone piers; barred slit |
 | palace (West, Kerma, Shali) | 3 x 32 | 32 x 16 blocks, soft stone pits (alveolization) | under a ceiling a frieze of small arches; a dado shade band; kheker cornice; lip inlaid with diamonds | lintel under a cavetto cornice, slender posts; clerestory under a lintel |
 | tile (Blue Chambers, Well Corridors) | 3 x 32 | 16 x 8 bricks | Djoser's faience dado (`tilePanel`) on floor cells; kheker cornice with a faience line; lip with a faience band | lintel under a cavetto cornice, faience ring; clerestory with a grille of upright slats |
 | forge (Meroë, Napata) | 6 x 16 | 16 x 8 bricks | soot under the ceiling, a glowing furnace vent at the foot; no cornice; lip joints every 8 px | lintel under a cavetto cornice, dashed ring, stone piers; round window with a grid, lit from inside |
@@ -237,7 +237,7 @@ The cache holds 18 rooms (least recently used goes). Torchlight uploads a room w
 - Post and lintel everywhere but the dungeon style's round vaults.
 - A new tile drawn live: leave it out of `drawRoomStatic` stage 2 and `aoFloor`, add its type to `GLREL_LIVE` (`glRelLive`), mark it with
   `fpMark` if flat, and check with `tilescan.py`.
-- A new solid thing in front of the back wall: carve it in `glMask`, cut it out of the beams (tile map, `beamBlockers` or `ryBeams2D`), rub
+- A new solid thing in front of the back wall: record its outline in `SHC` so `glMask` carves it (`shadowscan.py`), cut it out of the beams (tile map, `beamBlockers` or `ryBeams2D`), rub
   the relief back over it, and keep the figure's shadow off it.
 - A run-time tile change calls `invalidateCell`; a rewind must restore `L.base` and `L.rubble` so the compare finds it.
 - Nothing drawn on the back wall under a doorway or over a live tile; check with `doorscan.py`, `openscan.py`, `tilescan.py`.
@@ -261,5 +261,6 @@ The cache holds 18 rooms (least recently used goes). Torchlight uploads a room w
 - round 35b: things on the floor's face marked `RL_A` 251.
 - round 35c: no wall art over a live floor tile (`glRelFloors`, `tilescan.py`).
 - round 37a: a lift's foot is a pit, not a floor tile.
+- round 38a: `backCell`'s dungeon fitting under a ceiling (one cell in 13) is a rope (`backRope`), no longer six iron links.
 
 Details in CLAUDE.md.
