@@ -512,6 +512,14 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   [seeds] [file=] [notimers]` holds round 38b's layoutcmp_play.py (gone): tiles, features at any depth, the bot's path, start, exit, lights,
   windows, checkpoints, items, guards, snakes, lifts, `L.dyn`, forks and hurtdrops; must print `layoutcmp: same`; run by hand for look-only
   rounds (a generator round differs on purpose). `hinttest.py` checks that a sand lift ride learns `sandlift`.
+  The release suite then found three more. `liftscan.py`'s flush check (round 37a) failed on seven worn lifts in Classic (floors 7, 17, 24,
+  37, 40, 43, 57; v82 fails the same on those tried, 17, 40 and 43: it was committed 31 min after 37a's check, less than a full suite run):
+  the platform sits flush, but a worn lip's chips are as dark as the pit's floor and read as uncovered (floor 40 seed 45240: 0.51 worn, 1
+  unworn), so the check now draws the platform unworn (`f.wl` 0; wear is look only). Round 38a's mouth slab blocker (`blkSlab`) cut the
+  beam's haze only below the ceiling's edge, so where a shut slab rises past that edge beside a lift's shaft the haze left on it lit round
+  26a's wedge again (floor 15 seed 49884, Classic: 14 over 10); the quad's top now follows that edge (`pl.ce(b)-3`). And `suiteworker.py`
+  refused the GPU flags that `cpscan.py`, `doorscan.py`, `openscan.py`, `tilescan.py` and `shadowscan.py` pass to `launch()` (so `cpscan`
+  never ran under the suite since round 37c): it now ignores `args`, the shared browser drawing WebGL as every other suite job.
 - The Crossing (round 36a, owner, after the research in `dev/INTERLUDE_RESEARCH.md`: "an interlude between themes"; answers: at each
   theme change, after Climb on, he moves only while the pad is held, wordless but skippable, all twelve themes in their setting,
   Torchlight's glow and a Classic version, the hour from `progOf`, named "the Crossing"). At each change of theme (`crossDue(n)`:

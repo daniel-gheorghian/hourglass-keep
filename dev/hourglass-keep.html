@@ -8378,7 +8378,8 @@ function beamBlockers(x0,x1,y0,y1){BLK.n=0;for(const o of L.dyn){const t=o.f.t;i
   return BLK.n;}
 const BLKG={open:0}; // (the gate state gateGeom reads, reused)
 function blkSlab(X,Y,ys,open){BLKG.open=open;const gg=gateGeom(X,Y,ys,BLKG);if(!gg)return;const pl=GATE_G.pl,dr=GATE_G.drop,a=pl.L0-T_SLAB/2,b=pl.R0+T_SLAB/2;
-  blkQuad(a,pl.top,b,pl.top,b,Math.max(pl.top,pl.ce(b)+dr),a,pl.ce(a)+dr,ys+HY);} // (the slab's foot runs with the ceiling's line, gateGeom)
+  blkQuad(a,pl.top,b,Math.min(pl.top,pl.ce(b)-3),b,Math.max(pl.top,pl.ce(b)+dr),a,pl.ce(a)+dr,ys+HY);} // (the slab's foot runs with the ceiling's line, gateGeom;
+  // its top, where it rises past the ceiling's edge beside a lift's shaft, with that edge: else the haze left there lit a wedge over the shaded band, round 26a)
 // (round 35b, owner after v80, floor 17: "light beam through sand") the sand of a well (wellGroup) and of a sand lift fills its pit or shaft
 // across the room's whole depth, its face drawn HX left of its cells like a wall's: the tiles there are open, so a beam laid its haze, an
 // opening's rim and pane (an arch or breach in the pit's back wall, drawn behind the sand) and footprints on the sand as if it were air. Now

@@ -36,7 +36,9 @@ class BrowserProxy:
 class Chromium:
     def __init__(self, ctxs): self._ctxs = ctxs
     def launch(self, **kw):
-        assert not kw, 'shared browser: launch() options are not supported (%r)' % kw
+        # (round 38c) a GPU flag list (cpscan, doorscan, openscan, tilescan, shadowscan: '--use-angle=metal', '--enable-gpu', ...) is
+        # ignored: the shared browser draws WebGL as every other suite job does; any other option is still refused
+        assert not (set(kw) - {'args'}), 'shared browser: launch() options are not supported (%r)' % kw
         return BrowserProxy(self._ctxs)
 
 class PW:

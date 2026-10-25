@@ -24,7 +24,8 @@
 #  flush: with the platform or slab at rest at the foot, its lip covers the floor lips' rows (the floor line + 0.5 to + 4.5 px: every row over
 #        60% of the cell's width), its top the rows just above them (- 2 to - 0.5 px, 60%), and nothing of it is under them (+ 6.25 to + 7.5
 #        px, where the pit's floor edge and the lips' shade are: no row over 30%), against the frame with no lift: its top and lip within 1 px
-#        of the floor tiles' beside it. 'flushlog' prints the three numbers for every such case.
+#        of the floor tiles' beside it. 'flushlog' prints the three numbers for every such case. (round 38c) The platform is drawn unworn for
+#        it (f.wl 0): a worn lip's chips are as dark as the pit's floor and read as uncovered (floors 17, 24, 37, 40, 43, 57: 0.51-0.6 worn, 1 unworn).
 # Before the cases it counts the arches (recesses, openings) and breaches set in a lift shaft's back wall (cells, any number is a failure).
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -120,7 +121,10 @@ RUN = r'''([n,seed,i,pos,mode])=>{const H=__HK;window.__HKfreeze=true;for(const 
   // at the foot covers the floors' lip rows and its top the rows above, against the frame with no lift
   let pit=0,pwhere=null,flush=null;{const C0=L.cols,exp=f.t==='lift'&&(!!f.sand||L.base0[f.rB*C0+f.sc-f.sB]===2),cols=f.t==='chain'?[f.ca,f.cb]:[f.sc];
     for(const c of cols){const has=SL.has(f.rB*C0+c);if(slN===0||has===exp){pit++;pwhere=['pit',c,f.rB,'tile drawn',has,'pit expected',exp,'tiles drawn',slN];}}
-    if(exp&&pos===2&&Math.abs(f.y-f.yB)<0.01){const ft=(f.rB+1)*64,fx=f.sc*32-8,cov=(y,xa,xb)=>{let k=0,m=0;for(let x=xa;x<=xb;x+=0.5){const [px,py]=pxOf(x,y);if(!inS(px,py))continue;m++;if(dif(C,B,(py*A.w+px)*4)>36)k++;}return m?k/m:1;};
+    if(exp&&pos===2&&Math.abs(f.y-f.yB)<0.01){const ft=(f.rB+1)*64,fx=f.sc*32-8;
+      // (round 38c) measured on the platform drawn unworn: a worn lip's chips are as dark as the pit's floor (floor 40 seed 45240: 0.51 worn, 1 unworn); wear is look only
+      let Cf=C;{const w0=f.wl,n0=f.wn;f.wl=0;f.wn=L.n;H.LIFT_DBG.rider=true;try{Cf=grab();}finally{H.LIFT_DBG.rider=false;f.wl=w0;f.wn=n0;}}
+      const cov=(y,xa,xb)=>{let k=0,m=0;for(let x=xa;x<=xb;x+=0.5){const [px,py]=pxOf(x,y);if(!inS(px,py))continue;m++;if(dif(Cf,B,(py*A.w+px)*4)>36)k++;}return m?k/m:1;};
       let lip=1,top=1,und=0;for(let y=ft+0.5;y<=ft+4.5;y+=0.5)lip=Math.min(lip,cov(y,fx+2,fx+30));for(let y=ft-2;y<=ft-0.5;y+=0.5)top=Math.min(top,cov(y,fx+7,fx+30));
       for(let y=ft+6.25;y<=ft+7.5;y+=0.25)und=Math.max(und,cov(y,fx+2,fx+30));flush=[+lip.toFixed(2),+top.toFixed(2),+und.toFixed(2)];
       if(lip<0.6||top<0.6||und>0.3){pit++;if(!pwhere)pwhere=['flush',f.sc,f.rB,flush];}}}
