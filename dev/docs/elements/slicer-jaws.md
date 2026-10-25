@@ -32,6 +32,14 @@ plates are carved out of the shadow (it falls on the wall seen between them when
 | Rewind | a function of the clock; `blood` and `last` restored with the features | |
 | Route time | `estPath` `timed`: tiles x 0.32 + 2.6 s | gate timers over it |
 
+```
+phase   0    .02  .04  .07        .15            .22  .255       .30                         1
+        | closing (k 0 to 1) | shut  |      opening (k 1 to 0)      |            open            |
+hit          [=====================================]                 k > .55: phase .04 to .22
+bot's danger [==========================================]             k > .3: phase .02 to .255
+sound   chomp as k leaves 0
+```
+
 ## The prince and the guards
 | Situation | What happens |
 |---|---|

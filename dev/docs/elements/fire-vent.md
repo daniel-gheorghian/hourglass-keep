@@ -34,6 +34,14 @@ at the start of the stretch until a run would never be within 21 px of the vent 
 | Rewind | a function of the clock | |
 | Route time | `estPath` `timed`: tiles x 0.32 + 2.6 s | |
 
+```
+phase  0   .03     .12                    .60    .70    .75 .79              .96    1
+       |tail|grate cools|      dark        | warm | pilot |whoomp|    roar    |die-down|
+hit                                                     [===========================]   >= .75, 13 px
+bot's danger [=]                                  [=================================]   > .70 or < .03, 21 px
+heat (g)  fading to .12                           ramp to .75, full to 1
+```
+
 ## The prince and the guards
 | Situation | What happens |
 |---|---|
@@ -60,6 +68,14 @@ The grate (`drawVentBase`), set into the middle of the floor's top face in its p
 a hole in the walkway: a dark frame, a glow down the shaft that warms from 0.6 of the cycle (orange, up to 0.88 alpha) and cools after 0.03
 to 0.12, five bars running front to back, a lit front lip, and three grey smoke puffs rising while it warms.
 
+```
+the grate seen from above (x -11..11 px about the tile's middle, depth .08 front .. .92 back)
+   back   +----------------------------+
+          |   j0    j1    j2    j3     |   back row, depth .7: x -6 -2 2 6 (drawn first, 0.86 high, 0.75 alpha)
+          |  |  |  |  |  |  |  |  |    |   five bars front to back, x -8 .. 8
+          |   j4    j5    j6    j7     |   front row, depth .3, drawn after the merged sheet
+   front  +============================+   lit lip
+```
 The flame (`drawVentFlame`, only in the drawn window): a warm glow sprite (`lighter`, 0.4 x strength) and an ignition flash; eight jets
 (`VJETS` `[x, depth, height]`: x -6, -2, 2, 6 px in a back row at depth 0.7, drawn first, shorter and fainter, and a front row at 0.3),
 each from the same 16-frame flame sheet on its own frame, neighbours flickering in opposite phase, the cooled red row cross-faded in as

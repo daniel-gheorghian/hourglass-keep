@@ -33,6 +33,18 @@ and knocks him back 12 px. Crouched, he crawls under it untouched, as the bot do
 | Hint | `HINTS.pend` within 110 px on his row: "A swinging blade. Crawl under it, or time your run." | |
 | Route time | `estPath` `crawl`: tiles x 0.8 + 1.3 s | |
 
+```
+ceilingY   ==============o==============   pivot over the tile's middle, gold cap, rope lashing
+                        /|\
+               84 px   / | \
+                      /  |  \
+   th -0.78 ->  (blade)  |  (blade) <- th +0.78: 59 px out, its centre 64 px over the floor: over his head
+                         |
+                      (blade)              th 0: centre 40 px over the floor (he stands 51.5 px)
+                 |<-- 40 -->|<-- 40 -->|   hit band: |th| < 0.49 rad, the blade under P.y-50
+floor      ==================================
+```
+
 ## The prince and the guards
 | Situation | What happens |
 |---|---|

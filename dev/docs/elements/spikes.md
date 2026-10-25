@@ -50,6 +50,13 @@ Room picture (`drawRoomStatic`, floors pass): the tile is an ordinary floor slab
 stakes come out of (`SPK` roots, `onFloor`, dark ellipses 2.2 x 0.9 px) are drawn on the scratch canvas (`rlBegin`/`rlEnd`) and marked
 `RL_A` (251): what the room's picture lays on the floor's face.
 
+```
+SPK, one tile seen from above (x 0..32 across, depth 0 front .. 1 back); odd columns mirrored about x 16
+  depth .78                           x 25,   10 px high, lean +3
+  depth .66      x 7,  16 px, -1.9
+  depth .48                   x 19,   21 px (the tallest), +0.6
+  depth .26          x 12.5, 11 px, -0.8
+```
 Live (`drawDynamic`, in the `L.dyn` loop, before the figures, only while `ext` > 0.02): four needles per tile, from `SPK`
 `[x in tile, depth, height, lean]` = heights 10, 16, 21, 11 px at depths 0.78 to 0.26, mirrored on odd columns (`m`); height and lean
 scale with `ext`. Each needle: a soft dark shadow ellipse at its root, a dark outline wedge, a lit left face and a shaded right side.

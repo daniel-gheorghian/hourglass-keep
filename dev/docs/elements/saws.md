@@ -34,6 +34,16 @@ since round 35b it is not laid over the blade or its slot (`egyptr35b.py`).
 | Touch controls | fade over the slot (`CTL_WATCH`) | |
 | Route time | `estPath` has no entry for `saw`: the slot adds no time to a gate's timer (only the walk to `from` counts) | see the report's note |
 
+```
+k = 2 (k = 3 adds one tile)
+column     c        c+1        c+2        c+3        c+4
+floor      ======== ========== ========== ========== ==========
+                    from                             to          (bot action saw)
+slot                       [x0-14 ......................x1+14]   (6 px before c+2 to 6 px into c+4)
+blade                         x0 <-------------> x1               x0 = (c+2)*32+8, x1 = (c+3)*32+24
+bot                 stands at the middle of from, jumps 6 px before c+2, lands past x1 and runs on
+```
+
 ## The prince and the guards
 | Situation | What happens |
 |---|---|
