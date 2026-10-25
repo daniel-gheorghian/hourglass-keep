@@ -151,3 +151,4 @@ own sprites (`spr`, `crossSprites`) for sand streaming off the dunes' brinks and
   head about 4 px, a side effect of the two-sided `wallPress`). Look only.
 
 Details in CLAUDE.md.
+- Round 39 (v84), after the merge: the shaft's stream is drawn inside `nearCut` of the walls round the shaft and above its foot's floor line (its haze wisps are wider than the grains' clamp); the jgrab hint is cut by the ledge's slab and the face under it, which stand nearer than the stream curling up onto it (`jetPlaces` keeps the ledge's cell on each `jg` entry).

@@ -76,6 +76,8 @@ VIEW = r'''([n,sd,cx,cy,kinds,phases,own,vh])=>{const H=__HK;window.__HKfreeze=t
 # the cells whose tile a kind draws live itself (its own top and lip, and the top of the face under it, are its own drawing)
 OWN = {'loose', 'plate', 'xplate', 'lplate', 'closer', 'grate', 'vent'}
 ABOVE = {'gate'}  # (a gate's timer dial and pair plaque are fixed on its lintel's face: L3 itself)
+SELF = {'chomp', 'gate'}  # (their plate's outline meets their own floor's front edge: its anti-aliased stroke on that lip is theirs)
+GRIPS = {'shaftfoot'}  # (a kick shaft's chipped grips are cut into the right wall's face, rows up to five above its foot: marks on L3 itself)
 
 
 def page(b, mode):
@@ -120,7 +122,8 @@ if __name__ == '__main__':
                         own = {}
                         for k in ks:
                             if k in OWN: own[k] = [rr * li['cols'] + q[1] for q in inst if q[0] == k for rr in (q[2], q[2] + 1)]
-                            if k in ABOVE: own[k] = [(q[2] - 1) * li['cols'] + q[1] for q in inst if q[0] == k]
+                            if k in ABOVE or k in SELF: own[k] = [rr * li['cols'] + q[1] for q in inst if q[0] == k for rr in ((q[2] - 1,) if k in ABOVE else ()) + ((q[2],) if k in SELF else ())]
+                            if k in GRIPS: own[k] = [rr * li['cols'] + q[1] + 1 for q in inst if q[0] == k for rr in range(q[2] - 5, q[2] + 1)]
                         r = pg.evaluate(VIEW, [n, sd, cx, cy, [{'k': k, 'mv': k in MOVING} for k in ks], phases, own, li['vh']])
                         for k, o in r['res'].items():
                             s = stats.setdefault((mode, k), {'views': 0, 'bad': 0, 'worst': 0, 'where': []})

@@ -8086,7 +8086,7 @@ function jetPlaces(){if(L._jet)return L._jet;const out={shafts:[],jg:[]};
     jsAdd(p,x0-d*30,ys-22);jsAdd(p,x0,ys-26);                     // the run-up
     jsQuad(p,(x0+xe)/2,ly-62,xe-d*6,ly+12,12);                     // the leap, caught at the ledge's edge (Grab held)
     jsQuad(p,xe-d*4,ly-28,xe+d*16,ly-30,6);jsAdd(p,xe+d*32,ly-28);   // pulled up onto it
-    out.jg.push({p,seed:hash2(a.from,r)&1023});}
+    out.jg.push({p,seed:hash2(a.from,r)&1023,c:a.to,r:r-1});}
   return (L._jet=out);}
 const JS_SW=jsPath();
 // the swing's throw: from the back of his swing through the bottom, then the flight his Jump would give at the bottom at this
@@ -8102,8 +8102,8 @@ function jsSwingPath(){const p=jsReset(JS_SW),f=P.bar,bp=barPos(f),fc=P.face,A=M
 function drawJetHints(x0,x1,y0,y1,ctx){const J=jetPlaces(),pc=P?pCol():-1,pr=P?pRow():-1;
   for(const q of J.shafts){if(q.p.bx1<x0-24||q.p.bx0>x1+24||q.p.by1<y0-24||q.p.by0>y1+24)continue;
     const inIt=P&&pc===q.c&&pr>=q.r0&&pr<=q.r1&&P.state!=='stand';
-    jetStream(ctx,q.p,(S.learned.shaft?0.65:1)*(inIt?0.85:1),90,3,q.seed,x0,x1,y0,y1,q.wall);}
-  if(!S.learned.jgrab)for(const q of J.jg)jetStream(ctx,q.p,0.85,95,3.6,q.seed,x0,x1,y0,y1,null);
+    ctx.save();ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,1e5+SURF(q.r1));ctx.clip();nearCut(ctx,q.c-1,q.c+1,q.r0-1,q.r1,false);jetStream(ctx,q.p,(S.learned.shaft?0.65:1)*(inIt?0.85:1),90,3,q.seed,x0,x1,y0,y1,q.wall);ctx.restore();} // (round 39: the haze wisps are wider than the grains' clamp: the shaft's walls in front cut them, and the foot's floor what the entry draws in below its line)
+  if(!S.learned.jgrab)for(const q of J.jg){ctx.save();nearCut(ctx,q.c,q.c,q.r,q.r+1,true);jetStream(ctx,q.p,0.85,95,3.6,q.seed,x0,x1,y0,y1,null);ctx.restore();} // (round 39: the ledge he catches stands nearer than the stream curling up onto it: its slab and the face under it cut it)
   if(P&&P.state==='swing'&&P.bar&&P.swRdy){const k=clamp((gameTime-(P.swGl||0))/0.4,0,1),fw=P.swOm>0?1:0.5; // (stronger while he swings forward: Jump now)
     jetStream(ctx,jsSwingPath(),k*fw*(S.learned.swing?0.75:1),125,4,517,x0,x1,y0,y1,null);}}
 // (round 39e, dev/docs/layers.md R1) the stakes, SPK far to near: the front one (depth .26) is nearer than a figure at mid-depth, who was drawn
