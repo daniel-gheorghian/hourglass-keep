@@ -27,7 +27,7 @@ scar). `lampscan.py` found 2,165 such lamps of about 9,600 on floors 1-48 before
 | Rule | Example or number | Why |
 |---|---|---|
 | Lamps have no collision, damage or trigger | the prince walks past and in front of them | decoration and light only |
-| A lamp burns only where both cells beside it are plain floor | not beside a WALL (a face or step), a ledge (no floor), or a `gate`, `lift`, `sandcol`, `chain`, `banner`, `shaftfoot`, `bar`, `pend`, `lplate` (`LAMP_NEXT`); not in or beside a lift's shaft (`lf.ca-1` to `lf.cb+1`, rows `rT` to `rB`); not within 1 column of a water clock, 2 of the exit door, 1 of the start door; not on a feature cell (`lampSpot`, `lampClear`) | round 19, owner: "sometimes lamps or torches are placed just like that" |
+| A lamp burns only where both cells beside it are plain floor | not beside a WALL (a face or step), a ledge (no floor), or a `gate`, `lift`, `sandcol`, `chain`, `banner`, `shaftfoot`, `bar`, `pend`, `lplate` (`LAMP_NEXT`); not in or beside a lift's shaft (`lf.ca-1` to `lf.cb+1`, rows `rT` to `rB`); not within 1 column of a sky clock, 2 of the exit door, 1 of the start door; not on a feature cell (`lampSpot`, `lampClear`) | round 19, owner: "sometimes lamps or torches are placed just like that" |
 | Lamps on worn wall have fallen | `lightWear` >= 2 (or in a breach): `broken`, a scar on the wall and the lamp lying broken and cold on the floor; a working one is placed within 6 columns on wall that stands, by `lampClear`, at least 4 from another lit lamp | the keep's decay (`settleLights`) |
 | More fall each cycle up the tower | `L.prog.wear` 1, 2, 3: a further 10%, 20%, 30% by hash, but never the last one lit within 9 columns and 1 row | progression reads as decay, never as a dark stretch |
 | The floor's light never drops under `AMB_MIN` | Torchlight's ambient is at least 0.45 of full on its brightest channel | owner, v56: "make it feel dark, not be dark" |
@@ -115,7 +115,7 @@ sparks leaves a lamp in view every 1 to 2.6 s (ambient, look only).
 | sky bounce | `sky` | where the beam from the opening's middle lands on its storey's floor, r max(34, 0.6 w + 22), a 0.55 x the beam's strength; dropped where a wall or low ceiling stands between (`solidFront`, rounds 15, 20a); not under an own-light window | Torchlight (Background on) |
 | figures' fill | `fill` | prince, guards, snakes (above) | both |
 | exit door | `door` | at the door, r 120 x open x (1 + 0.3 swell), a 0.9 x open x (1 + 0.75 swell), bloom r 28 | both; the swell in Torchlight |
-| water clock | `item` (+ `trap`) | lit: r 150, a 0.95, eased in over 0.7 s, and the sun moving along Nut's arch; unlit r 38 | both |
+| sky clock | `item` (+ `trap`) | lit: r 150, a 0.95, eased in over 0.7 s, and the sun moving along Nut's arch; unlit r 38 | both |
 | flasks, a running gate timer | `item` | r 32 to 42; r 34 | both |
 | fire vent while it burns | `fire` | r 110 | both |
 | traps | `trap` | r 30 to 60, a 0.28 to 0.5 | both |
@@ -139,7 +139,7 @@ col = the strongest light's colour if m > 0.5, else the theme's window colour
 `sx` is continuous in the lamps' places and steady in time: a lamp coming into reach fades in. Before round 20b it was the nearest lamp
 within 1.6 times its flickering radius (150 x (0.92 + `flK`)), so the granite slab near the edge of a lamp's reach flipped every few frames between
 lit from the right and the default from the left. Read by: the HD figures' rim (`drawActor`), the granite portcullis (`egSlabBody`'s
-`uL` cross-fade of faces and cast shadow), the slicer's jaws, the snakes, the water clock (`nutClock`), `stoneGlints`, `graniteGlints`.
+`uL` cross-fade of faces and cast shadow), the slicer's jaws, the snakes, the sky clock (`nutClock`), `stoneGlints`, `graniteGlints`.
 
 ### The fill light
 
@@ -184,7 +184,7 @@ and bloom all of it; a lamp under 0.01 adds nothing. Only lamps are drained; the
 | [stonework](stonework.md) | no lamp beside a wall's face, a step or a ledge (`lampClear`); lamps on worn wall fall, leaving a scar and a fallen lamp; hangings are kept off a lamp's columns (`planHangings`); crypt lamps sit before a false-door niche |
 | [openings-and-backdrop](openings-and-backdrop.md) | a lamp in an opening or breach stands or hangs free (`lampFree`); windows and openings add `win` and `sky` lights; sky bounce |
 | [doors](doors.md) | no lamp within 2 columns of the exit door or 1 of the start door; the exit door's own light and its swell |
-| [checkpoint](checkpoint.md) | no lamp within 1 column of a water clock; a lit clock lights the room like a lamp (`item`, r 150) |
+| [checkpoint](checkpoint.md) | no lamp within 1 column of a sky clock; a lit clock lights the room like a lamp (`item`, r 150) |
 | [lifts](lifts.md) | no lamp in or beside a shaft, nor beside a lift plate (`lplate`), a sand column or a paternoster (`chain`) |
 | [gates](gates.md) | no lamp beside a gate; the granite slab's lit faces follow `keyLight`; a running timer glints (`item`) |
 | [banners-and-slides](banners-and-slides.md), [kick-shafts-and-jet-streams](kick-shafts-and-jet-streams.md), [swing-bar](swing-bar.md), [pendulum](pendulum.md) | no lamp beside a `banner`, `shaftfoot`, `bar` or `pend` |

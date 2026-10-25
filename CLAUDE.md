@@ -15,6 +15,7 @@ https://daniel-gheorghian.github.io/hourglass-keep/
 | `dev/tools/*.py` | Build, regression and measurement scripts. Many are one-off debug scripts kept for reference. |
 | `dev/tools/hk_vNN_release.html` | Source of each past release, the baseline for comparisons. |
 | `dev/localize.py` | Run once per new machine (see below). |
+| `dev/docs/` | Reference docs (round 38): concept, gameplay, level design, rendering, and one file per game element (play, drawing in both modes, each shader pass, relations, the prince and the guards); `README.md` indexes them. A round that changes an element updates its file in the same commit. |
 
 ## Setup on a new machine
 

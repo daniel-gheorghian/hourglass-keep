@@ -14,7 +14,7 @@ Floor 5 as `__HK.genLevel(5, 1)` builds it (a player's floor 5 comes from the ru
 | 1. The card | Floor 4 is cleared: its time, falls and lives, "Next: Floor 5, The Halls of the West." Climb on. | `levelComplete`, `nextFloor` |
 | 2. The Crossing | Floor 5 changes theme, so the interlude plays: Nebamun's pool garden, a heron lifting off the coping, a whitewashed pylon at the end of the path. Right held walks him there; Jump skips. | `crossDue`, `crossBegin` |
 | 3. The entry | He walks out of the start door's dark opening (column 190, row 9); its leaf drops behind him with a thud. Control at 0.62 s. The banner names the floor. | `startEntry`, `EN_CTL`, `intro` |
-| 4. The floor | 157 segments over 360 columns and 61 rows, 305 bot actions. It features lifts (18 of them), the alcove puzzle and tunnels (`L.feature`). It opens with a climb, a slicer to time, a one-tile pit, cracked floor to run over and stakes to tiptoe across. Then a lift up three storeys, tunnels to crawl, a hanging to slide down four storeys and lifts going down; eight water clocks stand along the floor (`L.cps`). | `L.segs`, `L.path` |
+| 4. The floor | 157 segments over 360 columns and 61 rows, 305 bot actions. It features lifts (18 of them), the alcove puzzle and tunnels (`L.feature`). It opens with a climb, a slicer to time, a one-tile pit, cracked floor to run over and stakes to tiptoe across. Then a lift up three storeys, tunnels to crawl, a hanging to slide down four storeys and lifts going down; eight sky clocks stand along the floor (`L.cps`). | `L.segs`, `L.path` |
 | 5. Gates and guards | On row 45 two gates, a guard (two hearts) posted past the first, and a remote plate for a gate in the next turn (`rem-plate`). The exit's plate (`xplate`) lies on row 42, far from the door: stepping on it opens the door somewhere on the floor. | `gateDue`, `remotePlate`, `xplate` |
 | 6. The captain | On row 54 the captain (four hearts) stands before the exit, as on every fifth floor. | `guardBudget` |
 | 7. The exit | Up at the open door (column 334, row 54): he climbs its stairs, whitens into the light and is gone. The card comes. | `exit`, `EX_N` |
@@ -74,7 +74,7 @@ an hour and is reborn at dawn), set in places of Egypt, Kush and the Sahara. Twe
 | No living peoples as enemies or decoration | the enemies are tomb robbers (guards), skeletons, snakes and the dark; the crossings have animals only, no people |
 | No chains | everything that hangs is rope (`barRope`, `ropeOf`): the swing, the pendulum's lashing, lamps, lifts, backdrops. Iron chains only behind `EGP.traps`/`EGP.lamps` off |
 | No arrows in the world | hints of a way (kick shafts, the swing's throw, the jgrab jump) are sand blown along a path (`jetStream`), not chevrons |
-| The water clock, not an hourglass | the checkpoint is the Karnak clepsydra (`drawHourglass` draws it); the HUD's sands and gate timers are water clocks (`drawGlass`); the words are "sky clock" and "hours". `S.sands` and every timing are unchanged |
+| The sky clock, not an hourglass | the checkpoint is Nut's sky clock (`nutClock`, drawn by `drawHourglass`; round 8, after round 4's clepsydra and round 7's barque clock were rejected); the HUD's sands and gate timers are the same clock (`drawGlass`); the words are "sky clock" and "hours". `S.sands` and every timing are unchanged |
 | Post and lintel | arches, doors and windows are post and lintel; the dungeon style's vaults stay round |
 | A damaging drop must be worth it and look like one | a `hurtdrop` has its own broken look, and is kept only if it saves 25% of the route and 10 tiles of walking ([hurtdrop](elements/hurtdrop.md)) |
 | Floors never shorter | a change must not shorten floors or remove the plain floor after each trap (`breathe()`; `metrics40.py`) |
@@ -118,12 +118,12 @@ title -> floor n: entry -> play (deaths: rewind or rise) -> exit stairs -> card 
 
 ## The sands
 
-The sands are the run's rewinds: three "hours" (`SANDS` 3, `S.sands`) shown as three water clocks in the HUD.
+The sands are the run's rewinds: three "hours" (`SANDS` 3, `S.sands`) shown as three sky clocks in the HUD.
 
 - After a death, Grab turns time back about five seconds (to a calm moment at least 4.5 s back in a 10 s ring of snapshots) for one
   hour. Jump, or no hours left, rises at the last checkpoint instead.
 - Hours come back in full at every checkpoint lit, every rise and every new floor.
-- Example: two slicer deaths in a row leave one hour; the next water clock lights "and your hours are restored".
+- Example: two slicer deaths in a row leave one hour; the next sky clock lights "and your hours are restored".
 
 Numbers and rules: [gameplay.md](gameplay.md#death-the-sands-and-checkpoints).
 

@@ -22,7 +22,7 @@ plates are carved out of the shadow (it falls on the wall seen between them when
 ## In play
 | Rule | Number or example | Why |
 |---|---|---|
-| The cycle (`chompK`, phase p of `per`) | closing 0-0.07 (k 0 to 1), shut to 0.15, opening to 0.30, open to 1 | a short bite and a long open time to read |
+| The cycle (`chompK`, phase p of `per`) | closing 0-0.07 (k 0 to 1), shut to 0.15, opening to 0.30, open to 1 | |
 | Period | `1.7 - 0.35d` s: 1.66 s on floor 4, 1.35 s from floor 25 (`d = min(1,(n-1)/24)`) | |
 | Hit | k > 0.55 (p 0.04 to 0.22: about 0.3 s a cycle), same row, \|`P.x` - tile middle\| < 14, any state but `hang`, `climb`, `climbDown`, `exit` | crouching or jumping does not help |
 | Damage | death (`die('blade')`), no `P.inv` test; red sparks, `f.blood` 1: blood on alternate teeth from then on; card "Caught by the blade" | PoP1: the slicer kills |
@@ -96,7 +96,7 @@ plate. While k < 0.6 a faint dust shaft joins the jaws.
 | Lamp shadow mask (`glShadow`, `glMask`) | carved: `glMask` fills both jaws' outlines from `JAWP` (only if recorded this frame, `jp.t === gameTime`) inside the plane's visible quad; the wall seen between open jaws keeps his shadow (round 37b) |
 | Relief (`glRelJaws`) | two quads rubbed back each frame: the ceiling's front edge to `upOff+4` under `ce`, and `loOff+4` over the floor line down to it, moving with k |
 | Metal mask / shader (unit MS) | the same `JAWP` outlines filled (any grain), the far half before the figures are carved out, the near half after (`planeClip` half 1 with `JAW_OV`); id `msKind('jaw')` (bronze with `EGP.traps`); lit from the four strongest lamps |
-| Sky beams | a blocker (`beamBlockers`, in both looks): two quads, the upper from the ceiling's front edge to `upOff+5`, the lower from `loOff+5` to the floor (half the teeth), the floor `ys+HY` where the shadow ends. Torchlight: `u_bk` (up to four quads, tested exactly, softened over the march's step); the beam behind is shaded, only the near half of the haze lies over them, no footprint, no figure light. Classic: `ryHull`, drawn `RY_SH` 5 times at a fifth (penumbra), only for one in a beam's haze (`ryBlkLit`) |
+| Sky beams | a blocker (`beamBlockers`, in both looks): two quads, the upper from the ceiling's front edge to `upOff+5`, the lower from `loOff+5` to the floor (half the teeth), the floor `ys+HY` where the shadow ends. Torchlight: `u_bk` (`glcBlk` passes the first four quads inside the shafts' box, so two slicers; tested exactly, softened over the march's step); the beam behind is shaded, only the near half of the haze lies over them, no footprint, no figure light. Classic: `ryHull`, drawn `RY_SH` 5 times at a fifth (penumbra), only for one in a beam's haze (`ryBlkLit`) |
 | Mist / wall looks | none |
 | Floor looks (`floorFx`) | none of its own; where the plates and slot are drawn the scene is 255, so the embers and sheen keep off them |
 | Heat, the dark | none |

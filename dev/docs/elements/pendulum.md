@@ -16,12 +16,12 @@ Corridors), in runs, on landings, in side corridors and in side galleries.
 ## Example
 Floor 9 seed 2 (the Blue Chambers): a pendulum at cell 32,15, period 2.17 s, ten columns past the slicer of [slicer jaws](slicer-jaws.md)'s
 example. Walking up he hears it pass the bottom (`swoosh`) every 1.08 s; standing within 11 px of the blade while it is low costs a life
-and knocks him back 12 px. Crouched, he crawls under it untouched, as the bot does (`crawl` over the five tiles).
+and knocks him back 12 px. Crouched, he crawls under it untouched, as the bot does (`crawl` along the stretch).
 
 ## In play
 | Rule | Number or example | Why |
 |---|---|---|
-| The pivot | over the tile's middle at `ceilingY`: the underside of the first wall above. `pendulum()` needs the cell two rows up still wall; the open-hall pass opens the row above the floor, so the arm hangs from that wall | a tall swing in a two-storey hall |
+| The pivot | over the tile's middle at `ceilingY`: the underside of the first wall above. `pendulum()` needs the cell two rows up still wall; the open-hall pass opens the row above the floor, so the arm hangs from that wall | |
 | The arm | `Lp = SURF(r) - 40 - ceilingY`: 84 px in every pendulum generated on floors 1-40 (3 seeds, 158 of them) | |
 | The swing | `th = amp sin(2π(t+off)/per)`, amp 0.78 rad; the blade's centre 40 px over the floor at the bottom, 59 px out and 24 px higher at the ends | a pure function of the clock: rewind needs nothing |
 | Period | `2.3 - 0.4d` s: 2.17 s on floors 9-12, 1.9 s from floor 25 | |
@@ -41,7 +41,7 @@ ceilingY   ==============o==============   pivot over the tile's middle, gold ca
    th -0.78 ->  (blade)  |  (blade) <- th +0.78: 59 px out, its centre 64 px over the floor: over his head
                          |
                       (blade)              th 0: centre 40 px over the floor (he stands 51.5 px)
-                 |<-- 40 -->|<-- 40 -->|   hit band: |th| < 0.49 rad, the blade under P.y-50
+                 |<-- 40 -->|<-- 40 -->|   hit band: |th| < 0.49 rad (blade within 50 px of the floor)
 floor      ==================================
 ```
 
@@ -52,7 +52,7 @@ floor      ==================================
 | Standing, running, in the air near the bottom of its swing | one life |
 | Hanging or climbing on its row | not hit |
 | Drawn with him | before the figures: he is always in front of the blade and arm |
-| The bot | `crawl` from the tile before to the tile after; it also handles a snake if one lurks (the action is shared with tunnels) |
+| The bot | `crawl` from the stretch's first tile to its last (the pendulum on the middle one); it also handles a snake if one lurks (the action is shared with tunnels) |
 | Guards | never placed on its tile (`guardOk`); not tested by it |
 
 ## How it is drawn
@@ -89,7 +89,7 @@ only the jaws). No wear, no cut by walls (it swings inside its hall).
 |---|---|
 | [lamps and light](lamps-and-light.md) | `pend` is in `LAMP_NEXT`: no lamp burns beside its tile (`lampClear`, round 19); hangings keep out of its columns |
 | [stonework](stonework.md) | `ceilingY` and the open-hall pass make its hall; `fillCorridor` lays none under a gallery (`tallLim`) |
-| [swing bar](swing-bar.md) | the other rope-hung thing: no chains anywhere (round 18b); the pendulum takes the theme's rope colours from `ropeOf()`, the swing draws `barRope` |
+| [swing bar](swing-bar.md) | no chains anywhere (round 18b): the swing hangs on `barRope`, the pendulum's lashing takes the theme's rope colours from `ropeOf()` |
 | [slicer jaws](slicer-jaws.md), [saws](saws.md) | the forged-metal tables (`METAL`, `MKIND`) |
 | [prince](prince.md) | the crouch and the crawl (`crouch` state) pass under it |
 | [guards and snakes](guards-and-snakes.md) | not hurt; snakes live in tunnels, not here |

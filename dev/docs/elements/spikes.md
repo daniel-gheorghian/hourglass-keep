@@ -1,7 +1,7 @@
 # Spikes
 
 Stakes in the floor, after PoP1's spikes. Live spikes lie in a run or a side passage and rise as he comes near; fixed spikes stand at the
-foot of every pit (a gap or a run of loose floor) and kill whatever lands on them. Every floor from 2 has live spikes, every floor has pits.
+foot of every pit (a gap or a run of loose floor) and kill whatever lands on them. Live spikes from floor 2, spiked pits from floor 1.
 In the Egyptian looks (`EGP.traps`) they are bronze-tipped stakes on acacia shafts; with `EGP.traps` off, v61's steel needles.
 
 ## At a glance
@@ -23,14 +23,14 @@ held, he steps across 13 px at a time while the stakes stand round his feet; a r
 | Rule | Number or example | Why |
 |---|---|---|
 | Live stakes rise when he is on the row, within 44 px of the tile's middle, on foot | `f.ext` +9/s (0.11 s up); `hold` 1 while near, then 1 s, then down at 3/s | PoP1: spikes spring as the kid comes near |
-| They do not rise for him in `hang`, `climb`, `climbDown`, `air`, `jumpUp`, `wallrun`, `slide`, `swing` | a jump over them leaves them down | only feet near the floor wake them |
+| They do not wake for him in `hang`, `climb`, `climbDown`, `air`, `jumpUp`, `wallrun`, `slide`, `swing` | the run up to them usually does (44 px from the middle is 28 px before the tile) | only feet on the floor wake them |
 | A careful step is safe | `startStep`: 13 px over `STEP_T`, no spike test; `stand` on a spike tile is safe | PoP1's careful step |
 | Running or skidding onto one kills | `runMove` (state `run` and `stop`): entering a spike tile with \|`P.vx`\| > 35 sets `ext` 1 and `die('spikes')`; a run starts at 35 and gains 650 px/s² | |
 | Landing on one kills, live or fixed, from any height | `land()`: `die('spikes')` before the fall-damage test, so a one-storey drop into a pit kills | PoP1's spiked pit |
 | Death, not a life | `die`: red sparks; card "Impaled on the stakes", then "Spikes spare a careful step: hold Grab and tap toward them." | |
 | Run spikes | 1 tile, or 2 from floor 6 (40%), then one plain tile; side passages the same | |
 | Fixed spikes | `fixed:true, ext:1`, never updated; at the foot of every pit 1 or 2 storeys down (`pit()`) | |
-| The step's test foot | `hazardEdge` counts a spike tile as an edge (with no floor, loose floor and a closer); the Grab button reads "Step" over or before spikes | round 33b |
+| Jumps are taken at their edge | `hazardEdge` counts a spike tile as an edge (with no floor, loose floor and a closer): a standing jump walks to it first (`tryJump`, `edgeWalk`, within 30 px), a running jump pressed early is held to the lip (within 80 px, `P.jLe`); the Grab button reads "Step" on or before spikes | |
 | Hints | `HINTS.spikes` on the tile; learned by a careful step that ends on a spike tile or a jump that clears one (`land`) | |
 | Touch controls | fade to a ghost when a spike tile is under them (`CTL_WATCH`) | |
 | Rewind | `ext` and `hold` are restored with the features (`snapAll`) | |
@@ -40,7 +40,7 @@ held, he steps across 13 px at a time while the stakes stand round his feet; a r
 |---|---|
 | He tiptoes across | stakes up round his feet, no harm; the bot's `tiptoe` |
 | He runs, skids or lands on a tile | death (`die('spikes')`) |
-| He jumps a row of live spikes | they stay down; the drawn flight is raised so his drawn feet clear each needle (`jhK`, below) |
+| He jumps a row of live spikes | they rise as he runs up and stay while he flies; the drawn flight is raised so his drawn feet clear each needle (`jhK`, below) |
 | A pit with a lip he hangs from and drops | death on landing |
 | Guards | never stand on a feature tile (`guardOk`), and their ranges stop short of one (`clearRun`); spikes test only the prince |
 | A skeleton knocked into its pit (crypt, `skeleton()`) | its pit has fixed spikes at the foot; the skeleton falls and is gone (`updateGuard` state `fall`); the spikes are not tested |
@@ -116,6 +116,5 @@ drawDynamic    ... L.dyn: stakes (255, drawn live) ... guards, prince ... near h
 - v60 (owner): a saw under a ceiling at his height becomes spikes in place.
 - Round 27a: the drawn running jump raised to clear the needles; round 33a: the rise as `k ap sin^2`, the share `P.jKr`; round 34: lower tops.
 - Round 31: the floor's looks only on the face as the scene shows it (stakes excluded).
-- Round 33b: the careful step's test foot at a spike edge (`hazardEdge`).
 - Round 35b: the holes marked 251; the footprint keeps off the stakes; Classic's `ryStand`.
 - Details in CLAUDE.md.

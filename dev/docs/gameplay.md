@@ -145,7 +145,7 @@ cost exactly one life; a cracked slab gives way under him ([cracked slabs and sa
 
 - Lives are hearts: `P.hp` of `S.maxHp`. A run starts with 3 (`newSave`); a gold flask adds one, up to 10, for the rest of the run.
 - Every respawn starts with full hearts (`makePlayer`).
-- The HUD (`drawHUD`): hearts, FLOOR n, the floor's time, three water clocks for the sands, the nearest running gate timer in the
+- The HUD (`drawHUD`): hearts, FLOOR n, the floor's time, three sky clocks for the sands, the nearest running gate timer in the
   middle (it flashes under a quarter), and a foe's hearts and rank on the right (a skull for a skeleton).
 
 | Flask (`it.type`) | Effect |
@@ -189,7 +189,7 @@ On death (`die`) the mode is `dead` and the save's resume point is dropped. Then
 - **Rise** (`respawn`): the floor is rebuilt from its seed at the last lit checkpoint (`L.cpIndex`, or the start door), with full
   hearts and the sands back to 3. Latching plates pressed before the checkpoint are pressed again and their gates open
   (`S.cpPlates`); guards and snakes before it are gone; everything else is as generated.
-- **Checkpoints**: the water clock (the "sky clock" in the game's words). Passing within 14 px lights it (`standOn`): it becomes the
+- **Checkpoints**: the sky clock (Nut's, `nutClock`). Passing within 14 px lights it (`standOn`): it becomes the
   respawn point and refills the sands. [checkpoint](elements/checkpoint.md).
 - Falls are counted per floor (`S.floorDeaths`, the card's "Falls") and per run (`S.deaths`); a rewind counts as a fall.
 

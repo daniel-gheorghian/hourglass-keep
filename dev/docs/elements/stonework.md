@@ -224,7 +224,7 @@ The cache holds 18 rooms (least recently used goes). Torchlight uploads a room w
 | [roof blocks](roof-blocks.md), [gates](gates.md) | their stone is the theme's (`STONES`, `THEME_STONE`, `SLAB_STONE`, `stoneTex`, round 12), not the walls' palette |
 | [hurtdrop](hurtdrop.md), [spikes](spikes.md) | the hurtdrop's broken lip, shaft and heap, and the spikes' holes, are drawn in stage 2 from the tile type |
 | [saws](saws.md) | a saw under stone becomes spikes |
-| [checkpoint](checkpoint.md) | `cpX`/`cpCut` keep the water clock off the front faces beside it (`cpFace` reads walls and `low`) |
+| [checkpoint](checkpoint.md) | `cpX`/`cpCut` keep the sky clock off the front faces beside it (`cpFace` reads walls and `low`) |
 | [kick shafts](kick-shafts-and-jet-streams.md) | `keepWall` keeps a shaft's far wall solid through the open-hall pass |
 | [prince](prince.md), [guards](guards-and-snakes.md) | `wallPress`, `figClip`, the shadow carve; guards share the code |
 | [the dark](the-dark.md) | his shadow pulled back along the back wall |

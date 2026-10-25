@@ -69,7 +69,7 @@ floor. The maze flag multiplies the puzzle option's weight by 3.5 and queues one
 floors).
 
 The HUD (`hudLayer`): the nearest gate (by x distance plus twice the y distance) whose clock runs (`dur > 0`, finite `tm > 0`, not
-held by a block within 0.2 s) shows `drawGlass` (the water clock, `nutClock`) and its seconds at the top centre, dropped to a second
+held by a block within 0.2 s) shows `drawGlass` (the sky clock, `nutClock`) and its seconds at the top centre, dropped to a second
 line when the left HUD reaches the middle; gold over half, orange over a quarter, then red and blinking at 2 Hz.
 
 ## The prince and the guards

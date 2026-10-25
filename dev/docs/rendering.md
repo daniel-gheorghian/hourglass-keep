@@ -155,7 +155,7 @@ stone in front of a figure, lift or clock is a clip (see "Cuts").
 Live, in `drawDynamic`:
 
 ```
-lamps (drawLight)  -> start door, exit door -> water clocks -> lifts (back half) -> L.dyn features by type
+lamps (drawLight)  -> start door, exit door -> sky clocks -> lifts (back half) -> L.dyn features by type
 -> movable blocks -> darts, spent darts -> hidden flasks' stars, secret cues, jet hints -> flasks
 -> sand wells (once per group) -> dust clouds -> debris -> snakes -> guards -> the prince
 -> trails and rings (Graphics' Effects) -> near halves of gates, jaws, a fallen roof block -> lifts (front half)
@@ -172,11 +172,11 @@ lamps (drawLight)  -> start door, exit door -> water clocks -> lifts (back half)
 | `planeClip` | a gate's or jaw's far half (drawn before figures) and near half (after; `JAW_OV` overlap) | gates, jaws, their metal mask |
 | `liftOccl`, `liftNearCut`, `liftMouthCut` | lift parts and the rider behind the faces in front of the shaft; what stands nearer in the column right of it | [lifts](elements/lifts.md) |
 | `doorClip` (`doorHead`) | the prince at the opening's head and jambs on the exit's stairs and coming out of the entry | [doors](elements/doors.md) |
-| `cpCut` | the water clock by the faces beside it on its row | [checkpoint](elements/checkpoint.md) |
+| `cpCut` | the sky clock by the faces beside it on its row | [checkpoint](elements/checkpoint.md) |
 | clip in the debris loop | a cracked slab falling into its shaft, behind the walls' faces | [cracked-slabs-and-sand-wells](elements/cracked-slabs-and-sand-wells.md) |
 
 Light is cut the same way: no beam, haze or footprint on a front face, a low ceiling's face or sand ([#sky-beams](#sky-beams)); no lamp
-shadow on a face ([#lamp-shadows](#lamp-shadows)); a mid-depth light (the water clock's glow) is not cut, being room light.
+shadow on a face ([#lamp-shadows](#lamp-shadows)); a mid-depth light (the sky clock's glow) is not cut, being room light.
 
 ## Torchlight's passes
 
@@ -224,7 +224,7 @@ Ambient: `lookOf(style).amb` times `glAmbK(style,lk)`, which is `GLAMBT[style]` 
 | `win` | each window in the sky beam's colour, r 84; forge and crypt windows lit from within, r 92 | yes | yes | yes | no |
 | `sky` | each opening's glow; the spill under an own-light window; Torchlight's bounce where a beam lands (dropped if `solidFront` stands between) | no | no | no | no |
 | `fill` | prince r 84 a 0.42, guards r 56 a 0.22, snakes r 34 a 0.25 | no | no | no | snakes (r < 50) |
-| `item` | flasks, the lit water clock (r 150) or unlit (r 38), a running gate timer's glint | yes | no | yes | ellipse |
+| `item` | flasks, the lit sky clock (r 150) or unlit (r 38), a running gate timer's glint | yes | no | yes | ellipse |
 | `door` | the exit door while open, r 120, swelling during the exit (`exitSwell`) | yes | yes | yes | no |
 | `fire` | a vent while it burns, r 110 | yes | yes | yes | ellipse |
 | `trap` | faint glints so the dark never hides a trap (spikes, plates, saws, lifts, darts, bars, pendulum, roof blocks, falling sand), the sun on the lit clock's arch | no | no | no | ellipse |
@@ -239,7 +239,7 @@ light and the dark's drain are detailed in [lamps-and-light](elements/lamps-and-
 `keyLight(x,y)` returns which side the lamps light a point from (`sx` -1..1, `dir` its sign), how much a lamp rather than the default
 carries it (`m`), a strength `k` and a colour. Every lamp in reach pulls by a smooth falloff over its steady radius, with a weak pull
 from the left; never the nearest lamp, never a flickering radius (round 20b). Both modes. Read by the HD figures' rim (`drawActor`), the
-granite portcullis' faces (`egSlab`, `uL`), the jaws, snakes, the water clock, `stoneGlints` and `graniteGlints`. Details:
+granite portcullis' faces (`egSlab`, `uL`), the jaws, snakes, the sky clock, `stoneGlints` and `graniteGlints`. Details:
 [lamps-and-light](elements/lamps-and-light.md#the-key-light).
 
 ### Effect mask

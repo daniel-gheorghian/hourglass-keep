@@ -62,7 +62,7 @@ So a dart passing him is drawn behind his figure.
 
 | Part | Look |
 |---|---|
-| Shooter, firing right (`f.dir 1`, runs heading left, built mirrored) | a carved beast's head in profile jutting `SPOUT_L` 12.5 px from the wall's right side face at the darts' height, a spout like a gargoyle's: the theme's carved-fitting stone `FIT_STONE[style]` (shared with the water clock's pedestal) in a vertical gradient, a sliver of its top going back into the wall, its own drop shadow on the wall (0.34 black, offset), mane and locks, lit brow and snout, open jaws with fangs |
+| Shooter, firing right (`f.dir 1`, runs heading left, built mirrored) | a carved beast's head in profile jutting `SPOUT_L` 12.5 px from the wall's right side face at the darts' height, a spout like a gargoyle's: the theme's carved-fitting stone `FIT_STONE[style]` (shared with the sky clock's pedestal) in a vertical gradient, a sliver of its top going back into the wall, its own drop shadow on the wall (0.34 black, offset), mane and locks, lit brow and snout, open jaws with fangs |
 | Ornament by `style` | dungeon an iron band and rivets; palace a gilt collar and carnelian inlay; tile a lapis glaze band, gold star and turquoise edge; forge a glowing seam and rivets (and the eye always faintly lit); crypt a turquoise glaze band (the first three in `HG_MAT[style]` colours) |
 | Wear | `wearLevel` at the head: 1, 2 or 4 chips off brow, snout or jaw; a crack from wear 2 (hash `mulberry32(hash2(...))`, no stream) |
 | Tell | the eye and jaws glow amber (`lighter`), a small glow at the mouth; the head shivers `0.45*tell` px |

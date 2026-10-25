@@ -2,7 +2,7 @@
 
 A gate is a slab (or, with `EGP.traps` off, a barred grille) that stands across the corridor in the middle of its cell and lets
 him through only while it is at least half up. A plate opens it (see [plates](plates.md)); it either stays open (latched) or runs on
-a timer shown by a water clock. Gates are laid from floor 3 on: in-line gates in runs and corridor fills, gate puzzles (side
+a timer shown by a sky clock. Gates are laid from floor 3 on: in-line gates in runs and corridor fills, gate puzzles (side
 passages, alcoves, slab puzzles, double gates), remote gates in the next turn, and the violet gate of a fork with a grating.
 Lift mouths are drawn with the same code and covered here as far as they are gates; the lifts themselves are in [lifts](lifts.md).
 
@@ -19,7 +19,7 @@ Lift mouths are drawn with the same code and covered here as far as they are gat
 Floor 5, seed 4405 (`__HK.genLevel(5,4405)`, The Halls of the West, granite): on row 12 a run heading left has a plate at column 41,
 plain floor 40-38, a closer at 37 and the gate at 36, with wall over the gate's cell (its lintel). The gate is timed: `dur` 1.9 s,
 `(m*TW+16+BW)/RUN + 0.2` for the closer (m = 4 tiles: 1.7 s) times a slack drawn between 1.15 and 1.03, rounded up to 0.1 s. He
-runs over the plate, jumps the closer from the run (the bot's `dashjump`) and is past the bars as the water clock in the roundel over
+runs over the plate, jumps the closer from the run (the bot's `dashjump`) and is past the bars as the sky clock in the roundel over
 the gate empties. Stepping on the closer slams the gate in 0.25 s.
 
 ## In play
@@ -37,7 +37,7 @@ the gate empties. Stepping on the closer slams the gate in 0.25 s.
 | Fewer timed side gates | after the build, 62% of timed `far` gates (not paired, slab or `fix`) become latched, by `hash2` | layout unchanged |
 | Hints | within 110 px of a shut `far` gate: `latch`, `sandgate`, `racegate`, `slabgate`, `double`, `loopgate` | |
 | Under a lintel | the wall over the gate's cell is a ceiling at his height: a jump whose full arc meets it is the low leap (`beamOverhead`) | the open-hall pass keeps the lintel over gates and blades |
-| HUD | the nearest running timed gate (finite `tm`, `dur > 0`, not held by a block in the last 0.2 s) shows a water clock and its seconds at the top centre (details in [plates](plates.md)) | |
+| HUD | the nearest running timed gate (finite `tm`, `dur > 0`, not held by a block in the last 0.2 s) shows a sky clock and its seconds at the top centre (details in [plates](plates.md)) | |
 | Rewind | `applySnap` restores `open`, `tm`, `slam` (feature fields) | |
 | Respawn at a checkpoint | latched plates pressed before it (`S.cpPlates` = `pressedPlates()`) reopen their gates (`tm` Infinity, `open` 1); timed ones start shut | `respawnplates.py` |
 | Continue (`S.resume`) | latched-open gates (`lg`) reopened by `applyResume` | |
@@ -78,7 +78,7 @@ debris, snakes, guards, the prince ... then the near halves of gates and jaws, t
 | Key light (`keyLight`) | `uL = sstep((0.35 - sx)/0.7)` cross-fades the faces (round 20b): light from the left lights the narrow face and its outer edge and shades the broad face; from the right the reverse. Always a crisp bright arris between the faces, a core-shadow band (4 px) on the broad face beside it, a dark far edge and contact line (round 16c). Its cast shadow falls across the floor along its foot (only where that side is floor) and down the back wall, length growing with how far it is down, strength `lw = 0.45 + 0.55 k` |
 | Top piece (round 14, 26a) | where the ceiling's block ends at the tile's right edge, the slab runs up along its own slant in front of that side face, under a dark slot, shaded at `rgba(6,4,10,.9)` as the ceiling's shade starts |
 | `EGP.traps` off: the iron gate | 5 bars (`GATE_G.NB`) with lit left and dark right edges and pointed feet, cross bars every 11 px along the slant in `metalPal('gate')` (the style's metal); the first cross bar in the pair's colour on a paired gate |
-| Timed gate | `gateRoundel`: a roundel cut in the wall over it (12 px up in dungeon and forge styles, else 16) holding the water clock (`drawGlass` -> `nutClock`), its recess glowing warm and pulsing while the clock runs. Not on slab gates |
+| Timed gate | `gateRoundel`: a roundel cut in the wall over it (12 px up in dungeon and forge styles, else 16) holding the sky clock (`drawGlass` -> `nutClock`), its recess glowing warm and pulsing while the clock runs. Not on slab gates |
 | Paired gate | `pairPlaque`: an enamelled lozenge in `PAIRC[pair]` (amber, teal, violet) over the gate, above the roundel when both |
 | Lift mouth (`liftMouth`, `sandMouth`) | `drawGate` with `{latch, dur 0, lg:1}`: with `EGP.traps` the same `egSlab` in the theme's own stone (`THEME_STONE`), standing wholly outside the shaft; bars with it off |
 

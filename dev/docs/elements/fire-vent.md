@@ -27,8 +27,8 @@ at the start of the stretch until a run would never be within 21 px of the vent 
 | Damage | `trapHit('fire')`: one life, `P.inv` 0.9 s, pushed back 12 px away from it and `landHurt` if on foot; card "Burned" | |
 | Burning time | a quarter of the period: 0.54 s on floors 13-16, 0.475 s from floor 25 (`2.4 - 0.5d`, `d = min(1,(n-1)/24)`) | |
 | What is drawn burning | 0.70 to 0.03 (`ventState`): pilot 0.70-0.75, whoomp 0.75-0.79, roar to 0.96, die-down to 1.00, tail to 0.03 | the look warns before it hurts; "what hurts is lit through the whole window" |
-| The bot's window | `danger`: phase > 0.7 or < 0.03, margin 21 px (`safeRun`) | wider than the hit, so the bot never cuts it fine |
-| Layout | 5 or 6 plain tiles, vents on the 2nd (and 4th); a side passage: 7 tiles | |
+| The bot's window | `danger`: phase > 0.7 or < 0.03, margin 21 px (`safeRun`): wider than the hit on both counts | |
+| Layout | 5 or 6 plain tiles, vents on the 2nd (and 4th); in a side passage a 7-tile part, vents on its 3rd (and 5th) | |
 | Sound | `fire` at the whoomp (phase crossing 0.75), while its tile is in view | |
 | Hint | `HINTS.vent` on its tile: "Fire vents. Watch them flare, then cross between bursts." | |
 | Rewind | a function of the clock | |
@@ -65,7 +65,7 @@ render        light pass (Classic: lightPass, bloomPass; Torchlight: grade only)
 (With `GFX().light` off, `drawEmissive` runs at the end of `drawDynamic` instead.)
 
 The grate (`drawVentBase`), set into the middle of the floor's top face in its perspective (`onFloor`, depth 0.08 to 0.92) so it reads as
-a hole in the walkway: a dark frame, a glow down the shaft that warms from 0.6 of the cycle (orange, up to 0.88 alpha) and cools after 0.03
+a hole in the walkway: a dark frame, a glow down the shaft that warms from 0.6 of the cycle (orange, up to 0.88 alpha) and cools over 0
 to 0.12, five bars running front to back, a lit front lip, and three grey smoke puffs rising while it warms.
 
 ```
@@ -80,8 +80,8 @@ The flame (`drawVentFlame`, only in the drawn window): a warm glow sprite (`ligh
 (`VJETS` `[x, depth, height]`: x -6, -2, 2, 6 px in a back row at depth 0.7, drawn first, shorter and fainter, and a front row at 0.3),
 each from the same 16-frame flame sheet on its own frame, neighbours flickering in opposite phase, the cooled red row cross-faded in as
 it dies; at the whoomp the jets catch from the middle outward. Above about 45% of their height (`m = sst(.45,.85,H)`) they merge into one
-sheet drawn from the whole grate (two broad jets between the rows), so what burns is as wide as what hurts. Then licks over 0.7 of the
-height, ignition sparks and embers. `S.set.calm`: a third of the flicker, half the frame rate, no flash or sparks. The profiler's
+sheet drawn from the whole grate (two broad jets between the rows), so what burns is as wide as what hurts. Then licks while the flame stands over
+0.7 of its height, ignition sparks and embers. `S.set.calm`: a third of the flicker, half the frame rate, no flash or sparks. The profiler's
 `PF.off.flame` skips it. Same sprites in Classic and Torchlight; no per-style or per-theme variant, no `EGP` variant.
 
 ## Light, shadows and effects
@@ -95,7 +95,7 @@ height, ignition sparks and embers. `S.set.calm`: a third of the flicker, half t
 | Sky beams | not a blocker; the grate is a flat thing drawn live, marked back to 254 by `fpMark`, so a footprint lands on it (round 35b) |
 | Mist / wall looks | none |
 | Floor looks (`floorFx`) | its tile is `FT_FLAT` (128 in `FLOOR_FT`): the embers (Meroë) and the wet sheen keep off the whole tile; Classic's embers keep off any tile with a feature |
-| Heat (effect mask g) | Torchlight only: a 60 x 110 px sprite over the vent, rising from 0.70 (full by 0.75), half strength fading out over 0 to 0.12; a third in calm. Forge torches shimmer too (`lfx().heat`, forge 0.5) |
+| Heat (effect mask g) | Torchlight only: a 60 x 110 px sprite over the vent, rising from 0.70 (full by 0.75), half strength fading out over 0 to 0.12; a third in calm. Every lamp shimmers a little too (`lfx().heat`, by style forge 0.5, tile 0, else 0.25) |
 | The dark (b) | none |
 | Bloom, grade, vignette | its bloom entry (radius 30) is drawn by Classic's `bloomPass` only; Torchlight's bloom is the composite's bright pass over the whole frame |
 | Classic equivalents | the flame's own glow sprites; the light in the 2D light pass; `bloomPass` |
