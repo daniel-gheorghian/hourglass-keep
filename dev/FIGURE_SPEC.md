@@ -23,13 +23,13 @@ ANSUR's (round 23c: the chin 2 px nearer the joint, see below). Measured on the 
 
 | Measure | Value | Source |
 |---|---|---|
-| standing height, sole's lowest pixel to the hair | 52.4 px (v69 53.0); 50.5 since round 23c | the crown never above v69's |
+| standing height, sole's lowest pixel to the hair | 52.4 px (v69 53.0); 50.5 in round 23c; **51.5 since round 23d** | the crown never above v69's |
 | head, chin to crown | 7.98 px: **6.57 heads** | the decision below |
 | scale below the chin | 3.59 cm a px | ANSUR stature 1764.5 mm less a 228 mm head |
 | hip joint over the floor | 25.2 px (0.48 of the height) | ANSUR trochanter 906 mm |
 | thigh, shank to the floor (LEN.th, sh) | 11.4, 13.8 px | CMU femur 41.9 cm, tibia 43.7 cm, + ANSUR ankle 70 mm |
 | hip joint to shoulder joint (LEN.to) | 14.0 px | CMU rest pose, 51.4 cm |
-| shoulder joint to chin | 4.0 px; **2.0 px since round 23c** (owner) | ANSUR: acromion 1432.5 mm, the joint 40 mm under it, less `NECK_CUT` 2.0 |
+| shoulder joint to chin | 4.0 px; 2.0 px in round 23c; **3.0 px since round 23d** (owner; `LEN.nk` 3.518) | ANSUR: acromion 1432.5 mm, the joint 40 mm under it, less `NECK_CUT` 1.0 (2.0 in 23c) |
 | upper arm, forearm to the palm (LEN.ua, fa) | 8.2, 7.7 px | CMU humerus 30.2 cm, radius 20.5 cm + 0.4 of ANSUR's hand |
 | head radius (LEN.hd) | 3.37 px | the drawn head is 2.40 radii chin to crown |
 | chest / waist / seat depth | 6.5 / 5.4 / 5.8 px | ANSUR chest (all), waist and buttock depth (lean) |

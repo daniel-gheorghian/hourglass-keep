@@ -65,7 +65,8 @@ service worker's cache to `hourglass-keep-vN`, which is what makes installed cop
 | `python3 run2.py 1 27 2 fight` | the same, fighting every guard | all passed |
 | `python3 rendersmoke.py 1 27 both` | every floor renders without errors, played once with the sampled frames alternating between Classic and Torchlight (shader live, WebGL frame not blank); `torch` or no argument: one mode only | no errors |
 | `python3 forkscan.py`, `forktest.py` | forks are built (kinds per floor band); every fork's shortcut branch is played to the door: kind 1 fighting its guard, kinds 2 and 4 stepping off the broken lip (exactly one life lost), kind 3 through its traps; a grating is solid, its gate open and its flask in place | all ok |
-| `python3 metrics40.py` | route length, trap count and trap spacing against the last release (edit the two files at its top) | no floor shorter, padding kept |
+| `python3 metrics40.py [vNN]` | route length, trap count and trap spacing against a release's source (`hk_vNN_release.html`; default v39, the trap density rule's reference) | no floor shorter, padding kept |
+| `guardscan.py` | the guards' and snakes' budgets and posts (Fighters, below) | `guardscan OK` |
 | `rewindrooms.py` | after a rewind over a hole knocked in the floor and new rubble, the room's picture equals one drawn from scratch (a rewind redraws only the rooms that changed) | all ok |
 | `respawnplates.py`, `puzzlescan.py`, `slabresume.py` | plates stay pressed after a respawn; the puzzle menu's pairs are built; a slab-jammed plate is restored | all ok |
 | `primtest.py`, `hdtest.py`, `vertscan.py`, `lifttest.py` | every chamber move works for the bot; the chamber's damaging drop (hgap) costs exactly one life where it is placed; counts of vertical moves; both kinds of lift ride | all ok |
@@ -73,7 +74,7 @@ service worker's cache to `hourglass-keep-vN`, which is what makes installed cop
 | `orphanscan.py`, `mazescan.py` | no gate side passage is left without its plate (floors 1 to 27, 20 seeds); maze floors hold at least 1.5 times the gate puzzles of ordinary floors of the band, longway floors always a fork | 0 orphans, ratio >= 1.5, forks >= 1 |
 | `featurescan.py [file]`, `featbot.py` | a floor's featured families hold their share of their category (mean and minimum), flags come about one floor in nine, floors differ more than before (sameness); the bot plays floors forced to every flag and family (`window.__FEAT`) | shares near or over 40%, 0 damage |
 | `wellcorr.py lo hi [seeds]` | no sand well stands in a corridor: every well's pit is walled on both sides down to its floor (round 30) | `wellcorr: ok` |
-| `cpscan.py lo hi [seeds]` | no pixel of the water clock (the checkpoint) over a wall's front face, a step or a low ceiling beside it, both modes (round 37c) | `cpscan: ok` |
+| `cpscan.py lo hi [seeds]` | no pixel of the sky clock (the checkpoint) over a wall's front face, a step or a low ceiling beside it, both modes (round 37c) | `cpscan: ok` |
 
 Speed: `?bench` in the game's URL (on the phone too) makes the bot (`bot.js`, fetched for the run; `botGen` steps it from the
 game's own frame loop) play six fixed floors live, 20 s each, and shows a table of frame times with a Copy button; the save is
@@ -87,7 +88,7 @@ same on this Mac's GPU (Chrome's costs differ from Safari's: compare Mac runs wi
 The pause menu's Tools… screen (v63) has buttons that reload the page with `?bench`, `?bench=classic`, `?bench=auto` or `?prof`;
 the bench's table and the profiler each have a button back to the game. Its Show FPS toggle (v64, `S.set.fps`, off by default) puts a small
 readout under the pause button: fps and frame time from glTime's half-second average, and the Torchlight scale when under 100%.
-Lighting mode (v63, owner): only the player switches between Torchlight and Classic (Graphics). Slow frames only scale Torchlight's
+Lighting mode (v63, owner): only the player switches between Torchlight and Classic (Graphics; Torchlight also needs Graphics > Lighting on, `shaderOn()`). Slow frames only scale Torchlight's
 scene down (`GLP.rs` 1, .75, .5), and only when two 2 s windows in a row average over 38 ms (v65, owner; was 18.5); they never switch to Classic. It steps back up one level after three 2 s windows with no
 dropped frame (`UP_MS` 17.2 ms); a step up that turns slow again within 10 s doubles the windows the next try needs (up to 30), reset each floor. A missing or lost WebGL context still falls back to Classic (`glKill`),
 as the screen would otherwise be black; `glauto.py` checks this, and that windows between 18.5 and 38 ms keep the full scale (round 16d).
@@ -104,11 +105,13 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
 - A drop that costs health must be worth it and must look like one (owner, 2026-10-14). It has its own look, made from the tile
   type (`hurtdrop`: a ragged, broken lip with nothing to grip, a darker shaft, a pile of rubble on the floor it lands on), never
   like a spiked pit or a plain gap. The generator keeps one only if it skips at least one landing with its obstacle or guard and
-  saves 25% of the chamber's (or the fork's) route by `estPath()` and at least 10 tiles of walking; otherwise nothing is placed.
+  saves 25% of the chamber's route by `estPath()` (a fork's long way by `forkWorth`: its tiles x 0.34 s + 4 s) and at least 10 tiles of
+  walking; otherwise nothing is placed.
   Route length is counted along the safe way and the bot always takes the safe way; `forktest.py` and `hdtest.py` take the
   damaging one.
 - A change must not make floors shorter or remove the plain floor left after each trap (`breathe()`).
-  Check with `metrics39.py` whenever the generator changes.
+  Check with `metrics40.py` whenever the generator changes (its argument is the baseline release, default v39, the standing reference
+  of the trap density rule G1; `metrics39.py` is the old v38/v39 comparison).
 - Changes to feel or level design are usually asked for with research first: how the Prince of Persia
   games (and other games) handled it. Report what a change was based on, with sources.
 
@@ -124,18 +127,20 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   lays one obstacle and plain tiles on each landing (`landingObstacle`, own stream `vrng`), and falls back to the old `KITS`.
   New moves: `collapse` (loose ledge drops him a storey), `jumpdown`, `jumpup` (bot action `jgrab`: Grab held in the air), and
   `hgap`, the damaging shortcut (the bot jumps it; `hdtest.py` drops in). Checks: `vertscan.py`, `primtest.py`, `hdtest.py`.
-- Forks (floor 6 on): a switchback gets one of four forks, drawn from its own stream (`frng`): 1 a guard on the short way, traps on
+- Forks (floor 6 on): a switchback gets one of four forks (which switchbacks get one: `lrng`, `hash2(seed,6151)`; the kind and its
+  build: its own stream `frng`): 1 a guard on the short way, traps on
   the long one (PoP1 level 2); 2 a damaging descent beside the long safe way (PoP1 levels 5 and 7); 3 a short dense way against
   a long easy one (Unexplored); 4 a one-way damaging hole, one in five with a grating and a flask behind a violet gate for
   whoever goes the long way. The short way is a chamber of the turns' own moves cut under the upper run (`forkChamber`); its
   bot actions are taken out of `L.path` and kept in `L.forks[i].sc`. Floor length is counted along the long way.
-- Oatmeal spice (`featFor(n,seed)`, own stream, floor 3 on; recorded as `L.feature`): each floor features one family of vertical
+- Oatmeal spice (`featFor(n,seed)`, own stream; the move family from floor 3, the puzzle and obstacle families from floor 4; recorded as `L.feature`): each floor features one family of vertical
   moves (plain steps, collapse, jumps, banners and kick shafts, lifts), one of puzzles (slab, side passage, alcove, timed remote
   plate, double) and one landing obstacle; the featured family is weighed up until it holds about half of its menu (`randKits`,
   `puzzlePick`, `remoteRoll`, `OB()`), its kits are tried first, and the extra obstacle weight comes out of plain floor so trap
   counts do not rise. A floor never repeats the families of the floor before it (the walk runs on the game's seed). Rare flags
   (one floor in nine, from floor 4, never two in a row): tower (lifts everywhere), rotten (collapses and loose floors), barracks
-  (many more guards, fewer other traps), longway (forks are all kind 3 or 4, mostly with a grating), maze (gate puzzles chained
+  (many more guards, fewer other traps), longway (forks are kind 4 on floors 6-9, half kind 3 and half kind 4 from floor 10, a grating on 7 in 10 kind-4 forks; a kind that fits
+  no kit falls back through `lp.order` to kinds 1 or 2), maze (gate puzzles chained
   back to back). `window.__FEAT={flag,move,puzzle,obstacle}` forces them in tests; the card between floors names a flag.
 - The gold flask's cue (round 17, owner): where the climb or drop to a secret passage's gold flask (`L.secret`; or an alcove's gold
   flask) starts, a few small gold four-point stars twinkle on the lip's top face along its edge in depth (`secretCues`, found once per
@@ -160,9 +165,10 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   the jgrab jump only until `jgrab` is learned. Not on gap jumps, lifts, banners, hurtdrops or secrets (clutter, or against their look).
   A new place is one entry in `jetPlaces` and one call. Pictures: `egyptr18.py`; videos before/after `egyptr18c.py`.
 - Lamps keep clear (round 19, owner: "sometimes lamps or torches are placed just like that"): a lamp burns only where both cells beside
-  it are plain floor (no wall face or step, ledge, gate, banner, bar, pendulum, lift or lift plate), no lift shaft is beside it and no water
+  it are plain floor (no wall face or step, ledge, gate, banner, bar, pendulum, lift or lift plate), no lift shaft is beside it and no sky
   clock or door near (`lampClear`); `lampsClear` (first in `settleLights`, no generator stream) moves one that is not along its row to the
-  nearest such tile within 6 (3 from another lamp), else puts it out; replacements for fallen lamps use the same rule. `lampscan.py`
+  nearest such tile within 6 (3 from another lamp), else removes it from `L.torches` (no scar, no fallen lamp; a `broken` lamp is
+  `settleLights`' own case, on worn wall); replacements for fallen lamps use the same rule. `lampscan.py`
   (floors 1-48, 3 seeds) must print `ok`: 0 of about 9,600 lamps (2,165 before).
 - Behind a wall's face (hanging from, jumping up to, climbing onto or down from a ledge on its near side) he is hidden but for his
   hands, as PoP1 does (SDLPoP `draw_tile_fore`, `clip_char`): no ghost through the wall (round 19, owner). Torchlight's figure shadow
@@ -430,7 +436,8 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   `glMask` carves each jaw out of the shadow by its outline as drawn this frame (`JAWP`, now recorded in both modes, inside the plane's visible
   part: the wall seen between open jaws keeps the shadow), and `glRelJaws` rubs the relief back over each jaw's plate to half way down its
   teeth (as beamBlockers takes them). The look (`jawPath`, `jawGrad`): bronze in the Egyptian looks (`METAL_EG`, `metalOf`: `metalPal` and the
-  metal mask's `msKind` read it; with `EGP.traps` off each style's v61 steel or iron), opaque; across the face a dark near rim, the body, a crisp
+  metal mask's `msKind` read it; `METAL_EG` holds only the jaws, so saws and the pendulum stay steel or iron; with `EGP.traps` off the jaws'
+  metal is each style's v61 steel or iron, their drawing still this one), opaque; across the face a dark near rim, the body, a crisp
   reflection band (`JAWG`) and the far edge catching the light; faint brushing along the plate; a riveted spine `JAW_SP` back from the teeth
   that slides into the slot with the blade; verdigris and tarnish toward the root (hashes of the cell); the honed bevel along the teeth (a
   dark line where it meets the face, the edge bright; Classic adds a glint where Torchlight's metal shader lights it); the root in the slot's
@@ -438,15 +445,15 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   near half laps `JAW_OV` over the far one (`planeClip`'s `ov`), so no wall shows through their seam. Look only: silhouette, hit box, timing,
   beamBlockers, layouts and the bot unchanged. Pictures `egyptr37b.py` (r37b_jaws.png: v81 | 37b, the owner's case, shut, closing and open in
   six themes and hours and with EGP.traps off, both modes, 3x; r37b_jaws.gif: a slice cycle in Torchlight).
-- The checkpoint keeps clear of the walls (round 37c, owner after v81: "The timer checkpoint over the front wall"; iPhone screenshot: the water
+- The checkpoint keeps clear of the walls (round 37c, owner after v81: "The timer checkpoint over the front wall"; iPhone screenshot: the sky
   clock at the end of a run, its right half over the brick front face of the wall block beside it). The clock stands at mid-depth in its cell
   (`cp.x`, the cell's middle), about 32 px wide at s 1.9; a wall's front face (a step's, a low ceiling's) stands HX nearer and HX to the left of its
   cell, so with a wall in the next cell Nut's feet, the arch, the pedestal's rubble and the halo lay up to 7 px over that face, and with one in the
   cell before it the lit halo (30 px) spilled 6 px onto that face. Now it is drawn at `cpX(cp)`: moved along its cell until its foot is `CP_GAP`
   short of the face (`CP_HL`/`CP_HR`, its reach either side; as wallPress presses a figure against a face; 7.8 px for a wall on the right, never
   out of its cell), and everything it draws is cut by the faces beside it on its row (`cpCut`, as figures and lifts are cut: a light at mid-depth
-  cannot reach a face in front of it). Classic's wide glow (the room light it gives, as a lamp's sprite) and Torchlight's light map are room light,
-  not cut; both take the drawn x, as do the sparks when it lights. Look only: the trigger (within 14 px of `cp.x`), the respawn spot, the hint and
+  cannot reach a face in front of it). Classic's wide glow (the room light it gives, as a lamp's sprite; drawn only with Graphics > Lighting off, else Classic's room light is
+  `lightPass` from the same `gatherLights`) and Torchlight's light map are room light, not cut; both take the drawn x, as do the sparks when it lights. Look only: the trigger (within 14 px of `cp.x`), the respawn spot, the hint and
   every timing keep `cp.x`; layouts identical (genLevel floors 1-48 x 3 seeds against v81), the bot unchanged. `CP_DBG.off` draws only the room
   glow, `CP_DBG.old` v81's placement and no cut. `cpscan.py [file] [lo hi] [seeds] [torch|classic|both] [old]` (in suite.py, four jobs) frames
   every checkpoint with a face beside it on floors 1-48 (seeds 1-3; 88 of 2,136: 40 with the wall on the right, 48 on the left), lit, with and
@@ -488,7 +495,7 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   relief, beams or mist: those read a floor's tiles); Classic a glow at the sun and the vignette. Sound: `Snd.wind(k)` (looped noise,
   a rising bandpass), `sandstep`/`sandrun`. The next floor's rooms are built meanwhile (`roomWork`). Rounds 36b-36d: oasis (built in 36b), garden (36c),
   wadi and highland (36d) as `CROSS_SETS` entries with their own kinds (pools, palms near, pergolas, scree, terraces); animals only (geese,
-  ibis, fish, a far jackal), no people. `crossscan.py` (in suite.py; every theme's crossing in both modes: starts and ends, the pad
+  a heron, ducks, ibis, fish, ravens, a flock), no people. `crossscan.py` (in suite.py; every theme's crossing in both modes: starts and ends, the pad
   needed, skip, save/S/levelTime/rewind unchanged, never off/Continue/Restart/respawn/ordinary floor/bot/`?cross=0`, render ms against
   `HK_CROSS_MS` and a play frame) must print `crossscan: ok`. Pictures `egyptr36.py` (r36a_dunes.png, r36a_all.png, r36a_cross.gif).
   Round 36b (owner's review of r36a_dunes.png: "the near dune is a straight-edged triangular wedge that reads as a PYRAMID"; the ground
@@ -513,7 +520,7 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   off as he passes `CROSS_BEAT`: a run over the surface with splashes, then climbing away ahead of him, the white forewing showing; before,
   they drift and bob with rings round them (no crouch: he never loses control). Sound: `firmstep`/`firmrun`, `frond`, `blip` (while the
   water is in view), `geese` (honks and wingbeats). Look only, hashes of the floor's seed; layouts and the bot unchanged. crossscan:
-  `quick` (Classic, one theme per setting, about 20 s, in `suite.py quick`), `classic` and `torch` (every theme, the default and release
+  `quick` (Classic, one theme per setting, about 2 min, in `suite.py quick`), `classic` and `torch` (every theme, the default and release
   tiers run both as two jobs, Torchlight among the heavy ones); it also checks each setting's layer kinds (`SETX`) and that every layer is
   baked within the fade from white, and prints the longest bake frame (script ms a frame, 36a | 36b measured alike: Classic median
   0.7 | 0.8, p95 2.6 | 2.4; Torchlight median 1.6 | 1.8; the longest bake frame 20 ms Classic, 28 ms Torchlight, under the fade). Pictures `egyptr36.py r36b` (r36b_dunes.png before | after,
@@ -647,15 +654,20 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   stream `gbrng`, seed constant 8317). Guards per floor: floor 1: 1, floor 2: 0, floors 3-5: 2, 6-11: 3-4, 12-19: 4-5, 20 on: 5-6; the
   budget counts the guards, the reinforcements they call, the ambush at a secret passage's flask and the captain. A barracks floor
   doubles it (cap 10). Guards stand only at meaningful spots: before the exit (the captain on every fifth floor from 5, with a
-  reinforcement from floor 6), just past a solved gate or gate puzzle (`gateDue`), in a fork's short way (kind 1), at a secret passage's
-  flask (ambush); a barracks floor also posts garrison guards after other traps. Never on a landing, in a corridor fill or in a side
-  passage. Snakes (floor 5 on: 1, 6-11: 1-2, 12-19: 2-3, 20 on: 3-4) only in tunnels, spaced along the route. `guardscan.py` checks it;
+  reinforcement from floor 6: a veteran, `TIERS[2]`, with the captain's hit points), just past a solved gate or gate puzzle (`gateDue`), in a fork's short way (kind 1), at a secret passage's
+  flask (ambush); a barracks floor also posts garrison guards after other traps. Never on a turn chamber's landing (the kind-1 fork's
+  guard stands on a landing of the short way: `forkGuard`), in a corridor fill or in a side passage. Snakes (floor 5 on: 1, 6-11: 1-2,
+  12-19: 2-3, 20 on: 3-4) only in tunnels (the route's and a side passage's corridor fill's), spaced along the route; a bite costs a heart
+  even when he is crouched (crouching only skips the `hurt` state). `guardscan.py` checks it;
   `metrics40.py` and `featurescan.py` no longer count guards or skeletons as traps and print them as their own columns.
 - Trap density (unit G1): traps per floor are held to about +15% over v39 (floor 12 about 77, floor 27 about 107), not by shortening
   anything. `LAND_PLAIN`, `CH_PLAIN` (a chamber's landings left plain), `FILL_PLAIN` (a stretch of side-passage corridor left plain, in
   `fillCorridor`) and `FLAT_K` (weight of plain floor in the run's menu) set it; check with `metrics40.py`. A remote plate (P1, P5) whose gate
-  finds no room in the turn makes `buildLevel` lay the floor out again, so no dead-end side room is left behind. Timed gates (P4 too)
-  are `estPath()` times `timerK()`; `estPath` times a careful pace (`WALK_T` and the action table, measured against the bot) so that the tightest factor 0.84 is still beatable. A longway floor always holds a fork (else it is laid out again, and the last resort drops the flag).
+  finds no room in the turn makes `buildLevel` lay the floor out again, so no dead-end side room is left behind. Timers are sized three
+  ways: P4's race by `estPath(acts,cur,true)`, the careful pace (0.55 s a column, a walk +0.4 s, the action table's careful times, measured
+  against the bot) times `timerK()` (0.84 tight to 1.08) + 0.3 s, so the tightest is still beatable; P1 detours, double gates and G2
+  gates by `estPath` at the plain pace (0.34 s a column) times `timerK()` + 0.3 s; in-line gates (`gate()`) by the run, `(m*TW+16+BW)/RUN`
+  + 0.2 s over a closer, -0.1 over a pit, +0.05 on plain floor, times a slack from 1.15 down to 1.03. There is no `WALK_T`. A longway floor always holds a fork (else it is laid out again, and the last resort drops the flag).
 - Torchlight's scene is drawn by WebGL2 (unit WGL, v62; history in `dev/WEBGL_PLAN.md`, how to work on it in `dev/WEBGL_LESSONS.md`).
   Until v60 it was drawn in 2D and copied into WebGL every frame (Safari waits for the 2D canvas and reads it back: WebKit bug
   294602). Now the same drawing functions draw through `G2D`, a recording Canvas2D look-alike (`GLS.F`): paths flattened in screen
@@ -794,7 +806,7 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   factors were 3-10 times too large (el-Qurn at 0.05: a 37 m hill 107 m off; palms at 0.3: 9 m shrubs 13 m off). Now: sky, stars, moon, sun 0;
   clouds 0.002 (+ drift); far land 0.004-0.012; monuments 0.021-0.11; walls, huts, mounds 0.02-0.13; palms and trees 0.12-0.155; a near band
   (`near`, `v` stone/scrub/reeds: blocks, drums, piers, halfa, papyrus; 1-4 m things at 17 m) at 0.25, the nearest anything in the view may be, in
-  the ten open looks; a far ridge (`farridge`, `haze`: mixed into the sky's horizon stop, `bgHaze`) at 0.002 where the farthest land was near
+  nine open looks (not `wells`); a far ridge (`farridge`, `haze`: mixed into the sky's horizon stop, `bgHaze`) at 0.002 where the farthest land was near
   (meroe, osiris, deffufa, napata, hawara); interiors keep their hall's depths, ropes 0.25. A new layer takes f = h/(s H) from what it shows, kept
   in order far to near. Outlines repeat in whole periods over the strip (`BGK`; random walks closed by `bgClosed`; rows in whole steps) and the
   strip's copies join on whole target pixels (`sn` in paintBackdrop): no seams. Distance blur keys on log depth (`bgBlurR`). The vertical stays
@@ -823,7 +835,7 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   (`glRelSlab`: the back wall's courses and friezes were embossed on them); `openscan.py` checks windows, gates and lift mouths for
   wall art over the opening (floors 1 to 48, both modes; `EGP.noover` leaves out the hangings and lamp scars drawn after windows).
 - A dart shooter firing left sits on a wall's hidden left face: no head is drawn and its darts come from behind the front face.
-- Lifts (v60, owner): no wall plant or kick inside a lift's shaft (`inLiftShaft` in `wallTouch`; `liftkick.py`). Lift parts are cut
+- Lifts (v60, owner): no wall plant or kick inside a lift's shaft (`inLiftShaft` in `wallTouch`, from v59; `liftkick.py`). Lift parts are cut
   out behind the walls' front faces in front of them (`liftOccl`), the counterweight runs in the back wall behind the platform, and
   they follow the stonework's wear (`liftWear`). Paternoster slabs and a counterweight platform stopped mid-shaft are solid to him in
   the air (`liftAir`); a slab coming down on him at the foot steps him aside, never hurts. A ride held on Down ends standing (`P.liftHold`).
@@ -856,10 +868,10 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   `aoFloor` or Classic's embers) but a shallow pit `LP_D` 5 px deep, the platform's own thickness: the shaft's back wall going on down into it,
   the end of the floor (or the wall) beside it as its left face with a lit top arris, a dark stone floor with its front edge on the front plane
   in the lips' shade; resting at the foot, the platform's top and lip are exactly a floor tile's (`SURF(rB)`, lip 5 px), and Torchlight's
-  relief is rubbed back over the sand slab at rest there as over the platform (`glRelLifts`). The sand goes on down into the pit (`sandCut`,
+  relief is rubbed back over the sand slab at rest there as over the platform (the platform by `glRelLifts`, the sand lift by its own `glRelBox` calls). The sand goes on down into the pit (`sandCut`,
   `sandSegs`, its relief box) and the outlet sits on the pit's floor. Look only: the foot cell stays FLOOR in play, and nobody stands on it
   while the pit shows: a counterweight lift's bottom mouth is shut while the platform is away, he rides inside the shaft in state `lift` and
-  leaves it only at an end, plates are pressed only by him, and the far side of the foot is wall in 714 of 716 lifts (floors 1-48, 3 seeds);
+  leaves it only at an end, plates are pressed only by him, a movable block or a falling slab (`updateBlocks`, `jamAt`; none reaches a lift's foot), and the far side of the foot is wall in 714 of 716 lifts (floors 1-48, 3 seeds);
   the 2 whose far side opens on a drop (floor 37 seed 60685, floor 44 seed 53683: he could climb onto the foot from the storey below) keep
   their floor tile. A sand lift's foot is held by its mouth slabs (`f.ms`) until its slab has come down for good. The paternoster's foot
   keeps its two tiles: its slabs never rest there and he walks into its foot and lands on it (`chainGround`, lifttest (c)), so a pit there
@@ -891,28 +903,31 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   warm flash; flakes settle as ash. A jackal howls far off as it wakes (`howl`). Fair as before (death `P.x < wx+4`): `stormfair.py` checks
   the rip on every storm row without the jackal and eyes (`stormProbe(torch, look)`), and with them on his own row. Look only: speed,
   rows, kill line and bot unchanged. Pictures `egyptr29.py`.
-- Themes (branch egypt, owner): twelve themes of Egypt, Kush and the Sahara, four floors each (`THEMES`, `themeOf`), turning every 48
-  floors; time of day and wear still turn every 20 (`progOf`). A theme has a drawing `style` (dungeon, palace, tile, forge, crypt: the
+- Themes (branch egypt, owner): twelve themes of Egypt, Kush and the Sahara, four floors each (`THEMES`, `themeOf`; the order repeats every 180
+  floors, below); time of day and wear still turn every 20 (`progOf`). A theme has a drawing `style` (dungeon, palace, tile, forge, crypt: the
   style-keyed tables) and a `look` (its backdrop `BGART`, hangings `TAP`, Torchlight light `lk`, effects `LFX`). The generator never
-  reads the theme: it builds by `L.gstyle`, the old five-theme turn (`GEN_STYLE`), so floors stay as they were. Arches, doors and
-  windows are post and lintel (the dungeon style's vaults stay round). No churches, crosses or the Ark, no living peoples as enemies
+  reads the theme: it builds by `L.gstyle`, the old five-theme turn (`GEN_STYLE`), so floors stay as they were. Arches and doors
+  are post and lintel (the dungeon style's vaults stay round); windows are too in the palace and tile styles (the dungeon's is a slit, the
+  forge's a round hole, the crypt's a star). A door's head is a flat lintel block (a winged sun disc over palace, tile and crypt doors,
+  a torus frame on palace and tile); the cavetto cornice is the arches' (`drawArch`). No churches, crosses or the Ark, no living peoples as enemies
   or decoration. Pictures and sources: `egyptshot.py`, `egyptfx.py`, `egyptpage.py` (egypt_themes.html).
-  Built in (owner, round 4): the themes' lamps (`drawLampEg`) and the re-skinned traps are on by default: granite portcullis
-  (`egSlab`; lift gates keep their bars; no metal mask; modelled by the key light: lit narrow face, a crisp arris, a core-shadow band and
-  dark far edge on the broad face, a cast shadow on floor and wall, raised in round 16c so the edge reads in every theme), sliding roof block with sand (`egStone`, `egBlock`), sand floor, bronze-
+  Built in (owner, round 3): the themes' lamps (`drawLampEg`) and the re-skinned traps are on by default: granite portcullis
+  (`egSlab`; the lift mouths are `egSlab`s too, in the theme's own stone `THEME_STONE`, bars only with `EGP.traps` off; no metal mask; modelled by the key light: lit narrow face, a crisp arris, a core-shadow band and
+  dark far edge on the broad face, a cast shadow on floor and wall, raised in round 16c so the edge reads in every theme), sliding roof block with sand (`egRoofSlot`, `egRoofHang`, `egRoofFall`, `egRoofLying`, `roofStone`), sand floor, bronze-
   tipped stakes (the chase was a granite plug from round 4 to v75; round 29 made it the dark, below).
   Look only: hit boxes, timing, generator and bot unchanged. `EGP={lamps,traps}` turns them off for debugging (metaltest's
-  gate scene tests the iron gate that way). The water clock
-  (the Karnak clepsydra) replaces the hourglass as look and words: the checkpoint (`drawHourglass`), the HUD's measures and gate
+  gate scene tests the iron gate that way). Nut's sky clock
+  (`nutClock`, round 8; round 4's Karnak clepsydra and round 7's barque clock, `barqueClock`, kept for pictures, were rejected) replaces
+  the hourglass as look and words ("sky clock", "hours"): the checkpoint (`drawHourglass`), the HUD's measures and gate
   timers (`drawGlass`), the rewind's grade and words; `S.sands` and every timing are unchanged. Theme order: `themeOf(n)` takes the
   block's generator style (`GEN_STYLE[block%5]`) and picks the theme by light and 60-floor turn from `SCHED` (repeats every 180
   floors), so a floor's theme always has the style it is built by; `egyptaudit.py` keeps a copy of `SCHED`. Title
-  Dawnward; fonts Rokkitt (display, HUD numbers) and Jost (text). Not renamed: the cache key `hourglass-keep-vN`, the save key,
+  Dawnward; fonts Rokkitt (display: FLOOR, the gate timer, the floor's banner) and Jost (text, the floor's time). Not renamed: the cache key `hourglass-keep-vN`, the save key,
   the repo and its URLs.
   Round 16a (owner): a fallen roof block (10 px high) is a low obstacle he steps over with no key: it no longer stops him in
   `clampMove` (guards still keep to their side) and `blockStep` lifts his drawing onto it in `updateLook`; the bot runs over it
   (`runover`). A cracked slab (`loose`) has two looks chosen by `looseWell(o)`: over a pit walled in on both sides it sits on a sand
-  well (`drawWellSand`: the level falls at a steady `WELL_V` 150 px/s, Beverloo; a funnel crater; the slab sags and folds in two,
+  well (round 16a's `drawWellSand`, since round 21b `drawWellGroup`: the level falls at a steady `WELL_V` 150 px/s, Beverloo; a funnel crater; the slab sags and folds in two,
   `slabHalves`), anything open beside the space under it is a corridor (grit, `slabChunks` in four pieces, `dustCloud` at the hole
   and the landing cloud `DUSTC`). Play is unchanged for both (0.5 s, `DROP_G`). The sand lift (`sandLiftSeg`, a lift with `f.sand`):
   a `banner3`/`banner4` move is built as one about 37% of the time (`sandOr`, a hash: no random stream, so layouts are identical;
@@ -929,5 +944,5 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   route takes on the foot storey after the ride whose full arc meets them (beamOverhead's test) would be the low leap and fall short, so that
   move is the banner slide too (13 more of 344 on floors 1-48, 3 seeds). `sandshaft.py` (floors 1-48, 3 seeds) must print `sandshaft: ok`; pictures `egyptr26e.py`.
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
-- Gate timers are sized from `estPath()` at a careful pace, times 0.84 to 1.08.
+- Gate timers are sized three ways (Trap density, above); only P4's race uses the careful pace.
 - Pose angles are measured from straight down; positive means forward.
