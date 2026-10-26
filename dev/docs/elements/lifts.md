@@ -212,5 +212,8 @@ round the slab's screen shape (`liftMouthCut`) so the slab stands on it; see [pl
   seeds (16 no rock, 20 the way on, 25 unwalled as before). See CLAUDE.md.
 - round 41c: the way-on check covers every move on the foot storey after the ride: a swing's run-up from the hole hung the bot on its lip,
   ducking darts beside it climbed him down into it (floors 12, 28, 32, 33, 41, 48 of run2's seeds); those 6 of 2,047 are the banner slide.
+- round 41d: `liftscan.py`'s third place for a sand lift stands him on plain floor (the farthest of up to three cells off, a wall or hole
+  stopping it), not blindly three cells off (inside a wall block on floors 4, 9, 15; on a cracked slab that broke under him on 6, 20, 28-32);
+  the wedge is measured without the `atmo` layer (an ambient glow drifting by failed floor 40 seed 53159 at some clock times). Test only.
 
 Details in CLAUDE.md.

@@ -628,6 +628,15 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   (`bn.fb` 2), as a player could not get past it either. Floors 1-48 x 3 seeds unchanged (261 traps, 20 the way on); x 23 seeds (adding
   run2's 700000+97n+13s, s 0-19) 6 of 2,047 traps become the banner slide (fb 2 177 to 183): exactly the 6 floors the bot failed on 41b
   (floors 12, 28, 32, 33, 41, 48; five swings, one darts), all passed now. `metrics40.py` v85: no flags.
+  Round 41d (the release suite on 41b: `liftscan.py` failed 9 sand lifts at its third place, all faults of the test's new place, none of
+  the drawing): he was stood three cells off the hole on the open mouth's side blindly, so on floors 4, 9 and 15 inside a wall block (his
+  whole figure, 2,061-2,305 px, counted as lift pixels over stone) and on floors 6, 20, 28, 29, 30 and 32 on a cracked slab that broke under
+  him in the settling ticks (9-542 px "over a grating", his figure and the falling slab). He now stands on the farthest plain floor cell (no
+  feature) up to three cells off, a wall or a hole stopping the search: all 18 cases pass, no lift drawing changed. And v85's lone failure
+  (floor 40 seed 53159 lift 11, `wedge` 11 over 6, Classic, software GL only): a drifting glow of `ambientGlow`'s lay over the shut left mouth
+  slab's piece above the ceiling's edge at gameTime 10-16 s only, which the earlier cases on the page had reached (alone it measured 4 over
+  6); the wedge is now measured on a frame without the `atmo` layer (mist, motes, moths, fireflies, wisps; round 26a's fault was the beams'
+  haze, the light pass's). `liftscan.py` floors 3-20, 27-32 and 40 both modes `ALL OK`.
 - The Crossing (round 36a, owner, after the research in `dev/INTERLUDE_RESEARCH.md`: "an interlude between themes"; answers: at each
   theme change, after Climb on, he moves only while the pad is held, wordless but skippable, all twelve themes in their setting,
   Torchlight's glow and a Classic version, the hour from `progOf`, named "the Crossing"). At each change of theme (`crossDue(n)`:

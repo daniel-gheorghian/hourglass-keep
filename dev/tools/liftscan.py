@@ -29,6 +29,9 @@
 # Round 41 (41b, the sand lift's spike pit): a sand lift's places are its slab at the top, mid-ride with him on it, and at rest on the spike
 # pit's floor a storey under the foot with him off on the landing (it never rests at the foot: no flush check); its foot draws no tile (a
 # hole); the near column and the arches and breaches are checked down to the pit (rows to rD) too.
+# Round 41d (the release suite on 41b): at that third place he stands on the farthest plain floor cell up to three cells off on the open
+# mouth's side (three cells blindly stood him inside a wall block, floors 4, 9, 15, or on a cracked slab that broke under him, floors 6, 20,
+# 28-32: his own figure counted as lift pixels); the wedge is measured without the air's ambient things (a drifting glow of ambientGlow's lit it at some clock times, floor 40 seed 53159).
 # Before the cases it counts the arches (recesses, openings) and breaches set in a lift shaft's back wall (cells, any number is a failure).
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -53,11 +56,14 @@ RUN = r'''([n,seed,i,pos,mode])=>{const H=__HK;window.__HKfreeze=true;for(const 
   const SL=H.LIFT_DBG.tiles=new Set(); // (round 37a: the floor tiles the room pictures draw)
   let L;try{L=H.load(n,seed,true);}catch(e){H.LIFT_DBG.tiles=null;throw e;}H.banner=null;const f=L.lifts[i],P=H.P;P.inv=1e9;
   // (round 41b) a sand lift's third place is its slab at rest on the spike pit's floor a storey under the foot (it never rests at the foot),
-  // with him off it on the landing by the open mouth
+  // with him off it on the landing by the open mouth (round 41d: on plain floor, the farthest up to three cells off, walls and holes stopping it: three cells blindly stood him inside a
+  // wall block, floors 4, 9, 15, or on a cracked slab that fell under him in the settling ticks, floors 6, 20, 28-32)
+  let spot=1;if(f.t==='lift'&&f.sand&&pos===2){const mo=f.mo||f.sB;for(let k=1;k<=3;k++){const c=f.sc+k*mo;if(c<0||c>=L.cols||L.base[f.rB*L.cols+c]===2||!H.solidBelow(c,f.rB))break;
+      if(!L.feat[f.rB*L.cols+c])spot=k;}}
   const place=()=>{if(f.t==='lift'){const fr=[0,0.5,1][pos];f.y=f.sand&&pos===2?f.yP:f.yT+(f.yB-f.yT)*fr;f.tgt=null;L.base[f.rT*L.cols+f.sc]=fr===0?1:0;f.gT=fr===0?1:0;f.gB=fr===1?1:0;
       if(f.sand){f.s=pos===2?2:pos?1:0;f.tm=pos?1:0;}
       P.x=f.sc*32+16;P.y=f.y;P.fallY=P.y;P.face=pos===1?1:-f.sT;P.vx=P.vy=0;if(pos===1){P.state='lift';P.lift=f;}else{P.state='stand';P.lift=null;}
-      if(f.sand&&pos===2){const mo=f.mo||f.sB;P.x=(f.sc+3*mo)*32+16;P.y=f.yB;P.fallY=P.y;P.face=mo;}}
+      if(f.sand&&pos===2){const mo=f.mo||f.sB;P.x=(f.sc+spot*mo)*32+16;P.y=f.yB;P.fallY=P.y;P.face=mo;}}
     else{const q=H.chainPos(f,0,H.gameTime);P.x=q.x;P.y=q.y;P.fallY=P.y;P.state='lift';P.lift=f;P.slab=0;P.bx=q.x;P.by=q.y;P.bt=-9;P.face=pos===1?-f.dx:f.dx;}};
   if(f.t==='chain'){if(pos<3)H.tick(60*2*pos+1);else{H.tick(1);for(let k=0;k<1200;k++){let hit=false;for(let j=0;j<f.n;j++){const q=H.chainPos(f,j,H.gameTime);
         if(pos===3?Math.abs(q.y-f.yB)<0.5&&(Math.abs(q.x-(f.ca*32+16))<1.5||Math.abs(q.x-(f.cb*32+16))<1.5):Math.abs(q.y-f.yT)<0.5&&Math.abs(q.x-(f.cb*32+16))<1.5)hit=true;}
@@ -101,11 +107,15 @@ RUN = r'''([n,seed,i,pos,mode])=>{const H=__HK;window.__HKfreeze=true;for(const 
   // foot: a paternoster's foot floor's lip in its shaft columns
   let foot=0;if(f.t==='chain'){for(let y=f.yB+5;y<f.yB+12.5;y+=0.5)for(let x=f.ca*32-8+1;x<(f.cb+1)*32-8-1;x+=0.5){const [px,py]=pxOf(x,y);if(!inS(px,py))continue;const o=(py*A.w+px)*4;if(dif(C,B,o)>36){foot++;if(!nwhere)nwhere=['foot',Math.round(x),Math.round(y)];}}}
   // wedge: a shut left mouth slab where it rises past the ceiling's front edge beside the shaft
-  let wedge=0,wv=null;if(f.t==='lift'&&!f.sand)for(let e=0;e<2;e++){const s=e?f.sB:f.sT,op=e?f.gB:f.gT,rr=e?f.rB:f.rT;if(s>=0||op>=1)continue;
+  let wedge=0,wv=null,Cw=null;if(f.t==='lift'&&!f.sand)for(let e=0;e<2;e++){const s=e?f.sB:f.sT,op=e?f.gB:f.gT,rr=e?f.rB:f.rT;if(s>=0||op>=1)continue;
     const X=f.sc*32-3.5-16,Y=rr*64,gc=Math.floor(X/32),co=L.base[(rr-1)*L.cols+gc]===1?5:0,pl={L0:X+8,R0:X+24,top:Y+co,ce:x=>Y+co-8*(x-X-8)/16},c=Math.floor((X+1)/32),xe=(c+1)*32-8; // (the gate's plane, as plane() makes it)
     if(!(rr>0&&L.base[(rr-1)*L.cols+c]===2&&L.base[(rr-1)*L.cols+c+1]!==2))continue;
-    let sw=0,nw=0,sb=0,nb=0;for(let x=xe+1.5;x<pl.R0+3.5-1;x+=0.5){for(let y=pl.ce(x)-3+1.5;y<pl.top-1;y+=0.5){const [px,py]=pxOf(x,y);if(!inS(px,py))continue;const o=(py*A.w+px)*4;sw+=C.img[o]+C.img[o+1]+C.img[o+2];nw++;}
-      for(let y=pl.top+0.6;y<pl.top+2.5;y+=0.5){const [px,py]=pxOf(x,y);if(!inS(px,py))continue;const o=(py*A.w+px)*4;sb+=C.img[o]+C.img[o+1]+C.img[o+2];nb++;}}
+    // (round 41d) measured on a frame without the air's ambient things (atmoPass, ambientGlow: mist, motes, moths, fireflies and wisps with
+    // their glows, drifting by): one of those glows passing over it at gameTime 10-16 lit the wedge (floor 40 seed 53159: 11 over 6, 4 over 6
+    // without), so the result hung on the clock the cases before had left; the beams' haze that lit it in round 26a is the light pass's
+    if(!Cw){H.LIFT_DBG.rider=true;const hd=H.LAYER_DBG.hide;H.LAYER_DBG.hide=new Set(['atmo']);try{Cw=grab();}finally{H.LIFT_DBG.rider=false;H.LAYER_DBG.hide=hd;}}
+    let sw=0,nw=0,sb=0,nb=0;for(let x=xe+1.5;x<pl.R0+3.5-1;x+=0.5){for(let y=pl.ce(x)-3+1.5;y<pl.top-1;y+=0.5){const [px,py]=pxOf(x,y);if(!inS(px,py))continue;const o=(py*A.w+px)*4;sw+=Cw.img[o]+Cw.img[o+1]+Cw.img[o+2];nw++;}
+      for(let y=pl.top+0.6;y<pl.top+2.5;y+=0.5){const [px,py]=pxOf(x,y);if(!inS(px,py))continue;const o=(py*A.w+px)*4;sb+=Cw.img[o]+Cw.img[o+1]+Cw.img[o+2];nb++;}}
     if(nw>4&&nb>4){const mw=sw/nw/3,mb=sb/nb/3;wv=[Math.round(mw),Math.round(mb)];if(mw>mb+4)wedge++;}}
   // relief: the final picture over the lift's stone with the relief on and off
   let relief=0;if(tor&&H.GLP.gls&&H.GLFX.relief){const fin=()=>{H.LIFT_DBG.rider=true;try{if(H.MS)H.MS.pv=false;H.render();H.render();const gl=H.GLP.gl,w=gl.drawingBufferWidth,h=gl.drawingBufferHeight;return {px:rdTex(null,w,h),w,h};}finally{H.LIFT_DBG.rider=false;}};
