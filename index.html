@@ -421,7 +421,7 @@ const skyOf=th=>todSkyCol(th.sky,L&&L.prog?L.prog.tod:0);
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=9;
-const APP_VERSION='84'; // set by the build; shown on the title and pause screens
+const APP_VERSION='85'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},learned:prev?prev.learned:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(!s.learned){s.learned={};if(s.level>2){s.learned.gap=s.learned.climb=s.learned.drop=1;}if(s.maxHp>3)s.learned.potion=1;} // an old save: whoever got past floor 2 can run, jump, climb and let go; the rest of the moves come back as hints until done
@@ -10093,12 +10093,17 @@ function shcBox(x0,yt,w,h,d,top,side){const dx=DX*d,dy=DY*d;shcPt(x0,yt+h);shcPt
   if(side){if(!top)shcPt(x0+w+dx,yt-dy);shcPt(x0+w+dx,yt+h-dy);}shcPt(x0+w,yt+h);shcRing();}
 // the sky clock as drawHourglass draws it at (x, cy) over its pedestal on floor fl: the pedestal's boxes, Nut's arch (its 3.4 outline, round
 // ends), her arms and legs, the earth, her head and the sun (lit); the wall seen inside the arch keeps the shadow
+// (round 40) The clock bobs 1.6 px over its pedestal, so between the earth's outline (its foot at cy+(NUT.cy+3) s) and the top slab's
+// (fl-11.6) the wall shows for 0 to 1.3 px. The carve took the earth 0.4 px past its outline, so where that gap was 0.4 to 1 px a sliver of
+// wall under a texel of the quarter-size mask stayed uncarved, and its shadow, read blurred, lay across the earth and the slab's top (shadowscan:
+// floors 10, 22, 29 seed 1). A gap under SHC_TEX (one texel, about 1 world px at the game's view) is closed: the earth's carve reaches the slab
+const SHC_TEX=1;
 function shcClock(x,cy,fl,f,lit){const s=1.9,R=NUT.R,a0=NUT.a0,a1=NUT.a1,ny=cy+NUT.cy*s;
   shcRect(x-8.6,fl-4,x+8.6,fl+0.6);shcRect(x-6.1,fl-9.6,x+6.1,fl-3.4);shcRect(x-7.6,fl-11.6,x+7.6,fl-8.8);
   for(let i=0;i<=16;i++){const a=a0+(a1-a0)*(1.06*i/16-0.03);shcPt(x+Math.cos(a)*(R+1.7)*s,ny-Math.sin(a)*(R+1.7)*s);}
   for(let i=16;i>=0;i--){const a=a0+(a1-a0)*(1.06*i/16-0.03);shcPt(x+Math.cos(a)*(R-1.7)*s,ny-Math.sin(a)*(R-1.7)*s);}shcRing();
   for(let k=0;k<2;k++){const a=k?a1:a0,qx=Math.cos(a)*R,qy=NUT.cy-Math.sin(a)*R;shcLine(x+qx*s,cy+qy*s,x+qx*1.02*s,cy+(NUT.cy+1.4)*s,2.6*s);}
-  shcRect(x-7.8*s,cy+(NUT.cy+1)*s,x+7.8*s,cy+(NUT.cy+3.2)*s);
+  {const eb=cy+(NUT.cy+3)*s;shcRect(x-7.8*s,cy+(NUT.cy+1)*s,x+7.8*s,fl-11.6-eb<SHC_TEX?fl-11:eb+0.4);} // (round 40: under a texel of wall between the earth and the pedestal, closed)
   shcEll(x+(Math.cos(a0)*R-0.6)*s,cy+(NUT.cy-Math.sin(a0)*R+0.4)*s,1.8*s,1.8*s,10);
   if(lit){const a=a0+(a1-a0)*(1-clamp(f,0,1));shcEll(x+Math.cos(a)*R*s,cy+(NUT.cy-Math.sin(a)*R)*s,2.7*s,2.7*s,10);}}
 // (in glMask, the transform in world px, multiply with cyan: the shadow's channel taken out) each entry's rings, one fill each
