@@ -3,21 +3,24 @@
 #   python3 suite.py           before each commit: bot 4 seeds, forks, flag/family floors, metrics, unit tests
 #   python3 suite.py release   before a release: all of that plus the fight runs and the render check
 #   -j N                       number of Chromium processes (default: physical cores; more only slows a laptop down)
-#   --suite play,gen,render    only these suites (comma list; default all). The tier chooses the jobs, the suite picks among them:
-#                              play (the bot and play checks), gen (generator and layout scans), render (drawing checks); see SUITES
+#   --suite play,gen,render    only these suites, run in this order (comma list; default all, play, gen, render). The tier chooses
+#                              the jobs, the suite picks among them: play (the bot and play checks), gen (generator and layout scans),
+#                              render (drawing checks); see SUITES
+#   --stop-on-fail             after a suite fails, skip the suites still to run (default: carry on, so every suite reports)
 #   --only REGEX               only the jobs whose group and argv ("run2 run2.py 5 5 1 x 700000") match REGEX (re.search)
 #   --resume FILE|DIR          skip the jobs already in a journal: a previous run dir, or a journal file (also HK_SUITE_JOURNAL)
 # The bot and render runs are split one floor (and seed) per job, so the whole suite takes about as long as its slowest
 # single job instead of the sum of all of them. Each of the -j worker processes (suiteworker.py) starts ONE Chromium and runs
 # its jobs in turn, every job in a fresh browser context (nothing leaks between jobs); the test scripts are the same files
 # that run standalone. A job that hangs (per-job timeout) or kills its worker fails with a message, and the worker is replaced.
-# Several suites in one run share the workers and the GPU slots (one pool), so a full run takes no longer than one big suite.
+# Several suites in one run go one after another (the order of --suite, else play, gen, render): each has the whole pool of
+# workers and the GPU slots, finishes, writes and prints its summary, then the next starts (--stop-on-fail: none after a failure).
 # Every run writes a run dir, suite_logs/<YYYYmmdd-HHMMSS>-<tier>[-<suites>]/ (gitignored), as it goes:
 #   progress.log            a line as each job starts and finishes ([done/total], suite, ok/FAIL, argv, seconds, summary);
 #                           the finish lines go to stdout too (tail -f either)
 #   jobs/<suite>/<job>.log  each job's whole output, written when it finishes
 #   journal.jsonl           every finished job (what --resume reads)
-#   summary-<suite>.txt     a suite's verdict and table, written (and printed) the moment its last job finishes
+#   summary-<suite>.txt     a suite's verdict, its wall time and table, written (and printed) as the suite finishes
 #   summary.txt             at the end: every suite's block, the five slowest jobs, and the last line ALL OK or FAILURES (exit 1)
 import collections, json, os, queue, re, resource, signal, subprocess, sys, threading, time
 
@@ -26,6 +29,7 @@ PY = sys.executable
 OPT, pos, it = {}, [], iter(sys.argv[1:])
 for x in it:
     if x in ('-j', '--suite', '--only', '--resume'): OPT[x] = next(it, '')
+    elif x == '--stop-on-fail': OPT[x] = True
     else: pos.append(x)
 mode = 'quick' if 'quick' in pos else 'release' if 'release' in pos else 'commit'
 def physical_cores():
@@ -122,7 +126,7 @@ miss = sorted({j[0] for j in J} - set(SUITE_OF))
 if miss: sys.exit('suite.py: group(s) %s belong to no suite: add each to one of SUITES' % ', '.join(miss))
 WANT = OPT['--suite'].split(',') if OPT.get('--suite') else list(SUITES)
 if set(WANT) - set(SUITES): sys.exit('suite.py: unknown suite(s) %s (have %s)' % (', '.join(sorted(set(WANT) - set(SUITES))), ', '.join(SUITES)))
-WANT = [su for su in SUITES if su in WANT]   # (in SUITES' order)
+WANT = list(dict.fromkeys(WANT))   # (in the order given; each once)
 ONLY = OPT.get('--only')
 J = [j for j in J if SUITE_OF[j[0]] in WANT and (not ONLY or re.search(ONLY, j[0] + ' ' + ' '.join(j[1])))]
 WANT = [su for su in WANT if any(SUITE_OF[j[0]] == su for j in J)]   # (a suite --only left empty is not reported)
@@ -228,13 +232,12 @@ if os.path.exists(JOURNAL):
         res.append((r['g'], r['a'], r['ok'], s, r['dt'], r['out'])); done.add(k)
         if not os.path.exists(jlog(r['g'], r['a'])): write_job(res[-1])
 NTOT = len(J); NDONE = [len(done)]
-LEFT = collections.Counter(SUITE_OF[j[0]] for j in J if json.dumps(j[1]) not in done)
-SUT = {}      # suite -> [first start, last finish] in this run
+LEFT_ALL = collections.Counter(SUITE_OF[j[0]] for j in J)
+SUT = {}      # suite -> [start, finish] of its turn in this run
+SKIP = []     # suites --stop-on-fail left out
 print('run dir %s' % RUN, flush=True)
 plog('suite.py %s, %d jobs (%s), %d processes%s%s' % (mode, NTOT, ', '.join('%s %d' % (su, sum(SUITE_OF[j[0]] == su for j in J)) for su in WANT), jobs,
      ', --only %r' % ONLY if ONLY else '', ', resumed %d finished jobs from %s' % (len(done), JOURNAL) if done else ''), True)
-for j in J:
-    if json.dumps(j[1]) not in done: (QH if j[0] in HEAVY else QL).put(j)
 def take():
     """-> (job, holds_gpu) or (None, False) when both queues are empty."""
     while True:
@@ -279,19 +282,24 @@ def block(su):
                 if not o or g.startswith(('run2', 'featbot')) or g == 'forktest':
                     fails = [l for l in out.splitlines() if l.startswith(('{', 'SLOW RUN')) or 'Error' in l][:3]
                     if fails or not o: L.append('    %s | %s\n      log %s' % (' '.join(a), ' / '.join(x[:200] for x in fails) or short(ss), rel(jlog(g, a))))
-    w = SUT.get(su); wall = (w[1] - w[0]) if w and w[1] else 0
-    head = '== %s: %s, %d jobs, wall %.1f min, job time %.1f min%s' % (su, 'OK' if sok else 'FAILURES', len(rs_), wall / 60,
-           sum(r[4] for r in rs_) / 60, '' if len(rs_) == sum(SUITE_OF[j[0]] == su for j in J) else ' (INCOMPLETE)')
-    if len(rs_) < sum(SUITE_OF[j[0]] == su for j in J): sok = False   # (a job that never reported is not a pass)
+    w = SUT.get(su); wall = (w[1] - w[0]) if w and w[1] else 0; nj = sum(SUITE_OF[j[0]] == su for j in J)
+    if su in SKIP:
+        return False, ['== %s: SKIPPED (--stop-on-fail after %s failed), %d jobs not run' % (su, SKIP_BY[0], nj - len(rs_))]
+    nres = sum(1 for r in rs_ if json.dumps(r[1]) in done)
+    head = '== %s: %s, %d jobs%s, wall %.1f min, job time %.1f min%s' % (su, 'OK' if sok else 'FAILURES', len(rs_),
+           ' (%d resumed)' % nres if nres else '', wall / 60, sum(r[4] for r in rs_) / 60, '' if len(rs_) == nj else ' (INCOMPLETE)')
+    if len(rs_) < nj: sok = False   # (a job that never reported is not a pass)
     return sok, [head, '%-15s %-4s %7s  %s' % ('test', 'ok', 'job s', 'result')] + L
 WROTE = set()
-def suite_done(su): # summary-<suite>.txt and stdout, the moment a suite's last job is in
+def suite_done(su): # summary-<suite>.txt and stdout, as a suite finishes -> its verdict
     with PLOCK:
-        if su in WROTE: return
-        WROTE.add(su); ok, L = block(su)
+        ok, L = block(su)
+        if su in WROTE: return ok
+        WROTE.add(su)
         with open(os.path.join(RUN, 'summary-%s.txt' % su), 'w') as f: f.write('\n'.join(L) + '\n')
-        plog('suite %s done: %s (%s)' % (su, 'OK' if ok else 'FAILURES', rel(os.path.join(RUN, 'summary-%s.txt' % su))))
+        plog('suite %s done: %s (%s)' % (su, 'OK' if ok else 'SKIPPED' if su in SKIP else 'FAILURES', rel(os.path.join(RUN, 'summary-%s.txt' % su))))
         print('\n'.join(L) + '\n', flush=True)
+        return ok
 
 def loop():
     w = Worker()
@@ -300,25 +308,30 @@ def loop():
             j, gpu = take()
             if j is None: return
             su = SUITE_OF[j[0]]
-            with PLOCK: SUT.setdefault(su, [time.time(), 0])
             plog('[%*d/%d] %-6s start %s' % (len(str(NTOT)), NDONE[0], NTOT, su, ' '.join(j[1])))
             try:
                 r = go(j, w); res.append(r); write_job(r)
                 with JLOCK, open(JOURNAL, 'a') as f: f.write(json.dumps({'g': r[0], 'a': r[1], 'ok': r[2], 's': r[3], 'dt': r[4], 'out': r[5]}) + '\n')
                 with PLOCK:
-                    NDONE[0] += 1; SUT[su][1] = time.time(); LEFT[su] -= 1
+                    NDONE[0] += 1
                     plog('[%*d/%d] %-6s %-4s %s  %.0f s | %s' % (len(str(NTOT)), NDONE[0], NTOT, su, 'ok' if r[2] else 'FAIL', ' '.join(r[1]), r[4], short(r[3])), True)
-                    if LEFT[su] == 0: suite_done(su)
             finally:
                 if gpu: GPU.release()
     finally: w.stop()
-JLOCK = threading.Lock()
-ths = [threading.Thread(target=loop) for _ in range(min(jobs, NTOT - len(done)))]
-for t in ths: t.start()
-for t in ths: t.join()
+JLOCK = threading.Lock(); SKIP_BY = ['']
+for su in WANT: # one suite after another, each with the whole pool (a worker and its Chromium per thread, stopped at the suite's end)
+    if SKIP_BY[0]: SKIP.append(su); suite_done(su); continue
+    todo = [j for j in J if SUITE_OF[j[0]] == su and json.dumps(j[1]) not in done]
+    SUT[su] = [time.time(), 0]
+    plog('suite %s start: %d jobs%s' % (su, len(todo), ', %d resumed' % (LEFT_ALL[su] - len(todo)) if LEFT_ALL[su] > len(todo) else ''), True)
+    for j in todo: (QH if j[0] in HEAVY else QL).put(j)
+    ths = [threading.Thread(target=loop) for _ in range(min(jobs, len(todo)))]
+    for t in ths: t.start()
+    for t in ths: t.join()
+    SUT[su][1] = time.time()
+    if not suite_done(su) and OPT.get('--stop-on-fail'): SKIP_BY[0] = su
 cpu_total = resource.getrusage(resource.RUSAGE_CHILDREN); cpu_total = cpu_total.ru_utime + cpu_total.ru_stime
 
-for su in WANT: suite_done(su) # (suites wholly resumed, or one whose last job never reported)
 allok = True; S = []
 for su in WANT:
     ok, L = block(su); allok &= ok; S += L + ['']
