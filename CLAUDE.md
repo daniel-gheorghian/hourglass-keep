@@ -507,6 +507,12 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   outside its box (same pixels); no cost measurable here (interleaved timing, against a v82 control). Look only: layouts identical
   (`layoutcmp.py`, floors 1-48 x 3 seeds against v82), the bot unchanged. Pictures `egyptr38a.py` (r38a_rope.png, r38a_shadow.png,
   r38a_roof.png, r38a_grate.png, r38a_blk.png; `cost`).
+  Round 40 (the release suite's shadowscan on v84: the clock on floors 10, 22 and 29 seed 1, 105-156 of ~4,300 px shadowed): the clock bobs
+  1.6 px over its pedestal, so between the earth's outline and the top slab's the wall shows for 0 to 1.3 px; `shcClock` took the earth 0.4 px
+  past its outline, so a gap of 0.4 to 1 px left a sliver of wall under a texel of the quarter-size mask uncarved, and its shadow, read
+  blurred, lay across the earth and the slab's top. A gap under `SHC_TEX` (1 px, a texel at the game's view) is now carved with them.
+  shadowscan kinds=clock floors 1-48 (per=5, 240 clocks) ok on the GPU; floors 10, 22, 29 ok on the GPU and in SwiftShader. Look only.
+  Picture `egyptr40.py` (r40_clockshadow.png).
   Round 38b, play faults, each shown in play on v82 and checked by `r38b_tests.py` (one check per fault, must print `r38b: ok`). A falling
   roof block (any `L.debris`) respects his invulnerability as `trapHit` does: none while `P.inv` runs, a hit gives 0.9 s (v82: `P.inv` 1.2
   still cost a life). A damaging drop's broken lip has nothing to grip from a fall either: `findLedge` skips a `hurtdrop` as `edgeBelow`

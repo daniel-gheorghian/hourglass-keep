@@ -92,7 +92,7 @@ gate (`gateRoundel`), and the rewind's large clock running back ("The hours turn
 |---|---|
 | Light map (`gatherLights`) | lit: kind `item` at `cpX`, 26 px up, radius 150 x k, strength 0.95 k, bloom core r 26 (k ramps over 0.7 s), plus the sun disc's own small light (kind `trap`, 46 px) that travels along Nut's arch; unlit: a faint glint (38 px, 0.42). Room light: not cut by the faces |
 | Key light (`keyLight` sx) | a lit clock weighs in like a torch for nearby figures (kind `item` counts; its `trap` sun light does not) |
-| Lamp shadow mask (`glShadow`) | casts none; carved (round 38a): `shcClock` records the pedestal's boxes, Nut's arch, arms and legs, the earth, her head and (lit) the sun in `SHC` (kind `clock`) at the drawn x, so a figure's shadow falls on the wall behind it; the wall seen inside the arch keeps the shadow |
+| Lamp shadow mask (`glShadow`) | casts none; carved (round 38a): `shcClock` records the pedestal's boxes, Nut's arch, arms and legs, the earth, her head and (lit) the sun in `SHC` (kind `clock`) at the drawn x, so a figure's shadow falls on the wall behind it; the wall seen inside the arch keeps the shadow; the wall between the earth and the pedestal's top (0 to 1.3 px as the clock bobs) is carved with them when under `SHC_TEX` (round 40) |
 | Relief | partly rubbed: `glRelEx`'s soft ellipses round its lights (the lit `item` light and the sun's `trap` light, half sizes 26 by 30 px; unlit, 23 by 27) flatten the relief over most of the clock; the rest of the pedestal and the arch keep the room picture's relief (left as it is, round 39). No `glRel*` of its own |
 | Metal | none |
 | Sky beams | blocks none (`beamBlockers`); Torchlight: drawn live at alpha 255, so `fpGate` keeps beam footprints off it; Classic: `ryStand` cuts the pedestal's base (18 by 12.6 px at `cpX`) out of the footprint (round 39; before, the footprint lay over it) |
@@ -139,3 +139,6 @@ gate (`gateRoundel`), and the rewind's large clock running back ("The hours turn
 - round 38a: the clock and its pedestal carved out of the lamp shadow (`SHC`, `shcClock`).
 - round 39 (v84): on a sand lift's resting slab, drawn after the lift's back half (`cpOnLift`); Classic's footprint cut round its pedestal
   (`ryStand`). Look only. Details in CLAUDE.md.
+- round 40: the carve closes the gap between the bobbing earth and the pedestal's top slab when it is under a texel of the quarter-size
+  mask (`SHC_TEX`, 1 px): a thinner sliver of wall stayed uncarved and its shadow, read blurred, lay across both (`shadowscan.py`
+  floors 10, 22, 29 seed 1). Look only.
