@@ -567,7 +567,7 @@ function genLevel(n,seed,test,legacy){
   return buildLevel(n,seed,test,legacy,-1);
 }
 // (round 26g) bot actions on one storey, and those of them that jump (a sand lift's kept walls are a ceiling over the cells beside its foot)
-const SL_JMP=new Set(['sjump','rjump','rjumpg','dashjump','jgrab','saw']),SL_HZ=new Set(['walk','look','tiptoe','runover','timed','darts','crawl','push','pull','drink',...SL_JMP]);
+const SL_RUNUP=new Set(['rjump','rjumpg','jgrab','swing']),SL_JMP=new Set(['sjump','rjump','rjumpg','dashjump','jgrab','saw']),SL_HZ=new Set(['walk','look','tiptoe','runover','timed','darts','crawl','push','pull','drink',...SL_JMP]);
 function buildLevel(n,seed,test,legacy,att){
   let rngX=null; // while a side passage's corridor is filled, the floor's main stream is left alone (see fillCorridor)
   const rng0=mulberry32(seed), rng=()=>(rngX||rng0)(), ri=(a,b)=>a+Math.floor(rng()*(b-a+1)), ch=p=>rng()<p;
@@ -1910,6 +1910,15 @@ function buildLevel(n,seed,test,legacy,att){
         f._a.off=f.sB;
         if(tc===f.sc||(ta&&ta.a==='crawl'&&Math.abs(ta.from-f.sc)<=1))ok=false;
         else if(tc!==null&&(tc-f.sc)*f.sB<0){if(fb!==FLOOR||L.feat[f.rB*cols+fc]||!Wl(fc,f.rB+1))ok=false;else{f._a.off=-f.sB;f._a.to=fc;}}
+        // (round 41c) nor may any move on the foot storey after the ride (up to the next vertical move) use the foot: a walk to it, a
+        // running start from it (rjump, rjumpg, jgrab and swing start two cells back: a swing's run-up from the hole hung him on its lip),
+        // or Down within reach of the hole's lip (darts and crawls crouch; edgeBelow climbs down within 26 px of an edge on either side,
+        // so crouching to duck darts beside the hole hung him into the pit)
+        for(let j=ia+1;ok&&ia>=0&&j<bot.length&&(SL_HZ.has(bot[j].a)||bot[j].a==='swing');j++){const q=bot[j],d=q.dir||1,a0=f.sc*TW,a1=a0+TW;
+          if(q.a==='walk'){if(q.c===f.sc)ok=false;continue;}
+          if(q.from===undefined)continue;
+          if(SL_RUNUP.has(q.a)&&(f.sc-(q.from-2*d))*(q.from-f.sc)>=0)ok=false;
+          if(q.a==='darts'||q.a==='crawl'){const x=q.from*TW+16-(q.a==='darts'?8*d:0);if(x>a0-27&&x<a1+27)ok=false;}}
         f._off=f._a.off;}
       if(!ok)sandBanner(f,i,2);delete f._a;}}
   // (round 26e) the foot storey is shut by a mouth slab on each open side (the exit always, the far side where a corridor runs on there),

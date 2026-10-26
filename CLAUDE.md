@@ -618,6 +618,16 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   4-27 x 4 (96 of 96, 0 damage) and fight 5-16, the bot on 45 floors with sand lifts (133 rides, 0 damage), `layerscan.py` floor 5 (lift and
   spikes) both modes. Pictures `egyptr41.py` (r41_sandfall.png: the mouth opening with him on the slab, the step off, the slab going down
   into the pit, at rest among the spikes, a miss onto them, a far-side lift, both modes; r41_sandfall.gif).
+  Round 41c (the release suite on 41b: the bot timed out hanging from the hole's lip on 7 jobs, run2 floors 32/33, featbot 13/24/27,
+  rendersmoke 14; v85 passed them, its foot was floor after the ride). The way-on check looked only at the first move after the ride and
+  only for a crawl, so two cases got through: a swing (also rjump, rjumpg, jgrab) whose run-up starts two cells back, on the foot (he ran
+  into the hole and caught its lip: floor 32 seed 703130, swing from 512 heading left, the foot 514), and darts beside the hole (the bot
+  crouches to duck them 8 px toward the hole, and Down within 26 px of an edge, `edgeBelow`, climbs down: floor 33 seed 703201). Now every
+  move on the foot storey after the ride up to the next vertical move (`SL_HZ` and `swing`) is checked: none may walk to the foot, start a
+  run-up on it (`SL_RUNUP`: from-2*dir to from) or press Down within 27 px of the hole (darts at their wait, crawls); else the banner slide
+  (`bn.fb` 2), as a player could not get past it either. Floors 1-48 x 3 seeds unchanged (261 traps, 20 the way on); x 23 seeds (adding
+  run2's 700000+97n+13s, s 0-19) 6 of 2,047 traps become the banner slide (fb 2 177 to 183): exactly the 6 floors the bot failed on 41b
+  (floors 12, 28, 32, 33, 41, 48; five swings, one darts), all passed now. `metrics40.py` v85: no flags.
 - The Crossing (round 36a, owner, after the research in `dev/INTERLUDE_RESEARCH.md`: "an interlude between themes"; answers: at each
   theme change, after Climb on, he moves only while the pad is held, wordless but skippable, all twelve themes in their setting,
   Torchlight's glow and a Classic version, the hour from `progOf`, named "the Crossing"). At each change of theme (`crossDue(n)`:
