@@ -14,10 +14,18 @@ os.chdir(HERE)
 
 import playwright.sync_api as sa
 _real = sa.sync_playwright().start()
-_browser = [None]
-def browser():
-    b = _browser[0]
-    if b is None or not b.is_connected(): _browser[0] = b = _real.chromium.launch()
+# One shared browser per kind, started on first use: 'sw' (no flags: WebGL in SwiftShader, on the CPU) and 'gpu' (WebGL through ANGLE
+# on Metal, the discrete GPU). suite.py marks the jobs that draw Torchlight (its HEAVY ones) gpu; HK_SUITE_GPU=0 runs them on 'sw' as
+# before, HK_SUITE_GPU=igpu on the integrated GPU (ANGLE picks it without --force_high_performance_gpu).
+GPU_MODE = os.environ.get('HK_SUITE_GPU', '1')
+GPU_ARGS = ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] + ([] if GPU_MODE == 'igpu' else ['--force_high_performance_gpu'])
+_browser = {}
+_kind = ['sw']                # the kind the job now running asked for
+def browser(kind=None):
+    kind = kind or _kind[0]
+    if kind == 'gpu' and GPU_MODE == '0': kind = 'sw'
+    b = _browser.get(kind)
+    if b is None or not b.is_connected(): _browser[kind] = b = _real.chromium.launch(**({'args': GPU_ARGS} if kind == 'gpu' else {}))
     return b
 
 class BrowserProxy:
@@ -36,8 +44,8 @@ class BrowserProxy:
 class Chromium:
     def __init__(self, ctxs): self._ctxs = ctxs
     def launch(self, **kw):
-        # (round 38c) a GPU flag list (cpscan, doorscan, openscan, tilescan, shadowscan: '--use-angle=metal', '--enable-gpu', ...) is
-        # ignored: the shared browser draws WebGL as every other suite job does; any other option is still refused
+        # a script's own GPU flag list (cpscan, doorscan, openscan, tilescan, shadowscan: '--use-angle=metal', '--enable-gpu', ...) is
+        # ignored: the job runs in the shared browser of the kind suite.py asked for (see browser()); any other option is still refused
         assert not (set(kw) - {'args'}), 'shared browser: launch() options are not supported (%r)' % kw
         return BrowserProxy(self._ctxs)
 
@@ -47,7 +55,7 @@ class PW:
     def __exit__(self, *a): return False
 
 def run(job):
-    ctxs = []
+    ctxs = []; _kind[0] = 'gpu' if job.get('gpu') else 'sw'
     sa.sync_playwright = lambda: PW(ctxs)
     argv = job['argv']; out = io.StringIO(); rc = 0
     old = sys.argv; sys.argv = [os.path.join(HERE, argv[0])] + argv[1:]
@@ -71,6 +79,7 @@ if __name__ == '__main__':
         if not line.strip(): continue
         r = run(json.loads(line))
         REPLY.write(json.dumps(r) + '\n'); REPLY.flush()
-    try: _browser[0] and _browser[0].close()
-    except Exception: pass
+    for b in _browser.values():
+        try: b.close()
+        except Exception: pass
     _real.stop()

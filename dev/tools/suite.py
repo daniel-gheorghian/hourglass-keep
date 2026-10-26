@@ -167,13 +167,13 @@ class Worker:
             try: self.pr.stdin.close(); self.pr.wait(30)
             except Exception: pass
             self.kill()
-    def run(self, argv):
+    def run(self, argv, gpu=False):
         """-> (returncode, output); returncode -1 for a worker that died or hung."""
         try:
             if self.pr is None or self.pr.poll() is not None: self.kill(); self.start()
             timer = threading.Timer(TIMEOUT, lambda p=self.pr: os.killpg(p.pid, signal.SIGKILL)); timer.start(); t = time.time()
             try:
-                self.pr.stdin.write(json.dumps({'argv': argv}) + '\n'); self.pr.stdin.flush()
+                self.pr.stdin.write(json.dumps({'argv': argv, 'gpu': gpu}) + '\n'); self.pr.stdin.flush()
                 line = self.pr.stdout.readline()
             finally: timer.cancel()
             if line:
@@ -186,18 +186,21 @@ class Worker:
 
 def go(j, w):
     g, a, chk = j; t = time.time()
-    rc, out = w.run(a)
+    rc, out = w.run(a, g in HEAVY)   # (the jobs that draw Torchlight run in the worker's GPU browser: suiteworker.py)
     if rc == -1: ok, s = False, out.strip().splitlines()[-1][:160] if out.strip() else 'exit -1'   # worker died or the job timed out
     else:
         ok, s = chk(out)          # (read even when the script exited 1, e.g. on a SLOW RUN, so the pass counts stay whole)
         if rc != 0: ok = False; s = s if isinstance(s, tuple) else (out.strip().splitlines()[-1][:160] if out.strip() else 'exit %d' % rc)
     return g, a, ok, s, time.time() - t, out
 
-# Jobs that draw Torchlight (software WebGL in headless Chromium, which spreads each frame over several cores) run at most
-# GPU_JOBS at a time; the other workers take bot jobs meanwhile. Eight of them at once took four times as long each and no
-# less in total, which pushed rendersmoke past its wall budget (v67: 1 alone 53 s, 4 at once 137 s each, 8 at once 300 s each).
+# Jobs that draw Torchlight run in each worker's GPU browser (WebGL through ANGLE on Metal, suiteworker.py; HK_SUITE_GPU=0: on the
+# CPU in SwiftShader, as before) and at most GPU_JOBS at a time; the other workers take light jobs meanwhile. On the GPU (8-core i9,
+# Radeon Pro 5500M, idle): liftscan.py 15 20 83 s against 495 s in software, shadowscan.py 13 18 127 s against 533 s; eight
+# shadowscans at once took 285 s each and 4.9 min in all, four at a time 150 s each and 5.2 min, at 40% less CPU, so 4. (In
+# software, v67: 1 rendersmoke alone 53 s, 4 at once 137 s each, 8 at once 300 s each.) Only these: a GPU-drawn 2D canvas is not
+# bit-exact between two redraws on the Radeon (rewindrooms finds 13 values off), so the light jobs stay in software.
 HEAVY = ('rendersmoke', 'liftscan', 'crossscan torch', 'cpscan', 'shadowscan', 'doorscan', 'openscan', 'tilescan')
-GPU_JOBS = int(os.environ.get('HK_GPU_JOBS', '3'))
+GPU_JOBS = int(os.environ.get('HK_GPU_JOBS', '4'))
 t0 = time.time(); res = []; QL = queue.Queue(); QH = queue.Queue(); GPU = threading.Semaphore(GPU_JOBS)
 # The run dir (see the top). --resume FILE (or HK_SUITE_JOURNAL): every finished job is appended to FILE as one JSON line, and a run
 # started with the same FILE skips the jobs it already holds and reports them with the rest (a machine that restarts mid-run loses only
