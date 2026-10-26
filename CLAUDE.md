@@ -46,7 +46,20 @@ is a placeholder: only the built `index.html` carries the release number.
 
 1. Change the source, then build with the next N.
 2. Run the regression suite from `dev/tools` with `python3 suite.py release`. It runs every test below spread over the
-   machine's cores and prints one line per test, ending in `ALL OK` or `FAILURES`, then the five slowest jobs. The bot and render
+   machine's cores. Every job belongs to one of three suites by its group (`SUITES` in suite.py; a group in none stops the run before
+   it starts): `play` (the bot and play checks: run2, featbot, p4bot, forktest, hinttest, grablabel, swingtest, liftkick, lowceil,
+   r38b_tests, sawceil, primtest, hdtest, lifttest, respawnplates, slabresume, gratepeek), `gen` (generator and layout scans: metrics40,
+   guardscan, forkscan, puzzlescan, vertscan, featurescan, orphanscan, mazescan, wellcorr, lampscan, slabscan, sandshaft, wellscan) and
+   `render` (drawing checks: rendersmoke, liftscan, crossscan, cpscan, shadowscan, doorscan, openscan, tilescan, stormfair, glauto,
+   metaltest, rewindrooms, figscan). The tier chooses the jobs; `--suite play,render` runs only those suites (default all, in one shared
+   pool of workers and GPU slots, so a full run is no slower), `--only REGEX` only the jobs whose group and argv match. Each run writes
+   `dev/tools/suite_logs/<YYYYmmdd-HHMMSS>-<tier>[-<suites>]/` (gitignored; its path is printed first and last): `progress.log` (a line
+   as each job starts and finishes, `[done/total]`, suite, ok/FAIL, argv, seconds, summary; the finish lines also go to stdout:
+   `tail -f` it while it runs), `jobs/<suite>/<job>.log` (each job's whole output), `journal.jsonl`, `summary-<suite>.txt` (written and
+   printed the moment that suite's last job is in) and `summary.txt`: per suite its verdict, job count, wall and job time and the table
+   of one line per test, failing jobs with their key lines and log path, then the five slowest jobs, ending in `ALL OK` or `FAILURES`
+   (exit 1). `--resume DIR` carries on an interrupted run dir (`--resume FILE` or `HK_SUITE_JOURNAL` a journal file): finished jobs
+   are skipped and reported with the rest. The bot and render
    runs are split one floor (and seed) per job; each of the N workers (`suiteworker.py`) starts ONE Chromium and runs its jobs
    in turn, each in a fresh browser context, so nothing leaks between jobs. The test scripts are unchanged and still run
    standalone. Jobs that draw Torchlight (`rendersmoke`, `liftscan`: software WebGL in headless Chromium, several cores a frame) run at most three at a time (`HK_GPU_JOBS`); eight at once took four times as long each for no gain and tripped rendersmoke's 240 s wall budget (v67). A job over its 25-minute limit, or one that kills its browser, fails with a message and the worker is replaced.

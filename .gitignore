@@ -3,3 +3,5 @@
 dev/tools/ref/cmu/*.mpg
 dev/tools/ref/cmu/*.amc
 dev/tools/ref/cmu/*.asf
+# suite.py run dirs (progress, job logs, journal, summaries)
+dev/tools/suite_logs/
