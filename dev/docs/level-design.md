@@ -52,8 +52,9 @@ corridor, cellars below) and a fork's short way. Floors 1 and 2 have one-column 
 | 4. Fork choice | `lrng`, `frng` | which switchbacks carry a fork and of which kind (floor 6 on) |
 | 5. Runs | loop in `buildLevel` | each run filled from its own menu, its stops (fork pieces, a remote plate) at set columns; then the turn after it (`buildTurn`) |
 | 6. Flasks | `buildLevel` | no secret passage built: an alcove's flask becomes the gold flask; other flasks thinned to `FLASK_GAP` (`round(35*PKW)` tiles) |
-| 7. Sand lifts | post pass | a sand lift whose shaft is not walled (26e) or whose foot storey's kept walls would cap a jump (26g) becomes the banner slide (same tiles, bot `slide`, seg `turn-bannerK`) |
+| 7. Sand lifts | post pass | a sand lift whose shaft is not walled (26e) or whose foot storey's kept walls would cap a jump (26g) becomes the banner slide (same tiles, bot `slide`, seg `turn-bannerK`); so does one (round 41) whose way on runs past its foot's far side onto anything but plain floor, or starts at the foot or with a crawl beside it; the bot's `sandlift` gets the side he gets off by (`off`, `to`) |
 | 8. Open hall | post pass | one row of headroom over every floor (below) and `L.windows` |
+| 8b. Bottomless shafts | post pass (round 41) | a sand lift with no rock for `SAND_DEEP` 3 storeys under its foot (three cells wide, rock under that) becomes the banner slide; the others' foot and deep shaft are opened (`EMPTY`, `f.rD`), a sky clock or flask on the foot moved along the floor |
 | 9. Settle | post pass | `f.ms` (sand lift mouths), `L.base0`, platforms at the top as floor, blocks as `WALL`, `L.dyn`, saws under a ceiling at his height become spikes (bot `tiptoe`, seg `spikes`), about 62% of timed side gates made to stay open (a hash), `rebuildBlocks`, `settleLevel` (lamps, hangings) |
 
 `genLevel` tries `buildLevel` with `att` 0 to 7 (each a different route plan, `hash2(seed + att*7919, 7717)`; the main stream restarts
@@ -344,7 +345,7 @@ and everything after them on `rng`.
 | [gates](elements/gates.md) | in-line (3+), puzzles, fills, turn slots; the violet gate under a grating | - (the open hall keeps its lintel) |
 | [plates](elements/plates.md) | with their gates; `lplate` at lifts; `xplate` after 82% of the route; closers | - |
 | [cracked slabs and sand wells](elements/cracked-slabs-and-sand-wells.md) | runs (3+), landings, branches, slab puzzles, collapse ledges; planks (palace) | fills (nothing that digs); a landing over the floor a switchback returns along |
-| [lifts](elements/lifts.md) | chambers only: counterweight (3+), sand lift (4+, 37% of banner moves), paternoster (8+) | runs, fork short ways, a switchback's last move; paternoster in a gate turn; sand lift in a G3 turn or without a shaft |
+| [lifts](elements/lifts.md) | chambers only: counterweight (3+), sand lift (4+, 37% of banner moves; round 41: bottomless, so only over three storeys of rock: 218 of 322 on floors 1-48 x 3 seeds), paternoster (8+) | runs, fork short ways, a switchback's last move; paternoster in a gate turn; sand lift in a G3 turn, without a shaft or without rock under its foot |
 | [banners and slides](elements/banners-and-slides.md) | chambers going down (4+), fork short ways | runs |
 | [kick shafts and jet streams](elements/kick-shafts-and-jet-streams.md) | chambers going up: kick shafts (5+); the wall run (3+) is a move of its own ([gameplay](gameplay.md)) | runs |
 | [swing bar](elements/swing-bar.md) | runs (6+), over a four-tile pit | turns |
@@ -372,7 +373,7 @@ and everything after them on `rng`.
 | Every fork plays; every chamber move plays | `forkChamber`, `PRIM` | `forktest.py`, `primtest.py`, `vertscan.py`, `puzzlescan.py` |
 | Timers beatable | `estPath`, `timerK` | `p4bot.py`, `run2.py` |
 | No sand well in a corridor | `looseWell` (look only) | `wellcorr.py` |
-| A sand lift stands in a shaft | 26e/26g fallback | `sandshaft.py` |
+| A sand lift stands in a shaft, over a bottomless one | 26e/26g, 41 fallback | `sandshaft.py` |
 | A slab slides into stone | open-hall lintel | `slabscan.py` |
 | Lamps keep clear | `lampsClear` | `lampscan.py` |
 | Layouts identical after a look-only round | hashes, no stream | `genLevel` floors 1-48 x 3 seeds against the last release (tiles, features, `L.path`, start, exit); `samelayout.py` hashes floors 1-40 x 5 seeds |
@@ -403,5 +404,8 @@ and everything after them on `rng`.
 - round 26e, 26g: sand lifts only in shafts, else the banner slide.
 - round 30: no sand well in a corridor (look only).
 - rounds 32, 35a: `estPath` times for jumps; layouts unchanged.
+- round 41: the bottomless sand lift. Its shaft is opened only in rock the floor as built left: reserving the cells while building (tried)
+  let a lower run that passes under the shaft fail and floors came out shorter (`metrics40.py` against v85, floors 4-27: the route's minimum
+  down as far as 1065 from 1179). Tiles otherwise as v85 (`metrics40.py` v85: no flags); `estPath`'s `sandlift` by its storeys.
 
 Details in CLAUDE.md.

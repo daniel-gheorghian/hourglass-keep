@@ -56,7 +56,8 @@ before, 0 after (floors 1-48, seeds 1-3).
 ## How it is drawn
 
 Drawn live in `drawDynamic` (after the lamps and doors, before the lifts and `L.dyn`), never in the room picture. Same calls in both modes.
-A clock in a sand lift's foot cell (33 of 96 floors, floors 1-48 seeds 1-2; none in other lifts) stands on the lift's slab once it has
+(Round 41: a sand lift's foot is a hole now, so a clock laid there moves along the floor to the first plain cell, within three, on the side he
+gets off by (39 clocks on floors 1-48 x 3 seeds); none stands on a lift any more and `cpOnLift` finds none. Before:) A clock in a sand lift's foot cell (33 of 96 floors, floors 1-48 seeds 1-2; none in other lifts) stands on the lift's slab once it has
 come down: while the slab rests at the foot (`cpOnLift`: `f.y` at `SURF(rB)`) the clock is drawn after the lifts' back half and before
 `L.dyn` and the figures, who pass in front of it; until then it stays under the sand as before (round 39: drawn before the lift, the
 shaft's dark back and channel lay over its left half after the ride and the slab over its pedestal's foot; visible clock px 4,475, now
@@ -142,3 +143,4 @@ gate (`gateRoundel`), and the rewind's large clock running back ("The hours turn
 - round 40: the carve closes the gap between the bobbing earth and the pedestal's top slab when it is under a texel of the quarter-size
   mask (`SHC_TEX`, 1 px): a thinner sliver of wall stayed uncarved and its shadow, read blurred, lay across both (`shadowscan.py`
   floors 10, 22, 29 seed 1). Look only.
+- round 41: a clock on a sand lift's foot (a hole into the bottomless shaft now) moves along the floor on the side he gets off by.

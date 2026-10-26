@@ -26,6 +26,9 @@
 #        px, where the pit's floor edge and the lips' shade are: no row over 30%), against the frame with no lift: its top and lip within 1 px
 #        of the floor tiles' beside it. 'flushlog' prints the three numbers for every such case. (round 38c) The platform is drawn unworn for
 #        it (f.wl 0): a worn lip's chips are as dark as the pit's floor and read as uncovered (floors 17, 24, 37, 40, 43, 57: 0.51-0.6 worn, 1 unworn).
+# Round 41 (the bottomless sand lift): a sand lift's places are its slab at the top, mid-ride with him on it, and 40 px under the foot's floor
+# sinking into the dark with him off on the landing (it never rests at the foot: no flush check); its foot draws no tile (a hole); the near
+# column and the arches and breaches are checked down its bottomless shaft (rows to rD) too.
 # Before the cases it counts the arches (recesses, openings) and breaches set in a lift shaft's back wall (cells, any number is a failure).
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -43,14 +46,18 @@ CASES = r'''([lo,hi,seeds])=>{const H=__HK,out=[];
 # arches and breaches in a lift shaft's back wall, counted on the tiles
 ART = r'''([lo,hi,seeds])=>{const H=__HK;let arch=0,br=0,cells=0;const where=[];
   for(let n=lo;n<=hi;n++)for(let s=0;s<seeds;s++){const seed=40000+n*131+s*7919,L=H.load(n,seed,true);
-    for(const f of L.lifts){for(let r=f.rT-1;r<=f.rB;r++)for(let c=f.ca;c<=f.cb;c++){cells++;if(r>=f.rT&&H.isArchTop(c,r)){arch++;if(where.length<5)where.push(['arch',n,seed,c,r]);}}
+    for(const f of L.lifts){for(let r=f.rT-1;r<=(f.rD||f.rB);r++)for(let c=f.ca;c<=f.cb;c++){cells++;if(r>=f.rT&&H.isArchTop(c,r)){arch++;if(where.length<5)where.push(['arch',n,seed,c,r]);}}
       for(const b of H.breaches())if(b&&b.x1>f.ca*32-8+4&&b.x0<(f.cb+1)*32-8-4&&b.y1>f.rT*64+4&&b.y0<SURF(f.rB)-4){br++;if(where.length<5)where.push(['breach',n,seed,f.ca,f.rB]);}}}
   return {arch,br,cells,where};function SURF(r){return (r+1)*64-4;}}'''
 RUN = r'''([n,seed,i,pos,mode])=>{const H=__HK;window.__HKfreeze=true;for(const id in H.HINTS)H.S.hints[id]=1;H.S.set.lightMode=mode;
   const SL=H.LIFT_DBG.tiles=new Set(); // (round 37a: the floor tiles the room pictures draw)
   let L;try{L=H.load(n,seed,true);}catch(e){H.LIFT_DBG.tiles=null;throw e;}H.banner=null;const f=L.lifts[i],P=H.P;P.inv=1e9;
-  const place=()=>{if(f.t==='lift'){const fr=[0,0.5,1][pos];f.y=f.yT+(f.yB-f.yT)*fr;f.tgt=null;L.base[f.rT*L.cols+f.sc]=fr===0?1:0;f.gT=fr===0?1:0;f.gB=fr===1?1:0;
-      P.x=f.sc*32+16;P.y=f.y;P.fallY=P.y;P.face=pos===1?1:-f.sT;P.vx=P.vy=0;if(pos===1){P.state='lift';P.lift=f;}else{P.state='stand';P.lift=null;}}
+  // (round 41) a sand lift's third place is its slab 40 px under the foot's floor, sinking into the bottomless shaft (it never rests at the foot),
+  // with him off it on the landing by the mouth
+  const place=()=>{if(f.t==='lift'){const fr=[0,0.5,1][pos];f.y=f.yT+(f.yB-f.yT)*fr+(f.sand&&pos===2?40:0);f.tgt=null;L.base[f.rT*L.cols+f.sc]=fr===0?1:0;f.gT=fr===0?1:0;f.gB=fr===1?1:0;
+      if(f.sand){f.s=pos?1:0;f.tm=pos?1:0;f.gB=pos===2?1:0;}
+      P.x=f.sc*32+16;P.y=f.y;P.fallY=P.y;P.face=pos===1?1:-f.sT;P.vx=P.vy=0;if(pos===1){P.state='lift';P.lift=f;}else{P.state='stand';P.lift=null;}
+      if(f.sand&&pos===2){P.x=(f.sc+2*f.sB)*32+16;P.y=f.yB;P.fallY=P.y;P.face=f.sB;}}
     else{const q=H.chainPos(f,0,H.gameTime);P.x=q.x;P.y=q.y;P.fallY=P.y;P.state='lift';P.lift=f;P.slab=0;P.bx=q.x;P.by=q.y;P.bt=-9;P.face=pos===1?-f.dx:f.dx;}};
   if(f.t==='chain'){if(pos<3)H.tick(60*2*pos+1);else{H.tick(1);for(let k=0;k<1200;k++){let hit=false;for(let j=0;j<f.n;j++){const q=H.chainPos(f,j,H.gameTime);
         if(pos===3?Math.abs(q.y-f.yB)<0.5&&(Math.abs(q.x-(f.ca*32+16))<1.5||Math.abs(q.x-(f.cb*32+16))<1.5):Math.abs(q.y-f.yT)<0.5&&Math.abs(q.x-(f.cb*32+16))<1.5)hit=true;}
@@ -86,7 +93,7 @@ RUN = r'''([n,seed,i,pos,mode])=>{const H=__HK;window.__HKfreeze=true;for(const 
   const pxOf=(x,y)=>[Math.round(x*A.VZ-A.camD),Math.round(y*A.VZ-A.camDY)];
   // near: the column right of the shaft
   let near=0,nwhere=null;{const cc=(f.t==='chain'?f.cb:f.sc)+1,xr=cc*32-8,pts=[];
-    for(let r=f.rT-1;r<=f.rB+1;r++){if(r<0||r>=L.rows||cc>=L.cols)continue;const b=L.base[r*L.cols+cc];
+    for(let r=f.rT-1;r<=(f.rD||f.rB)+1;r++){if(r<0||r>=L.rows||cc>=L.cols)continue;const b=L.base[r*L.cols+cc]; // (round 41: down the bottomless shaft too)
       if(b===2){for(let y=r*64+1;y<r*64+63;y+=0.5)for(let x=xr+1;x<xr+31;x+=0.5)pts.push(x,y);}
       else if(H.solidBelow(cc,r)){const sy=(r+1)*64-4;for(let y=sy-3.5;y<sy+12;y+=0.5)for(let x=xr+1;x<xr+40;x+=0.5){const dl=y>sy+4?xr+1:xr+1+(sy+4-y)*2; // (left of the depth diagonal is the shaft)
           if(x<dl||x>xr+31+Math.min(16,Math.max(0,(sy+4-y)*2))-1||y>sy+12.5)continue;pts.push(x,y);}}}
@@ -119,9 +126,10 @@ RUN = r'''([n,seed,i,pos,mode])=>{const H=__HK;window.__HKfreeze=true;for(const 
       for(let py=my0;py<my1;py++)for(let px=mx0;px<mx1;px++){const o=(py*A.mw+px)*4;if(Math.abs(A.mk[o]-B.mk[o])+Math.abs(A.mk[o+1]-B.mk[o+1])+Math.abs(A.mk[o+2]-B.mk[o+2])>24){badM++;if(!where)where=['mask',Math.round((px*2+A.camD)/A.VZ),Math.round((py*2+A.camDY)/A.VZ),[...A.mk.slice(o,o+3)],[...B.mk.slice(o,o+3)],A.mw,A.mh];}}}}
   // (round 37a) pit: no floor tile in the room's picture at the foot of a lift with a pit, one where it has none; flush: the platform at rest
   // at the foot covers the floors' lip rows and its top the rows above, against the frame with no lift
+  // (round 41) a sand lift's foot is a hole into its bottomless shaft: no tile drawn there either, and nothing rests there to be flush
   let pit=0,pwhere=null,flush=null;{const C0=L.cols,exp=f.t==='lift'&&(!!f.sand||L.base0[f.rB*C0+f.sc-f.sB]===2),cols=f.t==='chain'?[f.ca,f.cb]:[f.sc];
     for(const c of cols){const has=SL.has(f.rB*C0+c);if(slN===0||has===exp){pit++;pwhere=['pit',c,f.rB,'tile drawn',has,'pit expected',exp,'tiles drawn',slN];}}
-    if(exp&&pos===2&&Math.abs(f.y-f.yB)<0.01){const ft=(f.rB+1)*64,fx=f.sc*32-8;
+    if(exp&&!f.sand&&pos===2&&Math.abs(f.y-f.yB)<0.01){const ft=(f.rB+1)*64,fx=f.sc*32-8;
       // (round 38c) measured on the platform drawn unworn: a worn lip's chips are as dark as the pit's floor (floor 40 seed 45240: 0.51 worn, 1 unworn); wear is look only
       let Cf=C;{const w0=f.wl,n0=f.wn;f.wl=0;f.wn=L.n;H.LIFT_DBG.rider=true;try{Cf=grab();}finally{H.LIFT_DBG.rider=false;f.wl=w0;f.wn=n0;}}
       const cov=(y,xa,xb)=>{let k=0,m=0;for(let x=xa;x<=xb;x+=0.5){const [px,py]=pxOf(x,y);if(!inS(px,py))continue;m++;if(dif(Cf,B,(py*A.w+px)*4)>36)k++;}return m?k/m:1;};

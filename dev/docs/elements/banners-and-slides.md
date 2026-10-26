@@ -130,6 +130,8 @@ before, 0 after). He is drawn over the cloth. No wear level of its own.
 - the slide: the blade bites and the drag holds a steady `SL_V` (the first version crept at 75 px/s); the cloth splits as he goes.
 - round 16a: about 37% of banner moves become the sand lift (`sandOr`).
 - rounds 26e, 26g: a sand lift that cannot stand in a shaft is a banner again.
+- round 41: so is one with no rock under its foot for the bottomless shaft, or whose way on past the foot's far side cannot be taken off the
+  slab (`bn.fb` 1, 2; 26e/26g's are 3).
 - round 33c: taking the cloth and letting go of a hang drawn (`SI_*`, `HF_*`); Grab with Down in a hang takes the cloth.
 - round 38b: a rewind undoes the cut (`snapAll` copies `bn`, `applySnap` restores it in place).
 - round 39 (v84): the cloth cut at the next column's front plane (`nearCut`); its relief rubbed (`glRelBanners`). The owner's ruling: it

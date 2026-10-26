@@ -286,6 +286,12 @@ const EMPTY=0, FLOOR=1, WALL=2;
 const SURF=r=>(r+1)*TH-4;
 const GRAV=700, RUN=100, BW=6, HANG=57, STEP=1/60;
 const LIFT_V=64, CHAIN_V=44, CHAIN_TOL=14, SAND_LV=140, SAND_LW=0.25; // (SAND_LV, SAND_LW: the sand lift's steady sinking, px/s, after the slab first settles: the banner slide's pace, so a ride of 3 or 4 storeys (1.6, 2.1 s) fits the slide's time in estPath)
+// (round 41, owner: "The sand lifts become a trap: the sand drains, the door opens, but he has to jump, because the slab keeps going. The shaft is
+// bottomless") the shaft goes on SAND_DEEP storeys under the foot (rows rB+1..rD, walled; a fall into it kills); the slab never stops: it passes
+// the foot at SAND_LV and, SAND_WE px under the foot's floor, the last sand runs out and it falls free into the dark. He gets off in the window
+// from the foot's mouth slabs SAND_OPS open (SAND_MD px over the floor they start up) to SAND_WE under it: a step through an open mouth while the
+// slab is within SAND_STEP of the floor (drawn eased up, P.syo), a jump up to the lip under it (jumpUp, the hang, the climb)
+const SAND_DEEP=3, SAND_STEP=20, SAND_WE=72, SAND_OPS=0.45, SAND_BUF=0.3, SAND_KILL=2*TH+16;
  // lifts, px/s: the counterweight lift's platform, the chain-loop lift's chain; and how far (px) a slab may be from the landing's level to be stepped on or off
 const clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t;
 const ease=t=>t<.5?2*t*t:1-((-2*t+2)**2)/2;
@@ -813,12 +819,14 @@ function buildLevel(n,seed,test,legacy,att){
   // (round 32: a standing jump winds up for JP_T 0.28 s, 0.18 s more than before: sjump carries it)
   // (round 35a: a running jump is in the air RJ_K of the time it was: rjump 0.13 s less (0.533 to 0.400 s, the bot on floors 1-27),
   // rjumpg 0.18 (caught at the far lip, 0.750 to 0.567), jgrab 0.13 (0.500 to 0.367), swing 0.05 (to the bar's catch, 0.233 to 0.183))
+  // (round 41) sandlift: on, the ride to the foot's mouth (the bot steps off as it opens, SAND_MD) and off: 0.68 + SAND_LW + (64k - 22)/SAND_LV +
+  // 0.3 at the plain pace (the bot measured 1.77 s and 2.23 s from boarding to standing off over three and four storeys, 104 rides); careful 1.6 more
   function estPath(acts,cur,careful){let t=0;const mv=c2=>{t+=Math.abs(c2-cur)*(careful?0.55:0.34);cur=c2;};
     for(const a of acts){
       if(a.a==='walk'){mv(a.c);t+=careful?0.4:0.2;continue;}
       if(a.from!==undefined)mv(a.from);
       const dd=a.to!==undefined?Math.abs(a.to-a.from):0;
-      t+=({runover:dd*0.32+0.4,sjump:(careful?1.2:1.0)+0.18,rjump:(careful?2.8:1.7)-0.13,rjumpg:(careful?4.0:2.8)-0.18,tiptoe:dd*0.8+0.5,crawl:dd*0.8+1.3,timed:dd*0.32+2.6,climb:1.3,drink:DR_T,hangdrop:1.8,drop:careful?1.45:0.9,slide:careful?4.0:2.2,walljump:1.6+0.9*(a.k||2),wallrun:2.2,collapse:careful?2.2:1.5,jgrab:(careful?4.2:3.0)-0.13,swing:(careful?2.4:1.6)-0.05,sandlift:careful?4.0:2.2,lift:a.chn?(careful?3.8:3.5)+(a.k*64+32)/CHAIN_V:careful?1.5+1.1*a.k:1.2+a.k})[a.a]||0;
+      t+=({runover:dd*0.32+0.4,sjump:(careful?1.2:1.0)+0.18,rjump:(careful?2.8:1.7)-0.13,rjumpg:(careful?4.0:2.8)-0.18,tiptoe:dd*0.8+0.5,crawl:dd*0.8+1.3,timed:dd*0.32+2.6,climb:1.3,drink:DR_T,hangdrop:1.8,drop:careful?1.45:0.9,slide:careful?4.0:2.2,walljump:1.6+0.9*(a.k||2),wallrun:2.2,collapse:careful?2.2:1.5,jgrab:(careful?4.2:3.0)-0.13,swing:(careful?2.4:1.6)-0.05,sandlift:(careful?2.83:1.23)+(64*(a.k||3)-22)/SAND_LV,lift:a.chn?(careful?3.8:3.5)+(a.k*64+32)/CHAIN_V:careful?1.5+1.1*a.k:1.2+a.k})[a.a]||0;
       if(a.to!==undefined)cur=a.to;}
     return t;}
   const timerK=()=>0.84+0.14*rng()+0.1*(1-d); // timer over the estimated route back (a careful pace): 0.84 (tight) .. 1.08
@@ -1848,6 +1856,12 @@ function buildLevel(n,seed,test,legacy,att){
   // side (the exit side is always floor). Later runs, side passages and fills can open a side, or leave a drop beside the foot; then it is
   // built as what the move would otherwise have been, the banner slide: the same tiles, the bot's action a slide (no stream is drawn
   // either way, so the rest of the floor is as it was).
+  // (bn.fb, round 41, for tests: why it is the banner slide: 1 no rock for the bottomless shaft, 2 the way on past the foot's far side cannot
+  // be taken off the slab, 3 not walled or a jump under the kept walls, 26e/26g)
+  const sandBanner=(f,i,fb)=>{L.lifts.splice(i,1);const bn={top:f.rT*TH+9,bot:(f.rB-1)*TH+TH-16,a:-1,b:-1,t:-9,fb};
+    for(let j=0;j<f.k;j++)L.feat[(f.rT+j)*cols+f.sc]={t:'banner',top:j===0,bot:j===f.k-1,bn};
+    f._a.a='slide';delete f._a.k;delete f._a.off;f._a.to=f.sc+2*f.sB;
+    for(const q of L.segs)if(q.k==='turn-sand'+f.k&&q.r0===f.rT&&q.r1===f.rB&&Math.min(q.c0,q.c1)<=f.sc&&Math.max(q.c0,q.c1)>=f.sc){q.k='turn-banner'+f.k;break;}};
   {const Wl=(cc,rr)=>L.base[rr*cols+cc]===WALL;
     for(let i=L.lifts.length-1;i>=0;i--){const f=L.lifts[i];if(!f.sand)continue;let ok=true;
       for(let rr=f.rT+1;rr<f.rB&&ok;rr++)if(!Wl(f.sc-1,rr)||!Wl(f.sc+1,rr))ok=false;
@@ -1864,11 +1878,7 @@ function buildLevel(n,seed,test,legacy,att){
           const d=q.dir||1,c0=q.from*TW+16;
           if(q.a==='sjump'){if(hits(c0,d,false))ok=false;}
           else{const e=q.a==='saw'?(q.from+d)*TW+16-22*d:c0-(q.a==='dashjump'?50:44)*d;for(let k=0;k<=12&&ok;k++)if(hits(e+d*4*k,d,true))ok=false;}}} // (a running jump: from where the bot presses Jump on to the edge)
-      if(!ok){L.lifts.splice(i,1);const bn={top:f.rT*TH+9,bot:(f.rB-1)*TH+TH-16,a:-1,b:-1,t:-9};
-        for(let j=0;j<f.k;j++)L.feat[(f.rT+j)*cols+f.sc]={t:'banner',top:j===0,bot:j===f.k-1,bn};
-        f._a.a='slide';delete f._a.k;
-        for(const q of L.segs)if(q.k==='turn-sand'+f.k&&q.r0===f.rT&&q.r1===f.rB&&Math.min(q.c0,q.c1)<=f.sc&&Math.max(q.c0,q.c1)>=f.sc){q.k='turn-banner'+f.k;break;}}
-      delete f._a;}}
+      if(!ok)sandBanner(f,i,3);}}
   // A sand lift's shaft keeps its walls
   // beside the sand on every storey above the foot, as the counterweight lift's do: the pass opened the storey over the foot on both
   // sides (headroom over the foot's floor), so the sand stood as a free pillar in a hall two storeys high. Kept the same way as the
@@ -1883,9 +1893,35 @@ function buildLevel(n,seed,test,legacy,att){
       if(keepWall.has((rr-1)*cols+cc))continue;
       hol.push(cc,rr-1);}
     for(let i=0;i<hol.length;i+=2){const kp=lin.has(hol[i+1]*cols+hol[i]);if(!kp)set(hol[i],hol[i+1],EMPTY);if(ch(0.16)&&!kp)L.windows.push({c:hol[i],r:hol[i+1]});}}
+  // (round 41) the bottomless shaft needs SAND_DEEP storeys of rock under the foot, three cells wide (the shaft and its walls), and rock under
+  // that, in the floor as built (after the open-hall pass, which opens headroom over the corridors under them). The route keeps its way: a
+  // lower run often passes under a sand lift, and reserving those cells while building cut floors short (metrics40, floors 4-27: route
+  // minimum down as far as 1065 from 1179), so a sand lift with no rock under it is the banner slide (the same tiles; nothing else moves)
+  {const Wl=(cc,rr)=>L.base[rr*cols+cc]===WALL;
+    for(let i=L.lifts.length-1;i>=0;i--){const f=L.lifts[i];if(!f.sand)continue;let ok=f.rB+SAND_DEEP+1<=rows-1;
+      for(let k=1;k<=SAND_DEEP&&ok;k++)for(const j of [-1,0,1])if(!Wl(f.sc+j,f.rB+k))ok=false;if(ok&&!Wl(f.sc,f.rB+SAND_DEEP+1))ok=false;
+      if(!ok){sandBanner(f,i,1);continue;}
+      // (round 41) the foot is a hole into the deep shaft now. Where the route runs on past its far side (the turn's last move: the next run
+      // starts at the foot, LAND, and heads back), he gets off on that side and the bot's action ends there; that cell must be plain floor and
+      // nothing after may start at the foot, or by crouching beside the hole (a crawl: Down there hangs him into the shaft). Else the banner
+      // slide (decided after the open-hall pass, as the rock, so the walls it kept beside the shaft stay as they were)
+      if(ok){const ia=bot.indexOf(f._a),fc=f.sc-f.sB,fb=L.base[f.rB*cols+fc];let tc=null,ta=null;for(let j=ia+1;ia>=0&&j<bot.length;j++){const q=bot[j],x=q.a==='walk'?q.c:q.from;if(x===undefined)continue;if(x===f.sc&&q.a!=='walk'){tc=f.sc;break;}if(x!==f.sc){tc=x;ta=q;break;}}
+        f._a.off=f.sB;
+        if(tc===f.sc||(ta&&ta.a==='crawl'&&Math.abs(ta.from-f.sc)<=1))ok=false;
+        else if(tc!==null&&(tc-f.sc)*f.sB<0){if(fb!==FLOOR||L.feat[f.rB*cols+fc]||!Wl(fc,f.rB+1))ok=false;else{f._a.off=-f.sB;f._a.to=fc;}}
+        f._off=f._a.off;}
+      if(!ok)sandBanner(f,i,2);delete f._a;}}
   // (round 26e) the foot storey is shut by a mouth slab on each open side (the exit always, the far side where a corridor runs on there),
   // holding the sand in until the slab is down: f.ms, the sides (map columns) with a slab
   for(const f of L.lifts)if(f.sand)f.ms=L.base[f.rB*cols+f.sc-f.sB]!==WALL?[f.sB,-f.sB]:[f.sB];
+  // (round 41) the bottomless shaft: the foot and the SAND_DEEP storeys under it are opened; the foot is a hole, held by the mouth slabs until
+  // the slab has passed. A sky clock or flask laid on the foot moves along the floor on the side he gets off by (the first plain cell within 3),
+  // else the other side, else it goes
+  for(const f of L.lifts)if(f.sand){f.rD=f.rB+SAND_DEEP;f.yD=SURF(f.rD);for(let rr=f.rB;rr<=f.rD;rr++)L.base[rr*cols+f.sc]=EMPTY;
+    const at=(o,s)=>{for(let k=1;k<=3;k++){const cc=f.sc+s*k;if(L.base[f.rB*cols+cc]!==FLOOR||L.feat[f.rB*cols+cc]||L.base[(f.rB+1)*cols+cc]!==WALL)return false;
+      if(L.cps.some(q=>q!==o&&q.c===cc&&q.r===f.rB)||L.items.some(q=>q!==o&&q.c===cc&&q.r===f.rB))continue;o.x+=(cc-o.c)*TW;o.c=cc;return true;}return false;};
+    const off=(f._off||f.sB);
+    L.cps=L.cps.filter(q=>!(q.c===f.sc&&q.r===f.rB)||at(q,off)||at(q,-off));L.items=L.items.filter(q=>!(q.c===f.sc&&q.r===f.rB)||at(q,off)||at(q,-off));}
   L.base0=L.base.slice(); // the terrain as built: wall decoration follows it, so it doesn't vanish when a tile falls
   for(const f of L.lifts)if(f.t==='lift'&&f.y===f.yT)L.base[f.rT*cols+f.sc]=FLOOR; // (a platform resting at the top is the floor there; base0 keeps the open shaft)
   for(const bl of L.ext.blocks){bl.under=raw(bl.c,bl.r);set(bl.c,bl.r,WALL);}
@@ -2941,8 +2977,9 @@ const pRow=()=>rowOf(P.y);
 const supported=(x=P.x)=>solidBelow(L,Math.floor(x/TW),pRow())||(x===P.x&&L.lifts.length>0&&!!liftUnder()); // (a lift's platform anywhere in its shaft holds him up)
 const LRN_ST={climb:['climb'],drink:['potion'],push:['block'],pull:['block'],slide:['banner'],wallrun:['wallrun'],climbDown:['drop'],poke:['poke','snake'],lowStrike:['snake']}; // states that mean a move was done
 function learn(...ids){let w=false;for(const id of ids)if(!S.learned[id]){S.learned[id]=1;w=true;}if(w)writeSave();}
+// (round 41: a sand lift is learned by getting off it, 'sandfall', in sandRide; P.sandUp, a lip caught from its slab, lasts to the hang)
 function setState(s){if(P&&P.state==='drink'&&s!=='drink'){dropFlask();if(P.dkG&&!P.dkFx&&s!=='dead'&&s!=='exit')drinkFx();} // knocked out of the drink with the flask in hand: it takes effect at once and the flask falls
-  if(P){const lk=LRN_ST[s];if(lk)learn(...lk);else if(s==='lift'&&P.lift)learn(P.lift.t==='chain'?'chain':P.lift.sand?'sandlift':'lift');}if((s==='stop'||s==='turn')&&P.state==='run'&&GFX().fx&&Math.abs(P.vx)>60)dust(P.x-P.face*4,P.y,4);if(P){P.state0=P.state;if(P.state==='air'&&s!=='air')P.yo=0;P.lnT=null;if(s!=='run'){P.jLe=null;if(s!=='air')P.jGo=null;}}P.state=s;P.t=0;if(s!=='crouch'&&s!=='poke')P.lowSword=false;if(s!=='air')P.plant=null;
+  if(P){const lk=LRN_ST[s];if(lk)learn(...lk);else if(s==='lift'&&P.lift&&!P.lift.sand)learn(P.lift.t==='chain'?'chain':'lift');if(s!=='jumpUp'&&s!=='hang')P.sandUp=0;}if((s==='stop'||s==='turn')&&P.state==='run'&&GFX().fx&&Math.abs(P.vx)>60)dust(P.x-P.face*4,P.y,4);if(P){P.state0=P.state;if(P.state==='air'&&s!=='air')P.yo=0;P.lnT=null;if(s!=='run'){P.jLe=null;if(s!=='air')P.jGo=null;}}P.state=s;P.t=0;if(s!=='crouch'&&s!=='poke')P.lowSword=false;if(s!=='air')P.plant=null;
   if(P){if(s==='stop'||s==='turn'){P.stK=s;P.stT=gameTime;P.stS=s==='stop'?clamp(Math.abs(P.vx)/RUN,0.35,1):1;}else if(s!=='stand')P.stK=null; // (round 25f: the settle, see settlePose)
     if(s==='hang'){P.hgT=gameTime;P.hgA=HG_A[P.state0]||HG_A.air;} // (round 25f: the hang's swing, see livePose)
     if(s==='step')P.sEd=0;else if(s==='edgeWalk')P.sx=P.x;else if(s==='stand'&&P.state0==='step'){P.stK='tip';P.stT=gameTime;}}} // (round 33b: look only, see stepPose)
@@ -3545,6 +3582,7 @@ function land(h){
   const jk=P.jumpKind;P.jumpKind=null;
   const f=F(L,pCol(),h.r);
   if(f&&f.t==='spikes'){f.ext=1;return die('spikes');}
+  if(sandDeep(pCol(),h.r)){flashScreen('#000000',0.5,0.3);return die('fall');} // (round 41: the bottomless shaft's rock, never seen)
   if(dist>=170){flashScreen('#ffffff',0.55,0.3);return die('fall');}
   // (round 32, owner: "borrow PoP's structure") a running jump that lands on its own level with the way still held runs straight on, as PoP1's
   // runjump ends in the run (SDLPoP seqtbl.c): the run's speed kept, its stride carried on from the foot that lands (the lead foot: phase 0, or
@@ -3718,12 +3756,14 @@ function stAir(dt){
     const h=landingSurface(py,P.y);if(h)return land(h);
   }
   if(P.y>L.rows*TH+90)die('fall');
+  // (round 41) down a sand lift's bottomless shaft: gone out of sight under the foot's floor, he is lost
+  {const f=sandDeep(pCol(),rowOf(P.y-1));if(f&&P.y>f.yB+SAND_KILL){flashScreen('#000000',0.5,0.3);die('fall');}}
 }
 // is the prince pressed against a wall? returns the side (+1 right, -1 left) or 0. A lift's shaft (either kind, every cell it
 // travels through) gives no hold: its walls are not for kicking (owner, v59), he slides down them as down any smooth wall
 function wallTouch(){if(inLiftShaft())return 0;for(const sd of [1,-1]){const fx=Math.floor((P.x+sd*(BW+1.5))/TW);if(fx===pCol())continue;
   if(B(L,fx,rowOf(P.y-40))===WALL||B(L,fx,rowOf(P.y-12))===WALL)return sd;}return 0;}
-function inLiftShaft(){const c=pCol(),ra=rowOf(P.y-40),rb=rowOf(P.y-12);for(const f of L.lifts)if(c>=f.ca&&c<=f.cb&&rb>=f.rT&&ra<=f.rB)return true;return false;}
+function inLiftShaft(){const c=pCol(),ra=rowOf(P.y-40),rb=rowOf(P.y-12);for(const f of L.lifts)if(c>=f.ca&&c<=f.cb&&rb>=f.rT&&ra<=(f.rD||f.rB))return true;return false;} // (round 41: f.rD, a sand lift's deep shaft)
 function bannerAt(){const f=F(L,pCol(),rowOf(P.y-30));return !!(f&&f.t==='banner');}
 // ---- the swing bar is a trapeze: the bar hangs on its ropes from the ceiling (a pendulum of its own) and he swings under it.
 // His swing is a damped pendulum (angle P.swTh, positive = forward of the bar; speed P.swOm), not a clock: left alone it dies down
@@ -3855,7 +3895,8 @@ function updatePlayer(dt){
     case'turn':if(P.t>=0.14)setState('stand');break;
     case'run':stRun(dt,ix);break;
     case'stop':P.vx=approach(P.vx,0,700*dt);if(ix===P.face&&!I.g){setState('run');break;}runMove(dt);if(P.state==='stop'&&Math.abs(P.vx)<1){P.vx=0;setState('stand');}break;
-    case'step':{const k=Math.min(1,P.t/STEP_T);P.x=lerp(P.sx,P.tx,ease(k));if(k>=1){const sf=F(L,pCol(),pRow());if(sf&&sf.t==='spikes')learn('spikes');setState('stand');if(!supported())startFall(0);else standOn();}break;}
+    case'step':{const k=Math.min(1,P.t/STEP_T);P.x=lerp(P.sx,P.tx,ease(k));if(P.syo)P.yo=P.syo*(1-ease(Math.min(1,k*1.5)));if(k>=1){P.syo=0;P.yo=0; // (round 41: off a sinking sand slab, the drawn figure eased up onto the floor)
+const sf=F(L,pCol(),pRow());if(sf&&sf.t==='spikes')learn('spikes');setState('stand');if(!supported())startFall(0);else standOn();}break;}
     case'edgeWalk':P.x=approach(P.x,P.tx,120*dt);if(!supported()){startFall(0);break;}if(Math.abs(P.x-P.tx)<0.3)startJump('stand');break;
     case'crouch':stCrouch(dt,ix);break;
     case'poke':if(!supported()){startFall(0);break;}if(!P.hitDone&&P.t>=0.1){P.hitDone=true;for(const sn of SN){if(!sn.alive||sn.r!==pRow())continue;const dx=(sn.x-P.x)*P.face;if(dx>-4&&dx<40)killSnake(sn);}}if(P.t>=0.34)setState('crouch');break;
@@ -3893,6 +3934,7 @@ function updatePlayer(dt){
         const q=chainPos(f,P.slab,gameTime),k=Math.min(1,(gameTime-P.bt)/0.15);P.x=lerp(P.bx,q.x,k);P.y=lerp(P.by,q.y,k);P.fallY=P.y;
         if(k>=1)for(let e=0;e<2;e++){const l=chainLanding(f,e);if(ix===-l.ds&&chainWin(f,e,gameTime)===P.slab){P.face=-l.ds;P.y=l.y;P.fallY=P.y;P.sx=P.x;P.tx=l.col*TW+16;P.lift=null;setState('step');break;}}
         break;}
+      if(f.sand){sandRide(f,ix);break;}
       P.y=f.y;P.fallY=P.y;
       // (liftgfx, owner: 'when going down the prince ends up crouching at the very bottom') the ride is ridden by holding Down
       // (or Up), and in 'stand' Down held is a crouch: so he arrives standing, and the key held for the ride does nothing more
@@ -3901,7 +3943,7 @@ function updatePlayer(dt){
     case'land':if(P.t>=P.landDur)setState('stand');break;
     case'landHurt':if(P.t>=0.6)setState('stand');break;
     case'hang':{const lg=P.ledge;if(!solidBelow(L,lg.c,lg.r)){startFall(0);break;}
-      if(I.u||took('u')){P.cs={x0:P.x,y0:P.y,x1:lg.xe-lg.s*10,y1:lg.ys};setState('climb');Snd.play('grab');break;}
+      if(I.u||took('u')||(P.sandUp&&ix===P.face)){P.cs={x0:P.x,y0:P.y,x1:lg.xe-lg.s*10,y1:lg.ys};setState('climb');Snd.play('grab');break;} // (round 41: caught from a sand slab with the way still held, he climbs on)
       // (round 33c) Grab held with Down over a hanging takes the cloth (it let go and caught the same lip again); see handsIn for the look
       if(I.g&&I.d&&bannerAt()&&took('d')){P.vx=0;P.vy=0;P.x=pCol()*TW+16;P.fallY=P.y;setState('slide');Snd.play('slide');break;}
       if(took('d')||took('j')){startFall(0);break;}break;}
@@ -4128,16 +4170,34 @@ const liftGx=(f,s)=>s<0?f.sc*TW+1:(f.sc+1)*TW-1; // where the grating's plane st
 const liftDocked=(f,top)=>Math.abs(f.y-(top?f.yT:f.yB))<0.01;
 // the lift whose platform he stands on, or null
 function liftUnder(){for(const f of L.lifts)if(f.t==='lift'&&Math.abs(P.x-(f.sc*TW+16))<17&&Math.abs(P.y-f.y)<2.5)return f;return null;}
+// (round 41) riding the bottomless sand lift: carried at the slab's height; toward an open foot mouth (held: the pad's arrow, or Up or Jump for
+// the way he faces, a Jump press kept SAND_BUF) gets him off in the window: within SAND_STEP of the floor a step through the mouth (the drawn
+// figure eased up from the slab, P.syo), deeper down to SAND_WE a jump up to the lip (jumpUp onto the hang; the arrow or Up still held climbs
+// at once, P.sandUp). Missed, the slab drops free from under him at SAND_WE and he falls with it, out of sight
+function sandRide(f,ix){const d=f.y-f.yB;
+  if(f.s>=2){P.lift=null;setState('air');P.vx=0;P.vy=f.vy||SAND_LV;P.fallY=f.yB;P.autoGrab=false;P.jumpKind=null;return;}
+  P.y=f.y;P.fallY=P.y;
+  if(took('j'))P.sbuf=gameTime;
+  let s=0;if(ix&&f.ms.includes(ix))s=ix;else if(I.u||gameTime-(P.sbuf??-9)<SAND_BUF)s=f.ms.includes(P.face)?P.face:f.sB;
+  if(!s||sandOpen(f)<SAND_OPS||d>SAND_WE)return;
+  P.sbuf=-9;learn('sandfall');P.face=s;P.lift=null;
+  if(d<=SAND_STEP){P.y=f.yB;P.fallY=P.y;P.syo=d;P.sx=P.x;P.tx=(f.sc+s)*TW+16;setState('step');P.yo=d;return;}
+  const xe=s>0?(f.sc+1)*TW:f.sc*TW;P.cs={x0:P.x,y0:P.y,x1:xe-s*7,ys:f.yB,ledge:{c:f.sc+s,r:f.rB,s:-s,xe,ys:f.yB}};setState('jumpUp');P.t=0.05;P.sandUp=1;}
+// the bottomless sand lift whose deep shaft (under the foot) holds cell c,r, or null
+function sandDeep(c,r){for(const f of L.lifts)if(f.sand&&f.rD&&c===f.sc&&r>f.rB&&r<=f.rD)return f;return null;}
 function updateLift(f,dt){
   const old=f.y,riding=P.state==='lift'&&P.lift===f;f.py=old; // (f.py: where it was last frame, for a fall onto it)
   if(f.sand){ // (round 16a) the sand lift: once he is on it, a short settle (the plug at its foot giving), then down at SAND_LV to the bottom, for good
-    if(f.s===1){f.tm+=dt;if(f.tm>=SAND_LW){f.y=Math.min(f.yB,f.y+SAND_LV*dt);if(f.y>=f.yB-0.01){f.y=f.yB;f.s=2;f.arr=1;if(tileVisible(f.sc,f.rB))Snd.play('thud');}
-      f.snd-=dt;if(f.snd<=0&&f.s===1&&tileVisible(f.sc,f.rT+1)){Snd.play('rip');f.snd=0.5;}}}
+    // (round 41) it never stops: past the foot at the same pace, and SAND_WE under the foot's floor the last of the sand runs out and it falls
+    // free (f.s 2, f.vy) out of sight down the bottomless shaft (f.s 3 once past its rock: nothing more is drawn); no thud
+    if(f.s===1){f.tm+=dt;if(f.tm>=SAND_LW){f.y+=SAND_LV*dt;if(f.y>=f.yB+SAND_WE){f.s=2;f.vy=SAND_LV;if(tileVisible(f.sc,f.rB))Snd.play('crumble');}
+      f.snd-=dt;if(f.snd<=0&&f.s===1&&(tileVisible(f.sc,f.rT+1)||tileVisible(f.sc,f.rB))){Snd.play('rip');f.snd=0.5;}}}
+    else if(f.s===2){f.vy=Math.min(f.vy+GRAV*dt,480);f.y+=f.vy*dt;if(f.y>f.yD+TH){f.s=3;}}
     const q=f.rT*L.cols+f.sc,want=liftDocked(f,true)?FLOOR:EMPTY;if(L.base[q]!==want)L.base[q]=want;
     // (round 38b) the top mouth's play plane (gT 0) only while the slab is still within the top storey (his first moments of the ride);
     // once it has gone below (and when it is down for good) the top is a plain open hole like any pit: he can step in and fall, or
     // hang from its edge. Nothing is drawn for gT on a sand lift (sandMouth, the relief and the metal mask leave it out)
-    f.gT=liftDocked(f,true)||f.y-f.yT>=TH?1:0;f.gB=liftDocked(f,false)?1:0;return;}
+    f.gT=liftDocked(f,true)||f.y-f.yT>=TH?1:0;f.gB=sandOpen(f)>=SAND_OPS?1:0;return;} // (round 41: the foot's mouths are open to him from SAND_OPS up)
   if(riding){
     const d=(I.d?1:0)-(I.u?1:0);f.tgt=null;
     if(d){f.y=clamp(f.y+d*LIFT_V*dt,f.yT,f.yB);if(f.y===f.yT||f.y===f.yB)f.arr=1;}
@@ -4175,7 +4235,9 @@ function chainBoard(f,i,q){P.y=q.y;const dist=q.y-P.fallY;
 // that is open above) has caught him
 function liftAir(py,dt){
   for(const f of L.lifts){
-    if(f.t==='lift'){const y0=f.py===undefined?f.y:f.py;if(Math.abs(P.x-(f.sc*TW+16))<17&&py-y0<=0.5&&P.y>=f.y&&f.y>f.yT+0.01&&f.y<f.yB-0.01){land({ys:f.y,r:rowOf(f.y-1)});return true;}continue;}
+    if(f.t==='lift'){const y0=f.py===undefined?f.y:f.py;
+      if(f.sand){if(f.s===1&&Math.abs(P.x-(f.sc*TW+16))<17&&py-y0<=0.5&&P.y>=f.y&&f.y>f.yT+0.01){land({ys:f.y,r:rowOf(f.y-1)});if(P.state!=='dead'){P.y=f.y;P.vx=0;P.lift=f;setState('lift');}return true;}continue;} // (round 41: dropping onto the sinking sand slab, he rides it on)
+      if(Math.abs(P.x-(f.sc*TW+16))<17&&py-y0<=0.5&&P.y>=f.y&&f.y>f.yT+0.01&&f.y<f.yB-0.01){land({ys:f.y,r:rowOf(f.y-1)});return true;}continue;}
     if(f.t!=='chain'||P.x<f.ca*TW-4||P.x>(f.cb+1)*TW+4||P.y<f.yT-90||py>f.yB+12)continue;
     for(let i=0;i<f.n;i++){const q0=chainPos(f,i,gameTime-dt),q1=chainPos(f,i,gameTime),dx=Math.abs(P.x-q1.x);
       if(dx<CH_FOOT&&py-q0.y<=0.5&&P.y-q1.y>=0){chainBoard(f,i,q1);return true;}
@@ -4329,11 +4391,12 @@ const HINTS={
   lift:'Step on the plate to call the lift. Hold up or down to ride.',
   chain:'Step on as a slab passes.',
   sandlift:'This slab rests on sand. Step onto it and the sand runs out, lowering you down the shaft.',
+  sandfall:'This slab sits on running sand and will not stop: the shaft below has no bottom. When the door at its foot opens, step off through it, or jump to catch the edge.',
   double:'Two marked gates. Each answers to the plate of its colour, one above and one below. The one with the sky clock will not stay open.',
 };
 // A hint for a move comes back (once a floor) until the move is done; the moves are the ids in HINT_MOVE, learned by learn() where they succeed.
 // Every other hint is plain information and shows once ever. One hint at a time: while one waits or shows, new ones are dropped (they come again).
-const HINT_MOVE=new Set(['gap','wide','climb','drop','spikes','crawl','fight','parried','poke','snake','potion','plate','block','wallrun','walljump','swing','banner','shaft','collapse','jgrab','lift','chain','sandlift']);
+const HINT_MOVE=new Set(['gap','wide','climb','drop','spikes','crawl','fight','parried','poke','snake','potion','plate','block','wallrun','walljump','swing','banner','shaft','collapse','jgrab','lift','chain','sandlift','sandfall']);
 let hintFloor=-1,hintSeen={};
 function hintDue(id){return HINT_MOVE.has(id)?!S.learned[id]&&!hintSeen[id]:!S.hints[id];}
 function hint(id){if(hintQ.length||!hintDue(id))return;hintQ.push({id,t:gameTime});}
@@ -4353,7 +4416,7 @@ function checkHints(){
       if(f){if(f.t==='spikes')hint('spikes');else if(f.t==='loose')hint(f.plank?'bridge':f.drop?'collapse':'loose');else if(f.t==='plate')hint('plate');else if(f.t==='chomp')hint('chomp');else if(f.t==='low')hint('crawl');else if(f.t==='closer')hint(f.slabF?'slabcloser':'closer');else if(f.t==='vent')hint('vent');else if(f.t==='pend')hint('pend');break;}
     }
     if(canClimbUp())hint('climb');
-    for(const f of L.lifts){if(f.sand){if(f.s===0&&f.rT===r&&Math.abs(f.sc*TW+16-P.x)<110)hint('sandlift');continue;} // (round 38b: a sand lift has no plate: its own hint, by its slab while it waits)
+    for(const f of L.lifts){if(f.sand){if(f.s===0&&f.rT===r&&Math.abs(f.sc*TW+16-P.x)<110)hint('sandfall');continue;} // (round 41: its own words, 'sandfall', learned by getting off one: a save that learned the old 'sandlift' still sees them) // (round 38b: a sand lift has no plate: its own hint, by its slab while it waits)
       if((f.rT===r||f.rB===r)&&Math.abs(f.sc*TW+16-P.x)<110)hint(f.t==='chain'?'chain':'lift');}
     {const f0=F(L,pCol(),r),f1=F(L,pCol()+P.face,r);if((f0&&f0.t==='shaftfoot')||(f1&&f1.t==='shaftfoot'))hint('shaft');const fb=F(L,pCol()+P.face,r);if(fb&&fb.t==='banner')hint('banner');}
     {const nc=pCol()+P.face;if(B(L,nc,r)===WALL&&B(L,nc,r-1)===WALL&&B(L,pCol(),r-1)!==WALL&&B(L,pCol(),r-2)===EMPTY&&solidBelow(L,nc,r-2))hint('wallrun');}
@@ -4399,6 +4462,9 @@ function updateCamera(dt){
   else if(st==='crouch'&&P.peekT>0.4)gy=P.y+56;
   else if(st==='dead')gy=cam.gy;
   if(cam.snap||!dt)gy=st==='dead'?cam.gy||P.y:P.y;
+  // (round 41) over a sand lift's bottomless shaft the view stays on the foot's floor: riding the slab under it, or falling, he goes out of sight
+  const sdk=st==='dead'?null:st==='lift'&&P.lift&&P.lift.sand?(P.y>P.lift.yB?P.lift:null):sandDeep(pCol(),rowOf(P.y-1))||(st==='air'||st==='jumpUp'||st==='hang'?sandDeep(pCol(),rowOf(P.y+8)):null);
+  if(sdk)gy=Math.min(gy,sdk.yB);
   // crouching over a grating looks down the shaft: the view drops to the lower run, framing the flask and its violet gate (the
   // prince leaves the picture while he looks; letting go brings the view back)
   const pk=st==='crouch'&&P.peekT>0.4&&!cam.snap?gratePeek():null;
@@ -4409,7 +4475,7 @@ function updateCamera(dt){
   const maxY=L.rows*TH-ROOM_H;
   if(cam.snap||!dt){cam.x=t;cam.y=ty;cam.snap=false;cam.pk=0;}
   else{cam.x+=(t-cam.x)*(1-Math.exp(-dt*(pk?5:3.2)));cam.y+=(ty-cam.y)*(1-Math.exp(-dt*(pk?3:5)));}
-  if(st!=='dead'&&!(cam.pk>0)){cam.y=Math.max(cam.y,P.y-ROOM_H+6);cam.y=Math.min(cam.y,P.y-56);}
+  if(st!=='dead'&&!(cam.pk>0)){if(!sdk)cam.y=Math.max(cam.y,P.y-ROOM_H+6);cam.y=Math.min(cam.y,P.y-56);}
   cam.y=clamp(cam.y,0,Math.max(0,maxY));
   cam.rx=Math.floor((cam.x+viewW/2)/ROOM_W);cam.ry=Math.floor((cam.y+ROOM_H/2)/ROOM_H);
 }
@@ -5271,7 +5337,7 @@ function isArchTop(gc,gr){return gr>=0&&D0(gc,gr)===EMPTY&&D0(gc,gr+1)===FLOOR&&
 // the arches are a hash of the cell, no generator stream
 // (and no breach in a shaft's back or in the cells beside it: its ragged hole runs up to a cell into its neighbours)
 function liftNear(c,r){for(let rr=r-1;rr<=r;rr++)for(let cc=c-1;cc<=c+1;cc++)if(liftCell(cc,rr))return true;return false;}
-function liftCell(c,r){let S=L._lsc;if(!S||S.lv!==L.lifts||S.n!==L.lifts.length){S=L._lsc=new Set();S.lv=L.lifts;S.n=L.lifts.length;for(const f of L.lifts)for(let rr=f.rT;rr<=f.rB;rr++)for(let cc=f.ca;cc<=f.cb;cc++)S.add(rr*L.cols+cc);}
+function liftCell(c,r){let S=L._lsc;if(!S||S.lv!==L.lifts||S.n!==L.lifts.length){S=L._lsc=new Set();S.lv=L.lifts;S.n=L.lifts.length;for(const f of L.lifts)for(let rr=f.rT;rr<=(f.rD||f.rB);rr++)for(let cc=f.ca;cc<=f.cb;cc++)S.add(rr*L.cols+cc);}
   return c>=0&&c<L.cols&&S.has(r*L.cols+c);}
 // (round 37a, owner after v81: "The lift shafts, at the very bottom the floor tile should be missing because the moving tile of the lift will
 // replace it") the foot of a counterweight lift's or a sand lift's shaft has no floor tile of its own: the platform (or the sand lift's slab) is
@@ -5283,7 +5349,7 @@ function liftCell(c,r){let S=L._lsc;if(!S||S.lv!==L.lifts||S.n!==L.lifts.length)
 // (it is never stood on while the pit shows). The paternoster's foot is a floor he walks and lands on, so it keeps its tiles.
 const LP_D=5;
 function liftPit(c,r){let M=L._lpit;if(!M||M.lv!==L.lifts||M.n!==L.lifts.length){M=L._lpit=new Map();M.lv=L.lifts;M.n=L.lifts.length;
-    for(const f of L.lifts)if(f.t==='lift'&&(f.sand||D0(f.sc-f.sB,f.rB)===WALL))M.set(f.rB*L.cols+f.sc,f);}
+    for(const f of L.lifts)if(f.t==='lift'&&!f.sand&&D0(f.sc-f.sB,f.rB)===WALL)M.set(f.rB*L.cols+f.sc,f);} // (round 41: a sand lift's foot is a hole into its deep shaft, no pit)
   return c>=0&&c<L.cols?M.get(r*L.cols+c)||null:null;}
 // the pit, in the room's picture where the floor tile would be (X, ys: the cell's x and floor line in the picture; wr: a wall on its right,
 // whose front face is nearer than the pit's back right corner)
@@ -7627,7 +7693,7 @@ const CUT_AT_WALL=new Set(['plate','xplate','lplate','closer','loose','spikes'])
 // working: 0 clean timber and bright bronze; 1 darker timber, stains, a little rust; 2 split timber, rust on the chains and
 // brackets, verdigris on the bronze in the damp themes, a chipped platform lip, streaks down the shaft; 3 a rotten bite out of the
 // beam's end bound with rope, heavier rust and soot or moss, a cracked platform. Never broken, never like a hurtdrop.
-function liftVisible(f,x0,x1,y0,y1){return (f.cb+1)*TW+80>x0&&f.ca*TW-80<x1&&f.rB*TH+TH+10>y0&&f.rT*TH-40<y1;}
+function liftVisible(f,x0,x1,y0,y1){return (f.cb+1)*TW+80>x0&&f.ca*TW-80<x1&&(f.rD||f.rB)*TH+TH+10>y0&&f.rT*TH-40<y1;} // (round 41: a sand lift's deep shaft too)
 const LAYER_DBG={hide:null,glow:true};function lyOff(k){return LAYER_DBG.hide!==null&&LAYER_DBG.hide.has(k);} // (round 39: layerscan.py leaves one kind of thing out of a frame, a Set of kinds: 'lamp', 'door', 'clock', 'lift', a feature's type, 'block', 'dart', 'cue', 'jet', 'flask', 'well', 'dust', 'debris', 'snake', 'guard', 'prince', 'trail', 'sand', 'emissive', 'ambient', 'atmo', 'haze'; glow false: no lamp's drawn glow, which is light, GLOWK)
 const LIFT_DBG={off:false,rider:false,gatesR:false,tiles:null}; // (liftscan.py: off leaves the lifts out of a frame, rider the prince, and gatesR draws only the gratings on the shafts' right edges, to compare with frames that have them; tiles, a Set, collects the cells whose floor tile the room pictures draw)
 function drawLift(ctx,f,half){if(LIFT_DBG.off||lyOff('lift')||(LIFT_DBG.gatesR&&f.t==='chain'))return;if(f.sand)drawSandLift(ctx,f,half);else if(f.t==='chain')drawLiftChain(ctx,f,half);else drawLiftCounterweight(ctx,f,half);}
@@ -7635,14 +7701,14 @@ function liftWear(f){if(f.wl===undefined||f.wn!==L.n){const x=(f.ca+f.cb+1)*TW/2
 // the front faces of the walls and low ceilings round a lift: cut out of what is drawn next (ctx in world space; save/restore round it)
 // (a floor's lip and its shadow lie over the top of the wall under it, so that strip is left open: a platform docked there shows its own)
 function liftOccl(ctx,f){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);
-  for(let r=f.rT-2;r<=f.rB+1;r++)for(let c=f.ca-2;c<=f.cb+2;c++){if(c<0||c>=L.cols||r<0||r>=L.rows)continue;
+  for(let r=f.rT-2;r<=(f.rD||f.rB)+1;r++)for(let c=f.ca-2;c<=f.cb+2;c++){if(c<0||c>=L.cols||r<0||r>=L.rows)continue;
     if(B(L,c,r)===WALL){const lip=r>0&&B(L,c,r-1)!==WALL?9:0;ctx.rect(c*TW-HX,r*TH+lip,TW,TH-lip);}else{const q=F(L,c,r);if(q&&q.t==='low')ctx.rect(c*TW-HX,r*TH,TW,TH-34);}}
   ctx.clip('evenodd');}
 // (liftocc2) the right-hand side faces of the walls round a lift, cut out of what lies on the shaft's back wall (its darkening and
 // grooves, the counterweight's channel and stone): a side face stands in front of the back plane all along its depth (things at
 // his depth, the chains, wheels, platform and slabs, are in front of its back half and are not cut)
 function liftOcclSide(ctx,f){ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);
-  for(let r=f.rT-2;r<=f.rB+1;r++)for(let c=f.ca-2;c<=f.cb+2;c++){if(c<0||c+1>=L.cols||r<0||r>=L.rows||B(L,c,r)!==WALL||B(L,c+1,r)===WALL)continue;
+  for(let r=f.rT-2;r<=(f.rD||f.rB)+1;r++)for(let c=f.ca-2;c<=f.cb+2;c++){if(c<0||c+1>=L.cols||r<0||r>=L.rows||B(L,c,r)!==WALL||B(L,c+1,r)===WALL)continue;
     const x=(c+1)*TW-HX,y=r*TH;ctx.moveTo(x,y);ctx.lineTo(x,y+TH);ctx.lineTo(x+DX,y+TH-DY);ctx.lineTo(x+DX,y-DY);ctx.closePath();}
   ctx.clip('evenodd');}
 // (round 26a, owner: "at the top the lift slab is drawn in front of the wall"; "when at the bottom the slab digs into the tile floor") what stands
@@ -7698,7 +7764,7 @@ function faceGap(x,r,y0,y1){const c=Math.floor((x+HX)/TW);if(fgHit(c,r,y0,y1))re
 // scissor in Torchlight, so the stencil of nearCut is only that big), then the faces in its cells (fl: the slabs' too). Call between save and restore
 function airCut(ctx,x,y,w,h,fl){ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();nearCut(ctx,Math.floor((x+HX)/TW),Math.floor((x+w+HX)/TW),Math.floor((y-FHH)/TH),Math.floor((y+h)/TH),fl);} // (from the row above when its slab's lip reaches the box)
 // the lift whose shaft he is in (riding it, or standing or falling inside it), or null
-function liftAround(){if(P.state==='lift'&&P.lift)return P.lift;const c=pCol(),ra=rowOf(P.y-40),rb=rowOf(P.y-1);for(const f of L.lifts)if(c>=f.ca&&c<=f.cb&&rb>=f.rT&&ra<=f.rB)return f;return null;}
+function liftAround(){if(P.state==='lift'&&P.lift)return P.lift;const c=pCol(),ra=rowOf(P.y-40),rb=rowOf(P.y-1);for(const f of L.lifts)if(c>=f.ca&&c<=f.cb&&rb>=f.rT&&ra<=(f.rD||f.rB))return f;return null;}
 // The Egyptian lifts (round 13, owner: "egyptianise the lifts: rope instead of chain, stone slabs instead of grates, wooden wheels";
 // EGP.traps). Ropes of twisted papyrus or palm fibre, two strands laid up (the Red Sea harbours' papyrus ropes, the rope-makers twisting
 // two strands in a Theban tomb), their lay drawn as two staggered rows of short strokes; wooden wheels: a solid disc of two or three planks
@@ -7853,28 +7919,36 @@ function drawLiftCounterweight(ctx,f,half){
 // wall the outlet it drains through (seen once the sand is gone). Drawn inside the walls' front faces (liftOccl) like the other lifts.
 // (round 26e) its foot storey's mouth slabs (f.ms): the counterweight lift's granite slabs, shut while sand stands in the foot storey; they
 // rise over the ride's last SAND_MD px, a function of the slab's height alone (rewind-safe), so they are up as it lands (play: f.gB)
-const SAND_MD=28;
+const SAND_MD=40; // (round 41: 28 before; the mouths start up 0.29 s before the slab passes the floor, the window's cue)
 function sandOpen(f){return clamp((f.y-f.yB+SAND_MD)/SAND_MD,0,1);}
 function sandMouth(ctx,f,s,h){const gx=EGP.traps?(s<0?f.sc*TW-T_SLAB/2:(f.sc+1)*TW+T_SLAB/2):liftGx(f,s);drawGate(ctx,{open:sandOpen(f),latch:true,dur:0,lg:1},gx-16,f.rB*TH,SURF(f.rB),h);}
+// (round 41) the bottomless shaft's dark: under the foot's floor the shaft fades to black over SAND_DK (keyed on the back wall's depth under
+// the floor line, as one looks down the hole), black from there down to its rock, which is never seen; drawn after the figures so the slab,
+// the sand and he himself go out of sight into it. Cut by the walls' front faces round the shaft (liftOccl), so it never lies on the front plane
+const SAND_DK=96;
+function sandAbyss(ctx,f){if(!f.rD)return;const fx=f.sc*TW-HX,bk=f.yB-HY,ft=f.yB+HY,y1=(f.rD+1)*TH;
+  ctx.save();liftOccl(ctx,f);const g=ctx.createLinearGradient(0,bk,0,bk+SAND_DK);
+  g.addColorStop(0,'rgba(3,2,6,0)');g.addColorStop(0.06,'rgba(3,2,6,0)');g.addColorStop(0.25,'rgba(3,2,6,.45)');g.addColorStop(0.55,'rgba(3,2,6,.86)');g.addColorStop(1,'rgba(3,2,6,1)');
+  ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(fx,ft);ctx.lineTo(fx+DX,bk);ctx.lineTo(fx+TW+DX,bk);ctx.lineTo(fx+TW,ft);ctx.lineTo(fx+TW,y1);ctx.lineTo(fx,y1);ctx.closePath();ctx.fill();ctx.restore();}
 function drawSandLift(ctx,f,half){
+  if(half&&!LIFT_DBG.gatesR)sandAbyss(ctx,f);
   if(half||LIFT_DBG.gatesR){for(const s of f.ms){if(s>0)sandMouth(ctx,f,s,half?1:0);else if(half&&!LIFT_DBG.gatesR)liftMouthL(ctx,f,1,1);}return;} // (a right mouth's near half after the rider, as the counterweight's; round 39e: a left one's too, liftMouthL)
-  const th=L.theme,ys=f.y,bot=SURF(f.rB),W=liftWear(f),X=f.sc*TW,top=f.rT*TH,h=ys-f.yT,pd=liftPit(f.sc,f.rB)?LP_D:0; // (round 37a: pd, the foot's pit under the slab's resting place)
+  const th=L.theme,ys=f.y,W=liftWear(f),X=f.sc*TW,top=f.rT*TH,h=ys-f.yT,sb=Math.min(f.yD||SURF(f.rB),f.yB+2*TH),gone=f.s>=3; // (round 41: the shaft goes on down, sb: as far as the sand is drawn, black under the dark from there; gone: the slab has fallen past its rock)
   ctx.save();liftOccl(ctx,f);
-  ctx.save();liftOcclSide(ctx,f);ctx.beginPath();ctx.rect(X-HX,f.yT-HY,TW,bot-f.yT+HY+pd);ctx.clip(); // (round 19) seen through the hole only: under the top slab's back edge, between the front planes of the cells beside it (its right groove lay over the next floor tile's top and lip)
-  liftShaftBack(ctx,X,TW,top,bot,W);
-  const ox=X+16+HX,oy=bot-HY+pd;ctx.fillStyle='rgba(6,4,10,.92)';ctx.beginPath();ctx.moveTo(ox-5,oy+0.5);ctx.lineTo(ox-5,oy-5);ctx.quadraticCurveTo(ox,oy-7.5,ox+5,oy-5);ctx.lineTo(ox+5,oy+0.5);ctx.closePath();ctx.fill(); // the outlet (round 37a: in the pit's back, on its floor)
+  ctx.save();liftOcclSide(ctx,f);ctx.beginPath();ctx.rect(X-HX,f.yT-HY,TW,sb-f.yT+2*HY);ctx.clip(); // (round 19) seen through the hole only: under the top slab's back edge, between the front planes of the cells beside it (its right groove lay over the next floor tile's top and lip)
+  liftShaftBack(ctx,X,TW,top,sb,W); // (round 41: no outlet: the sand runs on down the bottomless shaft)
   ctx.restore();
   ctx.restore();for(const s of f.ms)if(s<0){sandMouth(ctx,f,s,0);liftMouthL(ctx,f,1,0);}ctx.save();liftOccl(ctx,f); // (round 26e: a left mouth behind the sand and slab; round 39e: its near half, but for the strip the sand and slab stand in front of, after the figures)
-  if(ys<bot-0.5)sandCut(ctx,X-HX,ys+HY+5,bot+HY+pd,f.yT+HY+5,h,f.s===1&&f.tm>=SAND_LW,f.sc*131+f.rT*7); // (round 37a: down into the foot's pit)
+  if(!gone&&ys<sb)sandCut(ctx,X-HX,ys+HY+5,sb+HY,f.yT+HY+5,h,(f.s===1&&f.tm>=SAND_LW)||f.s===2,f.sc*131+f.rT*7); // (round 41: on down into the dark)
   if(f.s===1&&f.tm<SAND_LW+0.3){const k=Math.max(0,1-Math.abs(f.tm-SAND_LW)/0.3);if(k>0.02)dustCloud(ctx,X+16-HX,ys+HY+3,0.12+0.2*(1-k),0.6,0.55,0);} // a puff as it first gives
-  if(f.s===1&&f.tm>=SAND_LW&&ys>f.yT+2)for(const ex of [X-HX+1.6,X+TW-HX-1.6])sandFlow(ctx,ex,f.yT+HY+5,ys+HY+1,0.16,ex*0.07); // grains left on the shaft's sides running down the gap after it (they stop when it does)
+  if(f.s>=1&&f.tm>=SAND_LW&&ys>f.yT+2)for(const ex of [X-HX+1.6,X+TW-HX-1.6])sandFlow(ctx,ex,f.yT+HY+5,Math.min(ys,sb)+HY+1,0.16,ex*0.07); // grains left on the shaft's sides running down the gap after it (round 41: on into the dark)
   // (round 19) the cells on the shaft's right are nearer than the slab's back right corner once it has left a landing: a wall's
   // front face, or a floor tile's lip and top (whose left edge is the hole's right edge, the depth diagonal); cut away from it
   ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,2e5);const xr=X+TW-HX;
-  for(let r=f.rT;r<=f.rB;r++){if(B(L,f.sc+1,r)===WALL)ctx.rect(xr,r*TH,TW,TH);
+  for(let r=f.rT;r<=(f.rD||f.rB);r++){if(B(L,f.sc+1,r)===WALL)ctx.rect(xr,r*TH,TW,TH);
     else if(solidBelow(L,f.sc+1,r)){const sy=SURF(r);ctx.moveTo(xr,sy+HY+9);ctx.lineTo(xr+TW+DX,sy+HY+9);ctx.lineTo(xr+TW+DX,sy-HY);ctx.lineTo(xr+DX,sy-HY);ctx.lineTo(xr,sy+HY);ctx.closePath();}}
   ctx.clip('evenodd');
-  sandSlab(ctx,X,ys,th,W,hash2(f.sc,f.rB),pd&&ys>=bot-0.5); // (round 37a: at rest in the foot's pit its lip's shadow is the pit floor's edge, already in shade)
+  if(!gone&&ys<sb+TH)sandSlab(ctx,X,ys,th,W,hash2(f.sc,f.rB),false); // (round 41: it never rests at the foot; drawn until it is deep in the dark)
   ctx.restore();for(const s of f.ms)if(s>0)sandMouth(ctx,f,s,0);}
 // (round 19, owner: the sand lift's platform "doesn't respect perspective") the slab is a floor tile of the theme's stone, cut to
 // the shaft: its lip (front face) on the front plane over the whole cell, X-HX to X+TW-HX, exactly where the floor tiles' lips are,
@@ -8371,7 +8445,7 @@ function gatherLights(x0,x1,y0,y1){
     else if(f.t==='shaftfoot')add(X+16,o.r*TH-20,40,'236,228,200',0.32,'trap');
     else if(f.t==='bar')add(f.x,f.y,34,'255,226,170',0.4,'trap');
     else if(f.t==='saw')add(sawX(f,t),ys-10,38,'225,222,240',0.28,'trap');
-    else if(f.t==='lift')add(X+16,f.y-14,40,'225,215,190',0.3,'trap');
+    else if(f.t==='lift'){if(!f.sand||f.y<=f.yB+8)add(X+16,f.y-14,40,'225,215,190',0.3,'trap');} // (round 41: none once a sand slab has sunk under the foot's floor)
     else if(f.t==='chain')add(X+16+f.dx*16,(f.yT+f.yB)/2,60,'225,215,190',0.4,'trap');
     else if(f.t==='pend'){const q=pendTip(o,f);add(q.x,q.y,36,'225,222,240',0.28,'trap');}}
   if(EGP.traps)for(const d of L.debris){if(d.y0===undefined)continue;const age=debAge(d); // a sand floor's puff and a roof block's sand catch a little light while they hang in the air
@@ -8561,7 +8635,7 @@ function blkSlab(X,Y,ys,open){BLKG.open=open;const gg=gateGeom(X,Y,ys,BLKG);if(!
 const SDMAX=24,SDS={n:0,a:new Float32Array(SDMAX*4),f:new Float32Array(SDMAX)};
 function sdSeg(x0,x1,ta,tb,ft){if(SDS.n>=SDMAX)return;const i=SDS.n*4,a=SDS.a;a[i]=x0;a[i+1]=x1;a[i+2]=ta;a[i+3]=tb;SDS.f[SDS.n++]=ft;}
 function sandSegs(x0,x1,y0,y1){SDS.n=0;if(!L)return 0;
-  for(const f of L.lifts){if(!f.sand)continue;const X=f.sc*TW-HX,bot=SURF(f.rB);if(f.y>=bot-0.5||X+TW<x0||X>x1||bot+HY<y0||f.y>y1)continue;sdSeg(X,X+TW,f.y+HY,f.y+HY,bot+HY+(liftPit(f.sc,f.rB)?LP_D:0));} // (round 37a: down into the foot's pit) // (from the slab's front edge: its lip and the sand under it)
+  for(const f of L.lifts){if(!f.sand)continue;const X=f.sc*TW-HX,tp=(f.s<3?Math.min(f.y,f.yB):f.yB)+HY,ft=f.rD?(f.rD+1)*TH:SURF(f.rB)+HY;if(X+TW<x0||X>x1||ft<y0||tp>y1)continue;sdSeg(X,X+TW,tp,tp,ft);} // (from the slab's front edge: its lip and the sand under it; round 41: and the bottomless shaft's dark under the foot, from the floor's front edge down)
   if(EGP.traps)for(const o of L.dyn){if(o.f.t!=='loose'||o.f.plank)continue;const g=wellGroup(o);if(!g||g.os[0]!==o)continue;
     const xa=g.xa,xb=xa+g.n*TW;if(xb<x0||xa>x1||g.ybm<y0||g.top-WELL_CD>y1)continue;wellSolve(g);const S=g.S,per=TW/WELL_DX,M=g.n*per;
     for(let i0=0;i0<M;){const j=(i0/per)|0;let j2=j;while(j2+1<g.n&&g.yb[j2+1]===g.yb[j])j2++;const e=(j2+1)*per;let i1=Math.min(i0+4,e); // (one foot per run of columns)
@@ -10663,8 +10737,7 @@ function glRelief(lights,VZ,camD,camDY){
   n=glRelJaws(n,VZ,camD,camDY); // (round 37b) the slicers' jaws
   n=glRelBanners(n,VZ,camD,camDY); // (round 39e) the banners' runners
   if(EGP.traps){for(const o of L.dyn){const g=o.f.wg;if(o.f.t!=='loose'||!g||g.os[0]!==o)continue;n=glRelWell(n,g,VZ,camD,camDY);} // (round 21b) sand is not embossed with the wall's art behind it
-    for(const f of L.lifts)if(f.sand){const pd=liftPit(f.sc,f.rB)?LP_D:0;if(f.y<SURF(f.rB)-0.5)n=glRelBox(n,f.sc*TW-HX,f.y+HY+5-DY,f.sc*TW-HX+TW,SURF(f.rB)+HY+pd,VZ,camD,camDY);
-      else if(pd)n=glRelBox(n,f.sc*TW-HX,f.y-HY-1,f.sc*TW-HX+TW+DX,f.y+HY+8,VZ,camD,camDY);}} // (round 37a) its slab at rest in the foot's pit: the pit's edges in the room's picture under it are not embossed on it (as glRelLifts' platform)
+    for(const f of L.lifts)if(f.sand){const tp=f.s<3?Math.min(f.y,f.yB):f.yB,yb=f.rD?(f.rD+1)*TH:SURF(f.rB)+HY;n=glRelBox(n,f.sc*TW-HX,tp+HY+5-DY,f.sc*TW-HX+TW,yb,VZ,camD,camDY);}} // (round 41: the sand and the bottomless shaft's dark under the foot) // (round 37a) its slab at rest in the foot's pit: the pit's edges in the room's picture under it are not embossed on it (as glRelLifts' platform)
   gl.bindFramebuffer(gl.FRAMEBUFFER,R.fb.f);gl.viewport(0,0,fw,fh);gl.clearColor(.5,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);
   if(!nr)return;
   gl.bindBuffer(gl.ARRAY_BUFFER,R.buf);gl.bufferSubData(gl.ARRAY_BUFFER,0,R.V,0,n*24);

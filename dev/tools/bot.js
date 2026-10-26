@@ -331,10 +331,18 @@ function* botGen(n, seed, opts) {
         else if (ph === 4) { if (goto(cx(ins.to))) next(); }
         break; }
       case 'sandlift': { // (round 16a) the sand lift: walk onto its slab (stopping on it starts it), ride it down, walk off
-        const sc = ins.from + dir;
+        // (round 41) the slab never stops: ride it holding toward the foot's mouth on the way on (ins.off, a map side), so he steps off as
+        // the mouth opens; opts.sandJump instead presses Jump (and holds Up) once the slab is that many px under the floor (a test of the jump)
+        const sc = ins.from + dir, off = ins.off || dir;
         if (ph === 0) { r0 = row(); ins._lf = H.L.lifts.find(q => q.sand && q.sc === sc && q.rT === row()); if (!ins._lf) return fail(ins, 'no sand lift here'); ph = 1; }
-        else if (ph === 1) { if (p.state === 'lift') ph = 2; else if (goto(cx(sc)) && frames - f0 > 60 * 6) return fail(ins, 'sand lift did not start'); }
-        else if (ph === 2) { allOff(); if (p.state === 'stand' && row() > r0) ph = 3; else if (frames - f0 > 60 * 30) return fail(ins, 'sand lift ride never ended'); }
+        else if (ph === 1) { if (p.state === 'lift') { allOff(); ph = 2; } else if (goto(cx(sc)) && frames - f0 > 60 * 6) return fail(ins, 'sand lift did not start'); }
+        else if (ph === 2) {
+          const f = ins._lf, sj = opts.sandJump;
+          if (p.state === 'lift') { if (sj == null) set(dk(off), true); else if (f.y - f.yB >= sj) { set('u', true); if (!ins._sj) { press('j'); ins._sj = 1; } } }
+          else if (p.state === 'stand' || p.state === 'run' || p.state === 'stop') { if (row() > r0) { allOff(); ph = 3; } }
+          else if (p.state === 'dead') return fail(ins, 'fell down the sand lift\'s shaft');
+          if (frames - f0 > 60 * 30) return fail(ins, 'sand lift ride never ended');
+        }
         else if (ph === 3) { if (goto(cx(ins.to))) next(); }
         break; }
       case 'drink':
