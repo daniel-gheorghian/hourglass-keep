@@ -143,4 +143,4 @@ gate (`gateRoundel`), and the rewind's large clock running back ("The hours turn
 - round 40: the carve closes the gap between the bobbing earth and the pedestal's top slab when it is under a texel of the quarter-size
   mask (`SHC_TEX`, 1 px): a thinner sliver of wall stayed uncarved and its shadow, read blurred, lay across both (`shadowscan.py`
   floors 10, 22, 29 seed 1). Look only.
-- round 41: a clock on a sand lift's foot (a hole into the bottomless shaft now) moves along the floor on the side he gets off by.
+- round 41: a clock on a sand lift's foot (a hole over its spike pit now) moves along the floor on the side he gets off by.

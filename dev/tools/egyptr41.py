@@ -1,9 +1,9 @@
 # egyptr41.py [new.html] [outdir]: round 41's pictures (owner: "The sand lifts become a trap: the sand drains, the door opens, but he has to
-# jump, because the slab keeps going. The shaft is bottomless; the sand drains off the screen and the slab falls off the screen").
+# jump, because the slab keeps going"; round 41b: "put spikes at the bottom instead of being bottomless").
 # r41_sandfall.png: one row per moment, Classic | Torchlight, crops round the sand lift's foot at 3x (3 screen px a world px):
-#   the slab sinking, the foot's mouth opening with him on it; stepping off through the mouth; the slab dropping away under the floor;
-#   the empty bottomless shaft after; missed: he rides on under the floor into the dark; a far-side lift (the way on behind him).
-# r41_sandfall.gif: a ride in real time (Classic, 2x): on, down, the mouth, the step off, the slab going down out of sight; then a miss.
+#   the slab sinking, the foot's mouth opening with him on it; stepping off through the mouth; the slab going down into the spike pit;
+#   the slab at rest among the spikes after; missed: carried down onto the spikes; a far-side lift (the way on behind him, its other mouth shut).
+# r41_sandfall.gif: a ride in real time (Classic, 2x): on, down, the mouth, the step off, the slab settling on the spikes; then a miss.
 # outdir defaults to dev/tools/egypt_themes. Run from dev/tools (Torchlight is software WebGL in headless Chromium: a few s a frame).
 import io, os, sys
 from PIL import Image, ImageDraw
@@ -14,7 +14,7 @@ a = sys.argv[1:]
 NEW = os.path.abspath(next((x for x in a if x.endswith('.html')), os.path.join(HERE, '..', 'hourglass-keep.html')))
 OUTD = next((x for x in a if not x.endswith('.html')), os.path.join(HERE, 'egypt_themes'))
 INK = (20, 16, 24)
-BW, BH, ZK = 150, 150, 3  # the crop in world px round the foot (from 100 px over the floor to 50 under), and its scale
+BW, BH, ZK = 150, 180, 3  # the crop in world px round the foot (from 100 px over the floor to 80 under: the spike pit), and its scale
 
 FIND = r'''(two)=>{const H=__HK;for(let n=6;n<=40;n++)for(let s=0;s<40;s++){const seed=90000+n*211+s*31,L=H.genLevel(n,seed,true);
   const f=L.lifts.find(f=>f.sand&&(f.ms.length>1)===two&&f.k===3);if(f)return [n,seed,f.sc];}return null;}'''
@@ -29,7 +29,7 @@ STEP = r'''([cond,keys,lim])=>{const H=__HK,f=window.__F,P=H.P;for(const k of ['
 # draw the frame with the camera on the foot (held as play holds it there), frozen clock; returns the crop's placement
 SHOW = r'''()=>{const H=__HK,f=window.__F;H.banner=null;let T=1e6+H.gameTime*1000;H.setClock(()=>T);
   const fx=f.sc*32+16,fy=f.yB;H.cam.x=fx-H.viewW/2;H.cam.y=fy-192*0.6;H.cam.gy=fy;if(H.GLP){H.GLP.pipe=false;H.GLP.rs=1;window.__HKnoauto=true;}
-  window.__HKfreeze=true;for(let i=0;i<3;i++)H.render();const X=H.XF,cv=[...document.querySelectorAll('canvas')].find(c=>c.getBoundingClientRect().width>0),R=cv.getBoundingClientRect(),k=X.VZ/cv.width*R.width;
+  window.__HKfreeze=true;const md=H.mode;if(window.__NOCARD)H.mode='play';for(let i=0;i<3;i++)H.render();H.mode=md;const X=H.XF,cv=[...document.querySelectorAll('canvas')].find(c=>c.getBoundingClientRect().width>0),R=cv.getBoundingClientRect(),k=X.VZ/cv.width*R.width;
   return [R.left-X.camD/cv.width*R.width,R.top-X.camDY/cv.height*R.height,k,fx,fy];}'''
 MODES = [('Classic', 'classic'), ('Torchlight', 'torch')]
 
@@ -65,23 +65,24 @@ def moments(pg, lift, two):
     # yields (title, image) for one lift, in order
     pg.evaluate(LOAD, lift)
     side = 'r' if pg.evaluate('__F.sB') > 0 else 'l'
-    off = pg.evaluate('__F.ms.length>1') and ('l' if side == 'r' else 'r') or side
+    off = 'r' if pg.evaluate('__F.mo||__F.sB') > 0 else 'l'
     pg.evaluate(STEP, ["P.state==='lift'", '', 60])
     pg.evaluate(STEP, ["f.y>=f.yB-24", '', 600])
-    yield 'the slab 24 px over the foot\'s floor: the mouth slab%s rising, he rides on it' % ('s' if two else ''), shot(pg)
+    yield 'the slab 24 px over the foot\'s floor: the mouth on his way rising%s, he rides on it' % (' (the other stays shut)' if two else ''), shot(pg)
     pg.evaluate(STEP, ["P.state==='step'&&P.t>=0.12", off, 120])
     yield 'stepping off through the %s mouth (the way on)' % ('far' if two else 'exit'), shot(pg)
     pg.evaluate(STEP, ["f.y>=f.yB+44", '', 600])
-    yield 'off, on the landing: the slab 44 px under the floor, going down into the dark', shot(pg)
-    pg.evaluate(STEP, ["f.s>=3", '', 900])
-    yield 'after: the empty bottomless shaft, both mouths open' if two else 'after: the empty bottomless shaft, the mouth open', shot(pg)
+    yield 'off, on the landing: the slab 44 px under the floor, going down into the spike pit', shot(pg)
+    pg.evaluate(STEP, ["f.s>=2", '', 900])
+    yield 'after: the slab at rest among the spikes a storey under the foot%s' % (' (the exit side\'s mouth stays shut)' if two else ''), shot(pg)
 
 
 def miss(pg, lift):
     pg.evaluate(LOAD, lift)
     pg.evaluate(STEP, ["P.state==='lift'", '', 60])
-    pg.evaluate(STEP, ["f.y>=f.yB+36", '', 900])
-    yield 'missed: nothing pressed, he rides on under the floor (36 px down), fading into the dark', shot(pg)
+    pg.evaluate(STEP, ["P.state==='dead'", '', 900])
+    pg.evaluate(STEP, ["false", '', 40])
+    yield 'missed: nothing pressed, the slab carries him down onto the spikes', shot(pg)
 
 
 if __name__ == '__main__':
@@ -89,6 +90,8 @@ if __name__ == '__main__':
     with sync_playwright() as p:
         b = p.chromium.launch()
         pages = {m: page(b, m) for _, m in MODES}
+        for pg in pages.values():
+            pg.evaluate('window.__NOCARD=true')
         L1 = pages['classic'].evaluate(FIND, False)
         L2 = pages['classic'].evaluate(FIND, True)
         print('lifts', L1, L2, flush=True)
@@ -122,11 +125,11 @@ if __name__ == '__main__':
                     break
         for lift, two in ((L1, False),):
             gp.evaluate(LOAD, lift)
-            side = 'r' if gp.evaluate('__F.sB') > 0 else 'l'
+            side = 'r' if gp.evaluate('__F.mo||__F.sB') > 0 else 'l'
             rec("P.state==='lift'", '', 60)
             rec("f.y>=f.yB-40", '', 600)
             rec("P.state==='stand'&&P.y===f.yB", side, 120)
-            rec("f.s>=3", '', 600)
+            rec("f.s>=2", '', 600)
             for _ in range(8):
                 frames.append(frames[-1])
             gp.evaluate(LOAD, lift)

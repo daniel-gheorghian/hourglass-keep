@@ -123,7 +123,7 @@ and [prince](elements/prince.md).
 | Swing | catch a bar in reach of the hands (15 px across, 20 up or down) | period 1.15 (`SW_W`); dies down in ~4 (`SW_TAU`); a press of the way he swings arms one pump (`SW_KICK`, `SW_PRE` 0.8) | Jump throws him, more the faster he swings; it carries over from `SW_CLEAR` 0.55 (a chime); Down held 0.15 lets go; [swing bar](elements/swing-bar.md) |
 | Ride a counterweight lift | stand on the platform, hold Up or Down | `LIFT_V` 64 px/s | a plate on each landing calls it (`lplate`); he arrives standing (`P.liftHold`); [lifts](elements/lifts.md) |
 | Ride a paternoster | hold toward the shaft as a slab passes the landing | `CHAIN_V` 44 px/s; boards within `CHAIN_TOL` 14 px | step off by holding away as a slab passes a landing |
-| Ride a sand lift | stop on its slab | sinks at `SAND_LV` 140 px/s after `SAND_LW` 0.25, once, and never stops (round 41): the shaft under its foot is bottomless | get off at the foot: the arrow toward its door, Up or Jump (kept 0.3 s) from the door 45% open (the slab 22 px over the floor) until the slab is 72 px under it (0.67 s): within 20 px of the floor a step out, deeper a jump to the lip; missed, he falls out of sight and dies; [lifts](elements/lifts.md) |
+| Ride a sand lift | stop on its slab | sinks at `SAND_LV` 140 px/s after `SAND_LW` 0.25, once, and does not stop at the foot (round 41): it goes on into a spike pit a storey under it | get off at the foot: the arrow toward its open door, Up or Jump (kept 0.3 s) from the door 45% open (the slab 22 px over the floor) until the slab is 60 px under it (0.59 s): within 20 px of the floor a step out, deeper a jump to the lip; missed, he is impaled on the spikes; [lifts](elements/lifts.md) |
 
 ## Falls
 

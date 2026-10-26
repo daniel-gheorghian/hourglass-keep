@@ -107,6 +107,7 @@ drawDynamic    ... L.dyn: the three far stakes (255, drawn live) ... guards, pri
 | [the dark](the-dark.md) | the chase's menu lays `spikes(1)` (weight 0.9) |
 | [guards and snakes](guards-and-snakes.md) | `guardOk` keeps guards off them |
 | Low ceilings ([stonework](stonework.md)) | `lowceil.py` checks the low leap over a row of spikes under a ceiling at his height |
+| [lifts](lifts.md) | round 41b: a sand lift's spike pit is a fixed spikes cell a storey under its foot (`sl` names the lift); `drawNeedles` clips the needles under its slab's top while the slab is above them (hidden in the sand), and the slab at rest lies among them |
 
 ## Rules for changing it
 - Look only: `EGP.traps` changes the colours only; hit tests, timing, generator and bot are the same in both looks.
@@ -129,4 +130,5 @@ drawDynamic    ... L.dyn: the three far stakes (255, drawn live) ... guards, pri
 - Round 38a: the stakes carved out of the lamp shadow (`SHC`).
 - Round 38c: the saw-to-spikes conversion checked by `sawceil.py`.
 - Round 39 (v84): the front stake drawn after the figures (`drawNeedles`, `SPK_NEAR`), under the same `CUT_AT_WALL` cut; the Layer row.
+- Round 41b: the spike pit under a sand lift's foot; needles hidden in its sand under the slab (`f.sl`).
 - Details in CLAUDE.md.

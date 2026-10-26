@@ -575,48 +575,49 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   play x. `LAYER_DBG` (`hide` a Set of kinds, `glow` false) and `setGT` serve `layerscan.py [file] [lo hi] [seeds] [torch|classic|both]
   [kinds=] [phases=K]`: each kind drawn and left out at its rest, the front plane's pixels must not change; must print `layerscan: ok`.
   Look only: layouts identical, hit boxes, timing and the bot unchanged.
-- The bottomless sand lift (round 41, owner: "The sand lifts become a trap: the sand drains, the door opens, but he has to jump, because the
-  slab keeps going. The shaft is bottomless; the sand drains off the screen and the slab falls off the screen"; answers: missing it is death,
-  every sand lift, off by a jump or a step). The slab never stops: past the foot's floor at `SAND_LV` 140 px/s, and `SAND_WE` 72 px under it
-  the last sand runs out and it falls free (`f.s` 2, `f.vy`) down a shaft that goes on `SAND_DEEP` 3 storeys under the foot (rows `rB+1..rD`,
-  walled both sides, on rock; the foot itself is a hole, `L.base` `EMPTY`); past its rock it is gone (`f.s` 3). Any fall into that shaft kills
-  (`sandDeep`: `SAND_KILL` 144 px under the floor in the air, or a landing there), and the view stays on the foot's floor (`updateCamera`), so
-  he leaves the bottom of the screen first: `die('fall')`, a black flash, the usual rewind or checkpoint. Getting off (`sandRide`, the `lift`
-  state now reads input for a sand lift): the arrow toward an open foot mouth (`f.ms`), or Up, or Jump (kept `SAND_BUF` 0.3 s) for the way he
-  faces, from the mouths `SAND_OPS` 0.45 open (they start up `SAND_MD` 40 px over the floor, 28 before; open at 22 px over it) until the slab
-  is 72 px under the floor: a window of 94 px, 0.67 s, its cue the mouths' first 0.13 s. Within `SAND_STEP` 20 px of the floor a step onto
-  the landing (`step`, drawn eased up from the slab, `P.syo`); deeper a jump up to the lip (`jumpUp` onto the hang, the move that catches a
-  ledge a storey up; the arrow or Up still held climbs at once, `P.sandUp`). A held arrow steps him off at the window's first frame, so a
-  phone pad needs no timed press (Celeste's Player.cs forgives 0.1 s of coyote time and buffers Jump 0.08 s; a simple visual reaction is
-  about 0.25 s; here a held key or a 0.3 s buffer, as a first ride is a surprise; PoP 1989 has no ride to time, its jump up to a ledge a
-  storey above, SDLPoP's jumpup/jumphanglong, is the late window's move). The warning: the hint `sandfall` (replacing round 38b's `sandlift` on its trigger, by the slab
-  while it waits: "This slab sits on running sand and will not stop: the shaft below has no bottom. When the door at its foot opens, step off
-  through it, or jump to catch the edge."), learned by getting off one, not by boarding, so a save that learned the old `sandlift` still sees
-  it; and the mouths starting up before the window. Generator: the shaft is opened only in rock the floor as built left (after the open-hall
-  pass: three cells wide for `SAND_DEEP` storeys, rock under); reserving the cells while building (tried first, as the owner asked) let the
-  lower runs that pass under a shaft fail and floors came out shorter (`metrics40.py` v85, floors 4-27: the route's minimum down as far as
-  1065 from 1179), so a sand lift with no rock under its foot is the banner slide, as round 26e's are (`sandBanner`, `bn.fb` 1). Where the route
-  runs on past the foot's far side (the turn's last move: the next run starts at the foot, `LAND`, and heads back; every two-mouth lift, 124)
-  he gets off on that side (the bot's `off`, `to`), which must be plain floor with nothing after starting at the foot or crawling beside it
-  (Down there hangs him into the hole), else the banner slide (`bn.fb` 2). Floors 1-48 x 3 seeds: 322 built, 218 bottomless, 60 no rock, 19
-  the way on, 25 unwalled or a jump under the kept walls (26e/26g, as before); the move mix, tiles and route are v85's (`metrics40.py` v85: no
-  flags, identical); `layoutcmp.py` against v85 (floors 1-48, seeds 1-3; 50 of 144 floors identical) differs only in the shafts' cells
-  (foot and deep rows of the 243 bottomless lifts, 972 cells), the 88 new banners (their top cell, features, bot `slide`), the bot's
-  `sandlift` actions (`off`; `to` on the 116 far-side ones), 39 sky clocks moved off a foot (to the first plain cell on the side he gets off
-  by), lamps on 7 floors (`lampClear` reads `liftCell`, which runs down the deep shafts) and one gate timer of 1,438 by `estPath`'s
-  `sandlift` (careful 2.83, else 1.23, + (64k - 22)/`SAND_LV`: k 3 4.04 / 2.44, k 4 4.50 / 2.90; was 4.0 / 2.2; the bot measured 1.77 /
-  2.23 s from boarding to standing off, 104 rides). Look (`drawSandLift`, `sandAbyss`): the shaft's back and the
-  sand run on down past the foot, no outlet; after the figures the hole's top face and the shaft's front opening fill with a black that fades
-  in over `SAND_DK` 96 px under the back wall's floor line (0.45 at 22 px, 0.86 at 49, solid at 92), cut by `liftOccl`, so the slab, the
-  sand and he sink out of sight; no `trap` glint once the slab is under the floor; the dark is in `sandSegs` (no beam, haze or mist) and the
-  relief is rubbed off it (`glRelBox`). Bot: `sandlift` holds toward `off` from boarding (`opts.sandJump` presses Jump instead, for tests).
-  Checks: `lifttest.py` (sand3/sand4: missed, lost 146 px under the floor; stepped off with the slab 20-22 px over the floor; Jump at 40 and
-  66 px under it climbs out, at 78 too late), `sandshaft.py` (the foot a hole, the deep shaft open, walled and on rock; the fallbacks
-  counted), `liftscan.py` (a third place, the slab 40 px under the floor with him on the landing; near column and arches down the deep
-  shaft; floors 4-51 x 2 Classic, 6-13 Torchlight), `r38b_tests.py` (`sandhint`, `sandtop`), `hinttest.py` (learns `sandfall`), `run2.py`
-  floors 4-27 x 4 (96 of 96, 0 damage), the bot on 45 floors with sand lifts (104 rides, 0 damage). Pictures `egyptr41.py` (r41_sandfall.png:
-  the mouth opening with him on the slab, the step off, the slab going into the dark, the empty shaft, a miss, a far-side lift, both modes;
-  r41_sandfall.gif).
+- The sand lift's spike pit (round 41, owner: "The sand lifts become a trap: the sand drains, the door opens, but he has to jump, because the
+  slab keeps going"; answers: missing it is death, every sand lift, off by a jump or a step; round 41b, owner: "let's simplify: put spikes at
+  the bottom instead of being bottomless"). The slab does not stop at the foot: it sinks on at `SAND_LV` 140 px/s through the foot (now a hole,
+  `L.base` `EMPTY`) into a pit one storey under it (row `rD` = rB+1, a floor with fixed spikes, walled both sides) and comes to rest among the
+  spikes (`f.yP`, `f.s` 2, a thud). One storey because a landing on spikes kills at any height (`land`: spikes before fall damage), so the pit
+  is the generator's own spiked pit and every fall into it (riding on, stepping into the hole after, letting go of the lip) is the usual
+  impaling (`die('spikes')`, its sound, sparks and card); riding the slab to the bottom he is impaled as it comes to rest (`sandRide`). Getting
+  off (the `lift` state now reads input for a sand lift): the arrow toward its open foot mouth, or Up, or Jump (kept `SAND_BUF` 0.3 s), from
+  the mouth `SAND_OPS` 0.45 open (it starts up `SAND_MD` 40 px over the floor, 28 before; open at 22 px over it) until the slab is `SAND_WE`
+  60 px under the floor (a storey down, 64, it rests): a window of 82 px, 0.59 s, its cue the mouth's first 0.13 s. Within `SAND_STEP` 20 px
+  of the floor a step onto the landing (`step`, drawn eased up from the slab, `P.syo`); deeper a jump up to the lip (`jumpUp` onto the hang,
+  the move that catches a ledge a storey up; the arrow or Up still held climbs at once, `P.sandUp`). A held arrow steps him off at the
+  window's first frame, so a phone pad needs no timed press (Celeste's Player.cs forgives 0.1 s of coyote time and buffers Jump 0.08 s; a
+  simple visual reaction is about 0.25 s; here a held key or a 0.3 s buffer, as a first ride is a surprise; PoP 1989 has no ride to time, its
+  jump up to a ledge a storey above, SDLPoP's jumpup/jumphanglong, is the late window's move). Only the mouth on his way opens (`f.mo`,
+  `sandOpen(f,s)`, plays `f.gB`/`f.gF`): on a two-mouth lift the other side is a dead end behind the hole after the ride, so it stays shut
+  (round 41's open issue). The warning: the hint `sandfall` (replacing round 38b's `sandlift` on its trigger, by the slab while it waits:
+  "This slab sits on running sand and will not stop at the bottom: there are spikes below it. When the door at the foot opens, step off
+  through it, or jump for the edge."), learned by getting off one, not by boarding, so a save that learned the old `sandlift` still sees it;
+  and the mouth starting up before the window. Generator (post pass, after the open-hall pass): the storey under the foot must be rock three
+  cells wide (pit and walls) in the floor as built; else the banner slide (`sandBanner`, `bn.fb` 1). Reserving those cells while building
+  (tried for round 41's three bottomless storeys, then again for this one) let later runs and pits go elsewhere and cut floors short
+  (`metrics40.py` v85: floor 15's shortest route 943 for 971; three storeys: floors 4-27, down to 1065 from 1179) for 4 more of 265, so it is
+  not done. Where the route runs on past the foot's far side (the turn's last move: the next run starts at the foot, `LAND`, and heads back;
+  every two-mouth lift) he gets off on that side (`f.mo`, the bot's `off`, `to`), which must be plain floor with nothing after starting at the
+  foot or crawling beside it (Down there hangs him into the hole), else the banner slide (`bn.fb` 2). Floors 1-48 x 3 seeds (`sandshaft.py`'s):
+  322 built, 261 traps (bottomless round 41: 218), 16 no rock (60), 20 the way on (19), 25 unwalled or a jump under the kept walls (26e/26g, as
+  before). `metrics40.py` v85: no flags, identical. `layoutcmp.py` v85 (floors 1-48, seeds 1-3; 50 of 144 floors identical) differs only in
+  the 294 traps' foot and pit cells (588) and spike features, the 37 new banners (top cell, features, bot `slide`), the bot's `sandlift`
+  actions (`off`; `to` on the 122 far-side ones), 42 sky clocks moved off a foot (to the first plain cell on the side he gets off by), lamps
+  on 7 floors (`lampClear` reads `liftCell`, which runs down to the pit) and one gate timer of 1,438 by `estPath`'s `sandlift` (careful
+  2.83, else 1.23, + (64k - 22)/`SAND_LV`: k 3 4.04 / 2.44, k 4 4.50 / 2.90; was 4.0 / 2.2; the bot: 1.77 / 2.23 s from boarding to
+  standing off, 133 rides). Look (`drawSandLift`): the shaft's back and the sand run on down into the pit, no outlet; the pit's spikes stand
+  in the sand, hidden under the slab's top while it is above them (`drawNeedles`, the feature's `sl`), and at rest the slab lies among them,
+  drawn before them so they stand through it (both modes, the spikes' own shadow carve and relief; the sand in `sandSegs` and rubbed by
+  `glRelBox` down to the pit, the slab at rest too). Bot: `sandlift` holds toward `off` from boarding (`opts.sandJump` presses Jump instead,
+  for tests). Checks: `lifttest.py` (sand3/sand4: missed, impaled 64 px under the floor; stepped off with the slab 20-22 px over the floor;
+  Jump at 40 and 54 px under it climbs out, at 62 too late), `sandshaft.py` (the foot a hole over a walled spike pit; the fallbacks
+  counted), `liftscan.py` (a third place, the slab at rest on the spikes with him on the landing; near column and arches down to the pit;
+  floors 4-51 x 2 Classic, 6-11 Torchlight), `r38b_tests.py` (`sandhint`, `sandtop`), `hinttest.py` (learns `sandfall`), `run2.py` floors
+  4-27 x 4 (96 of 96, 0 damage) and fight 5-16, the bot on 45 floors with sand lifts (133 rides, 0 damage), `layerscan.py` floor 5 (lift and
+  spikes) both modes. Pictures `egyptr41.py` (r41_sandfall.png: the mouth opening with him on the slab, the step off, the slab going down
+  into the pit, at rest among the spikes, a miss onto them, a far-side lift, both modes; r41_sandfall.gif).
 - The Crossing (round 36a, owner, after the research in `dev/INTERLUDE_RESEARCH.md`: "an interlude between themes"; answers: at each
   theme change, after Climb on, he moves only while the pad is held, wordless but skippable, all twelve themes in their setting,
   Torchlight's glow and a Classic version, the hour from `progOf`, named "the Crossing"). At each change of theme (`crossDue(n)`:

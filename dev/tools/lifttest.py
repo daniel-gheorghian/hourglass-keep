@@ -5,7 +5,7 @@
 # has every counterweight lift at its first end with its grating and mouth floor in step; (e) a ride ends standing, with the
 # Down (or Up) held for it still held (no crouch at the bottom); (f) a paternoster's slab is solid wherever he is in its shaft:
 # falling onto a rising slab he lands on it and rides, jumping up into one stops his rise, one coming down on him at the
-# shaft's foot shoves him aside, and in none of it is he ever drawn inside a slab; (h) the sand lift (round 41: bottomless): missed, stepped
+# shaft's foot shoves him aside, and in none of it is he ever drawn inside a slab; (h) the sand lift (round 41b: a spike pit under its foot): missed, stepped
 # off, jumped off, the window's ends.
 # lifttest.py [per] [file.html]. Run from dev/tools.
 from playwright.sync_api import sync_playwright
@@ -45,40 +45,40 @@ with sync_playwright() as p:
         good=r.get('ok')=='path done' and r['called'] and r['rode']>30 and r['end'] and not r.get('hurt')
         if not good: bad+=1
         print(' call %-6s n=%d seed=%d: %s'%(kind,n,seed,'ok' if good else r))
-    # (h) round 16a, the sand lift; round 41, the bottomless one: stepping onto its slab starts it with no key held. Then, for each of sand3 and
-    # sand4: (h1) nothing pressed: the slab sinks past the foot and drops away, he is lost down the shaft (dead, cause fall, below the floor,
-    # never landing in view), the slab falls past its rock (f.s 3) and the top is an open hole; (h2) the arrow toward the foot's mouth held from
-    # the start: he steps off as the mouth opens, standing on the landing, unhurt; (h3) Jump pressed (and Up held) once the slab is 40 px under the
-    # floor: he catches the lip and climbs out, unhurt; (h4) the window's ends: the step at its first frame (the slab still over the floor), a
-    # Jump at SAND_WE - 2 px still saves him, one at SAND_WE + 4 px is too late
+    # (h) round 16a, the sand lift; round 41 (41b), the trap: stepping onto its slab starts it with no key held. Then, for each of sand3 and
+    # sand4: (h1) nothing pressed: the slab sinks past the foot to the spike pit's floor a storey under it and he is impaled there (dead, cause
+    # spikes, 64 px under the floor), the slab at rest (f.s 2), the foot a hole and the top an open hole; (h2) the arrow toward the foot's open
+    # mouth (f.mo, the way on) held from the start: he steps off as it opens, standing on the landing, unhurt; (h3) Jump pressed (and Up held)
+    # once the slab is 40 px under the floor: he catches the lip and climbs out, unhurt; (h4) the window's ends: the step at its first frame (the
+    # slab still over the floor), a Jump at SAND_WE - 6 px (read after the frame: the slab moves 2.3 px a frame) still saves him, at SAND_WE + 2
+    # it is too late
     SANDT='''([n,seed,kind,mode,arg])=>{const H=__HK,L=H.load(n,seed,true),sg=L.segs.find(q=>q.k==='turn-'+kind);
           const f=L.lifts.find(q=>q.sand&&q.sc>=Math.min(sg.c0,sg.c1)&&q.sc<=Math.max(sg.c0,sg.c1)&&q.rT>=Math.min(sg.r0,sg.r1)&&q.rB<=Math.max(sg.r0,sg.r1));
-          const P=H.P,hp=P.hp,key=(k,v)=>H.setKey('kb',k,v),side=f.sB>0?'r':'l',WE=72;P.inv=0;P.x=f.sc*32+16;P.y=f.yT;P.fallY=P.y;P.vx=0;P.face=f.sB;P.state='stand';
-          let rode=0,t=0,dOff=null,tOff=null,minY=1e9,jumped=false,seenDeep=0;const C=H.cam,VH=192;
+          const P=H.P,hp=P.hp,key=(k,v)=>H.setKey('kb',k,v),side=(f.mo||f.sB)>0?'r':'l';P.inv=0;P.x=f.sc*32+16;P.y=f.yT;P.fallY=P.y;P.vx=0;P.face=f.mo||f.sB;P.state='stand';
+          let rode=0,t=0,dOff=null,tOff=null,jumped=false;
           if(mode==='step')key(side,true);
           while(t++<60*14){H.tick(1);if(P.state==='lift')rode++;const d=f.y-f.yB;
             if(dOff===null&&rode>0&&P.state!=='lift'&&P.state!=='dead'){dOff=+d.toFixed(1);tOff=+(rode/60).toFixed(2);}
             if(mode==='jump'&&!jumped&&P.state==='lift'&&d>=arg){key('u',true);key('j',true);H.tick(1);key('j',false);jumped=true;}
             if(P.state==='dead'&&mode!=='none')break;
-            if(P.y>f.yB+8&&P.y-60<C.y+VH)seenDeep++;
             if((mode==='step'||mode==='jump')&&dOff!==null&&P.state==='stand'&&P.y===f.yB)break;
-            if(mode==='none'&&P.state==='dead'&&f.s>=3)break;}
+            if(mode==='none'&&P.state==='dead')break;}
           key(side,false);key('u',false);
           const exitC=Math.floor(P.x/32);
-          return {rode,st:P.state,cause:P.cause||null,y:+(P.y-f.yB).toFixed(1),hp:P.hp===hp,fs:f.s,dOff,tOff,exitC,sc:f.sc,sB:f.sB,top:L.base[f.rT*L.cols+f.sc],foot:L.base[f.rB*L.cols+f.sc],seenDeep,secs:+(rode/60).toFixed(2),ms:f.ms};}'''
+          return {rode,st:P.state,cause:P.cause||null,y:+(P.y-f.yB).toFixed(1),hp:P.hp===hp,fs:f.s,dOff,tOff,exitC,sc:f.sc,sB:f.mo||f.sB,top:L.base[f.rT*L.cols+f.sc],foot:L.base[f.rB*L.cols+f.sc],secs:+(rode/60).toFixed(2),ms:f.ms};}'''
     for kind in ['sand3','sand4']:
         fl=pg.evaluate(FIND,[kind,1])
         if not fl: bad+=1; print(' sand %s: no floor'%kind); continue
         n,seed=fl[0]
         r=pg.evaluate(SANDT,[n,seed,kind,'none',0])
-        good=r['rode']>30 and r['st']=='dead' and r['cause']=='fall' and r['y']>100 and r['fs']==3 and r['top']==0 and r['foot']==0
+        good=r['rode']>30 and r['st']=='dead' and r['cause']=='spikes' and abs(r['y']-64)<0.5 and r['fs']==2 and r['top']==0 and r['foot']==0
         if not good: bad+=1
-        print(' sand %-6s n=%d seed=%d miss: %s'%(kind,n,seed,'ok, lost %.0f px under the floor after %s s'%(r['y'],r['secs']) if good else r))
+        print(' sand %-6s n=%d seed=%d miss: %s'%(kind,n,seed,'ok, impaled %.0f px under the floor after %s s'%(r['y'],r['secs']) if good else r))
         r=pg.evaluate(SANDT,[n,seed,kind,'step',0])
         good=r['st']=='stand' and r['hp'] and r['y']==0 and r['dOff'] is not None and r['dOff']<0 and r['exitC']==r['sc']+r['sB']
         if not good: bad+=1
         print(' sand %-6s n=%d seed=%d step: %s'%(kind,n,seed,'ok, off with the slab %.1f px over the floor at %s s'%(-r['dOff'],r['tOff']) if good else r))
-        for d,want in ((40,True),(66,True),(78,False)):
+        for d,want in ((40,True),(54,True),(62,False)):
             r=pg.evaluate(SANDT,[n,seed,kind,'jump',d])
             ok2=(r['st']=='stand' and r['hp'] and r['y']==0) if want else (r['st']=='dead')
             if not ok2: bad+=1

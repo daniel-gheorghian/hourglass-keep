@@ -116,7 +116,7 @@ nearer stone in front of a live part (R1). Where a pass is left out of a row, th
 | | rig, ropes, platform, paternoster slabs, sand, sand slab, the rider | L2 | half 0, the rider with the figures | `liftOccl`, `liftNearCut` |
 | | mouth slabs | L2x | far half in half 0, near half in half 1 (after the figures) | `liftMouthCut` for the plate beside |
 | | the foot's pit | L2f | room picture (`liftPitDraw`) | n/a |
-| | the bottomless shaft's dark under a sand lift's foot (round 41, `sandAbyss`): the hole's top face and the shaft's front opening, fading to black down to its rock; the slab, the sand and he sink into it | L2 (from the back wall to the front opening; never L3) | half 1, after the figures, before the mouths' near parts | `liftOccl` (the walls' front faces round the shaft stand in front of it) |
+| | a sand lift's spike pit (round 41b): the spikes (a fixed spikes feature) hidden in the sand under the slab's top, standing through the slab at rest | L2f with the spikes (lip L3) | `drawNeedles` with `L.dyn`, after the lift's half 0 | clipped under the slab's top while it is above them |
 | [kick shafts and jet streams](elements/kick-shafts-and-jet-streams.md) | light band, grips | light on L1, marks on the faces | live | the band stops at the face |
 | | jet stream grains | air | live | clamped to the shaft, its right limit the face (`X+TW-HX`) |
 | [flasks and secrets](elements/flasks-and-secrets.md) | flask, a hidden flask's stars | L2m | live | placement; the stars cut at the face |

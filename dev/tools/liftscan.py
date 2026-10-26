@@ -26,9 +26,9 @@
 #        px, where the pit's floor edge and the lips' shade are: no row over 30%), against the frame with no lift: its top and lip within 1 px
 #        of the floor tiles' beside it. 'flushlog' prints the three numbers for every such case. (round 38c) The platform is drawn unworn for
 #        it (f.wl 0): a worn lip's chips are as dark as the pit's floor and read as uncovered (floors 17, 24, 37, 40, 43, 57: 0.51-0.6 worn, 1 unworn).
-# Round 41 (the bottomless sand lift): a sand lift's places are its slab at the top, mid-ride with him on it, and 40 px under the foot's floor
-# sinking into the dark with him off on the landing (it never rests at the foot: no flush check); its foot draws no tile (a hole); the near
-# column and the arches and breaches are checked down its bottomless shaft (rows to rD) too.
+# Round 41 (41b, the sand lift's spike pit): a sand lift's places are its slab at the top, mid-ride with him on it, and at rest on the spike
+# pit's floor a storey under the foot with him off on the landing (it never rests at the foot: no flush check); its foot draws no tile (a
+# hole); the near column and the arches and breaches are checked down to the pit (rows to rD) too.
 # Before the cases it counts the arches (recesses, openings) and breaches set in a lift shaft's back wall (cells, any number is a failure).
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -52,12 +52,12 @@ ART = r'''([lo,hi,seeds])=>{const H=__HK;let arch=0,br=0,cells=0;const where=[];
 RUN = r'''([n,seed,i,pos,mode])=>{const H=__HK;window.__HKfreeze=true;for(const id in H.HINTS)H.S.hints[id]=1;H.S.set.lightMode=mode;
   const SL=H.LIFT_DBG.tiles=new Set(); // (round 37a: the floor tiles the room pictures draw)
   let L;try{L=H.load(n,seed,true);}catch(e){H.LIFT_DBG.tiles=null;throw e;}H.banner=null;const f=L.lifts[i],P=H.P;P.inv=1e9;
-  // (round 41) a sand lift's third place is its slab 40 px under the foot's floor, sinking into the bottomless shaft (it never rests at the foot),
-  // with him off it on the landing by the mouth
-  const place=()=>{if(f.t==='lift'){const fr=[0,0.5,1][pos];f.y=f.yT+(f.yB-f.yT)*fr+(f.sand&&pos===2?40:0);f.tgt=null;L.base[f.rT*L.cols+f.sc]=fr===0?1:0;f.gT=fr===0?1:0;f.gB=fr===1?1:0;
-      if(f.sand){f.s=pos?1:0;f.tm=pos?1:0;f.gB=pos===2?1:0;}
+  // (round 41b) a sand lift's third place is its slab at rest on the spike pit's floor a storey under the foot (it never rests at the foot),
+  // with him off it on the landing by the open mouth
+  const place=()=>{if(f.t==='lift'){const fr=[0,0.5,1][pos];f.y=f.sand&&pos===2?f.yP:f.yT+(f.yB-f.yT)*fr;f.tgt=null;L.base[f.rT*L.cols+f.sc]=fr===0?1:0;f.gT=fr===0?1:0;f.gB=fr===1?1:0;
+      if(f.sand){f.s=pos===2?2:pos?1:0;f.tm=pos?1:0;}
       P.x=f.sc*32+16;P.y=f.y;P.fallY=P.y;P.face=pos===1?1:-f.sT;P.vx=P.vy=0;if(pos===1){P.state='lift';P.lift=f;}else{P.state='stand';P.lift=null;}
-      if(f.sand&&pos===2){P.x=(f.sc+2*f.sB)*32+16;P.y=f.yB;P.fallY=P.y;P.face=f.sB;}}
+      if(f.sand&&pos===2){const mo=f.mo||f.sB;P.x=(f.sc+3*mo)*32+16;P.y=f.yB;P.fallY=P.y;P.face=mo;}}
     else{const q=H.chainPos(f,0,H.gameTime);P.x=q.x;P.y=q.y;P.fallY=P.y;P.state='lift';P.lift=f;P.slab=0;P.bx=q.x;P.by=q.y;P.bt=-9;P.face=pos===1?-f.dx:f.dx;}};
   if(f.t==='chain'){if(pos<3)H.tick(60*2*pos+1);else{H.tick(1);for(let k=0;k<1200;k++){let hit=false;for(let j=0;j<f.n;j++){const q=H.chainPos(f,j,H.gameTime);
         if(pos===3?Math.abs(q.y-f.yB)<0.5&&(Math.abs(q.x-(f.ca*32+16))<1.5||Math.abs(q.x-(f.cb*32+16))<1.5):Math.abs(q.y-f.yT)<0.5&&Math.abs(q.x-(f.cb*32+16))<1.5)hit=true;}
@@ -126,7 +126,7 @@ RUN = r'''([n,seed,i,pos,mode])=>{const H=__HK;window.__HKfreeze=true;for(const 
       for(let py=my0;py<my1;py++)for(let px=mx0;px<mx1;px++){const o=(py*A.mw+px)*4;if(Math.abs(A.mk[o]-B.mk[o])+Math.abs(A.mk[o+1]-B.mk[o+1])+Math.abs(A.mk[o+2]-B.mk[o+2])>24){badM++;if(!where)where=['mask',Math.round((px*2+A.camD)/A.VZ),Math.round((py*2+A.camDY)/A.VZ),[...A.mk.slice(o,o+3)],[...B.mk.slice(o,o+3)],A.mw,A.mh];}}}}
   // (round 37a) pit: no floor tile in the room's picture at the foot of a lift with a pit, one where it has none; flush: the platform at rest
   // at the foot covers the floors' lip rows and its top the rows above, against the frame with no lift
-  // (round 41) a sand lift's foot is a hole into its bottomless shaft: no tile drawn there either, and nothing rests there to be flush
+  // (round 41) a sand lift's foot is a hole into its spike pit: no tile drawn there either, and nothing rests there to be flush
   let pit=0,pwhere=null,flush=null;{const C0=L.cols,exp=f.t==='lift'&&(!!f.sand||L.base0[f.rB*C0+f.sc-f.sB]===2),cols=f.t==='chain'?[f.ca,f.cb]:[f.sc];
     for(const c of cols){const has=SL.has(f.rB*C0+c);if(slN===0||has===exp){pit++;pwhere=['pit',c,f.rB,'tile drawn',has,'pit expected',exp,'tiles drawn',slN];}}
     if(exp&&!f.sand&&pos===2&&Math.abs(f.y-f.yB)<0.01){const ft=(f.rB+1)*64,fx=f.sc*32-8;

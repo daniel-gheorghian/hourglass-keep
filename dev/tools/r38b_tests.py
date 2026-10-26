@@ -10,7 +10,7 @@
 #  4 sandhint  by a sand lift's slab the hint is its own (round 41: 'sandfall', the bottomless lift's warning, shown even to a save that
 #              learned round 38b's 'sandlift'; not the plate lift's words); getting off it at the foot learns 'sandfall', never 'lift'; by a
 #              counterweight lift the hint is still 'lift'
-#  5 sandtop   riding a sand lift he cannot walk off the slab before its foot's mouth opens (round 41: then he can, the bottomless lift);
+#  5 sandtop   riding a sand lift he cannot walk off the slab before its foot's mouth opens (round 41: then he can; the slab goes on to the spike pit under the foot, 41b);
 #              the top's play plane stands only while the slab is within the top storey; once it is gone, walking back at the top he steps
 #              into the hole (falls)
 #  6 recruit   the recruit's HUD colour is not blue or white and reads apart from the other ranks' and the prince's hearts
@@ -89,7 +89,7 @@ J5 = r'''()=>{const H=__HK,T=__T;const fd=T.find(4,40,4,L=>L.lifts.find(f=>f.san
   const cx=f.sc*32+16,x0=P.x;let dx=0,bad=[],n=0;
   for(i=0;i<900&&P.state==='lift';i++){T.keys(i%60<30?{[ka]:1}:{[k]:1});H.tick(1);n++;if(P.state==='lift'&&f.y<f.yB-40)dx=Math.max(dx,Math.abs(P.x-x0)); // (round 41: until the foot's mouth starts up)
     const dy=f.y-f.yT,want=dy>0.01&&dy<64?0:1;if(f.gT!==want&&bad.length<4)bad.push({dy:Math.round(dy*10)/10,gT:f.gT});}
-  T.keys({});for(i=0;i<600&&f.s<3;i++)H.tick(1);H.tick(30);const down=f.s===3,foot=Math.floor((P.y-1)/64)===f.rB&&P.state==='stand';
+  T.keys({});for(i=0;i<600&&f.s<2;i++)H.tick(1);H.tick(30);const down=f.s===2,foot=Math.floor((P.y-1)/64)===f.rB&&P.state==='stand';
   T.put(f.sc+2*f.sT,f.rT,-f.sT);T.keys({[k]:1});let fell=false,minD=1e9;
   for(i=0;i<150;i++){H.tick(1);minD=Math.min(minD,Math.abs(P.x-cx));if(P.state==='air'&&Math.floor(P.x/32)===f.sc){fell=true;break;}}
   T.keys({});

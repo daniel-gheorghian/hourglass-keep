@@ -331,7 +331,8 @@ function* botGen(n, seed, opts) {
         else if (ph === 4) { if (goto(cx(ins.to))) next(); }
         break; }
       case 'sandlift': { // (round 16a) the sand lift: walk onto its slab (stopping on it starts it), ride it down, walk off
-        // (round 41) the slab never stops: ride it holding toward the foot's mouth on the way on (ins.off, a map side), so he steps off as
+        // (round 41) the slab does not stop at the foot (41b: it sinks on into a spike pit): ride it holding toward the foot's mouth on
+        // the way on (ins.off, a map side, the one that opens), so he steps off as
         // the mouth opens; opts.sandJump instead presses Jump (and holds Up) once the slab is that many px under the floor (a test of the jump)
         const sc = ins.from + dir, off = ins.off || dir;
         if (ph === 0) { r0 = row(); ins._lf = H.L.lifts.find(q => q.sand && q.sc === sc && q.rT === row()); if (!ins._lf) return fail(ins, 'no sand lift here'); ph = 1; }

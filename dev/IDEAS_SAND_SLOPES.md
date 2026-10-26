@@ -11,20 +11,21 @@ Idea 1 is built (round 41); 2 and 3 are not. These notes say what each costs and
 
 | Idea | Difficulty | What it touches | Layouts change? |
 |---|---|---|---|
-| 1. Bottomless sand lift (built, round 41) | Medium (about round 26e's size) | generator, play, bot, hint, look | only the deepened shafts' cells, cut into unused rock |
+| 1. Bottomless sand lift (built, round 41; a spike pit, 41b) | Medium (about round 26e's size) | generator, play, bot, hint, look | only the foot and a spike pit under it, cut into unused rock |
 | 2. Slanted well floor | Easy to medium if look only; hard if he lands on it | `wellSolve`, `drawWellGroup`, `wellscan.py` | no |
 | 3. Sloped corridors | Very hard (several rounds, more than the WebGL move) | almost everything | yes |
 
 Suggested order: 1 first; settle 2's question before any work; for 3, the drift corridor below, or treat real slopes as their own
 multi-round project.
 
-## 1. Bottomless sand lift: medium (BUILT, round 41)
+## 1. Bottomless sand lift: medium (BUILT, round 41, as a spike pit in 41b)
 
-Built in round 41 (see CLAUDE.md, "The bottomless sand lift", and `dev/docs/elements/lifts.md`). The owner's answers: missing the window
-is death; every sand lift (each one with three storeys of rock under its foot: 218 of 322 on floors 1-48 x 3 seeds; reserving the rows
-while building made floors shorter, so the rest are the banner slide); off by a step or a jump. The window: 0.67 s (94 px) from the
-foot's mouth 45% open to the slab 72 px under the floor, a held arrow or a buffered Jump; the `sandfall` hint warns. The notes below are
-the plan as it was.
+Built in round 41 (see CLAUDE.md, "The sand lift's spike pit", and `dev/docs/elements/lifts.md`). The owner's answers: missing the window
+is death; every sand lift; off by a step or a jump. Round 41 built it bottomless (three storeys of shaft under the foot, a fade to black);
+round 41b (owner: "let's simplify: put spikes at the bottom instead of being bottomless") puts a spike pit a storey under the foot instead:
+261 of 322 sand lifts qualify on floors 1-48 x 3 seeds (the rest, with no rock under the foot or no way off the slab, are the banner slide;
+reserving the rows while building made floors shorter). The window: 0.59 s (82 px) from the foot's mouth 45% open to the slab 60 px under
+the floor, a held arrow or a buffered Jump; only the mouth on his way opens; the `sandfall` hint warns. The notes below are the plan as it was.
 
 Example: a 4-storey sand lift. The slab passes the foot storey's floor in 0.46 s (a storey 64 px at `SAND_LV` 140 px/s); the exit's
 mouth slab rises over the last `SAND_MD` 28 px (0.2 s). A fair window runs from the mouth starting to open until the slab is about
