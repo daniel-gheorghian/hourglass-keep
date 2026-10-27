@@ -140,8 +140,8 @@ Pixels are the audits' counts over the front plane in their frames (v83 -> v84).
 `layerscan.py` (round 39, by hand; floors 3-8, Classic): banner 86 bad views -> 0; air 238, door 1, lamp 6 -> 0; lift, clock, stone and
 gate 0. `liftscan.py` floors 3-8 Classic and 6-8 Torchlight `ALL OK`.
 
-Side effect: in a kick shaft (24 px at mid-depth) he is now cut by both walls, so his head loses about 4 px at the walls (v83 drew him
-19.5 px into the far wall).
+Side effect: in a kick shaft (24 px at mid-depth) he is now cut by both walls (v83 drew him 19.5 px into the far wall). Round 42a's
+chimney (he is drawn back and foot between the walls) makes him fit: see [kick shafts](elements/kick-shafts-and-jet-streams.md).
 
 Left as they are (decisions or low): the gate slab's top piece above the ceiling's edge over the lintel's side face (round 14's look; the
 owner's call); the swing bar's near pole segment and near rope drawn before him; things not recorded in `SHC` (bar, lift rig, paternoster

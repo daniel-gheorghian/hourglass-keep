@@ -65,7 +65,7 @@ The body that plays is a few numbers on `P`; the drawn figure never feeds back i
 | `step` (`STEP_T` 0.3 s), `edgeWalk` | `stepPose` (feet by IK, no slide); steps over `TP_DMAX` 22 px and `edgeWalk` use `walkPose` |
 | `crouch`, `poke`, `lowStrike` | `crawlPose` (the low blade with `P.lowSword`); the thrust; `PS.windup` then `PS.lowStrike` |
 | `jumpPrep` (`JP_T` 0.28 s) | `prepPose` (13_11's wind-up), feet held where they stood (`poseOx`) |
-| `air` | by `P.jumpKind`: `run`/`stand` `flightPose`, `kick` `kickPose`, `wall` `wallRunIK`, plant `plantPose`, none `PS.fall` with the limbs moving; `P.yo` from `jumpYo` |
+| `air` | in a kick shaft's column (round 42a) `chimPose` (stances 'f' and 'b', the push, the tuck, the reach); else by `P.jumpKind`: `run`/`stand` `flightPose`, `kick` `kickPose`, `wall` `wallRunIK`, plant `plantPose`, none `PS.fall` with the limbs moving; `P.yo` from `jumpYo` |
 | `land`, `landHurt` | `landSeq` or `settlePose('land')`; `PS.crouch` |
 | `hang`, `climb` (`CLIMB_T` 0.72 s), `climbDown` (0.6 s), `jumpUp`, `bonk` | `PS.hang` and its swing; `climbFrame`; `PS.crouch` then `PS.reach` |
 | `drink` (`DR_T` 1.3 s), `push`/`pull` (0.55 s) | `drinkFrame`; the run's legs at part stride, arms on the block |
@@ -124,7 +124,7 @@ What cuts him:
 | Cut | Code | When |
 |---|---|---|
 | A face beside him on the right (the next column's wall, low ceiling or block) | `wallPress` (drawn left by up to `HX`+12, the rest clipped by `figClip`'s `wc` from the face over its rows) | always, both modes |
-| A face on his left (round 39) | `wallPress`: the column before's front face and its side face's near half hide a mid-depth point left of that cell's right edge; drawn right by up to `HX`+4 (`figReach`'s `left`, mirrored), the rest clipped there; between two faces where he does not fit (a kick shaft, 24 px at mid-depth) drawn in the middle and cut by both | always, both modes |
+| A face on his left (round 39) | `wallPress`: the column before's front face and its side face's near half hide a mid-depth point left of that cell's right edge; drawn right by up to `HX`+4 (`figReach`'s `left`, mirrored), the rest clipped there; between two faces where he does not fit (a kick shaft, 24 px at mid-depth) drawn in the middle and cut by both (round 42a: a kick shaft draws him back and foot between them instead, `chimPose`, `chimClip`) | always, both modes |
 | A block being pushed or pulled | `wallRows` takes the moving block's drawn face (`drawBlock`'s x), not its two cells (round 39: the press holds at -13.1 px; v83 jumped between -8 and -20) | `push`, `pull` and anyone beside a moving block |
 | Behind a wall's face at a ledge | `figClip` mode 1 (`jumpUp`), 2 (`hang`, `climb`, `climbDown`): only what is above the ledge | ledge on the wall's near side (`lg.s<0`, `wallBelow`) |
 | The ledge's slab, over open space (round 39, owner: "Cut the arms at the lip, keep only the hands") | `figClip` mode 3 (the slab on his right, no wall below), 4 (the slab on his left): the slab's lip and the near half of its top face (and of its end) cut him, so below its mid line only the hands' grip (above `ys`+1.5) shows | `hang`, `jumpUp`, `climb`, `climbDown` (`ledgeOf`); with the wall below on his left he is pulled 2 px, not 6, so his hands stay on its corner |
@@ -214,5 +214,7 @@ Classic's beam cut and `fillCut`. The sword shows in it only while drawn at a fo
   block cuts him at its drawn face; dead he keeps his press and is cut by the faces near him (`deadCut`); over open space the ledge's lip
   and the near half of its top hide all but his hands (`figClip` modes 3 and 4, owner), his shadow too; `drawShut` only where the back
   wall shows; in a kick shaft he is drawn in the middle and cut by both walls (his head loses about 4 px). Look only.
+- round 42a: in a kick shaft he is drawn as a climber in a chimney, back and foot (`chimPose`, `chimBrace`, `chimLeg`, session `P.chm`,
+  drawn facing `P.dF`, clip `chimClip`); his silhouette's uses take his drawn x there (`chimSX`). Look only.
 
 Details in CLAUDE.md and `dev/FIGURE_SPEC.md`.

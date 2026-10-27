@@ -93,8 +93,9 @@ lunge 0.46, parry 0.07, lowStrike 0.10). The low leaps keep their legs and are p
 | crawl (16 keys) | 111_03 f760-990 | weak: a pregnant woman crawling, limb timing only; half a cycle mirrored; round 25b: the neck line 0.80 rad from up (CRAWL_NECK, the clip's nod kept) and the skull turned up on it (hp = CRAWL_HP -0.45); round 25f: 0.64 and -0.52, the face 7 deg under the horizontal |
 | drink (DK's 11 keys) | 81_14 f1300, f1255; 79_38 f180-520 | the flask picked up from a crouch, then drinking water |
 
-Kept procedural (no clip): the wall run and the kick-shaft plant (two-bone IK on the new legs), the blade slide's shudder, the push and
-pull of blocks (the run at 40%).
+Kept procedural (no clip): the wall run and the kick-shaft plant (two-bone IK on the new legs), the kick shaft's chimney (round 42a:
+back and foot between the walls, soles and palms placed by IK, `chimPose`; the database has no chimney climb), the blade slide's shudder,
+the push and pull of blocks (the run at 40%).
 
 Timing: every state's timer, the run's phase (one cycle per 44 px, footfalls at 0 and 0.5), the climb's 0.72 s and its positions,
 the drink's 1.3 s and its beats, the swing's physics are unchanged; the clips only give each frame's shape.

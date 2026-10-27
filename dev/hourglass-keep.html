@@ -2018,6 +2018,99 @@ function kickPose(){const tk=gameTime-(P.kickT||-9),a=ease(clamp(tk/0.1,0,1)),wc
   lerpPose(PS.kickPush,PS.kickTuck,a,kpA);return lerpPose(kpA,PS.kickReach,ease(clamp((u-0.45)/0.5,0,1)),kpB);}
 let KP=null;
 function plantPose(){if(!KP){KP=mk({lean:-0.34,head:-0.42,air:1,hy:25,aF:-0.25,eF:1.05,aB:-0.6,eB:0.85});[KP.hF,KP.kF]=legIK(10.5,0);[KP.hB,KP.kB]=legIK(10.5,8.5);}return KP;}
+// ---- (round 42a) the kick shaft as a chimney ----
+// (owner: "Kick shaft: great idea with the chimney pose. Research and let's implement") A kick shaft shows 24 px at mid-depth (from X, where
+// the left wall's side face's near half ends, to X+TW-HX, the right wall's face): 0.82 m at 29.4 px a metre, narrower than the plant above
+// (soles on the wall, knees to the chest, leaning off it), so from round 39 both walls cut him (60 px of him a planted frame, up to 174).
+// Climbers climb a chimney of that width back and foot (Climbing.com, "How to climb chimneys" and Rob Pizem's tips; the Night Climbers of
+// Cambridge, "On Chimneys"; Freedom of the Hills): the back on one wall, the soles on the other, the palms pushing on the back wall low by
+// the hips; to go up, the hands and one foot tucked under the seat onto the back wall push the hips up, then the feet walk up the far wall.
+// No CMU clip climbs a chimney (the database's climbs are a playground, ladders and steps), so, like round 23's kick-shaft plant, the
+// stances are two-bone IK on the motion-capture body (soles flat on the stone, chimLeg; palms on it, hold grips). Play is unchanged: he
+// still kicks from wall to wall, P.face flipping each kick. The drawing reads those two halves as the climber's two pushes: in a shaft
+// column (a wall each side) he is drawn facing P.chm.F, the ledge's side (or the first wall's), seated CHM_HB from the wall behind him;
+// planted on the ledge's wall both soles are on it ('f'), planted on the wall behind him his near foot is tucked under the seat on it
+// ('b'); a kick is the push (each sole and palm stays on the stone until its limb is straight, CHM_PUSH), a tuck, and the reach for the
+// next stance as the wall nears (the distance kickPose reads). Drawn facing P.dF (set only while P.face differs), hip x P.chm.hx (P.rdx),
+// the faces cut him still (chimClip) but he fits between them. Near the lip the hands reach for it, so the hang takes it from there.
+const CHM_HB=8.6,CHM_LEAN=-0.02,CHM_HEAD=-0.2,CHM_PUSH=0.085,CHM_FY=[2.5,10],CHM_BK=[2.6,16],CHM_HX=1.7,CHM_HY=[1.2,2.6],CHM_GAP=1.4,CHM_BUL=1.4,CHM_LIP=[32,58],CHM_HIP=25,CHM_IN=0.035,CHM_SQ=0.975;
+let CHM_TS=null;const CHM_TUCK=mk({lean:-0.02,head:-0.25,air:1,hy:CHM_HIP,hF:1.45,kF:1.75,hB:1.25,kB:1.45,aF:-0.35,eF:0.55,aB:-0.5,eB:0.45}),CHLP=mk({}),chQ=[0,0],chP=mk({}),chQ2=mk({});
+// the sole of a foot turned by fp pressed on a wall's face tx (side 1: ahead of him, -1: behind) ty below the hip: the thigh and knee into o
+function chimLeg(tx,ty,fp,side,o){let fx=tx-side*2.6,fy=ty;
+  for(let i=0;i<3;i++){legIK(fx,fy,o);const h=o[0],k=o[1],kx=LEN.th*Math.sin(h),ky=LEN.th*Math.cos(h),ex=kx+LEN.sh*Math.sin(h-k),ey=ky+LEN.sh*Math.cos(h-k);
+    const r=footRot(kx,ky,ex,ey,fp),c=r[2],s=r[3],fk=RD.fk||1;let m=-1e9;
+    for(let j=0;j<FOOTP.length;j+=2){const px=ex+FOOTP[j]*fk-r[0],py=ey+FOOTP[j+1]-r[1];m=Math.max(m,side*(r[0]+px*c-py*s));}
+    fx+=side*(side*tx-CHM_GAP-m);}
+  return o;}
+// the wall's rows in column cc beside his body from yt to yb ([top, bottom] of the first wall cell met and those under it), or null
+function chimWall(cc,yt,yb){const w=wallRows(cc,yt,yb);return w&&w.bx!==w.bx?[w.wt,w.wb]:null;}
+// a kick shaft's column: open, with a wall on each side somewhere beside him or just above
+function chimShaft(c,y){return B(L,c,rowOf(y-30))!==WALL&&!inLiftShaft()&&!!chimWall(c-1,y-100,y-4)&&!!chimWall(c+1,y-100,y-4);}
+// the side of the ledge over the shaft: up from the rows walled both sides, the first row open on one side
+function chimLedge(c,r){let both=false;for(let rr=r;rr>=Math.max(0,r-6);rr--){const a=B(L,c-1,rr)===WALL,b=B(L,c+1,rr)===WALL;if(a&&b){both=true;continue;}if(both)return a===b?0:a?1:-1;}return 0;}
+// the faces at mid-depth: ahead of him (the side he is drawn facing) and behind; the seated hip's x
+function chimX(ch){const c=ch.c,R=(c+1)*TW-HX,Lx=c*TW;return ch.F>0?[R,Lx,Lx+CHM_HB]:[Lx,R,R-CHM_HB];}
+// a stance at the hip (hx, hy): k 'f' both soles on the wall ahead, 'b' the near sole on the wall behind under the seat; the palms on the wall
+// behind by the hips; within reach of the lip (the wall ahead ending above him) the hands go for it
+function chimBrace(k,hx,hy,out){const ch=P.chm,F=ch.F,[xa,xb]=chimX(ch),XA=(xa-hx)*F,XB=(xb-hx)*F,wa=chimWall(ch.c+F,hy-70,hy+30),wb=chimWall(ch.c-F,hy-70,hy+30);
+  Object.assign(out,CHM_TUCK);out.lean=CHM_LEAN;out.head=CHM_HEAD;out.ox=0;out.oy=0;
+  const ya=wa?[wa[0]+9-hy,wa[1]-3-hy]:[-99,99],yb=wb?[wb[0]+3-hy,wb[1]-8-hy]:[-99,99];
+  chimLeg(XA,clamp(CHM_FY[1],ya[0],ya[1]),Math.PI/2,1,chQ);out.hB=chQ[0];out.kB=chQ[1];out.fpB=Math.PI/2;
+  if(k==='b'&&wb){chimLeg(XB,clamp(CHM_BK[1],yb[0],yb[1]),-Math.PI/2,-1,chQ);out.fpF=-Math.PI/2;}
+  else{chimLeg(XA,clamp(CHM_FY[0],ya[0],ya[1]),Math.PI/2,1,chQ);out.fpF=Math.PI/2;}
+  out.hF=chQ[0];out.kF=chQ[1];
+  // the trunk upright against the wall behind (where there is one at the shoulders), the palms on it
+  if(wb&&wb[0]<=hy-16&&wb[1]>=hy-8){out.hold=out.hb=1;out.gFx=out.gBx=XB+CHM_HX;out.gFy=CHM_HY[0];out.gBy=CHM_HY[1];out.eF=out.eB=0.4;}
+  else{out.lean=CHM_LEAN-0.16;out.head=CHM_HEAD-0.1;out.aF=-0.45;out.eF=0.9;out.aB=-0.75;out.eB=0.7;out.hold=out.hb=0;} // (no wall behind his back, at the shaft's foot: leaning off the wall his feet are on, as the plant was)
+  // (the lip: the wall ahead ending 30 to 50 px over the hip) the hands reach for its corner
+  if(wa&&k==='f'){const d=hy-wa[0],w=clamp((CHM_LIP[1]-d)/(CHM_LIP[1]-CHM_LIP[0]),0,1);
+    if(w>0){const tx=XA-1.2,ty=wa[0]-hy-0.5;if(!out.hold){out.gFx=out.gBx=tx;out.gFy=out.gBy=ty;}
+      out.gFx+=(tx-out.gFx)*w;out.gFy+=(ty-out.gFy)*w;out.gBx+=(tx-1.6-out.gBx)*w;out.gBy+=(ty+0.6-out.gBy)*w;out.hold=out.hb=Math.max(out.hold,w);out.head-=0.06*w;}}
+  if(out.hold){const sx=LEN.to*Math.sin(out.lean),sy=-LEN.to*Math.cos(out.lean),R=(LEN.ua+LEN.fa)*0.97; // (within reach: skel lowers the body to a hand out of reach overhead)
+    for(const q of [['gFx','gFy'],['gBx','gBy']]){const dx=out[q[0]]-sx,dy=out[q[1]]-sy,d=Math.hypot(dx,dy);if(d>R){out[q[0]]=sx+dx*R/d;out[q[1]]=sy+dy*R/d;}}}
+  return out;}
+// how far a pose reaches ahead of him (figReach gives it to the right and to the left of x)
+function chimAhead(f,p){const R=figReach(f,p);return f>0?R.right:-R.left;}
+// where a figure's silhouette is laid (its lamp shadow, the beams' cut and light, the fill's cut): in a kick shaft the prince's drawn x
+function chimSX(e){return e===P&&P.chm?P.x+(P.rdx||0):e.x;}
+function chimEnd(){P.chm=null;P.dF=0;}
+// the chimney's target pose this frame (and the session in P.chm), or null when he is not climbing a shaft; rate into CHM.r
+const CHM={r:36};
+function chimPose(){let ch=P.chm;const c=pCol(),jk=P.jumpKind,y=P.y;
+  if(ch&&ch.c!==c){chimEnd();ch=null;}
+  if(!(P.plant||jk==='kick'||jk==='slip'||jk==='stand')){if(ch)chimEnd();return null;}
+  if(!ch){if(jk==='slip'||!chimShaft(c,y))return null;
+    const F=jk==='stand'?P.face:chimLedge(c,rowOf(y-30))||(P.plant?P.plant.sd:-P.face);
+    const x0=P.x+(P.rdx||0)+P.face*(P.pose.ox||0); // (the jump in's lead, poseOx, taken into the drawn hip)
+    const xs=chimX({c,F}),rr=chimAhead(F,P.pose)+1,xc=F>0?Math.min(x0,xs[0]-rr):Math.max(x0,xs[0]+rr); // (a pose reaching past the face ahead: eased in over CHM_IN)
+    ch=P.chm={c,F,kt:jk==='kick'?-1:P.kickT,hk:xc,u0:-1,k:'f',ct:null,hx:x0,yo:P.yo||0,dx0:x0-xc,t0:gameTime};}
+  if(jk==='stand')ch.yo=P.yo||0;else{ch.yo*=Math.exp(-STEP*18);P.yo=ch.yo;} // (the jump in's lower drawn arc, jumpYo, eased out on the wall)
+  const [xa,xb,hs]=chimX(ch),F=ch.F,hy=y-CHM_HIP+(P.yo||0),xin=ch.dx0?ch.dx0*Math.exp(-(gameTime-ch.t0)/CHM_IN):0;let tgt,hx=hs+xin;
+  if(!chimWall(c-F,y-100,y-4)&&!chimWall(c+F,y-100,y-4)){chimEnd();return null;}
+  if(jk==='kick'&&ch.kt!==P.kickT){ // a new kick: kickOff set his pose; the push starts from the stance he was drawn in, its contacts on the stone
+    ch.kt=P.kickT;Object.assign(P.pose,CHLP);ch.from=-P.face===F?'f':'b';ch.hk=ch.hx;ch.u0=-1;const s=skel(P.pose),hy0=y-s.hipH;
+    ch.ct=[ch.hx+F*s.fF[0],hy0+s.fF[1],ch.hx+F*s.fB[0],hy0+s.fB[1],ch.hx+F*s.hF[0],hy0+s.hF[1],ch.hx+F*s.hB[0],hy0+s.hB[1]];
+    ch.kp=mk(P.pose);}
+  if(P.plant){ch.k=P.plant.sd===F?'f':'b';tgt=chimBrace(ch.k,hx,hy,chP);CHM.r=45;if(P.lk&&P.lk.sq<CHM_SQ)P.lk.sq=CHM_SQ;} // (the plant's squash widens him 1/sq: kept small between the walls)
+  else if(jk==='slip'){tgt=chimBrace(ch.k,hx,hy,chP);tgt.hF-=0.15;tgt.hB-=0.1;CHM.r=24;}
+  else{ // in the air: kicked (or jumping in from the foot) toward the wall ahead (P.face)
+    const d=P.face>0?(c+1)*TW-BW-P.x:P.x-c*TW-BW,u=clamp(1-d/20,0,1),eu=ease(u),t=jk==='kick'?gameTime-P.kickT:9;
+    if(ch.u0<0)ch.u0=Math.min(eu,0.95); // (the drawn hip goes from where it was to the seat over what is left of the way)
+    hx=lerp(ch.hk,hs,clamp((eu-ch.u0)/(1-ch.u0),0,1))+F*CHM_BUL*Math.sin(Math.PI*u)+xin;
+    const next=P.face===F?'f':'b';
+    if(t<CHM_PUSH&&ch.ct){const q=Object.assign(chQ2,ch.kp),ct=ch.ct;q.ox=0;q.oy=0; // the limbs on the stone stay there until straight
+      legIK((ct[0]-hx)*F,ct[1]-hy,chQ);q.hF=chQ[0];q.kF=chQ[1];legIK((ct[2]-hx)*F,ct[3]-hy,chQ);q.hB=chQ[0];q.kB=chQ[1];
+      if(q.hold||q.hb){q.gFx=(ct[4]-hx)*F;q.gFy=ct[5]-hy;q.gBx=(ct[6]-hx)*F;q.gBy=ct[7]-hy;}
+      q.lean=lerp(q.lean,0.04,t/CHM_PUSH);tgt=q;CHM.r=70;}
+    else{const w=ease(clamp((u-0.3)/0.55,0,1)),b=chimBrace(next,hx,hy,chP);tgt=lerpPose(CHM_TUCK,b,w,chQ2);CHM.r=jk==='stand'?26:32;
+      // the feet go from the tuck to their places on the stone along a line (blending the angles swung them out through the wall)
+      const sb=skel(b),st=CHM_TS||(CHM_TS=skel(CHM_TUCK)),lim=(xa-hx)*F-3;
+      legIK(Math.min(lim,lerp(st.fF[0],sb.fF[0],w)),lerp(st.fF[1],sb.fF[1],w),chQ);tgt.hF=chQ[0];tgt.kF=chQ[1];
+      legIK(Math.min(lim,lerp(st.fB[0],sb.fB[0],w)),lerp(st.fB[1],sb.fB[1],w),chQ);tgt.hB=chQ[0];tgt.kB=chQ[1];}}
+  ch.hx=hx;P.dF=F!==P.face?F:0;return tgt;}
+// the faces beside him in a shaft, as wallPress gives them (figClip's wc), for the clip: he fits between them, they still cut what reaches past
+const CHC={dx:0,fx:1e9,wt:0,wb:0,lx:-1e9,lt:0,lb:0};
+function chimClip(){const c=P.chm.c,y=P.y,l=chimWall(c-1,y-80,y),r=chimWall(c+1,y-80,y);CHC.fx=r?(c+1)*TW-HX:1e9;if(r){CHC.wt=r[0];CHC.wb=r[1];}CHC.lx=l?c*TW:-1e9;if(l){CHC.lt=l[0];CHC.lb=l[1];}return CHC;}
 // running up a wall: the leading foot plants on the wall at hip height with the knee up while the other leg drives down
 // straight; the arms pump, then both reach for the top as the climb runs out
 function wallRunPose(ph,reach){const a=ph*6.2832,s=Math.sin(a),up=0.5+0.5*s,dn=1-up;
@@ -3393,8 +3486,9 @@ const footX=(h,k)=>LEN.th*Math.sin(h)+LEN.sh*Math.sin(h-k);
 function feetX(p,lead){return lead===1?footX(p.hF,p.kF):lead===2?footX(p.hB,p.kB):(footX(p.hF,p.kF)+footX(p.hB,p.kB))/2;}
 // the drawn x offset (P.pose.ox, look only), each frame after the pose
 function poseOx(dt){const p=P.pose;let ox=0;
-  if(P.state==='jumpPrep')ox=P.jFx-feetX(p); // (the feet where they stood when Jump was pressed)
-  else if(P.state==='air'&&(P.jumpKind==='run'||P.jumpKind==='stand')){const t=P.t;ox=(P.jO0||0)*Math.exp(-t/OX_T2)+(P.jB||0)*t*Math.exp(-t/OX_T3);}
+  if(P.state==='jumpPrep'){ox=P.jFx-feetX(p); // (the feet where they stood when Jump was pressed)
+    if(ox>0&&chimShaft(pCol(),P.y)){const fx=P.face>0?(pCol()+1)*TW-HX:pCol()*TW,room=(fx-(P.x+(P.rdx||0)))*P.face-chimAhead(P.face,p)-1;ox=clamp(ox,0,Math.max(0,room));}} // (round 42a: at a kick shaft's foot the wind-up's lead stops at the face ahead)
+  else if(P.state==='air'&&(P.jumpKind==='run'||P.jumpKind==='stand')&&!P.chm){const t=P.t;ox=(P.jO0||0)*Math.exp(-t/OX_T2)+(P.jB||0)*t*Math.exp(-t/OX_T3);}
   else if((P.state==='land'||P.state==='stand')&&(P.stK==='rl'||P.stK==='sl')){const t=gameTime-P.stT;ox=clamp(P.jFx-feetX(p,P.stK==='sl'?0:P.jMir?2:1),-6,6)*(1-s32((t-0.12)/0.33));}
   else if(P.state==='run'&&P.lnT!=null)ox=(P.jO0||0)*Math.exp(-(gameTime-P.lnT)/0.12);
   const prev=p.ox||0;p.ox=ox;P.jOv=dt>0?(ox-prev)/dt:0;}
@@ -3698,7 +3792,7 @@ function siFrame(p,y){const s=skel(p),low=Math.max(s.fF[1],s.fB[1]);
 // a world point in that frame (the hip's, x forward)
 function siHip(fr,wx,wy){const dx=(wx-fr.x)*P.face,dy=wy-fr.y;return [dx*fr.c+dy*fr.s,-dx*fr.s+dy*fr.c];}
 function siGrip(p,i,h,w){if(i){p.gBx=h[0];p.gBy=h[1];p.hb=w;}else{p.gFx=h[0];p.gFy=h[1];p.hold=w;}}
-function handsIn(){const p=P.pose,st=P.state,ps=P.dhS,f=P.face;
+function handsIn(){const p=P.pose,st=P.state,ps=P.dhS,f=P.dF||P.face;
   if(st==='slide'&&ps&&ps!=='slide'&&P.t<0.02){const dx=clamp((P.dhX-P.x)*f,-24,24),lg=ps==='air'?P.lgo:null,W=[[P.dhFx,P.dhFy],[P.dhBx,P.dhBy]];
     p.ox=dx;const fr=siFrame(p),r={t0:gameTime,dx,l:[0,0],W,H:[null,null],h:[0,0],d:[SI_D[0],SI_D[1]]},e=[0,0];
     for(let i=0;i<2;i++){r.l[i]=ps==='hang'||(lg&&gameTime-lg.t0<HF_R[i])?1:0;const a=r.H[i]=siHip(fr,W[i][0],W[i][1]);e[i]=Math.hypot(a[0]-(i?PS.slide.gBx:PS.slide.gFx),a[1]-(i?PS.slide.gBy:PS.slide.gFy));
@@ -4036,6 +4130,7 @@ const sf=F(L,pCol(),pRow());if(sf&&sf.t==='spikes')learn('spikes');setState('sta
     case'swing':tgt=swingPose(P.swTh||0,P.swOm||0,P.swPump);rate=90;break;
     case'air':
       P.yo=(P.jumpKind==='run'||P.jumpKind==='stand')&&!P.plant?jumpYo():0; // (round 27a: drawn on a lower arc; round 33a: PoP's ticks, both jumps, see jhK)
+      {const q=chimPose();if(q){tgt=q;rate=CHM.r;break;}} // (round 42a: in a kick shaft, the chimney)
       if(P.plant){tgt=plantPose();rate=45;break;}
       if(P.jumpKind==='kick'){tgt=kickPose();rate=36;break;}
       if(P.jumpKind==='wall'){tgt=wallRunIK(WR_TOP+4,null);rate=30;break;}
@@ -4061,8 +4156,9 @@ const sf=F(L,pCol(),pRow());if(sf&&sf.t==='spikes')learn('spikes');setState('sta
     tgt=lerpPose(tgt,PS.hurt,0.3*w,mk({}));tgt.lean+=0.22*w*Math.sin(P.t*7.5);tgt.head+=0.25*w*Math.sin(P.t*5.3+1);tgt.aB-=0.5*w;tgt.aF+=0.25*w*Math.sin(P.t*6);}
   // (round 32) ease in as well as out: a wind-up or a take-off starts slow (the follow's rate rises over 0.08 s); the landing's impact does not
   if(P.state==='jumpPrep'||(P.state==='air'&&(P.jumpKind==='run'||P.jumpKind==='stand')))rate*=0.35+0.65*s32(P.t/(0.08*rjK())); // (round 35a: a running flight's on its clock)
-  followPose(P.pose,tgt,dt,rate,P.state==='air'&&(P.plant||P.jumpKind==='kick'||P.jumpKind==='wall')?0:P.state==='run'&&P.lnT!=null&&gameTime-P.lnT<0.4?1:LAGM[P.state]); // (round 25f: overlap; round 32: the arms trail a run through a landing)
+  followPose(P.pose,tgt,dt,rate,P.state==='air'&&(P.plant||P.jumpKind==='kick'||P.jumpKind==='wall'||P.chm)?0:P.state==='run'&&P.lnT!=null&&gameTime-P.lnT<0.4?1:LAGM[P.state]); // (round 25f: overlap; round 32: the arms trail a run through a landing)
   if(tgt===stpP){const w=s32(P.t/0.05);for(const k of TP_LEG)P.pose[k]+=(tgt[k]-P.pose[k])*w;P.pose.air=1;P.pose.hy=tgt.hy;} // (round 33b: the feet where IK puts them, on the floor: a leg that lagged would slide its foot)
+  if(P.state==='air')Object.assign(CHLP,P.pose); // (round 42a: the stance a kick pushes from)
   poseOx(dt);
   handsIn(); // (round 33c: letting go of a lip, taking the cloth)
 }
@@ -7392,7 +7488,7 @@ function drawShut(ctx){const ch=L.ext.chase;if(!ch||!ch.on||ch.done||!P||P.state
   const r=pRow();if(r<ch.rTop||r>ch.rBot)return;const k=(1-stS(80,240,P.x-ch.wx))*(1-(ch.fade||0));if(k<0.02)return;
   if(!SHUT.c){SHUT.c=stCanvas(192,192);SHUT.c._glv=1;SHUT.g=SHUT.c.getContext('2d');}
   const g=SHUT.g;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,192,192);g.setTransform(2,0,0,2,0,0);
-  try{figDraw(g,48,80,P.face||1,P.pose,PAL_HERO,{mono:'#000',hasSword:false,sword:false,time:gameTime});}catch(e){return;}
+  try{figDraw(g,48,80,P.dF||P.face||1,P.pose,PAL_HERO,{mono:'#000',hasSword:false,sword:false,time:gameTime});}catch(e){return;}
   const ys=SURF(r),wb=ys-HY,ax=P.x+HX*0.6,ay=wb+0.5,t=gameTime;
   const cx0=ch.wx-6,cx1=P.x+26;let cy=1e9;
   // (round 39, D6) only where the back wall shows: it was cut at the ceiling of his own column only (and past a floor slab above, to the
@@ -7651,7 +7747,8 @@ function wallBelow(lg){return terrainAt(lg.c,lg.r+1)===WALL||!!blockAtCell(lg.c,
 // Visual-only offsets for the prince, eased so nothing snaps: pressed against walls, hands on the ledge at
 // mid-depth while hanging, and the wall in front of him when he hangs on its near face.
 function updateLook(dt){
-  if(!P)return;const st=P.state,lg=ledgeOf();let tdx=0,tdy=0,mode=0;
+  if(!P)return;if(P.chm&&P.state!=='air')chimEnd();const st=P.state,lg=ledgeOf();let tdx=0,tdy=0,mode=0;
+  if(P.chm){P.rdx=P.chm.hx-P.x;P.rdy=0;P.hideMode=0;return;} // (round 42a: in a kick shaft he is drawn seated against the wall behind him, chimPose)
   if(lg){const k=st==='hang'?1:st==='climb'?1-Math.min(1,P.t/0.45):st==='climbDown'?Math.max(0,(P.t/0.5-0.5)/0.5):clamp((P.t-0.1)/0.22,0,1),wb=wallBelow(lg);
     // (round 39, D2) with the wall below the ledge on his left, only as far as puts his hands on its corner: the full 6 px took his chest and
     // head into that wall's side face (its near half hides a mid-depth point left of xe); what still reaches past xe there is cut (wallPress)
@@ -8352,7 +8449,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     // "the prince is visible when hanging by a ledge": until now a 0.4 ghost of him was drawn through the wall while he moved.)
     if(L.ext.chase)drawShut(ctx); // (round 29) his shadow pulled back toward the dark
     ctx.save();{const lf=L.lifts.length?liftAround():null;if(lf)liftOccl(ctx,lf);} // (in a lift's shaft the walls' front faces round it are nearer than he is)
-    figClip(ctx,P.hideMode,P.hideLg,P.state==='dead'?null:wallPress(P.x,P.y,P.face,P.pose));
+    figClip(ctx,P.hideMode,P.hideLg,P.state==='dead'?null:P.chm?chimClip():wallPress(P.x,P.y,P.face,P.pose)); // (round 42a: in a kick shaft he fits between the faces, chimClip)
     if(P.state==='dead')deadCut(ctx,P.x+(P.rdx||0),P.y+(P.rdy||0),28,P.y-54); // (round 39, D1: lying flat, cut by the faces near him)
     // (round 26f) on the exit's stairs (from the first rise) he is cut at the opening's head (the lintel, or the round arch: doorHead) and at its
     // jambs, as SDLPoP's clip_char cuts the kid at the level door: head and shoulders go behind the wall first; then his own pixels warm and
@@ -8364,7 +8461,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
     const po={yo:P.yo,sword:(P.sword&&!!P.foe)||P.state==='lowStrike'||P.state==='poke'||(P.lowSword&&P.state==='crouch')||(P.state==='slide'&&slBlade()>0),swLen:P.state==='slide'?slBlade():0,hasSword:true,flash:P.flash,flutter:Math.min(1,Math.abs(P.vx)/90+(P.state==='air'?0.8:0)),time:gameTime};
     if(dc)doorClip(ctx,dc.x,dc.r);
     if(al<=0.004){}else if(ta>0.004||al<1)drawPTint(ctx,P.x+(P.rdx||0)+ox,P.y+(P.rdy||0)+oy,po,tc,ta,al);
-    else drawActor(ctx,P,P.x+(P.rdx||0)+ox,P.y+(P.rdy||0)+oy,P.face,P.pose,PAL_HERO,po);
+    else drawActor(ctx,P,P.x+(P.rdx||0)+ox,P.y+(P.rdy||0)+oy,P.dF||P.face,P.pose,PAL_HERO,po); // (round 42a: P.dF, the chimney's facing)
     if(P.state==='drink'&&P.dkG&&!P.dkRel&&P.drinkIt)drawHeldFlask(ctx);
     ctx.restore();
   }
@@ -8479,7 +8576,7 @@ function fillCut(lights,sc,camD,camDY,lw,lh){if(!GFX().bg||!L)return null;
   m.globalCompositeOperation='destination-out';m.imageSmoothingEnabled=true;
   for(let ry=Math.floor(y0/ROOM_H);ry<=Math.floor((y1-0.01)/ROOM_H);ry++)for(let rx=Math.floor(x0/ROOM_W);rx<=Math.floor(x1/ROOM_W);rx++)m.drawImage(roomCanvas(rx,ry),rx*ROOM_W,ry*ROOM_H,ROOM_W,ROOM_H); // (what the rooms cover is not sky)
   SIL.m.clear();SIL.m2.clear();
-  const fig=e=>{const sl=glSilhouette(e,true);if(sl)m.drawImage(sl,e.x-48,e.y+(e.yo||0)-80,96,96);};
+  const fig=e=>{const sl=glSilhouette(e,true);if(sl)m.drawImage(sl,chimSX(e)-48,e.y+(e.yo||0)-80,96,96);};
   if(P&&P.state!=='dead'&&P.state!=='exit'&&!(P.state==='enter'&&P.enU>0)&&!(P.y>L.rows*TH))fig(P);for(const e of G)if(e.alive&&!e.gone&&e.x>x0-60&&e.x<x1+60)fig(e);
   g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='destination-out';g.drawImage(FCUT.m,0,0);g.globalCompositeOperation='source-over';
   return FCUT.c;}
@@ -8744,11 +8841,11 @@ function ryBeams2D(ctx,a){const sb=skyBeam(),VZ=renderXf.VZ,camD=renderXf.camD,c
     g.save();g.beginPath();g.rect(0,0,w,h);g.clip();g.setTransform(VZ,0,0,VZ,-camD-X0,-camDY-Y0);g.globalCompositeOperation='lighter';
     for(let i=0;i<dr.length;i+=2)one(g,dr[i],dr[i+1]);
     g.globalCompositeOperation='destination-out';g.globalAlpha=RY_FIG2D; // (over a figure only the haze in front of it, and no more than that: it is added, so on a pale figure it would read as a band of light)
-    for(let k=0;k<fg.length;k+=5){const e=fg[k],sl=glSilhouette(e,true);if(sl)g.drawImage(sl,e.x-48,e.y+(e.yo||0)-80,96,96);}
+    for(let k=0;k<fg.length;k+=5){const e=fg[k],sl=glSilhouette(e,true);if(sl)g.drawImage(sl,chimSX(e)-48,e.y+(e.yo||0)-80,96,96);}
     g.restore();ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='lighter';ctx.globalAlpha=al;ctx.drawImage(RYF.c,0,0,w,h,X0,Y0,w,h);ctx.restore();
     g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='source-over';g.globalAlpha=1;g.clearRect(0,0,w,h); // the footprints under the figures
     g.save();g.beginPath();g.rect(0,0,w,h);g.clip();g.setTransform(VZ,0,0,VZ,-camD-X0,-camDY-Y0);fp(g,false);
-    g.globalCompositeOperation='destination-out';for(let k=0;k<fg.length;k+=5){const e=fg[k],sl=glSilhouette(e,true);if(sl)g.drawImage(sl,e.x-48,e.y+(e.yo||0)-80,96,96);}
+    g.globalCompositeOperation='destination-out';for(let k=0;k<fg.length;k+=5){const e=fg[k],sl=glSilhouette(e,true);if(sl)g.drawImage(sl,chimSX(e)-48,e.y+(e.yo||0)-80,96,96);}
     g.restore();ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='overlay';ctx.globalAlpha=Math.min(1,a*sb.k*3);ctx.drawImage(RYF.c,0,0,w,h,X0,Y0,w,h);
     ctx.globalCompositeOperation='lighter';ctx.globalAlpha=Math.min(1,a*sb.k*1.2);ctx.drawImage(RYF.c,0,0,w,h,X0,Y0,w,h);ctx.restore();}
   ryMotes2D(ctx,dr,sb,a);}
@@ -10491,11 +10588,11 @@ function glSilhouette(e,d2){const M=d2&&GLP.gls?SIL.m2:SIL.m;let c=M.get(e);if(c
   if(GLP.gls&&!d2){const i=SIL.m.size;if(i>=12){SIL.m.set(e,null);return null;} // (unit WGL) a 192 px slot of one target (4 x 3), drawn by WebGL
     const g=g2Mk('sil',768,576,[0,0,0,0]),x=(i&3)*192,y=(i>>2)*192,yc=dropCeil(e);g.setTransform(1,0,0,1,0,0);g.save();g.beginPath();g.rect(x,y,192,192);g.clip();g.setTransform(2,0,0,2,x,y);
     if(yc!==null){g.beginPath();g.rect(0,yc-(e.y+(e.yo||0)-80),96,200);g.clip();}
-    try{figDraw(g,48,80,e.face||1,e.pose,silPal(e),{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});c=SIL.v[i]||(SIL.v[i]={isView:true,tgt:GLS.sil,x,y,width:192,height:192});}catch(err){c=null;}
+    try{figDraw(g,48,80,(e===P&&P.dF)||e.face||1,e.pose,silPal(e),{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});c=SIL.v[i]||(SIL.v[i]={isView:true,tgt:GLS.sil,x,y,width:192,height:192});}catch(err){c=null;}
     g.restore();SIL.m.set(e,c);return c;}
   c=SIL.pool[M.size+(M===SIL.m2?6:0)];if(!c){c=document.createElement('canvas');c.width=c.height=192;c._g=c.getContext('2d');SIL.pool.push(c);}
   const g=c._g,yc=dropCeil(e);g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,192,192);g.setTransform(2,0,0,2,0,0);if(yc!==null){g.save();g.beginPath();g.rect(0,yc-(e.y+(e.yo||0)-80),96,200);g.clip();}
-  try{figDraw(g,48,80,e.face||1,e.pose,silPal(e),{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});}catch(err){c=null;}
+  try{figDraw(g,48,80,(e===P&&P.dF)||e.face||1,e.pose,silPal(e),{mono:'#ff0000',hasSword:false,sword:!!(e===P?P.sword&&P.foe:e.alive&&e.state!=='idle'&&e.state!=='drop'),time:gameTime});}catch(err){c=null;}
   if(yc!==null)g.restore();M.set(e,c);return c;}
 function glShadow(g,x,y,sc,lights,spr,e){
   const sil=e&&e.pose?glSilhouette(e):null;
@@ -10521,10 +10618,10 @@ function glMask(lights,VZ,camD,camDY){
     if(P.state!=='dead'&&P.state!=='dying'&&P.state!=='exit'&&!(P.state==='enter'&&P.enU>0)&&!(P.y>L.rows*TH))GLCH.push(P);
     for(const e of G)if(e.alive&&!e.gone&&e.x>cx-50&&e.x<cx+vw+50)GLCH.push(e);
     for(const e of GLCH){const low=e.state==='crouch'||e.state==='slide'||e.state==='lowStrike',hid=e===P&&P.hideMode>0&&P.hideLg;if(hid){g.save();figClip(g,P.hideMode,P.hideLg,null);} // (round 19: what the wall hides of him casts no shadow either)
-      sh+=glShadow(g,e.x,e.y+(e.yo||0),low?.62:1,lights,red,e);if(hid)g.restore();}
+      sh+=glShadow(g,chimSX(e),e.y+(e.yo||0),low?.62:1,lights,red,e);if(hid)g.restore();}
     if(sh){ // carve the figures themselves out, and the solid blocks and slabs in front of the wall: the shadow falls on the back wall only
       const cyan=lightSprite('0,255,255');g.globalCompositeOperation='multiply';g.globalAlpha=.85;
-      for(const e of GLCH)g.drawImage(cyan,e.x-16,e.y-60,32,60);
+      for(const e of GLCH)g.drawImage(cyan,chimSX(e)-16,e.y-60,32,60);
       g.globalAlpha=1;g.fillStyle='#0ff';
       const c0=Math.max(0,Math.floor(cx/TW)-1),c1=Math.min(L.cols-1,Math.ceil((cx+vw)/TW)),r0=Math.max(0,Math.floor(cy/TH)-1),r1=Math.min(L.rows-1,Math.ceil((cy+vh)/TH));
       // (round 19) as they are drawn: a wall's front face HX left of its cell, its top and right side faces up and to the right; a
@@ -11136,7 +11233,7 @@ function glcOcc(VZ,camD,camDY){
   g=GLC.ocG;if(GLC.ow!==w||GLC.oh!==h){GLC.ocC.width=w;GLC.ocC.height=h;GLC.ow=w;GLC.oh=h;}}
   g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='source-over';g.fillStyle='#000';g.fillRect(0,0,w,h);g.setTransform(VZ/4,0,0,VZ/4,-camD/4,-camDY/4);
   let any=0;const bb=GLCBB,near=e=>{const sx=(e.x*VZ-camD)/4,sy=(e.y*VZ-camDY)/4,m=24*VZ/4;return sx>bb[0]-m&&sx<bb[2]+m&&sy>bb[1]-m&&sy<bb[3]+m*3;};
-  const one=e=>{if(!near(e))return;const s=glSilhouette(e);if(s){g.drawImage(s,e.x-48,e.y+(e.yo||0)-80,96,96);any=1;}};
+  const one=e=>{if(!near(e))return;const s=glSilhouette(e);if(s){g.drawImage(s,chimSX(e)-48,e.y+(e.yo||0)-80,96,96);any=1;}};
   if(P&&P.state!=='dead'&&P.state!=='exit'&&!(P.state==='enter'&&P.enU>0)&&!(P.y>L.rows*TH))one(P);
   for(const e of G)if(e.alive&&!e.gone)one(e);
   return any;} // (copied into WebGL with the other masks, in glAtlas)
@@ -13307,6 +13404,7 @@ Object.assign(window.__HK,{GLFX,GLREL,clearRooms,bgCache,bgLayers,solidBelow:(c,
 Object.assign(window.__HK,{openingsIn,bgAnchor,bgLayerY,BGV,BG_VK,BG_FSKY}); // (round 25e: the backdrop's place for each opening, for egyptr25e.py)
 Object.assign(window.__HK,{GLS,G2D,g2Target,g2Begin,g2Replay,EC,g2col,HKPath,drawFigureHD,figDraw,paintBackdrop,bgLayers,BGART,lightSprite,drawLight,drawGate,drawJaws,drawDoor,drawHourglass,drawFlask,drawSnakeHD,drawLift}); // (unit WGL, for its parity tests)
 Object.assign(window.__HK,{GLA,PF,BENCH,G2UP,g2Warm,roomCache}); // (the mask atlas's layout, for wgl_maskcmp.py; ?prof and ?bench for wgl_prof.py)
+Object.assign(window.__HK,{B:(c,r)=>B(L,c,r),F:(c,r)=>F(L,c,r),WALL,wallPress,wallRows,livePose,drawActor,PAL_HERO}); // (round 42a: the kick shaft's chimney, for egyptr42a.py)
 Object.assign(window.__HK,{SHC,shcList:()=>{const o=[];for(let i=0;i<SHC.n;i++){const rings=[];let cur=[];for(let j=SHC.s[i];j<SHC.s[i+1];j++){const x=SHC.p[2*j];if(x!==x){if(cur.length>2)rings.push(cur);cur=[];}else cur.push([x,SHC.p[2*j+1]]);}
   o.push({k:SHC_K[SHC.t[i]],clip:Array.from(SHC.cl.subarray(i*4,i*4+4)),rings});}return o;},beamBlockers,BLK,GLCBK,GLC_BK,ryBlkLit}); // (round 38a: what glMask carves this frame, for shadowscan.py; the beams' blockers, for egyptr38a.py)
 Object.assign(window.__HK,{MS,MSF,GLMETAL_P,msPreset:k=>{if(k!==undefined)GLMETAL_K=k;return GLMETAL_K;},msPaint:()=>METAL_PAINT_HI}); // (unit MS, for its tests and pictures)

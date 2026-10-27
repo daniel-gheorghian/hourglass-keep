@@ -173,8 +173,10 @@ changed in a test frame (canvas px at phone scale, Classic), v83 -> v84.
 | Classic's beam footprint over the clock and lamp stands | | `ryStand` boxes |
 | one gate's slot and far half over the lip beside its lintel | 1 of 1,438 | cut there |
 
-Side effect: in a kick shaft the corridor at mid-depth is 24 px wide, narrower than his planted pose, so the walls now cut about 4 px of
-his head (v83 drew him over the far wall).
+Side effect: in a kick shaft the corridor at mid-depth is 24 px wide, narrower than his planted pose, so the walls cut him (v83 drew him
+over the far wall; measured in round 42a, 60 px a planted frame). Round 42a draws him there as a climber in a chimney, seated against the
+wall behind him with his soles on the other (`chimPose`, `chimClip`), so he fits between the faces: 98% fewer of his pixels past them, the
+rest a few px of a sole or knee in motion, still cut. His silhouette's uses (lamp shadow, beams, fill) take his drawn x there (`chimSX`).
 
 Left as they are: the slab's top piece above the ceiling's edge over the lintel's side face (round 14, the owner's look); the swing bar's
 near pole and rope drawn before him; standing things not recorded for the lamp shadow (the bar, the lift rig, the paternoster's loop,

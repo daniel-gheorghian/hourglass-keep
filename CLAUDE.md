@@ -569,12 +569,41 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   front stake drawn again after the figures (`drawNeedles`, `SPK_NEAR` 0.45); darts were clipped to an 81 px window and vanished 80 px into a
   131 px flight while still hitting (all 91 shooters; now cut on the mouth's side only); a hidden flask's stars, the kick shaft's jet stream
   (limit `X+TW-HX`), Classic's footprint over the clock and lamp stands (`ryStand`), one gate's slot. Side effect: in a kick shaft the
-  corridor at mid-depth is 24 px, narrower than his planted pose, so the walls cut about 4 px of his head. Left as they are (listed in
+  corridor at mid-depth is 24 px, narrower than his planted pose, so the walls cut him (measured in round 42a: 60 px a planted frame, up to
+  174; round 42a's chimney fits him between them). Left as they are (listed in
   layers.md): the slab's top piece over the lintel's side face (round 14), the swing bar's near pole before him, standing things the lamp
   shadow does not carve, glows over the sky, the relief on lamps and the clock, the vent's back row after the figures, passes at a figure's
   play x. `LAYER_DBG` (`hide` a Set of kinds, `glow` false) and `setGT` serve `layerscan.py [file] [lo hi] [seeds] [torch|classic|both]
   [kinds=] [phases=K]`: each kind drawn and left out at its rest, the front plane's pixels must not change; must print `layerscan: ok`.
   Look only: layouts identical, hit boxes, timing and the bot unchanged.
+- The kick shaft's chimney (round 42a, owner: "Kick shaft: great idea with the chimney pose. Research and let's implement"). The shaft
+  shows 24 px at mid-depth (`X` to `X+TW-HX`, 0.82 m), narrower than v85's plant (soles on the wall, knees to the chest, leaning off it), so
+  since round 39 both faces cut him: `egyptr42a.py measure` (the bot's climbs of the 13 kick shafts on floors 7, 9, 11, 13, 14 seed 1) found
+  36,906 px x frames of him past a face, every planted frame (60 px mean, 174 max), the jump in 93 px mean. Climbers take a chimney of that
+  width back and foot (Climbing.com, "How to climb chimneys" and Rob Pizem's tips; the Night Climbers of Cambridge, "On Chimneys"): back on
+  one wall, soles on the other, palms pushing on the back wall by the hips; to go up the hands and one foot tucked under the seat push the
+  hips up, then the feet walk up the far wall. Games kick between the walls (Tomb Raider: Underworld's chimney jump, Prince of Persia: The
+  Sands of Time's wall-to-wall jumps, Celeste's wall jump: a squash and a sprite flip) and draw no brace; PoP 1989 has no shaft. No CMU clip
+  climbs a chimney (the database's climbs are a playground, ladders and steps), so like the plant before it the stance is two-bone IK on the
+  motion-capture body (constants `CHM_*` outside the generated blocks; r23poses.py unchanged). Play is unchanged (he still kicks wall to wall,
+  `P.face` flipping each kick); the drawing reads the two halves of the kick as the climber's two pushes: in a shaft column (`chimShaft`: a wall
+  each side, `chimWall`) a session `P.chm` draws him facing `F`, the ledge's side (`chimLedge`; else the first wall's), seated `CHM_HB` 8.6 px
+  from the wall behind him (`chimX`); planted on the ledge's wall both soles are flat on it (`chimLeg`: the foot turned toes up, `fp` pi/2, its
+  sole `CHM_GAP` 1.4 px off the face, by the drawn foot `FOOTP`), stance 'f'; planted on the wall behind, his near foot is tucked under the seat
+  on it (toes down, `CHM_BK`), 'b'; the palms on that wall by the hips (`hold` grips, within reach so skel never lowers him); a kick is the push
+  (each sole and palm stays on the stone until its limb is straight, `CHM_PUSH` 0.085 s, from the stance he was drawn in: kickOff's pose
+  reset is undone, `CHLP`), a tuck (`CHM_TUCK`) and the reach for the next stance as the wall nears (kickPose's distance), the feet moved along
+  a line, not by angles (which swung them through the wall); the jump in from the foot eases him back onto the seat (`CHM_IN`; the wind-up's
+  lead `poseOx` stops at the face ahead there); within reach of the lip (`CHM_LIP`) the hands go for it, so the hang takes them from there;
+  where the wall behind ends (the foot storey) he leans off the wall his feet are on, as v85 did; a slip slides the stance down; he lands or
+  hangs facing as play has him (one turn on a landing after a slip from the wall behind). The drawn facing is `P.dF` (only while `P.face`
+  differs: `drawActor`, `glSilhouette`, `drawShut`, `handsIn`), the drawn hip `P.rdx` (set, not eased, by `updateLook`), the faces still cut
+  him (`chimClip`) and the plant's squash is kept to `CHM_SQ` 0.975 (1/sq widened him into the faces). His lamp shadow, beam cut and light,
+  fill cut and the shadow's figure carve take the drawn x in a shaft (`chimSX`; before they sat at his play x, up to 20 px off). After:
+  651 px x frames (98% less), plants 0.65 px mean (max 4.4), kicks 0.46 (max 6), the jump in 0.32 (max 2.8). Look only: the bot's frames
+  identical on 21 floors with and without shafts (`botcmp`), layouts untouched. Checks: figscan, lowceil, liftkick, run2 5-27, layerscan
+  floors 5-14 kinds shaftfoot,jet both modes, shadowscan 9-11. Pictures `egyptr42a.py old.html new.html [measure|nogif|gifonly|quick]`
+  (r42a_chimney.png: each phase of a climb before | 42a, both modes, 3x, Torchlight with a lamp up the shaft, phone size; r42a_chimney.gif).
 - The sand lift's spike pit (round 41, owner: "The sand lifts become a trap: the sand drains, the door opens, but he has to jump, because the
   slab keeps going"; answers: missing it is death, every sand lift, off by a jump or a step; round 41b, owner: "let's simplify: put spikes at
   the bottom instead of being bottomless"). The slab does not stop at the foot: it sinks on at `SAND_LV` 140 px/s through the foot (now a hole,
