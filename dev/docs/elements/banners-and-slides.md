@@ -95,7 +95,7 @@ before, 0 after). He is drawn over the cloth. No wear level of its own.
 |---|---|
 | Light map (`gatherLights`) | none (no glint) |
 | Key light (`keyLight` sx) | none: fixed shading (dark right edge, lit left selvedge) |
-| Lamp shadow mask (`glShadow`, `glMask`) | not carved: his lamp shadow can fall on it as on the back wall (left as it is, round 39) |
+| Lamp shadow mask (`glShadow`, `glMask`) | not carved, by choice (round 42b): the cloth hangs flat against the back wall (drawn with no depth, as the wall hangings `TAP` that are L1), so a shadow cast on the wall falls on it at the same place; carving it would cut a cloth-shaped lit window out of a shadow running across the wall |
 | Relief (`glRel*`) | `glRelBanners` (round 39, after `glRelJaws`): each tile in view rubbed as `drawBannerTile` draws it (rod, runner, fringe), short of the next column's front plane where the cloth is cut (a wall's or low ceiling's face, a landing's lip and top keep their own relief), leaving open the gap a cut runner parts round (the wall shows through it). Before, the relief embossed the back wall's courses, posts and friezes on the cloth (floor 12 seed 3, cell 264,19; 1,324 px, 0 now) |
 | Metal mask / metal shader | none |
 | Sky beams | not a blocker; no breach is set in a banner's cell or the cell under its foot (`breaches`' `okCell`) |

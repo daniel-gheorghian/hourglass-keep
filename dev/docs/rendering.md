@@ -206,8 +206,7 @@ Light is cut the same way: no beam, haze or footprint on a front face, a low cei
 shadow on a face ([#lamp-shadows](#lamp-shadows)); a mid-depth light (the sky clock's glow) is not cut, being room light, nor are the lamps'
 and the exit's glow sprites (a lamp's drawn glow is cut at the ceiling over it, `lampCeil`).
 
-Left as they are (round 39): the swing bar's near pole segment and near rope are drawn before him; the vent's back-row flames after the
-figures; a figure's shadow, beam cut, fill cut, relief ellipse and trails use its play x, not the pressed x; the hint streams and the
+Left as they are (round 39; round 42b drew the swing bar's near pole and rope after him and the vent's back row before him): a figure's shadow, beam cut, fill cut, relief ellipse and trails use its play x, not the pressed x; the hint streams and the
 descending secret cue brush a face's end by a few px; in Classic a lamp's light band lies on the foot of a face. `layerscan.py` checks the
 rest (below).
 
@@ -300,18 +299,20 @@ their outline this frame (`JAWP`, inside the plane's visible part; round 37b), a
 wall or slab hides of him casts no shadow, and a guard dropping in is drawn into his silhouette only below the ceiling (`dropCeil`).
 Composite: `sh` (times the scene's alpha: never on the sky) takes `0.85 sh` of the light and `0.4 sh` of the colour.
 
-`SHC` holds typed arrays filled again each frame (`SHC_E` 64 entries, `SHC_PN` 2048 points; nothing allocated): each entry is rings of
+`SHC` holds typed arrays filled again each frame (`SHC_E` 128 entries, `SHC_PN` 4096 points since round 42b; nothing allocated): each entry is rings of
 points in world px (a NaN x ends a ring) with the drawing's own rectangle clip and a kind (`SHC_K`). `render` sets `SHC.on` (Torchlight
 with `GLFX.shadow`) around `drawDynamic`, so the drawings record only then. Thin things are recorded 1.2 px wider than drawn (the mask is
 ¼ size and read blurred). `SHC.off` skips `shcCarve` (v82's look, for counts before).
 
 | Carved by `SHC` (kind) | Not carved |
 |---|---|
-| a portcullis or a lift's or sand lift's mouth slab that is down (`slab`; `egSlab`, recorded whole: two half clips meeting at X+16 left a line), the stakes (`stakes`, all four in the far pass), a saw's blade within its slot's clip (`saw`), the pendulum's blade and arm (`pend`), a falling roof block from the slot's hole down (round 39) or a lying one (`roof`), the sky clock and its pedestal (`clock`; the wall inside the arch keeps the shadow), flasks (`flask`), a lift's platform and paternoster slabs (`liftslab`), the platform's ropes, its sling legs and the paternoster's upright ropes (`rope`), the sand lift's slab (`sandslab`) | the hanging roof block (inside the wall's carved face), the counterweight (in the back wall), banners, lamps (a free lamp's stand and the flame too), doors, the swing bar, the lift's rig, the paternoster's loop and wheels, a well's sand, falling slabs, the vent's flame, darts, a let-go flask (round 39 left these: a figure's lamp shadow can land on them; lamps keep clear of most); the iron gate (`EGP.traps` off) |
+| a portcullis or a lift's or sand lift's mouth slab that is down (`slab`; `egSlab`, recorded whole: two half clips meeting at X+16 left a line), the stakes (`stakes`, all four in the far pass), a saw's blade within its slot's clip (`saw`), the pendulum's blade and arm (`pend`), a falling roof block from the slot's hole down (round 39) or a lying one (`roof`), the sky clock and its pedestal (`clock`; the wall inside the arch keeps the shadow), flasks (`flask`), a lift's platform and paternoster slabs (`liftslab`), the platform's ropes, its sling legs and the paternoster's upright ropes (`rope`), the sand lift's slab (`sandslab`); round 42b: the swing bar's log, ropes and pole (`bar`), a counterweight lift's hoist beam, brace, hanger and sheave (`rig`), the paternoster's level runs and wheels (`loop`), lamp flames and free lamps' stands (`lamp`, `shcFlame`, `shcStand`), the sand of wells and sand lifts (`sand`, from `sandSegs`), falling slabs and planks (`debris`), the vent's flame (`vent`), darts in flight (`dart`) | the hanging roof block (inside the wall's carved face), the counterweight (in the back wall), banners and the wall lamps' bodies (flat on the back wall: the shadow falls on them as on the wall, round 42b's choice), doors, a let-go flask; the iron gate (`EGP.traps` off) |
 
 `shadowscan.py [file] [lo hi] [seeds] [kinds=] [per=K]` stands the prince beside each kind with a torch behind him and draws Torchlight
 with the shadow on and off: the thing's pixels (1.7 px in from its outline) must not change; it must print `shadowscan: ok` (floors 1-48
-seed 1: 266 of 300 things before round 38a, 0 after).
+seed 1: 266 of 300 things before round 38a, 0 after; round 42b's kinds 361 of 397 before, 0 after: bar 39/40, rig 24/24, loop 10/14, lamp
+83/96, sand 91/91, debris 80/92, vent 12/16, dart 22/24). A thing counts when more than 4 of its pixels are darker with the shadow on by more
+than 24 (round 42b: darker only; the GPU's multisampled fine detail varied a few levels either way between renders).
 
 #### Heat
 

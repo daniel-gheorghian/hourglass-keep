@@ -119,7 +119,7 @@ slab takes its neighbours' support, repeated until none fails. Planks are never 
 |---|---|
 | Light map (`gatherLights`) | a whole slab keeps the faint `trap` glint (r 30, 0.36); a slab giving way (with `EGP.traps`) instead a warm light 26 px under its surface (r 44, `255,236,196`, 0.34); both modes |
 | Key light | none (the sand's slopes are shaded as from the left) |
-| Lamp shadow mask | the slab's lip and top are carved as floor (no figure's shadow on them); the sand's cut face and a falling slab are not carved (`glMask` carves walls, floor lips and tops, low ceilings, jaws and the outlines in `SHC`, which records neither) |
+| Lamp shadow mask | the slab's lip and top are carved as floor (no figure's shadow on them); since round 42b the sand (its outline this frame, `sandSegs`: the surface down to the pit's floor, SHC kind `sand`) and a falling slab or plank (its box at the fall, growing as a well's slab folds, kind `debris`) are carved too. `shadowscan.py` floors 1-48 seed 1: sand 91 of 91 and debris 80 of 92 took his shadow before, 0 after |
 | Relief | `glRelFloors` rubs the art back off a slab while `s < 2` (top face, lip, plus 3 px for its sinking; 36 of 41 corridor slabs and 61 of 64 well slabs were embossed before round 35c); `glRelWell` rubs each group's sand, cell by cell from its highest surface point down to its floor, with `glRelBox` (round 21b) |
 | Metal | none |
 | Sky beams | the sand stands in front of the room's whole depth like a wall's face (round 35b): `sandSegs` sends its outline this frame (the surface as drawn, flat stretches merged, at most 24 segments) to the shafts' and mist shaders (`u_sd`, `u_sf`, `sdC`): no haze, rim, pane, footprint, floor mist or wall look on it; above the surface the pit is air (a drained well is lit). Classic cuts the same outline with the walls (`rySandCut` in `ryBeams2D`). The slab itself takes a footprint (`fpMark` 254) except while it tips or cracks |
@@ -151,6 +151,7 @@ slab takes its neighbours' support, repeated until none fails. Planks are never 
 - Anything new that falls through a hole is drawn inside `debrisCut` (or its own clip to the shaft), its dust inside `airCut`.
 
 ## History
+- Round 42b: the sand and falling slabs and planks carved out of the lamp shadow (`SHC` kinds `sand`, `debris`).
 - round 12: the sand-filled shaft under a slab (the re-skinned "sand floor").
 - round 13: slabs (and roof blocks) fall under the heavier `DROP_G` 1400 (owner: the slab's fall too slow).
 - round 16a: two looks by `looseWell`: the well draining at `WELL_V` with a funnel crater and the slab folding in two; the corridor's four pieces, billow and landing cloud; no sand follows a slab down.

@@ -5720,7 +5720,10 @@ function floorStand(ctx,x,top,base,col,hi){
   ctx.fillStyle=hi;ctx.fillRect(x-0.4,top,0.8,(base-2-top)*0.7);
   ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(x,base+0.8,7,1.4,0,0,Math.PI*2);ctx.fill();}
 // the pitch torch's flame: the flipbook flame, a tongue now and then, cooling sparks and two thin wisps of smoke above it
-function torchFlame(ctx,x,y,seed){if(PF.off.flame)return;flame(ctx,FIRE,x,y,12.1,seed,1,true);embers(ctx,x,y-10,5,seed,FIRE,26);
+// (round 42b) a lamp's flame is light: carved out of the lamp shadow (SHC 'lamp') by an ellipse round the flame as drawn (sz its height)
+function shcFlame(x,y,sz){if(shcBeg(-1e5,-1e5,1e5,1e5,14)){shcEll(x,y-sz*0.42,sz*0.3+1,sz*0.55+1,10);shcEnd();}}
+function shcStand(x,fy,base){if(shcBeg(-1e5,-1e5,1e5,1e5,14)){shcPt(x-6.5,fy-1);shcPt(x+6.5,fy-1);shcPt(x+2.6,fy+6);shcPt(x+2.6,base-4);shcPt(x+7,base+1.4);shcPt(x-7,base+1.4);shcPt(x-2.6,base-4);shcPt(x-2.6,fy+6);shcRing();shcEnd();}}
+function torchFlame(ctx,x,y,seed){if(PF.off.flame)return;shcFlame(x,y,12.1);flame(ctx,FIRE,x,y,12.1,seed,1,true);embers(ctx,x,y-10,5,seed,FIRE,26);
   ctx.fillStyle='#1e181c';for(let i=0;i<2;i++){const u=(gameTime*0.5+i*0.5+seed*0.1)%1;ctx.globalAlpha=0.16*Math.sin(u*Math.PI);ctx.beginPath();ctx.arc(x+Math.sin(u*5+i*2+seed)*2,y-19-u*18,1.4+u*2.2,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;}
 const warmLamp=t=>L.theme.style==='crypt'&&(t.c*7+t.r*13)%10<3;
 // ---- the themes' own lamps and the re-skinned traps (owner, round 3: built in). EGP turns them off for debugging (the v61 looks).
@@ -5734,7 +5737,8 @@ function drawLampEg(ctx,t,th){const look=th.look,st=th.style,free=lampFree(t),x=
   const poly=(pts,col)=>{ctx.fillStyle=col;ctx.beginPath();pts.forEach(([a,b],i)=>i?ctx.lineTo(a,b):ctx.moveTo(a,b));ctx.closePath();ctx.fill();};
   const ell=(cx,cy,rx,ry,col)=>{ctx.fillStyle=col;ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,6.2832);ctx.fill();};
   const line=(pts,col,w)=>{ctx.strokeStyle=col;ctx.lineWidth=w;ctx.beginPath();pts.forEach(([a,b],i)=>i?ctx.lineTo(a,b):ctx.moveTo(a,b));ctx.stroke();};
-  const fl=(px,py,sz,pi=FIRE,n=3)=>{if(!lit){ell(px,py-0.4,0.8,0.6,'#1a1210');return;}flame(ctx,pi,px,py,sz,seed,0.8,sz>9);if(n)embers(ctx,px,py-sz*0.8,n,seed,pi,18);};
+  const fl=(px,py,sz,pi=FIRE,n=3)=>{if(!lit){ell(px,py-0.4,0.8,0.6,'#1a1210');return;}flame(ctx,pi,px,py,sz,seed,0.8,sz>9);if(n)embers(ctx,px,py-sz*0.8,n,seed,pi,18);shcFlame(px,py,sz);};
+  if(free&&look!=='shali')shcStand(fx,fy,base); // (round 42b: a free lamp stands on the floor before an opening, where the sky takes no shadow: its stand carved, SHC)
   const shelf=(sx,sy,w,col)=>{poly([[sx-w/2-1,sy],[sx+w/2+1,sy],[sx+w/2+1,sy+2.6],[sx-w/2-1,sy+2.6]],K);ctx.fillStyle=col||th.wallA;ctx.fillRect(sx-w/2,sy+0.4,w,1.8);ctx.fillStyle=th.hi;ctx.fillRect(sx-w/2,sy+0.4,w,0.6); // a stone ledge on a corbel
     poly([[sx-2,sy+2.6],[sx+2,sy+2.6],[sx,sy+6]],K);};
   const stand=(sx,top,col,hi)=>floorStand(ctx,sx,top,base,col,hi);
@@ -6956,14 +6960,28 @@ function barRope(ctx,x0,y0,x1,y1,w,c,ply,W,seed,ph){const dx=x1-x0,dy=y1-y0,l=Ma
   ctx.beginPath();{const q=P(0,-0.7),r=P(l,-0.7);ctx.moveTo(q[0],q[1]);ctx.lineTo(r[0],r[1]);}ctx.strokeStyle='rgba(8,5,10,.32)';ctx.lineWidth=0.6;ctx.stroke(); // its shaded right side
   if(W){const rq=mulberry32(seed);ctx.beginPath();for(let i=0;i<W*3;i++){const s=2+rq()*(l-4),k=rq()<0.5?1:-1,q=P(s,k*1.05),e=0.6+rq()*0.8; // loose fibres standing out of the lay
       ctx.moveTo(q[0],q[1]);ctx.lineTo(q[0]+nx*k*e+ux*e*0.6,q[1]+ny*k*e+uy*e*0.6);}ctx.strokeStyle=c[1];ctx.globalAlpha=0.55;ctx.lineWidth=0.4;ctx.stroke();ctx.globalAlpha=1;}}
-function drawBar(ctx,o,f){
+// (round 42b, dev/docs/layers.md R1) the pole runs front to back through his grip and the near rope hangs at depth .1, nearer than he is
+// at mid depth: drawn whole before the figures, his forearm lay over them facing left. Now near=0 (before the figures) draws the log, the
+// far rope and the pole from the rawhide grip back (BAR_G, the grip's near end: his hands close on the grip, so they stay over it), and
+// near=1 (after the figures, with the gates' near halves) the pole's near part, its end grain, the near rope, its turns round the log and
+// the lashing's tail, and the ready glint up that rope. The whole bar is carved out of the lamp shadow (SHC 'bar'), drawn at mid depth
+const BAR_G=-6.5;
+function drawBar(ctx,o,f,near){
   const K='#0b0812',ty=ceilingY(o.c,o.r),U=16,m=BARM[L.theme.look]||BARM.west;
   if(f.wl===undefined||f.wn!==L.n){f.wn=L.n;f.wl=wearLevel(f.x,f.y);}
   const W=f.wl,rc=BARF[m[0]][W],wd=BARW[m[1]].map(c=>W>=2?shadeHex(c,-0.08*(W-1)):c),ply=m[2];
   f.pv=ty;const bq=barPos(f),bx=bq.x,by=bq.y,on=P&&P.state==='swing'&&P.bar===f;
   const at=(u)=>[bx+u*DX/(2*U),by-u*DY/(2*U)];                       // u from -16 (front end) to 16 (back end)
   const R=2.8,cx=(u)=>f.x+u*DX/(2*U),cy=(u)=>ty-HY-u*DY/(2*U)+R;     // the log: its axis at depth u, under the ceiling (at mid depth ty-HY)
+  const top=(u)=>[cx(u)+0.3,cy(u)+R+0.2];
+  const rope=(u,sd)=>{const [x1,y1]=at(u),[x0,y0]=top(u);barRope(ctx,x0,y0,x1,y1-2.6,2.5,rc,ply,W,hash2(o.c*3+sd,o.r));};
+  if(!near&&shcBeg(f.x-80,ty,f.x+80,by+40,11)){ // (round 42b) the log, both ropes and the pole, 1.2 to 2 px wider than drawn (the mask is a quarter size, read blurred)
+    const a=-19,b=16,e=R+1.2;shcPt(cx(a),cy(a)-e);shcPt(cx(b),cy(b)-e);shcPt(cx(b),cy(b)+e);shcPt(cx(a),cy(a)+e);shcRing();shcEll(cx(a),cy(a),R+1.2,R+1.2,10);
+    for(const u of [-13,13]){const [x1,y1]=at(u),[x0,y0]=top(u);shcLine(x0,y0,x1,y1-2.6,4.4);}
+    {const p0=at(-U-1.6),p1=at(U+1.6),v=4;shcPt(p0[0],p0[1]-v);shcPt(p1[0],p1[1]-v);shcPt(p1[0],p1[1]+v);shcPt(p0[0],p0[1]+v);shcRing();}
+    {const [x,y]=at(-U);shcEll(x,y,3.3,3.3,8);}shcEnd();}
   ctx.save();ctx.beginPath();ctx.rect(f.x-80,ty,160,by+40-ty);ctx.clip(); // (the lintel's front face hides all that is above its edge)
+  if(!near){
   // the log, from the back wall to 3 px proud of the lintel's face: its underside receding under the ceiling, then its end grain
   {const a=-19,b=16;ctx.beginPath();ctx.moveTo(cx(a),cy(a)-R-0.6);ctx.lineTo(cx(b),cy(b)-R-0.6);ctx.lineTo(cx(b),cy(b)+R+0.6);ctx.lineTo(cx(a),cy(a)+R+0.6);ctx.closePath();ctx.fillStyle=K;ctx.fill();
     ctx.beginPath();ctx.moveTo(cx(a),cy(a)-R);ctx.lineTo(cx(b),cy(b)-R);ctx.lineTo(cx(b),cy(b)+R);ctx.lineTo(cx(a),cy(a)+R);ctx.closePath();ctx.fillStyle=wd[1];ctx.fill();
@@ -6973,21 +6991,23 @@ function drawBar(ctx,o,f){
     ctx.strokeStyle=wd[1];ctx.lineWidth=0.5;ctx.beginPath();ctx.arc(ex+0.2,ey+0.2,R*0.55,0,6.2832);ctx.stroke();                                 // a growth ring
     ctx.fillStyle=wd[3];ctx.beginPath();ctx.arc(ex-0.6,ey-0.5,R*0.6,Math.PI*0.75,Math.PI*1.45);ctx.lineTo(ex-0.3,ey-0.3);ctx.fill();          // lit on the left
     ctx.strokeStyle=wd[0];ctx.lineWidth=0.5;ctx.beginPath();ctx.moveTo(ex+0.3,ey);ctx.lineTo(ex+R-0.3,ey+0.8);ctx.stroke();}                // a drying check
-  const top=(u)=>[cx(u)+0.3,cy(u)+R+0.2];
-  const rope=(u,sd)=>{const [x1,y1]=at(u),[x0,y0]=top(u);barRope(ctx,x0,y0,x1,y1-2.6,2.5,rc,ply,W,hash2(o.c*3+sd,o.r));};
-  rope(13,1);                                                                                              // the far rope, behind the pole
-  ctx.save();ctx.translate(bx,by);ctx.transform(DX/(2*U),-DY/(2*U),0,1,0,0);                               // the pole in its own frame: x along it, y up and down
-  ctx.fillStyle=K;ctx.fillRect(-U-0.8,-2.9,2*U+1.6,5.8);
+  rope(13,1);}                                                                                             // the far rope, behind the pole
+  // the pole in its own frame: x along it (u), y up and down. A line of constant u is upright on the screen, so the two parts meet on a
+  // vertical; the near part's ends start 0.5 px under the grip's edge (lapped by it: no seam)
+  const ua=near?-U-0.8:BAR_G-1,ub=near?BAR_G:U+0.8,ia=Math.max(ua,-U),ib=Math.min(ub,U);
+  ctx.save();ctx.translate(bx,by);ctx.transform(DX/(2*U),-DY/(2*U),0,1,0,0);
+  ctx.fillStyle=K;ctx.fillRect(ua,-2.9,ub-ua,5.8);
   const g=ctx.createLinearGradient(0,-2.2,0,2.2);g.addColorStop(0,wd[3]);g.addColorStop(0.3,wd[2]);g.addColorStop(0.75,wd[1]);g.addColorStop(1,wd[0]);
-  ctx.fillStyle=g;ctx.fillRect(-U,-2.1,2*U,4.2);
-  ctx.strokeStyle=wd[0];ctx.globalAlpha=0.55;ctx.lineWidth=0.45;ctx.beginPath();ctx.moveTo(-U+1,-0.7);ctx.lineTo(-7,-0.5);ctx.moveTo(7,-0.6);ctx.lineTo(U-1,-0.9);ctx.moveTo(-U+3,0.9);ctx.lineTo(-8,1.1);ctx.moveTo(8,0.8);ctx.lineTo(U-4,1.0);ctx.stroke();ctx.globalAlpha=1; // grain
-  ctx.fillStyle='#2e1a10';ctx.fillRect(-6.5,-2.3,13,4.6);                                                   // the rawhide binding, its turns and the shine of wear
-  ctx.strokeStyle='#160c06';ctx.lineWidth=0.7;ctx.beginPath();for(let i=-6;i<=5;i+=2.2){ctx.moveTo(i,-2.3);ctx.lineTo(i+1.1,2.3);}ctx.stroke();
-  ctx.fillStyle='rgba(214,170,120,.35)';ctx.fillRect(-6.5,-1.6,13,0.8);
-  for(const u of [-13,13]){ctx.beginPath();for(let k=-1;k<=1;k++){const x=u+k*1.5;ctx.moveTo(x-0.45,-2.9);ctx.lineTo(x+0.45,2.9);} // the rope's end lashed three turns round the pole
+  ctx.fillStyle=g;ctx.fillRect(ia,-2.1,ib-ia,4.2);
+  ctx.strokeStyle=wd[0];ctx.globalAlpha=0.55;ctx.lineWidth=0.45;ctx.beginPath();if(near){ctx.moveTo(-U+1,-0.7);ctx.lineTo(-7,-0.5);ctx.moveTo(-U+3,0.9);ctx.lineTo(-8,1.1);}else{ctx.moveTo(7,-0.6);ctx.lineTo(U-1,-0.9);ctx.moveTo(8,0.8);ctx.lineTo(U-4,1.0);}ctx.stroke();ctx.globalAlpha=1; // grain
+  if(!near){ctx.fillStyle='#2e1a10';ctx.fillRect(-6.5,-2.3,13,4.6);                                         // the rawhide binding, its turns and the shine of wear
+    ctx.strokeStyle='#160c06';ctx.lineWidth=0.7;ctx.beginPath();for(let i=-6;i<=5;i+=2.2){ctx.moveTo(i,-2.3);ctx.lineTo(i+1.1,2.3);}ctx.stroke();
+    ctx.fillStyle='rgba(214,170,120,.35)';ctx.fillRect(-6.5,-1.6,13,0.8);}
+  {const u=near?-13:13;ctx.beginPath();for(let k=-1;k<=1;k++){const x=u+k*1.5;ctx.moveTo(x-0.45,-2.9);ctx.lineTo(x+0.45,2.9);} // the rope's end lashed three turns round the pole
     ctx.strokeStyle=K;ctx.lineWidth=1.55;ctx.stroke();ctx.strokeStyle=rc[0];ctx.lineWidth=1.0;ctx.stroke();
     ctx.beginPath();for(let k=-1;k<=1;k++){const x=u+k*1.5;ctx.moveTo(x-0.5,-2.7);ctx.lineTo(x-0.2,-0.6);}ctx.strokeStyle=rc[1];ctx.lineWidth=0.45;ctx.stroke();}
   ctx.restore();
+  if(near){
   {const [x,y]=at(-U);ctx.fillStyle=K;ctx.beginPath();ctx.arc(x,y,2.7,0,6.2832);ctx.fill();ctx.fillStyle=wd[2];ctx.beginPath();ctx.arc(x,y,2.1,0,6.2832);ctx.fill(); // the near end, end grain to us
     ctx.fillStyle=wd[3];ctx.beginPath();ctx.arc(x-0.4,y-0.4,1.2,Math.PI*0.8,Math.PI*1.5);ctx.lineTo(x,y);ctx.fill();ctx.fillStyle=wd[0];ctx.beginPath();ctx.arc(x+0.2,y+0.2,0.45,0,6.2832);ctx.fill();}
   rope(-13,2);                                                                                             // the near rope, in front of it
@@ -6995,17 +7015,17 @@ function drawBar(ctx,o,f){
     ctx.strokeStyle=K;ctx.lineWidth=1.7;ctx.stroke();ctx.strokeStyle=rc[0];ctx.lineWidth=1.1;ctx.stroke();
     ctx.beginPath();for(let k=-1;k<=1;k++){const x=x0+k*1.35,y=cy(u+k*2.7);ctx.moveTo(x-0.5,y-R+0.3);ctx.lineTo(x-0.3,y);}ctx.strokeStyle=rc[1];ctx.lineWidth=0.5;ctx.stroke();}
   {const [x,y]=at(-13),n=2+W;ctx.beginPath();for(let i=0;i<n;i++){const a=-0.5+i*0.9/(n-1),l=2.6+((i*7)%3)*0.7+W*0.4;ctx.moveTo(x-0.6,y+1.5);ctx.lineTo(x-0.6+Math.sin(a)*l,y+1.5+Math.cos(a)*l);} // the lashing's frayed tail
-    ctx.strokeStyle=rc[2];ctx.lineWidth=0.9;ctx.stroke();ctx.strokeStyle=rc[1];ctx.lineWidth=0.4;ctx.stroke();}
+    ctx.strokeStyle=rc[2];ctx.lineWidth=0.9;ctx.stroke();ctx.strokeStyle=rc[1];ctx.lineWidth=0.4;ctx.stroke();}}
   ctx.restore();
   if(on&&P.swRdy){const k=clamp((gameTime-(P.swGl||0))/0.45,0,1);ctx.save();ctx.globalCompositeOperation='lighter';
-    if(k<1){const [x1,y1]=at(-13),[x0,y0]=top(-13),x=lerp(x1,x0,k),y=lerp(y1-2.6,y0,k); // ready: a glint runs up the near rope's fibres to the log
+    if(near&&k<1){const [x1,y1]=at(-13),[x0,y0]=top(-13),x=lerp(x1,x0,k),y=lerp(y1-2.6,y0,k); // ready: a glint runs up the near rope's fibres to the log
       const gg=ctx.createRadialGradient(x,y,0,x,y,8);gg.addColorStop(0,'rgba(255,240,200,.9)');gg.addColorStop(0.3,'rgba(255,226,170,.35)');gg.addColorStop(1,'rgba(255,226,170,0)');
       ctx.fillStyle=gg;ctx.fillRect(x-8,y-8,16,16);ctx.fillStyle='rgba(255,246,220,.9)';ctx.fillRect(x-0.35,y-2.4,0.7,4.8);ctx.fillRect(x-1.6,y-0.3,3.2,0.6);}
     // (round 16b) and while it will carry him the grip keeps a warm glow round his hands, full as he swings forward (Jump now), a
     // third of that on the way back: read at a glance on a phone, where the glint alone was a few pixels for under half a second
-    const fw=P.swOm>0?1:0.35,al=fw*(0.42+0.13*Math.sin(gameTime*11))*Math.min(1,0.4+k),Rg=12;
+    if(!near){const fw=P.swOm>0?1:0.35,al=fw*(0.42+0.13*Math.sin(gameTime*11))*Math.min(1,0.4+k),Rg=12;
     const gh=ctx.createRadialGradient(bx,by,0,bx,by,Rg);gh.addColorStop(0,'rgba(255,214,140,'+al.toFixed(3)+')');gh.addColorStop(0.45,'rgba(255,190,110,'+(al*0.45).toFixed(3)+')');gh.addColorStop(1,'rgba(255,190,110,0)');
-    ctx.fillStyle=gh;ctx.fillRect(bx-Rg,by-Rg,2*Rg,2*Rg);ctx.restore();}}
+    ctx.fillStyle=gh;ctx.fillRect(bx-Rg,by-Rg,2*Rg,2*Rg);}ctx.restore();}}
 // (round 38a) the pendulum's arm (with its outline) and its blade (pendBlade's crescent, turned with the swing), carved out of the lamp shadow (SHC)
 // (1.2 px wider than drawn all round, as the stakes: the mask is a quarter size and read blurred, and the arm and blade are thinner than its texels)
 function shcPend(b){shcLine(b.px,b.py+2,b.x,b.y,6.8);const cs=Math.cos(b.th),sn=Math.sin(b.th);
@@ -7068,18 +7088,23 @@ function ventPass(ctx,fi,row,al){const a=fi|0,f=fi-a,b=(a+1)%FLN;ctx.globalAlpha
 const VJETS=[[-6,.7,.84],[-2,.7,1],[2,.7,.9],[6,.7,.78],[-6,.3,.8],[-2,.3,.94],[2,.3,1],[6,.3,.86]]; // x, depth, height
 function ventJet(ctx,px,py,sx,sy,fi,cool,a){ctx.save();ctx.translate(px,py);ctx.transform(sx,0,0,sy,0,0);
   if(cool>.02){ventPass(ctx,fi,1,a);ventPass(ctx,fi,0,a*(1-cool));}else ventPass(ctx,fi,0,a);ctx.restore();}
-function drawVentFlame(ctx,x,ys,st,seed){if(PF.off.flame)return;
+// (round 42b, dev/docs/layers.md R1) part 0 is the back row (depth .7, behind him at mid depth), drawn in drawDynamic before the figures;
+// part 1 the rest (the glow and flash, the merged sheet, the front row at depth .3, licks, sparks, embers), after them in drawEmissive as
+// before, so he stands between the rows. The back row is drawn before Classic's light pass now: the vent's own fire light lies over it
+function drawVentFlame(ctx,x,ys,st,seed,part){if(PF.off.flame)return;
   const t=gameTime,calm=S.set.calm,H=st.h*(1+(st.k>.9?.06*Math.sin(t*41+seed)*(calm?.3:1):0)),s=40/(FLV.vf*48),fi=(t*(calm?12:24)+seed*3.7)%FLN,al=st.al,
     m=sst(.45,.85,H),fk=calm?.3:1,jw=s*.34*st.w*(.6+.4*Math.min(1,H));
-  ctx.save();ctx.globalCompositeOperation='lighter';
-  ctx.globalAlpha=.4*st.k*al;ctx.drawImage(lightSprite('255,150,70'),x-62,ys-70,124,96);
-  if(st.ig>=0&&!calm){ctx.globalAlpha=.8*(1-st.ig);ctx.drawImage(lightSprite('255,238,190'),x-30,ys-28,60,40);}
-  ctx.restore();
   const jet=j=>{const q=VJETS[j],ad=Math.abs(q[0]),back=j<4,p=onFloor(x+q[0],q[1],ys),
       c=st.ig<0?1:Math.max(.3,sst(0,1,(st.ig-.4*(ad-2)/4)/.6)), // (catching from the middle outwards)
       h=H*(1-.45*m)*q[2]*(.75+.25*sst(.3,.6,H))*(1+.14*fk*Math.sin(t*11+j*Math.PI+(back?1.3:0)+seed))*c*(back?.86:1);
     ventJet(ctx,p.x,p.y,jw*(back?.9:1),s*h,(fi+j*2.3+(back?5:0))%FLN,st.cool,al*(back?.75:1));};
-  for(let j=0;j<4;j++)jet(j);
+  if(!part){for(let j=0;j<4;j++)jet(j);ctx.globalAlpha=1;
+    if(shcBeg(-1e5,-1e5,1e5,ys+HY+1,17)){const hh=Math.max(6,36*H);shcPt(x-10,ys+1);shcPt(x+12,ys+1);shcPt(x+12,ys-0.3*hh);shcPt(x+6,ys-hh);shcPt(x-4,ys-hh);shcPt(x-10,ys-0.3*hh);shcRing();shcEnd();} // (round 42b: the flame's core carved out of the lamp shadow, SHC; a flame is light, never shaded)
+    return;}
+  ctx.save();ctx.globalCompositeOperation='lighter';
+  ctx.globalAlpha=.4*st.k*al;ctx.drawImage(lightSprite('255,150,70'),x-62,ys-70,124,96);
+  if(st.ig>=0&&!calm){ctx.globalAlpha=.8*(1-st.ig);ctx.drawImage(lightSprite('255,238,190'),x-30,ys-28,60,40);}
+  ctx.restore();
   if(m>.02){ // the merged sheet, from the whole grate
     ventJet(ctx,x,ys,s*st.w*1.1,s*H,fi,st.cool,al*m);
     ventJet(ctx,x+3,ys,-s*st.w*.85,s*H*.8,(fi+7)%FLN,st.cool,.6*al*m);}
@@ -7088,9 +7113,9 @@ function drawVentFlame(ctx,x,ys,st,seed){if(PF.off.flame)return;
   if(H>.7){const A=FLM[FORGE];lick(ctx,A,x-6,ys-34*H,2,seed);lick(ctx,A,x+1,ys-37*H,2.2,seed+5.3);lick(ctx,A,x+7,ys-33*H,1.9,seed+2.9);}
   if(st.ig>=0&&!calm){const p=st.ig;ctx.fillStyle='#ffd27a';ctx.globalAlpha=1-p;for(let i=0;i<8;i++)ctx.fillRect(x+(i-3.5)*6*p,ys-6-(14+(i%3)*4)*p+10*p*p,1.2,1.2);ctx.globalAlpha=1;}
   embers(ctx,x-5,ys-14*H,H>.5?6:2,seed,FORGE,34*Math.min(1,H+.3));embers(ctx,x+5,ys-14*H,H>.5?5:2,seed+2.1,FORGE,30*Math.min(1,H+.3));}
-function drawVentFire(ctx,o,f){
+function drawVentFire(ctx,o,f,part){
   const ph=cyc(f,gameTime);if(!(ph>=0.7||ph<0.03))return;
-  drawVentFlame(ctx,o.c*TW+16,SURF(o.r)+0.5,ventState(ph),o.c%7);
+  drawVentFlame(ctx,o.c*TW+16,SURF(o.r)+0.5,ventState(ph),o.c%7,part);
 }
 // the cracked ceiling stone: a whole tile wide, a jagged black fissure through it, pale chips on its lower lip and a thread of
 // dust now and then. Where the ceiling is the top of the screen the HUD's dark band lies over it, so drawHUD draws it again on top.
@@ -8006,6 +8031,7 @@ function drawLiftCounterweight(ctx,f,half){
   liftTimber(ctx,xw,R.by+3,xo,R.by+3,6,W,true);
   liftTimber(ctx,ws>0?X+TW+4:X-4,R.by+21,ws>0?X+TW-15:X+15,R.by+5,3.2,Math.min(W,2),false);
   if(EGP.traps)liftTimber(ctx,R.cx,R.by+4,R.cx,R.hy,3,Math.min(W,2),false);else{ctx.fillStyle='#0b0812';ctx.fillRect(R.cx-1.6,R.by+5,3.2,R.hy-R.by-5);} // the sheave's hanger (a timber in the Egyptian themes)
+  if(shcBeg(-1e5,-1e5,1e5,1e5,12)){shcLine(xw,R.by+3,xo,R.by+3,7.4);shcLine(ws>0?X+TW+4:X-4,R.by+21,ws>0?X+TW-15:X+15,R.by+5,4.6);shcLine(R.cx,R.by+4,R.cx,R.hy,4.4);shcEll(R.cx,R.hy,8.4,8.4,14);shcEnd();} // (round 42b: the rig stands in the shaft at mid depth, carved out of the lamp shadow, SHC, 1.2 px wider than drawn)
   const ye=EGP.traps?ys-LS_J:ys-1;liftChainLine(ctx,R.ca,R.hy,R.ca,ye,W);liftChainLine(ctx,R.cb,R.hy,R.cb,ye,W);if(shcBeg(-1e5,-1e5,1e5,1e5,10)){shcLine(R.ca,R.hy,R.ca,ye,4.6);shcLine(R.cb,R.hy,R.cb,ye,4.6);shcEnd();} // (round 38a: the platform's ropes, at mid depth, carved out of the lamp shadow, SHC; the counterweight's runs in the back wall and keeps it) // (round 21a: to the bridle's eye)
   liftWheel(ctx,R.cx,R.hy,7,0,-(ys*0.05),W);
   // the platform: the same floor slab as the ledges, held at mid depth by an iron eye under each chain
@@ -8081,6 +8107,7 @@ function drawLiftChain(ctx,f,half){
     if(rust&&(k*7)%5<W){ctx.fillStyle=rust;ctx.fillRect(q.x-w/2,ly+h*0.4,w,h*0.6);}
     if(e){ctx.fillStyle='#1b1626';if(v)ctx.fillRect(q.x-0.8,ly+1.6,1.6,h-3.2);else ctx.fillRect(q.x-w/2+1.6,ly+h/2-0.8,w-3.2,1.6);}}
   for(const xx of [xE,xX]){liftWheel(ctx,xx,f.yT+3,7.5,8,CHAIN_V*gameTime/6*f.dx,W);liftWheel(ctx,xx,yS+1,7.5,8,CHAIN_V*gameTime/6*f.dx,W);}});
+  if(shcBeg(X0-40,top-80,X0+2*TW+40,yS+1.6,13)){shcLine(xE,f.yT+3,xX,f.yT+3,4.8);shcLine(xE,yS,xX,yS,4.8);for(const xx of [xE,xX]){shcEll(xx,f.yT+3,8.7,8.7,14);shcEll(xx,yS+1,8.7,8.7,14);}shcEnd();} // (round 42b: the loop's level runs and its four wheels, at mid depth, carved out of the lamp shadow, SHC, down to the slot's lip as drawn)
   ctx.save();liftNearCut(ctx,f,-1,true);
   for(let i=0;i<f.n;i++){const q=chainPos(f,i,gameTime);
     if(!EGP.traps){ctx.fillStyle='#0b0812';ctx.fillRect(q.x-3,q.y+HY,6,6);ctx.fillStyle=W>=2?'#7a4a2c':'#b98a4a';ctx.fillRect(q.x-2,q.y+HY+0.5,4,4);}
@@ -8338,7 +8365,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
         drawBannerTile(ctx,X,Y,f,th);ctx.restore();break;}
       case'bar':drawBar(ctx,o,f);break;
       case'pend':drawPend(ctx,o,f);break;
-      case'vent':drawVentBase(ctx,o,f);fpMark(ctx,X,ys);break;
+      case'vent':{drawVentBase(ctx,o,f);fpMark(ctx,X,ys);const na=ctx.na;if(ctx.isG2D)ctx.na=1;if(!lyOff('emissive'))drawVentFire(ctx,o,f,0);if(ctx.isG2D)ctx.na=na;break;} // (round 42b: the back row of flames, behind him; light, so it leaves the scene's alpha alone as drawEmissive does)
       case'loose':if(f.s<2&&f.plank){drawPlank(ctx,X,ys,f.s===1?(Math.random()-0.5)*1.6:0);fpMark(ctx,X,ys);break;}if(f.s<2){const sk=EGP.traps&&f.s===1?sandK(f.tm,0.25,0.06):0,sh=f.s===1&&f.tm>-0.7?(Math.random()-0.5)*(EGP.traps?0.8:1.6):0;
         const wl=EGP.traps&&looseWell(o),fx=X-HX,ft=ys+HY,wg=wl?wellSolve(wellGroup(o)):null,tip=wg?wellTip(o,f):0,sag=wl&&f.s===1&&!tip?clamp((wellSunk(wg,o.c-wg.c0)-6)/45,0,1)*0.14:0; // (round 21b: tip, a slab of a row leaning into the hole beside it)
         // a tile that will give way: sunk a little, a shade off its neighbours, dark gaps where it has come away from them,
@@ -8395,7 +8422,8 @@ function drawDynamic(ctx,x0,x1,y0,y1){
   for(const bl of L.ext.blocks){if(inRoom(bl.c,bl.r)&&!lyOff('block'))drawBlock(ctx,bl,th);}
   for(const d of L.ext.darts){if(d.x<x0-10||d.x>x1+10||lyOff('dart'))continue;const dd=d.dir||-1; // (only the part that has left the spout's jaws)
     if(d.mx!==undefined){if((d.x+dd*5-d.mx)*dd<=0)continue;ctx.save();ctx.beginPath();ctx.rect(dd>0?d.mx-0.5:d.mx+0.5-4096,d.y-12,4096,24);ctx.clip();} // (round 39e: cut on the mouth's side only; an 81 px window lost the dart 80 px into its flight while it still hit)
-    drawDart(ctx,d.x,d.y,dd,0,1,true);if(d.mx!==undefined)ctx.restore();}
+    drawDart(ctx,d.x,d.y,dd,0,1,true);if(d.mx!==undefined)ctx.restore();
+    if(shcBeg(d.mx===undefined?-1e5:dd>0?d.mx-0.5:-9e3,d.y-12,d.mx===undefined?1e5:dd>0?1e5:d.mx+0.5,d.y+12,18)){shcLine(d.x-15.4*dd,d.y,d.x+5.8*dd,d.y,5.2);shcEnd();}} // (round 42b: a dart in flight, at mid depth, carved out of the lamp shadow, SHC, 1.2 px wider than its head and tuft; its streak is light)
   for(const q of SPENT){if(q.on&&q.x>x0-10&&q.x<x1+10&&!lyOff('dart'))drawDart(ctx,q.x,q.y,q.dd,q.ang,q.gy||q.t<1.2?1:Math.max(0,1-(q.t-1.2)/0.4),false);}
   for(const it of L.items){if(!it.hidden||it.taken||!inRoom(it.c,it.r)||lyOff('cue'))continue; // the secret's cue sits on the hidden flask itself: a few slow four-point stars
     const sx=it.x,sy=SURF(it.r)-16,wl=B(L,it.c-1,it.r)===WALL,wr=B(L,it.c+1,it.r)===WALL;ctx.save(); // (round 39e: they orbit up to 14 px out, past a wall's face beside the flask (23 of 48): cut there, by a rect (they keep under a low ceiling's face))
@@ -8406,9 +8434,12 @@ function drawDynamic(ctx,x0,x1,y0,y1){
   if(!lyOff('jet'))drawJetHints(x0,x1,y0,y1,ctx);
   for(const it of L.items)if(!it.taken&&inRoom(it.c,it.r)&&!lyOff('flask'))drawFlask(ctx,it);
   if(!lyOff('flask'))drawLooseFlasks(ctx);
+  if(SHC.on&&!lyOff('well')){const n=sandSegs(x0,x1,y0,y1);if(n&&shcBeg(-1e5,-1e5,1e5,1e5,15)){const a=SDS.a;for(let i=0;i<n;i++){const k=i*4,ft=SDS.f[i];shcPt(a[k],a[k+2]);shcPt(a[k+1],a[k+3]);shcPt(a[k+1],ft);shcPt(a[k],ft);shcRing();}shcEnd();}} // (round 42b) the sand of wells and sand lifts stands before the room's whole depth (round 35b): carved out of the lamp shadow by its outline this frame (sandSegs)
   if(EGP.traps&&!lyOff('well'))for(const o of L.dyn){if(o.f.t!=='loose'||o.f.plank)continue;const g=wellGroup(o);if(!g||g.os[0]!==o||!(inRoom(g.c0,g.r)||inRoom(g.c0+g.n-1,g.r)))continue;drawWellGroup(ctx,g);} // (round 21b: once for a row of slabs over one pit)
   for(let i=DUSTC.length-1;i>=0;i--){const q=DUSTC[i],age=gameTime-q.t;if(age<0||age>0.7){DUSTC.splice(i,1);continue;}if(!lyOff('dust')){const fy=SURF(Math.round((q.y+4)/TH)-1)+HY;ctx.save();airCut(ctx,q.x-48,q.y-34,96,fy-q.y+34,false);dustCloud(ctx,q.x,q.y,age,0.7,q.sz,1);ctx.restore();}} // (round 39: the landing cloud rolls along its floor behind the front plane: cut at its front edge and the faces round it)
-  for(const d of L.debris){if(lyOff('debris'))continue;ctx.save();if(!(EGP.traps&&(d.kind==='slab'||d.kind==='rock')))debrisCut(ctx,d);ctx.translate(d.x-16,d.y); // (round 39: behind the faces beside the hole, debrisCut)
+  for(const d of L.debris){if(lyOff('debris'))continue;
+    if((d.kind==='slab'||d.kind==='plank')&&shcBeg(-1e5,-1e5,1e5,1e5,16)){const a=d.wl&&d.y0!==undefined?Math.min(14,(d.y-d.y0)*0.5+3):1.2;shcBox(d.x-16-HX-1.2,d.y+HY-a,TW+2.4,FHH+2*a,1,true,true);shcEnd();} // (round 42b: a falling slab or plank, across the corridor's depth, carved out of the lamp shadow, SHC; a well's slab folds and turns, so its box grows with the fall)
+    ctx.save();if(!(EGP.traps&&(d.kind==='slab'||d.kind==='rock')))debrisCut(ctx,d);ctx.translate(d.x-16,d.y); // (round 39: behind the faces beside the hole, debrisCut)
     if(EGP.traps&&(d.kind==='slab'||d.kind==='rock')){if(d.y0===undefined)d.y0=d.y;const age=debAge(d);ctx.restore();ctx.save();if(d.kind==='slab'&&!d.wl)debrisCut(ctx,d); // (re-skinned: a sand floor's slab, the roof block)
       if(d.kind==='rock')egRoofFall(ctx,d);
       else{ // (round 13, owner: "after the tile falls, the sand still trickles in two columns". Round 16a: no sand follows it down at all;
@@ -8469,6 +8500,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
   // the near half of gates and jaws crosses in front of anyone walking the corridor
   for(const o of L.dyn){if(!inRoom(o.c,o.r)||lyOff(o.f.t))continue;const X=o.c*TW,Y=o.r*TH,ys=SURF(o.r);if(o.f.t==='gate')drawGate(ctx,o.f,X,Y,ys,1);else if(o.f.t==='chomp')drawJaws(ctx,o,o.f,X,Y,ys,1);
     else if(o.f.t==='stone'&&EGP.traps&&o.f.s>=2&&L.rubble.has(o.r*L.cols+o.c))egRoofLying(ctx,o,o.f,1); // (and a fallen roof block's near half)
+    else if(o.f.t==='bar')drawBar(ctx,o,o.f,1); // (round 42b: the swing bar's near pole, end grain and near rope, nearer than he is)
     else if(o.f.t==='spikes'&&o.f.ext>0.02){const cut=B(L,o.c+1,o.r)===WALL;if(cut){ctx.save();ctx.beginPath();ctx.rect(X-200,Y-200,TW-HX+200,TH+400);ctx.clip();}drawNeedles(ctx,o,o.f,X,ys,1);if(cut)ctx.restore();}} // (round 39e: the front stake, cut as the case in the loop above cuts it)
   for(const lf of L.lifts)if(liftVisible(lf,x0,x1,y0,y1))drawLift(ctx,lf,1);
   if(!lyOff('sand'))sandDraw(ctx); // (before the light pass: shaded like stone)
@@ -8476,7 +8508,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
 }
 // things that give off their own light: drawn after the lighting pass so it never dims them
 function drawEmissive(ctx,x0,x1,y0,y1){
-  for(const o of L.dyn)if(o.f.t==='vent'&&o.c*TW>x0-60&&o.c*TW<x1+60)drawVentFire(ctx,o,o.f);
+  for(const o of L.dyn)if(o.f.t==='vent'&&o.c*TW>x0-60&&o.c*TW<x1+60)drawVentFire(ctx,o,o.f,1); // (round 42b: the front row and the sheet; the back row went before the figures)
   {const chs=L.ext.chase;
   if(chs&&chs.on){const D=chs.diss;
     if(((chs.fade||0)<1||(D&&!D.over))&&GFX().atmo)drawStormHD(ctx,chs,x0,x1,y0,y1); // (the dark itself: drawDark2D, after the haze)
@@ -10248,8 +10280,12 @@ const JAWP=new WeakMap(); // each jaw's two outlines as drawJaws built them this
 // behind them and the wall seen round and between them keeps it. Outlines in world px as rings of points (a NaN x ends a ring), each entry
 // with a rectangle clip (the drawing's own: a slab's half, a blade's slot); typed arrays filled again each frame, nothing allocated; recorded
 // only while Torchlight's shadow is on (render sets SHC.on). shadowscan.py tests it (SHC.off: not carved, v82's look, for the count before)
-const SHC_E=64,SHC_PN=2048,SHC={on:false,off:false,n:0,np:0,cl:new Float32Array(SHC_E*4),s:new Uint16Array(SHC_E+1),t:new Uint8Array(SHC_E),p:new Float32Array(SHC_PN*2)},
-  SHC_K=['','slab','stakes','saw','pend','roof','clock','flask','liftslab','sandslab','rope']; // (t: what each entry is, for shadowscan.py)
+// (round 42b) and what was still left out: the swing bar (pole, ropes, log), a counterweight lift's rig (hoist beam, brace, hanger, sheave),
+// the paternoster's loop (its level runs and corner wheels), the lamps' flames and the free lamps' stands, the sand of wells and sand lifts
+// (sandSegs' outline), falling slabs and planks, the vent's flame and darts in flight. Banners and the wall lamps' bodies are left: they hang
+// flat on the back wall (L1/L2b), so a shadow on the wall falls on them as on the wall itself
+const SHC_E=128,SHC_PN=4096,SHC={on:false,off:false,n:0,np:0,cl:new Float32Array(SHC_E*4),s:new Uint16Array(SHC_E+1),t:new Uint8Array(SHC_E),p:new Float32Array(SHC_PN*2)},
+  SHC_K=['','slab','stakes','saw','pend','roof','clock','flask','liftslab','sandslab','rope','bar','rig','loop','lamp','sand','debris','vent','dart']; // (t: what each entry is, for shadowscan.py)
 function shcBeg(x0,y0,x1,y1,t){if(!SHC.on||SHC.n>=SHC_E||SHC.np>SHC_PN-160)return false;const c=SHC.n*4;SHC.cl[c]=x0;SHC.cl[c+1]=y0;SHC.cl[c+2]=x1;SHC.cl[c+3]=y1;SHC.s[SHC.n]=SHC.np;SHC.t[SHC.n]=t||0;return true;} // (room left for the largest entry, the clock's 90 points)
 function shcPt(x,y){if(SHC.np>=SHC_PN)return;const i=SHC.np*2;SHC.p[i]=x;SHC.p[i+1]=y;SHC.np++;}
 function shcRing(){shcPt(NaN,0);}

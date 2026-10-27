@@ -105,7 +105,7 @@ def views(inst, vw, vh):  # greedy: centre a view on the first uncovered instanc
 if __name__ == '__main__':
     t0 = time.time()
     with sync_playwright() as p:
-        b = p.chromium.launch()
+        b = p.chromium.launch(args=['--use-angle=metal', '--force_high_performance_gpu', '--enable-gpu', '--ignore-gpu-blocklist'] if os.environ.get('HK_GPU') == '1' else [])  # (round 42b: HK_GPU=1, WebGL on the Radeon)
         stats, worst, errs = {}, [], []
         for mode in MODES:
             pg = page(b, mode)

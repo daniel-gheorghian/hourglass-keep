@@ -11,7 +11,12 @@
 # the outlines are taken from the ref build (default: the source) in the same scene, and every thing reached is bad. Kinds: slab (portcullis,
 # lift and sand lift mouth slabs, down), stakes, saw, pend, roof (a fallen block), clock (lit), flask, liftslab (a counterweight platform at its
 # foot, a paternoster slab), rope (the same lifts' ropes at mid depth: the platform's two, the paternoster's upright runs), sandslab (the sand
-# lift's slab at its top). Prints the counts per kind and 'shadowscan: ok'; a sheet of the worst
+# lift's slab at its top). Round 42b adds what was still left out: bar (the swing bar, him swinging up beside it), rig (a counterweight lift's
+# hoist beam, brace, hanger and sheave, him jumping up on the top landing), loop (the paternoster's level runs and wheels, him beside its
+# top and its foot), lamp (a lamp's flame and a free lamp's stand, the caster beyond him), sand (a well's sand after its slab broke, him
+# dropping beside it; a sand lift's column with the slab a storey up, him on the foot's landing), debris (a cracked slab or plank just
+# fallen), vent (the flame at the roar) and dart (one in flight). A kind the tested file does not record (an older build) takes its outlines
+# from the ref build. Prints the counts per kind and 'shadowscan: ok'; a sheet of the worst
 # cases (shadowscan.png: shadow on | off | carve off). Run from dev/tools.
 import io, os, sys
 from playwright.sync_api import sync_playwright
@@ -23,7 +28,7 @@ REF = os.path.abspath(next((x[4:] for x in a if x.startswith('ref=')), os.path.j
 NUM = [int(x) for x in a if x.isdigit()]
 LO, HI = (NUM + [1, 48])[:2] if len(NUM) >= 2 else (1, 48)
 SEEDS = [int(s) for s in next((x for x in a if ',' in x and '=' not in x), str(NUM[2]) if len(NUM) > 2 else '1').split(',')]
-KINDS = next((x[6:] for x in a if x.startswith('kinds=')), 'slab,stakes,saw,pend,roof,clock,flask,liftslab,rope,sandslab').split(',')
+KINDS = next((x[6:] for x in a if x.startswith('kinds=')), 'slab,stakes,saw,pend,roof,clock,flask,liftslab,rope,sandslab,bar,rig,loop,lamp,sand,debris,vent,dart').split(',')
 PER = int(next((x[4:] for x in a if x.startswith('per=')), '2'))
 OUT = next((x for x in a if x.endswith('.png')), os.path.join(HERE, 'shadowscan.png'))
 ERODE = 7  # device px (3.5 css px, 1.7 world px at this view: the quarter-size mask read blurred over a texel either side)
@@ -43,14 +48,28 @@ JS = r'''window.SHS=(()=>{const H=__HK,TW=32,SURF=r=>(r+1)*64-4,TS=7;
     if(kind==='liftslab'||kind==='rope'){L.lifts.forEach(f=>{if(f.t==='lift'&&!f.sand)out.push({x:f.sc*TW+16,r:f.rB,ys:SURF(f.rB),prep:()=>{f.y=SURF(f.rB);}});});
       L.lifts.forEach(f=>{if(f.t!=='chain')return;out.push({x:f.c0*TW+16,r:f.rB,ys:SURF(f.rB),at:()=>{let b=null,d=1e9;for(let i=0;i<f.n;i++){const q=H.chainPos(f,i,H.gameTime),e=Math.abs(q.y-SURF(f.rB))+Math.abs(q.x-(f.c0*TW+16))*0.2;if(e<d){d=e;b=q;}}return b?b.x:f.c0*TW+16;}});});}
     if(kind==='sandslab')L.lifts.forEach(f=>{if(f.sand)out.push({x:f.sc*TW+16,r:f.rT,ys:SURF(f.rT),prep:()=>{f.y=f.yT;}});});
+    // (round 42b) place(P,s): where he is instead of standing 40 px off (s the side); tq: the caster's distance beyond him (default 60)
+    if(kind==='bar')dyn('bar').forEach(o=>{const f=o.f;out.push({x:f.x,r:o.r,ys:SURF(o.r),tq:24,place:(P,s)=>{f.ps=0;f.pw=0;P.x=f.x;P.y=f.y+57;P.vx=P.vy=0;P.state='air';P.autoGrab=true;P.face=s;P.fallY=P.y;H.tick(1);
+      if(P.state==='swing'){P.swTh=0.95;P.swOm=0;const b=H.barPos(f);P.x=b.x+P.face*34*Math.sin(P.swTh);P.y=b.y+34*Math.cos(P.swTh)+24.5;}}});});
+    if(kind==='rig')L.lifts.forEach(f=>{if(f.t==='lift'&&!f.sand)out.push({x:f.sc*TW+12.5,r:f.rT,ys:SURF(f.rT),dy:-26});});
+    if(kind==='loop')L.lifts.forEach(f=>{if(f.t!=='chain')return;for(const c of [f.c0,f.c1])for(const top of [1,0]){const rr=top?f.rT:f.rB;if(rr===undefined)continue;out.push({x:c*TW+16,r:rr,ys:top?f.yT:SURF(rr),at:()=>c*TW+16});}});
+    if(kind==='lamp')L.torches.forEach(q=>{if(!q.broken)out.push({x:q.c*TW+16,r:q.r,ys:SURF(q.r),keep:q});});
+    if(kind==='sand'){dyn('loose').forEach(o=>{const g=H.wellGroup(o);if(!g||g.os[0]!==o)return;const xa=o.c*TW,xb=xa+g.n*TW;
+        out.push({x:(xa+xb)/2,r:o.r,ys:SURF(o.r),tq:50,prep:()=>{const f=o.f;f.s=2;f.tm=0.08;L.base[o.r*C+o.c]=2;},place:(P,s)=>{P.x=(s<0?xa:xb)+s*14;P.y=SURF(o.r)+40;P.state='fall';P.vy=60;}});});
+      L.lifts.forEach(f=>{if(f.sand)out.push({x:f.sc*TW+16,r:f.rB,ys:SURF(f.rB),prep:()=>{f.y=SURF(f.rB)-72;}});});}
+    if(kind==='debris')dyn('loose').forEach(o=>out.push({x:o.c*TW+16,r:o.r,ys:SURF(o.r),prep:()=>{const f=o.f;f.s=2;L.base[o.r*C+o.c]=2;const y0=SURF(o.r);
+      L.debris.push({x:o.c*TW+16,y:y0+3,y0,vy:0,c:o.c,hitP:true,kind:f.plank?'plank':'slab',g:f.plank?undefined:1400,wl:!f.plank&&H.looseWell(o)});}}));
+    if(kind==='vent')dyn('vent').forEach(o=>out.push({x:o.c*TW+16,r:o.r,ys:SURF(o.r),prep:()=>{const f=o.f;f.off=((0.86*f.per-H.gameTime)%f.per+f.per)%f.per;}}));
+    if(kind==='dart')dyn('darter').forEach(o=>{const f=o.f,dir=f.dir||-1,xb=f.x-2*dir,mx=dir>0?xb+12.5:xb-8,dx=f.x+dir*90;
+      out.push({x:dx,r:o.r,ys:SURF(o.r),prep:()=>{L.ext.darts.length=0;L.ext.darts.push({x:dx,y:f.y,r:o.r,x0:f.x0,dir,mx});}});});
     return out;}
   function list(n,sd,kind){window.__HKfreeze=true;const L=H.load(n,sd,true);return things(L,kind).length;}
   function show(n,sd,kind,i,shadow,off){window.__HKfreeze=true;for(const id in H.HINTS)H.S.hints[id]=1;
     const L=H.load(n,sd,true),C=L.cols;H.banner=null;H.intro=0;const t=things(L,kind)[i];if(!t)return null;if(t.prep)t.prep();const x=t.at?t.at():t.x;
     const fl=c=>c>=0&&c<C&&L.base[t.r*C+c]!==2&&H.solidBelow(c,t.r);let s=1;
     {const l=Math.floor((x-40)/TW),r=Math.floor((x+40)/TW),okL=fl(l)&&fl(Math.floor((x-100)/TW)),okR=fl(r)&&fl(Math.floor((x+100)/TW));s=okL?-1:okR?1:fl(l)?-1:1;}
-    const P=H.P;P.inv=1e9;P.state='stand';P.face=-s;P.x=x+s*40;P.y=t.ys;P.fallY=P.y;P.vx=P.vy=0;
-    L.torches.length=0;const lc=Math.floor((P.x+s*60)/TW);L.torches.push({c:lc,r:t.r});
+    const P=H.P;P.inv=1e9;P.state='stand';P.face=-s;P.x=x+s*40;P.y=t.ys+(t.dy||0);P.fallY=P.y;P.vx=P.vy=0;if(t.place)t.place(P,s);
+    L.torches.length=0;if(t.keep)L.torches.push(t.keep);const lc=Math.floor((P.x+s*(t.tq||60))/TW);L.torches.push({c:lc,r:t.r});
     H.GLFX.shadow=!!shadow;if(H.SHC)H.SHC.off=!!off;H.clearRooms();
     H.cam.x=x-H.viewW/2;H.cam.y=(t.r+1)*64-64*1.6;H.cam.gy=H.cam.y;H.mode='play';H.GLP&&(H.GLP.pipe=false);
     H.render();H.render();H.render();if(H.SHC)H.SHC.off=false;
@@ -85,8 +104,10 @@ def mask(shc, w, h):  # the thing's pixels (device px), its outline eroded by ER
     return mk.filter(ImageFilter.MinFilter(2 * ERODE + 1))
 
 
-def changed(A, B, mk):  # pixels of the mask whose colour differs by more than 24 (sum of channels)
-    d = ImageChops.difference(A, B).convert('RGB')
+def changed(A, B, mk):  # pixels of the mask darker with the shadow on than off by more than 24 (sum of channels). (round 42b: darker only, as a
+    # shadow only darkens: the GPU's multisampled edges of fine detail, a swing bar's rawhide turns, came out a few levels either way between two
+    # renders, 6 px up and down on floor 32's bar)
+    d = ImageChops.subtract(B, A).convert('RGB')
     r, g, bb = d.split()
     s = ImageChops.add(ImageChops.add(r, g), bb)
     hit = s.point(lambda v: 255 if v > 24 else 0)
@@ -99,8 +120,8 @@ def shot(pg):
 
 if __name__ == '__main__':
     with sync_playwright() as p:
-        b = p.chromium.launch(args=['--enable-gpu', '--ignore-gpu-blocklist'])
-        pg = page(b, SRC); rp = None if pg.shc else page(b, REF)
+        b = p.chromium.launch(args=(['--use-angle=metal', '--force_high_performance_gpu'] if os.environ.get('HK_GPU') == '1' else []) + ['--enable-gpu', '--ignore-gpu-blocklist'])  # (HK_GPU=1: WebGL on the Radeon, as suite.py's heavy jobs)
+        pg = page(b, SRC); rp = page(b, REF) if (not pg.shc or os.path.realpath(SRC) != os.path.realpath(REF)) else None
         tot, reach, bad, where, worst, empty = {}, {}, {}, [], [], 0
         for n in range(LO, HI + 1):
             for sd in SEEDS:
@@ -111,7 +132,10 @@ if __name__ == '__main__':
                         r1 = pg.evaluate("([n,sd,k,i])=>SHS.show(n,sd,k,i,true,false)", [n, sd, kind, i])
                         if not r1: continue
                         A = shot(pg)
-                        shc = r1['shc'] if pg.shc else rp.evaluate("([n,sd,k,i])=>SHS.show(n,sd,k,i,true,false)", [n, sd, kind, i])['shc']
+                        shc = r1['shc'] if pg.shc else None
+                        if not shc and rp:  # (an older build that does not record this kind: the ref build's outlines in the same scene)
+                            r2 = rp.evaluate("([n,sd,k,i])=>SHS.show(n,sd,k,i,true,false)", [n, sd, kind, i]); shc = r2 and r2['shc']; own = False
+                        else: own = True
                         if not shc:
                             empty += 1; continue
                         pg.evaluate("([n,sd,k,i])=>SHS.show(n,sd,k,i,false,false)", [n, sd, kind, i]); Bm = shot(pg)
@@ -119,7 +143,7 @@ if __name__ == '__main__':
                         nb, area = changed(A, Bm, mk)
                         if area < 20:
                             empty += 1; continue
-                        if pg.shc:
+                        if pg.shc and own:
                             pg.evaluate("([n,sd,k,i])=>SHS.show(n,sd,k,i,true,true)", [n, sd, kind, i]); Cm = shot(pg)
                             nr, _ = changed(Cm, Bm, mk)
                         else:

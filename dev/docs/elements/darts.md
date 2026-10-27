@@ -78,7 +78,7 @@ So a dart passing him is drawn behind his figure.
 |---|---|
 | Light map (`gatherLights`) | a visible shooter (`dir>0`) carries a steady `trap` light at its head (r 34, `255,214,150`, 0.5): "traps keep a faint glint of their own so the dark never hides them". A hidden one and the darts carry none |
 | Key light (`keyLight` sx) | none: the head's lit brow and the dart's lit edge are painted |
-| Lamp shadow mask (`glShadow`, `glMask`) | not carved: the wall the shooter is on is carved as a WALL cell (front face, top, right side); the head beyond it and the darts are not |
+| Lamp shadow mask (`glShadow`, `glMask`) | the wall the shooter is on is carved as a WALL cell (front face, top, right side); a dart in flight is carved by its line, 1.2 px wider than its head and tuft, on the mouth's side only (round 42b, SHC kind `dart`: 22 of 24 took his shadow on floors 1-48 seed 1, 0 after); its streak is light; the head and spent darts on the floor are not (the head is fixed on the wall's side face; the floor's top is carved) |
 | Relief (`GLFX.relief`) | no rubbing of its own; the `trap` light of a visible shooter gets `glRelief`'s soft neutral ellipse (`glRelEx`, as every `trap` light), which flattens the relief round the head |
 | Metal mask / shader | none: `drawMetalMask` has no `darter` case and `METAL` no dart role (the section heading "forged metal (... the darts)" names them, but nothing of a dart is masked); the head's glint is painted in both modes |
 | Sky beams | none (`beamBlockers` takes only jaws, granite gates and lift mouth slabs) |
@@ -111,6 +111,7 @@ So a dart passing him is drawn behind his figure.
 
 ## History
 
+- Round 42b: darts in flight carved out of the lamp shadow (SHC kind `dart`).
 - (round unknown) `dartSeg`, floor 6 on, on the run's lowest row; bot action `darts`.
 - (round unknown) the shooter becomes a carved beast's head in the theme's material and ornament, worn as the wall, with a 0.35 s tell;
   a shooter firing left (hidden side face) draws no head, its darts come from behind the front face (rule in CLAUDE.md).

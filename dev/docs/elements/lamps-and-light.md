@@ -104,7 +104,7 @@ or one of the torches' motes (`atmoPass`) on a face or a slab's lip is skipped (
 |---|---|
 | Light map (`gatherLights`: lamps, fill, sky bounce, door light) | each unbroken lamp adds two `torch` lights: the main one r 150 x (0.92 + `flK`), a 0.95 (steady radius `r0` 150), bloom r 26; and one 22 px under it, r 70, a 0.45 (`a0` 0.45). Shader flicker by kind (`GLFLICK` torch 0.6). Every other source: see the light sources below |
 | Key light (`keyLight` sx) | lamps are what it reads (see below) |
-| Lamp shadow mask (`glShadow`, effect mask r; `glMask` carves) | `torch`, `fire`, `door` and `win` lights of r >= 84 throw the figures' shadows (`GLSTRONG`), the two nearest within 1.5 r |
+| Lamp shadow mask (`glShadow`, effect mask r; `glMask` carves) | `torch`, `fire`, `door` and `win` lights of r >= 84 throw the figures' shadows (`GLSTRONG`), the two nearest within 1.5 r. A lamp's flame is carved out of the shadow (light is never shaded: `shcFlame`, an ellipse round the flame as drawn, SHC kind `lamp`, round 42b), and a free lamp's stand on the floor before an opening (`shcStand`; the sky round it takes no shadow, so a shaded stand stood out); the lamp bodies on the wall keep it (L1, fixed on the back wall). `shadowscan.py` floors 1-48 seed 1: 83 of 96 lamps took his shadow before, 0 after |
 | Relief (`GLFX.relief`, `glRel*` rubbing) | the relief rakes along the light map's slope toward the lamps; with no `torch`, `win`, `door` or `fire` light in view the pass is skipped. Each flame (light r >= 100) is rubbed back by a soft ellipse (half-sizes 12 by 20 px) so it is not embossed |
 | Metal mask / metal shader (unit MS, `GLFX.metal`) | the four strongest `torch`, `fire`, `door`, `win` or `item` lights near the view's middle light the metal; the bronze lamps themselves are not in the metal mask |
 | Sky beams (`SKYB`, shafts, `beamBlockers`, `ryBeams2D`) | lamps neither block nor take beams; Torchlight's footprint keeps off a lamp stand (255), and Classic's `ryStand` cuts a free lamp's floor stand (its splayed feet; not Siwa's, which hangs from a cord) out of the footprint (round 39); the openings add their own `win` and `sky` lights (below) |
@@ -225,6 +225,7 @@ and bloom all of it; a lamp under 0.01 adds nothing. Only lamps are drained; the
 
 ## History
 
+- Round 42b: lamp flames and free stands carved out of the lamp shadow (`shcFlame`, `shcStand`).
 - v41: Torchlight's ambient darker than Classic's, so the gaps between lamps fall into shadow (`GLAMBT`).
 - v56-v57: `AMB_MIN` 0.45 (the Forge by Moonlight had fallen to 0.26); the sky openings' bounce light.
 - v58, v58b: sky beams with depth; forge and crypt windows lit from within.

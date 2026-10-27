@@ -144,10 +144,10 @@ Side effect: in a kick shaft (24 px at mid-depth) he is now cut by both walls (v
 chimney (he is drawn back and foot between the walls) makes him fit: see [kick shafts](elements/kick-shafts-and-jet-streams.md).
 
 Left as they are (decisions or low): the gate slab's top piece above the ceiling's edge over the lintel's side face (round 14's look; the
-owner's call); the swing bar's near pole segment and near rope drawn before him; things not recorded in `SHC` (bar, lift rig, paternoster
-loop and wheels, banner, free lamp stand and flame, well sand, falling slabs, vent flame, darts, a let-go flask); additive glows drawn in
+owner's call); (round 42b fixed the swing bar's near pole and rope, the vent's back row and the uncarved standing things; banners and wall lamp
+bodies stay uncarved by choice, a let-go flask too); additive glows drawn in
 `drawDynamic` over the sky raise Torchlight's scene alpha; the relief on lamp bodies, free stands and the clock (only their lights'
-ellipses rub them); the vent's back-row flames after the figures; blocks' beam tile map rebuilt every 40th call and both cells carved
+ellipses rub them); blocks' beam tile map rebuilt every 40th call and both cells carved
 during a move; the hint streams and the descending cue brushing a face's end by a few px; a figure's shadow, beam cut, fill cut, relief and
 trails at its play x, not its pressed x; the lamps' and the exit's glow sprites (light); in Classic a lamp's light band on the foot of a
 face; `graniteGlints` never called.

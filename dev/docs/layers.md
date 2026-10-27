@@ -97,7 +97,7 @@ nearer stone in front of a live part (R1). Where a pass is left out of a row, th
 | [hurtdrop](elements/hurtdrop.md) | the dark shaft | L1 (the shaft's back) | room picture | kept off nearer faces and openings |
 | | landing heap | L2f | room picture | cut at the next wall's face |
 | [fire vent](elements/fire-vent.md) | grate | L2f | live | placement |
-| | flames (back row d .7, front row d .3), sparks | L2x, air | `drawEmissive`, after the figures | placement (floor on both sides, open above) |
+| | flames (back row d .7, front row d .3), sparks | L2x, air | back row before the figures (round 42b), the rest in `drawEmissive` after them | placement (floor on both sides, open above) |
 | [darts](elements/darts.md) | shooter's head | fixed on a riser's side face, juts into L2m | live | placement |
 | | darts in flight, spent darts | L2m, L2f | live | cut at the mouth only |
 | [roof blocks](elements/roof-blocks.md) | hanging block | L3 (flush with the ceiling's face) | live | its own face |
@@ -109,8 +109,8 @@ nearer stone in front of a live part (R1). Where a pass is left out of a row, th
 | | the fork's grating | L2f | live | placement |
 | [slicer jaws](elements/slicer-jaws.md) | both jaws | L2x | far half before the figures, near half (`JAW_OV`) after | placement |
 | [pendulum](elements/pendulum.md) | pivot, arm, blade | L2m | live, before the figures | placement (161 of 161 halls clear of faces) |
-| [swing bar](elements/swing-bar.md) | timber, pole | L2x along the depth | live, before the figures | clipped at the lintel's edge; the end grain 3 px proud (approved) |
-| | ropes (d .1 and .9) | L2m | live | the same |
+| [swing bar](elements/swing-bar.md) | timber, pole | L2x along the depth | live: the log and the pole from the grip back before the figures, the pole's near part and end grain after them (round 42b) | clipped at the lintel's edge; the end grain 3 px proud (approved) |
+| | ropes (d .1 and .9) | L2m | the far rope before the figures, the near rope after them (round 42b) | the same |
 | [banners and slides](elements/banners-and-slides.md) | rod, runner, fringe | L2b, in front of the back wall (owner: it may cover windows and wall art) | live, before the figures | the faces and the landing's slab in the next column |
 | [lifts](elements/lifts.md) | shaft's back plane, channel, counterweight | L1, L2b | `drawLift` half 0 | `liftOccl`, `liftOcclSide` |
 | | rig, ropes, platform, paternoster slabs, sand, sand slab, the rider | L2 | half 0, the rider with the figures | `liftOccl`, `liftNearCut` |
@@ -178,9 +178,16 @@ over the far wall; measured in round 42a, 60 px a planted frame). Round 42a draw
 wall behind him with his soles on the other (`chimPose`, `chimClip`), so he fits between the faces: 98% fewer of his pixels past them, the
 rest a few px of a sole or knee in motion, still cut. His silhouette's uses (lamp shadow, beams, fill) take his drawn x there (`chimSX`).
 
-Left as they are: the slab's top piece above the ceiling's edge over the lintel's side face (round 14, the owner's look); the swing bar's
-near pole and rope drawn before him; standing things not recorded for the lamp shadow (the bar, the lift rig, the paternoster's loop,
-banners, lamp stands and flames, well sand, falling slabs, the vent's flame, darts); additive glows over the sky raising Torchlight's
-alpha a little; the relief on lamp bodies and the clock; the vent's back-row flames drawn after the figures; the beam cut lagging a pushed
+Round 42b (owner: "Fix the drawing overlaps you choose are most noticeable") took three off this list. The swing bar's near pole, end
+grain and near rope are drawn after the figures (`drawBar(...,1)`), the far part and the grip before. The vent's back row of flames is
+drawn before the figures, the sheet and front row after. And the standing things the lamp shadow did not carve are recorded in `SHC`: the
+bar (`bar`), a counterweight lift's rig (`rig`), the paternoster's loop (`loop`), lamp flames and free lamps' stands (`lamp`), the sand of
+wells and sand lifts (`sand`), falling slabs and planks (`debris`), the vent's flame (`vent`) and darts in flight (`dart`); `shadowscan.py`
+floors 1-48 seed 1: 361 of 397 such things took his shadow before, 0 after. Banners and the wall lamps' bodies stay uncarved by choice:
+they hang flat on the back wall, so the shadow on the wall falls on them as on the wall.
+
+Left as they are: the slab's top piece above the ceiling's edge over the lintel's side face (round 14, the owner's look); banners and
+the wall lamps' bodies taking the lamp shadow (flat on the back wall, above); additive glows over the sky raising Torchlight's
+alpha a little; the relief on lamp bodies and the clock; the vent's merged sheet drawn whole in front of him (it rises from the whole grate); the beam cut lagging a pushed
 block by up to 40 frames; hint streams and the descending cue's star brushing a face by a few px; the shadow, beam cut and fill cut at a
 figure's play x, not its pressed x; glow sprites of lamps and the exit door, which are light (as the clock's room glow).

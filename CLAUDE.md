@@ -571,9 +571,8 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   (limit `X+TW-HX`), Classic's footprint over the clock and lamp stands (`ryStand`), one gate's slot. Side effect: in a kick shaft the
   corridor at mid-depth is 24 px, narrower than his planted pose, so the walls cut him (measured in round 42a: 60 px a planted frame, up to
   174; round 42a's chimney fits him between them). Left as they are (listed in
-  layers.md): the slab's top piece over the lintel's side face (round 14), the swing bar's near pole before him, standing things the lamp
-  shadow does not carve, glows over the sky, the relief on lamps and the clock, the vent's back row after the figures, passes at a figure's
-  play x. `LAYER_DBG` (`hide` a Set of kinds, `glow` false) and `setGT` serve `layerscan.py [file] [lo hi] [seeds] [torch|classic|both]
+  layers.md): the slab's top piece over the lintel's side face (round 14), glows over the sky, the relief on lamps and the clock, passes at
+  a figure's play x (round 42b fixed the swing bar's near pole, the uncarved standing things and the vent's back row). `LAYER_DBG` (`hide` a Set of kinds, `glow` false) and `setGT` serve `layerscan.py [file] [lo hi] [seeds] [torch|classic|both]
   [kinds=] [phases=K]`: each kind drawn and left out at its rest, the front plane's pixels must not change; must print `layerscan: ok`.
   Look only: layouts identical, hit boxes, timing and the bot unchanged.
 - The kick shaft's chimney (round 42a, owner: "Kick shaft: great idea with the chimney pose. Research and let's implement"). The shaft
@@ -604,6 +603,29 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   identical on 21 floors with and without shafts (`botcmp`), layouts untouched. Checks: figscan, lowceil, liftkick, run2 5-27, layerscan
   floors 5-14 kinds shaftfoot,jet both modes, shadowscan 9-11. Pictures `egyptr42a.py old.html new.html [measure|nogif|gifonly|quick]`
   (r42a_chimney.png: each phase of a climb before | 42a, both modes, 3x, Torchlight with a lamp up the shaft, phone size; r42a_chimney.gif).
+- Three overlaps off layers.md's list (round 42b, owner: "Fix the drawing overlaps you choose are most noticeable"). (1) The lamp shadow:
+  what stands before the back wall but was still not recorded in `SHC` (round 38a) is now, as drawn this frame (`SHC_E` 128, `SHC_PN` 4096,
+  thin parts 1.2-2 px wider): the swing bar's log, ropes and pole (`bar`), a counterweight lift's hoist beam, brace, hanger and sheave (`rig`),
+  the paternoster's level runs and corner wheels (`loop`), lamp flames (`shcFlame`: light is never shaded) and a free lamp's stand before
+  an opening, where the sky takes no shadow (`shcStand`; `lamp`), the sand of wells and sand lifts (`sand`, `sandSegs`' outline: round 35b's
+  sand stands before the room's whole depth), falling slabs and planks (`debris`, the box growing as a well's slab folds), the vent's flame
+  (`vent`) and darts in flight (`dart`, on the mouth's side). Left by choice: banners and the wall lamps' bodies hang flat on the back wall
+  (drawn with no depth, like the `TAP` hangings), so a shadow on the wall falls on them at the same place. `shadowscan.py` (new kinds; him
+  swinging up beside the bar, jumping on a lift's top landing, dropping beside a well; the caster beyond him; HK_GPU=1 for the Radeon; a
+  kind an older build does not record takes the ref build's outlines; a thing counts only by pixels darker with the shadow on, as GPU noise
+  on fine detail ran both ways) floors 1-48 seed 1: before 361 of 397 (bar 39/40, rig 24/24, loop 10/14, lamp 83/96, sand 91/91, debris
+  80/92, vent 12/16, dart 22/24), after 0 of 952 things of all kinds (`shadowscan: ok`). (2) The swing bar (`drawBar(ctx,o,f,near)`): the
+  log, the far rope and the pole from the rawhide grip back (`BAR_G` -6.5) before the figures, the pole's near part, its end grain, the
+  near rope with its turns and frayed tail and the ready glint after them, with the gates' near halves (R1). In the pole's frame a line of
+  constant u is upright on screen, so the parts meet on a vertical under the grip's near edge; his hands close on the grip (far pass) and
+  read over it; facing left swung back the end grain lies over his face, as a trapeze bar's end would. (3) The vent's back row of jets
+  (depth .7) is drawn before the figures (`drawVentFire(...,0)` in the `L.dyn` loop, G2D `na` so the scene's alpha is left as
+  `drawEmissive` leaves it), the glow, merged sheet, front row, licks and sparks after them as before; in the pilot and the die-down the
+  back tips show behind his feet; in Classic the back row now lies under the light pass, where the vent's own fire light keeps it near full.
+  Look only: layoutcmp against 42a's file same (144 of 144), the bot's per-tick trace with rendering identical on floors 6 (502), 10, 13,
+  16. Checks: shadowscan 1-48 ok, layerscan floors 13-16 vent and 6-12 bar both modes ok, swingtest 6-20 FAILURES 0, run2 6-16 x2 (22/22,
+  0 damage). Pictures `egyptr42b.py old.html new.html [outdir]` (r42b_shadow.png, r42b_bar.png, r42b_vent.png: before | after, 3x crops and
+  phone size, both modes where it applies).
 - The sand lift's spike pit (round 41, owner: "The sand lifts become a trap: the sand drains, the door opens, but he has to jump, because the
   slab keeps going"; answers: missing it is death, every sand lift, off by a jump or a step; round 41b, owner: "let's simplify: put spikes at
   the bottom instead of being bottomless"). The slab does not stop at the foot: it sinks on at `SAND_LV` 140 px/s through the foot (now a hole,
