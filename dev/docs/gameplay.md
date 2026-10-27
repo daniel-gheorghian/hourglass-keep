@@ -89,6 +89,7 @@ States are `P.state`; each is a case in `updatePlayer`. Times are in seconds.
 | Turn | the other way from standing | 0.14 (`turn`) | |
 | Careful step (tiptoe) | hold Grab, tap a direction | 13 px over `STEP_T` 0.3, eased (`startStep`) | never steps off an edge: it stops 2 px short of it; safe on spikes; PoP's test foot at a lip (round 33b, look only) |
 | Walk | none in play | | a walk is drawn only to the lip before a standing jump (`edgeWalk`, 120 px/s), at the exit door (40 px/s), the entry and the Crossing (`CROSS_WALK` 40) |
+| Wade / clamber | hold left or right in a sand drift / on a rubble heap | `HILL_WADE` 42 / `HILL_CLIMB` 35 px/s | drawn walking (the clip's walk cycle) knee deep in the sand or on the heap's surface; no jump of any kind in a drift; a running jump taken before a heap clears it. Look only: he stays on the floor's level ([heaps and drifts](elements/heaps-and-drifts.md), round 43) |
 | Crouch | Down where there is no edge to hang from | | Up or Jump stands, except under a low ceiling (`underLow`) |
 | Crawl | left or right while crouched | `CRAWL` 42 px/s | the only way through a tunnel (`low` feature); keeps 14 px from a facing wall (`CROUCH_ROOM`) |
 | Look down | hold Down crouched, no direction | after 0.4 the camera drops 56 px; on a grating it frames the flask below (`gratePeek`) | |

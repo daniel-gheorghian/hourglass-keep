@@ -49,7 +49,7 @@ is a placeholder: only the built `index.html` carries the release number.
    machine's cores. Every job belongs to one of three suites by its group (`SUITES` in suite.py; a group in none stops the run before
    it starts): `play` (the bot and play checks: run2, featbot, p4bot, forktest, hinttest, grablabel, swingtest, liftkick, lowceil,
    r38b_tests, sawceil, primtest, hdtest, lifttest, respawnplates, slabresume, gratepeek), `gen` (generator and layout scans: metrics40,
-   guardscan, forkscan, puzzlescan, vertscan, featurescan, orphanscan, mazescan, wellcorr, lampscan, slabscan, sandshaft, wellscan) and
+   guardscan, forkscan, puzzlescan, vertscan, featurescan, orphanscan, mazescan, wellcorr, lampscan, slabscan, sandshaft, wellscan, hillscan) and
    `render` (drawing checks: rendersmoke, liftscan, crossscan, cpscan, shadowscan, doorscan, openscan, tilescan, stormfair, glauto,
    metaltest, rewindrooms, figscan). The tier chooses the jobs; `--suite play,render` runs only those suites, in that order (default
    all: play, gen, render). The suites run in sequence (owner): each has the whole pool of workers and GPU slots, finishes, writes and
@@ -95,6 +95,7 @@ is a placeholder: only the built `index.html` carries the release number.
 | `sawceil.py lo hi [seeds]` | no saw under a ceiling at his height: each one turned into spikes is tiptoed, and the bot plays its floor (round 38c) | `sawceil: ok` |
 | `layerscan.py lo hi [classic]` (by hand) | nothing in the corridor drawn over the front plane: each kind drawn and left out, the faces' and lips' pixels unchanged (round 39, `dev/docs/layers.md`) | `layerscan: ok` |
 | `lampscan.py`, `slabscan.py`, `sandshaft.py`, `wellscan.py`, `figscan.py` | lamps keep clear (round 19); a slab slides up into stone (25d); every sand lift in a shaft (26e); the wells' sand (21b); the body's poses against v69 (round 23; only where `hk_v69_release.html` is) | `ok`, `slabscan: ok`, `sandshaft: ok`, `ok`, `figscan: ok` |
+| `hillscan.py lo hi [seeds]` | round 43's heaps and drifts: only on a run's plain floor (`flat` segs, never `breathe()`'s padding), off timed stretches, the chase and fighters' ground, a heap open above, sizes, themes; at least one a floor from floor 3; counts and the time they add | `hillscan: ok` |
 | `shadowscan.py lo hi` (release) | no figure's lamp shadow on what stands before the back wall, Torchlight (round 38a) | `shadowscan: ok` |
 | `doorscan.py lo hi`, `openscan.py lo hi`, `tilescan.py lo hi views=2` (release) | no wall art over a doorway (round 15), a window, gate or lift mouth (16c), a floor tile (35c), both modes | every count 0, `tilescan: ok` |
 
@@ -626,6 +627,29 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   16. Checks: shadowscan 1-48 ok, layerscan floors 13-16 vent and 6-12 bar both modes ok, swingtest 6-20 FAILURES 0, run2 6-16 x2 (22/22,
   0 damage). Pictures `egyptr42b.py old.html new.html [outdir]` (r42b_shadow.png, r42b_bar.png, r42b_vent.png: before | after, 3x crops and
   phone size, both modes where it applies).
+- Heaps and drifts (round 43, owner: "build something like 'hills' in straight stretches, the purpose is to slow him down"; after
+  research_hills.md and r43's pictured alternatives: "Looks: your recommendation"; `dev/docs/elements/heaps-and-drifts.md`). Two kinds of
+  slowing terrain, `L.hills` (not features, not traps: G1 untouched), laid by `placeHills` last in `genLevel` from hashes only (no stream:
+  `layoutcmp.py` against v86 same, 144 of 144; `metrics40.py` v86 identical): a rubble heap (2 tiles, crest 22-25 px; B1 tumbled dressed
+  blocks of the theme's stone on a dark grit mound, B2 a rain-washed mudbrick slump in Kerma and Shali, B3 a fallen papyrus-bundle column
+  one heap in four) he clambers over at `HILL_CLIMB` 35 px/s, drawn on its surface (`hillLift`, look only as round 16a's block; a running
+  jump taken before it clears it); a sand drift (C2: 3-6 tiles, a dune whose long windward back faces the way he comes and whose slip face
+  at 34 degrees, the brink curving across the depth, falls the way he goes; banked against the back wall, ripples, grain-flow streaks; one in
+  three with half-buried blocks, C4) he wades at `HILL_WADE` 42 px/s, drawn `HILL_WD` 13 px deep (the near sand over his shins), with no
+  jump of any kind (`tryJump`, `startJump`, `stRun`); wading or clambering he is drawn on the clip's walk cycle (43 px a cycle) with a lean.
+  Placement: the run menu's plain floor only (`flat` segs; `breathe()`'s padding never, but it may serve as the margins `HILL_M0` 1 before,
+  `HILL_M1` 3 after, so no run-up is slowed), never between a timed gate's plate and its gate (by the route's segs; so estPath and the timers
+  are unchanged), never in the chase, on fighters' ground, a lamp's cell, by a clock, flask, door, lift, block or side passage; heaps from
+  floor 3, drifts from 5 in the sandy themes (`HILL_SANDY`: all but Nun, Osiris, Aksum; 60% of stretches of 3+); at least one a floor,
+  one per `HILL_RATIO` 4 stretches that can take one. Floors 1-48 x 3: 2.2 (floors 3-4) to 4.2 (37-48) hills a floor, every floor from 3 has
+  one; +2.6 to +5.4 s a floor at the held pace (max 10.1); the bot 813 -> 817 s mean (run2 3-48 x 3). Guards keep to their side (`hillGuard`).
+  Drawn (`hillPaint`) as a height field on the floor's top face (quads by slope against `keyLight` sx) into one canvas a half at `VS`
+  (`hillCanvas`): the far rows (d >= 0.5), column, crest line before the figures, the near rows, stones and ripples after them (L2x;
+  the canvas ends at the floor's front edge, L3 never covered); `SHC` kinds heap/drift (`hillSil`), the relief rubbed by hard-edged quads
+  (`hillRel`), Classic's footprint cut (`ryStand`). Checks: hillscan (in suite.py, gen), run2 3-48 x 3 and fight 3-27 (0 damage), p4bot,
+  figscan, layerscan kinds=heap,drift floors 3-48 x 2 both modes (Classic 0; Torchlight 7 of 262 heap views: less bloom from a sky beam's
+  floor patch onto the lip under it, light, not a draw-over), shadowscan kinds=heap,drift (0 of 128). Pictures `egyptr43.py` (r43_hills.png,
+  r43_phone.png, r43_hills.gif).
 - The sand lift's spike pit (round 41, owner: "The sand lifts become a trap: the sand drains, the door opens, but he has to jump, because the
   slab keeps going"; answers: missing it is death, every sand lift, off by a jump or a step; round 41b, owner: "let's simplify: put spikes at
   the bottom instead of being bottomless"). The slab does not stop at the foot: it sinks on at `SAND_LV` 140 px/s through the foot (now a hole,

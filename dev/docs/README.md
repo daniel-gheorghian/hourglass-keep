@@ -38,6 +38,7 @@ may place it and which stream it may draw from.
 | [fire vent](elements/fire-vent.md) | the fire vent and its heat |
 | [darts](elements/darts.md) | the dart shooter |
 | [roof blocks](elements/roof-blocks.md) | the falling roof block and the fallen block he steps over |
+| [heaps and drifts](elements/heaps-and-drifts.md) | slowing terrain on plain runs: the rubble heap he clambers over, the sand drift he wades (round 43) |
 | [movable blocks](elements/movable-blocks.md) | blocks he pushes and pulls |
 | [hurtdrop](elements/hurtdrop.md) | the damaging drop |
 | [gates](elements/gates.md) | the portcullis, the iron gate, the violet gate, the fork's grating, lift mouths as gates |
@@ -83,6 +84,7 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [fire vent](elements/fire-vent.md) | fire light (110 px) | casts shadows; not carved | glint rubbed | no (lights the metal) | footprint on the grate | off its tile (`FT_FLAT`) | no | 1 life (no height test) | never placed or hit |
 | [darts](elements/darts.md) | visible shooter only | no | no (trap-light ellipse) | no (glint painted) | no | spent dart 255 | no | 1 life | no / no |
 | [roof blocks](elements/roof-blocks.md) | while hanging and falling | falling and lying carved (`SHC`) | `glRelRoofFall` (falling, as clipped), `glRelRoof` (lying) | no | footprint cut | block 255, rubble 251 | no | 1 life | stop at it / no |
+| [heaps and drifts](elements/heaps-and-drifts.md) | lit as the scene | carved (`SHC` heap, drift) | `hillRel` (hard-edged quads) | no | footprint kept off (alpha 255; Classic `ryStand`) | off (255) | no | no (slows him: 42 / 35 px/s; no jump in a drift) | stop at its edge |
 | [movable blocks](elements/movable-blocks.md) | no | carved as a wall | `glRelFloors` | no | as a wall | 255 | yes, as a wall cell | no | blocked / no |
 | [hurtdrop](elements/hurtdrop.md) | no | no | from the room picture | no | no footprint in the hole | 251 marks | no | 1 life (the fall) | no / no |
 | [gates](elements/gates.md) | a timed gate's roundel | down slabs carved (`SHC`) | `glRelSlab` | iron gate only | no footprint; the grating's bars take one | slab 255 | portcullis and lift mouth slabs down | no (blocks only) | blocks guards; never pressed by them |

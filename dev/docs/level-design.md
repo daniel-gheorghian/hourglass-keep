@@ -271,7 +271,7 @@ Look-only passes read the tiles and hashes, never a generator stream, so layouts
 | `looseWell`, `wellGroup` | a cracked slab's look: sand well or corridor | [cracked slabs and sand wells](elements/cracked-slabs-and-sand-wells.md) |
 | `secretCues` | the gold flask's stars | [flasks and secrets](elements/flasks-and-secrets.md) |
 
-Not look-only but stream-free (tiles and hashes): the sand lift's choice (`sandOr`, 37%) and its fallback to a banner, saws to spikes,
+Not look-only but stream-free (tiles and hashes): round 43's heaps and drifts (`placeHills`, last in `genLevel`: `L.hills`, nothing else changes), the sand lift's choice (`sandOr`, 37%) and its fallback to a banner, saws to spikes,
 in-line timed gates, in-run step variants, side gates left open, the big flask, the ambush.
 
 ## estPath, timers and L.path
@@ -340,6 +340,7 @@ and everything after them on `rng`.
 | [fire vent](elements/fire-vent.md) | forge style: runs, fills, landings, branches | other styles |
 | [darts](elements/darts.md) | runs (6+): a step up from the band's floor, its riser shooting | turns, fills, landings |
 | [roof blocks](elements/roof-blocks.md) (`stone`) | dungeon style: runs (2+), tall fills, landings, galleries, chase | other styles |
+| [heaps and drifts](elements/heaps-and-drifts.md) (`L.hills`) | after the build (`placeHills`, hashes): the run menu's plain floor (`flat` segs); heaps from floor 3, drifts from 5 in the sandy themes; at least one a floor, one per 4 stretches that can take one | `breathe()`'s padding, timed stretches, the chase, fighters' ground, a lamp's cell, by a clock, flask, door, lift, block or side passage |
 | [movable blocks](elements/movable-blocks.md) | runs (7+), holding a plate (`blockSeg`) | elsewhere |
 | [hurtdrop](elements/hurtdrop.md) | chambers going down (5+), forks kinds 2 and 4 (6+) | unless worth a life; switchbacks; gate turns |
 | [gates](elements/gates.md) | in-line (3+), puzzles, fills, turn slots; the violet gate under a grating | - (the open hall keeps its lintel) |

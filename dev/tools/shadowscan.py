@@ -15,7 +15,7 @@
 # hoist beam, brace, hanger and sheave, him jumping up on the top landing), loop (the paternoster's level runs and wheels, him beside its
 # top and its foot), lamp (a lamp's flame and a free lamp's stand, the caster beyond him), sand (a well's sand after its slab broke, him
 # dropping beside it; a sand lift's column with the slab a storey up, him on the foot's landing), debris (a cracked slab or plank just
-# fallen), vent (the flame at the roar) and dart (one in flight). A kind the tested file does not record (an older build) takes its outlines
+# fallen), vent (the flame at the roar) and dart (one in flight). Round 43 adds heap and drift (him 40 px off its middle, on or in it). A kind the tested file does not record (an older build) takes its outlines
 # from the ref build. Prints the counts per kind and 'shadowscan: ok'; a sheet of the worst
 # cases (shadowscan.png: shadow on | off | carve off). Run from dev/tools.
 import io, os, sys
@@ -28,7 +28,7 @@ REF = os.path.abspath(next((x[4:] for x in a if x.startswith('ref=')), os.path.j
 NUM = [int(x) for x in a if x.isdigit()]
 LO, HI = (NUM + [1, 48])[:2] if len(NUM) >= 2 else (1, 48)
 SEEDS = [int(s) for s in next((x for x in a if ',' in x and '=' not in x), str(NUM[2]) if len(NUM) > 2 else '1').split(',')]
-KINDS = next((x[6:] for x in a if x.startswith('kinds=')), 'slab,stakes,saw,pend,roof,clock,flask,liftslab,rope,sandslab,bar,rig,loop,lamp,sand,debris,vent,dart').split(',')
+KINDS = next((x[6:] for x in a if x.startswith('kinds=')), 'slab,stakes,saw,pend,roof,clock,flask,liftslab,rope,sandslab,bar,rig,loop,lamp,sand,debris,vent,dart,heap,drift').split(',')
 PER = int(next((x[4:] for x in a if x.startswith('per=')), '2'))
 OUT = next((x for x in a if x.endswith('.png')), os.path.join(HERE, 'shadowscan.png'))
 ERODE = 7  # device px (3.5 css px, 1.7 world px at this view: the quarter-size mask read blurred over a texel either side)
@@ -62,6 +62,7 @@ JS = r'''window.SHS=(()=>{const H=__HK,TW=32,SURF=r=>(r+1)*64-4,TS=7;
     if(kind==='vent')dyn('vent').forEach(o=>out.push({x:o.c*TW+16,r:o.r,ys:SURF(o.r),prep:()=>{const f=o.f;f.off=((0.86*f.per-H.gameTime)%f.per+f.per)%f.per;}}));
     if(kind==='dart')dyn('darter').forEach(o=>{const f=o.f,dir=f.dir||-1,xb=f.x-2*dir,mx=dir>0?xb+12.5:xb-8,dx=f.x+dir*90;
       out.push({x:dx,r:o.r,ys:SURF(o.r),prep:()=>{L.ext.darts.length=0;L.ext.darts.push({x:dx,y:f.y,r:o.r,x0:f.x0,dir,mx});}});});
+    if(kind==='heap'||kind==='drift')(L.hills||[]).forEach(h=>{if(!!h.d===(kind==='drift'))out.push({x:(h.c+h.n/2)*TW,r:h.r,ys:SURF(h.r),tq:50});}); // (round 43: him beside or on it, the lamp beyond him)
     return out;}
   function list(n,sd,kind){window.__HKfreeze=true;const L=H.load(n,sd,true);return things(L,kind).length;}
   function show(n,sd,kind,i,shadow,off){window.__HKfreeze=true;for(const id in H.HINTS)H.S.hints[id]=1;

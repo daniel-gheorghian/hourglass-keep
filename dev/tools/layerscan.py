@@ -40,6 +40,7 @@ LIST = r'''([n,sd,kinds])=>{const H=__HK;window.__HKfreeze=true;const L=H.load(n
   for(const o of L.dyn)if(o.f.t==='shaftfoot')add('jet',o.c,o.r);
   for(const o of L.dyn)if(o.f.t==='loose'&&!o.f.plank&&o.f.wg&&o.f.wg.os&&o.f.wg.os[0]===o)add('well',o.c,o.r);
   for(const lf of L.lifts)add('lift',lf.ca,lf.rB,(lf.ca+lf.cb+1)*TW/2,(lf.rT*TH+S(lf.rB))/2);
+  for(const h of L.hills||[])add(h.d?'drift':'heap',h.c,h.r,(h.c+h.n/2)*TW); // (round 43)
   for(const s of H.SN||[])add('snake',Math.floor(s.x/TW),Math.floor(s.y/TH),s.x,s.y);
   for(const g of H.G||[])add('guard',Math.floor(g.x/TW),Math.floor(g.y/TH),g.x,g.y);
   H.render();const vh=document.getElementById('game').height/H.XF.VZ;return {out,vw:H.viewW,vh,rows:L.rows,cols:C};}'''

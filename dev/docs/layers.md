@@ -103,6 +103,8 @@ nearer stone in front of a live part (R1). Where a pass is left out of a row, th
 | [roof blocks](elements/roof-blocks.md) | hanging block | L3 (flush with the ceiling's face) | live | its own face |
 | | falling block, its pour and trickles | L2 box d 0..1, air | debris loop | the slot's hole and the faces beside it |
 | | lying block | L2x, near half after the figures | live | placement (never beside a wall) |
+| [heaps and drifts](elements/heaps-and-drifts.md) | far rows (d >= 0.5), a fallen column, crest line, far stones, half-buried blocks | L2x | live (`drawHills` 0, a cached canvas at `VS`), before the figures | its canvas ends at the floor's front edge; placement keeps a plain cell (before) and three (after) from anything else |
+| | near rows (d < 0.5), near stones, grit, ripples, glints: over his shins in a drift, his toes on a heap | L2x | live (`drawHills` 1), after the figures | the same |
 | [movable blocks](elements/movable-blocks.md) | front face, top, side | L3, as a wall block | live, before the figures | figures pressed and cut at its drawn face |
 | [gates](elements/gates.md) | slab (granite portcullis, iron gate, violet gate) | L2x, plane X+8..X+24 | far half before the figures, near half after (`planeClip`) | placement |
 | | floor slot / timer dial and pair plaque on the lintel | L2f / L3 (fixed on the face) | live | n/a |
