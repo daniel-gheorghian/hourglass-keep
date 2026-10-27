@@ -49,7 +49,7 @@ is a placeholder: only the built `index.html` carries the release number.
    machine's cores. Every job belongs to one of three suites by its group (`SUITES` in suite.py; a group in none stops the run before
    it starts): `play` (the bot and play checks: run2, featbot, p4bot, forktest, hinttest, grablabel, swingtest, liftkick, lowceil,
    r38b_tests, sawceil, primtest, hdtest, lifttest, respawnplates, slabresume, gratepeek), `gen` (generator and layout scans: metrics40,
-   guardscan, forkscan, puzzlescan, vertscan, featurescan, orphanscan, mazescan, wellcorr, lampscan, slabscan, sandshaft, wellscan, hillscan) and
+   guardscan, forkscan, puzzlescan, vertscan, featurescan, orphanscan, mazescan, wellcorr, lampscan, slabscan, sandshaft, wellscan, hillscan, windscan) and
    `render` (drawing checks: rendersmoke, liftscan, crossscan, cpscan, shadowscan, doorscan, openscan, tilescan, stormfair, glauto,
    metaltest, rewindrooms, figscan). The tier chooses the jobs; `--suite play,render` runs only those suites, in that order (default
    all: play, gen, render). The suites run in sequence (owner): each has the whole pool of workers and GPU slots, finishes, writes and
@@ -96,6 +96,7 @@ is a placeholder: only the built `index.html` carries the release number.
 | `layerscan.py lo hi [classic]` (by hand) | nothing in the corridor drawn over the front plane: each kind drawn and left out, the faces' and lips' pixels unchanged (round 39, `dev/docs/layers.md`) | `layerscan: ok` |
 | `lampscan.py`, `slabscan.py`, `sandshaft.py`, `wellscan.py`, `figscan.py` | lamps keep clear (round 19); a slab slides up into stone (25d); every sand lift in a shaft (26e); the wells' sand (21b); the body's poses against v69 (round 23; only where `hk_v69_release.html` is) | `ok`, `slabscan: ok`, `sandshaft: ok`, `ok`, `figscan: ok` |
 | `hillscan.py lo hi [seeds]` | round 43's heaps and drifts: only on a run's plain floor (`flat` segs, never `breathe()`'s padding), off timed stretches, the chase and fighters' ground, a heap open above, sizes, themes; at least one a floor from floor 3; counts and the time they add | `hillscan: ok` |
+| `windscan.py lo hi [seeds] [nopush]` | round 44's wind: only on a run's plain floor, 3 cells (else 1) clear of every seg that is not plain floor (no generated jump in it), off timed stretches, the chase and fighters' ground, against the run, gusts only at a window from floor 13; at least one a floor from 3; he stands in every gust 9 s and stays in it | `windscan: ok` |
 | `shadowscan.py lo hi` (release) | no figure's lamp shadow on what stands before the back wall, Torchlight (round 38a) | `shadowscan: ok` |
 | `doorscan.py lo hi`, `openscan.py lo hi`, `tilescan.py lo hi views=2` (release) | no wall art over a doorway (round 15), a window, gate or lift mouth (16c), a floor tile (35c), both modes | every count 0, `tilescan: ok` |
 
@@ -651,6 +652,30 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   figscan, layerscan kinds=heap,drift floors 3-48 x 2 both modes, 0 (measured with the bloom held out, `NOBLOOM`: with it, 7 of 262 Torchlight
   heap views changed the lip's glow, 0 with `GLFX.bloom` false, still 4 of 132 with the sky beams off: light, not a draw-over), shadowscan kinds=heap,drift (0 of 128). Pictures `egyptr43.py` (r43_hills.png,
   r43_phone.png, r43_hills.gif).
+- Wind (round 44, owner after r44's alternatives W1-W5: "your recommendation"; `dev/docs/elements/wind.md`). `L.winds` (not features, not
+  traps), laid by `placeWinds` after `placeHills` from hashes only (layouts, `L.path`, timers unchanged: `layoutcmp.py` v86 same, 144 of 144;
+  `metrics40.py` v86 identical), on `plainRuns`' stretches (round 43's finder, shared) and `WIND_JM` 3 cells clear of every seg that is not
+  plain floor on its rows (1 where 3 leaves none: 7 of 138 floors), so no generated jump, fall, grab or swing flies in it: a steady draught
+  (`s`, 3-8 cells, one per `WIND_RATIO` 4 stretches, at least one a floor from floor 3), gusts (`g`) where a window of the back wall stands over
+  it from floor `WIND_G0` 13, and every clear drift's wind (`d`, round 43b's, over the drift and up to 3 cells of his approach); never on a timed
+  stretch (estPath unchanged), in the chase or on fighters' ground; it may share a heap's cells. It blows against the run only (owner: no
+  tailwind). Strength e: steady 1 (`WIND_MS` 16 m/s, Beaufort 7-8), a gust's peak `WIND_GP` 1.375 (22 m/s), a drift's `WIND_DE` 0.875; the
+  run into it `RUN` (1 - 0.35 e) = 65, 40 at a gust's peak, 70 on a drift's approach, the wade 33 (`windCap`, owner's numbers); the gust's
+  cycle `WIND_GT` 4.4 s (lull 2.0, warning 0.6, gust to 4.0, fade 0.4; Celeste's on/off wind, DKC2's breeze before a gust); standing in a gust
+  he is pushed back at up to `WIND_PUSH` 16 px/s, ramped to nothing inside the zone (`windPush`; `windscan.py`: 228 stands, none left it),
+  crouched he holds. Jumps into it (owner: "Should be affected. Research by how much. It should feel realistic"): the drag a person meets,
+  rho Cd A / 2m ((v+w)^2 - v^2) (`WIND_CDA`, Cd A 0.44 m^2, 70 kg; UCLouvain's wind-tunnel walkers, 60 N at 15 m/s), with v and time on the
+  flight's own clock (its gravity against g, 29.4 px a metre) (`windDrag`, only toward the wind): a running jump 89.5 -> 77 px (-14%), 68-69
+  at a gust's peak (-23 to -24%), a standing jump 57.2 -> 48-50 (-13 to -16%), 42-44 (-23 to -27%) (`egyptr44.py measure`; long jumps gain little in flight at 2 m/s,
+  de Mestre 1991, Ward-Smith, Murrie; the drag grows with (v+w)^2). Look (`windDraw`, L2 air after the figures and the drifts' near halves,
+  `airCut` from under the lip of a slab over the row; soft sprites of the theme's sand, source-over, never added light: r44's prototype's light
+  lines read as white scratches): dust veils (what reads at phone size), streamers (sand snakes riding a hill's surface), hopping grains,
+  leaves in Nun, Osiris and Aksum, sand pouring in at a gust's window; his lean, the kilt blown back and in a gust the forearm over his eyes,
+  stepping back when pushed (`windTgt`); hangings over a wind billow (`drawWindHangs`, live, left out of the room picture, relief rubbed by
+  `windRel`); lamps lean and gutter (`windGut` in `flame` and `gatherLights`); the kick shafts' updraft dust (`windUpdraft`, W5, look only);
+  `Snd.wind` (`windSnd`). Pure functions of the clock and hashes, nothing allocated a frame. Checks: windscan (in suite.py, gen), run2 3-48 x 2
+  and fight 3-27 (0 damage), p4bot 6-27 x 2, forktest, featbot 276/276, figscan, lowceil, r38b, layerscan kinds=wind 3-48 x 2 both modes (0),
+  layoutcmp, metrics40, hillscan. Pictures `egyptr44.py old=FILE` (r44_wind.png, r44_phone.png, r44_jump.png, r44_gust.gif, r44_jump.gif).
 - The sand lift's spike pit (round 41, owner: "The sand lifts become a trap: the sand drains, the door opens, but he has to jump, because the
   slab keeps going"; answers: missing it is death, every sand lift, off by a jump or a step; round 41b, owner: "let's simplify: put spikes at
   the bottom instead of being bottomless"). The slab does not stop at the foot: it sinks on at `SAND_LV` 140 px/s through the foot (now a hole,

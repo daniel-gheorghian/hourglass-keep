@@ -42,6 +42,8 @@ function* botGen(n, seed, opts) {
   const col = () => Math.floor(P().x / 32);
   const past = (c, dir) => (col() - c) * dir >= 0;
   const trace = [];
+  // (round 44) the wind: its zones lie clear of every action's take-off and landing (placeWinds), so `walk` simply holds the arrow through
+  // them at the capped pace (65, 40 in a gust); a gust that pushes him back while he stands moves him off a target, and goto walks back to it
   function goto(tx) {
     const p = P(), dx = tx - p.x;
     // never tiptoe (Grab held) toward a block right beside us: that would push it
