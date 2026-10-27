@@ -11223,7 +11223,7 @@ function glFrame(lights,VZ,camD,camDY,th){
   const bind=(unit,tex)=>{gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,tex);};
   gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.br.f);gl.viewport(0,0,lw,lh);glClr(gl);bind(0,GLP.stex);bind(1,GLP.fb.map.t);bind(3,GLP.mt);
   msPasses(m=>{gl.useProgram(P.bright.p);gl.uniform1i(P.bright.u.u_sc,0);gl.uniform1i(P.bright.u.u_map,1);gl.uniform1i(P.bright.u.u_cs,6);gl.uniform1i(P.bright.u.u_mk,3);gl.uniform4fv(P.bright.u.u_ocT,GLA.oT);gl.uniform4fv(P.bright.u.u_ocC,GLA.oC);gl.uniform1f(P.bright.u.u_csk,cfx&1&&GLFX.shafts?RY_BLOOM:0);gl.uniform2f(P.bright.u.u_px,1.5/w,1.5/h);glFgU(P.bright.u,GLC.fg>0);if(m)glMetalU(MS.ub);gl.drawArrays(gl.TRIANGLES,0,3);},lh,4); // (unit MS: the metal program only over the metal)
-  gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.bl.f);glClr(gl);gl.useProgram(P.blur.p);bind(0,GLP.fb.br.t);gl.uniform1i(P.blur.u.u_t0,0);gl.uniform2f(P.blur.u.u_d,1.6/lw,0);gl.drawArrays(gl.TRIANGLES,0,3);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,GLP.fb.bl.f);glClr(gl);gl.useProgram(P.blur.p);bind(0,GLP.fb.br.t);gl.uniform1i(P.blur.u.u_t0,0);gl.uniform2f(P.blur.u.u_d,1.6/lw,0);gl.drawArrays(gl.TRIANGLES,0,3);if(GLFX.bloom===false)glClr(gl); // (round 43: GLFX.bloom false, for tests: no bloom)
   PF.p('bloom');gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);glClr(gl);bind(0,GLP.stex);bind(1,GLP.fb.map.t);bind(2,GLP.fb.bl.t);bind(3,GLP.mt);
   msPasses(m=>{gl.useProgram(P.final.p);
   {const U=P.final.u,gr=gradeOf(th.style),on=GLFX.grade&&GFX().grade;gl.uniform1i(U.u_mk,3);gl.uniform4fv(U.u_mkT,GLA.kT);gl.uniform4fv(U.u_mkC,GLA.kC);gl.uniform2f(U.u_px,1/w,1/h);gl.uniform2f(U.u_mp,1/lw,1/lh);gl.uniform1f(U.u_t,t%1000);

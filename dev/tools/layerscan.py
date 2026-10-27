@@ -20,7 +20,7 @@ a = sys.argv[1:]
 SRC = os.path.abspath(next((x for x in a if x.endswith('.html')), os.path.join(HERE, '..', 'hourglass-keep.html')))
 NUM = [int(x) for x in a if x.isdigit()]
 LO, HI = (NUM + [1, 48])[:2] if len(NUM) >= 2 else (1, 48)
-SEEDS = [int(s) for s in next((x for x in a if ',' in x and '=' not in x), '1').split(',')]
+SEEDS = [int(s) for s in next((x for x in a if ',' in x and '=' not in x), '1').split(',') if s]
 OUT = next((x for x in a if x.endswith('.png')), os.path.join(HERE, 'layerscan.png'))
 MODES = ['torch', 'classic'] if 'both' in a or not ('torch' in a or 'classic' in a) else (['torch'] if 'torch' in a else ['classic'])
 KINDS = next((x[6:].split(',') for x in a if x.startswith('kinds=')), None)
@@ -70,7 +70,8 @@ VIEW = r'''([n,sd,cx,cy,kinds,phases,own,vh])=>{const H=__HK;window.__HKfreeze=t
       if(n){nb+=n;if(n>wn){wn=n;wc=[c,r,kd];}}}
     const o=res[k]||(res[k]={n:0,box:null,face:null,ph:0});if(nb>o.n){o.n=nb;o.box=[bx0/sx,by0/sx,bx1/sx,by1/sx];o.face=wc;o.ph=ph;}};
   for(const ph of phases){H.setGT(ph);H.LAYER_DBG.hide=null;const A=grab().slice();
-    for(const k of kinds){if(k.mv===false&&ph!==phases[0])continue;H.LAYER_DBG.hide=new Set([k.k]);const B=grab();rec(k.k,ph,A,B);}
+    for(const k of kinds){if(k.mv===false&&ph!==phases[0])continue;let A0=A;if(k.nb){H.GLFX.bloom=false;H.LAYER_DBG.hide=null;A0=grab().slice();} // (NOBLOOM: both frames without the bloom)
+      H.LAYER_DBG.hide=new Set([k.k]);const B=grab();if(k.nb)H.GLFX.bloom=true;rec(k.k,ph,A0,B);}
     H.LAYER_DBG.hide=null;const A2=grab();rec('_noise',ph,A,A2);}
   H.LAYER_DBG.hide=null;H.LAYER_DBG.glow=true;return {res,th:H.themeName(n)};}'''
 
@@ -79,6 +80,11 @@ OWN = {'loose', 'plate', 'xplate', 'lplate', 'closer', 'grate', 'vent'}
 ABOVE = {'gate'}  # (a gate's timer dial and pair plaque are fixed on its lintel's face: L3 itself)
 SELF = {'chomp', 'gate'}  # (their plate's outline meets their own floor's front edge: its anti-aliased stroke on that lip is theirs)
 GRIPS = {'shaftfoot'}  # (a kick shaft's chipped grips are cut into the right wall's face, rows up to five above its foot: marks on L3 itself)
+# (round 43) a heap or drift standing where the scene is bright (a sky beam's floor patch, a lamp-lit floor) takes part of that brightness
+# out of Torchlight's bloom, so less of it glows onto the lip below: light, not a draw-over (with GLFX.bloom off the lips match: 0 of 132
+# heap views on floors 3-48 seed 2, against 4 with it; with the sky beams off and the bloom on, still 4). These kinds are measured with the
+# bloom held out of both frames. LS_FX=a,b (env) turns GLFX passes off for a whole run, for such diagnoses.
+NOBLOOM = {'heap', 'drift'}
 
 
 def page(b, mode):
@@ -89,7 +95,8 @@ def page(b, mode):
     pg.wait_for_timeout(700)
     pg.evaluate("document.querySelectorAll('.screen').forEach(e=>e.hidden=true);document.body.classList.remove('panelOpen')")
     pg.evaluate("m=>{__HK.S.set.lightMode=m;}", mode)
-    pg.evaluate("()=>{__HK.GLFX.sheen=false;}")  # (the wet floor's reflection mirrors lit things onto the floor by design, never on a face)
+    pg.evaluate("()=>{__HK.GLFX.sheen=false;}")
+    if os.environ.get('LS_FX'): pg.evaluate("f=>{for(const k of f.split(','))__HK.GLFX[k]=false;}", os.environ['LS_FX'])  # (diagnosis: passes held out for the whole run)  # (the wet floor's reflection mirrors lit things onto the floor by design, never on a face)
     return pg
 
 
@@ -125,7 +132,7 @@ if __name__ == '__main__':
                             if k in OWN: own[k] = [rr * li['cols'] + q[1] for q in inst if q[0] == k for rr in (q[2], q[2] + 1)]
                             if k in ABOVE or k in SELF: own[k] = [rr * li['cols'] + q[1] for q in inst if q[0] == k for rr in ((q[2] - 1,) if k in ABOVE else ()) + ((q[2],) if k in SELF else ())]
                             if k in GRIPS: own[k] = [rr * li['cols'] + q[1] + 1 for q in inst if q[0] == k for rr in range(q[2] - 5, q[2] + 1)]
-                        r = pg.evaluate(VIEW, [n, sd, cx, cy, [{'k': k, 'mv': k in MOVING} for k in ks], phases, own, li['vh']])
+                        r = pg.evaluate(VIEW, [n, sd, cx, cy, [{'k': k, 'mv': k in MOVING, 'nb': k in NOBLOOM} for k in ks], phases, own, li['vh']])
                         for k, o in r['res'].items():
                             s = stats.setdefault((mode, k), {'views': 0, 'bad': 0, 'worst': 0, 'where': []})
                             s['views'] += 1

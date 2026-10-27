@@ -647,8 +647,8 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   (`hillCanvas`): the far rows (d >= 0.5), column, crest line before the figures, the near rows, stones and ripples after them (L2x;
   the canvas ends at the floor's front edge, L3 never covered); `SHC` kinds heap/drift (`hillSil`), the relief rubbed by hard-edged quads
   (`hillRel`), Classic's footprint cut (`ryStand`). Checks: hillscan (in suite.py, gen), run2 3-48 x 3 and fight 3-27 (0 damage), p4bot,
-  figscan, layerscan kinds=heap,drift floors 3-48 x 2 both modes (Classic 0; Torchlight 7 of 262 heap views: less bloom from a sky beam's
-  floor patch onto the lip under it, light, not a draw-over), shadowscan kinds=heap,drift (0 of 128). Pictures `egyptr43.py` (r43_hills.png,
+  figscan, layerscan kinds=heap,drift floors 3-48 x 2 both modes, 0 (measured with the bloom held out, `NOBLOOM`: with it, 7 of 262 Torchlight
+  heap views changed the lip's glow, 0 with `GLFX.bloom` false, still 4 of 132 with the sky beams off: light, not a draw-over), shadowscan kinds=heap,drift (0 of 128). Pictures `egyptr43.py` (r43_hills.png,
   r43_phone.png, r43_hills.gif).
 - The sand lift's spike pit (round 41, owner: "The sand lifts become a trap: the sand drains, the door opens, but he has to jump, because the
   slab keeps going"; answers: missing it is death, every sand lift, off by a jump or a step; round 41b, owner: "let's simplify: put spikes at
