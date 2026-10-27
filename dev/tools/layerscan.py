@@ -26,7 +26,7 @@ MODES = ['torch', 'classic'] if 'both' in a or not ('torch' in a or 'classic' in
 KINDS = next((x[6:].split(',') for x in a if x.startswith('kinds=')), None)
 NPH = int(next((x[7:] for x in a if x.startswith('phases=')), '4'))
 BADPX = 24  # (canvas px, at about 4 a world px: 1.5 world px square; a thing's foot anti-aliased onto its own lip is under it)
-MOVING = ['saw', 'pend', 'bar', 'chomp', 'vent', 'lift', 'banner', 'emissive', 'ambient', 'atmo', 'lamp', 'jet', 'cue']
+MOVING = ['saw', 'pend', 'bar', 'chomp', 'vent', 'lift', 'banner', 'emissive', 'ambient', 'atmo', 'lamp', 'jet', 'cue', 'drift']  # (drift: round 43b's sand off its crest)
 
 # every instance of every kind on the floor (world px: x, the floor line y), then views that cover them
 LIST = r'''([n,sd,kinds])=>{const H=__HK;window.__HKfreeze=true;const L=H.load(n,sd,false),C=L.cols,TW=32,TH=64,out=[]; // (false: with the guards at their posts; the layout is the same)

@@ -4,14 +4,18 @@
 #   wade), each mode, crops at 3x (3 screen px a world px).
 # r43_phone.png: the same scenes as the whole screen at the phone's size (852 x 393 css px), Torchlight and Classic.
 # r43_hills.gif: real time, Classic, 2x: a wade through a drift and a clamber over a heap, the arrow held.
+# old=FILE (round 43b, owner: "Wind truly against him"): the drift before | after instead: r43b_drift.png (each drift row: him 0.35 s and
+#   1.1 s into it with the arrow held, Classic and Torchlight, before | after, 3x), r43b_phone.png (phone size, before | after, Torchlight),
+#   r43b_wade.gif (after, Classic, 2x: a wade from one end to the other).
 # Run from dev/tools (HK_GPU=1: Torchlight on the GPU).
 import io, os, sys
 from PIL import Image, ImageDraw
 from playwright.sync_api import sync_playwright
 HERE = os.path.dirname(os.path.abspath(__file__))
 a = sys.argv[1:]
-NEW = os.path.abspath(next((x for x in a if x.endswith('.html')), os.path.join(HERE, '..', 'hourglass-keep.html')))
-OUTD = next((x for x in a if not x.endswith('.html') and x != 'nogif'), os.path.join(HERE, 'egypt_themes'))
+NEW = os.path.abspath(next((x for x in a if x.endswith('.html') and '=' not in x), os.path.join(HERE, '..', 'hourglass-keep.html')))
+OLD = next((os.path.abspath(x[4:]) for x in a if x.startswith('old=')), None)
+OUTD = next((x for x in a if not x.endswith('.html') and x != 'nogif' and '=' not in x), os.path.join(HERE, 'egypt_themes'))
 INK = (20, 16, 24)
 BW, BH, ZK = 240, 112, 3
 GPU = ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--force_high_performance_gpu'] if os.environ.get('HK_GPU') else []
@@ -34,11 +38,11 @@ SHOW = r'''([fx,fy,hold])=>{const H=__HK;H.banner=null;let T=1e6+H.gameTime*1000
   return [R.left-X.camD/cv.width*R.width,R.top-X.camDY/cv.height*R.height,k];}'''
 
 
-def page(b, mode, dsf=3):
+def page(b, mode, dsf=3, html=None):
     pg = b.new_page(viewport={'width': 852, 'height': 393}, device_scale_factor=dsf)
     pg.errs = []
     pg.on('pageerror', lambda e: pg.errs.append(str(e)))
-    pg.goto('file://' + NEW)
+    pg.goto('file://' + (html or NEW))
     pg.wait_for_timeout(800)
     pg.evaluate("document.querySelectorAll('.screen').forEach(e=>e.hidden=true);document.body.classList.remove('panelOpen')")
     pg.evaluate("m=>{__HK.S.set.lightMode=m;}", mode)
@@ -64,7 +68,68 @@ def label(im, t):
 
 NAMES = {'B1': 'B1 tumbled masonry', 'B2': 'B2 mudbrick slump', 'B3': 'B3 fallen column', 'C2': 'C2 sand drift', 'C2b': 'C2 drift, half-buried blocks'}
 
-if __name__ == '__main__':
+def before_after():
+    spots = []
+    with sync_playwright() as p:
+        b = p.chromium.launch(args=GPU)
+        p0 = page(b, 'classic', 1)
+        for v, lk in [x for x in WANT if x[0].startswith('C2')]:
+            sp = p0.evaluate(FIND, [v, lk])
+            if sp: spots.append((v, lk, sp))
+        p0.close()
+        res = {}
+        for tag, html in (('before', OLD), ('after', NEW)):
+            for mode in ('classic', 'torch'):
+                pg = page(b, mode, 3, html)
+                for v, lk, (n, seed, c, r, nn, dr, isd) in spots:
+                    fx, fy = c * 32 + nn * 16, (r + 1) * 64 - 4
+                    out = []
+                    for k in (21, 66):
+                        i = pg.evaluate(SETUP, [n, seed, c, r, 0, 1, k]); out.append(shot(pg, fx, fy) + (i,))
+                    res[(tag, mode, lk, v)] = out
+                    print(tag, mode, v, lk, flush=True)
+                pg.close()
+        rows = []
+        for v, lk, sp in spots:
+            for j, t in enumerate(('0.35 s in', '1.1 s in')):
+                cells = []
+                for mode in ('classic', 'torch'):
+                    for tag in ('before', 'after'):
+                        cr, ph, i = res[(tag, mode, lk, v)][j]
+                        c2 = cr.copy(); label(c2, '%s  %s  %s  %s (%s): %s, the arrow held' % (NAMES[v], i[3], 'Torchlight' if mode == 'torch' else 'Classic', tag, 'round 43' if tag == 'before' else '43b, wind against him', t)); cells.append(c2)
+                w, h = cells[0].size
+                row = Image.new('RGB', (len(cells) * (w + 6), h + 6), INK)
+                for q, cc in enumerate(cells): row.paste(cc, (q * (w + 6), 3))
+                rows.append(row)
+        sheet = Image.new('RGB', (max(r.width for r in rows), sum(r.height for r in rows)), INK); y = 0
+        for r_ in rows: sheet.paste(r_, (0, y)); y += r_.height
+        fn = os.path.join(OUTD, 'r43b_drift.png'); sheet.save(fn, optimize=True); print('wrote', fn, sheet.size)
+        ph = []
+        for v, lk, sp in spots:
+            for tag in ('before', 'after'):
+                im = res[(tag, 'torch', lk, v)][1][1].copy(); label(im, '%s  %s  %s  phone size' % (NAMES[v], lk, tag)); ph.append(im)
+        sheet = Image.new('RGB', (2 * 858, ((len(ph) + 1) // 2) * 399), INK)
+        for q, im in enumerate(ph): sheet.paste(im, ((q % 2) * 858, (q // 2) * 399))
+        fn = os.path.join(OUTD, 'r43b_phone.png'); sheet.save(fn, optimize=True); print('wrote', fn, sheet.size)
+        gp = page(b, 'classic', 2); frames = []
+        v, lk, (n, seed, c, r, nn, dr, isd) = spots[0]
+        fx, fy = c * 32 + nn * 16, (r + 1) * 64 - 4
+        gp.evaluate(SETUP, [n, seed, c, r, 0, 1, 1])
+        for i in range(int((nn * 32 + 50) / 42 * 60 / 3)):
+            q = gp.evaluate(SHOW, [fx, fy, 0])
+            im = Image.open(io.BytesIO(gp.screenshot())).convert('RGB'); d = gp.dsf
+            ox, oy, k = q[0] * d, q[1] * d, q[2] * d; x0, y0 = ox + (fx - BW / 2) * k, oy + (fy - 86) * k
+            frames.append(im.crop((int(x0), int(y0), int(x0 + BW * k), int(y0 + BH * k))).resize((BW * 2, BH * 2), Image.LANCZOS))
+            gp.evaluate("()=>{__HK.tick(3);}")
+        gp.close()
+        fn = os.path.join(OUTD, 'r43b_wade.gif'); frames[0].save(fn, save_all=True, append_images=frames[1:], duration=50, loop=0, optimize=True); print('wrote', fn, len(frames), 'frames')
+        b.close()
+
+
+if __name__ == '__main__' and OLD:
+    os.makedirs(OUTD, exist_ok=True)
+    before_after()
+elif __name__ == '__main__':
     os.makedirs(OUTD, exist_ok=True)
     with sync_playwright() as p:
         b = p.chromium.launch(args=GPU)

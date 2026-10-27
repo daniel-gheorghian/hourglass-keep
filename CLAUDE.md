@@ -633,8 +633,9 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   `layoutcmp.py` against v86 same, 144 of 144; `metrics40.py` v86 identical): a rubble heap (2 tiles, crest 22-25 px; B1 tumbled dressed
   blocks of the theme's stone on a dark grit mound, B2 a rain-washed mudbrick slump in Kerma and Shali, B3 a fallen papyrus-bundle column
   one heap in four) he clambers over at `HILL_CLIMB` 35 px/s, drawn on its surface (`hillLift`, look only as round 16a's block; a running
-  jump taken before it clears it); a sand drift (C2: 3-6 tiles, a dune whose long windward back faces the way he comes and whose slip face
-  at 34 degrees, the brink curving across the depth, falls the way he goes; banked against the back wall, ripples, grain-flow streaks; one in
+  jump taken before it clears it); a sand drift (C2: 3-6 tiles, a dune; round 43b, owner: "Wind truly against him, to justify the slowing down": the
+  wind blows from ahead, so he meets the slip face at 34 degrees first, wades up it (leaning harder, look only) and goes down the long windward
+  back, the brink curving across the depth, sand streaming off the crest toward him (`hillStream`, the jet stream along a path made once); banked against the back wall, ripples, grain-flow streaks; one in
   three with half-buried blocks, C4) he wades at `HILL_WADE` 42 px/s, drawn `HILL_WD` 13 px deep (the near sand over his shins), with no
   jump of any kind (`tryJump`, `startJump`, `stRun`); wading or clambering he is drawn on the clip's walk cycle (43 px a cycle) with a lean.
   Placement: the run menu's plain floor only (`flat` segs; `breathe()`'s padding never, but it may serve as the margins `HILL_M0` 1 before,

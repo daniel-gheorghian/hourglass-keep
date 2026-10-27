@@ -4111,7 +4111,7 @@ const sf=F(L,pCol(),pRow());if(sf&&sf.t==='spikes')learn('spikes');setState('sta
       if(tgt===PS.stand&&P.stK){const t=gameTime-P.stT;tgt=P.stK==='tip'?tipSettle(t):P.stK==='turn'?turnSettle(t,lerpPose(PS.stand,PS.stand,0,stP)):P.stK==='rl'||P.stK==='sl'?landSeq(P.stK,t,!!P.jMir&&P.stK==='rl',stP):settlePose(P.stK,t,P.stS,PS.stand,stP);}break;
     case'run':tgt=takeoffRun();rate=40;if(ix===P.face)tgt.lean+=0.12*clamp(1-Math.abs(P.vx)/RUN,0,1);if(P.lnT!=null)landRun(tgt,gameTime-P.lnT);
       if(P.hl&&hillOn(P.x,P.y)){const h=P.hl,u=P.x-h.c*TW;tgt=walkPose(P.ph,1);rate=30; // (round 43: wading or clambering he walks (the clip's walk, 43 px a cycle): short steps, the legs going down into the sand; leaning into the drift, and up a heap's slope)
-        tgt.lean+=h.d?0.1:0.35*clamp((hillTop(h,u+4*P.face)-hillTop(h,u-4*P.face))/8,0,1);}
+        const up=clamp((hillTop(h,u+4*P.face)-hillTop(h,u-4*P.face))/8,0,1);tgt.lean+=h.d?0.1+0.25*up:0.35*up;} // (round 43b: up a drift's slip face, into the wind, he leans harder; look only, the pace stays 42)
       break; // (round 32: the gather before a running jump; the squash of one run through) // (round 25f: he leans into the start, less as he gathers speed)
     case'enter':tgt=walkPose(Math.abs(P.x-entryX())/43+0.25,Math.min(1,P.t/0.12));rate=40;break; // (his stride follows the ground covered, as the exit's approach: 0.93 cycles a second at 40 px/s)
     case'exit':tgt=P.exS>0?walkPose((P.exQ||0)*0.5,0.7):P.exTt>0?turnSettle(EX_TURN-P.exTt,lerpPose(PS.turn,PS.turn,0,stP)):walkPose(P.t*0.93);rate=P.exS>0?30:40;break; // (on the stairs: half a stride a tread, the leading leg lifting onto the next one; round 16c: the stride moves only while he rises, so a planted foot stays put)
@@ -8341,8 +8341,9 @@ function drawNeedles0(ctx,o,f,X,ys,near,sy){const e=f.ext;if(e<=0.02)return;cons
 //    on its surface (look only, as round 16a's roof block: P.y stays on the floor); a running jump taken before it clears it.
 //  - a sand drift (h.d 1), 3-6 tiles, knee deep: a small dune blown in along the corridor (C2): a long gentle windward back up to a brink
 //    that curves across the depth, then the slip face at the angle of repose (WELL_SL's 34 degrees) with grain-flow streaks, banked up
-//    against the back wall; its gentle back faces the way he comes (the owner: he wades up the back and down the slip face, in his direction
-//    of travel), ripples across it; now and then (one in three) dressed blocks stand half buried in it (C4). He wades at HILL_WADE 42 px/s
+//    against the back wall; the wind blows against him (round 43b, owner: "Wind truly against him, to justify the slowing down"), so he meets
+//    the slip face first, wades up it, crosses the brink and goes down the long windward back, sand streaming off the crest toward him
+//    (hillStream); ripples across it; now and then (one in three) dressed blocks stand half buried in it (C4). He wades at HILL_WADE 42 px/s
 //    (no run, no jump of any kind while his feet are in it), drawn HILL_WD 13 px deep in it, the walk cycle from the clip with a little lean.
 // Placement (placeHills, after everything else is built; hashes only, no generator stream, so layouts, L.path and timers are unchanged):
 // only on a run's own plain floor (the menu's 'flat' segs, never breathe()'s padding after a trap), never on a timed stretch (between a
@@ -8364,8 +8365,9 @@ function hillH(h,u,d){const Ln=hillLen(h);if(u<=0||u>=Ln)return 0;const x=u/Ln,v
   if(v==='B2'){const xc=0.44+0.08*(d-0.5),w=x<xc?xc:1-xc,t=Math.abs(x-xc)/w,b=22*Math.pow(Math.max(0,1-t*t),1.3)+(hillNz(u/7,23+h.c)-0.5)*1.6*(1-t);
     return Math.max(0,b*(0.5+0.5*sstep(d/0.55))*(1+0.12*(d-0.5)));}
   if(v==='B3'){const bed=Math.pow(Math.sin(Math.PI*x),0.8)*6+(hillNz(u/4,31+h.c)-0.5)*2.5*Math.sin(Math.PI*x),under=d>0.25&&d<0.75?0.35:1;return Math.max(0,bed*under*(0.55+0.45*sstep(d/0.5)));}
-  // C2: u along the way he comes (mirrored when the run heads left)
-  const w=h.dir<0?Ln-u:u,cr=hillCr(d)*Ln,T=h.T,fr=sstep(d/0.3);let s;
+  // C2: w from the windward toe, which is at the far end of his run (round 43b, owner: "Wind truly against him, to justify the slowing down"):
+  // he meets the slip face first, wades up it, goes over the brink and down the long windward back
+  const w=h.dir>0?Ln-u:u,cr=hillCr(d)*Ln,T=h.T,fr=sstep(d/0.3);let s;
   if(w<cr){const t=w/cr;s=T*Math.pow(Math.sin(Math.PI/2*t),1.25);}
   else{s=T-0.67*(w-cr);const a=Math.max(0,s);s=a<3?a*a/6+0.5*a*(a/3):a;} // (the slip face, its foot easing into the apron)
   s=Math.min(s,T*sstep(Math.min(w,Ln-w)/8)); // (no edge where the sand meets the floor at either end)
@@ -8448,17 +8450,17 @@ function hillSil(h){if(h._sil)return h._sil;const ys=SURF(h.r),Ln=hillLen(h),pts
 function hillRipples(g,h,half,ys,C){const Ln=hillLen(h);g.lineWidth=0.55;
   for(let u=5,i=0;u<Ln-4;u+=3.4*(0.9+0.2*hillN(i,41+h.c)),i++){const da=0.05+hillN(i,44)*0.2,db=0.75+hillN(i,45)*0.22,pts=[];
     for(let j=0;j<=12;j++){const d=da+(db-da)*j/12;if(half===0?d<0.5:d>0.55)continue;const uu=u+0.7*Math.sin(d*5+i*1.3)+0.4*Math.sin(d*13+i*0.7);
-      const hh=hillH(h,uu,d),sl=(hillH(h,uu+1.5,d)-hillH(h,uu-1.5,d))/3*(h.dir<0?-1:1);if(hh<2.5||sl<-0.42)continue;pts.push(hillP(h,uu,d,ys));}
+      const hh=hillH(h,uu,d),sl=(hillH(h,uu+1.5,d)-hillH(h,uu-1.5,d))/3*(h.dir>0?-1:1);if(hh<2.5||sl<-0.42)continue;pts.push(hillP(h,uu,d,ys));}
     if(pts.length<2)continue;g.strokeStyle=hillRgb(C.dark,1.15);g.globalAlpha=0.26;g.beginPath();pts.forEach((p,k)=>k?g.lineTo(p[0]+0.55,p[1]+0.2):g.moveTo(p[0]+0.55,p[1]+0.2));g.stroke();
     g.strokeStyle=hillRgb(C.lit,1.04);g.globalAlpha=0.34;g.beginPath();pts.forEach((p,k)=>k?g.lineTo(p[0]-0.15,p[1]):g.moveTo(p[0]-0.15,p[1]));g.stroke();g.globalAlpha=1;}
-  for(let i=0;i<14;i++){const d=0.08+i*0.065;if(half===0?d<0.5:d>0.55)continue;const cr=hillCr(d)*Ln,w0=cr+1,top=hillH(h,h.dir<0?Ln-w0:w0,d),w1=w0+top/0.67-1, // (grain-flow streaks down the slip face)
-      u0=h.dir<0?Ln-w0:w0,u1=h.dir<0?Ln-w1:w1,a=hillP(h,u0,d,ys),b=hillP(h,u1,d,ys);
+  for(let i=0;i<14;i++){const d=0.08+i*0.065;if(half===0?d<0.5:d>0.55)continue;const cr=hillCr(d)*Ln,w0=cr+1,top=hillH(h,h.dir>0?Ln-w0:w0,d),w1=w0+top/0.67-1, // (grain-flow streaks down the slip face)
+      u0=h.dir>0?Ln-w0:w0,u1=h.dir>0?Ln-w1:w1,a=hillP(h,u0,d,ys),b=hillP(h,u1,d,ys);
     g.strokeStyle=hillRgb(i%2?C.dark:C.base,0.9);g.globalAlpha=0.35;g.beginPath();g.moveTo(a[0],a[1]+0.5);g.lineTo(b[0],b[1]-0.3);g.stroke();g.globalAlpha=1;}}
-function hillBlocks(g,h,ys,C){if(!h.blk)return;const Ln=hillLen(h),kind=THEME_STONE[L.theme.look]||'limestone',m=w=>h.dir<0?Ln-w:w;
+function hillBlocks(g,h,ys,C){if(!h.blk)return;const Ln=hillLen(h),kind=THEME_STONE[L.theme.look]||'limestone',m=w=>h.dir>0?Ln-w:w;
   // (C4) dressed blocks standing half buried in the sand, on its windward back, against the back wall
-  {const u=m(Ln*0.62),d=0.86,p=hillP(h,u,d,ys);g.save();g.translate(p[0],p[1]+2);g.rotate(-0.12*(h.dir||1));stoneBox(g,kind,-12,-10,20,12,{top:true,side:true,d:0.45,wear:2,seed:7+h.c});g.restore();
+  {const u=m(Ln*0.62),d=0.86,p=hillP(h,u,d,ys);g.save();g.translate(p[0],p[1]+2);g.rotate(-0.12*(-(h.dir||1)));stoneBox(g,kind,-12,-10,20,12,{top:true,side:true,d:0.45,wear:2,seed:7+h.c});g.restore();
    g.fillStyle=hillRgb(C.base,1);g.beginPath();g.ellipse(p[0]-1,p[1]+2.2,11,2.6,0,0,6.2832);g.fill();g.fillStyle=hillRgb(C.lit,1);g.globalAlpha=0.5;g.beginPath();g.ellipse(p[0]-3,p[1]+1.6,6,1.2,0,0,6.2832);g.fill();g.globalAlpha=1;}
-  {const u=m(Ln*0.26),d=0.8,p=hillP(h,u,d,ys);g.save();g.translate(p[0],p[1]+3);g.rotate(0.22*(h.dir||1));stoneBox(g,kind,-7,-8,11,10,{top:true,side:true,d:0.35,wear:3,seed:11+h.c});g.restore();
+  {const u=m(Ln*0.26),d=0.8,p=hillP(h,u,d,ys);g.save();g.translate(p[0],p[1]+3);g.rotate(0.22*(-(h.dir||1)));stoneBox(g,kind,-7,-8,11,10,{top:true,side:true,d:0.35,wear:3,seed:11+h.c});g.restore();
    g.fillStyle=hillRgb(C.base,1);g.beginPath();g.ellipse(p[0]-1,p[1]+2.4,9,2.3,0,0,6.2832);g.fill();}}
 function hillRunnels(g,h,half,ys,C){const Ln=hillLen(h);g.lineWidth=0.7; // (B2) rain-washed mud: shallow gullies down the slump
   for(let i=0;i<16;i++){const d=0.06+i*0.058+0.02*hillN(i,81);if(half===0?d<0.5:d>=0.5)continue;const side=i%2?1:-1,xc=Ln*(0.44+0.08*(d-0.5)),u0=xc+side*(2+hillN(i,82)*6),pts=[];
@@ -8515,9 +8517,20 @@ function drawHills(ctx,half,x0,x1,y0,y1){const hs=L.hills;if(!hs||!hs.length)ret
   for(const h of hs){if(lyOff(h.d?'drift':'heap'))continue;const bx=hillBox(h);if(bx[2]<x0-8||bx[0]>x1+8||bx[3]<y0-8||bx[1]>y1+8)continue;
     if(half===0){const sil=hillSil(h);if(shcBeg(-1e5,-1e5,1e5,SURF(h.r)+HY,h.d?20:19)){for(let i=0;i<sil.length;i+=2)shcPt(sil[i][0],sil[i][1]-0.8);shcPt(sil[sil.length-1][0],SURF(h.r)+HY);shcPt(sil[0][0],SURF(h.r)+HY);shcRing();shcEnd();}} // (carved out of the lamp shadow, SHC)
     ctx.save();ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';ctx.drawImage(hillCanvas(h,half),bx[0],bx[1],bx[2]-bx[0],bx[3]-bx[1]);ctx.restore(); // (opaque: whatever alpha the loop before left)
+    if(half===1&&h.d&&!lyOff('drift'))hillStream(ctx,h,x0,x1,y0,y1);
     if(half===1&&h.d){const ys=SURF(h.r),Ln=hillLen(h);ctx.save();ctx.globalCompositeOperation='lighter';ctx.fillStyle='#fff4d0'; // (grains glinting on the sand, a pure function of the clock)
       for(let i=0;i<5*h.n;i++){const u=4+hillN(i,61+h.c)*(Ln-8),d=0.1+hillN(i,62+h.c)*0.85,tw=Math.sin(gameTime*2.3+i*2.1);if(tw<0.55)continue;const p=hillP(h,u,d,ys);ctx.globalAlpha=(tw-0.55)*1.6;ctx.fillRect(p[0]-0.45,p[1]+0.6,0.9,0.9);}
       ctx.restore();ctx.globalAlpha=1;}}}
+// (round 43b) sand streaming off a drift's crest toward him on the wind: the game's jet stream (pure function of the clock, no state, nothing
+// allocated a frame, rewind-safe) along a path made once a drift: up the last of the windward back a little over the sand, off the brink and
+// down over the slip face, settling just past its foot; the wind's strength swells and eases slowly. Air: drawn after the figures, never
+// below the floor's front edge
+function hillStreamPath(h){if(h._js)return h._js;const p=jsReset(jsPath()),ys=SURF(h.r),Ln=hillLen(h),d=0.55,cr=hillCr(d)*Ln,
+    pt=(w,dy)=>{const q=hillP(h,h.dir>0?Ln-w:w,d,ys);return [q[0],q[1]-dy];};
+  let q=pt(cr-16,1.0);jsAdd(p,q[0],q[1]);q=pt(cr-7,1.5);jsAdd(p,q[0],q[1]);q=pt(cr,2.4);jsAdd(p,q[0],q[1]);
+  const wt=cr+h.T/0.67,c=pt(cr+(wt-cr)*0.4,4),e=pt(Math.min(Ln+10,wt+12),1.2);jsQuad(p,c[0],c[1],e[0],e[1],10);return h._js=p;}
+function hillStream(ctx,h,x0,x1,y0,y1){const ys=SURF(h.r),str=0.45+0.15*Math.sin(gameTime*0.53+h.c*1.7);
+  ctx.save();ctx.beginPath();ctx.rect(-1e5,-1e5,2e5,1e5+ys+HY);ctx.clip();jetStream(ctx,hillStreamPath(h),str,36,1.5,hash2(h.c,h.r*7+43),x0,x1,y0,y1,null);ctx.restore();}
 // Torchlight's relief reads the room picture, which has the back wall behind the hill: rubbed back over its outline (as glRelFloors does for live tiles)
 function hillRel(n,VZ,camD,camDY){const hs=L&&L.hills;if(!hs)return n;const cx=camD/VZ,cw=cv.width/VZ;
   for(const h of hs){const bx=hillBox(h);if(bx[2]<cx||bx[0]>cx+cw)continue;const sil=hillSil(h),ys=SURF(h.r);
