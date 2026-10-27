@@ -637,6 +637,17 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   slab's piece above the ceiling's edge at gameTime 10-16 s only, which the earlier cases on the page had reached (alone it measured 4 over
   6); the wedge is now measured on a frame without the `atmo` layer (mist, motes, moths, fireflies, wisps; round 26a's fault was the beams'
   haze, the light pass's). `liftscan.py` floors 3-20, 27-32 and 40 both modes `ALL OK`.
+  Round 41e (owner: "Fix the spikes thing"): the pit's stakes showed through the sinking slab for its last ~25 px: `drawNeedles` cut all
+  four at the slab's front edge (`sl.y+HY`), but a stake stands at its own depth, its root up to 2.2 px up the depth diagonal, so the far ones
+  were drawn over the slab's top while it was still above their tips (on floor 6 seed 91266 a tip over the slab with its top 22.7 px over the
+  pit's floor, the 21 px stake's height). Options weighed: the slab resting on the tips (but riding it he is impaled as it comes to rest, so
+  it must reach the floor: it would contradict play); hiding the stakes until it rests (they would pop up 10-21 px in one frame); the stakes
+  driven up through it (chosen: it is what kills him, it ends exactly in 41b's look at rest, and needs no change to play). Each stake is now
+  cut at the slab's top face at its own depth (`sy+(0.5-d)DY`, onFloor's line), so it shows only once the top has sunk past its tip, and where
+  it breaks through a dark puncture as wide as the stake there with a pale lip of broken stone on its near side; at rest the puncture is the
+  stake's own foot shadow and the lip stays, so nothing pops. The lamp shadow's carve (SHC) takes each stake only above that line. Both modes.
+  Look only: `layoutcmp.py` against 41d's file same (144 of 144), play unchanged. Pictures `egyptr41e.py old.html new.html` (r41e_spikes.png:
+  41d | 41e, both modes, 3x for the slab's top 30 to 0 px over the pit's floor on two lifts, and phone size; r41e_spikes.gif).
 - The Crossing (round 36a, owner, after the research in `dev/INTERLUDE_RESEARCH.md`: "an interlude between themes"; answers: at each
   theme change, after Climb on, he moves only while the pad is held, wordless but skippable, all twelve themes in their setting,
   Torchlight's glow and a Classic version, the hour from `progOf`, named "the Crossing"). At each change of theme (`crossDue(n)`:

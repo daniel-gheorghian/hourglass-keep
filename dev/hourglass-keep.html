@@ -8176,17 +8176,30 @@ function drawJetHints(x0,x1,y0,y1,ctx){const J=jetPlaces(),pc=P?pCol():-1,pr=P?p
 // (round 39e, dev/docs/layers.md R1) the stakes, SPK far to near: the front one (depth .26) is nearer than a figure at mid-depth, who was drawn
 // over it tiptoeing across (spikes.md's "he stands in front of them" described the order, it was no rule): it is drawn after the figures (near,
 // from the near-halves loop, under the same CUT_AT_WALL cut); the others before them. The shadow's carve (SHC) still records all four, with the far ones
-// (round 41b) a sand lift's spike pit: the spikes stand in its sand, hidden under the slab's top while it is above them; at rest the slab lies
-// among them (drawn before them, so they stand through it)
-function drawNeedles(ctx,o,f,X,ys,near){const sl=f.sl;if(sl&&sl.y<ys-0.5){ctx.save();ctx.beginPath();ctx.rect(X-200,ys-400,TW+400,sl.y+HY-(ys-400));ctx.clip();drawNeedles0(ctx,o,f,X,ys,near);ctx.restore();return;}drawNeedles0(ctx,o,f,X,ys,near);}
-function drawNeedles0(ctx,o,f,X,ys,near){const e=f.ext;if(e<=0.02)return;const m=o.c%2?-1:1,sc=!near&&shcBeg(-1e5,-1e5,1e5,1e5,2); // (round 38a: each needle carved out of the lamp shadow, SHC)
+// (round 41b) a sand lift's spike pit: the spikes stand in its sand, hidden under the slab while it is above them; at rest the slab lies
+// among them (drawn before them, so they stand through it). (round 41e, owner: "Fix the spikes thing") While it sinks the last storey the
+// slab's top face at a stake's own depth (onFloor's line, sy+(0.5-d)DY) is where that stake comes through: each is cut there, not at the
+// front edge (sl.y+HY, one line for all four: the far stakes, whose roots are up to 2.2 px up the depth diagonal, stood over the slab's top
+// while it was still above their tips, for up to 6 px of its fall), and a dark puncture with a pale lip of broken stone rings it where it
+// breaks through. Each stake shows only once the top has sunk past its tip, as a stake driven up through it; at rest the top is the pit's
+// floor and they stand whole as before. Look only. The lamp shadow's carve takes each one only above that line.
+function drawNeedles(ctx,o,f,X,ys,near){const sl=f.sl;drawNeedles0(ctx,o,f,X,ys,near,sl&&sl.y<ys-0.5?sl.y:null);}
+function drawNeedles0(ctx,o,f,X,ys,near,sy){const e=f.ext;if(e<=0.02)return;const m=o.c%2?-1:1,sc=!near&&sy===null&&shcBeg(-1e5,-1e5,1e5,1e5,2); // (round 38a: each needle carved out of the lamp shadow, SHC)
   // a few thin needles of uneven height and lean, rooted at slightly different depths of the floor
-  for(const [bx,d,hh,ln] of SPK){const q=onFloor(X+16+m*(bx-16),d,ys),x=q.x,b=q.y,tx=x+m*ln*e,tip=b-hh*e;if(sc){shcPt(x-3.3,b+1.2);shcPt(tx-1.2,tip-2.2);shcPt(tx+1.2,tip-2.2);shcPt(x+3.3,b+1.2);shcRing();} // (a little wider than drawn, as the mask is a quarter size and read blurred: a needle is thinner than its texels)
+  for(const [bx,d,hh,ln] of SPK){const q=onFloor(X+16+m*(bx-16),d,ys),x=q.x,b=q.y,tx=x+m*ln*e,tip=b-hh*e,cy=sy===null?0:sy+(0.5-d)*DY;
+    if(sy!==null&&tip>=cy-0.3)continue; // (round 41e: still under the slab's top at its depth)
+    if(sc){shcPt(x-3.3,b+1.2);shcPt(tx-1.2,tip-2.2);shcPt(tx+1.2,tip-2.2);shcPt(x+3.3,b+1.2);shcRing();} // (a little wider than drawn, as the mask is a quarter size and read blurred: a needle is thinner than its texels)
+    else if(sy!==null&&!near&&shcBeg(-1e5,-1e5,1e5,cy,2)){shcPt(x-3.3,b+1.2);shcPt(tx-1.2,tip-2.2);shcPt(tx+1.2,tip-2.2);shcPt(x+3.3,b+1.2);shcRing();shcEnd();}
     if((d<SPK_NEAR)!==!!near)continue;
+    if(sy!==null){ctx.save();ctx.beginPath();ctx.rect(X-200,cy-400,TW+400,400);ctx.clip();}
     ctx.fillStyle='rgba(8,6,12,.55)';ctx.beginPath();ctx.ellipse(x,b+0.6,3.4,1.3,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#0b0812';ctx.beginPath();ctx.moveTo(x-2.8,b+0.9);ctx.lineTo(tx,tip-1.6);ctx.lineTo(x+2.8,b+0.9);ctx.fill();
     ctx.fillStyle=EGP.traps?'#c8a060':'#eef0f5';ctx.beginPath();ctx.moveTo(x-1.3,b);ctx.lineTo(tx,tip);ctx.lineTo(x+0.15,b);ctx.fill();
     if(EGP.traps){ctx.fillStyle='#7a5a36';ctx.beginPath();ctx.moveTo(x-1.3,b);ctx.lineTo(x+(tx-x)*0.55,b+(tip-b)*0.55);ctx.lineTo(x+1.3,b);ctx.fill();} // acacia shafts, bronze tips
-    ctx.fillStyle=EGP.traps?'#6a4a20':'#8d94a2';ctx.beginPath();ctx.moveTo(x+0.15,b);ctx.lineTo(tx,tip);ctx.lineTo(x+1.3,b);ctx.fill();}
+    ctx.fillStyle=EGP.traps?'#6a4a20':'#8d94a2';ctx.beginPath();ctx.moveTo(x+0.15,b);ctx.lineTo(tx,tip);ctx.lineTo(x+1.3,b);ctx.fill();
+    if(f.sl){let px=x,py=b,w=3.4; // (round 41e: where it breaks through the slab's top, as wide as the stake there; at rest its foot's own shadow, 3.4 by 1.3)
+      if(sy!==null){ctx.restore();const k=(b-cy)/(b-tip);px=x+(tx-x)*k;py=cy;w=Math.max(1.2,(1-k)*2.5+0.9);
+        ctx.fillStyle='rgba(8,6,12,.6)';ctx.beginPath();ctx.ellipse(px,py+0.6,w,w*0.38,0,0,Math.PI*2);ctx.fill();}
+      ctx.fillStyle='rgba(255,240,215,.2)';ctx.beginPath();ctx.ellipse(px,py+0.6+w*0.38,w+0.5,0.6,0,0,Math.PI);ctx.fill();}} // a pale lip of broken stone on its near side, kept at rest
   if(sc)shcEnd();}
 function drawDynamic(ctx,x0,x1,y0,y1){
   hudStones.length=0;
