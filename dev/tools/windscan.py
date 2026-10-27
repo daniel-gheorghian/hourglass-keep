@@ -5,7 +5,7 @@
 # stretch (the segs from a timed gate's plate to its gate), off the dark's chase, off guards' and snakes' ground, the doors; at least z.jm
 # cells (WIND_JM 3, or 1 where 3 leaves no stretch on the floor) from every cell of a seg that is not plain floor, on that seg's rows (no
 # generated jump, fall, grab or swing in it); it blows against the run (the flat seg's way); 3-8 cells (s, g); a gust only from floor
-# WIND_G0 with a window over it; a drift's wind covers its drift; none on floors 1-2, at least one steady or gust a floor from 3. Then the
+# WIND_G0 with a window (round 45: or a court's open side) over it; a drift's wind covers its drift; none on floors 1-2, at least one steady or gust a floor from 3. Then the
 # push: he stands in each gust zone (its two ends and its middle) with no key for 9 s (two gusts): he must stay in the zone, on his feet, alive.
 # Prints a table by floor band and 'windscan: ok'. Run from dev/tools.
 import os, sys
@@ -26,7 +26,7 @@ JS = r'''([n,sd])=>{const H=__HK,L=H.genLevel(n,sd,true),C=L.cols,TW=32,ws=L.win
   const near=(list,f)=>list.some(f),ch=L.ext.chase;let extra=0,jm1=0;
   for(const z of ws){const tag=z.k+'@'+z.c+','+z.r;if(z.jm===1)jm1=1;
     if(z.k!=='d'&&(z.n<3||z.n>8))bad.push(tag+' length '+z.n);
-    if(z.k==='g'){if(n<H.WIND_G0)bad.push(tag+' gust before floor '+H.WIND_G0);if(!z.src||!(L.windows||[]).some(w=>(w.r===z.r||w.r===z.r-1)&&w.c>=z.c&&w.c<z.c+z.n))bad.push(tag+' gust with no window over it');}
+    if(z.k==='g'){if(n<H.WIND_G0)bad.push(tag+' gust before floor '+H.WIND_G0);if(!z.src||!((L.windows||[]).some(w=>(w.r===z.r||w.r===z.r-1)&&w.c>=z.c&&w.c<z.c+z.n)||(L.courts||[]).some(k=>k.k!=='well'&&k.r===z.r&&Math.floor(z.src.x/TW)>=k.c0&&Math.floor(z.src.x/TW)<=k.c1)))bad.push(tag+' gust with no window or court over it');}
     if(z.k==='d'){const h=(L.hills||[]).find(h=>h.d&&h.r===z.r&&h.c>=z.c&&h.c+h.n<=z.c+z.n);if(!h)bad.push(tag+' drift wind with no drift');else if(z.dir!==-h.dir)bad.push(tag+' drift wind with the run');}
     for(let c=z.c;c<z.c+z.n;c++){const r=z.r,k=r*C+c;
       if(B(c,r)!==1||F(c,r))bad.push(tag+' not plain floor at '+c);

@@ -103,6 +103,7 @@ J += [('sandshaft', ['sandshaft.py'], tail_check(r'sandshaft: ok'))] # (round 26
 J += [('wellscan', ['wellscan.py'], tail_check(r'(?m)^ok$'))] # (round 21b) the sand wells' slope, volume, break timing and rewind
 J += [('hillscan', ['hillscan.py', str(n), str(n + 11)], tail_check(r'hillscan: ok')) for n in range(1, 49, 12)] # (round 43) heaps and drifts only on a run's plain floor, off timed stretches and the chase, at least one a floor from floor 3
 J += [('windscan', ['windscan.py', str(n), str(n + 11)], tail_check(r'windscan: ok')) for n in range(1, 49, 12)] # (round 44) the wind only on a run's plain floor, clear of every jump, off timed stretches and the chase; a gust pushes him back but never off it
+J += [('courtscan', ['courtscan.py', str(n), str(n + 11)], tail_check(r'courtscan: ok')) for n in range(1, 49, 12)] # (round 45) courts on headroom under stone, 7-8 a floor from 3, never two in view, kinds by theme, every court pit a pool, nothing of the wall left; a fall into a pool drowns at its surface
 if os.path.exists(os.path.join(HERE, 'hk_v69_release.html')): # (its baseline is kept locally, not in git)
     J += [('figscan', ['figscan.py'], tail_check(r'figscan: ok'))] # (round 23) the body's poses: held hands, crown, soles, the keyed jumps and steps
 if mode == 'release':
@@ -119,7 +120,7 @@ SUITES = {
     'play': ('run2', 'run2 fight', 'featbot', 'featbot fight', 'p4bot', 'forktest', 'hinttest', 'grablabel', 'swingtest', 'liftkick',
              'lowceil', 'r38b_tests', 'sawceil', 'primtest', 'hdtest', 'lifttest', 'respawnplates', 'slabresume', 'gratepeek'), # the bot and play checks
     'gen': ('metrics40', 'guardscan', 'forkscan', 'puzzlescan', 'vertscan', 'featurescan', 'orphanscan', 'mazescan', 'wellcorr', 'lampscan',
-            'slabscan', 'sandshaft', 'wellscan', 'hillscan', 'windscan'), # generator and layout scans (the tiles, no picture)
+            'slabscan', 'sandshaft', 'wellscan', 'hillscan', 'windscan', 'courtscan'), # generator and layout scans (the tiles, no picture)
     'render': ('rendersmoke', 'liftscan', 'crossscan', 'crossscan torch', 'cpscan', 'shadowscan', 'doorscan', 'openscan', 'tilescan',
                'stormfair', 'glauto', 'metaltest', 'rewindrooms', 'figscan')} # drawing checks (pixels, poses, the WebGL path)
 SUITE_OF = {g: su for su, gs in SUITES.items() for g in gs}

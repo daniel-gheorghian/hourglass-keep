@@ -143,7 +143,9 @@ stage 0 back plane   backCell + decor per cell (clipped to the cell; no decor on
                      a hurtdrop's shaft: its back wall darkened, source-atop over its two cells (openings stay open; round 39)
                      doorway cut-outs: flat th.wall under each door and frame, the start door's at startDoorX (EGP.nocut leaves them)
                      aoBack (GLFX.ao)
+                     ctBack: the courts' cut, colonnade, posts, parapet, light well (round 45)
 stage 1 wall faces   side faces (behind the front plane) -> front faces: wallCell at X-HX, cornice, lowCeil
+                     ctOver: the ceiling's face over a court (round 45)
 stage 2 floors       slab(...,mark) per floor cell, except live tiles (loose s<2, plate, xplate, lplate, closer, grate)
                      and lift pits (liftPitDraw)
                      on the rlBegin scratch canvas: spike holes, rubble, a hurtdrop's hanging stones, chips and heap, breach
@@ -431,6 +433,8 @@ colour. Skipped when nothing of it is on screen and in the Crossing.
 | floor mist (height fog, lit by the light map) | crypt and dungeon styles, themes with dust, night except in the forge | `GLFX.mist` |
 | caustics (in the S pass) | round the open arches near water where the look has `caus` (Waters of Nun, Foggaras of Garama) | `GLFX.caustics` |
 | theme looks (`LFX`): salt, glaze, faience walls, granite, incense, arch dust | per theme, in the lamps' light only (the light map less the ambient) | `GLFX.lookfx` |
+
+Round 45 (owner: "blotchy"): the arch dust (in open arches, and so in the courts) was value noise read through a narrow ramp, axis-aligned square patches at the pass's quarter size; it now takes lower, rotated frequencies and a wide ramp (`smoothstep(.18,.95)`, 0.3 of the old 0.42) and reads as haze. The courts' own L0 (`ctBg`) is drawn in `drawBackdrop` under `G2D.na`, so the composite treats it as backdrop (no fill light, no lamp shadow).
 
 Rule (round 27d): no travelling bands in a look effect. The Blue Chambers' glaze was a sine of x and y that slid as slanted bars over
 windows and beams; it is now soft noise patches that swell in place, times the scene's alpha (never on the sky). Sharp single glints stay

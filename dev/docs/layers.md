@@ -107,6 +107,12 @@ nearer stone in front of a live part (R1). Where a pass is left out of a row, th
 | | near rows (d < 0.5), near stones, grit, ripples, glints: over his shins in a drift, his toes on a heap | L2x | live (`drawHills` 1), after the figures | the same |
 | [wind](elements/wind.md) | dust veils, streamers, grains, leaves, a gust window's pouring sand | L2 air | live (`windDraw`), after the figures and the drifts' near halves | `airCut`: the floor's front edge, the faces, from under the lip of a slab over the row |
 | | the back wall's hangings over a wind, billowing | L1 | live (`drawWindHangs`), first in `drawDynamic`; left out of the room picture | placement (hangings stand clear of faces a cell either side) |
+| [courts](elements/courts.md) | the court beyond (ground, far side, trees, pennants) | L0 | `ctBg`, in `drawBackdrop` under `G2D.na`, inside the court's opening | n/a (R2: the cut) |
+| | the cut, the colonnade, posts and vine, parapet, piers, the light well's recess | L1 | room picture stage 0, after `aoBack` (`ctBack`) | n/a |
+| | the ceiling's face over a court: architrave, vine canopy, palm logs | L3 | room picture stage 1, after the front faces (`ctOver`) | n/a (it is the front plane) |
+| | a pool's water: surface far half / near half and its cut at the front plane, lotus, splash | L2x | `ctLive` 0 before the figures / `ctLive` 1 after them | clipped to the pit's columns and down to the pit floor's lip |
+| | the hanging vine | L2 near (d ~ 0.05) | `ctLive` 1, after the figures | clipped to the court's cells and 24 px under the ceiling's face |
+| | the dapple, the light well's shaft | light | `ctEmis` (drawEmissive) | the dapple clipped above the lips |
 | [movable blocks](elements/movable-blocks.md) | front face, top, side | L3, as a wall block | live, before the figures | figures pressed and cut at its drawn face |
 | [gates](elements/gates.md) | slab (granite portcullis, iron gate, violet gate) | L2x, plane X+8..X+24 | far half before the figures, near half after (`planeClip`) | placement |
 | | floor slot / timer dial and pair plaque on the lintel | L2f / L3 (fixed on the face) | live | n/a |

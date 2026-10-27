@@ -26,7 +26,7 @@ MODES = ['torch', 'classic'] if 'both' in a or not ('torch' in a or 'classic' in
 KINDS = next((x[6:].split(',') for x in a if x.startswith('kinds=')), None)
 NPH = int(next((x[7:] for x in a if x.startswith('phases=')), '4'))
 BADPX = 24  # (canvas px, at about 4 a world px: 1.5 world px square; a thing's foot anti-aliased onto its own lip is under it)
-MOVING = ['saw', 'pend', 'bar', 'chomp', 'vent', 'lift', 'banner', 'emissive', 'ambient', 'atmo', 'lamp', 'jet', 'cue', 'drift', 'wind']  # (drift: round 43b's sand off its crest; wind: round 44)
+MOVING = ['saw', 'pend', 'bar', 'chomp', 'vent', 'lift', 'banner', 'emissive', 'ambient', 'atmo', 'lamp', 'jet', 'cue', 'drift', 'wind', 'court', 'pool', 'vine', 'dapple', 'lwell']  # (drift: round 43b's sand off its crest; wind: round 44)
 
 # every instance of every kind on the floor (world px: x, the floor line y), then views that cover them
 LIST = r'''([n,sd,kinds])=>{const H=__HK;window.__HKfreeze=true;const L=H.load(n,sd,false),C=L.cols,TW=32,TH=64,out=[]; // (false: with the guards at their posts; the layout is the same)
@@ -41,7 +41,8 @@ LIST = r'''([n,sd,kinds])=>{const H=__HK;window.__HKfreeze=true;const L=H.load(n
   for(const o of L.dyn)if(o.f.t==='loose'&&!o.f.plank&&o.f.wg&&o.f.wg.os&&o.f.wg.os[0]===o)add('well',o.c,o.r);
   for(const lf of L.lifts)add('lift',lf.ca,lf.rB,(lf.ca+lf.cb+1)*TW/2,(lf.rT*TH+S(lf.rB))/2);
   for(const h of L.hills||[])add(h.d?'drift':'heap',h.c,h.r,(h.c+h.n/2)*TW); // (round 43)
-  for(const z of L.winds||[])add('wind',z.c,z.r,(z.c+z.n/2)*TW); // (round 44: its dust, streamers, grains, leaves and a gust window's sand; the hangings over it)
+  for(const z of L.winds||[])add('wind',z.c,z.r,(z.c+z.n/2)*TW);
+  for(const k of L.courts||[]){const x=(k.c0+k.c1+1)/2*TW;if(k.k==='well')add('lwell',k.c0,k.r,x);else add('court',k.c0,k.r,x);for(const [p0,p1] of k.pits)add('pool',p0,k.r,(p0+p1+1)/2*TW);if(k.k==='perg'){add('vine',k.c0,k.r,x);add('dapple',k.c0,k.r,x);}} // (round 45: the court beyond, a pool's water, the hanging vine, the dapple, a light well's shaft) // (round 44: its dust, streamers, grains, leaves and a gust window's sand; the hangings over it)
   for(const s of H.SN||[])add('snake',Math.floor(s.x/TW),Math.floor(s.y/TH),s.x,s.y);
   for(const g of H.G||[])add('guard',Math.floor(g.x/TW),Math.floor(g.y/TH),g.x,g.y);
   H.render();const vh=document.getElementById('game').height/H.XF.VZ;return {out,vw:H.viewW,vh,rows:L.rows,cols:C};}'''
@@ -85,7 +86,9 @@ GRIPS = {'shaftfoot'}  # (a kick shaft's chipped grips are cut into the right wa
 # out of Torchlight's bloom, so less of it glows onto the lip below: light, not a draw-over (with GLFX.bloom off the lips match: 0 of 132
 # heap views on floors 3-48 seed 2, against 4 with it; with the sky beams off and the bloom on, still 4). These kinds are measured with the
 # bloom held out of both frames. LS_FX=a,b (env) turns GLFX passes off for a whole run, for such diagnoses.
-NOBLOOM = {'heap', 'drift'}
+# (round 45) the pergola's dapple is light added on the floor's top face: in Torchlight's bloom it glows onto the lip below (floor 17 seed 2: 92
+# px with the bloom, 0 with GLFX.bloom off): light, not a draw-over, measured the same way.
+NOBLOOM = {'heap', 'drift', 'dapple'}
 
 
 def page(b, mode):

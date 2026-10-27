@@ -49,7 +49,7 @@ is a placeholder: only the built `index.html` carries the release number.
    machine's cores. Every job belongs to one of three suites by its group (`SUITES` in suite.py; a group in none stops the run before
    it starts): `play` (the bot and play checks: run2, featbot, p4bot, forktest, hinttest, grablabel, swingtest, liftkick, lowceil,
    r38b_tests, sawceil, primtest, hdtest, lifttest, respawnplates, slabresume, gratepeek), `gen` (generator and layout scans: metrics40,
-   guardscan, forkscan, puzzlescan, vertscan, featurescan, orphanscan, mazescan, wellcorr, lampscan, slabscan, sandshaft, wellscan, hillscan, windscan) and
+   guardscan, forkscan, puzzlescan, vertscan, featurescan, orphanscan, mazescan, wellcorr, lampscan, slabscan, sandshaft, wellscan, hillscan, windscan, courtscan) and
    `render` (drawing checks: rendersmoke, liftscan, crossscan, cpscan, shadowscan, doorscan, openscan, tilescan, stormfair, glauto,
    metaltest, rewindrooms, figscan). The tier chooses the jobs; `--suite play,render` runs only those suites, in that order (default
    all: play, gen, render). The suites run in sequence (owner): each has the whole pool of workers and GPU slots, finishes, writes and
@@ -97,6 +97,7 @@ is a placeholder: only the built `index.html` carries the release number.
 | `lampscan.py`, `slabscan.py`, `sandshaft.py`, `wellscan.py`, `figscan.py` | lamps keep clear (round 19); a slab slides up into stone (25d); every sand lift in a shaft (26e); the wells' sand (21b); the body's poses against v69 (round 23; only where `hk_v69_release.html` is) | `ok`, `slabscan: ok`, `sandshaft: ok`, `ok`, `figscan: ok` |
 | `hillscan.py lo hi [seeds]` | round 43's heaps and drifts: only on a run's plain floor (`flat` segs, never `breathe()`'s padding), off timed stretches, the chase and fighters' ground, a heap open above, sizes, themes; at least one a floor from floor 3; counts and the time they add | `hillscan: ok` |
 | `windscan.py lo hi [seeds] [nopush]` | round 44's wind: only on a run's plain floor, 3 cells (else 1) clear of every seg that is not plain floor (no generated jump in it), off timed stretches, the chase and fighters' ground, against the run, gusts only at a window from floor 13; at least one a floor from 3; he stands in every gust 9 s and stays in it | `windscan: ok` |
+| `courtscan.py lo hi [seeds] [nodrown]` | round 45's courts: 4-8 cells of headroom under stone (a light well 2), 7-8 a floor from floor 3, none on 1-2, never two in view (3 rows, 14 cells), none by a lift or door, kinds by theme, every one-storey spiked pit inside a court a pool (and every pool one), no window, arch or breach beam, own opening, wall lamp or hanging left inside one; a walk off a pool's coping drowns him at its surface | `courtscan: ok` |
 | `shadowscan.py lo hi` (release) | no figure's lamp shadow on what stands before the back wall, Torchlight (round 38a) | `shadowscan: ok` |
 | `doorscan.py lo hi`, `openscan.py lo hi`, `tilescan.py lo hi views=2` (release) | no wall art over a doorway (round 15), a window, gate or lift mouth (16c), a floor tile (35c), both modes | every count 0, `tilescan: ok` |
 
@@ -676,6 +677,29 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   `Snd.wind` (`windSnd`). Pure functions of the clock and hashes, nothing allocated a frame. Checks: windscan (in suite.py, gen), run2 3-48 x 2
   and fight 3-27 (0 damage), p4bot 6-27 x 2, forktest, featbot 276/276, figscan, lowceil, r38b, layerscan kinds=wind 3-48 x 2 both modes (0),
   layoutcmp, metrics40, hillscan. Pictures `egyptr44.py old=FILE` (r44_wind.png, r44_phone.png, r44_jump.png, r44_gust.gif, r44_jump.gif).
+- Courts (round 45, owner: outdoor play "as courts mixed into the halls ... a portico or pergola overhead is enough"; after r45's alternatives:
+  one kind per theme family, the pool as the courts' water, the light well for the interiors; `dev/docs/elements/courts.md`). A court is 4-8
+  cells of a corridor (part of a stretch) with headroom under stone whose back wall gives way to the sky: he walks the covered side of a court.
+  `L.courts` laid by `placeCourts` after the hills and before the wind from hashes only (no stream): `layoutcmp.py` against v86 same (144 of
+  144); tiles, features, path, lamps and windows untouched. 7 or 8 a floor from floor 3 (`CT_WANT` + a hash), never two in view (`CT_DR` 3 rows,
+  `CT_GAP` 14 cells), none by a lift (2) or door (3), over a kick shaft's foot, banner, lift or damaging drop. Kinds (`CT_KIND`): 'peri' a
+  closed-bud papyrus peristyle (Luxor, Medinet Habu; West, Blue, Hawara), 'perg' a vine pergola over a whitewashed garden wall, the canopy's edge
+  on the ceiling's face, tendrils hanging in front of him, dapple (Nebamun, Sennefer's arbour; Shali, Kerma), 'fore' a portico onto a court open
+  from the sill, its far side by look (`CT_FAR`: a Kushite pylon with pennants and ram sphinxes in Napata and Meroe, a mudbrick pylon in Garama,
+  a rock-cut cliff in the Well Corridors, Aksum's stelae behind a rubble-and-timber wall), 'well' a light well (a 2-cell recess lit from far
+  above, a shaft of light and motes; Nun, one Meroe court in three); Osiris takes peristyle or pergola by a hash a floor. Inside a court
+  `inOpening` holds: no window, arch, decor or hanging, its lamps free (`lampFree`); no sky beam from a court (`ctBox` in `ryOps`), broad `sky`
+  lights instead (`ctLights`, x0.5 in Torchlight). Layers: the cut and what stands on the back plane L1 (room picture, after the AO, `ctBack`),
+  the ceiling's face over it L3 (`ctOver`), the court beyond L0 (`ctBake`: three strips a kind, far side, look, hour, at f 0.7 / 0.18 / 0.5, the
+  Crossing's ground rule, moonlit rims by `crossRim`; `ctBg` in `drawBackdrop` under `G2D.na`, round 27b's and 25e's parallax), live pennants
+  in the wind. The pool (owner: "a fall into water kills"): a one-storey spiked pit inside a court off the route's way is a sunken pool (`L._ctP`,
+  stakes not drawn), water `CT_PD` 11 px under the coping, L2x (far half before the figures, near half and the cut at the front plane after,
+  down to the pit floor's lip), lotus, rings, `SHC` pool, relief rubbed (`ctRel`); falling through its surface is `die('drown')` (card "Drowned
+  in the pool", `Snd` splash) and he sinks: the one play change, the pit's own death a storey (53 px) sooner. The court's open side is a gust
+  source from floor 13 (`ctGustSrc`; a wind stretch holding a court takes the wind first); vine, pennants and dapple move with `windAt`.
+  Guards may fight in courts. No sky above the storey (the ceiling's stone stays a portico or canopy: opening it would need the rows above).
+  The arch dust (`LFX` archdust) softened (owner: "blotchy"): rotated, lower frequencies and a wide ramp. Checks: courtscan 1-48 x 3 ok (7.44-7.50 courts a floor on 13-48, 41 pools, a walk into a pool drowns at its surface; 1-60 seeds 4-6 ok), layoutcmp v86 same (144 of 144), metrics40 v86 identical (no flags), windscan ok (a court is a gust source; 237 stands), hillscan, lampscan, wellcorr, guardscan ok, doorscan 0 of 192, openscan 0 (windows 96, gates 89, lifts 422, both modes), tilescan 3-48 ok (0 of 2,020), run2 3-48 x 2 92/92 and fight 3-27 25/25 (0 damage), p4bot 6-27 x 2 44/44, forktest 39/39, featbot 276/276, primtest, hdtest, hinttest FAILURES 0, r38b ok, crossscan quick ok, layerscan kinds=court,pool,vine,dapple,lwell 3-48 x 2 both modes 0 (the dapple measured without the bloom, as the heaps: its light blooms onto the lip), kinds=lamp,wind,heap,drift 3-25: the 3 lamp flames over low ceilings are the same in the round 44 build, shadowscan 3-48 ok (0 of 1074, pool 0 of 12), rendersmoke 13-18 both ok (0.58-0.61 ms/frame mean against the round 44 build's 0.61, the same machine). Pictures
+  `egyptr45.py old=FILE` (r45_courts.png, r45_phone.png, r45_pool.png, r45_gust.gif, r45_vine.gif).
 - The sand lift's spike pit (round 41, owner: "The sand lifts become a trap: the sand drains, the door opens, but he has to jump, because the
   slab keeps going"; answers: missing it is death, every sand lift, off by a jump or a step; round 41b, owner: "let's simplify: put spikes at
   the bottom instead of being bottomless"). The slab does not stop at the foot: it sinks on at `SAND_LV` 140 px/s through the foot (now a hole,

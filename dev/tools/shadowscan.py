@@ -15,7 +15,7 @@
 # hoist beam, brace, hanger and sheave, him jumping up on the top landing), loop (the paternoster's level runs and wheels, him beside its
 # top and its foot), lamp (a lamp's flame and a free lamp's stand, the caster beyond him), sand (a well's sand after its slab broke, him
 # dropping beside it; a sand lift's column with the slab a storey up, him on the foot's landing), debris (a cracked slab or plank just
-# fallen), vent (the flame at the roar) and dart (one in flight). Round 43 adds heap and drift (him 40 px off its middle, on or in it). A kind the tested file does not record (an older build) takes its outlines
+# fallen), vent (the flame at the roar) and dart (one in flight). Round 43 adds heap and drift (him 40 px off its middle, on or in it). Round 45 adds pool (a court's pool, him on its coping) and vine (a pergola's hanging vine). A kind the tested file does not record (an older build) takes its outlines
 # from the ref build. Prints the counts per kind and 'shadowscan: ok'; a sheet of the worst
 # cases (shadowscan.png: shadow on | off | carve off). Run from dev/tools.
 import io, os, sys
@@ -28,7 +28,7 @@ REF = os.path.abspath(next((x[4:] for x in a if x.startswith('ref=')), os.path.j
 NUM = [int(x) for x in a if x.isdigit()]
 LO, HI = (NUM + [1, 48])[:2] if len(NUM) >= 2 else (1, 48)
 SEEDS = [int(s) for s in next((x for x in a if ',' in x and '=' not in x), str(NUM[2]) if len(NUM) > 2 else '1').split(',')]
-KINDS = next((x[6:] for x in a if x.startswith('kinds=')), 'slab,stakes,saw,pend,roof,clock,flask,liftslab,rope,sandslab,bar,rig,loop,lamp,sand,debris,vent,dart,heap,drift').split(',')
+KINDS = next((x[6:] for x in a if x.startswith('kinds=')), 'slab,stakes,saw,pend,roof,clock,flask,liftslab,rope,sandslab,bar,rig,loop,lamp,sand,debris,vent,dart,heap,drift,pool,vine').split(',')
 PER = int(next((x[4:] for x in a if x.startswith('per=')), '2'))
 OUT = next((x for x in a if x.endswith('.png')), os.path.join(HERE, 'shadowscan.png'))
 ERODE = 7  # device px (3.5 css px, 1.7 world px at this view: the quarter-size mask read blurred over a texel either side)
@@ -51,6 +51,8 @@ JS = r'''window.SHS=(()=>{const H=__HK,TW=32,SURF=r=>(r+1)*64-4,TS=7;
     // (round 42b) place(P,s): where he is instead of standing 40 px off (s the side); tq: the caster's distance beyond him (default 60)
     if(kind==='bar')dyn('bar').forEach(o=>{const f=o.f;out.push({x:f.x,r:o.r,ys:SURF(o.r),tq:24,place:(P,s)=>{f.ps=0;f.pw=0;P.x=f.x;P.y=f.y+57;P.vx=P.vy=0;P.state='air';P.autoGrab=true;P.face=s;P.fallY=P.y;H.tick(1);
       if(P.state==='swing'){P.swTh=0.95;P.swOm=0;const b=H.barPos(f);P.x=b.x+P.face*34*Math.sin(P.swTh);P.y=b.y+34*Math.cos(P.swTh)+24.5;}}});});
+    if(kind==='pool')(L.courts||[]).forEach(k=>k.pits.forEach(([a,b])=>out.push({x:(a+b+1)/2*TW,r:k.r,ys:SURF(k.r)}))); // (round 45: a court's pool, him on its coping)
+    if(kind==='vine')(L.courts||[]).forEach(k=>{if(k.k==='perg')out.push({x:(k.c0+k.c1+1)/2*TW,r:k.r,ys:SURF(k.r)});});
     if(kind==='rig')L.lifts.forEach(f=>{if(f.t==='lift'&&!f.sand)out.push({x:f.sc*TW+12.5,r:f.rT,ys:SURF(f.rT),dy:-26});});
     if(kind==='loop')L.lifts.forEach(f=>{if(f.t!=='chain')return;for(const c of [f.c0,f.c1])for(const top of [1,0]){const rr=top?f.rT:f.rB;if(rr===undefined)continue;out.push({x:c*TW+16,r:rr,ys:top?f.yT:SURF(rr),at:()=>c*TW+16});}});
     if(kind==='lamp')L.torches.forEach(q=>{if(!q.broken)out.push({x:q.c*TW+16,r:q.r,ys:SURF(q.r),keep:q});});

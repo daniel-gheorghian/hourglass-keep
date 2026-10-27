@@ -166,6 +166,7 @@ Details: [flasks and secrets](elements/flasks-and-secrets.md).
 | [spikes](elements/spikes.md) landed on or run into at over 35 px/s | death | |
 | [slicer jaws](elements/slicer-jaws.md) (`blade`) | death | |
 | [the dark](elements/the-dark.md) (`sand`, the old name) | death | |
+| a court's pool (`drown`, round 45): falling through its surface, 11 px under the walking floor | death (a storey sooner than the stakes under it) | |
 | fall 170 px or more | death | |
 | fall 100-169 px | 1 | |
 | sword | 1, knocked back 7 px | 0.3 s |

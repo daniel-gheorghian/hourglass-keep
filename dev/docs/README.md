@@ -40,6 +40,7 @@ may place it and which stream it may draw from.
 | [roof blocks](elements/roof-blocks.md) | the falling roof block and the fallen block he steps over |
 | [heaps and drifts](elements/heaps-and-drifts.md) | slowing terrain on plain runs: the rubble heap he clambers over, the sand drift he wades (round 43) |
 | [wind](elements/wind.md) | a headwind on plain runs, gusts at windows, the drifts' wind: slows the run and jumps into it; hangings billow, lamps gutter (round 44) |
+| [courts](elements/courts.md) | stretches open to the sky: a peristyle, a vine pergola, a pylon court, a light well; a court's spiked pit is a pool that drowns him (round 45) |
 | [movable blocks](elements/movable-blocks.md) | blocks he pushes and pulls |
 | [hurtdrop](elements/hurtdrop.md) | the damaging drop |
 | [gates](elements/gates.md) | the portcullis, the iron gate, the violet gate, the fork's grating, lift mouths as gates |
@@ -87,6 +88,7 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [roof blocks](elements/roof-blocks.md) | while hanging and falling | falling and lying carved (`SHC`) | `glRelRoofFall` (falling, as clipped), `glRelRoof` (lying) | no | footprint cut | block 255, rubble 251 | no | 1 life | stop at it / no |
 | [heaps and drifts](elements/heaps-and-drifts.md) | lit as the scene | carved (`SHC` heap, drift) | `hillRel` (hard-edged quads) | no | footprint kept off (alpha 255; Classic `ryStand`) | off (255) | no | no (slows him: 42 / 35 px/s; no jump in a drift) | stop at its edge |
 | [wind](elements/wind.md) | lamps in it flicker (`windGut`) | not carved (air) | `windRel` (billowing hangings) | no | lit as the scene | streamers 255 | no | no (slows him: 65 / 40 px/s, jumps into it shorter by its drag) | never posted near it |
+| [courts](elements/courts.md) | broad `sky` lights along it; lamps there free | L1 parts take it; pool and vine carved (`SHC` pool, vine); the sky none | stone as any wall; `ctRel` over a pool | no | no beam from a court | as the scene | no | a pool drowns him at its surface | allowed |
 | [movable blocks](elements/movable-blocks.md) | no | carved as a wall | `glRelFloors` | no | as a wall | 255 | yes, as a wall cell | no | blocked / no |
 | [hurtdrop](elements/hurtdrop.md) | no | no | from the room picture | no | no footprint in the hole | 251 marks | no | 1 life (the fall) | no / no |
 | [gates](elements/gates.md) | a timed gate's roundel | down slabs carved (`SHC`) | `glRelSlab` | iron gate only | no footprint; the grating's bars take one | slab 255 | portcullis and lift mouth slabs down | no (blocks only) | blocks guards; never pressed by them |
