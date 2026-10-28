@@ -120,4 +120,6 @@ No wear, no cut by walls (the slot stays inside its run).
 - Round 38b: gate timers checked against the bot's waits: no timed stretch holds a saw, so `estPath` needs no `saw` entry.
 - Round 38c: `sawceil.py` checks the conversion under a ceiling.
 - Round 39 (v84): its sparks are not drawn on a face (`onFace`); the layer audit found the slot clear of faces on every floor.
+- Round 46c (the contour rule): the teeth's edge is the steel darker and the hub's ring its bronze (`selC`), no longer the ink; the four
+  lightening holes are real holes (the wall seen through them, `destination-out` in the sprite). The slot and the hub's hole stay dark. Look only.
 - Details in CLAUDE.md.

@@ -65,7 +65,8 @@ puts the stone back in front.
   parts, a figure) is opaque over L0, L1 and farther L2: its pixels do not change when the back wall's art is flattened (`EGP.noart`), the
   backdrop changes, or a pass that lands on L1 or L2's air (the lamp shadow, the relief, the beams' haze, rim, pane and footprint, the mist and
   the looks, the caustics) is turned off. Light it gives or takes as a lit surface (the light map, the bloom, the fill) is not a draw-over.
-  Checked for heaps and drifts (`heapscan.py`); a test over the other solids (`solidscan`) is left to round 46c.
+  Checked for heaps and drifts (`heapscan.py`) and, since round 46c, for pushed blocks, fallen roof blocks, jambs, lifts and the sky clock
+  (`solidscan.py`: each one's drawn pixels inside its own box, a lift's shaft back left out as L1, `LIFT_DBG.noback`).
 - R6 one outline. Each solid L2 thing has one outline function that covers everything it draws, parts above its surface included (stones,
   blocks, a column's ends and edge band), as drawn this frame. Every pass that needs its outline takes that one: the lamp shadow's carve
   (`SHC`), the relief's rubbing, the beams' and mist's cut (`sandSegs`) and Classic's footprint and haze cut. A change to the drawing changes
@@ -83,7 +84,8 @@ The contour rule (round 46b, owner: "if you add contours or accents always use a
 lighter if light hits it - with some tinting of course"): an outline, seam or accent is never a fixed ink; it is the fill beside it, darker
 and moved toward the theme's shadow tint, or lighter toward the light's where the key light falls on that edge, opaque (`selOut`, see
 [rendering](rendering.md)). Holes, slots and voids keep their dark; where a thing meets the floor the darkest accent is a contact shadow.
-Round 46b applied it to the heaps and drifts; round 46c applies it everywhere.
+Round 46b applied it to the heaps and drifts; round 46c to every prop and the world's own edges (`selC`, `contourscan.py`); the figures are
+round 46d's.
 
 Approved exceptions: a court's jambs (round 45c, owner: "C, accepting the layering exception"): an L3 part in a cell that is not a wall, drawn live after the figures and the air (`ctJambs`), so it covers him and the guards as he passes behind it, never anything of another cell's face or lip (drawn exactly its own width); the prince's hands on a ledge while the wall hides the rest of him (round 19, `figClip` mode 2); the swing bar's
 timber end grain, 3 px proud of the lintel's face (round 18b); the lift mouth gratings, drawn after the shaft on the mouth's own
@@ -175,6 +177,7 @@ nearer stone in front of a live part (R1). Where a pass is left out of a row, th
 | `layerscan.py [file] [lo hi] [seeds] [torch\|classic\|both] [kinds=] [phases=K]` | R1 for everything live at its rest: each kind drawn and left out (`LAYER_DBG.hide`, lamps' drawn glows off in both frames), the front plane's pixels must not change; at K clock phases where a kind moves; guards at their posts | `layerscan: ok` |
 | `cpscan.py`, `liftscan.py`, `stairscan.py`, `doorscan.py`, `openscan.py`, `tilescan.py`, `shadowscan.py`, `beamwall.py` | R1 for the clock, lifts and the exit's climb; R2 for doors and openings; R3 for relief, shadows and beams | as in CLAUDE.md |
 | `heapscan.py [file] [lo hi] [seeds] [torch\|classic\|both]` | R5-R7 for heaps and drifts: their drawn pixels (eroded a world px) unchanged with the wall's art flattened, the beams, the lamp shadow or the relief off, both modes (the bloom held out) | `heapscan: ok` |
+| `solidscan.py [file] [lo hi] [seeds] [torch\|classic\|both] [per=K] [things=] [kinds=]` | R5-R7 for the other solids (round 46c): a pushed block, a fallen roof block laid down, a court's jambs, a lift at its foot (platform, counterweight, slabs, ropes), the sky clock; each one's pixels (the frame with it less without it, both with the wall's art flattened so a shade or a light on L1 is told from its own colour; inside its own box; eroded a world px) unchanged with the wall's art flattened, the beams (not the clock: air stands before it), the lamp shadow or the relief off, both modes | `solidscan: ok` |
 
 `layerscan.py` does not see what exists only in play (darts in flight, debris, dust, trails, the prince's states): round 39's pictures
 cover those (dead, crouched, hanging, pushing, dropping in, falling slabs and planks).
@@ -224,6 +227,6 @@ they hang flat on the back wall, so the shadow on the wall falls on them as on t
 
 Left as they are: the slab's top piece above the ceiling's edge over the lintel's side face (round 14, the owner's look); banners and
 the wall lamps' bodies taking the lamp shadow (flat on the back wall, above); additive glows over the sky raising Torchlight's
-alpha a little; the relief on lamp bodies and the clock; the vent's merged sheet drawn whole in front of him (it rises from the whole grate); the beam cut lagging a pushed
-block by up to 40 frames; hint streams and the descending cue's star brushing a face by a few px; the shadow, beam cut and fill cut at a
+alpha a little; the relief on lamp bodies (round 46c rubbed it off the clock, `glRelClock`); specks of a Torchlight beam's haze and of the relief on a fallen roof block lying (up to 4% of its pixels, round 46c's `solidscan.py` reports them as known) and the relief on a broken jamb's pieces on the floor; his lamp shadow on the edges of the sky clock's pedestal (solidscan, 8 of 94 clocks, up to 2.7% of its pixels: the carve's quarter-size mask read blurred); a lift's counterweight taking the lamp shadow and the haze (it runs in a channel in the back wall, L1); the vent's merged sheet drawn whole in front of him (it rises from the whole grate); the beam cut lagging a pushed
+block by up to 40 frames (Classic's haze cut follows the block as drawn since round 46c, `rySolids`); hint streams and the descending cue's star brushing a face by a few px; the shadow, beam cut and fill cut at a
 figure's play x, not its pressed x; glow sprites of lamps and the exit door, which are light (as the clock's room glow).

@@ -103,6 +103,25 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
 
+## What round 46c found
+
+The owner: "For the outline rule: apply it everywhere" ([rendering](rendering.md#contours-round-46b), round 46c's table). And R5-R7 of
+[layers](layers.md) tested past the heaps (`solidscan.py`). The figures are round 46d's.
+
+| Finding (v87) | Where | Round 46c | Seen in |
+|---|---|---|---|
+| Fixed near-black inks (`#0b0812`, a `K`, black at .45-.88) outlined or seamed nearly every prop: `contourscan.py` (Classic, floors 1-48 seed 1, three of each kind a floor) 222 bad kind-views: plates 71, flasks 37, xplates 18, lplates 13, gates 13, heaps 12, saws 10, lifts 9, cracked slabs 9, pendulums 7 (31% of their edge px), banners 5, chomps 4, darters 4, doors 3, drifts 3, clocks 2, closers 2 | 41 functions (lamps `drawLampEg`/`floorStand`, `flaskBody`, plates, closer, grating, `drawBlock`, `stoneBox`, `egSlabBody`, `sawSprites`, `drawDart`, `drawShooter`, `drawBar`, `barRope`, `drawPend`, `nutClock`, `drawHgPedestal`, `drawPlank`, `drawHeap`, `pairPlaque`, `drawJaws`, `drawBannerTile`, `drawHanging`, `backRope`, fallen lamps and cloths, `drawWindow`, `backCell`, `doorArch`, `drawBreaches`, `slab`, lift wheels, timbers, ropes, the sand lift's slab, stakes, `ctOver`, the vine, `drawJamb`) | about 140 inks to `selC`/`selOut` of the fill beside them (`#0b0812` in the source 113 to 42: figures, holes and slots, the debug looks behind `EGP`, the HUD); `contourscan: ok` (0 bad) | every prop |
+| The relief embossed the wall's art on the sky clock (Torchlight `solidscan.py`: 75 of 93 clocks over 0.5%, up to 34%; with the art flattened 64) | `glRelFloors` | `glRelClock` by its own shapes; 0 | checkpoint |
+| The sky beams' haze over solids across the depth: a fallen roof block lying (Torchlight 16 of 22, up to 98%; Classic 10 of 22, up to 71%), a pushed block (Torchlight 7 of 20, up to 61%; Classic 9 of 19), a court's jambs (Torchlight 10 of 92, up to 58%: L3), a lift's mouth slab and platform | the composite (`hlGate`), `ryBeams2D` | Torchlight: the scene alpha mark (`solidMark`, `jambMark`, `HILL_A`); Classic: `rySolids` cuts blocks and lying roof blocks out of the haze and the footprint; specks left (below) | roof blocks, movable blocks, courts, gates, lifts |
+| A jamb's shaded edge black at .55, and on a round column it and the lit edge stood beside the shaft on the wall | `drawJamb` | the jamb's material darker, opaque, hugging the shaft (`jambEdge`) | courts |
+| The relief on the lifts' ropes; the slab's groove up the back wall at .82 showing the wall's art; the saw's holes painted black | `glRelLifts`, `egSlabBody`, `sawSprites` | rubbed; opaque; real holes | lifts, gates, saws |
+
+`solidscan.py` (both modes, floors 1-48, two of each solid a floor): v87 206 of 547 frames fail; round 46c ok, with these reported as known
+up to a cap (`KNOWN`; `strict` fails them): Torchlight specks of beam and relief on a lying roof block (up to 4.2%), the relief on a broken
+jamb's pieces on the floor (2.4%), his shadow on the edges of the clock's pedestal (0.9%; widening the carve fails `shadowscan.py`, which
+masks the clock by it); Classic a footprint speck by a block's foot (1.3%) and on a lift's mouth slab (1%). Torchlight `contourscan.py
+torch` is noisier (lamp shadows and the dark beyond a lamp's reach: 3 of 147 kind-views on floors 9-13) and is not in the suite.
+
 ## What round 46b found
 
 The owner's heap (a B3 before an opening, the Waters of Nun at night: "it looks transparent, the background wall art seems drawn over it,
@@ -121,7 +140,7 @@ layering rules also"). New rules R5 solids, R6 one outline, R7 beams and solids 
 | C4's sand round a half-buried block a flat pale oval; B1's grit in the Blue Chambers in the faience blue | `hillBlocks`, `hillCols` | the drift's own shade rising to a lit lip; the blocks' limestone darkened | heaps and drifts |
 
 Left: a test of R5 over the other solids (`solidscan`: blocks, roof blocks, jambs, lift parts) and the contour rule on the older props
-(the audit's 131 fixed inks in 57 functions, the figures) are round 46c's.
+(the audit's 131 fixed inks in 57 functions, the figures) are round 46c's (done but the figures, round 46d's).
 
 ## What round 46a found
 

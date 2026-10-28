@@ -129,4 +129,6 @@ a plain rock polygon falling, and no lying block drawn (play is the same). Sand 
 - round 38b: the hit respects `P.inv` and gives 0.9 s, as `trapHit`.
 - round 39 (v84): the falling block, its sand and billow drawn only in the slot's hole and under the ceiling (`roofFallClip`), the hanging
   block's trickles cut at the next column's front plane; the `SHC` record from the hole's top; `glRelRoofFall`. Look only.
+- round 46c: `stoneBox`'s outline is its stone's base at .55 (`selC`), the slot's rim the ceiling's stone in shade; lying, the sky beams'
+  haze is cut from it in Classic (`rySolids`) and left off it in Torchlight (`solidMark`), layers.md R7; `solidscan.py`. Look only.
 Details in CLAUDE.md.

@@ -142,4 +142,5 @@ is: the top piece over the lintel's side face (round 14's look; the owner's call
 - round 26a: the top piece in the ceiling's shade.
 - round 38a: down slabs (portcullis, lift and sand lift mouths) carved out of the lamp shadow (`SHC`); lift mouth slabs block beams (`blkSlab`); the shader tests 8 blockers; the fork's grating takes a footprint on its bars (`fpMarkGrate`).
 - round 39 (v84): the far half and slots cut at a floor's lip beside the lintel; `glRelSlab` from the ceiling's edge. Look only.
+- round 46c: the slab's outline is its stone in shade (`selC`), the groove up the back wall opaque (the wall's art showed in it at .82); a slab that is down takes no sky beam in Torchlight (`solidMark`, the scene alpha `HILL_A`, layers.md R7; `solidscan.py`). Look only.
 - Details in CLAUDE.md (Themes, 16c, 20a, 20b, 25d, 26a, Forks, Trap density).

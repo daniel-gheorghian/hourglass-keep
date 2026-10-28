@@ -163,4 +163,6 @@ slab takes its neighbours' support, repeated until none fails. Planks are never 
 - round 38b: a falling slab respects `P.inv` (none while it runs, a hit gives 0.9 s), as every trap.
 - round 39 (v84): a corridor's falling slab, its pieces and billow, and a falling plank cut by the faces and slabs beside the hole
   (`debrisCut`); the landing cloud by `airCut`. Look only.
+- round 46c: the cracked slab's cracks, the missing chip and the gaps at its seams are its own stone in deep shade (`selC(th.top, .4-.45)`),
+  opaque; they were black at .85-.88 (the contour rule). Look only.
 - Details in CLAUDE.md (Themes: 16a, Sand wells 21b/26d/30, 35b, 35c).

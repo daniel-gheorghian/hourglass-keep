@@ -50,7 +50,7 @@ is a placeholder: only the built `index.html` carries the release number.
    it starts): `play` (the bot and play checks: run2, featbot, p4bot, forktest, hinttest, grablabel, swingtest, liftkick, lowceil,
    r38b_tests, sawceil, primtest, hdtest, lifttest, respawnplates, slabresume, gratepeek), `gen` (generator and layout scans: metrics40,
    guardscan, forkscan, puzzlescan, vertscan, featurescan, orphanscan, mazescan, wellcorr, lampscan, slabscan, sandshaft, wellscan, hillscan, windscan, courtscan) and
-   `render` (drawing checks: rendersmoke, liftscan, crossscan, cpscan, shadowscan, doorscan, openscan, tilescan, beamjag, heapscan, stormfair, glauto,
+   `render` (drawing checks: rendersmoke, liftscan, crossscan, cpscan, shadowscan, doorscan, openscan, tilescan, beamjag, heapscan, solidscan, contourscan, stormfair, glauto,
    metaltest, rewindrooms, figscan). The tier chooses the jobs; `--suite play,render` runs only those suites, in that order (default
    all: play, gen, render). The suites run in sequence (owner): each has the whole pool of workers and GPU slots, finishes, writes and
    prints its summary with its own wall time, then the next starts; `--stop-on-fail` skips the suites still to run once one fails
@@ -64,7 +64,7 @@ is a placeholder: only the built `index.html` carries the release number.
    are skipped and reported with the rest, and the suites carry on in sequence (a failed job in the journal stays failed). The bot and render
    runs are split one floor (and seed) per job; each of the N workers (`suiteworker.py`) starts ONE Chromium and runs its jobs
    in turn, each in a fresh browser context, so nothing leaks between jobs. The test scripts are unchanged and still run
-   standalone. Jobs that draw Torchlight (`HEAVY` in suite.py: rendersmoke, liftscan, crossscan torch, cpscan, shadowscan, doorscan, openscan, tilescan, beamjag, heapscan) run in a second shared browser per worker launched with the GPU flags (`--use-angle=metal --enable-gpu --ignore-gpu-blocklist --force_high_performance_gpu`: WebGL through ANGLE on Metal, the Radeon; without flags headless Chromium draws WebGL in SwiftShader on the CPU, several cores a frame), at most four at a time (`HK_GPU_JOBS`, default 4). Measured idle on the 8-core i9 (Radeon Pro 5500M), software against GPU: `liftscan.py 15 20` 495 s (100 CPU-min) against 83 s (2), `shadowscan.py 13 18` 533 s against 127 s; eight shadowscans at once 285 s each, 4.9 min in all, four at a time 150 s each, 5.2 min at 40% less CPU. `HK_SUITE_GPU=0` runs them in software as before, `HK_SUITE_GPU=igpu` on the Intel UHD 630. The light render jobs stay in software: a 2D canvas drawn on the Radeon is not bit-exact between two redraws (rewindrooms finds 13 values off). The GPU shows one fault software hides: shadowscan's sky clock on floor 29 seed 1 (c367 r57, 125 px of his shadow, both GPUs; the clocks on floors 10 and 22 fail either way). A job over its 25-minute limit, or one that kills its browser, fails with a message and the worker is replaced.
+   standalone. Jobs that draw Torchlight (`HEAVY` in suite.py: rendersmoke, liftscan, crossscan torch, cpscan, shadowscan, doorscan, openscan, tilescan, beamjag, heapscan, solidscan) run in a second shared browser per worker launched with the GPU flags (`--use-angle=metal --enable-gpu --ignore-gpu-blocklist --force_high_performance_gpu`: WebGL through ANGLE on Metal, the Radeon; without flags headless Chromium draws WebGL in SwiftShader on the CPU, several cores a frame), at most four at a time (`HK_GPU_JOBS`, default 4). Measured idle on the 8-core i9 (Radeon Pro 5500M), software against GPU: `liftscan.py 15 20` 495 s (100 CPU-min) against 83 s (2), `shadowscan.py 13 18` 533 s against 127 s; eight shadowscans at once 285 s each, 4.9 min in all, four at a time 150 s each, 5.2 min at 40% less CPU. `HK_SUITE_GPU=0` runs them in software as before, `HK_SUITE_GPU=igpu` on the Intel UHD 630. The light render jobs stay in software: a 2D canvas drawn on the Radeon is not bit-exact between two redraws (rewindrooms finds 13 values off). The GPU shows one fault software hides: shadowscan's sky clock on floor 29 seed 1 (c367 r57, 125 px of his shadow, both GPUs; the clocks on floors 10 and 22 fail either way). A job over its 25-minute limit, or one that kills its browser, fails with a message and the worker is replaced.
    `run2`, `featbot`, `p4bot`, `forktest` and `rendersmoke` also fail a run whose page CPU time per game frame is over budget
    (`slowguard.py`, 0.3 ms/frame; healthy runs are 0.02 to 0.1), naming the floor and seed: a leak like v41's particles shows
    up as a failure, not as a long wait. `HK_MS_PER_FRAME` and `HK_RUN_WALL` override the budgets.
@@ -101,6 +101,8 @@ is a placeholder: only the built `index.html` carries the release number.
 | `shadowscan.py lo hi` (release) | no figure's lamp shadow on what stands before the back wall, Torchlight (round 38a) | `shadowscan: ok` |
 | `beamjag.py [file] [lo hi]` | no staircases in the sky beams (round 46a, rules S1-S7): static (highp where world positions are read, no `NEAREST` on the beams' textures), then every theme at every hour and the forced cases (low ceiling, floor shadow, blocker, prince, sand in a beam), both modes, `GLP.rs` 1, .75, .5 and Battery saver | STEP <= 0.012 (0.03 saver), `beamjag: ok` |
 | `heapscan.py [file] [lo hi] [seeds] [torch\|classic\|both]` (release) | heaps and drifts are opaque solids (round 46b, `dev/docs/layers.md` R5-R7): each hill's drawn pixels (the frame with it less without it, eroded a world px) unchanged with the back wall's art flattened, the sky beams, the lamp shadow or the relief off, both modes, the bloom held out; floors 3-48 x 2 seeds in four GPU jobs | `heapscan: ok` |
+| `solidscan.py [file] [lo hi] [seeds] [torch\|classic\|both] [per=K] [things=]` (release) | the other solids are opaque too (round 46c, layers.md R5-R7): a pushed block, a fallen roof block laid down, a court's jambs, a lift at its foot, the sky clock: drawn pixels (inside its own box, a lift's shaft back left out) unchanged with the wall's art flattened, the beams (not the clock), the lamp shadow or the relief off, both modes; floors 1-48 in four GPU jobs | `solidscan: ok` |
+| `contourscan.py [file] [lo hi] [seeds] [torch\|classic] [kinds=] [per=K] [figures]` (release) | the contour rule (round 46c): no prop's edge a fixed near-black ink; each kind's edge pixels (a world px in from its outline) under 60 are within 40 levels of `selOut` (k .45-1.15) of its fill 2-3.5 px in, under 2% failing a view (and 80 px); Classic, floors 1-48 in four light jobs; the figures reported only (round 46d) | `contourscan: ok` |
 | `doorscan.py lo hi`, `openscan.py lo hi`, `tilescan.py lo hi views=2` (release) | no wall art over a doorway (round 15), a window, gate or lift mouth (16c), a floor tile (35c), both modes | every count 0, `tilescan: ok` |
 
 Run by hand, not in `suite.py`: `layoutcmp.py` (layouts identical against a release, for look-only rounds; a generator round differs on
@@ -145,6 +147,23 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   of the trap density rule G1; `metrics39.py` is the old v38/v39 comparison).
 - Changes to feel or level design are usually asked for with research first: how the Prince of Persia
   games (and other games) handled it. Report what a change was based on, with sources.
+- Contours and accents (round 46, owner: "as a rule, if you add contours or accents always use a darker shade of the pixels that are closer
+  to the edge or lighter if light hits it - with some tinting of course"; "For the outline rule: apply it everywhere"). An edge, seam or
+  accent line is never a fixed ink: it is the fill on its inner side at the line, darker and moved toward the theme's shadow tint,
+  `selOut(c,k) = mix(c, theme.lo, 0.28 (1-k)/0.45) k` (k < 1), or lighter toward the light's tint where the key light (`keyLight` sx) or
+  light from above falls on it (k > 1, toward warm white by 1.5 (k-1)); opaque. k .55-.65 a silhouette edge in shade, .68-.75 an inner groove
+  or seam, 1.05-1.12 a lit edge, .42-.5 a hole's rim or a void's edge in a solid. `selOut(c,k)` takes `[r,g,b]`, `selC(css,k)` a CSS colour
+  (cached per theme tint, colour and k: nothing allocated a frame). Near-black stays only for real holes, slots, voids and interiors, the
+  dark, the HUD; translucent darker marks (wear, cracks, grit) may stay; where a thing meets the floor the darkest accent is a contact
+  shadow, not a line. Every prop and the world's edges since round 46c; the figures (the prince, guards, snakes, skeleton) are round 46d's.
+  `contourscan.py` checks it (rendering.md "Contours").
+  Round 46c also extends round 46b's solids (layers.md R5-R7) past the heaps: a slab that is down (portcullis, lift and sand lift mouths),
+  a fallen roof block lying, a pushed block, a lift's platform and paternoster slabs and a court's jambs take the scene alpha mark in
+  Torchlight (`solidMark`, `jambMark`, `HILL_A` 253: the composite leaves the sky beams' S and M passes off them, `hlGate`); Classic cuts
+  blocks and lying roof blocks out of the haze (`rySolids`, `RYSO`); the relief is rubbed off the sky clock (`glRelClock`) and the lifts'
+  ropes (`glRelLifts`); the slab's groove up the back wall is opaque. `solidscan.py` checks them; `LIFT_DBG.noback` leaves a lift's shaft back and counterweight (L1) out of its frames. Pictures
+  `egyptr46c.py old.html new.html [outdir]` (r46c_props_<mode>.png: each prop changed, three themes and hours, v87 | 46c at 3x;
+  r46c_phone_<n>.png).
 
 ## Conventions in the code
 
@@ -576,7 +595,7 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   (limit `X+TW-HX`), Classic's footprint over the clock and lamp stands (`ryStand`), one gate's slot. Side effect: in a kick shaft the
   corridor at mid-depth is 24 px, narrower than his planted pose, so the walls cut him (measured in round 42a: 60 px a planted frame, up to
   174; round 42a's chimney fits him between them). Left as they are (listed in
-  layers.md): the slab's top piece over the lintel's side face (round 14), glows over the sky, the relief on lamps and the clock, passes at
+  layers.md): the slab's top piece over the lintel's side face (round 14), glows over the sky, the relief on lamps (round 46c rubbed it off the clock), passes at
   a figure's play x (round 42b fixed the swing bar's near pole, the uncarved standing things and the vent's back row). `LAYER_DBG` (`hide` a Set of kinds, `glow` false) and `setGT` serve `layerscan.py [file] [lo hi] [seeds] [torch|classic|both]
   [kinds=] [phases=K]`: each kind drawn and left out at its rest, the front plane's pixels must not change; must print `layerscan: ok`.
   Look only: layouts identical, hit boxes, timing and the bot unchanged.

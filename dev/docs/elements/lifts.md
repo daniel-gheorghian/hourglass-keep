@@ -222,4 +222,8 @@ round the slab's screen shape (`liftMouthCut`) so the slab stands on it; see [pl
   its own depth and comes up through it, with a puncture where it breaks through (`drawNeedles`, see [spikes](spikes.md)). Look only;
   pictures `egyptr41e.py` (r41e_spikes.png, r41e_spikes.gif).
 
+Round 46c: every rope's, timber's, wheel's and sling's edge by the contour rule (`barRope`, `liftTimber`, `liftWheelWood`, `ropeSeize`,
+`selC`); Torchlight's relief rubbed off the ropes too (`glRelLifts`); `solidscan.py` measures a lift at its foot with its shaft back (L1)
+left out (`LIFT_DBG.noback`). Look only.
+
 Details in CLAUDE.md.

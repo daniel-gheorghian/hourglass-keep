@@ -115,4 +115,7 @@ stone texture, no wear and no per-block variation; the same shapes in every styl
 - (round unknown) the Grab button names the action: Push, Pull or Grab (`grabLabel`, `blockCanMove`; `grablabel.py`).
 - round 35c: the relief is rubbed back over a pushed block (`glRelFloors`); `tilescan.py` checks its top.
 - round 39 (v84): figures pressed and cut at a moving block's drawn face (`wallRows`), not its two cells. Look only.
+- round 46c: its outline, face rim, courses and chipped corner by the contour rule (`selC` of its side, face and wall stone); the sky beams'
+  haze is cut from its top and side in Classic (`rySolids`; its front face is its cell's wall face) and left off it in Torchlight
+  (`solidMark`); `solidscan.py`. Look only.
 Details in CLAUDE.md.

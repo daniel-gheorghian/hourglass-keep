@@ -585,10 +585,35 @@ with some tinting of course" (Lospec's selective outlines, sel-out, hue shifting
 `selTint()`, the theme's `lo`): c the fill on the line's inner side as `[r, g, b]`; k < 1 darker, moved toward the theme's shadow tint by
 `0.28 (1 - k) / 0.45` and scaled by k; k > 1 lighter, toward the light's tint `lt` (warm white by default) by `1.5 (k - 1)`, at most half;
 opaque. k about .55-.65 for a silhouette edge in shade, .68-.75 for an inner groove or seam, 1.05-1.12 for an edge the key light (`keyLight`
-sx, or a top lit from above) falls on. `stoneBox`'s `o.ink` takes it (default the old ink until round 46c). Not lines: holes, slots, voids
+sx, or a top lit from above) falls on. `stoneBox`'s `o.ink` takes it (default its stone's base at .55 since round 46c). Not lines: holes, slots, voids
 and interiors keep their dark; where a thing meets the floor or another thing the darkest accent is a contact shadow; small translucent
 marks (wear, cracks, grit) may stay. Round 46b: the heaps' stones and blocks (`selOut(stone, .5)`), the B1/B2 crest (`selOut` of the
 mound, lit where its slope faces the light), B3's column (its edge band, flutes, joint and end), a buried end's tongue.
+
+Round 46c (owner: "For the outline rule: apply it everywhere") applies it to every prop and the world's own edges; the figures are round
+46d's. `selC(c, k)` is `selOut` for a CSS colour, cached per theme tint, then per colour and k (a prop drawn every frame allocates nothing once
+its inks exist; the cache is cleared past 4096 colours). The k used:
+
+| k | For | Where (round 46c) |
+|---|---|---|
+| .42-.5 | a hole's rim or a void's edge in a solid (a window's reveal, a vent or slot's rim in the wall, a chip, a crack, a lion spout's bore and eye) | `drawWindow`, `backCell`'s vent, `egRoofSlot`'s rim, the cracked slab's cracks, chip and seams, `drawShooter`, `drawHgPedestal`'s chips, `liftTimber`'s rot |
+| .5-.62 | a silhouette edge in shade: the outline of a thing against what is behind it | lamps (`drawLampEg` `O()`, `floorStand`), flasks (the bulb by its liquid, the neck by its glass), plates, closer, grating, pushed block, roof blocks (`stoneBox` default), portcullis and mouth slabs (`egSlabBody`), saw, darts, lion spouts, swing bar, pendulum, plank, chunks on a jammed plate, the sky clock (Nut, the earth, the sun's ring, the pedestal), banners and hangings (by the cloth's ground), rods, ropes (`barRope`, `ropeSeize`, the paternoster's loop), lift wheels and timbers, the sand lift's slab, stakes, gate pair plaques, jaws, doors' frames (`doorArch`), the breaches' broken edge, a floor slab's open ends, a jamb's shaded edge, fallen lamps and cloths, the courts' architraves |
+| .62-.75 | an inner groove, seam, joint or ring | a block's courses, the closer's grooves, the courts' log rings and beam ends, the stones' incised marks, the vine's tendrils, rawhide turns |
+| 1.05-1.12 | an edge the key light or light from above falls on | (lit lips already drawn as lit strokes: round 46b's crest and column) |
+
+Kept near-black, by the rule: holes, slots and voids (the saw's slot and hub hole, the gate slots, the grating's shaft, the vent's grate, a
+rope hole, the counterweight's drilled hole, the kick shaft's grips, a lamp's filling hole, the roundel's recess), the dark (storm), the HUD,
+far silhouettes in a window's view, the iron of the dungeon's fittings (a material, not a line); the debug looks behind `EGP` off (v61's lamps,
+gates, iron lifts) and the unused clock concepts. The saw's lightening holes are now real holes (the wall seen through them). Translucent dark
+marks (wear, cracks, grit, a translucent shade over the form) stay. `contourscan.py` checks it (below).
+
+`contourscan.py [file] [lo hi] [seeds] [torch|classic] [kinds=] [per=K] [figures] [dump=DIR]` (suite.py render, release, four light jobs): each
+kind framed, drawn and left out (`LAYER_DBG.hide`; lamps' glows, a drift's sand stream and the wind's dust held out); its pixels the difference
+less an even darkening (its shadow); edge pixels those within a world px of its outline; an edge pixel fails when its brightest channel is
+under 60 and it is more than 40 levels on a channel from `selOut` (k .45 to 1.15) of the mean of its pixels 2 to 3.5 world px in, within 4
+world px; a kind is bad in a view when over 2% of its judged edge pixels fail and at least 80 canvas px do (a slot's own dark where it meets an
+edge, 77 px under a saw's blade, stays under it). Figures are a group reported only (`figures`; round 46d turns them on). Floors 1-48 seed 1,
+Classic, three instances of each kind a floor: v87 FAIL (see README "What round 46c found"), round 46c ok.
 
 ## Checklist
 
@@ -601,7 +626,8 @@ A new element drawn live over the room picture must:
 | have every palette key it reads in every palette that reaches it (`silPal`, `guardPal`, `PAL_HERO`, `PAL_SKEL`) | a missing key throws inside `figDraw`; the silhouette goes null and its shadow, beam cut, metal carve and fill cut with it | 27c |
 | record its outline in `SHC` as drawn (`shcBeg` ... `shcEnd`, thin parts 1.2 px wider) if it stands in front of the back wall, so `glMask` carves it out of the lamp shadow; check with `shadowscan.py` | otherwise a figure's shadow is painted across its face | 19 walls, 20a low ceilings, 37b jaws, 38a the rest |
 | have ONE outline function covering everything it draws (stones, blocks, ends, edge bands above its body), used by every pass that needs it (SHC, relief rubbing, `sandSegs`, Classic's cuts), and be tested by its drawn pixels (the frame with it less the frame without it), never by that outline ([layers](layers.md) R5-R7; `heapscan.py`) | an outline that misses a part leaves the shadow, the relief and the beams on that part, and a test masked by the same outline cannot see it | 46b heaps |
-| draw its contours and accents by the contour rule (`selOut`, below): never a fixed near-black ink | a fixed ink reads as a cut-out or, under haze, as a coloured wire | 46b heaps |
+| draw its contours and accents by the contour rule (`selOut`, `selC`, below): never a fixed near-black ink; check with `contourscan.py` | a fixed ink reads as a cut-out or, under haze, as a coloured wire | 46b heaps, 46c every prop |
+| if it is a solid across the corridor's depth, keep the beams off it (Torchlight: `solidMark`/`hillMark`, the scene alpha `HILL_A`; Classic: `rySolids` or `sandSegs`) and the relief (`glRel*`); check with `solidscan.py` | otherwise the beams' haze and the back wall's art lie over it | 46b heaps, 46c blocks, roof blocks, slabs, jambs, the clock |
 | add a quad to `beamBlockers` if it stands across the corridor's depth | otherwise a beam passes through it and its haze lies over it | 20a, 38a lift mouth slabs |
 | call `fpMark` if it lies flat on the floor's face (or mark only its solid parts, as `fpMarkGrate`) | otherwise its opaque pixels refuse the beam's footprint (255) | 35b, 38a grating |
 | keep off the sky: draw under `G2D.na` only full-view effects that are not things; never read the scene's alpha with a new dst-alpha blend on the main scene | the composite reads that alpha for the fill, shadows and floor marks | 25c |
