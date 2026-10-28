@@ -145,6 +145,7 @@ for each guard in view (not gone; out of view a live one's press g.rdx is reset 
 | Death | where he was last drawn (`g.rdx`: v83 dropped the press, so a pressed guard snapped up to 20 px into the face as he died), cut by the faces within 28 px (`deadCut`), the crumbling and the sand heap too, and a falling grain is not drawn where the stone in front hides it (`midHid`; round 39); lies still `DISS.t0` 1.1 s, then crumbles over `DISS.dur` 1.0 s: a ranked noise eats the body, a sand-coloured band at the edge, grains stream onto a heap that slumps, puffs and fades (`dissGrains`, `sandHeap`, `sandDraw`). Torchlight's WGL path does the threshold on the GPU in up to four slots (`F._diss`); else two small canvases by `putImageData`. With `DISS.on` false: a fade from 1.1 to 1.9 s and a puff |
 | Dropping in | while `drop` (a reinforcement or an ambush falling 74 px, about 0.46 s), drawn and its silhouette made (shadow, beam cuts) only below the ceiling's lower edge: a wall's foot, or under the storey above's floor slab its lip's foot (`dropCeil`, round 39: it came down over the ceiling's stone for about 0.35 s) |
 | Lit outline | the low-detail figures' lit rim (New characters off) is the prince's only (owner 2026-10-16: on guards it read as an outline) |
+| Contours (round 46d) | every outline `selC` of the shaded fill at the line (`FIG_K` .58: skin, linen, the head cloth, the cap, the corselet, the weapon's wood or bronze), never v87's fixed `#120c18`/`#0b0812`; the corselet's straps .62 and its lit strap 1.12, the cap's lit rim 1.15; the skeleton's bones by `BONE.shade` (its sockets, nose hole and teeth stay dark: holes); the snake by its shade (`SNK.shade`), its slit pupil and nostril dark of their own; the silhouettes (`o.mono`) unchanged |
 | Snake (`drawSnakeHD`) | a tapered shaded body, pale belly, dark diamonds (`SNK`), a viper's head with a slit pupil, jaws open on the strike, an S-curve as it rears, a flicking tongue; contact shadow and key light with Lit characters; fades 0.9 s when killed (green sparks). `drawSnake` with New characters off |
 
 ## Light, shadows and effects
@@ -184,6 +185,7 @@ for each guard in view (not gone; out of view a live one's press g.rdx is reset 
 | Guards only at meaningful spots (exit, after a gate or puzzle, a fork's short way, the ambush, the garrison); `guardscan.py` must print `guardscan OK` | unit GB |
 | Every key `drawFigureHD` reads for a robber must exist in every `GUARD_PAL` rank, or the silhouette is null (no shadow, beams over him) | round 27c (`PAL_GSIL` lacked `khat`) |
 | Robbers never grow with the prince: they draw `R23DR` | round 24 |
+| An outline on a guard, skeleton or snake is `selC` of the fill beside it, never a fixed ink (`contourscan.py` kinds guard, snake) | round 46d |
 | Rank reads by colour; no guard in the prince's blue or white | `GUARD_PAL` comment |
 | A new fighter that should cast a shadow or cut the beams must be added to `GLCH` (`glMask`), `glcOcc`, the metal carve, `fillCut`, `ryBeams2D`'s figure list and the relief's `glRelEx` rubbings | effect mask code |
 | Look only: the robbers' dress, weapons and dissolve leave reach, timing and the bot unchanged | rounds 7, S3-A |
@@ -198,6 +200,8 @@ for each guard in view (not gone; out of view a live one's press g.rdx is reset 
 - round 24: robbers keep `R23DR` (v70's widths) whatever the prince's bulk.
 - round 25f: guards follow their poses with the prince's overlap (`LAGM`).
 - round 27c: silhouettes in each figure's own palette (`silPal`): robbers cast shadows and cut the beams again.
+- round 46d: the contour rule on the robbers, the skeleton and the snakes, both levels of detail; `contourscan.py` judges guards and snakes
+  (floors 1-48: guards v87 2 of 132 views bad, 0 now; snakes 0 of 105 both, their dark green hid the ink). Look only: silhouettes identical.
 - round 28b: soft figure shadows down the beams' haze (guards share it).
 - round 37b: the jaws carved out of every figure's shadow.
 - round 38a: what stands in front of the back wall (`SHC`) carved out of every figure's shadow.

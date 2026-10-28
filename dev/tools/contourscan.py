@@ -1,10 +1,10 @@
-# contourscan.py [file.html] [lo hi] [seeds] [torch|classic] [kinds=a,b] [per=K] [figures] [dump=DIR]: the contour rule (round 46, owner: "as a rule,
+# contourscan.py [file.html] [lo hi] [seeds] [torch|classic] [kinds=a,b] [per=K] [nofigures] [dump=DIR]: the contour rule (round 46, owner: "as a rule,
 # if you add contours or accents always use a darker shade of the pixels that are closer to the edge or lighter if light hits it - with some
 # tinting of course"; "apply it everywhere"; dev/docs/rendering.md "Contours"). An edge is never a fixed near-black ink: it is the fill beside
 # it, darker and moved toward the theme's shadow tint (selOut k < 1), or lighter toward the light's tint where light hits it (k > 1).
 # For each floor lo..hi (default 1-48) and seed (default 1), views are chosen to cover every instance of each kind (layerscan.py's list: a
 # feature's type in L.dyn, 'lamp', 'door', 'clock', 'block', 'flask', 'lift', 'jamb', 'heap', 'drift'; the figures 'guard', 'snake',
-# 'prince' only with `figures`, reported and never failing until round 46d); each view is drawn whole and with one kind left out
+# 'prince', judged as the props since round 46d (reported only in 46c; `nofigures` leaves them out); each view is drawn whole and with one kind left out
 # (LAYER_DBG.hide; lamps' drawn glows out of both, the clock frozen, him out of view; a drift's sand stream and the wind's dust, air, held out
 # as heapscan.py does). The kind's pixels are those that differ (sum of
 # channels > 30), less an even darkening (its shadow on the floor or wall: every channel down by the same ratio, as heapscan.py). Its edge
@@ -27,11 +27,11 @@ LO, HI = (NUM[0], NUM[1]) if len(NUM) >= 2 else (1, 48)
 SEEDS = [int(s) for s in next((x for x in a if ',' in x and '=' not in x), str(NUM[2]) if len(NUM) > 2 else '1').split(',') if s]
 MODE = 'torch' if 'torch' in a else 'classic'
 KINDS = next((x[6:].split(',') for x in a if x.startswith('kinds=')), None)
-FIGS = 'figures' in a
+FIGS = 'nofigures' not in a
 DUMP = next((x[5:] for x in a if x.startswith('dump=')), None)
 PER = int(next((x[4:] for x in a if x.startswith('per=')), '3'))  # (up to K instances of each kind a floor, spread along it)
 DARK, NEAR, SHARE, MINPX = 60, 40, 0.02, 80
-FIGURES = {'guard', 'snake', 'prince'}  # (round 46d turns them on)
+FIGURES = {'guard', 'snake', 'prince'}  # (round 46d: judged with the same thresholds as the props)
 SKIP = {'low', 'hurtdrop', 'trigger', 'jgrab', 'shaftfoot', 'sanctum', 'well', 'chain'}  # (no outline of their own: a low ceiling is the room picture's; a kick shaft's grips are holes in the wall; sand; a well's slabs are 'loose')
 
 LIST = r'''([n,sd,kinds,figs])=>{const H=__HK;window.__HKfreeze=true;const L=H.load(n,sd,false),C=L.cols,TW=32,TH=64,out=[];
@@ -46,7 +46,9 @@ LIST = r'''([n,sd,kinds,figs])=>{const H=__HK;window.__HKfreeze=true;const L=H.l
   for(const h of L.hills||[])add(h.d?'drift':'heap',h.c,h.r,(h.c+h.n/2)*TW);
   for(const k of L.courts||[]){add('jamb',k.c0,k.r,k.c0*TW);add('jamb',k.c1,k.r,(k.c1+1)*TW);}
   if(figs){for(const s of H.SN||[])add('snake',Math.floor(s.x/TW),Math.floor(s.y/TH),s.x,s.y);for(const g of H.G||[])add('guard',Math.floor(g.x/TW),Math.floor(g.y/TH),g.x,g.y);
-    add('prince',L.start.c===undefined?Math.floor(L.start.x/TW):L.start.c,L.start.r,L.start.x+40,S(L.start.r));}
+    // (round 46d) him on the start's row where no wall stands in his cell or beside it, so no face cuts him (a cut is not his outline)
+    const sr=L.start.r,clr=x=>{const c=Math.floor(x/TW);for(let d=-1;d<=1;d++){const q=c+d;if(q<0||q>=L.cols||L.base[sr*L.cols+q]===2)return false;}return true;}; // (2: WALL)
+    const px=[40,-40,72,-72,104,-104,8].map(d=>L.start.x+d).find(clr);const ppx=px===undefined?L.start.x+40:px;add('prince',Math.floor(ppx/TW),sr,ppx,S(sr));}
   H.render();const vh=document.getElementById('game').height/H.XF.VZ;return {out,vw:H.viewW,vh,lo:L.theme.lo,th:H.themeName(n)};}'''
 
 VIEW = r'''([n,sd,cx,cy,kinds,px,lo,DARK,NEAR,dump])=>{const H=__HK;window.__HKfreeze=true;for(const id in H.HINTS)H.S.hints[id]=1;
@@ -146,9 +148,8 @@ if __name__ == '__main__':
             open(os.path.join(DUMP, 'cs_%s_%s_%d.png' % (MODE, k, n)), 'wb').write(base64.b64decode(png.split(',')[1]))
     nbad = 0
     for k, s in sorted(stats.items()):
-        fig = k in FIGURES
-        if not fig: nbad += s['bad']
-        print('%-7s %-9s views %4d  bad %3d  edge px %8d  failing %5.2f%%  worst %5.1f%%%s  %s' % (MODE, k, s['views'], s['bad'], s['e'], 100 * s['f'] / max(1, s['e']), 100 * s['worst'], ' (figures: reported, round 46d)' if fig else '', '; '.join(s['where'])))
+        nbad += s['bad']
+        print('%-7s %-9s views %4d  bad %3d  edge px %8d  failing %5.2f%%  worst %5.1f%%  %s' % (MODE, k, s['views'], s['bad'], s['e'], 100 * s['f'] / max(1, s['e']), 100 * s['worst'], '; '.join(s['where'])))
     if errs: print('errors', errs[:3])
     print('contourscan: %s (%d bad kind-views, floors %d-%d, seeds %s, %s, %.0f s)' % ('ok' if nbad == 0 and not errs and stats else 'FAIL', nbad, LO, HI, ','.join(map(str, SEEDS)), MODE, time.time() - t0))
     sys.exit(0 if nbad == 0 and not errs and stats else 1)

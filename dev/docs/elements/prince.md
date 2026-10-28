@@ -119,6 +119,11 @@ Parts worth knowing: the shendyt gets a seat point `KS` once both hips flex (all
 bronze in two bevels with a bright edge, guard, grip and pommel (round 20b; steel only for a palette without `egy`), sheathed at the hip when
 not drawn (`hasSword`); the khopesh is the captain's (and the page-only dresses A, B, C). Low-detail figures (`drawFigure`) do not draw `p.ox`/`p.oy`.
 
+Contours (round 46d, the owner's contour rule, [rendering](../rendering.md#contours-round-46b)): every outline is `selC` of the shaded fill at
+the line (`FIG_K` .58: the skin's shade on the body and limbs, the linen's on the shendyt, the hair's on the crop, the gold's on the belt,
+the blade's bronze), never v87's fixed `#120c18`; seams and folds lighter (.62-.84), the eye and the kohl the skin's deepest shade (.42). The
+silhouette (`o.mono`) is unchanged.
+
 What cuts him:
 
 | Cut | Code | When |
@@ -190,6 +195,7 @@ Classic's beam cut and `fillCut`. The sword shows in it only while drawn at a fo
 | A new thing standing in front of the back wall must be carved out of the shadow mask: record its outline in `SHC` as drawn | `JAWP` in `glMask`; `SHC`, `shcCarve`, `shadowscan.py` | rounds 37b, 38a |
 | Nothing he carries lights the sky: a new full-screen draw after `drawDynamic` stays under `G2D.na`; no dst-alpha blend may read the scene's alpha | the pale halo that went with him over openings | round 25c |
 | Never key a look on a flickering radius or the one nearest light | `keyLight` | round 20b |
+| An outline, seam or accent on a figure is `selC` of the fill beside it (`FIG_K` .58 for the silhouette), never a fixed ink; near-black only for a hole; `contourscan.py` must print `contourscan: ok` | `cel`, `tcel`, `BS(path, shade)` | round 46d |
 | A canvas he is drawn into and redrawn every frame is marked `_glv=1`, so Torchlight takes it again each frame | `PTB` (`drawPTint`), `SHUT` (`drawShut`) | unit WGL |
 | A new move needs: a clip (or IK), its `case` in `updatePlayer`'s pose switch, `LAGM` if it should overlap, a bot action if the generator lays it, `figscan.py` | | FIGURE_SPEC "How to add or change a move" |
 
@@ -216,5 +222,7 @@ Classic's beam cut and `fillCut`. The sword shows in it only while drawn at a fo
   wall shows; in a kick shaft he is drawn in the middle and cut by both walls (his head loses about 4 px). Look only.
 - round 42a: in a kick shaft he is drawn as a climber in a chimney, back and foot (`chimPose`, `chimBrace`, `chimLeg`, session `P.chm`,
   drawn facing `P.dF`, clip `chimClip`); his silhouette's uses take his drawn x there (`chimSX`). Look only.
+- round 46d: the contour rule on the figure: each outline the shade of the fill beside it (`FIG_K`), both levels of detail; `contourscan.py`
+  judges him (standing clear of walls, floors 1-48: v87 32 of 48 views bad, 0 now). Look only: the silhouettes identical.
 
 Details in CLAUDE.md and `dev/FIGURE_SPEC.md`.

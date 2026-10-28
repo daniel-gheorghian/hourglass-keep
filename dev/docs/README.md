@@ -103,6 +103,16 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
 
+## What round 46d found
+
+The owner's contour rule ("apply it everywhere") on the figures, which round 46c left ([rendering](rendering.md#contours-round-46b), round
+46d's table).
+
+| Finding (v87) | Where | Round 46d | Seen in |
+|---|---|---|---|
+| Every figure outlined in one fixed near-black ink stroked under its fills (`#120c18`; `#0b0812` in the low-detail figures): the white shendyt, the gold belt, the linen of the robbers' kilts, the head cloths, the pale bones read as cut out. `contourscan.py` (Classic, floors 1-48 seed 1, the figures now judged; the prince standing clear of walls): prince 32 of 48 views bad (6.4% of his edge px failing, worst 19.2%), guards 2 of 132 (worst 7.1%), snakes 0 of 105 (the dark green hid it) | `cel`, `tcel`, the groups' outlines (`BS`), `cropCap`, the belt, the fillet, the blades (`khopesh`, `robWeapon`, the straight blade, the skeleton's), `drawSkeletonHD`'s knobs and ribs, `drawFigure`, `drawSnake` | each outline `selC` of the shaded fill at the line (`FIG_K` .58); seams, folds and muscle lines `selC` of their part (.62-.84), lit rims 1.12-1.15, the eye and kohl the skin's shade at .42; holes (the skull's), the snake's pupil and nostril stay dark. `contourscan: ok` (prince 0, guards 0, snakes 0); 120 mono silhouettes identical to v87's | prince, guards and snakes |
+| `contourscan.py` placed the prince 40 px past the start door whatever stood there: on floors 12, 33 and 37 among others a wall's face cut him and the cut was judged as his outline (46d with the old placement: 2 bad views, both such cuts) | `contourscan.py` | he stands on the start's row where no wall is in his cell or beside it | the test |
+
 ## What round 46c found
 
 The owner: "For the outline rule: apply it everywhere" ([rendering](rendering.md#contours-round-46b), round 46c's table). And R5-R7 of

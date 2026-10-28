@@ -102,7 +102,7 @@ is a placeholder: only the built `index.html` carries the release number.
 | `beamjag.py [file] [lo hi]` | no staircases in the sky beams (round 46a, rules S1-S7): static (highp where world positions are read, no `NEAREST` on the beams' textures), then every theme at every hour and the forced cases (low ceiling, floor shadow, blocker, prince, sand in a beam), both modes, `GLP.rs` 1, .75, .5 and Battery saver | STEP <= 0.012 (0.03 saver), `beamjag: ok` |
 | `heapscan.py [file] [lo hi] [seeds] [torch\|classic\|both]` (release) | heaps and drifts are opaque solids (round 46b, `dev/docs/layers.md` R5-R7): each hill's drawn pixels (the frame with it less without it, eroded a world px) unchanged with the back wall's art flattened, the sky beams, the lamp shadow or the relief off, both modes, the bloom held out; floors 3-48 x 2 seeds in four GPU jobs | `heapscan: ok` |
 | `solidscan.py [file] [lo hi] [seeds] [torch\|classic\|both] [per=K] [things=]` (release) | the other solids are opaque too (round 46c, layers.md R5-R7): a pushed block, a fallen roof block laid down, a court's jambs, a lift at its foot, the sky clock: drawn pixels (inside its own box, a lift's shaft back left out) unchanged with the wall's art flattened, the beams (not the clock), the lamp shadow or the relief off, both modes; floors 1-48 in four GPU jobs | `solidscan: ok` |
-| `contourscan.py [file] [lo hi] [seeds] [torch\|classic] [kinds=] [per=K] [figures]` (release) | the contour rule (round 46c): no prop's edge a fixed near-black ink; each kind's edge pixels (a world px in from its outline) under 60 are within 40 levels of `selOut` (k .45-1.15) of its fill 2-3.5 px in, under 2% failing a view (and 80 px); Classic, floors 1-48 in four light jobs; the figures reported only (round 46d) | `contourscan: ok` |
+| `contourscan.py [file] [lo hi] [seeds] [torch\|classic] [kinds=] [per=K] [nofigures]` (release) | the contour rule (rounds 46c, 46d): no prop's or figure's edge a fixed near-black ink; each kind's edge pixels (a world px in from its outline) under 60 are within 40 levels of `selOut` (k .45-1.15) of its fill 2-3.5 px in, under 2% failing a view (and 80 px); Classic, floors 1-48 in four light jobs; the figures (guard, snake, the prince standing clear of walls) judged alike since round 46d | `contourscan: ok` |
 | `doorscan.py lo hi`, `openscan.py lo hi`, `tilescan.py lo hi views=2` (release) | no wall art over a doorway (round 15), a window, gate or lift mouth (16c), a floor tile (35c), both modes | every count 0, `tilescan: ok` |
 
 Run by hand, not in `suite.py`: `layoutcmp.py` (layouts identical against a release, for look-only rounds; a generator round differs on
@@ -155,8 +155,10 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   or seam, 1.05-1.12 a lit edge, .42-.5 a hole's rim or a void's edge in a solid. `selOut(c,k)` takes `[r,g,b]`, `selC(css,k)` a CSS colour
   (cached per theme tint, colour and k: nothing allocated a frame). Near-black stays only for real holes, slots, voids and interiors, the
   dark, the HUD; translucent darker marks (wear, cracks, grit) may stay; where a thing meets the floor the darkest accent is a contact
-  shadow, not a line. Every prop and the world's edges since round 46c; the figures (the prince, guards, snakes, skeleton) are round 46d's.
-  `contourscan.py` checks it (rendering.md "Contours").
+  shadow, not a line. Every prop and the world's edges since round 46c; the figures since round 46d (the prince, the robbers and the
+  captain, the skeleton, the snakes, both levels of detail: each outline `selC` of the shaded fill at the line, `FIG_K` .58; seams and folds
+  .62-.84, the eye and kohl the skin's deepest shade .42, lit edges 1.12-1.15; the silhouettes, `o.mono`, unchanged; the dark's jackal stays
+  black). `contourscan.py` checks it (rendering.md "Contours").
   Round 46c also extends round 46b's solids (layers.md R5-R7) past the heaps: a slab that is down (portcullis, lift and sand lift mouths),
   a fallen roof block lying, a pushed block, a lift's platform and paternoster slabs and a court's jambs take the scene alpha mark in
   Torchlight (`solidMark`, `jambMark`, `HILL_A` 253: the composite leaves the sky beams' S and M passes off them, `hlGate`); Classic cuts
@@ -164,6 +166,9 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   ropes (`glRelLifts`); the slab's groove up the back wall is opaque. `solidscan.py` checks them; `LIFT_DBG.noback` leaves a lift's shaft back and counterweight (L1) out of its frames. Pictures
   `egyptr46c.py old.html new.html [outdir]` (r46c_props_<mode>.png: each prop changed, three themes and hours, v87 | 46c at 3x;
   r46c_phone_<n>.png).
+  Round 46d's pictures `egyptr46d.py old.html new.html [outdir]` (r46d_figs_<mode>.png: the prince standing, running, hanging, crawling and
+  on guard, the four ranks on guard, the skeleton and a snake, on a dark stretch and by a lamp on floors 10, 22 and 34, v87 | 46d at 3x;
+  r46d_lowdetail.png; r46d_phone_<n>.png).
 
 ## Conventions in the code
 

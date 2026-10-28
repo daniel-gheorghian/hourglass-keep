@@ -2287,9 +2287,14 @@ function litTint(hex,col,k){const kq=Math.round(k*10)/10;if(!col||kq<=0)return h
   const n=parseInt(hex.slice(1),16),c=col.split(',').map(Number),kk=kq*0.45,ch=(a,b)=>Math.round(a+((255-(255-a)*(255-b)/255)-a)*kk);
   v='#'+((1<<24)|(ch(n>>16,c[0])<<16)|(ch((n>>8)&255,c[1])<<8)|ch(n&255,c[2])).toString(16).slice(1);if(tintCache.size>600)tintCache.clear();tintCache.set(key,v);return v;}
 // odd shapes: shadow tone, then the base tone shrunk and nudged toward the light, then a smaller lamp-tinted tone
+// The figures' contour (round 46d, the owner's contour rule on the figures: "apply it everywhere"): every outline of a figure (the prince,
+// the robbers, the captain, the skeleton, the snakes, both levels of detail) is the fill on its inner side at the line, its shaded tone,
+// darker by FIG_K and moved toward the theme's shadow tint (selC), never the fixed near-black ink (#120c18, #0b0812) it was to v87. The
+// silhouettes (o.mono: shadow, beam cut, metal carve, fill cut, the hit flash) draw the same paths in one colour: geometry unchanged
+const FIG_K=0.58;
 function cel(ctx,path,base,shadow,o,fo){ // (fo: fill only, its outline already laid with its group)
   if(o.mono){if(fo)return;ctx.fillStyle=o.mono;ctx.fill(path);ctx.strokeStyle=o.mono;ctx.lineWidth=1.2;ctx.stroke(path);return;}
-  if(!fo){ctx.strokeStyle=o.out;ctx.lineWidth=1.25;ctx.stroke(path);}
+  if(!fo){ctx.strokeStyle=selC(shadow,FIG_K);ctx.lineWidth=1.25;ctx.stroke(path);}
   ctx.fillStyle=shadow;ctx.fill(path);
   const cx=o._cx,cy=o._cy,ux=o._lx,uy=o._ly;
   ctx.save();ctx.translate(cx+ux*0.5,cy+uy*0.5);ctx.scale(0.82,0.82);ctx.translate(-cx,-cy);ctx.fillStyle=base;ctx.fill(path);ctx.restore();
@@ -2300,7 +2305,7 @@ function smoothLoop(P){const p=new Path2D(),n=P.length,M=i=>{const a=P[i%n],b=P[
   const m0=M(n-1);p.moveTo(m0[0],m0[1]);for(let i=0;i<n;i++){const m=M(i);p.quadraticCurveTo(P[i][0],P[i][1],m[0],m[1]);}p.closePath();return p;}
 function tcel(ctx,pts,ws,base,shadow,o){const path=tubePath(pts,ws);
   if(o.mono){ctx.fillStyle=o.mono;ctx.fill(path);ctx.strokeStyle=o.mono;ctx.lineWidth=1.2;ctx.stroke(path);return;}
-  ctx.strokeStyle=o.out;ctx.lineWidth=1.25;ctx.stroke(path);ctx.fillStyle=shadow;ctx.fill(path);
+  ctx.strokeStyle=selC(shadow,FIG_K);ctx.lineWidth=1.25;ctx.stroke(path);ctx.fillStyle=shadow;ctx.fill(path);
   const ux=o._lx,uy=o._ly;
   ctx.fillStyle=base;ctx.fill(tubePath(pts.map(q=>[q[0]+ux*0.38,q[1]+uy*0.38]),ws.map(w=>Math.max(0.5,w-1.0))));
   if(o._lk>0.05){ctx.fillStyle=litTint(base,o._lc,o._lk);ctx.fill(tubePath(pts.map(q=>[q[0]+ux*1.0,q[1]+uy*1.0]),ws.map(w=>Math.max(0.4,w-2.3))));}}
@@ -2328,7 +2333,7 @@ function drawFigureHD0(ctx,x,y,face,p,pal,o){
   if(o.sq){ctx.translate(0,s.hipH);ctx.scale(1/o.sq,o.sq);ctx.translate(0,-s.hipH);} // squash (<1) / stretch (>1) about the feet
   if(o.alpha!==undefined)ctx.globalAlpha=o.alpha;
   ctx.lineCap='round';ctx.lineJoin='round';
-  const lt=o.lt,ldx=lt?lt.dir*face:1,lln=Math.hypot(ldx,0.75),O=Object.assign({},o,{out:o.mono||'#120c18',_lx:ldx/lln,_ly:-0.75/lln,_lk:lt?lt.k:0,_lc:lt?lt.col:null});
+  const lt=o.lt,ldx=lt?lt.dir*face:1,lln=Math.hypot(ldx,0.75),O=Object.assign({},o,{_lx:ldx/lln,_ly:-0.75/lln,_lk:lt?lt.k:0,_lc:lt?lt.col:null});
   const t=o.time||0,vx=(o.vx||0)*face,vy=o.vy||0;
   // wind in figure space: cloth streams away from the direction of travel and lifts when falling
   const wind=[-vx/110,-vy/260+0.25];
@@ -2370,7 +2375,7 @@ function drawFigureHD0(ctx,x,y,face,p,pal,o){
   // 1989 game's rotoscoped figure, limbs and trunk read as one body: each group (a limb and its hand or foot; the torso, the neck and
   // the front arm's outer edge) lays its outline first and then its fills, so the joins carry no capsule seams; over the body the front
   // arm keeps only a soft contour in its own shade, and none at the shoulder. The skeleton, poses, hit boxes and timing are unchanged.
-  const BS=path=>{if(O.mono){ctx.fillStyle=O.mono;ctx.fill(path);ctx.strokeStyle=O.mono;ctx.lineWidth=1.2;ctx.stroke(path);}else{ctx.strokeStyle=O.out;ctx.lineWidth=1.25;ctx.stroke(path);}};
+  const BS=(path,c)=>{if(O.mono){ctx.fillStyle=O.mono;ctx.fill(path);ctx.strokeStyle=O.mono;ctx.lineWidth=1.2;ctx.stroke(path);}else{ctx.strokeStyle=selC(c,FIG_K);ctx.lineWidth=1.25;ctx.stroke(path);}}; // (c: the fill at the outline, its shaded tone)
   const BT=(path,pts,ws,base,shadow)=>{if(O.mono)return;ctx.fillStyle=shadow;ctx.fill(path);const ux=O._lx,uy=O._ly; // (tcel's fills)
     ctx.fillStyle=base;ctx.fill(tubePath(pts.map(q=>[q[0]+ux*0.38,q[1]+uy*0.38]),ws.map(w=>Math.max(0.5,w-1.0))));
     if(O._lk>0.05){ctx.fillStyle=litTint(base,O._lc,O._lk);ctx.fill(tubePath(pts.map(q=>[q[0]+ux*1.0,q[1]+uy*1.0]),ws.map(w=>Math.max(0.4,w-2.3))));}};
@@ -2383,13 +2388,13 @@ function drawFigureHD0(ctx,x,y,face,p,pal,o){
     const pts=[r1,U(RD.du||0.22,0.25),U(0.56,0.35),e,V(0.3,0.2),V(0.86,0)],ws=LN?RD.arm:RD.armR; // deltoid, biceps, above the elbow, elbow, forearm, wrist (round 23: ANSUR II's girths, R23D; round 24: past 1.28 the biceps' point RD.du moves down the arm, so the bigger deltoid tapers to its insertion instead of standing as a ball)
     const hp=new Path2D();if(fist)hp.ellipse(h[0],h[1],1.5,1.35,0,0,Math.PI*2);else hp.ellipse(h[0]+ex/de*0.45,h[1]+ey/de*0.45,1.65,1.2,Math.atan2(ey,ex),0,Math.PI*2); // a hand along the forearm; a fist round a weapon
     return {pts,ws,path:tubePath(pts,ws),hp,hc:[h[0]+ex/de*0.3,h[1]+ey/de*0.3]};};
-  const arm=(sh,e,h,base,shade,a,G,so)=>{if(EG){const pre=!!G;G=G||armG(sh,e,h,a,false,so);if(!pre){BS(G.path);BS(G.hp);}
-      if(!O.mono){if(pre){ctx.strokeStyle=shadeHex(shade,-0.4);ctx.lineWidth=0.9;ctx.stroke(tubePath(G.pts.slice(2),G.ws.slice(2)));ctx.stroke(G.hp);} // over the body: a soft contour, none at the shoulder
-        celAt(ctx,G.hp,base,shade,O,G.hc[0],G.hc[1],1);BT(G.path,G.pts,G.ws,base,shade);sheen(G.pts[1],G.pts[2],1.0);if(MH)musDelt(G,shadeHex(shade,-0.3));}} // the hand, then the arm over the wrist; the sheen on the upper arm
+  const arm=(sh,e,h,base,shade,a,G,so)=>{if(EG){const pre=!!G;G=G||armG(sh,e,h,a,false,so);if(!pre){BS(G.path,shade);BS(G.hp,shade);}
+      if(!O.mono){if(pre){ctx.strokeStyle=selC(shade,0.62);ctx.lineWidth=0.9;ctx.stroke(tubePath(G.pts.slice(2),G.ws.slice(2)));ctx.stroke(G.hp);} // over the body: a soft contour, none at the shoulder
+        celAt(ctx,G.hp,base,shade,O,G.hc[0],G.hc[1],1);BT(G.path,G.pts,G.ws,base,shade);sheen(G.pts[1],G.pts[2],1.0);if(MH)musDelt(G,selC(shade,0.7));}} // the hand, then the arm over the wrist; the sheen on the upper arm
     else tcel(ctx,[sh,e,h],[3.5,2.9,2.2],base,shade,O);
     if(FULL&&!O.mono){const bd=(a,b,u,w)=>{const m=[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u],dx=b[0]-a[0],dy=b[1]-a[1],d=Math.hypot(dx,dy)||1;ctx.strokeStyle=pal.band;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(m[0]-dy/d*1.9,m[1]+dx/d*1.9);ctx.lineTo(m[0]+dy/d*1.9,m[1]-dx/d*1.9);ctx.stroke();};
       bd(sh,e,0.42,1.1);bd(e,h,0.78,0.9);} // a gold armlet on the upper arm, a bracelet at the wrist
-    if(!EG){const hp=new Path2D();hp.ellipse(h[0],h[1],1.35,1.2,0,0,Math.PI*2);if(O.mono){ctx.fillStyle=O.mono;ctx.fill(hp);}else{ctx.strokeStyle=O.out;ctx.lineWidth=1.1;ctx.stroke(hp);ctx.fillStyle=base;ctx.fill(hp);}}};
+    if(!EG){const hp=new Path2D();hp.ellipse(h[0],h[1],1.35,1.2,0,0,Math.PI*2);if(O.mono){ctx.fillStyle=O.mono;ctx.fill(hp);}else{ctx.strokeStyle=selC(base,FIG_K);ctx.lineWidth=1.1;ctx.stroke(hp);ctx.fillStyle=base;ctx.fill(hp);}}};
   const legG=(f,k)=>{const d=Math.hypot(k[0],k[1])||1,qx=k[1]/d,qy=-k[0]/d,sx=f[0]-k[0],sy=f[1]-k[1],sd=Math.hypot(sx,sy)||1,bx=-sy/sd,by=sx/sd,S=(u,o2)=>[k[0]+sx*u+bx*o2,k[1]+sy*u+by*o2];
     const pts=[[0,0],[k[0]*0.45+qx*0.4,k[1]*0.45+qy*0.4],[k[0]*0.8+qx*0.3,k[1]*0.8+qy*0.3],k,S(0.3,0.9+(RD.cb||0)),S(0.62,0.3),S(0.9,0)],ws=LN?RD.leg:RD.legR; // the thigh (fuller in front), the knee, the calf (fuller behind), the ankle (round 23: ANSUR II's girths, R23D)
     return {pts,ws,path:tubePath(pts,ws)};};
@@ -2399,7 +2404,7 @@ function drawFigureHD0(ctx,x,y,face,p,pal,o){
     if(EG){const G=legG(f,k); // bare legs; the foot under the leg's fill, so the ankle has no seam; a sandal: a flat sole, a thong
       const sp=new Path2D(),M=(dx,dy)=>sp.moveTo(...X(dx,dy)),Ln=(dx,dy)=>sp.lineTo(...X(dx,dy)),Q=(a,b,c,d)=>sp.quadraticCurveTo(...X(a,b),...X(c,d));
       {const fk=LN?RD.fk:RD.fk*1.08;M(-2.2*fk,0.4);Q(-2.5*fk,-2.1,-0.2*fk,-2.3);Q(2.4*fk,-1.6,5.8*fk,-0.6);Q(6.8*fk,0.0,6.0*fk,0.6);Ln(-1.4*fk,0.6);}sp.closePath();
-      BS(G.path);BS(sp);celAt(ctx,sp,base,shade,O,...X(2.6,-0.4),1);BT(G.path,G.pts,G.ws,base,shade);
+      BS(G.path,shade);BS(sp,shade);celAt(ctx,sp,base,shade,O,...X(2.6,-0.4),1);BT(G.path,G.pts,G.ws,base,shade);
       sheen(G.pts[4],G.pts[5],1.0); // the calf's sheen
       if(FULL&&!O.mono){ctx.strokeStyle=boot;ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(...X(-2.3,1.1));ctx.lineTo(...X(6.6,1.1));ctx.stroke();ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(...X(0.2,-1.8));ctx.lineTo(...X(4.4,0.4));ctx.stroke();}
       return;}
@@ -2458,13 +2463,13 @@ function drawFigureHD0(ctx,x,y,face,p,pal,o){
         f0=In(cF,cK),k0=In(cK,cF),f1=S2(In(TF,TK)),k1=S2(In(TK,TF)),fm=lp(S2(f0),f1,0.5),kq=S2(lp(lp(cK,TK,0.5),RB(NJ.km),nq)),km=In(kq,fm),bm=[(f0[0]+k0[0])/2-ax2*0.5,(f0[1]+k0[1])/2-ay2*0.5];
         const kd=lp([-ax2*0.8,-ay2*0.8],[(RB(NJ.bk[2])[0]-bK[0])*0.6,(RB(NJ.bk[2])[1]-bK[1])*0.6],nq),k2=[k0[0]+kd[0],k0[1]+kd[1]]; // (k2: the back edge runs on a little past C7, along the trunk's line, so the corner is not rounded in)
         return smoothLoop([f0,fm,f1,S2([tc[0]+ax2*2,tc[1]+ay2*2]),k1,km,k0,k2,bm]);},NP=NKP(0,0,0);
-    FA=armG(s.sh,s.eF,s.hF,aDF,!!o.sword,o.sword?0:p.soF);BS(TP);BS(NP);BS(FA.path);BS(FA.hp);
+    FA=armG(s.sh,s.eF,s.hF,aDF,!!o.sword,o.sword?0:p.soF);BS(TP,D('tunic'));BS(NP,D('skin'));BS(FA.path,D('skin'));BS(FA.hp,D('skin'));
     if(!O.mono){const base=C('tunic'),sd=D('tunic'),sg=O._lx>=0?1:-1,Lo=i=>sg>0?fo[i]:-bo[i],Do=i=>sg>0?-bo[i]:fo[i];
       ctx.fillStyle=base;ctx.fill(TP);
       const shp=[];for(let i=1;i<=n8;i++)shp.push(pt(i,Do(i)));for(let i=n8;i>=1;i--)shp.push(pt(i,Do(i)+(Lo(i)-Do(i))*0.34));ctx.fillStyle=sd;ctx.fill(smoothLoop(shp)); // the shaded plane
       const kk=[0,0,0,0,0.2,0.36,0.42,0.38,0.3],lp2=[];for(let i=3;i<=n8;i++)lp2.push(pt(i,Lo(i)));for(let i=n8;i>=3;i--)lp2.push(pt(i,Lo(i)+(Do(i)-Lo(i))*kk[i]));
       ctx.fillStyle=O._lk>0.05?litTint(shadeHex(base,0.1),O._lc,O._lk):shadeHex(base,0.14);ctx.fill(smoothLoop(lp2)); // the lit plane
-      if(MH)musLine(shadeHex(sd,-0.3),TG.sp(0.735,TG.F(0.735)-0.3),TG.sp(0.75,TG.F(0.75)-1.0),TG.sp(0.8,TG.F(0.8)-1.6),MH*0.8*(1-TG.ra)); // (round 23b: the pectoral's lower border)
+      if(MH)musLine(selC(sd,0.7),TG.sp(0.735,TG.F(0.735)-0.3),TG.sp(0.75,TG.F(0.75)-1.0),TG.sp(0.8,TG.F(0.8)-1.6),MH*0.8*(1-TG.ra)); // (round 23b: the pectoral's lower border)
       ctx.fillStyle=D('skin');ctx.fill(NP);ctx.fillStyle=C('skin');ctx.fill(NKP(O._lx*0.38,O._ly*0.38,1.0)); // (BT's fills, on the cut shape)
       if(O._lk>0.05){ctx.fillStyle=litTint(C('skin'),O._lc,O._lk);ctx.fill(NKP(O._lx,O._ly,2.3));}}}
   else tcel(ctx,tp,tw,C('tunic'),D('tunic'),O);
@@ -2476,13 +2481,13 @@ function drawFigureHD0(ctx,x,y,face,p,pal,o){
       ctx.fillStyle='#e0b64a';ctx.beginPath();ctx.arc(c1[0]+nx*4.4,c1[1]+ny*4.4,1.3,0,6.2832);ctx.fill();ctx.strokeStyle='#a87a20';ctx.lineWidth=0.5;ctx.beginPath();ctx.arc(c1[0]+nx*4.0,c1[1]+ny*4.0,0.9,0.3,2.6);ctx.stroke();}}
   else if(EG&&!O.mono){ // a plain neckline (the bare-chested robbers have none); the captain's corselet: rows of leather
     if(!pal.bare){const c0=at(0.98),c1=at(0.84);ctx.fillStyle=C('skin');ctx.beginPath();ctx.moveTo(c0[0]+nx*4.0,c0[1]+ny*4.0);ctx.lineTo(c1[0]+nx*4.6,c1[1]+ny*4.6);ctx.lineTo(c0[0]+nx*1.4,c0[1]+ny*1.4);ctx.closePath();ctx.fill();}
-    if(pal.corselet){ctx.strokeStyle=shadeHex(C('tunic'),-0.4);ctx.lineWidth=0.6;for(const u of [0.42,0.55,0.68]){const m=at(u);ctx.beginPath();ctx.moveTo(m[0]-nx*4.4,m[1]-ny*4.4);ctx.lineTo(m[0]+nx*5.2,m[1]+ny*5.2);ctx.stroke();}
-      const sh2=at(0.95),wb=at(0.3);ctx.strokeStyle=shadeHex(C('tunic'),0.25);ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(sh2[0]-nx*1.5,sh2[1]-ny*1.5);ctx.lineTo(wb[0]+nx*3.5,wb[1]+ny*3.5);ctx.stroke();}}
+    if(pal.corselet){ctx.strokeStyle=selC(C('tunic'),0.62);ctx.lineWidth=0.6;for(const u of [0.42,0.55,0.68]){const m=at(u);ctx.beginPath();ctx.moveTo(m[0]-nx*4.4,m[1]-ny*4.4);ctx.lineTo(m[0]+nx*5.2,m[1]+ny*5.2);ctx.stroke();}
+      const sh2=at(0.95),wb=at(0.3);ctx.strokeStyle=selC(C('tunic'),1.12);ctx.lineWidth=0.9;ctx.beginPath();ctx.moveTo(sh2[0]-nx*1.5,sh2[1]-ny*1.5);ctx.lineTo(wb[0]+nx*3.5,wb[1]+ny*3.5);ctx.stroke();}}
   else if(!O.mono){ // open collar and trim along the vest's front edge
     const c0=at(0.98),c1=at(0.7);ctx.fillStyle=C('skin');ctx.beginPath();ctx.moveTo(c0[0]+nx*4.2,c0[1]+ny*4.2);ctx.lineTo(c1[0]+nx*5.3,c1[1]+ny*5.3);ctx.lineTo(c0[0]+nx*1.2,c0[1]+ny*1.2);ctx.closePath();ctx.fill();
     ctx.strokeStyle=pal.trim||'#d8b04a';ctx.lineWidth=0.9;ctx.beginPath();const e0=at(0.2),e1=at(0.72);ctx.moveTo(e0[0]+nx*4.4,e0[1]+ny*4.4);ctx.quadraticCurveTo(e1[0]+nx*5.8,e1[1]+ny*5.8,c1[0]+nx*5.2,c1[1]+ny*5.2);ctx.lineTo(c0[0]+nx*4.2,c0[1]+ny*4.2);ctx.stroke();}
   if(!EG){const a=at(0.08),b=at(0.27);tcel(ctx,[a,b],[10,9.2],C('sash'),D('sash'),O);
-    if(!O.mono){ctx.strokeStyle=shadeHex(C('sash'),-0.35);ctx.lineWidth=0.7;ctx.beginPath();const m=at(0.17);ctx.moveTo(m[0]-nx*4.3,m[1]-ny*4.3);ctx.lineTo(m[0]+nx*4.3,m[1]+ny*4.3);ctx.stroke();}}
+    if(!O.mono){ctx.strokeStyle=selC(C('sash'),0.65);ctx.lineWidth=0.7;ctx.beginPath();const m=at(0.17);ctx.moveTo(m[0]-nx*4.3,m[1]-ny*4.3);ctx.lineTo(m[0]+nx*4.3,m[1]+ny*4.3);ctx.stroke();}}
   // --- head ---
   const hd=s.hd,ha=lean+p.head+(p.hp||0),hx=Math.sin(ha),hy=-Math.cos(ha),hnx=-hy,hny=hx; // (round 25b: hp turns the skull on the neck's top)
   if(!EG){const n0=at(0.95),n1=[hd[0]-hx*3.6,hd[1]-hy*3.6];tcel(ctx,[n0,n1],[3.4,3.0],C('skin'),D('skin'),O);} // (EG: the neck is drawn with the torso)
@@ -2507,12 +2512,12 @@ function drawFigureHD0(ctx,x,y,face,p,pal,o){
     outer(hp);hp.quadraticCurveTo(...H(-0.48,-0.5),...H(-0.42,-0.15));hp.quadraticCurveTo(...H(-0.32,0.18),...H(-0.12,0.08));hp.quadraticCurveTo(...H(0.02,-0.05),...H(0.04,-0.2));
     hp.quadraticCurveTo(...H(0.12,0.2),...H(0.32,0.42));hp.quadraticCurveTo(...H(0.6,0.62),...H(0.86,0.58));hp.closePath();outer(out);
     if(O.mono){ctx.fillStyle=O.mono;ctx.fill(hp);return;}
-    ctx.fillStyle=col;ctx.fill(hp);ctx.strokeStyle=O.out;ctx.lineWidth=1.25;ctx.stroke(out);ctx.fillStyle=col;ctx.fill(hp); // (the outline's inner half covered again: it shows on the silhouette only)
+    ctx.fillStyle=col;ctx.fill(hp);ctx.strokeStyle=selC(col,FIG_K);ctx.lineWidth=1.25;ctx.stroke(out);ctx.fillStyle=col;ctx.fill(hp); // (the outline's inner half covered again: it shows on the silhouette only)
     ctx.save();ctx.globalAlpha*=0.7;ctx.strokeStyle=litTint(shadeHex(col,0.3),O._lc,O._lk||0);ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(...H(-0.55,1.02));ctx.quadraticCurveTo(...H(0.05,1.18),...H(0.5,0.98));ctx.stroke();ctx.restore();};
   if(pal.helm){const hm=new Path2D(),r=LEN.hd+1;hm.moveTo(hd[0]-hnx*r,hd[1]-hny*r);hm.bezierCurveTo(hd[0]-hnx*r+hx*r*1.5,hd[1]-hny*r+hy*r*1.5,hd[0]+hnx*r+hx*r*1.5,hd[1]+hny*r+hy*r*1.5,hd[0]+hnx*r*1.05,hd[1]+hny*r*1.05);
       hm.lineTo(hd[0]+hnx*r*1.25+hx*0.2,hd[1]+hny*r*1.25+hy*0.2);hm.lineTo(hd[0]-hnx*r*1.15+hx*0.2,hd[1]-hny*r*1.15+hy*0.2);hm.closePath();
       celAt(ctx,hm,pal.helm,shadeHex(pal.helm,-0.35),O,hd[0]+hx*LEN.hd*0.6,hd[1]+hy*LEN.hd*0.6);if(!O.mono)msFig(ctx,helmKind(pal.helm),hm);
-      if(!O.mono){ctx.strokeStyle=shadeHex(pal.helm,0.35);ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(hd[0]-hnx*r*0.4+hx*r*1.05,hd[1]-hny*r*0.4+hy*r*1.05);ctx.quadraticCurveTo(hd[0]+hx*r*1.12,hd[1]+hy*r*1.12,hd[0]+hnx*r*0.5+hx*r*0.95,hd[1]+hny*r*0.5+hy*r*0.95);ctx.stroke();}
+      if(!O.mono){ctx.strokeStyle=selC(pal.helm,1.15);ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(hd[0]-hnx*r*0.4+hx*r*1.05,hd[1]-hny*r*0.4+hy*r*1.05);ctx.quadraticCurveTo(hd[0]+hx*r*1.12,hd[1]+hy*r*1.12,hd[0]+hnx*r*0.5+hx*r*0.95,hd[1]+hny*r*0.5+hy*r*0.95);ctx.stroke();}
       const sp=[hd[0]+hx*(r+0.5),hd[1]+hy*(r+0.5)];ctx.fillStyle=O.mono||shadeHex(pal.helm,-0.2);ctx.beginPath();ctx.moveTo(sp[0]-hnx*0.9,sp[1]-hny*0.9);ctx.lineTo(sp[0]+hx*3.4,sp[1]+hy*3.4);ctx.lineTo(sp[0]+hnx*0.9,sp[1]+hny*0.9);ctx.fill();
       if(pal.plume){const pl=trail([sp[0]+hx*3,sp[1]+hy*3],4,2.6,[-1+wind[0],-0.8],t,0.5,2.2);tcel(ctx,pl,[2.6,2.8,2.4,1.8,1],pal.plume,shadeHex(pal.plume,-0.35),O);}}
   else if(pal.head==='cloth'||pal.head==='cap'){cropCap(1,pal.hair||'#1a1210');const r=LEN.hd; // a robber (his own hair under it, where it does not cover)'s head cloth, tied at the nape; or a leather cap
@@ -2520,7 +2525,7 @@ function drawFigureHD0(ctx,x,y,face,p,pal,o){
       hp.bezierCurveTo(hd[0]+hnx*r*0.6+hx*r*1.45,hd[1]+hny*r*0.6+hy*r*1.45,hd[0]-hnx*r*1.25+hx*r*1.3,hd[1]-hny*r*1.25+hy*r*1.3,hd[0]-hnx*r*1.15-hx*r*0.25,hd[1]-hny*r*1.15-hy*r*0.25);
       hp.quadraticCurveTo(hd[0]-hnx*r*0.35+hx*r*0.25,hd[1]-hny*r*0.35+hy*r*0.25,hd[0]+hnx*r*0.85+hx*r*0.35,hd[1]+hny*r*0.85+hy*r*0.35);hp.closePath();
       celAt(ctx,hp,pal.cap,shadeHex(pal.cap,-0.35),O,hd[0]+hx*r*0.7,hd[1]+hy*r*0.7);
-      if(!O.mono){ctx.strokeStyle=shadeHex(pal.cap,0.3);ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(hd[0]+hnx*r*0.8+hx*r*0.45,hd[1]+hny*r*0.8+hy*r*0.45);ctx.quadraticCurveTo(hd[0]-hnx*r*0.2+hx*r*0.8,hd[1]-hny*r*0.2+hy*r*0.8,hd[0]-hnx*r*1.05+hx*r*0.1,hd[1]-hny*r*1.05+hy*r*0.1);ctx.stroke();}}
+      if(!O.mono){ctx.strokeStyle=selC(pal.cap,1.15);ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(hd[0]+hnx*r*0.8+hx*r*0.45,hd[1]+hny*r*0.8+hy*r*0.45);ctx.quadraticCurveTo(hd[0]-hnx*r*0.2+hx*r*0.8,hd[1]-hny*r*0.2+hy*r*0.8,hd[0]-hnx*r*1.05+hx*r*0.1,hd[1]-hny*r*1.05+hy*r*0.1);ctx.stroke();}}
     else{const hp=new Path2D();hp.moveTo(hd[0]+hnx*r*0.8+hx*r*0.4,hd[1]+hny*r*0.8+hy*r*0.4);
       hp.bezierCurveTo(hd[0]+hnx*r*0.55+hx*r*1.45,hd[1]+hny*r*0.55+hy*r*1.45,hd[0]-hnx*r*1.35+hx*r*1.3,hd[1]-hny*r*1.35+hy*r*1.3,hd[0]-hnx*r*1.25-hx*r*0.1,hd[1]-hny*r*1.25-hy*r*0.1);
       hp.quadraticCurveTo(hd[0]-hnx*r*0.45+hx*r*0.1,hd[1]-hny*r*0.45+hy*r*0.1,hd[0]+hnx*r*0.8+hx*r*0.4,hd[1]+hny*r*0.8+hy*r*0.4);hp.closePath();
@@ -2558,7 +2563,7 @@ function drawFigureHD0(ctx,x,y,face,p,pal,o){
     if(hs==='curls'){for(const [a,b] of [[0.6,1.25],[0.1,1.45],[-0.45,1.42],[-0.95,1.12],[-1.22,0.55],[-1.2,0.0]]){const q=H(a,b);if(O.mono){ctx.fillStyle=O.mono;}else ctx.fillStyle=C('hair');ctx.beginPath();ctx.arc(q[0],q[1],r*0.32,0,6.2832);ctx.fill();}}
     if(!O.mono){if(hs==='bob'){ctx.strokeStyle=shadeHex(C('hair'),0.3);ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(...H(-0.5,1.0));ctx.quadraticCurveTo(...H(0.05,1.15),...H(0.5,0.95));ctx.stroke();} // a soft highlight along the crown (the crop draws its own)
       if(hs==='curls'){ctx.fillStyle=shadeHex(C('hair'),0.35);for(const [a,b] of [[0.2,1.3],[-0.5,1.3],[-1.0,0.9]]){const q=H(a,b);ctx.fillRect(q[0]-0.3,q[1]-0.3,0.6,0.6);}}
-      if(hs==='bob'){ctx.strokeStyle=shadeHex(C('hair'),-0.5);ctx.lineWidth=0.45;for(let i=0;i<3;i++){const a=-0.2-i*0.4;ctx.beginPath();ctx.moveTo(...H(a,1.2));ctx.lineTo(...H(a-0.25,-0.3));ctx.stroke();}}}}
+      if(hs==='bob'){ctx.strokeStyle=selC(C('hair'),0.5);ctx.lineWidth=0.45;for(let i=0;i<3;i++){const a=-0.2-i*0.4;ctx.beginPath();ctx.moveTo(...H(a,1.2));ctx.lineTo(...H(a-0.25,-0.3));ctx.stroke();}}}}
   else if(!pal.bones){ // hair: a swept mass over the crown, and a short tail that trails (long: a longer tail, tied back)
     const r=LEN.hd,hp=new Path2D();
     hp.moveTo(hd[0]+hnx*r*0.85+hx*r*0.55,hd[1]+hny*r*0.85+hy*r*0.55);
@@ -2570,12 +2575,13 @@ function drawFigureHD0(ctx,x,y,face,p,pal,o){
     if(lg&&!O.mono){ctx.strokeStyle=pal.fillet||'#f2ead6';ctx.lineWidth=1.2;const q=tl[1];ctx.beginPath();ctx.arc(q[0],q[1],1.4,0,6.2832);ctx.stroke();} // tied
     celAt(ctx,hp,C('hair'),shadeHex(C('hair'),-0.45),O,hd[0]-hnx*r*0.2+hx*r*0.6,hd[1]-hny*r*0.2+hy*r*0.6);
     if(!O.mono){ctx.strokeStyle=shadeHex(C('hair'),0.25);ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(hd[0]-hnx*r*0.4+hx*r*1.0,hd[1]-hny*r*0.4+hy*r*1.0);ctx.quadraticCurveTo(hd[0]+hx*r*1.12,hd[1]+hy*r*1.12,hd[0]+hnx*r*0.45+hx*r*0.85,hd[1]+hny*r*0.45+hy*r*0.85);ctx.stroke();
-      if(pal.hairStyle==='fillet'){ctx.strokeStyle=O.out;ctx.lineWidth=2.1;ctx.beginPath();ctx.moveTo(hd[0]+hnx*r*0.9+hx*r*0.55,hd[1]+hny*r*0.9+hy*r*0.55);ctx.quadraticCurveTo(hd[0]-hnx*r*0.1+hx*r*0.9,hd[1]-hny*r*0.1+hy*r*0.9,hd[0]-hnx*r*1.15+hx*r*0.35,hd[1]-hny*r*1.15+hy*r*0.35);ctx.stroke();
+      if(pal.hairStyle==='fillet'){ctx.strokeStyle=selC(pal.fillet,FIG_K);ctx.lineWidth=2.1;ctx.beginPath();ctx.moveTo(hd[0]+hnx*r*0.9+hx*r*0.55,hd[1]+hny*r*0.9+hy*r*0.55);ctx.quadraticCurveTo(hd[0]-hnx*r*0.1+hx*r*0.9,hd[1]-hny*r*0.1+hy*r*0.9,hd[0]-hnx*r*1.15+hx*r*0.35,hd[1]-hny*r*1.15+hy*r*0.35);ctx.stroke();
         ctx.strokeStyle=pal.fillet;ctx.lineWidth=1.1;ctx.stroke();}}} // a band of white linen round the head
   if(!pal.bones&&!O.mono){ // eye and brow
-    const r=LEN.hd,ex=hd[0]+hnx*r*0.48+hx*r*0.12,ey=hd[1]+hny*r*0.48+hy*r*0.12;ctx.fillStyle='#120c18';ctx.beginPath();ctx.ellipse(ex,ey,0.62,0.85,ha,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle=shadeHex(C(pal.helm?'skin':'hair'),-0.3);ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(ex-hnx*0.9+hx*1.4,ey-hny*0.9+hy*1.4);ctx.lineTo(ex+hnx*1.1+hx*1.2,ey+hny*1.1+hy*1.2);ctx.stroke();
-    if(FULL){ctx.strokeStyle='#120c18';ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(ex-hnx*1.9-hx*0.2,ey-hny*1.9-hy*0.2);ctx.stroke();}} // a line of kohl drawn back from the eye
+    const r=LEN.hd,ex=hd[0]+hnx*r*0.48+hx*r*0.12,ey=hd[1]+hny*r*0.48+hy*r*0.12,eye=selC(D('skin'),0.42);ctx.fillStyle=eye; // (round 46d: the eye and the kohl the skin's own deepest shade, not a fixed ink)
+   ctx.beginPath();ctx.ellipse(ex,ey,0.62,0.85,ha,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=selC(C(pal.helm?'skin':'hair'),0.7);ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(ex-hnx*0.9+hx*1.4,ey-hny*0.9+hy*1.4);ctx.lineTo(ex+hnx*1.1+hx*1.2,ey+hny*1.1+hy*1.2);ctx.stroke();
+    if(FULL){ctx.strokeStyle=eye;ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(ex-hnx*1.9-hx*0.2,ey-hny*1.9-hy*0.2);ctx.stroke();}} // a line of kohl drawn back from the eye
   // --- front layer: leg, sword, arm ---
   if(EG){leg(s.fF,s.kF,C('skin'),D('skin'),null,C('boot'),footXf(p,s,s.fF,s.kF,p.hF,p.kF),p.fpF);
     // the shendyt (round 12): linen wrapped close round the hips, its top on the waist line (a little higher at the back, lower at the front),
@@ -2594,18 +2600,18 @@ function drawFigureHD0(ctx,x,y,face,p,pal,o){
       if(k>0.05){const pr=[Bt[0]+ex*tO,Bt[1]+ey*tO];KS=[pr[0]+qx*k,pr[1]+qy*k];}}
     const kp=smoothLoop(KS?[wF,wF,F,F,Hc,Bk,BL,KS,Bt,Bu,wB,wB]:[wF,wF,F,F,Hc,Bk,BL,Bt,Bu,wB,wB]),w0=lr(wB,wF,0.5);
     celAt(ctx,kp,C('pants'),D('pants'),O,(w0[0]+F[0]+Bk[0])/3,(w0[1]+F[1]+Bk[1])/3);
-    if(KS&&!O.mono){const a2=lr(KS,w0,0.22),b2=lr(KS,F,0.62),m2=lr(KS,lr(w0,F,0.5),0.5);ctx.strokeStyle=shadeHex(C('pants'),-0.16);ctx.lineWidth=0.45;ctx.beginPath();ctx.moveTo(a2[0],a2[1]);ctx.quadraticCurveTo(m2[0],m2[1],b2[0],b2[1]);ctx.stroke();} // (a tension fold from the seat toward the front of the hem, where the stretched linen pulls)
+    if(KS&&!O.mono){const a2=lr(KS,w0,0.22),b2=lr(KS,F,0.62),m2=lr(KS,lr(w0,F,0.5),0.5);ctx.strokeStyle=selC(C('pants'),0.84);ctx.lineWidth=0.45;ctx.beginPath();ctx.moveTo(a2[0],a2[1]);ctx.quadraticCurveTo(m2[0],m2[1],b2[0],b2[1]);ctx.stroke();} // (a tension fold from the seat toward the front of the hem, where the stretched linen pulls)
     if(!O.mono&&(pal.pleat||FULL)){const fp=lr(wB,wF,0.86),up=[tx*0.35,ty*0.35]; // the pleated front panel: fine lines fanning from the belt's front to the hem, soft shade bands between
       for(let i=0;i<6;i++){const u=(i+0.5)/6,b0=lr(Bk,F,0.3+0.7*u),b=[b0[0]+up[0],b0[1]+up[1]],a=lr(wB,wF,0.3+0.62*u);
         if(i%2){ctx.fillStyle=shadeHex(C('pants'),-0.07);const u2=(i+1.5)/6,b20=lr(Bk,F,0.3+0.7*Math.min(1,u2)),b2=[b20[0]+up[0],b20[1]+up[1]];ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.lineTo(b2[0],b2[1]);ctx.closePath();ctx.fill();}
-        ctx.strokeStyle=shadeHex(C('pants'),-0.24);ctx.lineWidth=0.45;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();}
+        ctx.strokeStyle=selC(C('pants'),0.76);ctx.lineWidth=0.45;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();}
       ctx.fillStyle=shadeHex(C('pants'),-0.12);ctx.beginPath();ctx.moveTo(fp[0]-nx*1.2,fp[1]-ny*1.2);ctx.lineTo(F[0]-nx*0.4,F[1]-ny*0.4);ctx.lineTo(F[0]-nx*3,F[1]-ny*3);ctx.closePath();ctx.fill();} // the front tab
     if(!O.mono){ // the belt (rounds 11, 12): a band on the waist line, from the back's outline to the front's, never past them; higher at the back,
       // lower at the front, as a belt sits; the prince's thin, muted gold with a hairline of bright gold on the lit side and one short end,
       // the robbers' a little wider in their colour
       const BB=sp(0.3,-(TG.B(0.3)+0.1)),BF=sp(0.245,TG.F(0.245)+0.1),bm=lr(BB,BF,0.5),bc=[bm[0]-tx*0.2,bm[1]-ty*0.2],q=pal.pleat;
       ctx.beginPath();ctx.moveTo(BB[0],BB[1]);ctx.quadraticCurveTo(bc[0],bc[1],BF[0],BF[1]);ctx.lineCap='butt';
-      ctx.strokeStyle=O.out;ctx.lineWidth=q?1.6:2.6;ctx.stroke();ctx.strokeStyle=C('sash');ctx.lineWidth=q?0.95:1.7;ctx.stroke();ctx.lineCap='round';
+      ctx.strokeStyle=selC(C('sash'),FIG_K);ctx.lineWidth=q?1.6:2.6;ctx.stroke();ctx.strokeStyle=C('sash');ctx.lineWidth=q?0.95:1.7;ctx.stroke();ctx.lineCap='round';
       if(q){const e0=O._lx>=0?0.35:0.04,e1=O._lx>=0?0.96:0.65,h0=lr(BB,BF,e0),h1=lr(BB,BF,e1),k2=q?0.42:0.7;ctx.strokeStyle=litTint(pal.sashHi,O._lc,O._lk||0);ctx.lineWidth=0.3;ctx.beginPath();
         ctx.moveTo(h0[0]+tx*k2-tx*0.2*4*e0*(1-e0),h0[1]+ty*k2-ty*0.2*4*e0*(1-e0));ctx.lineTo(h1[0]+tx*k2-tx*0.2*4*e1*(1-e1),h1[1]+ty*k2-ty*0.2*4*e1*(1-e1));ctx.stroke();
         const k0=lr(BB,BF,0.86),tie=trail(k0,1,2.2,[wind[0]*0.5,wind[1]],t+0.9,0.4,1.1);tcel(ctx,tie,[1.0,0.7],C('sash'),D('sash'),O);}}}
@@ -2622,7 +2628,7 @@ function drawFigureHD0(ctx,x,y,face,p,pal,o){
     const W=L2<12?1.15:1.45,up=ny2<0?1:-1,bl=new Path2D(),lt=new Path2D(); // (up: the side of the blade facing up, toward the light)
     bl.moveTo(...Q(0,W*0.9));bl.lineTo(...Q(L2*0.38,W));bl.quadraticCurveTo(...Q(L2*0.82,W*0.95),...Q(L2+0.9,0));bl.quadraticCurveTo(...Q(L2*0.82,-W*0.95),...Q(L2*0.38,-W));bl.lineTo(...Q(0,-W*0.9));bl.closePath();
     lt.moveTo(...Q(0,up*W*0.9));lt.lineTo(...Q(L2*0.38,up*W));lt.quadraticCurveTo(...Q(L2*0.82,up*W*0.95),...Q(L2+0.9,0));lt.lineTo(...Q(0,0));lt.closePath();
-    if(O.mono){ctx.fillStyle=O.mono;ctx.fill(bl);}else{msFig(ctx,EG?MKID.bronze:MKID.steel,bl);ctx.strokeStyle=O.out;ctx.lineWidth=1.1;ctx.stroke(bl);ctx.fillStyle=EG?'#7a4e26':'#6c7484';ctx.fill(bl); // the shaded bevel
+    if(O.mono){ctx.fillStyle=O.mono;ctx.fill(bl);}else{msFig(ctx,EG?MKID.bronze:MKID.steel,bl);ctx.strokeStyle=selC(EG?'#7a4e26':'#6c7484',FIG_K);ctx.lineWidth=1.1;ctx.stroke(bl);ctx.fillStyle=EG?'#7a4e26':'#6c7484';ctx.fill(bl); // the shaded bevel
       ctx.fillStyle=O._lk>0.05?litTint(EG?'#d8aa62':'#c9cfda',O._lc,O._lk*0.5):EG?'#d8aa62':'#c9cfda';ctx.fill(lt); // the lit bevel
       ctx.strokeStyle=EG?'#fbe6b4':'#f6f8fc';ctx.lineWidth=0.55;ctx.beginPath();ctx.moveTo(...Q(2.5,up*W*0.62));ctx.lineTo(...Q(L2*0.38,up*W*0.7));ctx.quadraticCurveTo(...Q(L2*0.8,up*W*0.62),...Q(L2,up*0.15));ctx.stroke(); // the edge catching the light
       ctx.strokeStyle='#d8b04a';ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(...Q(0,2.8));ctx.lineTo(...Q(0,-2.8));ctx.stroke();
@@ -2639,7 +2645,7 @@ function khopesh(ctx,h,a,flip,L2,O,hung){const dx=Math.cos(a),dy=-Math.sin(a),nx
   const bl=new Path2D();const p0=P(L2*0.32,0.8);bl.moveTo(...P(0,0.9));bl.lineTo(...p0);bl.quadraticCurveTo(...P(L2*0.62,5.4),...P(L2,2.6));bl.quadraticCurveTo(...P(L2*0.92,0.6),...P(L2*0.78,1.2));
   bl.quadraticCurveTo(...P(L2*0.55,1.4),...P(L2*0.34,-0.8));bl.lineTo(...P(0,-0.9));bl.closePath();
   if(O.mono){ctx.fillStyle=O.mono;ctx.fill(bl);return;}
-  if(!hung)msFig(ctx,MKID.bronze,bl);ctx.strokeStyle=O.out;ctx.lineWidth=1.1;ctx.stroke(bl);ctx.fillStyle='#c39350';ctx.fill(bl);
+  if(!hung)msFig(ctx,MKID.bronze,bl);ctx.strokeStyle=selC('#c39350',0.5);ctx.lineWidth=1.1;ctx.stroke(bl);ctx.fillStyle='#c39350';ctx.fill(bl);
   ctx.strokeStyle='#f2d9a0';ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(...P(L2*0.36,1.4));ctx.quadraticCurveTo(...P(L2*0.62,4.6),...P(L2*0.96,2.6));ctx.stroke(); // the bright cutting edge
   ctx.strokeStyle='#3a2414';ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(...P(0,0));ctx.lineTo(...P(-3.2,0));ctx.stroke(); // the grip
   ctx.fillStyle='#d8b04a';ctx.beginPath();ctx.arc(...P(-3.6,0),0.9,0,6.2832);ctx.fill();}
@@ -2647,10 +2653,10 @@ function khopesh(ctx,h,a,flip,L2,O,hung){const dx=Math.cos(a),dy=-Math.sin(a),nx
 // lashed to a wooden haft): along the sword's angle and length from the hand, so the fight reads as before
 function robWeapon(ctx,h,a,L2,O,kind){const dx=Math.cos(a),dy=-Math.sin(a),nx2=-dy,ny2=dx,P=(u,v)=>[h[0]+dx*u+nx2*v,h[1]+dy*u+ny2*v];
   if(kind==='club'){const pts=[P(-2.5,0),P(L2*0.4,0),P(L2*0.75,0),P(L2*0.95,0)];if(O.mono){tcel(ctx,pts,[1.8,2.2,3.2,4.2],O.mono,O.mono,O);return;}
-    tcel(ctx,pts,[1.8,2.2,3.2,4.2],'#7a5232','#4a301a',O);ctx.strokeStyle='#3a2414';ctx.lineWidth=0.5;for(const u of [0.62,0.8]){const m=P(L2*u,0);ctx.beginPath();ctx.moveTo(m[0]-nx2*1.6,m[1]-ny2*1.6);ctx.lineTo(m[0]+nx2*1.6,m[1]+ny2*1.6);ctx.stroke();}return;}
+    tcel(ctx,pts,[1.8,2.2,3.2,4.2],'#7a5232','#4a301a',O);ctx.strokeStyle=selC('#4a301a',0.7);ctx.lineWidth=0.5;for(const u of [0.62,0.8]){const m=P(L2*u,0);ctx.beginPath();ctx.moveTo(m[0]-nx2*1.6,m[1]-ny2*1.6);ctx.lineTo(m[0]+nx2*1.6,m[1]+ny2*1.6);ctx.stroke();}return;}
   const haft=[P(-2.5,0),P(L2*0.95,0)],hd=new Path2D();hd.moveTo(...P(L2*0.66,0.6));hd.quadraticCurveTo(...P(L2*0.6,5.8),...P(L2*0.8,6.2));hd.quadraticCurveTo(...P(L2*0.98,5.6),...P(L2*0.9,0.6));hd.closePath();
   if(O.mono){tcel(ctx,haft,[1.6,1.6],O.mono,O.mono,O);ctx.fillStyle=O.mono;ctx.fill(hd);return;}
-  tcel(ctx,haft,[1.6,1.6],'#7a5232','#4a301a',O);msFig(ctx,MKID.bronze,hd);ctx.strokeStyle=O.out;ctx.lineWidth=1;ctx.stroke(hd);ctx.fillStyle='#c39350';ctx.fill(hd);
+  tcel(ctx,haft,[1.6,1.6],'#7a5232','#4a301a',O);msFig(ctx,MKID.bronze,hd);ctx.strokeStyle=selC('#c39350',0.5);ctx.lineWidth=1;ctx.stroke(hd);ctx.fillStyle='#c39350';ctx.fill(hd);
   ctx.strokeStyle='#f2d9a0';ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(...P(L2*0.63,5.2));ctx.quadraticCurveTo(...P(L2*0.8,6.6),...P(L2*0.95,5.2));ctx.stroke();}
 // The run and the walk (round 23): 09_01 (run) and 16_15 (walk), 16 keys a cycle each measured from the clip, the near (right) foot
 // coming down at phase 0 and the far one at 0.5 (the footfall sounds); Catmull-Rom between keys. cl is the lowest foot's height over
@@ -2691,11 +2697,11 @@ function drawSkeletonHD(ctx,x,y,face,p,pal,o){
   if(o.sq){ctx.translate(0,s.hipH);ctx.scale(1/o.sq,o.sq);ctx.translate(0,-s.hipH);}
   if(o.alpha!==undefined)ctx.globalAlpha=o.alpha;
   ctx.lineCap='round';ctx.lineJoin='round';
-  const lt=o.lt,ldx=lt?lt.dir*face:1,lln=Math.hypot(ldx,0.75),O=Object.assign({},o,{out:o.mono||'#120c18',_lx:ldx/lln,_ly:-0.75/lln,_lk:lt?lt.k:0,_lc:lt?lt.col:null});
+  const lt=o.lt,ldx=lt?lt.dir*face:1,lln=Math.hypot(ldx,0.75),O=Object.assign({},o,{_lx:ldx/lln,_ly:-0.75/lln,_lk:lt?lt.k:0,_lc:lt?lt.col:null});
   const t=o.time||0,vx=(o.vx||0)*face,vy=o.vy||0,wind=[-vx/110,-vy/260+0.25];
   const lean=p.lean,tx=Math.sin(lean),ty=-Math.cos(lean),nx=-ty,ny=tx,at=u=>[s.sh[0]*u,s.sh[1]*u];
   const tint=c=>O._lk>0.05?litTint(c,O._lc,O._lk):c;
-  const knob=(q,r,c)=>{const kp=new Path2D();kp.arc(q[0],q[1],r,0,Math.PI*2);if(O.mono){ctx.fillStyle=O.mono;ctx.fill(kp);return;}ctx.strokeStyle=O.out;ctx.lineWidth=1.1;ctx.stroke(kp);ctx.fillStyle=c;ctx.fill(kp);};
+  const knob=(q,r,c)=>{const kp=new Path2D();kp.arc(q[0],q[1],r,0,Math.PI*2);if(O.mono){ctx.fillStyle=O.mono;ctx.fill(kp);return;}ctx.strokeStyle=selC(BONE.shade,FIG_K);ctx.lineWidth=1.1;ctx.stroke(kp);ctx.fillStyle=c;ctx.fill(kp);};
   const bone=(a,b,w,dim)=>{const base=dim?BONE.shade:BONE.base,sh=dim?BONE.dark:BONE.shade;
     // a bone: a slim shaft that swells to knuckles at both ends
     const m=[(a[0]+b[0])/2,(a[1]+b[1])/2];tcel(ctx,[a,m,b],[w*1.25,w*0.7,w*1.2],base,sh,O);knob(a,w*0.62,tint(base));knob(b,w*0.62,tint(base));};
@@ -2714,8 +2720,8 @@ function drawSkeletonHD(ctx,x,y,face,p,pal,o){
   // ribcage: ribs curving forward from the spine, a breastbone in front
   if(!O.mono){for(let i=0;i<4;i++){const u=0.5+i*0.13,q=at(u),w=5.6-i*0.5,dn=1.6+i*0.3;
       const rb=()=>{ctx.beginPath();ctx.moveTo(q[0],q[1]);ctx.quadraticCurveTo(q[0]+nx*w*0.9+tx*1.4,q[1]+ny*w*0.9+ty*1.4,q[0]+nx*w*0.55-tx*dn,q[1]+ny*w*0.55-ty*dn);};
-      rb();ctx.strokeStyle=O.out;ctx.lineWidth=2.4;ctx.stroke();rb();ctx.strokeStyle=tint(i%2?BONE.shade:BONE.base);ctx.lineWidth=1.2;ctx.stroke();}
-    const b0=at(0.55),b1=at(0.92);ctx.strokeStyle=O.out;ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(b0[0]+nx*3.4,b0[1]+ny*3.4);ctx.lineTo(b1[0]+nx*3.1,b1[1]+ny*3.1);ctx.stroke();
+      rb();ctx.strokeStyle=selC(BONE.shade,FIG_K);ctx.lineWidth=2.4;ctx.stroke();rb();ctx.strokeStyle=tint(i%2?BONE.shade:BONE.base);ctx.lineWidth=1.2;ctx.stroke();}
+    const b0=at(0.55),b1=at(0.92);ctx.strokeStyle=selC(BONE.shade,FIG_K);ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(b0[0]+nx*3.4,b0[1]+ny*3.4);ctx.lineTo(b1[0]+nx*3.1,b1[1]+ny*3.1);ctx.stroke();
     ctx.strokeStyle=tint(BONE.base);ctx.lineWidth=1.3;ctx.stroke();}
   else{const q=at(0.7);ctx.fillStyle=O.mono;ctx.beginPath();ctx.ellipse(q[0]+nx*2.4,q[1]+ny*2.4,4.2,5.6,lean,0,Math.PI*2);ctx.fill();}
   // skull and jaw
@@ -2739,7 +2745,7 @@ function drawSkeletonHD(ctx,x,y,face,p,pal,o){
   {const X=footXf(p,s,s.fF,s.kF,p.hF,p.kF);tcel(ctx,[X(-1,0),X(4.8,0.3)],[2.4,1.4],BONE.base,BONE.shade,O);}
   if(o.sword){const h=s.hF,a=p.sw,dx=Math.cos(a),dy=-Math.sin(a),nx2=-dy,ny2=dx,L2=17;
     const bl=new Path2D();bl.moveTo(h[0]+nx2*0.8,h[1]+ny2*0.8);bl.lineTo(h[0]+dx*L2+nx2*1.6,h[1]+dy*L2+ny2*1.6);bl.lineTo(h[0]+dx*(L2+1.2),h[1]+dy*(L2+1.2));bl.lineTo(h[0]+dx*L2*0.55-nx2*0.9,h[1]+dy*L2*0.55-ny2*0.9);bl.lineTo(h[0]-nx2*0.8,h[1]-ny2*0.8);bl.closePath();
-    if(O.mono){ctx.fillStyle=O.mono;ctx.fill(bl);}else{msFig(ctx,MKID.iron,bl);ctx.strokeStyle=O.out;ctx.lineWidth=1.1;ctx.stroke(bl);ctx.fillStyle='#9a9384';ctx.fill(bl);
+    if(O.mono){ctx.fillStyle=O.mono;ctx.fill(bl);}else{msFig(ctx,MKID.iron,bl);ctx.strokeStyle=selC('#9a9384',0.5);ctx.lineWidth=1.1;ctx.stroke(bl);ctx.fillStyle='#9a9384';ctx.fill(bl);
       ctx.fillStyle='#6a5e48';for(let i=0;i<4;i++){const u=0.25+i*0.18;ctx.beginPath();ctx.arc(h[0]+dx*L2*u+nx2*0.6,h[1]+dy*L2*u+ny2*0.6,0.5,0,Math.PI*2);ctx.fill();}
       ctx.strokeStyle='#5a4a30';ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(h[0]+nx2*2.6,h[1]+ny2*2.6);ctx.lineTo(h[0]-nx2*2.6,h[1]-ny2*2.6);ctx.stroke();}}
   bone(s.sh,s.eF,2.2);bone(s.eF,s.hF,1.9);
@@ -2800,32 +2806,32 @@ function drawFigure(ctx,x,y,face,p,pal,o){
   if(p.rot)ctx.rotate(p.rot);
   if(o.alpha!==undefined)ctx.globalAlpha=o.alpha;
   ctx.lineCap='round';ctx.lineJoin='round';
-  const OUT=o.mono||'#0b0812';
+  const K=c=>o.mono||selC(c,FIG_K),HOLE=o.mono||'#0b0812'; // (round 46d: each outline the shade of its own fill, FIG_K; near-black only for the skull's holes)
   const wm=pal.bones?0.55:1;
-  const limb=(a,b,c,col,w)=>{w*=wm;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.lineTo(c[0],c[1]);ctx.strokeStyle=OUT;ctx.lineWidth=w+1.7;ctx.stroke();ctx.strokeStyle=col;ctx.lineWidth=w;ctx.stroke();
+  const limb=(a,b,c,col,w)=>{w*=wm;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.lineTo(c[0],c[1]);ctx.strokeStyle=K(col);ctx.lineWidth=w+1.7;ctx.stroke();ctx.strokeStyle=col;ctx.lineWidth=w;ctx.stroke();
     if(pal.bones){ctx.fillStyle=col;for(const q of [b]){ctx.beginPath();ctx.arc(q[0],q[1],1.3,0,Math.PI*2);ctx.fill();}}};
-  const foot=(X,col)=>{ctx.beginPath();ctx.moveTo(...X(-0.8,0));ctx.lineTo(...X(3.2,0.2));ctx.strokeStyle=OUT;ctx.lineWidth=4.2;ctx.stroke();ctx.strokeStyle=col;ctx.lineWidth=2.6;ctx.stroke();};
+  const foot=(X,col)=>{ctx.beginPath();ctx.moveTo(...X(-0.8,0));ctx.lineTo(...X(3.2,0.2));ctx.strokeStyle=K(col);ctx.lineWidth=4.2;ctx.stroke();ctx.strokeStyle=col;ctx.lineWidth=2.6;ctx.stroke();};
   const sw=(hand,ang,len)=>{const dx=Math.cos(ang),dy=-Math.sin(ang);
-    ctx.beginPath();ctx.moveTo(hand[0],hand[1]);ctx.lineTo(hand[0]+dx*len,hand[1]+dy*len);ctx.strokeStyle=OUT;ctx.lineWidth=3.2;ctx.stroke();ctx.strokeStyle=o.mono||'#e9edf6';ctx.lineWidth=1.6;ctx.stroke();
+    ctx.beginPath();ctx.moveTo(hand[0],hand[1]);ctx.lineTo(hand[0]+dx*len,hand[1]+dy*len);ctx.strokeStyle=K('#8d95a6');ctx.lineWidth=3.2;ctx.stroke();ctx.strokeStyle=o.mono||'#e9edf6';ctx.lineWidth=1.6;ctx.stroke();
     if(!o.mono)msFig(ctx,MKID.steel,null,hand[0],hand[1],hand[0]+dx*len,hand[1]+dy*len,2.6);
     ctx.beginPath();ctx.moveTo(hand[0]-dy*2.8,hand[1]+dx*2.8);ctx.lineTo(hand[0]+dy*2.8,hand[1]-dx*2.8);ctx.strokeStyle=o.mono||'#d8b04a';ctx.lineWidth=1.8;ctx.stroke();};
   // back limbs
   limb(s.sh,s.eB,s.hB,pal.skinD,2.5);
   limb([0,0],s.kB,s.fB,pal.pantsD,3.4);foot(footXf(p,s,s.fB,s.kB,p.hB,p.kB),pal.boot);
-  if(!o.sword&&o.hasSword){ctx.beginPath();ctx.moveTo(-1,1);ctx.lineTo(-11,8);ctx.strokeStyle=OUT;ctx.lineWidth=3.4;ctx.stroke();ctx.strokeStyle=o.mono||'#6b4a2a';ctx.lineWidth=2;ctx.stroke();}
+  if(!o.sword&&o.hasSword){ctx.beginPath();ctx.moveTo(-1,1);ctx.lineTo(-11,8);ctx.strokeStyle=K('#6b4a2a');ctx.lineWidth=3.4;ctx.stroke();ctx.strokeStyle=o.mono||'#6b4a2a';ctx.lineWidth=2;ctx.stroke();}
   // scarf
   const tx=Math.sin(p.lean),ty=-Math.cos(p.lean),nx=-ty,ny=tx;
   if(pal.hero){const nk=[s.sh[0]+tx*2.5,s.sh[1]+ty*2.5];const fl=o.flutter||0, t=o.time||0;
     ctx.beginPath();ctx.moveTo(nk[0],nk[1]);
     ctx.quadraticCurveTo(nk[0]-5,nk[1]+1+Math.sin(t*9)*fl*2,nk[0]-9-fl*3,nk[1]+3-fl*3+Math.sin(t*11+1)*fl*2.5);
-    ctx.strokeStyle=OUT;ctx.lineWidth=3.8;ctx.stroke();ctx.strokeStyle=pal.sash;ctx.lineWidth=2.2;ctx.stroke();}
+    ctx.strokeStyle=K(pal.sash);ctx.lineWidth=3.8;ctx.stroke();ctx.strokeStyle=pal.sash;ctx.lineWidth=2.2;ctx.stroke();}
   // torso
   const sh=s.sh;
   if(pal.bones){ // spine, ribs, pelvis
-    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(sh[0],sh[1]);ctx.strokeStyle=OUT;ctx.lineWidth=3.4;ctx.stroke();ctx.strokeStyle=pal.skin;ctx.lineWidth=1.7;ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(sh[0],sh[1]);ctx.strokeStyle=K(pal.skinD);ctx.lineWidth=3.4;ctx.stroke();ctx.strokeStyle=pal.skin;ctx.lineWidth=1.7;ctx.stroke();
     for(let i=0;i<3;i++){const u=0.45+i*0.17,cx2=sh[0]*u,cy2=sh[1]*u,w=4.4-i*0.4;
-      ctx.beginPath();ctx.moveTo(cx2-nx*w,cy2-ny*w);ctx.quadraticCurveTo(cx2+tx*2,cy2+ty*2,cx2+nx*w,cy2+ny*w);ctx.strokeStyle=OUT;ctx.lineWidth=2.6;ctx.stroke();ctx.strokeStyle=pal.skin;ctx.lineWidth=1.2;ctx.stroke();}
-    ctx.beginPath();ctx.moveTo(-nx*4,-ny*4);ctx.lineTo(nx*4,ny*4);ctx.lineTo(-tx*3,-ty*3);ctx.closePath();ctx.fillStyle=pal.skinD;ctx.fill();ctx.strokeStyle=OUT;ctx.lineWidth=1;ctx.stroke();
+      ctx.beginPath();ctx.moveTo(cx2-nx*w,cy2-ny*w);ctx.quadraticCurveTo(cx2+tx*2,cy2+ty*2,cx2+nx*w,cy2+ny*w);ctx.strokeStyle=K(pal.skinD);ctx.lineWidth=2.6;ctx.stroke();ctx.strokeStyle=pal.skin;ctx.lineWidth=1.2;ctx.stroke();}
+    ctx.beginPath();ctx.moveTo(-nx*4,-ny*4);ctx.lineTo(nx*4,ny*4);ctx.lineTo(-tx*3,-ty*3);ctx.closePath();ctx.fillStyle=pal.skinD;ctx.fill();ctx.strokeStyle=K(pal.skinD);ctx.lineWidth=1;ctx.stroke();
   }else{
   ctx.beginPath();
   ctx.moveTo(sh[0]+nx*3.5,sh[1]+ny*3.5);
@@ -2833,18 +2839,18 @@ function drawFigure(ctx,x,y,face,p,pal,o){
   ctx.lineTo(-nx*5.4-tx*6,-ny*5.4-ty*6);
   ctx.lineTo(nx*5.8-tx*6,ny*5.8-ty*6);
   ctx.closePath();
-  ctx.fillStyle=pal.tunic;ctx.strokeStyle=OUT;ctx.lineWidth=1.4;ctx.fill();ctx.stroke();
+  ctx.fillStyle=pal.tunic;ctx.strokeStyle=K(pal.tunicD||pal.tunic);ctx.lineWidth=1.4;ctx.fill();ctx.stroke();
   ctx.beginPath();ctx.moveTo(-nx*4.6+tx*0.8,-ny*4.6+ty*0.8);ctx.lineTo(nx*4.8+tx*0.8,ny*4.8+ty*0.8);ctx.strokeStyle=pal.sash;ctx.lineWidth=2;ctx.stroke();}
   // head
   const hd=s.hd;
-  ctx.beginPath();ctx.arc(hd[0],hd[1],LEN.hd,0,Math.PI*2);ctx.fillStyle=pal.skin;ctx.fill();ctx.strokeStyle=OUT;ctx.lineWidth=1.4;ctx.stroke();
-  if(pal.helm){ctx.beginPath();ctx.arc(hd[0],hd[1]-0.4,LEN.hd+0.9,Math.PI*0.98,Math.PI*2.02);ctx.closePath();ctx.fillStyle=pal.helm;ctx.fill();ctx.strokeStyle=OUT;ctx.lineWidth=1.2;ctx.stroke();
+  ctx.beginPath();ctx.arc(hd[0],hd[1],LEN.hd,0,Math.PI*2);ctx.fillStyle=pal.skin;ctx.fill();ctx.strokeStyle=K(pal.skinD||pal.skin);ctx.lineWidth=1.4;ctx.stroke();
+  if(pal.helm){ctx.beginPath();ctx.arc(hd[0],hd[1]-0.4,LEN.hd+0.9,Math.PI*0.98,Math.PI*2.02);ctx.closePath();ctx.fillStyle=pal.helm;ctx.fill();ctx.strokeStyle=K(pal.helm);ctx.lineWidth=1.2;ctx.stroke();
     if(MSF.rec&&!o.mono){const hp=new Path2D();hp.arc(hd[0],hd[1]-0.4,LEN.hd+0.9,Math.PI*0.98,Math.PI*2.02);hp.closePath();msFig(ctx,helmKind(pal.helm),hp);} // (unit MS)
     ctx.beginPath();ctx.moveTo(hd[0],hd[1]-LEN.hd-1);ctx.lineTo(hd[0]-0.4,hd[1]-LEN.hd-4);ctx.strokeStyle=pal.helm;ctx.lineWidth=1.6;ctx.stroke();
-    if(pal.plume){ctx.beginPath();ctx.moveTo(hd[0]-0.4,hd[1]-LEN.hd-4);ctx.quadraticCurveTo(hd[0]-4,hd[1]-LEN.hd-7,hd[0]-8,hd[1]-LEN.hd-2);ctx.strokeStyle=OUT;ctx.lineWidth=3.6;ctx.stroke();ctx.strokeStyle=pal.plume;ctx.lineWidth=2.2;ctx.stroke();}}
-  else if(pal.bones){ctx.fillStyle=OUT;ctx.beginPath();ctx.arc(hd[0]+1.7,hd[1]-0.6,1.4,0,Math.PI*2);ctx.fill();ctx.fillRect(hd[0]-0.4,hd[1]+2.2,4,0.9);ctx.fillRect(hd[0]+3.6,hd[1]+0.4,0.8,1.4);}
+    if(pal.plume){ctx.beginPath();ctx.moveTo(hd[0]-0.4,hd[1]-LEN.hd-4);ctx.quadraticCurveTo(hd[0]-4,hd[1]-LEN.hd-7,hd[0]-8,hd[1]-LEN.hd-2);ctx.strokeStyle=K(pal.plume);ctx.lineWidth=3.6;ctx.stroke();ctx.strokeStyle=pal.plume;ctx.lineWidth=2.2;ctx.stroke();}}
+  else if(pal.bones){ctx.fillStyle=HOLE;ctx.beginPath();ctx.arc(hd[0]+1.7,hd[1]-0.6,1.4,0,Math.PI*2);ctx.fill();ctx.fillRect(hd[0]-0.4,hd[1]+2.2,4,0.9);ctx.fillRect(hd[0]+3.6,hd[1]+0.4,0.8,1.4);}
   else{ctx.beginPath();ctx.arc(hd[0],hd[1],LEN.hd+0.7,Math.PI*0.55,Math.PI*1.78);ctx.lineTo(hd[0],hd[1]);ctx.closePath();ctx.fillStyle=pal.hair;ctx.fill();}
-  if(!pal.bones){ctx.fillStyle=OUT;ctx.fillRect(hd[0]+1.8,hd[1]-1,1.2,1.4);}
+  if(!pal.bones){ctx.fillStyle=o.mono||selC(pal.skinD||pal.skin,0.42);ctx.fillRect(hd[0]+1.8,hd[1]-1,1.2,1.4);}
   // front limbs
   limb([0,0],s.kF,s.fF,pal.pants,3.4);foot(footXf(p,s,s.fF,s.kF,p.hF,p.kF),pal.boot);
   if(o.sword)sw(s.hF,p.sw,o.swLen||17);
@@ -6735,7 +6741,7 @@ const SNK={back:'#5f8a2e',shade:'#3a571a',belly:'#d9cf8a',mark:'#26380f',eye:'#f
 function drawSnakeHD(ctx,sn){
   const dead=!sn.alive,a=dead?Math.max(0,1-sn.t/0.9):1,coil=dead?0:sn.state==='coil'?Math.min(1,sn.t/0.2):sn.state==='strike'?Math.max(0,1-sn.t/0.3):0,lung=sn.lunge||0;
   const kl=GFX().hero?keyLight(sn.x,sn.y):null,ldx=kl?kl.sx*sn.dir:1,lln=Math.hypot(ldx,0.8);
-  const O={out:'#120c18',_lx:ldx/lln,_ly:-0.8/lln,_lk:kl?kl.k*(0.4+0.6*kl.m):0,_lc:kl?kl.col:null};
+  const O={_lx:ldx/lln,_ly:-0.8/lln,_lk:kl?kl.k*(0.4+0.6*kl.m):0,_lc:kl?kl.col:null};
   ctx.save();ctx.globalAlpha=a;
   if(!dead&&GFX().hero){ctx.fillStyle='rgba(0,0,0,.38)';ctx.beginPath();ctx.ellipse(sn.x-sn.dir*4,sn.y+0.6,15,1.8,0,0,Math.PI*2);ctx.fill();}
   ctx.translate(sn.x,sn.y-2.4);ctx.scale(sn.dir,1);ctx.lineCap='round';ctx.lineJoin='round';
@@ -6767,6 +6773,7 @@ function drawSnakeHD(ctx,sn){
   if(mo>0.2){ctx.fillStyle='#f4efe0';ctx.beginPath();ctx.moveTo(4.6,0.6);ctx.lineTo(5.0,2.6);ctx.lineTo(5.5,0.6);ctx.closePath();ctx.moveTo(2.4,0.8);ctx.lineTo(2.7,2.2);ctx.lineTo(3.1,0.8);ctx.closePath();ctx.fill();}
   celAt(ctx,skull,SNK.back,SNK.shade,O,2,-1);
   ctx.fillStyle=SNK.mark;ctx.beginPath();ctx.moveTo(-1.4,-2.2);ctx.quadraticCurveTo(1.6,-3.1,4.4,-1.8);ctx.lineTo(3.8,-1.2);ctx.quadraticCurveTo(1.4,-2.2,-1.2,-1.4);ctx.closePath();ctx.fill(); // brow scales
+  // (the slit pupil, the nostril and the dead eye's cross are dark of their own, not outlines: round 46d keeps them)
   if(!dead){ctx.fillStyle=SNK.eye;ctx.beginPath();ctx.ellipse(2.4,-1.0,1.25,1.0,0,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#120c18';ctx.beginPath();ctx.ellipse(2.5,-1.0,0.3,0.9,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='rgba(255,255,255,.8)';ctx.fillRect(2.0,-1.6,0.45,0.45);}
   else{ctx.strokeStyle='#120c18';ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(1.7,-1.6);ctx.lineTo(3.1,-0.4);ctx.moveTo(3.1,-1.6);ctx.lineTo(1.7,-0.4);ctx.stroke();}
@@ -6782,10 +6789,10 @@ function drawSnake(ctx,sn){
   const pts=[];for(let i=0;i<=12;i++){const u=i/12,x=-20+u*(28+lung),w=dead?0:Math.sin(sn.ph*7-u*7)*1.7*(1-coil*0.7)*(u<0.8?1:0.3);pts.push([x,-1.6+w-(u>0.78?(u-0.78)/0.22*lift:0)]);}
   const path=()=>{ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);};
   ctx.lineCap='round';ctx.lineJoin='round';
-  path();ctx.strokeStyle='#0b0812';ctx.lineWidth=4.6;ctx.stroke();path();ctx.strokeStyle='#56772a';ctx.lineWidth=3;ctx.stroke();
+  path();ctx.strokeStyle=selC('#3a571a',FIG_K);ctx.lineWidth=4.6;ctx.stroke();path();ctx.strokeStyle='#56772a';ctx.lineWidth=3;ctx.stroke();
   ctx.strokeStyle='#d6c96a';ctx.lineWidth=0.9;ctx.setLineDash([2,3]);path();ctx.stroke();ctx.setLineDash([]);
   const h=pts[pts.length-1];
-  ctx.fillStyle='#0b0812';ctx.beginPath();ctx.ellipse(h[0]+1.4,h[1],4.1,2.9,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=selC('#3a571a',FIG_K);ctx.beginPath();ctx.ellipse(h[0]+1.4,h[1],4.1,2.9,0,0,Math.PI*2);ctx.fill(); // (round 46d: the outline the body's shade)
   ctx.fillStyle='#56772a';ctx.beginPath();ctx.ellipse(h[0]+1.4,h[1],3.2,2.1,0,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#f0d27a';ctx.fillRect(h[0]+2,h[1]-1.2,1,1);
   if(!dead&&(sn.state!=='slither'||(sn.ph%0.9)<0.18)){ctx.strokeStyle='#d9483a';ctx.lineWidth=0.7;ctx.beginPath();ctx.moveTo(h[0]+4.4,h[1]+0.4);ctx.lineTo(h[0]+7.4,h[1]+0.2);ctx.lineTo(h[0]+8.4,h[1]-0.8);ctx.moveTo(h[0]+7.4,h[1]+0.2);ctx.lineTo(h[0]+8.4,h[1]+1.2);ctx.stroke();}

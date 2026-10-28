@@ -607,13 +607,33 @@ far silhouettes in a window's view, the iron of the dungeon's fittings (a materi
 gates, iron lifts) and the unused clock concepts. The saw's lightening holes are now real holes (the wall seen through them). Translucent dark
 marks (wear, cracks, grit, a translucent shade over the form) stay. `contourscan.py` checks it (below).
 
-`contourscan.py [file] [lo hi] [seeds] [torch|classic] [kinds=] [per=K] [figures] [dump=DIR]` (suite.py render, release, four light jobs): each
+Round 46d applies it to the figures: the prince, the robbers by rank and the captain, the skeleton, the snakes, at both levels of detail
+(`drawFigureHD`, `drawSkeletonHD`, `drawSnakeHD`; `drawFigure`, `drawSnake` with New characters off). Every outline was one fixed ink
+(`#120c18` in the new figures, `#0b0812` in the low-detail ones) stroked under the fills; it is now `selC` of the fill on the line's inner side,
+which is the part's shaded tone (`cel`/`tcel` lay the shade first and the base inset, so the outermost pixels are the shade): `FIG_K` .58.
+
+| k | For (figures, round 46d) |
+|---|---|
+| .58 (`FIG_K`) | every silhouette outline: `cel`, `tcel` (limbs, hair, the head cloth's ends, the collar, the snake's body), the groups' outlines laid before their fills (`BS(path, shade)`: the trunk by `tunicD`, the neck and the near arm by `skinD`, each limb and foot by its own shade), the crop of hair (`cropCap`), the belt (by the sash), the fillet, the low-detail limbs, feet, torso, head, helm, plume, sash, the blade and sheath, the low-detail snake (by its shade) |
+| .5 | the bronze and iron blades (khopesh, axe head, the skeleton's pitted blade: their bright fill's deep shade) |
+| .42 | the eye and the kohl line (the skin's shade, the deepest it goes), the low-detail eye |
+| .62-.84 | the near arm's soft contour over the body, the corselet's straps, the deltoid's and pectoral's lines (.7), the brow (.7), the pleats (.76), the seat's tension fold (.84), the club's bands, the bob's strands (.5) |
+| 1.12-1.15 | the corselet's lit strap, the cap's and helm's lit rims |
+
+Kept dark, not outlines: the skeleton's sockets, nose hole and teeth gaps (holes), the snake's slit pupil, nostril and dead eyes, the
+Kushite page dress's cord (a material); the dark's jackal (the storm stays black). Geometry, poses and hit boxes are unchanged and the
+silhouettes (`o.mono`: the lamp shadow, the beam cut, the metal carve, Classic's fill cut, the hit flash) draw the same paths in one colour:
+120 mono silhouettes (five palettes, six poses, with and without the blade, both levels of detail) are identical to v87's pixel for pixel.
+
+`contourscan.py [file] [lo hi] [seeds] [torch|classic] [kinds=] [per=K] [nofigures] [dump=DIR]` (suite.py render, release, four light jobs): each
 kind framed, drawn and left out (`LAYER_DBG.hide`; lamps' glows, a drift's sand stream and the wind's dust held out); its pixels the difference
 less an even darkening (its shadow); edge pixels those within a world px of its outline; an edge pixel fails when its brightest channel is
 under 60 and it is more than 40 levels on a channel from `selOut` (k .45 to 1.15) of the mean of its pixels 2 to 3.5 world px in, within 4
 world px; a kind is bad in a view when over 2% of its judged edge pixels fail and at least 80 canvas px do (a slot's own dark where it meets an
-edge, 77 px under a saw's blade, stays under it). Figures are a group reported only (`figures`; round 46d turns them on). Floors 1-48 seed 1,
-Classic, three instances of each kind a floor: v87 FAIL (see README "What round 46c found"), round 46c ok.
+edge, 77 px under a saw's blade, stays under it). The figures ('guard', 'snake', 'prince') are judged alike since round 46d (`nofigures`
+leaves them out); the prince stands on the start's row where no wall stands in his cell or beside it (a face cutting him is not his
+outline). Floors 1-48 seed 1, Classic, three instances of each kind a floor: v87 FAIL (see README "What round 46c found" and "What round 46d found"), round
+46d ok.
 
 ## Checklist
 
