@@ -27,6 +27,7 @@ that keep that order are below. This file states the code as of v84 (round 39, t
 | [#distance-blur](#distance-blur) | backdrop layers softened at bake | `bgblur` | same (both modes) |
 | [#the-dark](#the-dark) | `glStorm` | `storm2` | `stormLayer2D` |
 | [#hit-and-rewind-looks](#hit-and-rewind-looks) | S3-A: rewind, hit, last life, dissolve | `rewind`, `hit`, `low` | `rewind2D`, `lowEdge2D` |
+| [#low-resolution-passes-s-m-no-staircases](#low-resolution-passes-s-m-no-staircases) | rules S1-S7 for the quarter-size passes (round 46a) | `ryClean` (tests) | the shared profile |
 | [#checklist](#checklist) | what a new live element must do | | |
 
 `GLFX` is a code-only table of switches (every key `true` by default; `?prof` turns them off one at a time). `GLFX.low` is the
@@ -421,7 +422,11 @@ How an element relates to the beams:
 Classic: the beam sprites are cut by the walls' and low ceilings' faces (`ryLow`), the sand (`rySandCut`), what stands on the floor
 (`ryStand`, `ryStandCut`: a saw's slot and blade, raised stakes, a lying roof block, flasks, and since round 39 a sky clock's pedestal
 and a free lamp's floor stand; their own contact shadows stay lit floor) and blockers in a beam's haze (`ryHull`, drawn `RY_SH` 5 times
-so the shadow fades and widens toward the floor); figures cut the haze to `RY_FIG2D`. Classic draws no figure shadow in the haze. Checks: `beamshot.py`, `beamwall.py`.
+so the shadow fades and widens toward the floor); figures cut the haze to `RY_FIG2D`. Classic draws no figure shadow in the haze. Checks: `beamshot.py`, `beamwall.py`, `beamjag.py` (no staircases: [below](#low-resolution-passes-s-m-no-staircases)).
+
+Round 46a: the profiles are prefiltered (`ryPrefilter`, `RY_BLUR`) and read `LINEAR`; no edge the S pass draws is narrower than two of its
+texels (rules S1-S7 [below](#low-resolution-passes-s-m-no-staircases)). Test switches: `window.__RYOFF` (no beams, both modes),
+`GLFX.ryClean` (no haze drift, motes or dither).
 
 ### Atmosphere
 
@@ -514,6 +519,55 @@ S3-A, strengths from `hkFxUpdate` each frame (`HK`):
 
 Both modes draw the sand streaks flowing back to him and the words in `hudLayer`. "Softer flashes" (`S.set.calm`) sets `HK.dist` 0.25.
 
+## Low-resolution passes (S, M): no staircases
+
+Round 46a (owner: "The jagged light beams. I think we fixed this at least half a dozen times. Let's try to specify it better and to
+document and enforce it."). Torchlight's shafts pass S and its atmosphere pass M draw at a quarter of the canvas in each direction, at
+every `GLP.rs` (on the phone one texel is 4 device px, 8 with Battery saver's 1x canvas), and the composite reads them bilinearly. A
+bilinear upsample cannot make an edge narrower than one texel: anything these passes draw with a sharper edge than that comes out as a
+staircase of texel-sized steps along every slanted edge, and crawls when the view moves. The beams have been "fixed" for it six times, one
+edge at a time (v61b the march's jitter, round 15 the wall faces, round 20a the blades and low ceilings, 20b Classic's blade shadow, 28b a
+figure's shadow, 35b the footprint's rows), each time the edge in front of the owner; v87 still had four, found by measuring every beam:
+
+| | Edge in v87 | Fix (round 46a) |
+|---|---|---|
+| A | the profile (`ryProfile`) stored each line's first and last open raster pixel as its entry and exit; at each pier of a run of arches the entry jumped about 19 px from one line to the next, and with it the haze (`ov = s - si`): a dark stepped wedge from each pier's top down the run (the owner's shot, floor 26 at night). The profile was read `NEAREST`, the five coverage taps too | `ryPrefilter`, once per shape and floor: the lines within 3.5 sigma of the shape take the nearest line's entry and exit (`a` 255, `r` 0), then `r` and the entry are blurred across the lines by a Gaussian of `RY_BLUR` 1.4 world px; read `LINEAR`; the penumbra taps never further apart than a texel (`4 u_cam.z`) |
+| B | the floor between a pixel and the opening was counted or not by `if(t>tm)break;`: a hard cut across the beam | a weight `smoothstep(tm+EZ, tm-EZ, t)`, `EZ = max(6, 16 u_cam.z)` |
+| C | a low ceiling's lower edge was soft over 1.5 px, but the march steps 5-10 px; its ends were three taps of a hard test (three hard edges); a wall's edge `e` narrower than the step | the lower edge over `max(1.5, st, 8 u_cam.z)`; the ends ramped (`lowS`) and the top toward the wall above; walls `e = max(.07 + ts .0022, st/32)` |
+| D | the air read the sharp exit: at a pier it jumps 10-17 px and the haze's side followed it, a stepped edge along the light; the profile ended 1 px past the shape while the penumbra taps reach 36 px | the air takes `soA` (the exit read 1-2-1 two texels apart); the profile runs `RY_PEN` 36 px past the shape, `sp` at most 18 |
+
+The pane's edges (a window's glass) are soft over `max(1, 4 u_cam.z)`. Classic shares the profile, so its wedges went too. Cost: +2 to
+4% of the S pass (`?prof`).
+
+The rules, for S, M and any future pass drawn below the canvas's resolution:
+
+- **S1 continuity.** No branch, threshold, `step`, `break`, `continue` or `NEAREST` read on a value that varies from pixel to pixel
+  unless what it switches is ramped to the same value on both sides over at least two of the pass's texels (`8 u_cam.z` world px). A
+  `break` where the weight has reached 0 is fine; one that drops a weight of 0.4 is not.
+- **S2 width.** Every transition the pass draws is at least two texels wide at Battery saver's 1x canvas (the widest texel), whatever
+  `GLP.rs` is.
+- **S3 overlap.** Discrete samples (march steps, taps across an edge, rows in a pixel) overlap: each one's soft width is at least the
+  spacing between them, or the edge is a scallop or a staircase of copies.
+- **S4 the profile.** A beam's profile is prefiltered when it is made and read `LINEAR`; its exit (`b`) is never blurred.
+- **S5 the rim and the pane** stay sharp along the light and the opening's axes; they are never blurred out into the air (a blurred exit
+  lifted the rim into the haze).
+- **S6 scope.** These apply to M (mist, the looks) and to any new low-resolution pass, not only the beams.
+- **S7 precision.** A shader that works out world positions (`wpos`, `u_cam`, `tile(`) is compiled `highp` where the device has it
+  (`GLCHEAD`'s `GL_FRAGMENT_PRECISION_HIGH` guard): mediump's 10 bits step a world position by whole pixels. `?prof` and `?bench` show the
+  device's fragment highp in their header (`glPrecStr`).
+
+Check: `beamjag.py [file] [lo hi]` (in `suite.py`'s render suite, four GPU jobs by floor range). Static: S7 for every fragment shader
+that reads world positions, no `NEAREST` in `glcRy` or `glcTiles`. Then every theme at every hour it has (its first floor in 1-180) and
+the forced cases (a low ceiling under a beam, floor 7; a floor's shadow, floor 50; a blocker in a beam; the prince in a beam, floor 11; sand
+in a beam, floor 17 seed 19), each drawn with and without the beams (`window.__RYOFF`) with the moving parts off (`GLFX.ryClean`: haze
+drift, motes, dither) and a frozen clock, both modes, `GLP.rs` 1, .75, .5 and Battery saver. The beams' light is sampled along lines
+parallel to the light; what a Gaussian of three texels along each line leaves is the staircase; STEP, the share of lines whose residual
+crosses zero three or more times at over 2 levels, must be at most 0.012 (0.03 with Battery saver; the research's 0.005 and 0.02 sit inside the GPU's run-to-run noise of about 0.002: round 46a's worst is 0.0095 and 0.0199, v87 fails 71 of 164 frames and 15 of 82, up to 0.115). It must print `beamjag: ok`; a FAIL line
+names the floor, seed, opening, mode, `GLP.rs` and STEP and saves the worst crop (on | off | the beams' light scaled to the crop; `heat` maps the stepping lines). Pictures `egyptr46a.py`.
+It also fails when the shafts' shader is not live in Torchlight (a compile error falls back without a word). Left as it is: a heap or
+drift under a beam (round 43) takes the footprint through `fpGate` on its half-size canvas (`hillCanvas`), faint dashes along its ripples
+(STEP 0.0097 on floor 17); that is the composite's gate, not the S pass, and the theme cases frame beams away from them.
+
 ## Checklist
 
 A new element drawn live over the room picture must:
@@ -530,13 +584,13 @@ A new element drawn live over the room picture must:
 | be marked `_glv=1` if it is a canvas redrawn every frame (better: draw it through the facade) | otherwise WebGL keeps its first upload; a marked canvas costs a readback every frame | v61 |
 | allocate nothing per frame (cached sprites, gradients kept over their largest alpha, typed arrays) | GC pauses and ramp rows on the phone | v61 (WEBGL_LESSONS) |
 | use rectangle clips where it can and no pass of its own (a new mask goes in the atlas) | stencil clips and passes cost more than their pixels on a tile GPU | v61 rounds 3-4 |
-| take no jitter per low-resolution pixel and no travelling bands | staircases and crawling bars | v61b march, 27d glaze |
+| take no jitter per low-resolution pixel and no travelling bands; in the S and M passes keep rules S1-S7 ([below](#low-resolution-passes-s-m-no-staircases)): no hard edge narrower than two of their texels; check with `beamjag.py` | staircases and crawling bars | v61b march, 27d glaze, 46a beams |
 | light through `gatherLights`, not paint light into the scene; key looks on `keyLight`'s `sx`, never on one lamp or a flickering radius | both modes read the same lights; flicker flipped the slab's lit face | 20b |
 | have its parts' rows in [layers.md](layers.md) and be cut by the stone nearer than its layer: `nearCut` (walls' and low ceilings' faces `HX` left of their cells; with `fl` the floor slabs) for a part, `onFace` for a particle, `airCut` for a soft sprite, `wallPress`/`figClip` for a figure, `liftOccl`/`liftNearCut` in a shaft; a part nearer than the figures is drawn after them (the near-halves loop); check with `layerscan.py` (`layerscan: ok`) | live drawing comes after every room picture, which holds the back wall and the front plane together, so the stone in front is never given by draw order | 19, 26a, 37c, 39 |
 | be a pure function of the clock and its tiles where it animates (hashes, no generator stream) | rewind-safe, layouts unchanged | 21b, 26d |
 
 Checks for rendering: `rendersmoke.py` (both modes, every floor), `glauto.py`, `metaltest.py`, `tilescan.py`, `openscan.py`,
-`doorscan.py`, `liftscan.py`, `beamshot.py`, `beamwall.py`, `cpscan.py`, `shadowscan.py`, `stormfair.py`;
+`doorscan.py`, `liftscan.py`, `beamshot.py`, `beamwall.py`, `beamjag.py` (round 46a), `cpscan.py`, `shadowscan.py`, `stormfair.py`;
 `layerscan.py [file] [lo hi] [seeds] [torch|classic|both] [kinds=] [phases=K]` (round 39, by hand, not yet in `suite.py`: views covering
 every instance of each kind, each drawn whole and with that kind left out by `LAYER_DBG.hide`; the front plane's pixels must not change;
 must print `layerscan: ok`);

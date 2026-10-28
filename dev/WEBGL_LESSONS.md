@@ -57,9 +57,15 @@ fallback. Prefer the following, for the reasons we found:
   give it a target of its own.
 - **Fixed sizes.** Do not re-create renderbuffers or textures when a size changes. The atlas used to be made again whenever the
   metal box changed (every ~30 frames on metal floors). Size targets for the largest case.
-- **No jitter across low-resolution pixels.** The shaft's shadow march began each quarter-size pixel at a random offset, which
-  made a staircase of squares along the shadow edges that crawled when the view panned (in v60 too). In a low-resolution pass,
-  take the same steps for every pixel and soften in space: read between texels, or widen a smoothstep.
+- **No staircases from a low-resolution pass (rules S1-S7, `docs/rendering.md`, "Low-resolution passes").** The S and M passes
+  draw at a quarter of the canvas and are upsampled bilinearly, so any edge they draw narrower than their texel (4 device px on the
+  phone, 8 with Battery saver) is a staircase that crawls as the view pans. The beams were fixed for it six times, one edge at a time:
+  v61b's march began each pixel at a random offset (take the same steps for every pixel); round 20a's three hard taps across a low
+  ceiling's end; round 28b's figure mask at an eighth; round 46a's profile read texel by texel with entries that jumped 19 px at each
+  pier, a floor counted by `if(t>tm)break;`, and edges soft over 1.5 px under a march stepping 5-10 px. In such a pass: no branch,
+  threshold, `step`, `break` or `NEAREST` read on a value that varies per pixel unless it is ramped over two texels (`8 u_cam.z`); every
+  transition two texels wide at Battery saver; discrete samples overlap (soft width at least their spacing); data such as the beams'
+  profiles prefiltered once on the CPU and read `LINEAR`; world positions in `highp`. `beamjag.py` measures it (in `suite.py`).
 - **MSAA samples are never stored.** Keep the invalidate calls. Round 2 tried keeping the colour samples, which stored the 4x
   scene to memory every frame: heat, and it fixed nothing.
 - **Uploads from 2D canvases.**

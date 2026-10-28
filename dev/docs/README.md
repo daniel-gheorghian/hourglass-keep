@@ -103,6 +103,14 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
 
+## What round 46a found
+
+The sky beams' staircases, fixed six times one edge at a time, are now a rule with a check: [rendering](rendering.md#low-resolution-passes-s-m-no-staircases), rules S1-S7.
+
+| Finding (v87) | Where | Round 46a | Seen in |
+|---|---|---|---|
+| Edges narrower than a texel of the quarter-size S pass, drawn as staircases at every `GLP.rs`: the profile's entry jumped ~19 px at each pier (a dark stepped wedge down a run of arches, the owner's shot, floor 26 at night) and was read `NEAREST`; a floor's shadow cut hard (`if(t>tm)break;`); a low ceiling's edges soft over 1.5 px or three hard taps under a march stepping 5-10 px. `beamjag.py`: STEP up to 0.115 on v87 (Garama by moonlight) | `ryProfile`, `glcRy`, `GLCSH.s` | fixed: `ryPrefilter` (`RY_BLUR` 1.4), `LINEAR`, the floor by a weight over `EZ`, `lowS` and the low ceiling's lower edge over the march's step, walls' `e` over a 32nd of it, the pane's edges over a texel; `beamjag.py` in `suite.py` (render) | [openings and backdrop](elements/openings-and-backdrop.md) |
+
 ## What round 39 found, and what v84 did
 
 Round 39 (owner: "We need a layering rule ... background, back wall, corridor, front wall ... take each of the game elements and assign

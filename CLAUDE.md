@@ -50,7 +50,7 @@ is a placeholder: only the built `index.html` carries the release number.
    it starts): `play` (the bot and play checks: run2, featbot, p4bot, forktest, hinttest, grablabel, swingtest, liftkick, lowceil,
    r38b_tests, sawceil, primtest, hdtest, lifttest, respawnplates, slabresume, gratepeek), `gen` (generator and layout scans: metrics40,
    guardscan, forkscan, puzzlescan, vertscan, featurescan, orphanscan, mazescan, wellcorr, lampscan, slabscan, sandshaft, wellscan, hillscan, windscan, courtscan) and
-   `render` (drawing checks: rendersmoke, liftscan, crossscan, cpscan, shadowscan, doorscan, openscan, tilescan, stormfair, glauto,
+   `render` (drawing checks: rendersmoke, liftscan, crossscan, cpscan, shadowscan, doorscan, openscan, tilescan, beamjag, stormfair, glauto,
    metaltest, rewindrooms, figscan). The tier chooses the jobs; `--suite play,render` runs only those suites, in that order (default
    all: play, gen, render). The suites run in sequence (owner): each has the whole pool of workers and GPU slots, finishes, writes and
    prints its summary with its own wall time, then the next starts; `--stop-on-fail` skips the suites still to run once one fails
@@ -64,7 +64,7 @@ is a placeholder: only the built `index.html` carries the release number.
    are skipped and reported with the rest, and the suites carry on in sequence (a failed job in the journal stays failed). The bot and render
    runs are split one floor (and seed) per job; each of the N workers (`suiteworker.py`) starts ONE Chromium and runs its jobs
    in turn, each in a fresh browser context, so nothing leaks between jobs. The test scripts are unchanged and still run
-   standalone. Jobs that draw Torchlight (`HEAVY` in suite.py: rendersmoke, liftscan, crossscan torch, cpscan, shadowscan, doorscan, openscan, tilescan) run in a second shared browser per worker launched with the GPU flags (`--use-angle=metal --enable-gpu --ignore-gpu-blocklist --force_high_performance_gpu`: WebGL through ANGLE on Metal, the Radeon; without flags headless Chromium draws WebGL in SwiftShader on the CPU, several cores a frame), at most four at a time (`HK_GPU_JOBS`, default 4). Measured idle on the 8-core i9 (Radeon Pro 5500M), software against GPU: `liftscan.py 15 20` 495 s (100 CPU-min) against 83 s (2), `shadowscan.py 13 18` 533 s against 127 s; eight shadowscans at once 285 s each, 4.9 min in all, four at a time 150 s each, 5.2 min at 40% less CPU. `HK_SUITE_GPU=0` runs them in software as before, `HK_SUITE_GPU=igpu` on the Intel UHD 630. The light render jobs stay in software: a 2D canvas drawn on the Radeon is not bit-exact between two redraws (rewindrooms finds 13 values off). The GPU shows one fault software hides: shadowscan's sky clock on floor 29 seed 1 (c367 r57, 125 px of his shadow, both GPUs; the clocks on floors 10 and 22 fail either way). A job over its 25-minute limit, or one that kills its browser, fails with a message and the worker is replaced.
+   standalone. Jobs that draw Torchlight (`HEAVY` in suite.py: rendersmoke, liftscan, crossscan torch, cpscan, shadowscan, doorscan, openscan, tilescan, beamjag) run in a second shared browser per worker launched with the GPU flags (`--use-angle=metal --enable-gpu --ignore-gpu-blocklist --force_high_performance_gpu`: WebGL through ANGLE on Metal, the Radeon; without flags headless Chromium draws WebGL in SwiftShader on the CPU, several cores a frame), at most four at a time (`HK_GPU_JOBS`, default 4). Measured idle on the 8-core i9 (Radeon Pro 5500M), software against GPU: `liftscan.py 15 20` 495 s (100 CPU-min) against 83 s (2), `shadowscan.py 13 18` 533 s against 127 s; eight shadowscans at once 285 s each, 4.9 min in all, four at a time 150 s each, 5.2 min at 40% less CPU. `HK_SUITE_GPU=0` runs them in software as before, `HK_SUITE_GPU=igpu` on the Intel UHD 630. The light render jobs stay in software: a 2D canvas drawn on the Radeon is not bit-exact between two redraws (rewindrooms finds 13 values off). The GPU shows one fault software hides: shadowscan's sky clock on floor 29 seed 1 (c367 r57, 125 px of his shadow, both GPUs; the clocks on floors 10 and 22 fail either way). A job over its 25-minute limit, or one that kills its browser, fails with a message and the worker is replaced.
    `run2`, `featbot`, `p4bot`, `forktest` and `rendersmoke` also fail a run whose page CPU time per game frame is over budget
    (`slowguard.py`, 0.3 ms/frame; healthy runs are 0.02 to 0.1), naming the floor and seed: a leak like v41's particles shows
    up as a failure, not as a long wait. `HK_MS_PER_FRAME` and `HK_RUN_WALL` override the budgets.
@@ -99,6 +99,7 @@ is a placeholder: only the built `index.html` carries the release number.
 | `windscan.py lo hi [seeds] [nopush] [noease]` | the wind (round 44; round 45c's placement by openings): every zone on headroom over plain floor or a one-storey gap he jumps, every seg there calm or a gap jump and no other within a cell, off timed stretches, the chase, fighters' ground, doors; against the run; 3-8 cells; gusts only from floor 7 with the peak by band, a lull of 1.8 s or more; a steady zone over a jump made at its strength; he stands in every gust 9 s and stays in it; a death eases a zone to 0.6, a rewind keeps it, a second death 0.3 | `windscan: ok` |
 | `courtscan.py lo hi [seeds] [nodrown]` | round 45's courts: 4-8 cells of headroom under stone (a light well 2), 7-8 a floor from floor 3, none on 1-2, never two in view (3 rows, 14 cells), none by a lift or door, kinds by theme, every one-storey spiked pit inside a court a pool (and every pool one), no window, arch or breach beam, own opening, wall lamp or hanging left inside one; a walk off a pool's coping drowns him at its surface; each court's two jambs of its theme's kind, 3 cells open between them, none intact beside a breach | `courtscan: ok` |
 | `shadowscan.py lo hi` (release) | no figure's lamp shadow on what stands before the back wall, Torchlight (round 38a) | `shadowscan: ok` |
+| `beamjag.py [file] [lo hi]` | no staircases in the sky beams (round 46a, rules S1-S7): static (highp where world positions are read, no `NEAREST` on the beams' textures), then every theme at every hour and the forced cases (low ceiling, floor shadow, blocker, prince, sand in a beam), both modes, `GLP.rs` 1, .75, .5 and Battery saver | STEP <= 0.012 (0.03 saver), `beamjag: ok` |
 | `doorscan.py lo hi`, `openscan.py lo hi`, `tilescan.py lo hi views=2` (release) | no wall art over a doorway (round 15), a window, gate or lift mouth (16c), a floor tile (35c), both modes | every count 0, `tilescan: ok` |
 
 Run by hand, not in `suite.py`: `layoutcmp.py` (layouts identical against a release, for look-only rounds; a generator round differs on
@@ -1131,6 +1132,34 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   stakes, a flask, a lamp stand, a fallen block) is left out, a soft shadow under 254.5 is not. Classic cuts the same things' boxes
   (`ryStand`, `ryStandCut`). Look only. Beam frames away from sand and things on the floor (beamshot's floors, frozen): Torchlight 0 to 0.1% of
   pixels differ by more than 4 levels (feet, lamp stands, flasks), Classic 0 to 0.07%. Pictures `egyptr35b.py` (r35b_beams.png).
+  No staircases (round 46a, owner: "The jagged light beams. I think we fixed this at least half a dozen times. Let's try to specify it
+  better and to document and enforce it"; rules S1-S7 in `dev/docs/rendering.md`, "Low-resolution passes (S, M): no staircases"). The S
+  pass (and M) is a quarter of the canvas, read bilinearly, at every `GLP.rs` (a texel 4 device px on the phone, 8 with Battery saver): an
+  edge it draws narrower than that is a staircase, so each fix of one edge (v61b, 15, 20a, 20b, 28b, 35b) left the next. v87 had three:
+  (A) `ryProfile` stored each line's first and last open pixel as its entry and exit, so at each pier of a run of arches the entry jumped
+  ~19 px and the haze with it (a dark stepped wedge from each pier's top: the owner's shot, floor 26 at night), read `NEAREST`, the five
+  coverage taps too; (B) the floor between a pixel and the opening cut by `if(t>tm)break;`; (C) a low ceiling's lower edge soft over 1.5 px
+  under a march stepping 5-10 px, its ends three hard taps, walls' `e` under the step. Now: `ryPrefilter` once per shape and floor (lines
+  within 3.5 sigma take the nearest line's entry and exit, `a` 255 `r` 0; `r` and the entry blurred across the lines by `RY_BLUR` 1.4 world
+  px; the exit never, S5: blurred, the rim rose into the air), read `LINEAR` (Classic shares the profile); penumbra taps at least a texel
+  apart (`4 u_cam.z`); the pane's edges over `max(1, 4 u_cam.z)`; the floor by a weight `smoothstep(tm+EZ, tm-EZ, t)`, `EZ = max(6, 16
+  u_cam.z)`; walls `e = max(.07 + ts .0022, st/32)`; a low ceiling's lower edge over `max(1.5, st, 8 u_cam.z)`, its ends ramped (`lowS`)
+  and its top toward the wall above. The rules: S1 no branch, threshold, step, break, continue or `NEAREST` read on a per-pixel value unless
+  ramped over two texels (`8 u_cam.z` world px); S2 every transition at least two texels at Battery saver; S3 discrete samples overlap (soft
+  width at least their spacing); S4 the profile prefiltered, read `LINEAR`, its exit not blurred; S5 the lit rim and pane stay sharp along
+  the axes and the light, never blurred into the air; S6 the same for M and any future low-resolution pass; S7 shaders that work out world
+  positions (`wpos`, `u_cam`, `tile(`) in highp (`GLCHEAD`'s guard; `?prof` and `?bench` show the device's fragment highp, `glPrecStr`).
+  Test switches: `window.__RYOFF` (no beams, both modes), `GLFX.ryClean` (no haze drift, motes or dither, `u_cau.z`). `beamjag.py` (in
+  suite.py, render, four GPU jobs) measures STEP (the share of lines along the light whose residual over a Gaussian of three texels crosses
+  zero three times at over 2 levels): every theme at every hour and the forced cases, both modes, `GLP.rs` 1, .75, .5 and Battery saver:
+  pass at STEP <= 0.012 (0.03 saver; the research's 0.005 / 0.02 sit inside the GPU's run-to-run noise of +-0.002 on two dawn arch runs):
+  v87 fails 71 of 164 frames (15 of 82 saver), up to 0.115 (Garama by moonlight, a low ceiling's ends); round 46a: worst 0.0095 (0.0199 saver), 162
+  of 165 under 0.005, 246 frames in 5.8 min. Also from the full run: the haze takes a smoothed exit (`soA`, read 1-2-1 two texels
+  apart: at a pier the exit jumps 10-17 px, the haze's side followed it), the profile runs `RY_PEN` 36 px past the shape (the penumbra
+  taps' reach, `sp` at most 18) so its ends never cut them; beamjag fails if the shafts' shader does not compile (a scoping slip in this
+  round fell back to Classic's beams silently). Cost +2 to 4% of the S pass. Look only:
+  `layoutcmp.py` against v87 same. Pictures `egyptr46a.py old.html new.html [outdir]` (r46a_f26.png, r46a_f50.png, r46a_f7.png,
+  r46a_f11.png: before | after, 3x crops at each `GLP.rs`, Battery saver and Classic; r46a_f<N>_<mode>_phone.png).
 - The view through openings (round 25e, owner: "the backgrounds seen through the windows sometimes change wildly ... especially when
   going downwards") follows the keep, not the screen: each opening (window, open arch, breach) looks out at the eye level of its own storey.
   Its view is placed as it was when the camera rests on the floor under the opening (`bgAnchor`: openings that touch share the anchor of the

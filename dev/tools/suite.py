@@ -115,13 +115,16 @@ if mode == 'release': # (the art-over-openings scans of rounds 15, 16c and 35c, 
     J += [('doorscan', ['doorscan.py', str(n), str(n + 11)], art_check) for n in range(1, 49, 12)]
     J += [('openscan', ['openscan.py', str(n), str(n + 11)], art_check) for n in range(1, 49, 12)]
     J += [('tilescan', ['tilescan.py', str(n), str(n + 11), 'views=2'], tail_check(r'tilescan: ok')) for n in range(1, 49, 12)]
+    # (round 46a) no staircases in the sky beams (rules S1-S7, dev/docs/rendering.md): every theme at every hour and the forced cases, both modes,
+    # GLP.rs 1, .75, .5 and Battery saver; split by the cases' floors into four GPU jobs of about 10 cases (1.5 to 2 min each here)
+    J += [('beamjag', ['beamjag.py', str(lo), str(hi)], tail_check(r'beamjag: ok')) for lo, hi in ((1, 24), (25, 60), (61, 110), (111, 180))]
 # Suites: every group belongs to exactly one (a group with none stops the run here, before anything starts: add it below)
 SUITES = {
     'play': ('run2', 'run2 fight', 'featbot', 'featbot fight', 'p4bot', 'forktest', 'hinttest', 'grablabel', 'swingtest', 'liftkick',
              'lowceil', 'r38b_tests', 'sawceil', 'primtest', 'hdtest', 'lifttest', 'respawnplates', 'slabresume', 'gratepeek'), # the bot and play checks
     'gen': ('metrics40', 'guardscan', 'forkscan', 'puzzlescan', 'vertscan', 'featurescan', 'orphanscan', 'mazescan', 'wellcorr', 'lampscan',
             'slabscan', 'sandshaft', 'wellscan', 'hillscan', 'windscan', 'courtscan'), # generator and layout scans (the tiles, no picture)
-    'render': ('rendersmoke', 'liftscan', 'crossscan', 'crossscan torch', 'cpscan', 'shadowscan', 'doorscan', 'openscan', 'tilescan',
+    'render': ('rendersmoke', 'liftscan', 'crossscan', 'crossscan torch', 'cpscan', 'shadowscan', 'doorscan', 'openscan', 'tilescan', 'beamjag',
                'stormfair', 'glauto', 'metaltest', 'rewindrooms', 'figscan')} # drawing checks (pixels, poses, the WebGL path)
 SUITE_OF = {g: su for su, gs in SUITES.items() for g in gs}
 assert len(SUITE_OF) == sum(len(gs) for gs in SUITES.values()), 'a group is in two suites'
@@ -202,7 +205,7 @@ def go(j, w):
 # shadowscans at once took 285 s each and 4.9 min in all, four at a time 150 s each and 5.2 min, at 40% less CPU, so 4. (In
 # software, v67: 1 rendersmoke alone 53 s, 4 at once 137 s each, 8 at once 300 s each.) Only these: a GPU-drawn 2D canvas is not
 # bit-exact between two redraws on the Radeon (rewindrooms finds 13 values off), so the light jobs stay in software.
-HEAVY = ('rendersmoke', 'liftscan', 'crossscan torch', 'cpscan', 'shadowscan', 'doorscan', 'openscan', 'tilescan')
+HEAVY = ('rendersmoke', 'liftscan', 'crossscan torch', 'cpscan', 'shadowscan', 'doorscan', 'openscan', 'tilescan', 'beamjag')
 GPU_JOBS = int(os.environ.get('HK_GPU_JOBS', '4'))
 t0 = time.time(); res = []; QL = queue.Queue(); QH = queue.Queue(); GPU = threading.Semaphore(GPU_JOBS)
 # The run dir (see the top). --resume FILE (or HK_SUITE_JOURNAL): every finished job is appended to FILE as one JSON line, and a run
