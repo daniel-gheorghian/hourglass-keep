@@ -15,9 +15,11 @@
 # hoist beam, brace, hanger and sheave, him jumping up on the top landing), loop (the paternoster's level runs and wheels, him beside its
 # top and its foot), lamp (a lamp's flame and a free lamp's stand, the caster beyond him), sand (a well's sand after its slab broke, him
 # dropping beside it; a sand lift's column with the slab a storey up, him on the foot's landing), debris (a cracked slab or plank just
-# fallen), vent (the flame at the roar) and dart (one in flight). Round 43 adds heap and drift (him 40 px off its middle, on or in it). Round 45 adds pool (a court's pool, him on its coping) and vine (a pergola's hanging vine). A kind the tested file does not record (an older build) takes its outlines
+# fallen), vent (the flame at the roar) and dart (one in flight). Round 43 adds heap and drift (him 40 px off its middle, on or in it); round 46b
+# measures those two by their drawn pixels (the frame with it less the frame without it, LAYER_DBG.hide; shadow, beams, mist, looks, caustics and
+# bloom off in both), not by the SHC outline. Round 45 adds pool (a court's pool, him on its coping) and vine (a pergola's hanging vine). A kind the tested file does not record (an older build) takes its outlines
 # from the ref build. Prints the counts per kind and 'shadowscan: ok'; a sheet of the worst
-# cases (shadowscan.png: shadow on | off | carve off). Run from dev/tools.
+# cases (shadowscan.png: shadow on | off | carve off); SS_DUMP=prefix writes each bad thing's frame with the shadowed pixels in magenta. Run from dev/tools.
 import io, os, sys
 from playwright.sync_api import sync_playwright
 from PIL import Image, ImageDraw, ImageFilter, ImageChops
@@ -31,6 +33,8 @@ SEEDS = [int(s) for s in next((x for x in a if ',' in x and '=' not in x), str(N
 KINDS = next((x[6:] for x in a if x.startswith('kinds=')), 'slab,stakes,saw,pend,roof,clock,flask,liftslab,rope,sandslab,bar,rig,loop,lamp,sand,debris,vent,dart,heap,drift,pool,vine,jamb').split(',')
 PER = int(next((x[4:] for x in a if x.startswith('per=')), '2'))
 OUT = next((x for x in a if x.endswith('.png')), os.path.join(HERE, 'shadowscan.png'))
+DRAWN = ('heap', 'drift')  # (round 46b: kinds measured by their drawn pixels, not by the outline the carve itself uses, which made the test circular: v87's
+# hillSil missed B3's left end and every stone above the mound, and shadowscan, masking by that same outline, found 0 of 128)
 ERODE = 7  # device px (3.5 css px, 1.7 world px at this view: the quarter-size mask read blurred over a texel either side)
 
 # the things of a kind on the floor, and the scene: the thing set as it shows the fault, the prince beside it, a torch behind him
@@ -65,18 +69,18 @@ JS = r'''window.SHS=(()=>{const H=__HK,TW=32,SURF=r=>(r+1)*64-4,TS=7;
     if(kind==='vent')dyn('vent').forEach(o=>out.push({x:o.c*TW+16,r:o.r,ys:SURF(o.r),prep:()=>{const f=o.f;f.off=((0.86*f.per-H.gameTime)%f.per+f.per)%f.per;}}));
     if(kind==='dart')dyn('darter').forEach(o=>{const f=o.f,dir=f.dir||-1,xb=f.x-2*dir,mx=dir>0?xb+12.5:xb-8,dx=f.x+dir*90;
       out.push({x:dx,r:o.r,ys:SURF(o.r),prep:()=>{L.ext.darts.length=0;L.ext.darts.push({x:dx,y:f.y,r:o.r,x0:f.x0,dir,mx});}});});
-    if(kind==='heap'||kind==='drift')(L.hills||[]).forEach(h=>{if(!!h.d===(kind==='drift'))out.push({x:(h.c+h.n/2)*TW,r:h.r,ys:SURF(h.r),tq:50});}); // (round 43: him beside or on it, the lamp beyond him)
+    if(kind==='heap'||kind==='drift')(L.hills||[]).forEach(h=>{if(!!h.d===(kind==='drift'))out.push({x:(h.c+h.n/2)*TW,r:h.r,ys:SURF(h.r),tq:50,prep:()=>{L.winds.length=0;if(H.HILL_DBG)H.HILL_DBG.stream=false;}});}); // (round 43: him beside or on it, the lamp beyond him; round 46b: no wind's dust and no sand stream, air over it that takes the shadow on the wall)
     return out;}
   function list(n,sd,kind){window.__HKfreeze=true;const L=H.load(n,sd,true);return things(L,kind).length;}
-  function show(n,sd,kind,i,shadow,off){window.__HKfreeze=true;for(const id in H.HINTS)H.S.hints[id]=1;
+  function show(n,sd,kind,i,shadow,off,hide,clean){window.__HKfreeze=true;for(const id in H.HINTS)H.S.hints[id]=1;
     const L=H.load(n,sd,true),C=L.cols;H.banner=null;H.intro=0;const t=things(L,kind)[i];if(!t)return null;if(t.prep)t.prep();const x=t.at?t.at():t.x;
     const fl=c=>c>=0&&c<C&&L.base[t.r*C+c]!==2&&H.solidBelow(c,t.r);let s=1;
     {const l=Math.floor((x-40)/TW),r=Math.floor((x+40)/TW),okL=fl(l)&&fl(Math.floor((x-100)/TW)),okR=fl(r)&&fl(Math.floor((x+100)/TW));s=okL?-1:okR?1:fl(l)?-1:1;}
     const P=H.P;P.inv=1e9;P.state='stand';P.face=-s;P.x=x+s*40;P.y=t.ys+(t.dy||0);P.fallY=P.y;P.vx=P.vy=0;if(t.place)t.place(P,s);
     L.torches.length=0;if(t.keep)L.torches.push(t.keep);const lc=Math.floor((P.x+s*(t.tq||60))/TW);L.torches.push({c:lc,r:t.r});
-    H.GLFX.shadow=!!shadow;if(H.SHC)H.SHC.off=!!off;H.clearRooms();
+    H.GLFX.shadow=!!shadow;if(H.SHC)H.SHC.off=!!off;H.LAYER_DBG.hide=hide?new Set(hide):null;const G=H.GLFX;G.shafts=G.mist=G.caustics=G.lookfx=!clean;G.bloom=!clean&&kind!=='heap'&&kind!=='drift';/* (round 46b: the bloom held out, as layerscan's NOBLOOM: the shadow on the wall dims the glow that spreads onto a pale crest, light, not a draw-over) */H.clearRooms();
     H.cam.x=x-H.viewW/2;H.cam.y=(t.r+1)*64-64*1.6;H.cam.gy=H.cam.y;H.mode='play';H.GLP&&(H.GLP.pipe=false);
-    H.render();H.render();H.render();if(H.SHC)H.SHC.off=false;
+    H.render();H.render();H.render();if(H.SHC)H.SHC.off=false;H.LAYER_DBG.hide=null;G.shafts=G.mist=G.caustics=G.lookfx=G.bloom=true;
     const X=H.XF,cv=[...document.querySelectorAll('canvas')].find(q=>q.getBoundingClientRect().width>0),R=cv.getBoundingClientRect();
     const m=p=>[R.left+(p[0]*X.VZ-X.camD)/cv.width*R.width,R.top+(p[1]*X.VZ-X.camDY)/cv.height*R.height];
     const kk=kind==='slab'?'slab':kind,shc=H.shcList?H.shcList().filter(e=>e.k===kk&&e.rings.some(rg=>rg.some(p=>Math.abs(p[0]-x)<48&&Math.abs(p[1]-t.ys)<90))).map(e=>({clip:[m([e.clip[0],e.clip[1]]),m([e.clip[2],e.clip[3]])],rings:e.rings.map(rg=>rg.map(m))})):null;
@@ -143,8 +147,17 @@ if __name__ == '__main__':
                         if not shc:
                             empty += 1; continue
                         pg.evaluate("([n,sd,k,i])=>SHS.show(n,sd,k,i,false,false)", [n, sd, kind, i]); Bm = shot(pg)
-                        mk = mask(shc, A.width, A.height)
+                        if kind in DRAWN:  # (round 46b) the thing as drawn: the frame with it less the frame without it, both with the shadow off, eroded as the outline's mask
+                            pg.evaluate("([n,sd,k,i])=>SHS.show(n,sd,k,i,false,false,null,true)", [n, sd, kind, i]); Sm = shot(pg)  # (without the beams, mist, looks, caustics and bloom: their cut round it in the air would count as its pixels)
+                            pg.evaluate("([n,sd,k,i])=>SHS.show(n,sd,k,i,false,false,[k],true)", [n, sd, kind, i]); Hm = shot(pg)
+                            dd = ImageChops.difference(Sm, Hm).convert('RGB'); r_, g_, b_ = dd.split()
+                            mk = ImageChops.add(ImageChops.add(r_, g_), b_).point(lambda v: 255 if v > 12 else 0).filter(ImageFilter.MinFilter(2 * ERODE + 1))
+                        else:
+                            mk = mask(shc, A.width, A.height)
                         nb, area = changed(A, Bm, mk)
+                        if os.environ.get('SS_DUMP') and nb > 4:  # (the pixels that took his shadow, magenta, over the frame with it)
+                            d = ImageChops.subtract(Bm, A).convert('RGB'); r_, g_, b_ = d.split(); hit = ImageChops.multiply(ImageChops.add(ImageChops.add(r_, g_), b_).point(lambda v: 255 if v > 24 else 0), mk)
+                            vis = A.copy(); vis.paste((255, 0, 255), mask=hit.filter(ImageFilter.MaxFilter(3))); vis.save('%s_%s_%d_%d.png' % (os.environ['SS_DUMP'], kind, n, r1['c']))
                         if area < 20:
                             empty += 1; continue
                         if pg.shc and own:

@@ -6269,7 +6269,8 @@ function egHeap(ctx,x,y,w,h){ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.
 // a block of stone in the game's projection: its front face (x0..x0+w, yt..yt+h, at the front of its depth), its top face receding up
 // and to the right (o.top) and its right side face (o.side), for a depth o.d of the corridor (1: all of it). The stone's texture is one
 // cached canvas (stoneTex) drawn onto each face, sheared with it; o.u0 shifts it along (so a moving stone carries its own pattern).
-function stoneBox(ctx,kind,x0,yt,w,h,o){const K='#0b0812',S=4,TX=stoneTex(kind,72,72),d=o.d===undefined?1:o.d,dx=DX*d,dy=DY*d,u0=Math.max(0,Math.min(8,o.u0||0));
+// o.ink: its outline's colour (round 46b, the contour rule: selOut of its own stone; the ink #0b0812 when left out, the older props' until round 46c)
+function stoneBox(ctx,kind,x0,yt,w,h,o){const K=o.ink||'#0b0812',S=4,TX=stoneTex(kind,72,72),d=o.d===undefined?1:o.d,dx=DX*d,dy=DY*d,u0=Math.max(0,Math.min(8,o.u0||0));
   if(!o.near){ctx.fillStyle=K;ctx.beginPath();ctx.moveTo(x0-0.8,yt+h+0.8);ctx.lineTo(x0-0.8,yt-0.8);if(o.top){ctx.lineTo(x0+dx-0.6,yt-dy-0.8);ctx.lineTo(x0+w+dx+0.8,yt-dy-0.8);}else ctx.lineTo(x0+w+0.8,yt-0.8);
   if(o.side){if(!o.top)ctx.lineTo(x0+w+dx+0.8,yt-dy-0.8);ctx.lineTo(x0+w+dx+0.8,yt+h-dy+0.6);}ctx.lineTo(x0+w+0.8,yt+h+0.8);ctx.closePath();ctx.fill();} // (near: the near half drawn again over a figure, its faces only; its outer edges are stroked after)
   if(o.top){ctx.save();ctx.transform(1,0,dx,-dy,x0,yt);ctx.drawImage(TX,u0*S,0,w*S,12*S,0,0,w,1);ctx.fillStyle='rgba(255,240,220,.14)';ctx.fillRect(0,0,w,1);ctx.restore();}
@@ -8364,6 +8365,8 @@ function drawNeedles0(ctx,o,f,X,ys,near,sy){const e=f.ext;if(e<=0.02)return;cons
 // floor at least, then one more for every HILL_RATIO stretches that can take one. Guards keep to their side of a hill (clampMove).
 const HILL_WADE=42,HILL_CLIMB=35,HILL_WD=13,HILL_RATIO=4,HILL_M0=1,HILL_M1=3;
 const HILL_SANDY=new Set(['west','blue','meroe','foggara','deffufa','wells','napata','hawara','shali']),HILL_MUD=new Set(['deffufa','shali']);
+const HILL_A=253;
+const HILL_DBG={stream:true,end:null}; // (round 46b: heapscan.py measures a drift without its sand stream, which is air over the wall; end: a B3's end look forced, egyptr46b.py)
 const HILL_R=[0,0.12,0.24,0.36,0.5,0.62,0.74,0.86,1]; // the depth rows its surface is drawn in, front (0) to back (1)
 function hillN(i,s){return (hash2(i|0,s|0)%10000)/10000;}
 function hillNz(u,s){const i=Math.floor(u),f=u-i,a=hillN(i,s),b=hillN(i+1,s),t=f*f*(3-2*f);return a+(b-a)*t;}
@@ -8450,20 +8453,71 @@ function hillCols(h){const th=L.theme,sd=SAND_LOOK[th.look]||[232,210,164];
   if(h.d)return {lit:hillMix(sd,[255,250,236],0.25),base:sd,dark:hillMix(sd,[70,48,30],0.55)};
   if(h.v==='B2'){const m=hillHex(STONES.mudbrick.base);return {base:hillMix(m,[60,38,26],0.25),lit:hillMix(m,[214,180,140],0.35),dark:hillMix(m,[24,14,10],0.6)};}
   const w=hillHex(th.wallB),hi=hillHex(th.hi),lo=hillHex(th.lo); // (round 43, owner: B1 in Aksum "washed out and ghostly": the grit mound in the wall's own darker tones)
+  if(th.look==='blue'){const s=hillHex(STONES[THEME_STONE.blue].base); // (round 46b) the Blue Chambers' walls are glazed faience: a grit mound in their blue read as glass under limestone blocks; the grit is the blocks' own stone, darkened toward the theme's shadow
+    return {base:hillMix(hillMix(s,[60,52,44],0.45),lo,0.25),lit:hillMix(s,hi,0.15),dark:hillMix(lo,[10,6,6],0.5)};}
   return {base:hillMix(w,lo,0.45),lit:hillMix(hi,w,0.35),dark:hillMix(lo,[10,6,6],0.5)};}
+// The contour rule (round 46b, owner: "if you add contours or accents always use a darker shade of the pixels that are closer to the edge or lighter
+// if light hits it - with some tinting of course"; Lospec's selective outlines, sel-out, hue shifting). An edge, seam or accent line is never a
+// fixed ink: it is the fill on its inner side at the line (c, [r,g,b]) darker by k < 1 and moved toward the theme's shadow tint (selTint, the
+// theme's lo), or lighter (k > 1) toward the light's tint (lt, warm white by default) where the key light falls on that edge; opaque. k about
+// .55-.65 for a silhouette edge in shade, .68-.75 for an inner groove or seam, 1.05-1.12 for a lit edge. Holes, slots and voids keep their dark;
+// where a thing meets the floor the darkest accent is a contact shadow, not a line. Returns a CSS colour
+function selTint(){return hillHex(L.theme.lo);}
+function selOut(c,k,lt){const t=k<1?hillMix(c,selTint(),Math.min(1,0.28*(1-k)/0.45)):hillMix(c,lt||[255,240,214],Math.min(0.5,(k-1)*1.5));return hillRgb(t,k<1?k:1);}
 function hillP(h,u,d,ys){return [h.c*TW+u+(d-0.5)*DX,ys+(0.5-d)*DY-hillH(h,u,d)];}
+// a quad's colour: its slope along (over du px) and across (over dd of the depth) against the key light's side sx
+function hillSh(ha,hb,hc,hd,du,dd,C,sx){const gx=((hb+hc)-(ha+hd))/(2*du),gd=((hc+hd)-(ha+hb))/2/(dd*24); // (24 px of depth to the unit)
+  const sh=clamp(0.9-gx*sx*0.75+gd*0.25-Math.abs(gx)*0.12,0.45,1.25);return sh>1?hillMix(C.base,C.lit,(sh-1)*3):hillMix(C.dark,C.base,(sh-0.45)/0.55);}
+function hillShAt(h,u,d,C,sx){const u0=u-2,u1=u+2,d0=Math.max(0,d-0.06),d1=Math.min(1,d+0.06);return hillSh(hillH(h,u0,d0),hillH(h,u1,d0),hillH(h,u1,d1),hillH(h,u0,d1),u1-u0,d1-d0,C,sx);}
 function hillMesh(g,h,half,ys,C,sx){const Ln=hillLen(h),st=4,nu=Math.ceil(Ln/st);
   for(let j=HILL_R.length-2;j>=0;j--){const d0=HILL_R[j],d1=HILL_R[j+1];if(half===0?d0<0.5:d0>=0.5)continue;
     for(let i=0;i<nu;i++){const u0=i*st,u1=Math.min(Ln,u0+st),ha=hillH(h,u0,d0),hb=hillH(h,u1,d0),hc=hillH(h,u1,d1),hd=hillH(h,u0,d1);if(ha+hb+hc+hd<0.05)continue;
-      const gx=((hb+hc)-(ha+hd))/(2*(u1-u0)),gd=((hc+hd)-(ha+hb))/2/((d1-d0)*24); // (the slope along and across: 24 px of depth to the unit)
-      const sh=clamp(0.9-gx*sx*0.75+gd*0.25-Math.abs(gx)*0.12,0.45,1.25),c=sh>1?hillMix(C.base,C.lit,(sh-1)*3):hillMix(C.dark,C.base,(sh-0.45)/0.55);
-      const A=hillP(h,u0,d0,ys),Bq=hillP(h,u1,d0,ys),Cq=hillP(h,u1,d1,ys),D=hillP(h,u0,d1,ys);
+      const c=hillSh(ha,hb,hc,hd,u1-u0,d1-d0,C,sx),A=hillP(h,u0,d0,ys),Bq=hillP(h,u1,d0,ys),Cq=hillP(h,u1,d1,ys),D=hillP(h,u0,d1,ys);
       g.fillStyle=hillRgb(c,1);g.beginPath();g.moveTo(A[0]-0.25,A[1]+0.25);g.lineTo(Bq[0]+0.25,Bq[1]+0.25);g.lineTo(Cq[0]+0.25,Cq[1]-0.25);g.lineTo(D[0]-0.25,D[1]-0.25);g.closePath();g.fill();}
     if(j===0){g.fillStyle=hillRgb(C.dark,0.95);g.beginPath();const y0=ys+HY;let p=hillP(h,0,0,ys);g.moveTo(p[0],y0);for(let u=0;u<=Ln;u+=2){p=hillP(h,u,0,ys);g.lineTo(p[0],Math.min(p[1],y0));}g.lineTo(p[0],y0);g.closePath();g.fill();}}}
-function hillSil(h){if(h._sil)return h._sil;const ys=SURF(h.r),Ln=hillLen(h),pts=[];
-  for(let u=-2;u<=Ln+DX;u+=2){let m=1e9;for(const d of HILL_R){const uu=u-(d-0.5)*DX;if(uu<0||uu>Ln)continue;const p=hillP(h,uu,d,ys);if(p[1]<m)m=p[1];}
-    if(h.v==='B3'){const dr=h.dr,ux=u-HX;if(ux>=dr.a-1&&ux<=dr.b+DX*0.4+1)m=Math.min(m,ys-dr.y-2*dr.R-DY*0.45);}
-    if(m<1e8)pts.push([h.c*TW+u,m]);}
+// (B3) its broken end, one of three looks by a hash of its cell (round 46b, owner: "use all three"): 'frac' a fracture, 'sock' the joint face
+// with its dowel socket, 'bury' under a tongue of grit and two tumbled blocks. Look only, no stream
+function hillEnd(h){return h.v!=='B3'?null:HILL_DBG.end||['frac','sock','bury'][hash2(h.c*31+h.r,4651)%3];} // (HILL_DBG.end forces one, for pictures: clear the hill's caches, _bl _sil _sd _c0 _c1)
+// the stones on a heap (B1, B2, B3's bed), the same numbers for the drawing and the outline
+function hillStoneList(h){if(h._sl)return h._sl;const Ln=hillLen(h),N=h.d?0:h.v==='B1'?34:h.v==='B2'?7:14,S=[];
+  for(let i=0;i<N;i++){const u=5+hillN(i,51+h.c)*(Ln-10);let d=0.04+hillN(i,52+h.c)*0.9;
+    if(h.v==='B3')d=i%2?0.02+hillN(i,56)*0.18:0.8+hillN(i,56)*0.16; // (the column's bed: in front of it and behind it, never across it)
+    const hh0=hillH(h,u,d);if(hh0<3&&h.v!=='B3')continue;
+    let w=h.v==='B2'?6+hillN(i,53)*2:3+hillN(i,53)*(h.v==='B1'?5.5:4),hh=h.v==='B2'?2.6+hillN(i,54)*0.6:2+hillN(i,54)*3;if(h.v==='B1'&&i<3){w+=4;hh+=2.5;}
+    S.push({u,d,w,hh,a:(hillN(i,55)-0.5)*(h.v==='B2'?0.9:0.7),sd:hash2(i,h.c)});}
+  S.sort((a,b)=>b.d-a.d);return h._sl=S;}
+// the larger blocks: a drift's two half-buried blocks (C4, k 'c4') and the blocks over a buried column's end (k 'bury'): placed, rotated (a), the
+// box (x0, y0, w, hh) of depth d; for the drawing and the outline alike
+function hillBlkList(h){if(h._bl)return h._bl;const out=[],ys=SURF(h.r);
+  if(h.d&&h.blk){const Ln=hillLen(h),m=w=>h.dir>0?Ln-w:w,sg=-(h.dir||1);
+    {const u=m(Ln*0.62),p=hillP(h,u,0.86,ys);out.push({k:'c4',u,dd:0.86,px:p[0],py:p[1],ox:p[0],oy:p[1]+2,a:-0.12*sg,x0:-12,y0:-10,w:20,hh:12,d:0.45,wear:2,seed:7+h.c,cw:11,ch:2.6,cy:2.2});}
+    {const u=m(Ln*0.26),p=hillP(h,u,0.8,ys);out.push({k:'c4',u,dd:0.8,px:p[0],py:p[1],ox:p[0],oy:p[1]+3,a:0.22*sg,x0:-7,y0:-8,w:11,hh:10,d:0.35,wear:3,seed:11+h.c,cw:9,ch:2.3,cy:2.4});}}
+  if(hillEnd(h)==='bury'){const x=h.c*TW+h.dr.b,y=ys-1;out.push({k:'bury',ox:x+1,oy:y-2,a:-0.35,x0:-6,y0:-9,w:10,hh:9,d:0.3,wear:2,seed:h.c+3},{k:'bury',ox:x-5,oy:y,a:0.2,x0:-4,y0:-5,w:7,hh:5,d:0.25,wear:1,seed:h.c+4});}
+  return h._bl=out;}
+// the grit tongue over a buried column's end: its outline (two quadratic curves), for the drawing and the outline
+function hillTongue(h){if(h._tg)return h._tg;const x=h.c*TW+h.dr.b,y=SURF(h.r)-1,q=(a,c,b,n,o)=>{for(let i=1;i<=n;i++){const t=i/n,s=1-t;o.push([s*s*a[0]+2*s*t*c[0]+t*t*b[0],s*s*a[1]+2*s*t*c[1]+t*t*b[1]]);}},o=[[x-9,y+1]];
+  q([x-9,y+1],[x-2,y-17],[x+4,y-19],12,o);q([x+4,y-19],[x+11,y-14],[x+15,y+1],12,o);return h._tg=o;}
+// the mound's own top (its mesh, rows and ends), px: [x, y] every 2 px
+function hillMeshTop(h){if(h._mt)return h._mt;const ys=SURF(h.r),Ln=hillLen(h),pts=[];
+  for(let u=-HX;u<=Ln+DX;u+=2){let m=1e9;for(const d of HILL_R){const uu=u-(d-0.5)*DX;if(uu<0||uu>Ln)continue;const p=hillP(h,uu,d,ys);if(p[1]<m)m=p[1];}if(m<1e8)pts.push([h.c*TW+u,m]);} // (from -HX: the front row reaches HX left of the hill's first cell; v87's outline began at -2)
+  return h._mt=pts;}
+// (round 46b) THE outline of everything the hill draws (layers.md R6): the mound with its crest line, every stone and block with its edge, B3's
+// column (both ends, its edge band) and a buried end's tongue and blocks; [x, top] every 2 px, the top the highest pixel drawn within 1 px of x.
+// The lamp shadow's carve (SHC), the relief's rubbing (hillRel) and the beams' cut in Classic and on the ?wgl=0 path (sandSegs: haze, rim, pane,
+// footprint, mist; Torchlight's facade cuts them by the hill's own pixels, hillMark) all take it; v87's took the mound alone and, for B3, the column 8 px to the right of where it is drawn, so his shadow, the relief and the
+// beams lay on its left end and on every stone above the mound. A change to the drawing changes this in the same commit
+function hillSil(h){if(h._sil)return h._sil;const ys=SURF(h.r),T=new Map(),put=(x,y)=>{const k=Math.round(x*2),o=T.get(k);if(o===undefined||y<o)T.set(k,y);};
+  const box=(ox,oy,a,x0,y0,w,hh,dd)=>{const dx=DX*dd,dy=DY*dd,ca=Math.cos(a),sa=Math.sin(a), // (stoneBox's edge polygon, 0.8 px outside its faces)
+      P=[[x0-0.8,y0+hh+0.8],[x0-0.8,y0-0.8],[x0+dx-0.6,y0-dy-0.8],[x0+w+dx+0.8,y0-dy-0.8],[x0+w+dx+0.8,y0+hh-dy+0.6],[x0+w+0.8,y0+hh+0.8]].map(q=>[ox+q[0]*ca-q[1]*sa,oy+q[0]*sa+q[1]*ca]);
+    for(let i=0;i<P.length;i++){const A=P[i],B=P[(i+1)%P.length],n=Math.ceil(Math.hypot(B[0]-A[0],B[1]-A[1])*2)+1;for(let j=0;j<=n;j++)put(A[0]+(B[0]-A[0])*j/n,A[1]+(B[1]-A[1])*j/n);}};
+  for(const s of hillStoneList(h)){const p=hillP(h,s.u,s.d,ys);box(p[0],p[1]+s.hh*0.35,s.a,-s.w/2,-s.hh,s.w,s.hh,0.28);}
+  for(const b of hillBlkList(h))box(b.ox,b.oy,b.a,b.x0,b.y0,b.w,b.hh,b.d);
+  if(h.v==='B3'){const dr=h.dr,cy=ys-dr.y-dr.R,rr=dr.R+0.8,xa=h.c*TW+dr.a,xb=h.c*TW+dr.b; // (the drum's rings at both ends and the body between, with its edge band)
+    for(let i=0;i<96;i++){const t=i/96*6.2832,c=rr*Math.cos(t),y=cy-c*DY/24-rr*Math.sin(t);for(let x=xa+c*DX/24;x<=xb+c*DX/24+0.01;x+=0.5)put(x,y);}
+    if(hillEnd(h)==='bury')for(const q of hillTongue(h))put(q[0],q[1]-0.6);}
+  const pts=[],mt=hillMeshTop(h),mg=h.d?0.3:0.8,x0=mt[0][0],ks=[...T.keys()]; // (the mesh's quads overdraw 0.25 px; a heap's crest line 0.75 px over its top)
+  let xa=x0,xb=mt[mt.length-1][0];for(const k of ks){xa=Math.min(xa,x0-2*Math.ceil((x0-k/2)/2));xb=Math.max(xb,x0+2*Math.ceil((k/2-x0)/2));} // (a stone at either foot may reach past the mound)
+  for(let x=xa;x<=xb;x+=2){const i=(x-x0)/2;let m=i>=0&&i<mt.length?mt[i][1]-mg:1e9;for(let k=Math.round((x-1)*2);k<=Math.round((x+1)*2);k++){const y=T.get(k);if(y!==undefined&&y<m)m=y;}if(m<1e8)pts.push([x,m]);}
   return h._sil=pts;}
 function hillRipples(g,h,half,ys,C){const Ln=hillLen(h);g.lineWidth=0.55;
   for(let u=5,i=0;u<Ln-4;u+=3.4*(0.9+0.2*hillN(i,41+h.c)),i++){const da=0.05+hillN(i,44)*0.2,db=0.75+hillN(i,45)*0.22,pts=[];
@@ -8474,12 +8528,14 @@ function hillRipples(g,h,half,ys,C){const Ln=hillLen(h);g.lineWidth=0.55;
   for(let i=0;i<14;i++){const d=0.08+i*0.065;if(half===0?d<0.5:d>0.55)continue;const cr=hillCr(d)*Ln,w0=cr+1,top=hillH(h,h.dir>0?Ln-w0:w0,d),w1=w0+top/0.67-1, // (grain-flow streaks down the slip face)
       u0=h.dir>0?Ln-w0:w0,u1=h.dir>0?Ln-w1:w1,a=hillP(h,u0,d,ys),b=hillP(h,u1,d,ys);
     g.strokeStyle=hillRgb(i%2?C.dark:C.base,0.9);g.globalAlpha=0.35;g.beginPath();g.moveTo(a[0],a[1]+0.5);g.lineTo(b[0],b[1]-0.3);g.stroke();g.globalAlpha=1;}}
-function hillBlocks(g,h,ys,C){if(!h.blk)return;const Ln=hillLen(h),kind=THEME_STONE[L.theme.look]||'limestone',m=w=>h.dir>0?Ln-w:w;
-  // (C4) dressed blocks standing half buried in the sand, on its windward back, against the back wall
-  {const u=m(Ln*0.62),d=0.86,p=hillP(h,u,d,ys);g.save();g.translate(p[0],p[1]+2);g.rotate(-0.12*(-(h.dir||1)));stoneBox(g,kind,-12,-10,20,12,{top:true,side:true,d:0.45,wear:2,seed:7+h.c});g.restore();
-   g.fillStyle=hillRgb(C.base,1);g.beginPath();g.ellipse(p[0]-1,p[1]+2.2,11,2.6,0,0,6.2832);g.fill();g.fillStyle=hillRgb(C.lit,1);g.globalAlpha=0.5;g.beginPath();g.ellipse(p[0]-3,p[1]+1.6,6,1.2,0,0,6.2832);g.fill();g.globalAlpha=1;}
-  {const u=m(Ln*0.26),d=0.8,p=hillP(h,u,d,ys);g.save();g.translate(p[0],p[1]+3);g.rotate(0.22*(-(h.dir||1)));stoneBox(g,kind,-7,-8,11,10,{top:true,side:true,d:0.35,wear:3,seed:11+h.c});g.restore();
-   g.fillStyle=hillRgb(C.base,1);g.beginPath();g.ellipse(p[0]-1,p[1]+2.4,9,2.3,0,0,6.2832);g.fill();}}
+// (C4) dressed blocks standing half buried in the sand, on its windward back, against the back wall. Round 46b: their outline in their own stone
+// (selOut), and the sand banked round each foot is the drift's own surface colour there rising to a lit lip, not a flat pale oval
+function hillBlocks(g,h,ys,C,sx){const kind=THEME_STONE[L.theme.look]||'limestone',ink=selOut(hillHex(STONES[kind].base),0.5);
+  for(const b of hillBlkList(h)){if(b.k!=='c4')continue;g.save();g.translate(b.ox,b.oy);g.rotate(b.a);stoneBox(g,kind,b.x0,b.y0,b.w,b.hh,{top:true,side:true,d:b.d,wear:b.wear,seed:b.seed,ink});g.restore();
+    const cs=hillShAt(h,b.u,b.dd,C,sx),x=b.px-1,y=b.py+b.cy,gr=g.createLinearGradient(0,y-b.ch,0,y+b.ch);
+    gr.addColorStop(0,hillRgb(hillMix(cs,C.lit,0.45),1));gr.addColorStop(0.35,hillRgb(hillMix(cs,C.lit,0.15),1));gr.addColorStop(0.75,hillRgb(cs,1));gr.addColorStop(1,hillRgb(cs,1));
+    g.fillStyle=gr;g.beginPath();g.moveTo(x-b.cw,y+b.ch*0.6);g.quadraticCurveTo(x-b.cw*0.6,y-b.ch*1.1,x,y-b.ch*0.9);g.quadraticCurveTo(x+b.cw*0.65,y-b.ch*0.75,x+b.cw,y+b.ch*0.4);
+    g.quadraticCurveTo(x,y+b.ch*1.2,x-b.cw,y+b.ch*0.6);g.closePath();g.fill();}} // (a drift of sand against the block's foot: the drift's colour below, its lit lip above; no edge where it meets the drift)
 function hillRunnels(g,h,half,ys,C){const Ln=hillLen(h);g.lineWidth=0.7; // (B2) rain-washed mud: shallow gullies down the slump
   for(let i=0;i<16;i++){const d=0.06+i*0.058+0.02*hillN(i,81);if(half===0?d<0.5:d>=0.5)continue;const side=i%2?1:-1,xc=Ln*(0.44+0.08*(d-0.5)),u0=xc+side*(2+hillN(i,82)*6),pts=[];
     for(let u=u0;side>0?u<Ln:u>0;u+=side*1.5){const hh=hillH(h,u,d);if(hh<1)break;pts.push(hillP(h,u+0.8*Math.sin(u*0.4+i),d,ys));}
@@ -8488,54 +8544,85 @@ function hillRunnels(g,h,half,ys,C){const Ln=hillLen(h);g.lineWidth=0.7; // (B2)
 function hillGrit(g,h,half,ys,C){const Ln=hillLen(h),N=h.v==='B2'?50:140;
   for(let i=0;i<N;i++){const u=2+hillN(i,71+h.c)*(Ln-4),d=0.03+hillN(i,72+h.c)*0.94;if(half===0?d<0.5:d>=0.5)continue;const hh=hillH(h,u,d);if(hh<1.2)continue;const p=hillP(h,u,d,ys),z=0.6+hillN(i,73)*1.1,t=hillN(i,74);
     g.fillStyle=t<0.5?hillRgb(C.dark,0.7):t<0.8?hillRgb(C.lit,0.95):hillRgb(C.base,0.7);g.fillRect(p[0]-z/2,p[1]-z/2+0.6,z,z*0.8);}}
-function hillStones(g,h,half,ys){const th=L.theme,kind=h.v==='B2'?'mudbrick':THEME_STONE[th.look]||'limestone',Ln=hillLen(h),N=h.v==='B1'?34:h.v==='B2'?7:14,S=[];
-  for(let i=0;i<N;i++){const u=5+hillN(i,51+h.c)*(Ln-10);let d=0.04+hillN(i,52+h.c)*0.9;
-    if(h.v==='B3')d=i%2?0.02+hillN(i,56)*0.18:0.8+hillN(i,56)*0.16; // (the column's bed: in front of it and behind it, never across it)
-    const hh0=hillH(h,u,d);if(hh0<3&&h.v!=='B3')continue;
-    let w=h.v==='B2'?6+hillN(i,53)*2:3+hillN(i,53)*(h.v==='B1'?5.5:4),hh=h.v==='B2'?2.6+hillN(i,54)*0.6:2+hillN(i,54)*3;if(h.v==='B1'&&i<3){w+=4;hh+=2.5;}
-    S.push({u,d,w,hh,a:(hillN(i,55)-0.5)*(h.v==='B2'?0.9:0.7),sd:hash2(i,h.c)});}
-  S.sort((a,b)=>b.d-a.d);
-  for(const s of S){if(half===0?s.d<0.5:s.d>=0.5)continue;const p=hillP(h,s.u,s.d,ys);
-    g.fillStyle='rgba(8,5,6,.5)';g.beginPath();g.ellipse(p[0]+1,p[1]+0.8,s.w*0.62,1.5,0,0,6.2832);g.fill(); // (its shadow in the grit: the stones part from the mound)
-    g.save();g.translate(p[0],p[1]+s.hh*0.35);g.rotate(s.a);stoneBox(g,kind,-s.w/2,-s.hh,s.w,s.hh,{top:true,side:true,d:0.28,wear:1,seed:s.sd});
+function hillStones(g,h,half,ys){const th=L.theme,kind=h.v==='B2'?'mudbrick':THEME_STONE[th.look]||'limestone',ink=selOut(hillHex(STONES[kind].base),0.5);
+  for(const s of hillStoneList(h)){if(half===0?s.d<0.5:s.d>=0.5)continue;const p=hillP(h,s.u,s.d,ys);
+    g.fillStyle='rgba(8,5,6,.5)';g.beginPath();g.ellipse(p[0]+1,p[1]+0.8,s.w*0.62,1.5,0,0,6.2832);g.fill(); // (its contact shadow in the grit: the stones part from the mound)
+    g.save();g.translate(p[0],p[1]+s.hh*0.35);g.rotate(s.a);stoneBox(g,kind,-s.w/2,-s.hh,s.w,s.hh,{top:true,side:true,d:0.28,wear:1,seed:s.sd,ink}); // (round 46b: its edge in its own stone, darker, toward the theme's shadow: selOut)
     g.fillStyle='rgba(16,10,8,.2)';g.fillRect(-s.w/2,-s.hh,s.w,s.hh);g.restore();}} // (the faces a shade darker than a wall's: they lie in the heap's own shade)
-// (B3) a fallen papyrus-bundle column lying along the corridor: its body opaque, lit along the top; the drum joint; its broken right end
-function hillDrum(g,h,ys){const dr=h.dr,kind=THEME_STONE[L.theme.look]||'limestone',st=STONES[kind],base=hillHex(st.base),R=dr.R,cy=ys-dr.y-R,ua=h.c*TW+dr.a,ub=h.c*TW+dr.b;
+// (B3) a fallen papyrus-bundle column lying along the corridor: its body opaque, lit along the top; the drum joint; its broken right end.
+// Round 46b (owner: "the background wall art seems drawn over it ... that center circle/oval doesn't look right"): v87 drew its outline in a fixed
+// ink (#0b0812), the drum joint and four of nine flutes over the hidden far half (the joint read as a loop seen through the stone), and the end as
+// the palest thing on it whatever the light's side, with a flat near-black square. Now: in this view the outline's tangents are at tan t = 3
+// (T0, T0 + pi), so only that near half is seen; the edge is a band in the fill's own colour, a shade darker toward the theme's shadow and lit
+// along the top (selOut); flutes and the joint only on the near half, each a groove a shade darker with its lit lip; the end shaded by the
+// key light's side (it faces right), in one of three looks (hillEnd)
+function hillDrum(g,h,ys,sx){const dr=h.dr,kind=THEME_STONE[L.theme.look]||'limestone',st=STONES[kind],base=hillHex(st.base),R=dr.R,cy=ys-dr.y-R,ua=h.c*TW+dr.a,ub=h.c*TW+dr.b;
   const E=(x,t,rr)=>{const dd=(rr||R)*Math.cos(t);return [x+dd*DX/24,cy-dd*DY/24-(rr||R)*Math.sin(t)];};
   const ring=(x,rr)=>{g.beginPath();for(let i=0;i<=48;i++){const p=E(x,i/48*6.2832,rr);i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]);}g.closePath();};
+  const T0=Math.atan(3),T1=T0+Math.PI,tl=selTint();
   let top=1e9,bot=-1e9;for(let i=0;i<48;i++){const p=E(0,i/48*6.2832);top=Math.min(top,p[1]);bot=Math.max(bot,p[1]);}
-  g.fillStyle='rgba(0,0,0,.35)';g.beginPath();g.ellipse((ua+ub)/2,ys+0.5,(ub-ua)/2+4,3.2,0,0,6.2832);g.fill();
-  g.fillStyle='#0b0812';ring(ua,R+0.8);g.fill();ring(ub,R+0.8);g.fill();g.fillRect(ua,top-0.8,ub-ua,bot-top+1.6);
-  const gr=g.createLinearGradient(0,top,0,bot);gr.addColorStop(0,hillRgb(hillMix(base,[255,248,232],0.22),1));gr.addColorStop(0.35,hillRgb(base,0.95));gr.addColorStop(0.75,hillRgb(hillMix(base,[30,20,16],0.5),1));gr.addColorStop(1,hillRgb(hillMix(base,[10,6,6],0.72),1));
+  const cTop=hillMix(base,[255,248,232],0.22),cMid=hillMix(base,[0,0,0],0.05),cLow=hillMix(base,hillMix([30,20,16],tl,0.4),0.5),cBot=hillMix(base,hillMix([10,6,6],tl,0.4),0.72);
+  g.fillStyle='rgba(0,0,0,.35)';g.beginPath();g.ellipse((ua+ub)/2,ys+0.5,(ub-ua)/2+4,3.2,0,0,6.2832);g.fill(); // (its contact shadow on the floor)
+  const eg=g.createLinearGradient(0,top-0.8,0,bot+0.8);eg.addColorStop(0,selOut(cTop,1.1));eg.addColorStop(0.12,selOut(cTop,0.78));eg.addColorStop(0.4,selOut(cMid,0.62));eg.addColorStop(1,selOut(cBot,0.55));
+  g.fillStyle=eg;ring(ua,R+0.8);g.fill();ring(ub,R+0.8);g.fill();g.fillRect(ua,top-0.8,ub-ua,bot-top+1.6); // (the edge band, 0.8 px)
+  const gr=g.createLinearGradient(0,top,0,bot);gr.addColorStop(0,hillRgb(cTop,1));gr.addColorStop(0.35,hillRgb(base,0.95));gr.addColorStop(0.75,hillRgb(cLow,1));gr.addColorStop(1,hillRgb(cBot,1));
   g.fillStyle=gr;ring(ua);g.fill();g.fillRect(ua,top,ub-ua,bot-top);
   const TX=stoneTex(kind,72,72);g.save();g.beginPath();g.rect(ua,top,ub-ua,bot-top);g.clip();g.globalAlpha=0.3;g.globalCompositeOperation='multiply';g.drawImage(TX,0,48,(ub-ua)*4,(bot-top)*4,ua,top,ub-ua,bot-top);g.restore();
-  g.lineWidth=0.6;for(let k=0;k<9;k++){const t=0.35+k*0.33;if(Math.sin(t)<-0.6)continue;const pa=E(ua,t),pb=E(ub,t);g.strokeStyle='rgba(20,12,10,.3)';g.beginPath();g.moveTo(pa[0],pa[1]);g.lineTo(pb[0],pb[1]);g.stroke();
-    g.strokeStyle='rgba(255,246,228,.14)';g.beginPath();g.moveTo(pa[0],pa[1]-0.6);g.lineTo(pb[0],pb[1]-0.6);g.stroke();}
-  const xm=ua+(ub-ua)*0.48;g.strokeStyle='rgba(12,8,10,.75)';g.lineWidth=0.9;g.beginPath();for(let i=0;i<=24;i++){const t=-0.6+i/24*(Math.PI+1.2),p=E(xm,t);i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]);}g.stroke();
-  g.save();ring(ub);g.clip();g.fillStyle=hillRgb(hillMix(base,[255,246,230],0.12),1);g.fillRect(ub-R-4,cy-R-6,2*R+10,2*R+12);g.globalAlpha=0.55;g.drawImage(TX,0,48,96,96,ub-R,cy-R-4,2*R+8,2*R+8);g.restore();
-  g.strokeStyle='rgba(20,12,10,.55)';g.lineWidth=0.6;g.beginPath();for(let i=0;i<=72;i++){const t=i/72*6.2832,rr=R*(0.8+0.12*Math.abs(Math.sin(t*4))),p=E(ub,t,rr);i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]);}g.stroke();
-  {const p=E(ub,0,0.001);g.fillStyle='rgba(12,8,8,.8)';g.fillRect(p[0]-1.2,p[1]-1.6,2.4,3.2);}
-  g.fillStyle='rgba(12,8,10,.6)';g.beginPath();const q1=E(ub,1.2),q2=E(ub,0.5),q3=E(ub,0.9,R*0.7);g.moveTo(q1[0],q1[1]);g.lineTo(q2[0],q2[1]);g.lineTo(q3[0],q3[1]);g.closePath();g.fill();}
+  const cAt=y=>{const f=(y-top)/(bot-top);return f<0.35?hillMix(cTop,base,Math.max(0,f)/0.35):hillMix(base,cBot,Math.min(1,(f-0.35)/0.65));};
+  g.lineWidth=0.6;for(let k=1;k<8;k++){const t=T0+k*(T1-T0)/8,pa=E(ua,t),pb=E(ub,t),cf=cAt(pa[1]); // (the stems' seams: a papyrus bundle, convex stems side by side)
+    g.strokeStyle=selOut(cf,0.7);g.beginPath();g.moveTo(pa[0],pa[1]);g.lineTo(pb[0],pb[1]);g.stroke();g.strokeStyle=selOut(cf,1.07);g.beginPath();g.moveTo(pa[0],pa[1]-0.6);g.lineTo(pb[0],pb[1]-0.6);g.stroke();}
+  const xm=ua+(ub-ua)*0.48;g.lineWidth=0.8;g.strokeStyle=selOut(cMid,0.62);g.beginPath();for(let i=0;i<=24;i++){const p=E(xm,T0+i/24*(T1-T0));i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]);}g.stroke(); // (the drum joint, its near half)
+  g.lineWidth=0.5;g.strokeStyle=selOut(cTop,1.05);g.beginPath();for(let i=0;i<=24;i++){const p=E(xm+0.7,T0+i/24*(T1-T0)*0.6);i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]);}g.stroke(); // (its far lip, lit)
+  const ev=hillEnd(h),endK=sx>0.15?1.02:sx<-0.15?0.74:0.86; // (the broken end faces right: lit when the key light is on that side)
+  if(ev==='bury'){g.fillStyle=hillRgb(hillMix(base,cBot,0.5),endK);ring(ub);g.fill();return;} // (under the grit and the blocks, hillPaint)
+  const cE=hillMix(base,tl,0.12);
+  g.save();ring(ub);g.clip();g.fillStyle=hillRgb(cE,endK);g.fillRect(ub-R-4,cy-R-6,2*R+10,2*R+12);g.globalAlpha=0.45;g.globalCompositeOperation='multiply';g.drawImage(TX,0,48,96,96,ub-R,cy-R-4,2*R+8,2*R+8);g.globalCompositeOperation='source-over';g.globalAlpha=1;
+  if(ev==='frac')for(let i=0;i<5;i++){ // (a fracture: facets of the break, each its own tone of the end's stone)
+    const a0=hash2(h.c*7+i,91)%628/100,a1=a0+0.9+hash2(h.c*7+i,92)%120/100,rr=R*(0.35+hash2(h.c+i,93)%50/100),k=endK*(0.86+hash2(h.c+i,94)%26/100);
+    const p0=E(ub,a0,rr*0.2),p1=E(ub,a0,R+1),p2=E(ub,a1,R+1),p3=E(ub,(a0+a1)/2,rr);g.fillStyle=hillRgb(cE,k);g.beginPath();g.moveTo(p0[0],p0[1]);g.lineTo(p1[0],p1[1]);g.lineTo(p3[0],p3[1]);g.lineTo(p2[0],p2[1]);g.closePath();g.fill();
+    g.strokeStyle=selOut(cE,endK*0.7);g.lineWidth=0.4;g.beginPath();g.moveTo(p0[0],p0[1]);g.lineTo(p3[0],p3[1]);g.stroke();}
+  g.restore();
+  g.strokeStyle=selOut(cE,endK*0.68);g.lineWidth=0.55;g.beginPath();for(let i=0;i<=96;i++){const t=i/96*6.2832,rr=R*(0.84+0.12*Math.abs(Math.sin(t*4))),p=E(ub,t,rr);i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]);}g.stroke(); // (the stems' eight lobes round the end)
+  g.strokeStyle=endK>1?selOut(cE,1.1):selOut(cE,endK*0.6);g.lineWidth=0.7;ring(ub,R+0.3);g.stroke(); // (the end's rim, lit or shaded with it)
+  if(ev==='sock'){const s0=E(ub,0,0.001),w=2.4,hh=3.2,dx=w*DX/48; // (a dowel socket cut square into the joint face: its back and its shaded and lit walls, in the end's own stone)
+    g.fillStyle=hillRgb(cE,endK*0.42);g.fillRect(s0[0]-1.2,s0[1]-1.6,w,hh);g.fillStyle=hillRgb(cE,endK*0.62);g.beginPath();g.moveTo(s0[0]-1.2,s0[1]-1.6);g.lineTo(s0[0]-1.2+dx,s0[1]-1.6-dx/2);g.lineTo(s0[0]-1.2+dx,s0[1]+1.6-dx/2);g.lineTo(s0[0]-1.2,s0[1]+1.6);g.closePath();g.fill();
+    g.strokeStyle=selOut(cE,endK>0.9?1.08:0.9);g.lineWidth=0.4;g.beginPath();g.moveTo(s0[0]-1.2,s0[1]+1.6);g.lineTo(s0[0]+1.2,s0[1]+1.6);g.stroke();}}
+// (B3, 'bury') the column's end under a tongue of the bed's grit and two tumbled blocks
+function hillBury(g,h,ys,C){const tg=hillTongue(h),kind=THEME_STONE[L.theme.look]||'limestone',ink=selOut(hillHex(STONES[kind].base),0.5),y0=Math.min(...tg.map(q=>q[1])),gr=g.createLinearGradient(0,y0,0,ys);
+  gr.addColorStop(0,hillRgb(hillMix(C.base,C.lit,0.35),1));gr.addColorStop(0.5,hillRgb(C.base,1));gr.addColorStop(1,hillRgb(hillMix(C.dark,C.base,0.4),1));
+  g.fillStyle=gr;g.beginPath();tg.forEach((q,k)=>k?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.closePath();g.fill();
+  g.lineWidth=0.7;for(let k=1;k<tg.length;k++){const a=tg[k-1],b=tg[k];if(a[1]>ys-2&&b[1]>ys-2)continue;g.strokeStyle=k<=12?selOut(C.lit,1.06):selOut(hillMix(C.dark,C.base,0.4),0.65);g.beginPath();g.moveTo(a[0],a[1]-0.25);g.lineTo(b[0],b[1]-0.25);g.stroke();} // (its edge: lit up the slope toward the column, shaded down the far side)
+  for(let i=0;i<22;i++){const t=hillN(i,77+h.c),q=tg[1+((t*23)|0)],f=0.25+0.7*hillN(i,78+h.c),x=q[0]*(1-f)+(tg[0][0]+tg[24][0])/2*f,y=q[1]*(1-f)+ys*f+0.8,z=0.6+hillN(i,79)*1.1,s=hillN(i,80); // (grit specks on it)
+    g.fillStyle=s<0.5?hillRgb(C.dark,0.7):s<0.8?hillRgb(C.lit,0.95):hillRgb(C.base,0.7);g.fillRect(x-z/2,y-z/2,z,z*0.8);}
+  for(const b of hillBlkList(h)){if(b.k!=='bury')continue;g.save();g.translate(b.ox,b.oy);g.rotate(b.a);stoneBox(g,kind,b.x0,b.y0,b.w,b.hh,{top:true,side:true,d:b.d,wear:b.wear,seed:b.seed,ink});g.restore();}}
 function hillPaint(g,h,half,sx){const ys=SURF(h.r),C=hillCols(h);
   if(half===0){const Ln=hillLen(h);g.fillStyle='rgba(0,0,0,.17)';g.beginPath();g.moveTo(h.c*TW-HX-2,ys+HY);g.lineTo(h.c*TW+Ln-HX+3,ys+HY);g.lineTo(h.c*TW+Ln+HX+4,ys-HY);g.lineTo(h.c*TW+HX-3,ys-HY);g.closePath();g.fill();}
-  if(h.v==='B3'&&half===0){hillMesh(g,h,0,ys,C,sx);hillGrit(g,h,0,ys,C);hillStones(g,h,0,ys);hillDrum(g,h,ys);return;}
+  if(h.v==='B3'&&half===0){hillMesh(g,h,0,ys,C,sx);hillGrit(g,h,0,ys,C);hillStones(g,h,0,ys);hillDrum(g,h,ys,sx);if(hillEnd(h)==='bury')hillBury(g,h,ys,C);return;}
   hillMesh(g,h,half,ys,C,sx);
-  if(h.d){hillRipples(g,h,half,ys,C);if(half===0)hillBlocks(g,h,ys,C);return;}
+  if(h.d){hillRipples(g,h,half,ys,C);if(half===0)hillBlocks(g,h,ys,C,sx);return;}
   if(h.v==='B2')hillRunnels(g,h,half,ys,C);
-  hillGrit(g,h,half,ys,C);hillStones(g,h,half,ys);
-  if(half===0){ // (a dark line along its crest, so it parts from the wall behind; before the figures: his feet on the crest stay over it)
-    const sil=hillSil(h);g.strokeStyle='rgba(11,8,18,.75)';g.lineWidth=0.9;g.beginPath();sil.forEach((q,k)=>k?g.lineTo(q[0],q[1]-0.4):g.moveTo(q[0],q[1]-0.4));g.stroke();}}
+  hillGrit(g,h,half,ys,C);
+  if(half===0){ // (its crest, so it parts from the wall behind; round 46b: before the stones, which stand over it, and in the mound's own colour, darker
+    // toward the theme's shadow, lit where the slope faces the key light (selOut); v87's was a fixed dark ink over the stones)
+    const mt=hillMeshTop(h);g.lineWidth=0.8;for(let k=1;k<mt.length;k++){const a=mt[k-1],b=mt[k];if(a[1]>ys+HY-1.5&&b[1]>ys+HY-1.5)continue;const sl=(b[1]-a[1])/(b[0]-a[0]),lit=sl*sx>0.08;
+      g.strokeStyle=lit?selOut(C.lit,1.08):selOut(hillMix(C.dark,C.base,0.4),0.62);g.beginPath();g.moveTo(a[0],a[1]-0.35);g.lineTo(b[0],b[1]-0.35);g.stroke();}}
+  hillStones(g,h,half,ys);}
 function hillBox(h){const ys=SURF(h.r);return [h.c*TW-HX-6,ys-HY-DY-44,(h.c+h.n)*TW+HX+DX+6,ys+HY];}
 function hillCanvas(h,half){const k='_c'+half;let c=h[k];if(c&&c._vs===VS&&c._lk===L.theme.look)return c;const bx=hillBox(h),w=bx[2]-bx[0],hh=bx[3]-bx[1];
   c=document.createElement('canvas');c.width=Math.max(1,Math.ceil(w*VS));c.height=Math.max(1,Math.ceil(hh*VS));c._vs=VS;c._lk=L.theme.look;
   const g=c.getContext('2d');g.setTransform(c.width/w,0,0,c.height/hh,-bx[0]*c.width/w,-bx[1]*c.height/hh);
   const kl=frameLights&&frameLights.length?keyLight((bx[0]+bx[2])/2,SURF(h.r)):null;if(h._sx===undefined)h._sx=kl&&isFinite(kl.sx)?kl.sx:-0.4;
   hillPaint(g,h,half,h._sx);return h[k]=c;}
+// (round 46b, layers.md R7) Torchlight's facade: the hill's own pixels take the scene alpha HILL_A (253, as fpMark's 254), by its canvas as drawn,
+// so the composite leaves the sky beams' light, haze, caustics and mist off it at full resolution (hlGate); a figure over it is 255 again
+function hillMark(ctx,c,bx){if(!GLS.F||ctx!==GLS.F)return;const ke=ctx.ke;ctx.ke=0;ctx.save();ctx.globalCompositeOperation='destination-out';ctx.globalAlpha=(255-HILL_A)/255;
+  ctx.drawImage(c,bx[0],bx[1],bx[2]-bx[0],bx[3]-bx[1]);ctx.restore();ctx.ke=ke;}
 function drawHills(ctx,half,x0,x1,y0,y1){const hs=L.hills;if(!hs||!hs.length)return;
   for(const h of hs){if(lyOff(h.d?'drift':'heap'))continue;const bx=hillBox(h);if(bx[2]<x0-8||bx[0]>x1+8||bx[3]<y0-8||bx[1]>y1+8)continue;
-    if(half===0){const sil=hillSil(h);if(shcBeg(-1e5,-1e5,1e5,SURF(h.r)+HY,h.d?20:19)){for(let i=0;i<sil.length;i+=2)shcPt(sil[i][0],sil[i][1]-0.8);shcPt(sil[sil.length-1][0],SURF(h.r)+HY);shcPt(sil[0][0],SURF(h.r)+HY);shcRing();shcEnd();}} // (carved out of the lamp shadow, SHC)
+    if(half===0){const sil=hillSil(h);if(shcBeg(-1e5,-1e5,1e5,SURF(h.r)+HY,h.d?20:19)){for(let i=0;i<sil.length;i++)shcPt(sil[i][0],sil[i][1]-0.5);shcPt(sil[sil.length-1][0],SURF(h.r)+HY);shcPt(sil[0][0],SURF(h.r)+HY);shcRing();shcEnd();}} // (carved out of the lamp shadow, SHC, by its whole outline: round 46b)
     ctx.save();ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';ctx.drawImage(hillCanvas(h,half),bx[0],bx[1],bx[2]-bx[0],bx[3]-bx[1]);ctx.restore(); // (opaque: whatever alpha the loop before left)
-    if(half===1&&h.d&&!lyOff('drift'))hillStream(ctx,h,x0,x1,y0,y1);
+    hillMark(ctx,hillCanvas(h,half),bx);
+    if(half===1&&h.d&&!lyOff('drift')&&HILL_DBG.stream)hillStream(ctx,h,x0,x1,y0,y1);
     if(half===1&&h.d){const ys=SURF(h.r),Ln=hillLen(h);ctx.save();ctx.globalCompositeOperation='lighter';ctx.fillStyle='#fff4d0'; // (grains glinting on the sand, a pure function of the clock)
       for(let i=0;i<5*h.n;i++){const u=4+hillN(i,61+h.c)*(Ln-8),d=0.1+hillN(i,62+h.c)*0.85,tw=Math.sin(gameTime*2.3+i*2.1);if(tw<0.55)continue;const p=hillP(h,u,d,ys);ctx.globalAlpha=(tw-0.55)*1.6;ctx.fillRect(p[0]-0.45,p[1]+0.6,0.9,0.9);}
       ctx.restore();ctx.globalAlpha=1;}}}
@@ -8552,7 +8639,7 @@ function hillStream(ctx,h,x0,x1,y0,y1){const ys=SURF(h.r),str=0.45+0.15*Math.sin
 // Torchlight's relief reads the room picture, which has the back wall behind the hill: rubbed back over its outline (as glRelFloors does for live tiles)
 function hillRel(n,VZ,camD,camDY){const hs=L&&L.hills;if(!hs)return n;const cx=camD/VZ,cw=cv.width/VZ;
   for(const h of hs){const bx=hillBox(h);if(bx[2]<cx||bx[0]>cx+cw)continue;const sil=hillSil(h),ys=SURF(h.r);
-    for(let i=0;i<sil.length;i+=4){const a=sil[i],b=sil[Math.min(sil.length-1,i+4)],t=Math.min(a[1],b[1])-1,f=ys+HY-0.6;n=glRelQ(n,a[0]-0.5,f,b[0]+0.5,f,b[0]+0.5,t,a[0]-0.5,t,VZ,camD,camDY);}}return n;} // (hard edged, as glRelFloors' quads: the lip under it keeps its relief)
+    for(let i=0;i<sil.length;i+=4){const j=Math.min(sil.length-1,i+4),a=sil[i],b=sil[j],f=ys+HY-0.6;let t=1e9;for(let k=i;k<=j;k++)t=Math.min(t,sil[k][1]);t-=1;n=glRelQ(n,a[0]-0.5,f,b[0]+0.5,f,b[0]+0.5,t,a[0]-0.5,t,VZ,camD,camDY);}}return n;} // (hard edged, as glRelFloors' quads: the lip under it keeps its relief; round 46b: each quad's top the highest point of the outline over its span; v87 took its two ends, under a stone between them)
 // ---- Wind (round 44, owner after r44's alternatives: "your recommendation": W1's steady headwind with W3's wind over the drifts, W2's gusts from
 // openings from about floor 13, W5 (the kick shafts' updraft) look only; against him only, never a tailwind; jumps are affected, "It should feel
 // realistic"; in a gust, standing, he is slowly pushed back, crouched he holds his place; banners (the back wall's hangings) billow and lamps gutter).
@@ -8872,7 +8959,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
   if(!lyOff('jet'))drawJetHints(x0,x1,y0,y1,ctx);
   for(const it of L.items)if(!it.taken&&inRoom(it.c,it.r)&&!lyOff('flask'))drawFlask(ctx,it);
   if(!lyOff('flask'))drawLooseFlasks(ctx);
-  if(SHC.on&&!lyOff('well')){const n=sandSegs(x0,x1,y0,y1);if(n&&shcBeg(-1e5,-1e5,1e5,1e5,15)){const a=SDS.a;for(let i=0;i<n;i++){const k=i*4,ft=SDS.f[i];shcPt(a[k],a[k+2]);shcPt(a[k+1],a[k+3]);shcPt(a[k+1],ft);shcPt(a[k],ft);shcRing();}shcEnd();}} // (round 42b) the sand of wells and sand lifts stands before the room's whole depth (round 35b): carved out of the lamp shadow by its outline this frame (sandSegs)
+  if(SHC.on&&!lyOff('well')){const n=sandSegs(x0,x1,y0,y1);if(SDS.nw&&shcBeg(-1e5,-1e5,1e5,1e5,15)){const a=SDS.a;for(let i=0;i<SDS.nw;i++){const k=i*4,ft=SDS.f[i];shcPt(a[k],a[k+2]);shcPt(a[k+1],a[k+3]);shcPt(a[k+1],ft);shcPt(a[k],ft);shcRing();}shcEnd();}} // (round 42b) the sand of wells and sand lifts stands before the room's whole depth (round 35b): carved out of the lamp shadow by its outline this frame (sandSegs)
   if(EGP.traps&&!lyOff('well'))for(const o of L.dyn){if(o.f.t!=='loose'||o.f.plank)continue;const g=wellGroup(o);if(!g||g.os[0]!==o||!(inRoom(g.c0,g.r)||inRoom(g.c0+g.n-1,g.r)))continue;drawWellGroup(ctx,g);} // (round 21b: once for a row of slabs over one pit)
   for(let i=DUSTC.length-1;i>=0;i--){const q=DUSTC[i],age=gameTime-q.t;if(age<0||age>0.7){DUSTC.splice(i,1);continue;}if(!lyOff('dust')){const fy=SURF(Math.round((q.y+4)/TH)-1)+HY;ctx.save();airCut(ctx,q.x-48,q.y-34,96,fy-q.y+34,false);dustCloud(ctx,q.x,q.y,age,0.7,q.sz,1);ctx.restore();}} // (round 39: the landing cloud rolls along its floor behind the front plane: cut at its front edge and the faces round it)
   for(const d of L.debris){if(lyOff('debris'))continue;
@@ -9233,7 +9320,11 @@ function blkSlab(X,Y,ys,open){BLKG.open=open;const gg=gateGeom(X,Y,ys,BLKG);if(!
 // the sand's face takes no beam light, as a wall's front face (round 15): its outline this frame (the surface as drawn, wellSolve's S at
 // WELL_DX, the lift's slab) as segments, x0, x1, the top at each end and the foot, flat stretches merged. Torchlight tests them in the shafts'
 // shader (u_sd, u_sf); Classic (ryBeams2D) cuts them out with the walls. Above the surface the pit is air again (a drained well is lit)
-const SDMAX=24,SDS={n:0,a:new Float32Array(SDMAX*4),f:new Float32Array(SDMAX)};
+// Round 46b (owner: the heap "looks transparent"; layers.md R7): heaps and drifts are solids before the back wall too: each hill's outline (hillSil,
+// the one outline of everything it draws) follows the sand's, merged while it keeps to a line, its foot the floor's front edge stored negative
+// (the shader softens a hill's top over two quarter-size texels above its outline, rendering.md S2; sand's sides are walls, a hill's top is
+// open air). SDS.nw: the sand's segments (the lamp shadow carves wells by them; hills carve their own). SDMAX 64 (24 before; a hill takes up to 19, 11.4 mean, a view up to 30 of hills on floors 3-48 x 3; 80 vec4 uniforms in all): wells first
+const SDMAX=64,SDS={n:0,nw:0,a:new Float32Array(SDMAX*4),f:new Float32Array(SDMAX)};
 function sdSeg(x0,x1,ta,tb,ft){if(SDS.n>=SDMAX)return;const i=SDS.n*4,a=SDS.a;a[i]=x0;a[i+1]=x1;a[i+2]=ta;a[i+3]=tb;SDS.f[SDS.n++]=ft;}
 function sandSegs(x0,x1,y0,y1){SDS.n=0;if(!L)return 0;
   for(const f of L.lifts){if(!f.sand)continue;const X=f.sc*TW-HX,bot=f.yP||SURF(f.rB);if(f.y>=bot-0.5||X+TW<x0||X>x1||bot+HY<y0||f.y>y1)continue;sdSeg(X,X+TW,f.y+HY,f.y+HY,bot+HY);} // (from the slab's front edge: its lip and the sand under it, round 41b: down into the spike pit)
@@ -9242,7 +9333,16 @@ function sandSegs(x0,x1,y0,y1){SDS.n=0;if(!L)return 0;
     for(let i0=0;i0<M;){const j=(i0/per)|0;let j2=j;while(j2+1<g.n&&g.yb[j2+1]===g.yb[j])j2++;const e=(j2+1)*per;let i1=Math.min(i0+4,e); // (one foot per run of columns)
       for(let k=i1+4;k<=e;k+=4){let ok=true;for(let m=i0+1;m<k&&ok;m++)ok=Math.abs(S[m]-(S[i0]+(S[k]-S[i0])*(m-i0)/(k-i0)))<0.3;if(!ok)break;i1=k;} // (as long as the surface keeps to a straight line)
       sdSeg(xa+i0*WELL_DX,xa+i1*WELL_DX,S[i0],S[i1],g.yb[j]);i0=i1;}}
+  SDS.nw=SDS.n;
+  for(const h of L.hills||[]){if(lyOff(h.d?'drift':'heap'))continue;const bx=hillBox(h);if(bx[2]<x0||bx[0]>x1||bx[3]<y0||bx[1]>y1)continue;const sg=hillSegs(h),ft=-(SURF(h.r)+HY);
+    for(let i=0;i<sg.length;i+=4)sdSeg(sg[i],sg[i+1],sg[i+2],sg[i+3],ft);}
   return SDS.n;}
+// (round 46b) a hill's outline as segments (x0, x1, the top at each end), made once: merged while the line stays within 0.6 px under and 1.5 px
+// over the outline, none along the floor (its ends)
+function hillSegs(h){if(h._sd)return h._sd;const sil=hillSil(h),ft=SURF(h.r)+HY,n=sil.length,o=[];
+  for(let i0=0;i0<n-1;){let i1=i0+1;for(let k=i0+2;k<n;k++){let ok=true;for(let m=i0+1;m<k&&ok;m++){const y=sil[i0][1]+(sil[k][1]-sil[i0][1])*(sil[m][0]-sil[i0][0])/(sil[k][0]-sil[i0][0]);ok=y-sil[m][1]<0.6&&sil[m][1]-y<1.5;}if(!ok)break;i1=k;}
+    if(sil[i0][1]<ft-0.3||sil[i1][1]<ft-0.3)o.push(sil[i0][0],sil[i1][0],sil[i0][1],sil[i1][1]);i0=i1;}
+  return h._sd=o;}
 // (Classic) blocker i's shadow down the beam: the convex hull of its quad and the quad moved along the light (dx,dy) (monotone chain over
 // the 8 corners, into RYF.hp slot sl; no allocation). Round 20b (owner: the wedge to the floor read crude): RY_SH layers, each the quad moved
 // a share f of the way to the floor and spread by s about its middle; the beam is drawn once per layer at 1/RY_SH strength, each cut by its
@@ -9278,7 +9378,7 @@ function ryStand(x0,x1,y0,y1){RYST.length=0;const add=(x,y,w,h)=>{if(x+w>=x0&&x<
     else if(f.t==='spikes'&&f.ext>0.02)add(X-HX-2,ys-22*f.ext-3,TW+DX+4,22*f.ext+3+HY);
     else if(f.t==='stone'&&EGP.traps&&f.s>=2){const R=roofStone(o);add(R.xc-BLK_W/2-1,R.ys+HY-BLK_H-DY-1,BLK_W+DX+2,BLK_H+DY+2);}}
   for(const it of L.items)if(!it.taken)add(it.x-7,SURF(it.r)-22,14,22+HY);
-  for(const h of L.hills||[]){const sil=hillSil(h),fy=SURF(h.r)+HY;for(let i=0;i<sil.length;i+=4){const a=sil[i],b=sil[Math.min(sil.length-1,i+4)];add(a[0],Math.min(a[1],b[1])-1,b[0]-a[0]+0.5,fy-Math.min(a[1],b[1])+1);}} // (round 43: a heap or drift takes no footprint; Torchlight's fpGate leaves it out by its alpha)
+  // (round 43 cut heaps and drifts out of the footprint here by boxes of their outline; round 46b: they are in sandSegs, which cuts the haze, rim, pane and footprint alike)
   // (round 39) and the sky clock's pedestal (its base, 17 px with its outline; drawn at cpX) and a free lamp's floor stand (its splayed feet,
   // at the stand's own x: Siwa's hangs from a cord), which the footprint was drawn over; their own contact shadows stay lit floor
   for(const cp of L.cps){const x=cpX(cp),fl=SURF(cp.r)-1;add(x-9,fl-12,18,12.6);}
@@ -9288,7 +9388,7 @@ function ryStand(x0,x1,y0,y1){RYST.length=0;const add=(x,y,w,h)=>{if(x+w>=x0&&x<
 function ryStandCut(g,x,y,w,h){for(let i=0;i<RYST.length;i+=4){const a=RYST[i],b=RYST[i+1],c=RYST[i+2],d=RYST[i+3];if(a>x+w||a+c<x||b>y+h||b+d<y)continue;
     g.beginPath();g.rect(x-1,y-1,w+2,h+2);g.rect(a,b,c,d);g.clip('evenodd');}} // (one clip each: two boxes that overlap would cancel in one even-odd path)
 // (round 35b) the sand's face (SDS, this frame's sandSegs) clipped out of box (x,y,w,h): a footprint on the floor under a well's sand
-function rySandCut(g,x,y,w,h){let any=false;for(let i=0;i<SDS.n;i++){const a=SDS.a,k=i*4,ft=SDS.f[i];if(a[k+1]<x||a[k]>x+w||ft<y||Math.min(a[k+2],a[k+3])>y+h)continue;
+function rySandCut(g,x,y,w,h){let any=false;for(let i=0;i<SDS.n;i++){const a=SDS.a,k=i*4,ft=Math.abs(SDS.f[i]);if(a[k+1]<x||a[k]>x+w||ft<y||Math.min(a[k+2],a[k+3])>y+h)continue;
     if(!any){g.beginPath();g.rect(x-1,y-1,w+2,h+2);any=true;}g.moveTo(a[k],a[k+2]);g.lineTo(a[k+1],a[k+3]);g.lineTo(a[k+1],ft);g.lineTo(a[k],ft);g.closePath();}
   if(any)g.clip('evenodd');}
 function ryCr(P,a,b,c){return (P[2*b]-P[2*a])*(P[2*c+1]-P[2*a+1])-(P[2*b+1]-P[2*a+1])*(P[2*c]-P[2*a]);}
@@ -9300,7 +9400,7 @@ function ryBeams2D(ctx,a){if(window.__RYOFF)return;const sb=skyBeam(),VZ=renderX
   if(!dr.length)return;sandSegs(x0,x1,y0,y1);ryStand(x0,x1,y0,y1);
   const one=(g,o,p)=>{const X=o.x+p.x,Y=o.y+p.y,c0=Math.floor(X/TW),c1=Math.floor((X+p.w)/TW),r0=Math.floor(Y/TH),r1=Math.floor((Y+p.h)/TH);let cut=false;
     for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1+1;c++){const lh=B(L,c,r)===WALL?TH:ryLow(c,r,up);if(!lh)continue;if(!cut){g.save();g.beginPath();g.rect(X,Y,p.w,p.h);cut=true;}g.rect(c*TW-HX,r*TH,TW,lh);} // (round 15: a wall's front face is drawn HX to the left of its cell; the cut was 8 px off. Round 20a: and a low ceiling's)
-    for(let i=0;i<SDS.n;i++){const a=SDS.a,k=i*4,ft=SDS.f[i];if(a[k+1]<X||a[k]>X+p.w||ft<Y||Math.min(a[k+2],a[k+3])>Y+p.h)continue;if(!cut){g.save();g.beginPath();g.rect(X,Y,p.w,p.h);cut=true;} // (round 35b) and the sand's face
+    for(let i=0;i<SDS.n;i++){const a=SDS.a,k=i*4,ft=Math.abs(SDS.f[i]);if(a[k+1]<X||a[k]>X+p.w||ft<Y||Math.min(a[k+2],a[k+3])>Y+p.h)continue;if(!cut){g.save();g.beginPath();g.rect(X,Y,p.w,p.h);cut=true;} // (round 35b) and the sand's face
       g.moveTo(a[k],a[k+2]);g.lineTo(a[k+1],a[k+3]);g.lineTo(a[k+1],ft);g.lineTo(a[k],ft);g.closePath();}
     if(cut)g.clip('evenodd');
     if(ryBlkAny(X,Y,p.w,p.h,bk)){const ga=g.globalAlpha;g.globalAlpha=ga/RY_SH;for(let ly=0;ly<RY_SH;ly++){g.save();ryBlkClip(g,X,Y,p.w,p.h,true,bk,ly);g.drawImage(p.c,X,Y,p.w,p.h);g.restore();}g.globalAlpha=ga;} // (round 20b: the soft shadow, in layers)
@@ -11320,6 +11420,12 @@ const GLSL_FG=`
     #endif
     uniform FGP vec4 u_fc,u_fg;uniform FGP vec2 u_fsz;uniform sampler2D u_ft; // (world px: highp also in the bright pass, mediump elsewhere)
     vec4 flT(FGP float c,FGP float r){return texture2D(u_ft,(vec2(c,r)+.5)/u_fsz);}
+    // (round 46b, layers.md R7) a heap's or drift's pixels carry the scene alpha HILL_A (hillMark): no beam light, haze, caustics or mist there, cut
+    // at full resolution (the quarter-size passes' own cut, sdC, left a dark halo of unhazed air over its crest); a figure drawn over it is 255 and
+    // keeps them. u_fg.w: the marks are there (the facade's scene; not on the ?wgl=0 path, where sdC cuts the hills)
+    // (the window runs to 253.9: air drawn over a hill, the wind's dust, raises its mark toward 255 and stays the hill's until it covers it half; the
+    // floor's own face is 254, a soft shadow over it more)
+    float hlGate(float cov){float a=cov*255.;return u_fg.w>.5&&a>${HILL_A}.-.5&&a<${HILL_A}.+.9?0.:1.;}
     // (round 35b, owner after v80: "light beam in front of the saws") the sky's footprint is light on the floor's top face, but it was added over
     // whatever the scene showed there: a saw's blade and its slot, stakes, a flask. On the face it now lands only where the scene shows the floor
     // (round 31's mark, 254), what the room's picture lays on it (RL_A 251, rlEnd) or a flat thing drawn live (fpMark, FPM_A 254, its tile .5 in
@@ -11363,7 +11469,7 @@ const GLSH={
       vec3 l=s*texture2D(u_map,v_u).rgb*1.5;l+=msBright(v_u,s,u_px); // (unit MS: metal highlights and glints bloom)
       {float fa=texture2D(u_map,v_u).a*(1.-(texture2D(u_sc,v_u+u_px*vec2(-1.,-1.)).a+texture2D(u_sc,v_u+u_px*vec2(1.,-1.)).a+texture2D(u_sc,v_u+u_px*vec2(-1.,1.)).a+texture2D(u_sc,v_u+u_px*vec2(1.,1.)).a)*.25);if(fa>.002)l=max(l-s*FILL_C*fa*1.5,0.);} // (round 25c) no fill light on the sky (glFrame)
       vec3 o=max(l-.7,0.)*1.6;
-      if(u_csk>0.){vec4 q=texture2D(u_cs,v_u);vec3 a=q.rgb*2.*(1.-q.a);o+=max(s*a*1.5-.06,0.)*u_csk*(1.-smoothstep(.1,.5,texture2D(u_mk,clamp(v_u,u_ocC.xy,u_ocC.zw)*u_ocT.xy+u_ocT.zw).r))*fpGate(v_u,texture2D(u_sc,v_u).a);} // (v58b) the sky's light where it lands (the footprint, the opening's rim, a pane) blooms a little; the haze in the air does not, nor a figure in the beam (figlight: the figures' mask, glcOcc)
+      if(u_csk>0.){vec4 q=texture2D(u_cs,v_u);vec3 a=q.rgb*2.*(1.-q.a);o+=max(s*a*1.5-.06,0.)*u_csk*(1.-smoothstep(.1,.5,texture2D(u_mk,clamp(v_u,u_ocC.xy,u_ocC.zw)*u_ocT.xy+u_ocT.zw).r))*fpGate(v_u,texture2D(u_sc,v_u).a)*hlGate(texture2D(u_sc,v_u).a);} // (v58b) the sky's light where it lands (the footprint, the opening's rim, a pane) blooms a little; the haze in the air does not, nor a figure in the beam (figlight: the figures' mask, glcOcc)
       gl_FragColor=vec4(o,1.);}`],
   blur:[GLV,`precision mediump float;varying vec2 v_u;uniform sampler2D u_t0;uniform vec2 u_d;
     void main(){gl_FragColor=vec4(texture2D(u_t0,v_u).rgb*.4+(texture2D(u_t0,v_u+u_d).rgb+texture2D(u_t0,v_u-u_d).rgb)*.24+(texture2D(u_t0,v_u+u_d*2.2).rgb+texture2D(u_t0,v_u-u_d*2.2).rgb)*.06,1.);}`],
@@ -11394,9 +11500,10 @@ const GLSH={
       l*=1.-sh*.85*u_fx.x; // a shadow takes the light away and a little of the ambient
       vec3 c=s*l*(1.-sh*.4*u_fx.x);
       c=msApply(c,uv,s,mcv,sh*u_fx.x); // unit MS: metal lit by the lamps
-      if(u_cfx.x>.5){vec4 q=texture2D(u_cs,v_u);vec3 a=q.rgb*2.;c+=s*a*(1.-q.a)*1.5*fpGate(uv,cov)+a*q.a*clamp(1.15-1.8*dot(c,vec3(.3,.5,.2)),.2,1.);} // shafts and caustics: light on what they touch (a floor, a figure), and the haze in the air (its share in a), seen against the dark, hardly against what is lit
-      if(u_cfx.y>.5){vec4 m=texture2D(u_cm,v_u);c=c*(1.-m.a)+m.rgb;} // floor mist (and the themes' looks)
-      if(u_fl.x+u_fl.y>0.)c+=floorFx(uv,cov); // (round 31) the floor's own looks: wet sheen, embers
+      float hg=hlGate(cov); // (round 46b) not on a heap or drift
+      if(u_cfx.x>.5){vec4 q=texture2D(u_cs,v_u);vec3 a=q.rgb*2.;c+=(s*a*(1.-q.a)*1.5*fpGate(uv,cov)+a*q.a*clamp(1.15-1.8*dot(c,vec3(.3,.5,.2)),.2,1.))*hg;} // shafts and caustics: light on what they touch (a floor, a figure), and the haze in the air (its share in a), seen against the dark, hardly against what is lit
+      if(u_cfx.y>.5){vec4 m=texture2D(u_cm,v_u)*hg;c=c*(1.-m.a)+m.rgb;} // floor mist (and the themes' looks)
+      if(u_fl.x+u_fl.y>0.)c+=floorFx(uv,cov)*hg; // (round 31) the floor's own looks: wet sheen, embers (round 46b: 253 is inside floorFx's 252-254, so not on a hill's mark)
       vec3 b=texture2D(u_bl,v_u).rgb*.4+(texture2D(u_bl,v_u+u_d).rgb+texture2D(u_bl,v_u-u_d).rgb)*.24+(texture2D(u_bl,v_u+u_d*2.2).rgb+texture2D(u_bl,v_u-u_d*2.2).rgb)*.06;
       c+=b*.6; // bloom
       if(st>.01)c=mix(c,u_sd*dot(c,vec3(.3,.5,.2)),st*.5); // (round 29) the air before the dark greys and darkens
@@ -11943,9 +12050,12 @@ const GLCHEAD=`#ifdef GL_FRAGMENT_PRECISION_HIGH
   float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h21(i),h21(i+vec2(1.,0.)),f.x),mix(h21(i+vec2(0.,1.)),h21(i+vec2(1.,1.)),f.x),f.y);}
   // (round 35b) the sand's face (sandSegs): x0, x1, the surface at each end; its foot in u_sf (four to a vector). Soft over e up and down only:
   // its sides are walls' faces, and the segments of one body meet edge to edge
-  uniform vec4 u_sd[${SDMAX}],u_sf[${SDMAX/4}];uniform float u_nsd;
+  uniform vec4 u_sd[${SDMAX}],u_sf[${SDMAX/4}];uniform float u_nsd,u_hm;
+  // (round 46b) a heap's or drift's (its foot stored negative): on the facade's scene (u_hm) the composite cuts it at full resolution by its alpha mark
+  // (hlGate), so here it is left out; on the ?wgl=0 path its top is soft over two texels (8 u_cam.z, S2), whole a texel above the outline (this pass is
+  // read bilinearly at a quarter size), the ramp in the air above it
   float sdC(vec2 p,float e){float c=0.;for(int i=0;i<${SDMAX};i++){if(float(i)>=u_nsd)break;vec4 a=u_sd[i];if(p.x<a.x||p.x>=a.y)continue;
-    float ft=u_sf[i/4][i-4*(i/4)];c=max(c,smoothstep(-e,e,p.y-mix(a.z,a.w,(p.x-a.x)/(a.y-a.x)))*smoothstep(-e,e,ft-p.y));}return c;}
+    float ft=u_sf[i/4][i-4*(i/4)],et=e,y0=mix(a.z,a.w,(p.x-a.x)/(a.y-a.x));if(ft<0.){if(u_hm>.5)continue;ft=-ft;et=max(e,4.*u_cam.z);y0-=2.*et;}c=max(c,smoothstep(-et,et,p.y-y0)*smoothstep(-e,e,ft-p.y));}return c;}
   float inArch(vec2 w){vec4 tl=tile(w);if(tl.a<.25)return 0.;vec2 f=w-floor(w/vec2(32.,64.))*vec2(32.,64.);if(f.x<3.4||f.x>28.6)return 0.; // inside an open arch: the sky shows there
     if(tl.a>.75)return f.y<30.?step(length(f-vec2(16.,30.)),12.6):1.;return step(f.y,42.);}
   `;
@@ -12031,10 +12141,10 @@ const GLCSH={
           o=aS*T*(1.-.75*inArch(w));oa=aA*T*u_sk.x*mix(.7+.6*nz+u_sk.z*mo,1.,u_cau.z)*dk*(tile(w).g>.5?.25+.75*smoothstep(0.,26.,-by):1.);}} // (and thins out just above a floor, where the footprint takes over)
       if(u_cau.x>0.){float px=texture2D(u_tm,w/vec2(32.,64.)/u_tsz).b; // water caustics thrown up from the cistern beyond the arches
         if(px>.02){vec2 p=w*vec2(.05,.085);float t=u_t*u_cau.y,c=min(vor(p,t),vor(p*1.37+vec2(7.1,3.3),-t*1.21)); // two layers at their own scale and speed, the lower of the two (Zucconi)
-          o+=(u_sky*.55+texture2D(u_map,v_u).rgb*.9)*c*px*u_cau.x*(1.-inArch(w))*vec3(.8,1.,1.08);}
+          o+=(u_sky*.55+texture2D(u_map,v_u).rgb*.9)*c*px*u_cau.x*(1.-inArch(w))*vec3(.8,1.,1.08)*(u_nsd>0.?1.-sdC(w,2.*u_cam.z):1.);} // (round 46b: not on the sand or a heap: a light thrown on the stone behind them)
         vec4 ta=tile(w);vec2 f=w-floor(w/vec2(32.,64.))*vec2(32.,64.); // and the water itself, low in the arch: glints of the sky on its ripples
         if(ta.a>.25&&ta.a<.75&&f.x>3.4&&f.x<28.6&&f.y>24.&&f.y<42.){float t=u_t*u_cau.y,g=smoothstep(.68,.92,vn(vec2(w.x*.16-t*.5,floor(w.y*.8)*3.7+t*.2)));
-          o+=u_sky*g*smoothstep(24.,40.,f.y)*u_cau.x*3.5;}}
+          o+=u_sky*g*smoothstep(24.,40.,f.y)*u_cau.x*3.5*(u_nsd>0.?1.-sdC(w,2.*u_cam.z):1.);}} // (round 46b: the water is behind a heap standing before the arch)
       vec3 t=o+oa;float lt=dot(t,vec3(.3,.5,.2)),dz=(h21(gl_FragCoord.xy+fract(u_t*7.)*61.)-.5)/255.*step(.001,lt)*(1.-u_cau.z); // (dithered against banding)
       gl_FragColor=vec4(t*.5+dz,lt>0.?dot(oa,vec3(.3,.5,.2))/lt:0.);}`], // (stored at half, so a bright pane keeps its colour in eight bits; a: how much of it is in the air)
   // M: mist and the themes' looks -> rgb added, a veils (round 31: the wet sheen and the embers are the composite's, floorFx)
@@ -12070,7 +12180,7 @@ const GLCSH={
       gl_FragColor=o;}`]};
 const glcRGB=col=>{let c=GLCOL.get(col);if(!c){c=col.split(',').map(Number);GLCOL.set(col,c);}return c;}; // (parsed once)
 function glcInit(gl,P){
-  const mk=src=>{const p=glMake(gl,src);gl.bindAttribLocation(p,0,'a_p');return glLink(gl,p,['u_cam','u_res','u_tsz','u_tm','u_map','u_t','u_src','u_scol','u_ns','u_dir','u_oc','u_cau','u_sky','u_mist','u_mcol','u_sc','u_ln','u_rys','u_ry','u_ocT','u_ocC','u_bq','u_sk','u_lx','u_lx2','u_lc','u_bk','u_nb','u_of','u_sd','u_sf','u_nsd']);};
+  const mk=src=>{const p=glMake(gl,src);gl.bindAttribLocation(p,0,'a_p');return glLink(gl,p,['u_cam','u_res','u_tsz','u_tm','u_map','u_t','u_src','u_scol','u_ns','u_dir','u_oc','u_cau','u_sky','u_mist','u_mcol','u_sc','u_ln','u_rys','u_ry','u_ocT','u_ocC','u_bq','u_sk','u_lx','u_lx2','u_lc','u_bk','u_nb','u_of','u_sd','u_sf','u_nsd','u_hm']);};
   GLC.S=mk(GLCSH.s);GLC.M=mk(GLCSH.m);
   for(const n of ['u_cs','u_cm','u_cfx','u_fl','u_fc','u_fsz','u_ft','u_fg'])P.final.u[n]=gl.getUniformLocation(P.final.p,n);
   GLC.u8=(gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS)||0)>=9; // (round 31) the floor's looks read their tile texture on unit 8 (the device's own count: __HKmaxTU tests the metal pair only)
@@ -12157,7 +12267,7 @@ function glAtmo(VZ,camD,camDY,th,lw,lh){
   gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,GLC.tm);gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,GLP.fb.map.t);
   const nsd=glcSand(VZ,camD,camDY); // (round 35b) the sand's face, for both passes
   const com=U=>{gl.uniform4f(U.u_cam,camD,camDY,1/VZ,VZ);gl.uniform2f(U.u_res,w,h);gl.uniform2f(U.u_tsz,GLC.tw,GLC.th);gl.uniform1i(U.u_tm,5);gl.uniform1i(U.u_map,1);gl.uniform1f(U.u_t,t);
-    gl.uniform1f(U.u_nsd,nsd);if(nsd){gl.uniform4fv(U.u_sd,SDS.a);gl.uniform4fv(U.u_sf,SDS.f);}};
+    gl.uniform1f(U.u_nsd,nsd);if(nsd){gl.uniform4fv(U.u_sd,SDS.a);gl.uniform4fv(U.u_sf,SDS.f);}gl.uniform1f(U.u_hm,GLP.gls?1:0);};
   if((ns||cs)&&!window.__RYOFF){ // (round 46: window.__RYOFF leaves the beams out, for beamjag.py's frame without them)
     const U=GLC.S.u;gl.bindFramebuffer(gl.FRAMEBUFFER,GLC.fs.f);gl.viewport(0,0,lw,lh);gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);
     {const x0=Math.max(0,Math.floor(GLCBB[0])),x1=Math.min(lw,Math.ceil(GLCBB[2])),y0=Math.max(0,Math.floor(GLCBB[1])),y1=Math.min(lh,Math.ceil(GLCBB[3]));
@@ -12184,7 +12294,7 @@ function glAtmo(VZ,camD,camDY,th,lw,lh){
 function glAtmoU(U,f){const gl=GLP.gl;if(!U.u_cfx)return;gl.uniform1i(U.u_cs,6);gl.uniform1i(U.u_cm,7);gl.uniform2f(U.u_cfx,f&1?1:0,f&2?1:0); // (the composite's side)
   const F=GLC.fl,on=F[0]+F[1]>0&&GLC.ft;gl.uniform4f(U.u_fl,on?F[0]:0,on?F[1]:0,F[2],F[3]);glFgU(U,on||GLC.fg>0);} // (round 31) the floor's looks (floorFx)
 // (round 35b) the floor's tiles for floorFx and fpGate (composite and bright pass): u_fg's z turns the footprint's gate on (GLC.fg, glAtmo)
-function glFgU(U,on){const gl=GLP.gl;if(!U.u_fg&&!U.u_fc)return;gl.uniform1i(U.u_ft,GLC.u8?8:0);if(U.u_fg)gl.uniform4f(U.u_fg,cv.width,cv.height,on&&GLC.fg>0?1:0,0);
+function glFgU(U,on){const gl=GLP.gl;if(!U.u_fg&&!U.u_fc)return;gl.uniform1i(U.u_ft,GLC.u8?8:0);if(U.u_fg)gl.uniform4f(U.u_fg,cv.width,cv.height,on&&GLC.fg>0?1:0,GLP.gls?1:0);
   if(on){gl.uniform4fv(U.u_fc,GLC.fc);gl.uniform2f(U.u_fsz,GLC.ftw,GLC.fth);gl.activeTexture(gl.TEXTURE8);gl.bindTexture(gl.TEXTURE_2D,GLC.ft);gl.activeTexture(gl.TEXTURE0);}}
 // ---- the dark in Torchlight (round 29; GLFX.storm2) ----
 // The same picture as Classic's stormLayer2D, from the same table (dkTable, a 1024 x 4 texture: the front's offset, its gold and the
@@ -14287,7 +14397,7 @@ addEventListener('orientationchange',()=>setTimeout(layout,120));
 if(window.claude&&window.claude.hot&&window.claude.hot.snapshot){try{window.claude.hot.snapshot(()=>({save:S}));}catch(e){}}
 
 // test hooks
-window.__HK={die:c=>die(c),openingsIn,windLull,windReach,windJumpE,windPeak,windZoneAt,windEase,ctJambsOf,jambKind,startRewind,get windDeaths(){return S.windDeaths;},placeCourts,ctIn,ctPoolHit,CTB,ctBake,ctKindOf,get courts(){return L.courts;},windAt,windE,windCap,windGust,WIND_MS,WIND_GP,WIND_DE,WIND_JM,WIND_G0,WIND_PUSH,WIND_P,WIND_CDA,WIND_GT,plainRuns,keyLight,hillOn,hillTop,hillH,hillCanvas,hillBox,HILL_WADE,HILL_CLIMB,get frameLights(){return frameLights;},jetPlaces,jsSwingPath,jetStream,tapCloth,THEMES,progOf,themeName,hint,learn,HINTS,HINT_MOVE,get banner(){return banner;},set banner(v){banner=v;},genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
+window.__HK={die:c=>die(c),openingsIn,windLull,windReach,windJumpE,windPeak,windZoneAt,windEase,ctJambsOf,jambKind,startRewind,get windDeaths(){return S.windDeaths;},placeCourts,ctIn,ctPoolHit,CTB,ctBake,ctKindOf,get courts(){return L.courts;},windAt,windE,windCap,windGust,WIND_MS,WIND_GP,WIND_DE,WIND_JM,WIND_G0,WIND_PUSH,WIND_P,WIND_CDA,WIND_GT,plainRuns,keyLight,hillOn,hillTop,hillH,hillCanvas,hillBox,hillSil,hillSegs,hillEnd,hillMeshTop,HILL_DBG,HILL_WADE,HILL_CLIMB,get frameLights(){return frameLights;},jetPlaces,jsSwingPath,jetStream,tapCloth,THEMES,progOf,themeName,hint,learn,HINTS,HINT_MOVE,get banner(){return banner;},set banner(v){banner=v;},genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
   load(n,seed,test){clearInput();quiet=!!test;L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;mode="play";intro=0;FX.length=0;STORMG.length=0;clearRooms();cam.snap=true;updateCamera(0);return L;},
   loadMap(spec){return spec;},
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},

@@ -52,14 +52,38 @@ puts the stone back in front.
 
 | Pass | May touch | Never | How it is kept |
 |---|---|---|---|
-| lamp shadow (Torchlight, effect mask r) | L1 only (the lamps hang on the back wall; floor tops are carved too) | L2, L3 | `glMask` carves faces, floors and lips, figures, `JAWP`, `SHC` (`shadowscan.py`) |
-| relief | the stone of the room picture: L1, L3 | any live L2 thing over it | `glRel*` rubbings (`tilescan.py`, `liftscan.py`) |
-| sky beams | L2's air (haze), L2's floor tops and flat things (footprint), L1's opening (rim, pane) | L3, L1 round the opening, sand | tile texture, `sandSegs`, `beamBlockers`, `fpGate` (`beamwall.py`) |
+| lamp shadow (Torchlight, effect mask r) | L1 only (the lamps hang on the back wall; floor tops are carved too) | L2, L3 | `glMask` carves faces, floors and lips, figures, `JAWP`, `SHC` by each thing's one outline (R6; `shadowscan.py`, `heapscan.py`) |
+| relief | the stone of the room picture: L1, L3 | any live L2 thing over it | `glRel*` rubbings by the same outline (`tilescan.py`, `liftscan.py`, `heapscan.py`) |
+| sky beams | L2's air (haze), L2's floor tops and flat things (footprint), L1's opening (rim, pane) | L3, L1 round the opening, sand, heaps and drifts (R7) | tile texture, `sandSegs`, `beamBlockers`, `fpGate` (`beamwall.py`, `beamjag.py`, `heapscan.py`) |
 | figures' fill light | L1, L2, L3 | L0 | the scene's alpha (round 25c) |
 | floor looks (sheen, embers) | L2's floor tops as the scene still shows them | anything drawn over them | alpha marks (round 31) |
 | L4 | everything | | drawn last, not cut |
 
 - R4 every part of every element has a row below; a new element adds its rows, and `layerscan.py` must print `layerscan: ok`.
+- R5 solids (round 46b, owner on a B3 heap before an opening: "it looks transparent, the background wall art seems drawn over it ... Probably
+  need to revise the layering rules also"). A solid L2 thing (a heap, a drift, a block, a fallen roof block, a column, a jamb, a lift's
+  parts, a figure) is opaque over L0, L1 and farther L2: its pixels do not change when the back wall's art is flattened (`EGP.noart`), the
+  backdrop changes, or a pass that lands on L1 or L2's air (the lamp shadow, the relief, the beams' haze, rim, pane and footprint, the mist and
+  the looks, the caustics) is turned off. Light it gives or takes as a lit surface (the light map, the bloom, the fill) is not a draw-over.
+  Checked for heaps and drifts (`heapscan.py`); a test over the other solids (`solidscan`) is left to round 46c.
+- R6 one outline. Each solid L2 thing has one outline function that covers everything it draws, parts above its surface included (stones,
+  blocks, a column's ends and edge band), as drawn this frame. Every pass that needs its outline takes that one: the lamp shadow's carve
+  (`SHC`), the relief's rubbing, the beams' and mist's cut (`sandSegs`) and Classic's footprint and haze cut. A change to the drawing changes
+  the outline in the same commit. A test of any pass measures the thing by its drawn pixels (the frame with it less the frame without it,
+  `LAYER_DBG.hide`), never by the outline the pass itself uses (round 43's `shadowscan.py` masked heaps by `hillSil`, the outline the carve
+  used, and found 0 faults on heaps whose column end and stones stood outside it).
+- R7 beams and solids. A solid standing across the corridor's depth (sand, a heap or drift, a slab that is down) takes no beam haze, rim,
+  pane or footprint, and no mist or wall look: it is cut out of every pass that lights L1 or L2's air, as a wall's front face is. Sand by
+  its outline (`sandSegs`: the shafts' and mist shaders' `sdC`, soft by the low-resolution rules S1-S3 in [rendering](rendering.md));
+  heaps and drifts by their own pixels at full resolution (the scene alpha `HILL_A` 253, the composite's `hlGate`; a cut at a quarter size
+  leaves unhazed air round the thing), by their outline in `sandSegs` on the `?wgl=0` path and in Classic. A blade or slab across the depth is a
+  blocker (`beamBlockers`) and shades the beam behind it too. A figure keeps its own weak beam light (`RY_FIG`) and the figures' mask.
+
+The contour rule (round 46b, owner: "if you add contours or accents always use a darker shade of the pixels that are closer to the edge or
+lighter if light hits it - with some tinting of course"): an outline, seam or accent is never a fixed ink; it is the fill beside it, darker
+and moved toward the theme's shadow tint, or lighter toward the light's where the key light falls on that edge, opaque (`selOut`, see
+[rendering](rendering.md)). Holes, slots and voids keep their dark; where a thing meets the floor the darkest accent is a contact shadow.
+Round 46b applied it to the heaps and drifts; round 46c applies it everywhere.
 
 Approved exceptions: a court's jambs (round 45c, owner: "C, accepting the layering exception"): an L3 part in a cell that is not a wall, drawn live after the figures and the air (`ctJambs`), so it covers him and the guards as he passes behind it, never anything of another cell's face or lip (drawn exactly its own width); the prince's hands on a ledge while the wall hides the rest of him (round 19, `figClip` mode 2); the swing bar's
 timber end grain, 3 px proud of the lintel's face (round 18b); the lift mouth gratings, drawn after the shaft on the mouth's own
@@ -103,7 +127,7 @@ nearer stone in front of a live part (R1). Where a pass is left out of a row, th
 | [roof blocks](elements/roof-blocks.md) | hanging block | L3 (flush with the ceiling's face) | live | its own face |
 | | falling block, its pour and trickles | L2 box d 0..1, air | debris loop | the slot's hole and the faces beside it |
 | | lying block | L2x, near half after the figures | live | placement (never beside a wall) |
-| [heaps and drifts](elements/heaps-and-drifts.md) | far rows (d >= 0.5), a fallen column, crest line, far stones, half-buried blocks | L2x | live (`drawHills` 0, a cached canvas at `VS`), before the figures | its canvas ends at the floor's front edge; placement keeps a plain cell (before) and three (after) from anything else |
+| [heaps and drifts](elements/heaps-and-drifts.md) | far rows (d >= 0.5), a fallen column and its end (a buried end's grit and blocks), crest line, far stones, half-buried blocks; a solid (R5-R7, one outline `hillSil`) | L2x | live (`drawHills` 0, a cached canvas at `VS`), before the figures | its canvas ends at the floor's front edge; placement keeps a plain cell (before) and three (after) from anything else |
 | | near rows (d < 0.5), near stones, grit, ripples, glints: over his shins in a drift, his toes on a heap | L2x | live (`drawHills` 1), after the figures | the same |
 | [wind](elements/wind.md) | dust veils, streamers, grains, leaves, a gust window's pouring sand | L2 air | live (`windDraw`), after the figures and the drifts' near halves | `airCut`: the floor's front edge, the faces, from under the lip of a slab over the row |
 | | the back wall's hangings over a wind, billowing | L1 | live (`drawWindHangs`), first in `drawDynamic`; left out of the room picture | placement (hangings stand clear of faces a cell either side) |
@@ -150,6 +174,7 @@ nearer stone in front of a live part (R1). Where a pass is left out of a row, th
 |---|---|---|
 | `layerscan.py [file] [lo hi] [seeds] [torch\|classic\|both] [kinds=] [phases=K]` | R1 for everything live at its rest: each kind drawn and left out (`LAYER_DBG.hide`, lamps' drawn glows off in both frames), the front plane's pixels must not change; at K clock phases where a kind moves; guards at their posts | `layerscan: ok` |
 | `cpscan.py`, `liftscan.py`, `stairscan.py`, `doorscan.py`, `openscan.py`, `tilescan.py`, `shadowscan.py`, `beamwall.py` | R1 for the clock, lifts and the exit's climb; R2 for doors and openings; R3 for relief, shadows and beams | as in CLAUDE.md |
+| `heapscan.py [file] [lo hi] [seeds] [torch\|classic\|both]` | R5-R7 for heaps and drifts: their drawn pixels (eroded a world px) unchanged with the wall's art flattened, the beams, the lamp shadow or the relief off, both modes (the bloom held out) | `heapscan: ok` |
 
 `layerscan.py` does not see what exists only in play (darts in flight, debris, dust, trails, the prince's states): round 39's pictures
 cover those (dead, crouched, hanging, pushing, dropping in, falling slabs and planks).

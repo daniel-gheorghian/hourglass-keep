@@ -86,7 +86,7 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [fire vent](elements/fire-vent.md) | fire light (110 px) | casts shadows; not carved | glint rubbed | no (lights the metal) | footprint on the grate | off its tile (`FT_FLAT`) | no | 1 life (no height test) | never placed or hit |
 | [darts](elements/darts.md) | visible shooter only | no | no (trap-light ellipse) | no (glint painted) | no | spent dart 255 | no | 1 life | no / no |
 | [roof blocks](elements/roof-blocks.md) | while hanging and falling | falling and lying carved (`SHC`) | `glRelRoofFall` (falling, as clipped), `glRelRoof` (lying) | no | footprint cut | block 255, rubble 251 | no | 1 life | stop at it / no |
-| [heaps and drifts](elements/heaps-and-drifts.md) | lit as the scene | carved (`SHC` heap, drift) | `hillRel` (hard-edged quads) | no | footprint kept off (alpha 255; Classic `ryStand`) | off (255) | no | no (slows him: 42 / 35 px/s; no jump in a drift) | stop at its edge |
+| [heaps and drifts](elements/heaps-and-drifts.md) | lit as the scene | carved (`SHC` heap, drift) by the one outline `hillSil` | `hillRel` (hard-edged quads, the same outline) | no | none on them: a solid (round 46b; Torchlight the alpha mark `HILL_A` 253, `hlGate`; Classic and `?wgl=0` `sandSegs`) | off (`hlGate`) | no | no (slows him: 42 / 35 px/s; no jump in a drift) | stop at its edge |
 | [wind](elements/wind.md) | lamps in it flicker (`windGut`) | not carved (air) | `windRel` (billowing hangings) | no | lit as the scene | streamers 255 | no | no (slows him: 65 / 40 px/s, jumps into it shorter by its drag) | never posted near it |
 | [courts](elements/courts.md) | broad `sky` lights along it; lamps there free | L1 parts take it; pool, vine and jambs carved (`SHC` pool, vine, jamb); the sky none | stone as any wall; `ctRel` over a pool and the jambs | no | no beam from a court; the jambs block beams | as the scene | the jambs | a pool drowns him at its surface | allowed |
 | [movable blocks](elements/movable-blocks.md) | no | carved as a wall | `glRelFloors` | no | as a wall | 255 | yes, as a wall cell | no | blocked / no |
@@ -102,6 +102,26 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [flasks and secrets](elements/flasks-and-secrets.md) | a coloured item light | flasks carved (`SHC`) | its light's ellipse (`glRelEx`) | no | no footprint (255) | no | no | poison: 1 life | an ambush guard at the gold flask |
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
+
+## What round 46b found
+
+The owner's heap (a B3 before an opening, the Waters of Nun at night: "it looks transparent, the background wall art seems drawn over it,
+the shadow renders just over the far left of the heap, and that center circle/oval doesn't look right ... Probably need to revise the
+layering rules also"). New rules R5 solids, R6 one outline, R7 beams and solids in [layers](layers.md); the contour rule in
+[rendering](rendering.md#contours-round-46b).
+
+| Finding (v87) | Where | Round 46b | Seen in |
+|---|---|---|---|
+| F1 the sky beams' haze, with the window's bars, rim, pane and footprint, laid over every heap and drift, both modes: `heapscan.py` floors 3-48 x 2, 178 hills, beams changed over 0.5% of a hill's pixels on 98 in Torchlight (mean 26%) and 93 in Classic (mean 22%) | shafts' shader, `ryBeams2D` | Torchlight: the hill's pixels marked (`HILL_A` 253) and the composite leaves the S and M passes and `floorFx` off them (`hlGate`); Classic and `?wgl=0`: `hillSegs` in `sandSegs` (`SDMAX` 64) | [heaps and drifts](elements/heaps-and-drifts.md) |
+| F2 B3's drum joint and four flutes drawn over the hidden far half; every heap's edges (column, crest, stones, blocks) the fixed ink `#0b0812` | `hillDrum`, `hillPaint`, `stoneBox` | only the near half; `selOut` edges (the contour rule); `stoneBox`'s `o.ink` | heaps and drifts |
+| F3 the column's end the palest thing on it whatever the light, a flat near-black square | `hillDrum` | shaded by the key light's side; three looks by a hash (fracture, socket, buried) | heaps and drifts |
+| F4 `hillSil` (the carve's, the relief's and Classic's footprint's outline) the mound alone, B3's column 8 px right of where it is drawn: his shadow on its left end and every stone above the mound | `hillSil` | the one outline of everything drawn (`hillMeshTop`, stones, blocks, column, tongue) | heaps and drifts |
+| F5 the relief embossed the back wall's art where that outline missed | `hillRel` | the same outline, each quad to its highest point | heaps and drifts |
+| `shadowscan.py` masked heaps by the carve's own outline, so it could not see F4 (0 of 128 on v87) | `shadowscan.py` | heap and drift measured by their drawn pixels: v87 76 of 128 (heaps 68 of 85, drifts 8 of 43), round 46b 0 of 128 (floors 3-48, seed 1; the bloom, the wind's dust and the sand stream held out, air or light) | heaps and drifts |
+| C4's sand round a half-buried block a flat pale oval; B1's grit in the Blue Chambers in the faience blue | `hillBlocks`, `hillCols` | the drift's own shade rising to a lit lip; the blocks' limestone darkened | heaps and drifts |
+
+Left: a test of R5 over the other solids (`solidscan`: blocks, roof blocks, jambs, lift parts) and the contour rule on the older props
+(the audit's 131 fixed inks in 57 functions, the figures) are round 46c's.
 
 ## What round 46a found
 

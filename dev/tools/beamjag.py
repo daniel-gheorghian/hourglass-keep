@@ -13,7 +13,8 @@
 # Cases: every theme at every hour it has (themeName and progOf over floors 1-180, its first floor; the first of seeds 2601-2619 with an
 # opening whose beam is in the floor's middle, not over a heap or drift), and the forced ones: a low ceiling under a beam (floor 7), a floor's shadow across a beam (a
 # beam over a slab's end, floor 50), a blocker in a beam (a shut gate or a slicer in the beam's haze, the first on floors 4-60), the prince in
-# a beam (floor 11), sand in a beam (floor 17 seed 19). lo hi keep the cases whose floor is in lo..hi (suite.py splits the run that way).
+# a beam (floor 11), sand in a beam (floor 17 seed 19), a heap or drift in a beam (round 46b: they cut the beams as sand does, layers.md R7; floor 17
+# and the first on floors 4-60). lo hi keep the cases whose floor is in lo..hi (suite.py splits the run that way).
 # Prints one line per case and setting (floor, seed, opening, mode, GLP.rs, STEP, JAG = the 99.9th percentile of the residual), FAIL lines
 # with the worst crop's path (on | off | the beams' light scaled to the crop, out=DIR, default dev/tools/beamjag/), and 'beamjag: ok'. Run from dev/tools; HK_GPU=0
 # draws WebGL in SwiftShader (default: the GPU, as suite.py's heavy jobs).
@@ -68,7 +69,8 @@ FIND = r'''([n,sd,kind])=>{const H=__HK;window.__HKfreeze=true;for(const id in H
       if(kind==='low'){for(let c=Math.floor(bx0/32);c<=Math.floor(bx1/32)&&!ok;c++)for(let rr=Math.floor(by0/64);rr<=Math.floor(by1/64)&&!ok;rr++)ok=H.ryLow(c,rr,sb.dx>0?-1:1)>0;}
       if(kind==='floor'){const rr=Math.round((o.fl+4)/64)-1;let a1=false,a0=false;for(let c=Math.floor(bx0/32);c<=Math.floor(bx1/32);c++){if(H.tileB(c,rr)===H.WALL)continue;if(H.solidBelow(c,rr))a1=true;else a0=true;}ok=a1&&a0&&o.fl>o.y1+40;}
       if(kind==='blk'){H.ryProfile(o.sh);const nb=H.beamBlockers(bx0,bx1,by0,by1);for(let i=0;i<nb&&!ok;i++)ok=H.ryBlkLit(i,o,sb);}
-      if(kind==='sand'){ok=H.sandSegs(bx0,bx1,by0,by1)>0;}
+      if(kind==='sand'){const k=H.sandSegs(bx0,bx1,by0,by1);ok=(H.SDS.nw===undefined?k:H.SDS.nw)>0;} // (round 46b: sandSegs holds the hills after the sand, SDS.nw)
+      if(kind==='heap')ok=(L.hills||[]).some(h=>h.r*64+64>=by0&&h.r*64<=by1&&(h.c+h.n)*32>=bx0+16&&h.c*32<=bx1-16&&o.fl>=h.r*64+40&&o.fl<=h.r*64+70); // (round 46b) a heap or drift standing in the beam, on the floor it lights
       if(!ok)continue;window.__O={x:(o.x0+o.x1)/2,y:(o.y0+o.y1)/2,fl:o.fl,y0:o.y0,o,fig:kind==='fig'};
       return [n,s,H.themeName(n),o.kind,o.sh.key,L.prog?L.prog.tod:0];}}return null;}'''
 SHOW = r'''([mode,rs,off])=>{const H=__HK,O=window.__O,P=H.P,sb=H.skyBeam();P.inv=1e9;
@@ -131,7 +133,7 @@ def theme_cases(pg):
     rows = pg.evaluate('''()=>{const H=__HK,seen={},o=[];for(let n=1;n<=180;n++){const k=H.themeOf(n).name+'|'+H.progOf(n).tod;if(seen[k])continue;seen[k]=1;o.push([n,k]);}return o;}''')
     return [(n, 0, 'theme', k) for n, k in rows]
 FORCED = [(7, 0, 'low', 'low ceiling under a beam'), (50, 0, 'floor', "a floor's shadow"), (0, 0, 'blk', 'blocker in a beam'),
-          (11, 0, 'fig', 'the prince in a beam'), (17, 19, 'sand', 'sand in a beam')]
+          (11, 0, 'fig', 'the prince in a beam'), (17, 19, 'sand', 'sand in a beam'), (17, 0, 'heap', 'a heap in a beam'), (0, 0, 'heap', 'a heap in a beam')]
 
 # an older build (v87 and before) has none of round 46's hooks: a copy of it gets them as string patches, the same switches
 def prep(src):

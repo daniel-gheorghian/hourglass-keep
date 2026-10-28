@@ -408,8 +408,16 @@ from it; the footprint and rim bloom a little (`RY_BLOOM` 0.5), the haze never. 
 the mask at ¼, three taps across the light).
 
 How an element relates to the beams:
-- Stands in front of the room's whole depth (a wall's or low ceiling's front face, sand): no beam light, haze, rim or footprint on it.
-  Faces come from the tile texture; sand from `sandSegs` (at most `SDMAX` 24 segments; round 35b).
+- Stands in front of the room's whole depth (a wall's or low ceiling's front face, sand) or across it as a solid (a heap or drift, round
+  46b, [layers](layers.md) R7): no beam light, haze, rim, pane or footprint on it, nor the caustics or the arch water's glints. Faces come
+  from the tile texture; sand from `sandSegs` (at most `SDMAX` 64 segments, 24 before round 46b; the sand's first, `SDS.nw` of them).
+  Hills (round 46b): on the facade's scene each hill's pixels carry the scene alpha `HILL_A` 253 (`hillMark`, its canvas drawn again with
+  `destination-out`), and the composite and bright pass leave the S pass (light, haze, caustics), the M pass and `floorFx` off them at full
+  resolution (`hlGate`; `u_fg.w` says the marks are there); a figure over a hill is 255 and keeps its own beam light. A first try cut them in
+  the S and M passes by their outline (`sdC`): at a quarter size its ramp, two texels for S2, left a dark band of unhazed air along every
+  crest in a beam; that cut is kept only for the `?wgl=0` path (no marks: `u_hm` 0), where each hill's outline follows the sand's in
+  `sandSegs` (`hillSegs`, made once; its foot stored negative), soft over two texels, whole a texel above the outline. Classic cuts the
+  same segments with the walls (`rySandCut` and the beam's own clip, exact at full resolution); `ryStand` no longer boxes hills.
 - Stands across the corridor's depth (a slicer's blades; with `EGP.traps` a granite portcullis, a lift's or sand lift's mouth slab that
   is down, the slabs by `blkSlab` through one shared gate state `BLKG`, round 38a): a quad in `beamBlockers` (up to `BLKMAX` 12), read by
   both modes, so the beam behind it is shaded and only the near half of the haze lies over it (round 20a). The shafts' shader tests up to
@@ -462,6 +470,7 @@ floor's own top face as the scene still shows it, read from the scene's alpha:
 | 254 | the floor's own top face | the room picture: `slab(...,mark)` | yes (on a plain floor tile) | yes |
 | 254 on an `FT_FLAT` tile (128 in `FLOOR_FT`) | a flat thing drawn live (plate, cracked slab, plank, closer, vent grate; the fork's grating on its bars only) | `fpMark`; `fpMarkGrate` | no | yes |
 | 251 (`RL_A`) | what the room picture lays on the face: rubble, fallen stones and lamps, spike holes, a broken end | `rlBegin`/`rlEnd` | no | yes |
+| 253 (`HILL_A`, round 46b; `hlGate` takes 252.5-253.9, so air drawn over a hill, the wind's dust, stays the hill's until it covers it about half) | a heap's or drift's own pixels (its canvas as drawn, both halves), anywhere on screen | `hillMark` | no (`hlGate`) | no; nor the beams' haze, rim, pane, caustics or the mist (`hlGate`, layers R7) |
 | 255 | anything drawn live over the face: a figure, saw blade and slot, stakes, a flask, a lamp stand, a block | any opaque live drawing | no | no |
 
 Between the marks the gates fade: `floorFx` is full from 252 to 254 and fades out toward 251 and toward 255; the footprint is full up to
@@ -564,9 +573,22 @@ drift, motes, dither) and a frozen clock, both modes, `GLP.rs` 1, .75, .5 and Ba
 parallel to the light; what a Gaussian of three texels along each line leaves is the staircase; STEP, the share of lines whose residual
 crosses zero three or more times at over 2 levels, must be at most 0.012 (0.03 with Battery saver; the research's 0.005 and 0.02 sit inside the GPU's run-to-run noise of about 0.002: round 46a's worst is 0.0095 and 0.0199, v87 fails 71 of 164 frames and 15 of 82, up to 0.115). It must print `beamjag: ok`; a FAIL line
 names the floor, seed, opening, mode, `GLP.rs` and STEP and saves the worst crop (on | off | the beams' light scaled to the crop; `heat` maps the stepping lines). Pictures `egyptr46a.py`.
-It also fails when the shafts' shader is not live in Torchlight (a compile error falls back without a word). Left as it is: a heap or
-drift under a beam (round 43) takes the footprint through `fpGate` on its half-size canvas (`hillCanvas`), faint dashes along its ripples
-(STEP 0.0097 on floor 17); that is the composite's gate, not the S pass, and the theme cases frame beams away from them.
+It also fails when the shafts' shader is not live in Torchlight (a compile error falls back without a word). Round 46a left a heap or
+drift under a beam taking the footprint through `fpGate` on its canvas (faint dashes along its ripples, STEP 0.0097 on floor 17); round 46b
+cuts hills out of the S pass by their outline (`sandSegs`), so that is gone, and adds two forced cases, a heap in a beam (floor 17, and the
+first on floors 4-60: floor 4, Nun): STEP 0 at every `GLP.rs`, 0.0081 with Battery saver. The theme cases still frame beams away from hills.
+
+## Contours (round 46b)
+
+Owner: "if you add contours or accents always use a darker shade of the pixels that are closer to the edge or lighter if light hits it -
+with some tinting of course" (Lospec's selective outlines, sel-out, hue shifting; Gurney's occlusion accents). `selOut(c, k, lt)` (with
+`selTint()`, the theme's `lo`): c the fill on the line's inner side as `[r, g, b]`; k < 1 darker, moved toward the theme's shadow tint by
+`0.28 (1 - k) / 0.45` and scaled by k; k > 1 lighter, toward the light's tint `lt` (warm white by default) by `1.5 (k - 1)`, at most half;
+opaque. k about .55-.65 for a silhouette edge in shade, .68-.75 for an inner groove or seam, 1.05-1.12 for an edge the key light (`keyLight`
+sx, or a top lit from above) falls on. `stoneBox`'s `o.ink` takes it (default the old ink until round 46c). Not lines: holes, slots, voids
+and interiors keep their dark; where a thing meets the floor or another thing the darkest accent is a contact shadow; small translucent
+marks (wear, cracks, grit) may stay. Round 46b: the heaps' stones and blocks (`selOut(stone, .5)`), the B1/B2 crest (`selOut` of the
+mound, lit where its slope faces the light), B3's column (its edge band, flutes, joint and end), a buried end's tongue.
 
 ## Checklist
 
@@ -578,6 +600,8 @@ A new element drawn live over the room picture must:
 | be rubbed out of the relief if it hides the back wall (`glRelFloors`/`glRelLive` for a tile type, `glRelBox`/`glRelQ` for a box or quad, `glRelSlab` for a slab), only where it is drawn | the relief reads the room picture, so the wall's art is embossed on anything drawn over it | 16c slabs, 21b sand, 26a lifts, 35c tiles, 37b jaws, 38a roof blocks, 39 banners, the falling block |
 | have every palette key it reads in every palette that reaches it (`silPal`, `guardPal`, `PAL_HERO`, `PAL_SKEL`) | a missing key throws inside `figDraw`; the silhouette goes null and its shadow, beam cut, metal carve and fill cut with it | 27c |
 | record its outline in `SHC` as drawn (`shcBeg` ... `shcEnd`, thin parts 1.2 px wider) if it stands in front of the back wall, so `glMask` carves it out of the lamp shadow; check with `shadowscan.py` | otherwise a figure's shadow is painted across its face | 19 walls, 20a low ceilings, 37b jaws, 38a the rest |
+| have ONE outline function covering everything it draws (stones, blocks, ends, edge bands above its body), used by every pass that needs it (SHC, relief rubbing, `sandSegs`, Classic's cuts), and be tested by its drawn pixels (the frame with it less the frame without it), never by that outline ([layers](layers.md) R5-R7; `heapscan.py`) | an outline that misses a part leaves the shadow, the relief and the beams on that part, and a test masked by the same outline cannot see it | 46b heaps |
+| draw its contours and accents by the contour rule (`selOut`, below): never a fixed near-black ink | a fixed ink reads as a cut-out or, under haze, as a coloured wire | 46b heaps |
 | add a quad to `beamBlockers` if it stands across the corridor's depth | otherwise a beam passes through it and its haze lies over it | 20a, 38a lift mouth slabs |
 | call `fpMark` if it lies flat on the floor's face (or mark only its solid parts, as `fpMarkGrate`) | otherwise its opaque pixels refuse the beam's footprint (255) | 35b, 38a grating |
 | keep off the sky: draw under `G2D.na` only full-view effects that are not things; never read the scene's alpha with a new dst-alpha blend on the main scene | the composite reads that alpha for the fill, shadows and floor marks | 25c |

@@ -50,7 +50,7 @@ is a placeholder: only the built `index.html` carries the release number.
    it starts): `play` (the bot and play checks: run2, featbot, p4bot, forktest, hinttest, grablabel, swingtest, liftkick, lowceil,
    r38b_tests, sawceil, primtest, hdtest, lifttest, respawnplates, slabresume, gratepeek), `gen` (generator and layout scans: metrics40,
    guardscan, forkscan, puzzlescan, vertscan, featurescan, orphanscan, mazescan, wellcorr, lampscan, slabscan, sandshaft, wellscan, hillscan, windscan, courtscan) and
-   `render` (drawing checks: rendersmoke, liftscan, crossscan, cpscan, shadowscan, doorscan, openscan, tilescan, beamjag, stormfair, glauto,
+   `render` (drawing checks: rendersmoke, liftscan, crossscan, cpscan, shadowscan, doorscan, openscan, tilescan, beamjag, heapscan, stormfair, glauto,
    metaltest, rewindrooms, figscan). The tier chooses the jobs; `--suite play,render` runs only those suites, in that order (default
    all: play, gen, render). The suites run in sequence (owner): each has the whole pool of workers and GPU slots, finishes, writes and
    prints its summary with its own wall time, then the next starts; `--stop-on-fail` skips the suites still to run once one fails
@@ -64,7 +64,7 @@ is a placeholder: only the built `index.html` carries the release number.
    are skipped and reported with the rest, and the suites carry on in sequence (a failed job in the journal stays failed). The bot and render
    runs are split one floor (and seed) per job; each of the N workers (`suiteworker.py`) starts ONE Chromium and runs its jobs
    in turn, each in a fresh browser context, so nothing leaks between jobs. The test scripts are unchanged and still run
-   standalone. Jobs that draw Torchlight (`HEAVY` in suite.py: rendersmoke, liftscan, crossscan torch, cpscan, shadowscan, doorscan, openscan, tilescan, beamjag) run in a second shared browser per worker launched with the GPU flags (`--use-angle=metal --enable-gpu --ignore-gpu-blocklist --force_high_performance_gpu`: WebGL through ANGLE on Metal, the Radeon; without flags headless Chromium draws WebGL in SwiftShader on the CPU, several cores a frame), at most four at a time (`HK_GPU_JOBS`, default 4). Measured idle on the 8-core i9 (Radeon Pro 5500M), software against GPU: `liftscan.py 15 20` 495 s (100 CPU-min) against 83 s (2), `shadowscan.py 13 18` 533 s against 127 s; eight shadowscans at once 285 s each, 4.9 min in all, four at a time 150 s each, 5.2 min at 40% less CPU. `HK_SUITE_GPU=0` runs them in software as before, `HK_SUITE_GPU=igpu` on the Intel UHD 630. The light render jobs stay in software: a 2D canvas drawn on the Radeon is not bit-exact between two redraws (rewindrooms finds 13 values off). The GPU shows one fault software hides: shadowscan's sky clock on floor 29 seed 1 (c367 r57, 125 px of his shadow, both GPUs; the clocks on floors 10 and 22 fail either way). A job over its 25-minute limit, or one that kills its browser, fails with a message and the worker is replaced.
+   standalone. Jobs that draw Torchlight (`HEAVY` in suite.py: rendersmoke, liftscan, crossscan torch, cpscan, shadowscan, doorscan, openscan, tilescan, beamjag, heapscan) run in a second shared browser per worker launched with the GPU flags (`--use-angle=metal --enable-gpu --ignore-gpu-blocklist --force_high_performance_gpu`: WebGL through ANGLE on Metal, the Radeon; without flags headless Chromium draws WebGL in SwiftShader on the CPU, several cores a frame), at most four at a time (`HK_GPU_JOBS`, default 4). Measured idle on the 8-core i9 (Radeon Pro 5500M), software against GPU: `liftscan.py 15 20` 495 s (100 CPU-min) against 83 s (2), `shadowscan.py 13 18` 533 s against 127 s; eight shadowscans at once 285 s each, 4.9 min in all, four at a time 150 s each, 5.2 min at 40% less CPU. `HK_SUITE_GPU=0` runs them in software as before, `HK_SUITE_GPU=igpu` on the Intel UHD 630. The light render jobs stay in software: a 2D canvas drawn on the Radeon is not bit-exact between two redraws (rewindrooms finds 13 values off). The GPU shows one fault software hides: shadowscan's sky clock on floor 29 seed 1 (c367 r57, 125 px of his shadow, both GPUs; the clocks on floors 10 and 22 fail either way). A job over its 25-minute limit, or one that kills its browser, fails with a message and the worker is replaced.
    `run2`, `featbot`, `p4bot`, `forktest` and `rendersmoke` also fail a run whose page CPU time per game frame is over budget
    (`slowguard.py`, 0.3 ms/frame; healthy runs are 0.02 to 0.1), naming the floor and seed: a leak like v41's particles shows
    up as a failure, not as a long wait. `HK_MS_PER_FRAME` and `HK_RUN_WALL` override the budgets.
@@ -100,6 +100,7 @@ is a placeholder: only the built `index.html` carries the release number.
 | `courtscan.py lo hi [seeds] [nodrown]` | round 45's courts: 4-8 cells of headroom under stone (a light well 2), 7-8 a floor from floor 3, none on 1-2, never two in view (3 rows, 14 cells), none by a lift or door, kinds by theme, every one-storey spiked pit inside a court a pool (and every pool one), no window, arch or breach beam, own opening, wall lamp or hanging left inside one; a walk off a pool's coping drowns him at its surface; each court's two jambs of its theme's kind, 3 cells open between them, none intact beside a breach | `courtscan: ok` |
 | `shadowscan.py lo hi` (release) | no figure's lamp shadow on what stands before the back wall, Torchlight (round 38a) | `shadowscan: ok` |
 | `beamjag.py [file] [lo hi]` | no staircases in the sky beams (round 46a, rules S1-S7): static (highp where world positions are read, no `NEAREST` on the beams' textures), then every theme at every hour and the forced cases (low ceiling, floor shadow, blocker, prince, sand in a beam), both modes, `GLP.rs` 1, .75, .5 and Battery saver | STEP <= 0.012 (0.03 saver), `beamjag: ok` |
+| `heapscan.py [file] [lo hi] [seeds] [torch\|classic\|both]` (release) | heaps and drifts are opaque solids (round 46b, `dev/docs/layers.md` R5-R7): each hill's drawn pixels (the frame with it less without it, eroded a world px) unchanged with the back wall's art flattened, the sky beams, the lamp shadow or the relief off, both modes, the bloom held out; floors 3-48 x 2 seeds in four GPU jobs | `heapscan: ok` |
 | `doorscan.py lo hi`, `openscan.py lo hi`, `tilescan.py lo hi views=2` (release) | no wall art over a doorway (round 15), a window, gate or lift mouth (16c), a floor tile (35c), both modes | every count 0, `tilescan: ok` |
 
 Run by hand, not in `suite.py`: `layoutcmp.py` (layouts identical against a release, for look-only rounds; a generator round differs on
@@ -654,6 +655,41 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   figscan, layerscan kinds=heap,drift floors 3-48 x 2 both modes, 0 (measured with the bloom held out, `NOBLOOM`: with it, 7 of 262 Torchlight
   heap views changed the lip's glow, 0 with `GLFX.bloom` false, still 4 of 132 with the sky beams off: light, not a draw-over), shadowscan kinds=heap,drift (0 of 128). Pictures `egyptr43.py` (r43_hills.png,
   r43_phone.png, r43_hills.gif).
+  Opaque, one outline (round 46b, owner on a B3 heap before an opening, the Waters of Nun at night: "it looks transparent, the background
+  wall art seems drawn over it, the shadow renders just over the far left of the heap, and that center circle/oval doesn't look right ...
+  Probably need to revise the layering rules also"; his choices on the research's report: opaque against the beams in both modes, all three
+  column ends, one outline for every pass, the contour rule). v87: (F1) the sky beams' haze, with the window's bars, rim and pane, lay over
+  every hill (`ryBeams2D` and the shafts' shader cut walls, low ceilings and sand only; heapscan, floors 3-48 x 2 seeds, 178 hills: Torchlight 98 over 0.5% of their pixels, mean 26%, up to 100%; Classic 93, mean 22%, up to 95%); (F2) B3's drum joint and four of
+  its nine flutes were drawn over the hidden far half (a loop seen through the stone), its outline the fixed ink `#0b0812`, as the B1/B2
+  crest line and every stone's edge; (F3) its broken end the palest thing on it whatever the light, with a flat near-black square; (F4)
+  `hillSil`, the outline the lamp shadow's carve, the relief's rubbing and Classic's footprint cut used, was the mound alone and took the
+  column 8 px right of where it is drawn (`ux = u - HX`), so his shadow lay on its left end and on every stone above the mound; (F5) the
+  relief embossed the back wall's art there. Now: `hillSil` is THE outline of everything a hill draws (`hillMeshTop` and its crest line,
+  every stone and block with its edge, the column's rings and edge band, a buried end's tongue and blocks; the stones' and blocks' numbers
+  shared with the drawing, `hillStoneList`, `hillBlkList`, `hillTongue`), taken by `SHC` (every point), `hillRel` (each quad to the
+  outline's highest point over its span) and `sandSegs` (`hillSegs`, made once, after the sand's: `SDS.nw`; `SDMAX` 64, was 24). The
+  beams (layers.md R7): Torchlight marks a hill's pixels in the scene's alpha (`HILL_A` 253, `hillMark`: its canvas drawn again with
+  `destination-out`) and the composite and bright pass leave the S pass (light, haze, rim, pane, footprint, caustics, the arch water's
+  glints), the M pass (mist, looks) and `floorFx` off them at full resolution (`hlGate`, `u_fg.w`); a first try cut them in the S and M
+  passes by the outline (`sdC`) and its two-texel ramp left a dark band of unhazed air along every crest in a beam: that cut is kept for
+  the `?wgl=0` path only (`u_hm`). Classic cuts `hillSegs` with the walls (`rySandCut`, the beam's clip; `ryStand` no longer boxes hills).
+  The column (`hillDrum`): only its near half (the outline's tangents at tan t = 3), seven seams and the joint on it, each a groove with a
+  lit lip; its edge a band of the fill darker toward the theme's shadow, lit along the top; the end shaded by the key light's side and one
+  of three looks by a hash of its cell (`hillEnd`, owner: "use all three"): A a fracture (facets of the end's stone, the bundle's lobes),
+  B the joint face with a dowel socket (a recess with a dark back, a shaded wall, a lit lip), C buried (a grit tongue and two tumbled
+  blocks, `hillBury`); floors 3-48 x 3 (46000+97n+13s): 36, 24, 29. The contour rule (owner: "if you add contours or accents always use a
+  darker shade of the pixels that are closer to the edge or lighter if light hits it - with some tinting of course"; `selOut(c,k,lt)`,
+  `selTint`, rendering.md "Contours", for round 46c to apply everywhere): the stones' and blocks' edges (`stoneBox`'s `o.ink`), the B1/B2
+  crest (now before the stones, lit where its slope faces the key light), the column, the tongue. Also: C4's sand round each block is
+  the drift's own shade there rising to a lit lip (`hillShAt`), not a flat pale oval; B1's grit in the Blue Chambers is its blocks'
+  limestone darkened (in the faience blue it read as glass). Layering rules R5 solids, R6 one outline (a test measures a thing by its drawn
+  pixels, never by the outline the pass uses), R7 beams and solids in `dev/docs/layers.md`. Tests: `heapscan.py` (new, suite.py render,
+  release, four GPU jobs; floors 3-48 x 2 seeds, 178 hills a mode): v87 480 faults (Torchlight beam 98, wall art 103, relief 94, shadow 68; Classic beam 93, wall art 24), round 46b `heapscan: ok` (every share at most 0.3%); `shadowscan.py` measures heap and drift by their drawn pixels (frames with the beams, mist, looks,
+  caustics and bloom off, with it less without it): floors 3-48 seed 1: v87 76 of 128 (heaps 68 of 85, drifts 8 of 43), round 46b 0 of 128 (floors 3-48, seed 1; the bloom, the wind's dust and the sand stream held out, air or light); `beamjag.py` gains a heap in a beam (floor 17 and the first on 4-60):
+  STEP 0 at every `GLP.rs`, 0.0081 Battery saver, `beamjag: ok` (floors 1-24, 72 frames). Look only: `layoutcmp.py` against v87 same (144 of 144); hillscan ok; figscan ok; layerscan kinds=heap,drift floors 3-14 and
+  37-48 both modes 0 of 180 views; rendersmoke 13-15 both ok (0.59 ms/frame mean, a heapscan running beside it). Test switches: `HILL_DBG` (`stream` off for heapscan; `end` forces a look). Pictures
+  `egyptr46b.py old.html new.html [outdir]` (r46b_<case>_3x.png and _phone.png: the owner's B3, B1, B2, a drift before an opening, C4, B1
+  in the Blue Chambers, before | after, both modes; r46b_ends_3x.png: v87 and the three ends on two columns).
 - Wind (round 44, owner after r44's alternatives W1-W5: "your recommendation"; `dev/docs/elements/wind.md`). `L.winds` (not features, not
   traps), laid by `placeWinds` after `placeHills` from hashes only (layouts, `L.path`, timers unchanged: `layoutcmp.py` v86 same, 144 of 144;
   `metrics40.py` v86 identical), on `plainRuns`' stretches (round 43's finder, shared) and `WIND_JM` 3 cells clear of every seg that is not
