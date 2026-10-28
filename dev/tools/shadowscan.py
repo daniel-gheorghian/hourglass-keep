@@ -28,7 +28,7 @@ REF = os.path.abspath(next((x[4:] for x in a if x.startswith('ref=')), os.path.j
 NUM = [int(x) for x in a if x.isdigit()]
 LO, HI = (NUM + [1, 48])[:2] if len(NUM) >= 2 else (1, 48)
 SEEDS = [int(s) for s in next((x for x in a if ',' in x and '=' not in x), str(NUM[2]) if len(NUM) > 2 else '1').split(',')]
-KINDS = next((x[6:] for x in a if x.startswith('kinds=')), 'slab,stakes,saw,pend,roof,clock,flask,liftslab,rope,sandslab,bar,rig,loop,lamp,sand,debris,vent,dart,heap,drift,pool,vine').split(',')
+KINDS = next((x[6:] for x in a if x.startswith('kinds=')), 'slab,stakes,saw,pend,roof,clock,flask,liftslab,rope,sandslab,bar,rig,loop,lamp,sand,debris,vent,dart,heap,drift,pool,vine,jamb').split(',')
 PER = int(next((x[4:] for x in a if x.startswith('per=')), '2'))
 OUT = next((x for x in a if x.endswith('.png')), os.path.join(HERE, 'shadowscan.png'))
 ERODE = 7  # device px (3.5 css px, 1.7 world px at this view: the quarter-size mask read blurred over a texel either side)
@@ -52,6 +52,7 @@ JS = r'''window.SHS=(()=>{const H=__HK,TW=32,SURF=r=>(r+1)*64-4,TS=7;
     if(kind==='bar')dyn('bar').forEach(o=>{const f=o.f;out.push({x:f.x,r:o.r,ys:SURF(o.r),tq:24,place:(P,s)=>{f.ps=0;f.pw=0;P.x=f.x;P.y=f.y+57;P.vx=P.vy=0;P.state='air';P.autoGrab=true;P.face=s;P.fallY=P.y;H.tick(1);
       if(P.state==='swing'){P.swTh=0.95;P.swOm=0;const b=H.barPos(f);P.x=b.x+P.face*34*Math.sin(P.swTh);P.y=b.y+34*Math.cos(P.swTh)+24.5;}}});});
     if(kind==='pool')(L.courts||[]).forEach(k=>k.pits.forEach(([a,b])=>out.push({x:(a+b+1)/2*TW,r:k.r,ys:SURF(k.r)}))); // (round 45: a court's pool, him on its coping)
+    if(kind==='jamb')(L.courts||[]).forEach(k=>H.ctJambsOf(k).forEach(j=>out.push({x:j.x0+j.w/2,r:k.r,ys:SURF(k.r)}))); // (round 45c: a court's jambs)
     if(kind==='vine')(L.courts||[]).forEach(k=>{if(k.k==='perg')out.push({x:(k.c0+k.c1+1)/2*TW,r:k.r,ys:SURF(k.r)});});
     if(kind==='rig')L.lifts.forEach(f=>{if(f.t==='lift'&&!f.sand)out.push({x:f.sc*TW+12.5,r:f.rT,ys:SURF(f.rT),dy:-26});});
     if(kind==='loop')L.lifts.forEach(f=>{if(f.t!=='chain')return;for(const c of [f.c0,f.c1])for(const top of [1,0]){const rr=top?f.rT:f.rB;if(rr===undefined)continue;out.push({x:c*TW+16,r:rr,ys:top?f.yT:SURF(rr),at:()=>c*TW+16});}});

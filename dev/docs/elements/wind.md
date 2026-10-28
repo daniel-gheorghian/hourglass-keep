@@ -14,6 +14,34 @@ crouched he holds his place. Hangings on the back wall billow and lamps gutter.
 Wind is not a trap or a feature. It is a list of its own, `L.winds`, laid by a pass that uses hashes only after the hills, so layouts,
 `L.path`, the trap counts and the timers do not change.
 
+## Round 45c: wind from the openings (owner)
+
+Round 45c (owner: "wind may blow over jumps", "wind follows openings", "random, not predictable", "gusts start earlier, gentler at first", "wind weaker
+after a death so a stretch never becomes impossible") replaces round 44's placement. What changed:
+
+| | Round 44 | Round 45c |
+|---|---|---|
+| Where a zone comes from | any plain stretch, one per 4 stretches, at least one a floor | an opening over the route's floor: a window (`WIND_P.win` 2%, three in four gusts), a large open breach of 4+ cells (`big` 18%, mostly steady: 15% gusts), a small one (`small` 6%, half and half), a court's open side (`court` 25%, gusts); the drifts keep their wind. Each chance times the floor's mood (`WIND_MOOD`, a hash: calm 0.2 for 15% of floors, light 0.6 for 20%, normal 1.0 for 45%, windy 1.7 for 20%), so some floors are still and some blow hard; no minimum a floor |
+| Gusts | from floor 13, peak 1.375, one cycle 4.4 s for all | from floor `WIND_G0` 7, the peak by floor (`windPeak`: 1.15 on 7-12, 1.25 on 13-24, 1.375 from 25); each zone its own cycle (`z.gl` lull 1.8-2.8 s, the warning 0.6 s, `z.gg` gust 0.9-1.8 s, fade 0.4 s, `z.T`, `z.ph`, by hash) |
+| Jumps | none in the wind (3 cells of clearance from every seg that is not plain floor) | a zone may lie over gap jumps (segs gap1-3, spikes, bridge) and calm segs (flat, puzzle, rem-plate, detour, secret, block, double, skel), a cell clear of any other seg (swings, saws, chambers and kick shafts, lifts, timed traps); a steady zone over a jump is checked by `windJumpE` (the flight's reach in the headwind, `windReach`, normal and low leap, against the gap plus `WIND_JS` 10 px) and weakened to 0.75 or 0.5 or ended short (none needed on floors 1-48 x 3: the gaps under steady winds are 1-2 cells); a gust zone needs no check: in its lull (0.15) every jump is made, and the lull is longer than any run-up and flight (1.6 s) |
+| The bot | walks through | waits for the lull before a jump in a gust zone (`windLull(r,c0,c1,need)`: the lull with at least 1.6 s left for a running jump, 1.1 s for a standing one), then plays at full wind |
+| A gap under him | no gaps | the push in a gust never takes him over an edge (`windPush` stops at it) |
+| After a death | the same | the zone eases: 0.6 of its strength after one death in it, 0.3 after two (`windEase`, `S.windDeaths["floor:zone"]`, counted by `windDeath` in `die()` for the zone he is in or left within 2.5 s); kept in the save, so a rewind (which never restores `S`), a respawn or a Continue keep it; cleared at the next floor. Play (`windAt`, `windCap`, `windPush`, `windDrag`), the dust (`windDraw`), the sound (`windSnd`), the warning's pour (`windWarn`) and the lamps all read `windE`, so all ease together |
+
+Floors 1-48, seeds 1-3 (`windscan.py`):
+
+| Floors | Steady | Gusts | Drifts' | From windows / breaches / courts | Floors with none | Jumps under steady / gusts |
+|---|---|---|---|---|---|---|
+| 1-12 | 0.53 | 0.42 | 0.19 | 0.47 / 0.22 / 0.25 | 20 of 36 (6 are floors 1-2) | 14 / 8 |
+| 13-24 | 0.97 | 1.39 | 0.44 | 0.75 / 1.25 / 0.36 | 4 of 36 | 13 / 23 |
+| 25-36 | 0.53 | 1.28 | 0.42 | 0.92 / 0.53 / 0.36 | 6 of 36 | 4 / 19 |
+| 37-48 | 1.19 | 1.25 | 0.25 | 0.97 / 1.17 / 0.31 | 10 of 36 | 17 / 31 |
+
+451 stands in gusts (9 s each, no key): none left its zone or fell (pushed 22 px on average, 54 at most). The ease (one gust zone a floor band):
+1 -> 0.6 after a death, 0.6 after the rewind, 0.3 after a second death, on all four.
+
+The sections below describe round 44; where they differ, the table above holds.
+
 ## At a glance
 | | |
 |---|---|
@@ -175,6 +203,9 @@ inverse). It moves along `dir` at the wind's strength and fades over 26 px at ea
 - Checks: `windscan.py`, `run2.py`, `p4bot.py`, `forktest.py`, `layoutcmp.py`, `layerscan.py kinds=wind`.
 
 ## History
+
+- round 45c (owner): placement by openings with random moods, gusts from floor 7 with a ramped peak and per-zone cycles, wind over gap jumps
+  (steady checked and weakened, gusts fair in the lull, the bot waits for it), deaths ease a zone (60%, 30%, `S.windDeaths`). See the top of this file.
 
 - round 44 (owner, after r44's alternatives W1-W5): "your recommendation", against him only, steady 65, gust 40, drift run 70, wade about
   33; pushed back standing in a gust, crouched he holds; jumps affected and realistic (researched); wind on any plain stretch from floor 3

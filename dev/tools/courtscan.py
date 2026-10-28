@@ -11,7 +11,8 @@
 # inside one stands or hangs free (lampFree), no hanging is left on it, no arch is drawn there (isArchTop). Gusts: from floor 13 a gust whose
 # source lies in a court comes in through it (counted). Then (unless nodrown) for the first pool of each floor band he walks off its coping
 # with the arrow held: he must die drowned (P.cause 'drown') with his feet at the water's surface. Prints a table by floor band and
-# 'courtscan: ok'. Run from dev/tools.
+# 'courtscan: ok'. Round 45c: each court has its two jambs of its theme's kind (JAMB kinds), at least 3 cells open between them, and none
+# intact beside a breach (it is broken off with the wall); the worn and broken jambs are counted. Run from dev/tools.
 import os, sys
 from playwright.sync_api import sync_playwright
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -46,11 +47,16 @@ JS = r'''([n,sd])=>{const H=__HK,L=H.load(n,sd,true),C=L.cols,TW=32,B=(c,r)=>c<0
       for(const o of H.openingsIn(x0,x1,y0,y1)){const inside=o[0]>=x0-1&&o[0]+o[2]<=x1+1&&o[1]>=y0-1&&o[1]+o[3]<=y1;if(inside&&!(o[1]===y0&&o[2]<=2*TW&&(o[0]-x0)%TW===0))bad.push(tag+' an opening of its own inside it at '+Math.round(o[0]));}
       for(const t of L.torches)if(t.r===k.r&&t.c>=k.c0&&t.c<=k.c1&&!H.lampFree(t))bad.push(tag+' a lamp on the gone wall at '+t.c);
       for(const h of L.hangings||[])if(h.c>=k.c0-1&&h.c<=k.c1+1&&h.r>=k.r-1&&h.r<=k.r)bad.push(tag+' a hanging at '+h.c);}}
+  const JK={west:'pap',blue:'pap',hawara:'pap',osiris:'pap',napata:'pylon',meroe:'pylon',foggara:'mud',deffufa:'mud',shali:'mud',aksum:'aks',wells:'rock',nun:'nun'};let jw=0,jb=0;
+  for(const k of cs){const jj=H.ctJambsOf(k),tag=k.k+'@'+k.c0+','+k.r,W=(k.c1-k.c0+1)*TW;if(jj.length!==2){bad.push(tag+' jambs '+jj.length);continue;}
+    if(jj[0].kind!==JK[lk])bad.push(tag+' jamb '+jj[0].kind+' in '+lk);if(k.k!=='well'&&W-jj[0].w-jj[1].w<3*TW)bad.push(tag+' open part '+(W-jj[0].w-jj[1].w));
+    for(const [e,j] of jj.entries()){if(j.wear)jw++;if(j.cut)jb++;const cn=e?k.c1+1:k.c0-1,c=e?k.c1:k.c0;let br=false;for(const y of [j.y0+16,j.y0+48,j.y0+80])for(const x of [cn*TW+16,c*TW+4,c*TW+28])if(H.inBreach(x,y,true))br=true;
+      if(br&&!j.cut)bad.push(tag+' an intact jamb beside a breach');}}
   for(const [i,k] of cs.entries())for(const o of cs.slice(i+1))if(Math.abs(o.r-k.r)<=3&&k.c0<=o.c1+14&&o.c0<=k.c1+14)bad.push('two in view: '+k.c0+','+k.r+' and '+o.c0+','+o.r);
   let pits=0;for(const p of new Set(L._ctP.values()))pits++;if(pits!==pools)bad.push('pool map '+pits+' for '+pools+' pools');
   const gc=(L.winds||[]).filter(z=>z.k==='g'&&z.src&&cs.some(k=>k.k!=='well'&&Math.floor(z.src.x/TW)>=k.c0&&Math.floor(z.src.x/TW)<=k.c1&&Math.floor(z.src.y/64)===k.r-1)).length;
   const first=cs.find(k=>k.pits.length);
-  return {n,sd,lk,cnt:cs.length,kinds,cells,pools,gc,g:(L.winds||[]).filter(z=>z.k==='g').length,bad,pool:first?[first.r,first.pits[0][0],first.pits[0][1]]:null};}'''
+  return {n,sd,lk,jw,jb,cnt:cs.length,kinds,cells,pools,gc,g:(L.winds||[]).filter(z=>z.k==='g').length,bad,pool:first?[first.r,first.pits[0][0],first.pits[0][1]]:null};}'''
 # he walks off the coping into the pool
 DROWNJS = r'''([n,sd,r,a,b])=>{const H=__HK;for(const id in H.HINTS){H.S.hints[id]=1;H.S.learned[id]=1;}const L=H.load(n,sd,true);H.banner=null;const P=H.P;for(const e of H.G)e.x=-9999;for(const s of H.SN)s.x=-9999;
   P.x=(a-1)*32+6;P.y=(r+1)*64-4;P.fallY=P.y;P.vx=0;P.face=1;P.state='stand';H.mode='play';for(const k of ['l','r','u','d','j','g'])H.setKey('kb',k,false);H.tick(10);
@@ -74,13 +80,13 @@ if __name__ == '__main__':
                     done.add(band); q = pg.evaluate(DROWNJS, [r['n'], r['sd']] + r['pool'])
                     ok = q['mode'] == 'dead' and q['cause'] == 'drown' and abs(q['y'] - q['wy']) < 0.5
                     drowns.append((r['n'], r['sd'], ok, q))
-        print('floors     courts/floor  min  max  cells/floor  pools  peri perg fore well  gusts (in a court)')
+        print('floors     courts/floor  min  max  cells/floor  pools  peri perg fore well  gusts (in a court)  jambs worn / broken')
         for lo in range(LO, HI + 1, 12):
             rr = [r for r in rows if lo <= r['n'] < lo + 12]
             if not rr: continue
             k = lambda t: sum(r['kinds'].get(t, 0) for r in rr)
-            print('%2d-%-2d      %5.2f        %3d  %3d  %6.1f       %4d   %4d %4d %4d %4d  %3d (%d)' % (lo, min(lo + 11, HI), sum(r['cnt'] for r in rr) / len(rr), min(r['cnt'] for r in rr), max(r['cnt'] for r in rr),
-                  sum(r['cells'] for r in rr) / len(rr), sum(r['pools'] for r in rr), k('peri'), k('perg'), k('fore'), k('well'), sum(r['g'] for r in rr), sum(r['gc'] for r in rr)))
+            print('%2d-%-2d      %5.2f        %3d  %3d  %6.1f       %4d   %4d %4d %4d %4d  %3d (%d)  %d / %d' % (lo, min(lo + 11, HI), sum(r['cnt'] for r in rr) / len(rr), min(r['cnt'] for r in rr), max(r['cnt'] for r in rr),
+                  sum(r['cells'] for r in rr) / len(rr), sum(r['pools'] for r in rr), k('peri'), k('perg'), k('fore'), k('well'), sum(r['g'] for r in rr), sum(r['gc'] for r in rr), sum(r['jw'] for r in rr), sum(r['jb'] for r in rr)))
         for d in drowns: print('drown floor %d seed %d: %s %s' % d)
         for x in bad[:30]: print('BAD floor %d seed %d: %s' % x)
         for x in few[:10]: print('FEW floor %d seed %d: %d courts' % x)

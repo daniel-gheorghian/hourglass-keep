@@ -61,7 +61,7 @@ puts the stone back in front.
 
 - R4 every part of every element has a row below; a new element adds its rows, and `layerscan.py` must print `layerscan: ok`.
 
-Approved exceptions: the prince's hands on a ledge while the wall hides the rest of him (round 19, `figClip` mode 2); the swing bar's
+Approved exceptions: a court's jambs (round 45c, owner: "C, accepting the layering exception"): an L3 part in a cell that is not a wall, drawn live after the figures and the air (`ctJambs`), so it covers him and the guards as he passes behind it, never anything of another cell's face or lip (drawn exactly its own width); the prince's hands on a ledge while the wall hides the rest of him (round 19, `figClip` mode 2); the swing bar's
 timber end grain, 3 px proud of the lintel's face (round 18b); the lift mouth gratings, drawn after the shaft on the mouth's own
 boundary; the sky clock's room glow, which is light (round 37c).
 
@@ -113,6 +113,7 @@ nearer stone in front of a live part (R1). Where a pass is left out of a row, th
 | | a pool's water: surface far half / near half and its cut at the front plane, lotus, splash | L2x | `ctLive` 0 before the figures / `ctLive` 1 after them | clipped to the pit's columns and down to the pit floor's lip |
 | | the hanging vine | L2 near (d ~ 0.05) | `ctLive` 1, after the figures | clipped to the court's cells and 24 px under the ceiling's face |
 | | the dapple, the light well's shaft | light | `ctEmis` (drawEmissive) | the dapple clipped above the lips |
+| | the jambs at its ends (round 45c) | L3 (the exception: not a wall cell) | live, after the figures and the air (`ctJambs`) | its own width only; SHC `jamb`, relief rubbed, a beam blocker, back in Classic's fill |
 | [movable blocks](elements/movable-blocks.md) | front face, top, side | L3, as a wall block | live, before the figures | figures pressed and cut at its drawn face |
 | [gates](elements/gates.md) | slab (granite portcullis, iron gate, violet gate) | L2x, plane X+8..X+24 | far half before the figures, near half after (`planeClip`) | placement |
 | | floor slot / timer dial and pair plaque on the lintel | L2f / L3 (fixed on the face) | live | n/a |

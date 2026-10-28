@@ -118,6 +118,8 @@ function* botGen(n, seed, opts) {
     }
     if (ph === 0) trace.push(ins.a + '@' + (ins.from ?? ins.c) + (ins.dir < 0 ? '<' : ''));
     const dir = ins.dir || 1, fwd = dk(dir), back = dk(-dir);
+    // (round 45c) a jump in a gust zone waits for the lull: at least `need` seconds of it left (the run-up and the flight), so it flies in the lull's 0.15
+    const lull = need => !H.windLull || H.windLull(row(), Math.min(ins.from, ins.to) - 3, Math.max(ins.from, ins.to) + 1, need);
     switch (ins.a) {
       case 'walk': if (goto(cx(ins.c))) next(); break;
       case 'look': allOff(); if (frames - f0 > (ins.f || 30)) next(); break; // stand a moment (a test looking at something)
@@ -129,12 +131,12 @@ function* botGen(n, seed, opts) {
           if (fl(ins.to) && fl(c2) && fl(ins.from) && fl(ins.from - dir) && row() === Math.floor((P().y - 1) / 64)) { ins.a = 'dashjump'; ins._was = 'sjump'; break; }
           ins.calm = true;
         }
-        if (ph === 0) { if (gotoD(cx(ins.from), dir)) ph = 1; }
+        if (ph === 0) { if (gotoD(cx(ins.from), dir) && lull(1.1)) ph = 1; }
         else if (ph === 1) { press('j'); ph = 2; }
         else if (ph === 2) { if (p.state === 'stand' && frames - f0 > 5) { if (past(ins.to, dir)) next(); else return fail(ins, 'sjump short'); } }
         break;
       case 'rjump': case 'rjumpg':
-        if (ph === 0) { if (gotoD(cx(ins.from - 2 * dir), dir)) ph = 1; }
+        if (ph === 0) { if (gotoD(cx(ins.from - 2 * dir), dir) && lull(1.6)) ph = 1; }
         else if (ph === 1) { set('g', false); set(back, false); set(fwd, true); if (p.state === 'run' && (p.x - (cx(ins.from) - 44 * dir)) * dir >= 0) { press('j'); ph = 2; } }
         else if (ph === 2) { if (p.state === 'air' || p.state === 'hang') { set(fwd, false); ph = 3; } }
         else if (ph === 3) {
@@ -148,7 +150,7 @@ function* botGen(n, seed, opts) {
         else if (ph === 2) { if (p.state === 'stand' && row() > r0) next(); }
         break;
       case 'jgrab': // a running jump with Grab held in the air catches a ledge a storey up; then climb
-        if (ph === 0) { if (gotoD(cx(ins.from - 2 * dir), dir)) { ph = 1; r0 = row(); } }
+        if (ph === 0) { if (gotoD(cx(ins.from - 2 * dir), dir) && lull(1.6)) { ph = 1; r0 = row(); } }
         else if (ph === 1) { set('g', false); set(back, false); set(fwd, true); if (p.state === 'run' && (p.x - (cx(ins.from) - 44 * dir)) * dir >= 0) { press('j'); ph = 2; } }
         else if (ph === 2) { if (p.state === 'air' || p.state === 'hang') { set(fwd, false); set('g', true); ph = 3; } }
         else if (ph === 3) {
@@ -172,6 +174,7 @@ function* botGen(n, seed, opts) {
         else if (ph === 3) { if (p.state === 'stand') next(); }
         break;
       case 'dashjump': // run on without stopping and tap Jump early: the game times a running jump to the edge
+        if (ph === 0 && !ins.lw && !lull(1.6)) { allOff(); break; } ins.lw = 1; // (round 45c: in a gust zone it waits for the lull first, standing)
         if (ph === 0) { set('g', false); set(back, false); set(fwd, true); if (p.state === 'run' && (p.x - (cx(ins.from) - 50 * dir)) * dir >= 0) { press('j'); ph = 1; } }
         else if (ph === 1) { if (p.state === 'air' || p.state === 'hang') { set(fwd, false); ph = 2; } else set(fwd, true); }
         else if (ph === 2) { if (p.state === 'hang') set('u', true); if (p.state === 'stand') { if (past(ins.to, dir)) next(); else return fail(ins, 'dashjump short'); } }

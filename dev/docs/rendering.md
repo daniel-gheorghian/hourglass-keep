@@ -434,6 +434,8 @@ colour. Skipped when nothing of it is on screen and in the Crossing.
 | caustics (in the S pass) | round the open arches near water where the look has `caus` (Waters of Nun, Foggaras of Garama) | `GLFX.caustics` |
 | theme looks (`LFX`): salt, glaze, faience walls, granite, incense, arch dust | per theme, in the lamps' light only (the light map less the ambient) | `GLFX.lookfx` |
 
+Round 45c: a court's own grade. The composite's grade line mixes, inside up to four court boxes in view (`u_cgb`, `u_cgn`; feathered 1% of the screen), to the court's own shadow and light tints, saturation and white balance (`u_cgs`, `u_cgh`, `u_cgt`, `u_cgw`; `CT_GRADE`, only Meroë's so far, set by `ctGradeU`); Classic matches it after its light pass (`ctGrade2D`: multiply and a 'saturation' blend with grey).
+
 Round 45 (owner: "blotchy"): the arch dust (in open arches, and so in the courts) was value noise read through a narrow ramp, axis-aligned square patches at the pass's quarter size; it now takes lower, rotated frequencies and a wide ramp (`smoothstep(.18,.95)`, 0.3 of the old 0.42) and reads as haze. The courts' own L0 (`ctBg`) is drawn in `drawBackdrop` under `G2D.na`, so the composite treats it as backdrop (no fill light, no lamp shadow).
 
 Rule (round 27d): no travelling bands in a look effect. The Blue Chambers' glaze was a sine of x and y that slid as slanted bars over

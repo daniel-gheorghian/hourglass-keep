@@ -26,7 +26,7 @@ MODES = ['torch', 'classic'] if 'both' in a or not ('torch' in a or 'classic' in
 KINDS = next((x[6:].split(',') for x in a if x.startswith('kinds=')), None)
 NPH = int(next((x[7:] for x in a if x.startswith('phases=')), '4'))
 BADPX = 24  # (canvas px, at about 4 a world px: 1.5 world px square; a thing's foot anti-aliased onto its own lip is under it)
-MOVING = ['saw', 'pend', 'bar', 'chomp', 'vent', 'lift', 'banner', 'emissive', 'ambient', 'atmo', 'lamp', 'jet', 'cue', 'drift', 'wind', 'court', 'pool', 'vine', 'dapple', 'lwell']  # (drift: round 43b's sand off its crest; wind: round 44)
+MOVING = ['saw', 'pend', 'bar', 'chomp', 'vent', 'lift', 'banner', 'emissive', 'ambient', 'atmo', 'lamp', 'jet', 'cue', 'drift', 'wind', 'court', 'pool', 'vine', 'dapple', 'lwell', 'jamb']  # (drift: round 43b's sand off its crest; wind: round 44)
 
 # every instance of every kind on the floor (world px: x, the floor line y), then views that cover them
 LIST = r'''([n,sd,kinds])=>{const H=__HK;window.__HKfreeze=true;const L=H.load(n,sd,false),C=L.cols,TW=32,TH=64,out=[]; // (false: with the guards at their posts; the layout is the same)
@@ -42,7 +42,7 @@ LIST = r'''([n,sd,kinds])=>{const H=__HK;window.__HKfreeze=true;const L=H.load(n
   for(const lf of L.lifts)add('lift',lf.ca,lf.rB,(lf.ca+lf.cb+1)*TW/2,(lf.rT*TH+S(lf.rB))/2);
   for(const h of L.hills||[])add(h.d?'drift':'heap',h.c,h.r,(h.c+h.n/2)*TW); // (round 43)
   for(const z of L.winds||[])add('wind',z.c,z.r,(z.c+z.n/2)*TW);
-  for(const k of L.courts||[]){const x=(k.c0+k.c1+1)/2*TW;if(k.k==='well')add('lwell',k.c0,k.r,x);else add('court',k.c0,k.r,x);for(const [p0,p1] of k.pits)add('pool',p0,k.r,(p0+p1+1)/2*TW);if(k.k==='perg'){add('vine',k.c0,k.r,x);add('dapple',k.c0,k.r,x);}} // (round 45: the court beyond, a pool's water, the hanging vine, the dapple, a light well's shaft) // (round 44: its dust, streamers, grains, leaves and a gust window's sand; the hangings over it)
+  for(const k of L.courts||[]){const x=(k.c0+k.c1+1)/2*TW;if(k.k==='well')add('lwell',k.c0,k.r,x);else add('court',k.c0,k.r,x);for(const [p0,p1] of k.pits)add('pool',p0,k.r,(p0+p1+1)/2*TW);if(k.k==='perg'){add('vine',k.c0,k.r,x);add('dapple',k.c0,k.r,x);}add('jamb',k.c0,k.r,k.c0*TW);add('jamb',k.c1,k.r,(k.c1+1)*TW);} // (round 45c: the jambs, L3 parts drawn live: their own cells' lips are theirs) // (round 45: the court beyond, a pool's water, the hanging vine, the dapple, a light well's shaft) // (round 44: its dust, streamers, grains, leaves and a gust window's sand; the hangings over it)
   for(const s of H.SN||[])add('snake',Math.floor(s.x/TW),Math.floor(s.y/TH),s.x,s.y);
   for(const g of H.G||[])add('guard',Math.floor(g.x/TW),Math.floor(g.y/TH),g.x,g.y);
   H.render();const vh=document.getElementById('game').height/H.XF.VZ;return {out,vw:H.viewW,vh,rows:L.rows,cols:C};}'''
@@ -78,7 +78,7 @@ VIEW = r'''([n,sd,cx,cy,kinds,phases,own,vh])=>{const H=__HK;window.__HKfreeze=t
   H.LAYER_DBG.hide=null;H.LAYER_DBG.glow=true;return {res,th:H.themeName(n)};}'''
 
 # the cells whose tile a kind draws live itself (its own top and lip, and the top of the face under it, are its own drawing)
-OWN = {'loose', 'plate', 'xplate', 'lplate', 'closer', 'grate', 'vent'}
+OWN = {'loose', 'plate', 'xplate', 'lplate', 'closer', 'grate', 'vent', 'jamb'}
 ABOVE = {'gate'}  # (a gate's timer dial and pair plaque are fixed on its lintel's face: L3 itself)
 SELF = {'chomp', 'gate'}  # (their plate's outline meets their own floor's front edge: its anti-aliased stroke on that lip is theirs)
 GRIPS = {'shaftfoot'}  # (a kick shaft's chipped grips are cut into the right wall's face, rows up to five above its foot: marks on L3 itself)

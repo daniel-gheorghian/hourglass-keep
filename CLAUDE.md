@@ -96,8 +96,8 @@ is a placeholder: only the built `index.html` carries the release number.
 | `layerscan.py lo hi [classic]` (by hand) | nothing in the corridor drawn over the front plane: each kind drawn and left out, the faces' and lips' pixels unchanged (round 39, `dev/docs/layers.md`) | `layerscan: ok` |
 | `lampscan.py`, `slabscan.py`, `sandshaft.py`, `wellscan.py`, `figscan.py` | lamps keep clear (round 19); a slab slides up into stone (25d); every sand lift in a shaft (26e); the wells' sand (21b); the body's poses against v69 (round 23; only where `hk_v69_release.html` is) | `ok`, `slabscan: ok`, `sandshaft: ok`, `ok`, `figscan: ok` |
 | `hillscan.py lo hi [seeds]` | round 43's heaps and drifts: only on a run's plain floor (`flat` segs, never `breathe()`'s padding), off timed stretches, the chase and fighters' ground, a heap open above, sizes, themes; at least one a floor from floor 3; counts and the time they add | `hillscan: ok` |
-| `windscan.py lo hi [seeds] [nopush]` | round 44's wind: only on a run's plain floor, 3 cells (else 1) clear of every seg that is not plain floor (no generated jump in it), off timed stretches, the chase and fighters' ground, against the run, gusts only at a window from floor 13; at least one a floor from 3; he stands in every gust 9 s and stays in it | `windscan: ok` |
-| `courtscan.py lo hi [seeds] [nodrown]` | round 45's courts: 4-8 cells of headroom under stone (a light well 2), 7-8 a floor from floor 3, none on 1-2, never two in view (3 rows, 14 cells), none by a lift or door, kinds by theme, every one-storey spiked pit inside a court a pool (and every pool one), no window, arch or breach beam, own opening, wall lamp or hanging left inside one; a walk off a pool's coping drowns him at its surface | `courtscan: ok` |
+| `windscan.py lo hi [seeds] [nopush] [noease]` | the wind (round 44; round 45c's placement by openings): every zone on headroom over plain floor or a one-storey gap he jumps, every seg there calm or a gap jump and no other within a cell, off timed stretches, the chase, fighters' ground, doors; against the run; 3-8 cells; gusts only from floor 7 with the peak by band, a lull of 1.8 s or more; a steady zone over a jump made at its strength; he stands in every gust 9 s and stays in it; a death eases a zone to 0.6, a rewind keeps it, a second death 0.3 | `windscan: ok` |
+| `courtscan.py lo hi [seeds] [nodrown]` | round 45's courts: 4-8 cells of headroom under stone (a light well 2), 7-8 a floor from floor 3, none on 1-2, never two in view (3 rows, 14 cells), none by a lift or door, kinds by theme, every one-storey spiked pit inside a court a pool (and every pool one), no window, arch or breach beam, own opening, wall lamp or hanging left inside one; a walk off a pool's coping drowns him at its surface; each court's two jambs of its theme's kind, 3 cells open between them, none intact beside a breach | `courtscan: ok` |
 | `shadowscan.py lo hi` (release) | no figure's lamp shadow on what stands before the back wall, Torchlight (round 38a) | `shadowscan: ok` |
 | `doorscan.py lo hi`, `openscan.py lo hi`, `tilescan.py lo hi views=2` (release) | no wall art over a doorway (round 15), a window, gate or lift mouth (16c), a floor tile (35c), both modes | every count 0, `tilescan: ok` |
 
@@ -677,6 +677,20 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   `Snd.wind` (`windSnd`). Pure functions of the clock and hashes, nothing allocated a frame. Checks: windscan (in suite.py, gen), run2 3-48 x 2
   and fight 3-27 (0 damage), p4bot 6-27 x 2, forktest, featbot 276/276, figscan, lowceil, r38b, layerscan kinds=wind 3-48 x 2 both modes (0),
   layoutcmp, metrics40, hillscan. Pictures `egyptr44.py old=FILE` (r44_wind.png, r44_phone.png, r44_jump.png, r44_gust.gif, r44_jump.gif).
+  Round 45c (owner: "wind follows openings ... random, not predictable"; "wind may blow over jumps"; gusts "earlier, gentler at first"; "wind weaker
+  after a death"; `dev/docs/elements/wind.md`, top). `placeWinds` (after the courts, hashes only) puts a zone at an opening over the route's floor:
+  a window (`WIND_P.win` 2%, three in four gusts), a large open breach of 4+ cells (18%, mostly steady), a small one (6%, half and half), a court's
+  open side (25%, gusts), each times the floor's mood (`WIND_MOOD`: calm, light, normal, windy by a hash); the drifts keep theirs; no minimum a
+  floor (floors with none: 4-10 of 36 a band from 13). Zones lie on plain floor and over gap jumps (gap1-3, spikes, bridge), a cell clear of any
+  other seg (swings, saws, chambers and kick shafts, lifts, timed traps), off timed stretches (timers unchanged). Gusts from floor `WIND_G0` 7, the
+  peak by floor (`windPeak` 1.15 / 1.25 / 1.375), each zone its own cycle (lull `z.gl` 1.8-2.8 s, warning 0.6 s, gust `z.gg` 0.9-1.8 s, fade
+  0.4 s). Over jumps: a steady zone is checked (`windJumpE`: the flight's reach with drag, `windReach`, normal and low leap, against the gap +
+  `WIND_JS` 10 px) and weakened to 0.75 or 0.5 or ended short (none needed on floors 1-48 x 3); gusts are fair in the lull, and the bot waits for it
+  (`windLull`; bot.js `lull()` before sjump, rjump, rjumpg, jgrab, dashjump), playing at full wind; the push never takes him over an edge. Deaths
+  ease a zone (`windDeath` in `die()`, `windEase`): 0.6 after one, 0.3 after two, in the save (`S.windDeaths`, cleared at the next floor), so a
+  rewind, respawn or Continue keep it; play, dust, sound and lamps follow `windE`. Floors 1-48 x 3: steady 0.5-1.2 a floor, gusts 0.4-1.4, jumps
+  under steady 48, under gusts 81. Checks: windscan (new rules, 451 stands, the ease kept through a rewind), run2 3-48 x 2 92/92 and fight 3-27
+  25/25 (0 damage), p4bot, forktest, featbot 276/276, layoutcmp v86 same (winds are not in it).
 - Courts (round 45, owner: outdoor play "as courts mixed into the halls ... a portico or pergola overhead is enough"; after r45's alternatives:
   one kind per theme family, the pool as the courts' water, the light well for the interiors; `dev/docs/elements/courts.md`). A court is 4-8
   cells of a corridor (part of a stretch) with headroom under stone whose back wall gives way to the sky: he walks the covered side of a court.
@@ -700,6 +714,21 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   Guards may fight in courts. No sky above the storey (the ceiling's stone stays a portico or canopy: opening it would need the rows above).
   The arch dust (`LFX` archdust) softened (owner: "blotchy"): rotated, lower frequencies and a wide ramp. Checks: courtscan 1-48 x 3 ok (7.44-7.50 courts a floor on 13-48, 41 pools, a walk into a pool drowns at its surface; 1-60 seeds 4-6 ok), layoutcmp v86 same (144 of 144), metrics40 v86 identical (no flags), windscan ok (a court is a gust source; 237 stands), hillscan, lampscan, wellcorr, guardscan ok, doorscan 0 of 192, openscan 0 (windows 96, gates 89, lifts 422, both modes), tilescan 3-48 ok (0 of 2,020), run2 3-48 x 2 92/92 and fight 3-27 25/25 (0 damage), p4bot 6-27 x 2 44/44, forktest 39/39, featbot 276/276, primtest, hdtest, hinttest FAILURES 0, r38b ok, crossscan quick ok, layerscan kinds=court,pool,vine,dapple,lwell 3-48 x 2 both modes 0 (the dapple measured without the bloom, as the heaps: its light blooms onto the lip), kinds=lamp,wind,heap,drift 3-25: the 3 lamp flames over low ceilings are the same in the round 44 build, shadowscan 3-48 ok (0 of 1074, pool 0 of 12), rendersmoke 13-18 both ok (0.58-0.61 ms/frame mean against the round 44 build's 0.61, the same machine). Pictures
   `egyptr45.py old=FILE` (r45_courts.png, r45_phone.png, r45_pool.png, r45_gust.gif, r45_vine.gif).
+  Round 45c (owner's choices on r45b's alternatives). Thresholds (C, "respecting the theme: no standard single way of doing it"): at each end of a
+  court a near jamb on the front plane that he and the guards pass behind, the layering rule's one exception (an L3 part in a cell that is not a
+  wall, drawn live after the figures and the air, `ctJambs`, exactly its own width), in the theme's architecture (`jambKind`, `JAMB_W`, two forms
+  by a hash of the court and the end): a papyrus anta or papyrus-bundle column (West, Blue, Hawara, Osiris), a Kushite pylon's battered edge with
+  its torus (Napata, Meroë), a mudbrick pier or palm-log post with a whitewashed reveal (Garama, Kerma, Shali), a monkey-head timber frame
+  (Aksum), a rock-cut jamb (Well Corridors), a papyrus-bundle post or lotus pier (Nun's wells). Worn with the stone beside it (owner: "respect any
+  damage in their immediate vicinity"; `ctJambsOf`: `wearLevel`, a breach, a fallen lamp's scar, rubble): chips, cracks, a broken capital, at wear 3
+  one in two broken off with a jagged top and beside a breach always (`jambClip`, `jambPieces`); 1,951 worn, 668 broken on floors 1-48 x 3. SHC
+  kind `jamb`, relief rubbed (`ctRel`), a beam blocker (`beamBlockers`), back in Classic's fill (`fillCut`), the dapple and the well's light clipped
+  inside them; layerscan kind `jamb` (its own lips, `OWN`), shadowscan kind `jamb`. Minimum 4 cells: at least 100 px stay open. Meroë (G2 and a
+  true per-court grade): its courts show their own sky with its pyramids (`ctOwnSky`), and Torchlight's composite mixes to the court's own grade
+  inside up to four court boxes (`u_cgb`, `ctGradeU`, `CT_GRADE`; feathered), Classic matches it after its light pass (`ctGrade2D`). Aksum (S1):
+  the court beyond in layers (ambas, stelae at three depths with shade sides and long shadows, a rubble-and-timber wall, the fallen Great Stela,
+  converging paving). Courts' gusts come from the wind's openings rule (below). Pictures `egyptr45c.py old=FILE` (r45c_jambs.png,
+  r45c_jambs_phone.png, r45c_meroe.png, r45c_aksum.png, r45c_gust.gif).
 - The sand lift's spike pit (round 41, owner: "The sand lifts become a trap: the sand drains, the door opens, but he has to jump, because the
   slab keeps going"; answers: missing it is death, every sand lift, off by a jump or a step; round 41b, owner: "let's simplify: put spikes at
   the bottom instead of being bottomless"). The slab does not stop at the foot: it sinks on at `SAND_LV` 140 px/s through the foot (now a hole,

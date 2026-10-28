@@ -11,6 +11,51 @@ Courts are look only. They are laid last in `genLevel` from hashes, with no gene
 windows are untouched (`layoutcmp.py` against v86: same, 144 of 144). The one play change is the pool: a fall into it drowns him at the
 water's surface instead of impaling him on the stakes a storey lower.
 
+## Round 45c: thresholds, Meroë's grade, Aksum's depth (owner)
+
+**Thresholds** (owner chose C, "respecting the theme: no standard single way of doing it"). At each end of a court a near jamb stands on the
+front plane and he (and the guards) pass behind it. It is the layering rule's one exception: an L3 part in a cell that is not a wall, drawn
+live after the figures and the air (`ctJambs`, after `windDraw`; see [layers](../layers.md)). Its form follows the theme (`jambKind`, `JAMB_W`;
+two forms each, by a hash of the court and the end, so a court's two ends may differ):
+
+| Themes | Kind | Width | Form A | Form B |
+|---|---|---|---|---|
+| West, Blue, Hawara, Osiris | `pap` | 12 | a dressed anta with an engaged papyrus half-column (bud capital, painted bands, sepals) | a papyrus-bundle column, round and ribbed |
+| Napata, Meroë (and Meroë's light wells) | `pylon` | 14 | a battered pylon edge with its torus roll and painted cavetto | the same with an incised relief (the king smiting) |
+| Garama, Kerma, Shali | `mud` | 12 | a mudbrick pier with a whitewashed reveal | a palm-log post (its leaf-base scars) before the wall's whitewashed end |
+| Aksum | `aks` | 13 | a monkey-head frame: a timber post with its square beam ends proud, rubble beside it | a double frame |
+| Well Corridors | `rock` | 12 | a jamb cut in the cliff, rough edge, chisel marks | with a smoothed drafted margin |
+| Nun (light wells) | `nun` | 11 | a papyrus-bundle post tied with bands, an open umbel | a square pier with a lotus capital and a lotus in relief |
+
+**Wear** (owner: "the threshold pillars respect any damage in their immediate vicinity"): `ctJambsOf` reads the wall's wear beside it
+(`wearLevel` on its cell and the next, three heights), a breach beside it (`inBreach`), a fallen lamp's scar (a broken lamp within a cell) and
+rubble at its foot. Wear 1 gives chips along its edges, wear 2 cracks and a corner of its capital gone, wear 3 one in two broken off part way up
+with a jagged top (`jambClip`); beside a breach it is always broken (never an intact pillar over a breach), its pieces on the court's floor
+beside it (`jambPieces`). Floors 1-48 x 3 (courtscan): 1,951 jambs worn, 668 of them broken off.
+
+What the exception needs, all done: `SHC` kind `jamb` (no lamp shadow on it), the relief rubbed over it (`ctRel`), a beam blocker
+(`beamBlockers`: no haze, footprint or figure light on it, both modes), cut back into Classic's fill (`fillCut`), the dapple and the light
+well's shaft clipped inside the jambs, drawn exactly its own width (nothing on the faces or lips beside it), `layerscan` kind `jamb` (its own
+cells' lips are its own, `OWN`), `shadowscan` kind `jamb`.
+
+**Minimum length**: 4 cells (owner). The widest jamb is 14 px, so at least 100 px (3.1 cells) stays open between the two (courtscan checks
+3 cells); the 7-8 courts a floor are unchanged.
+
+**Meroë's grade** (owner: G2 "plus a true per-court grading in Torchlight ... even if it is harder it is more accurate"). Meroë's courts show
+their own outdoor sky with Meroë's steep pyramids far off (`ctOwnSky`, in `ctBg`; the theme's view is the furnace halls). In Torchlight the
+composite takes up to four court boxes in view (`u_cgb`, `ctGradeU`) and mixes there, feathered at the edges, to the court's own grade
+(`CT_GRADE.meroe`: cooler shadows and lights, saturation 0.84, a white balance toward daylight); the furnace halls keep their warm forge grade.
+Classic gets the matching grade after its light pass (`ctGrade2D`: a cool multiply and a partial desaturation over the same boxes).
+
+**Aksum's depth** (owner chose S1): the court beyond in layers: flat-topped ambas far off, storeyed stelae at three depths with their shade
+sides, storeys, false windows and long shadows, a low rubble-and-timber wall, the Great Stela lying broken in front, paving converging to a
+vanishing point at eye height, darker near, loose stones with their shadows (`ctBake`'s granite far side).
+
+**Gusts**: a court's open side is one of the wind's openings (25% of courts, times the floor's mood; see [wind](wind.md)): gusts through
+courts on floors 7-48 x 3: 46 (0.37 a floor), varying by floor.
+
+Pictures: `egyptr45c.py old=FILE` (r45c_jambs.png, r45c_jambs_phone.png, r45c_meroe.png, r45c_aksum.png, r45c_gust.gif).
+
 ## At a glance
 
 | | |
@@ -155,5 +200,6 @@ keeps state: rewind-safe.
 ## History
 
 - round 45: courts (peristyle, vine pergola, pylon court, light well, pool); the arch dust softened.
+- round 45c: thresholds (a near jamb of the theme's architecture at each end, worn with the wall), Meroë's own sky and grade, Aksum's depth in layers, court gusts from the openings' rule.
 
 Details in CLAUDE.md.
