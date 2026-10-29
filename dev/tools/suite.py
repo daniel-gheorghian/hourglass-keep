@@ -106,6 +106,9 @@ if mode != 'quick': # (round 47a) no jump (but the low leap) lands on or past a 
     J += [('hilljump', ['hilljump.py', str(lo), str(hi)], tail_check(r'hilljump: ok')) for lo, hi in ((3, 14), (15, 26), (27, 38), (39, 48))]
 J += [('windscan', ['windscan.py', str(n), str(n + 11)], tail_check(r'windscan: ok')) for n in range(1, 49, 12)] # (round 44) the wind only on a run's plain floor, clear of every jump, off timed stretches and the chase; a gust pushes him back but never off it
 J += [('courtscan', ['courtscan.py', str(n), str(n + 11)], tail_check(r'courtscan: ok')) for n in range(1, 49, 12)] # (round 45) courts on headroom under stone, 7-8 a floor from 3, never two in view, kinds by theme, every court pit a pool, nothing of the wall left; a fall into a pool drowns at its surface
+# (round 47b) one horizon per storey: a window, an open arch or breach and a court on one storey place every layer of the view at the same screen y,
+# and the court's own art stands on the windows' horizon (to 0.5 px; analytic, no picture); two jobs
+J += [('viewscan', ['viewscan.py', str(lo), str(hi)], tail_check(r'viewscan: ok')) for lo, hi in ((3, 24), (25, 48))]
 if os.path.exists(os.path.join(HERE, 'hk_v69_release.html')): # (its baseline is kept locally, not in git)
     J += [('figscan', ['figscan.py'], tail_check(r'figscan: ok'))] # (round 23) the body's poses: held hands, crown, soles, the keyed jumps and steps
 if mode == 'release':
@@ -127,6 +130,9 @@ if mode == 'release': # (the art-over-openings scans of rounds 15, 16c and 35c, 
     J += [('solidscan', ['solidscan.py', str(n), str(n + 11)], tail_check(r'solidscan: ok')) for n in range(1, 49, 12)]
     # (round 46c) the contour rule (rendering.md "Contours"): no prop's edge a fixed near-black ink; Classic, in software, four light jobs
     J += [('contourscan', ['contourscan.py', str(n), str(n + 11)], tail_check(r'contourscan: ok')) for n in range(1, 49, 12)]
+    # (round 47b) the court's layers move at their true depths: each alone, panned, every band at its f to 0.01, the theme's view in its bays no
+    # nearer than the far side; every theme and hour (Classic, software), three light jobs by floor range
+    J += [('panscan', ['panscan.py', str(lo), str(hi)], tail_check(r'panscan: ok')) for lo, hi in ((3, 60), (61, 120), (121, 180))]
 # Suites: every group belongs to exactly one (a group with none stops the run here, before anything starts: add it below)
 SUITES = {
     'play': ('run2', 'run2 fight', 'featbot', 'featbot fight', 'p4bot', 'forktest', 'hinttest', 'grablabel', 'swingtest', 'liftkick',
@@ -134,7 +140,7 @@ SUITES = {
     'gen': ('metrics40', 'guardscan', 'forkscan', 'puzzlescan', 'vertscan', 'featurescan', 'orphanscan', 'mazescan', 'wellcorr', 'lampscan',
             'slabscan', 'sandshaft', 'wellscan', 'hillscan', 'windscan', 'courtscan'), # generator and layout scans (the tiles, no picture)
     'render': ('rendersmoke', 'liftscan', 'crossscan', 'crossscan torch', 'cpscan', 'shadowscan', 'doorscan', 'openscan', 'tilescan', 'beamjag',
-               'heapscan', 'solidscan', 'contourscan', 'stormfair', 'glauto', 'metaltest', 'rewindrooms', 'figscan')} # drawing checks (pixels, poses, the WebGL path)
+               'heapscan', 'solidscan', 'contourscan', 'viewscan', 'panscan', 'stormfair', 'glauto', 'metaltest', 'rewindrooms', 'figscan')} # drawing checks (pixels, poses, the WebGL path)
 SUITE_OF = {g: su for su, gs in SUITES.items() for g in gs}
 assert len(SUITE_OF) == sum(len(gs) for gs in SUITES.values()), 'a group is in two suites'
 miss = sorted({j[0] for j in J} - set(SUITE_OF))

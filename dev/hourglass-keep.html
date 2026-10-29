@@ -381,7 +381,8 @@ for(const t of THEMES){t.cloth=tapOf(t).g;t.cloth2=tapOf(t).a;}
 // Progress up the tower: every 20 floors the keep turns over one cycle. Cycle 0 is dusk, 1 night (moon and stars, a cool
 // grade), 2 dawn (a warm grade), then the day repeats: the night's three watches, ending at sunrise on floor 60. Each cycle
 // the keep is more worn (more breaches, rubble, cobwebs and cracks, fewer lit lamps), and the land seen through the windows
-// sinks a little every floor: he is climbing a tower.
+// sinks a little every floor: he is climbing a tower (round 47b: by perspective, bgHc: the near land falls away, the horizon stays at the eye;
+// `sink` is kept for the interiors' old placement).
 // Which theme a floor has (owner, round 4): four floors to a theme; each block of four takes the drawing style the generator builds
 // it by (GEN_STYLE[block % 5]), and within that style SCHED picks the theme by the light the block falls in (dusk, night, dawn: one
 // 20-floor cycle each) and by which 60-floor turn of the day it is (three turns, then it repeats: 180 floors). The old five looks
@@ -9714,14 +9715,14 @@ const BG_W=640,BG_H=210,BG_BASE=176;
 // horizon colour) where the farthest land was near; a near band (`near`: fallen blocks, scrub or reeds, 1-4 m at d 17 m, f 0.25, the
 // nearest anything in the view stands) in front in the open themes. Interiors (the Cistern, the Forge) keep their hall's own depths.
 const BGART={
-  nun:{sky:['#0b111c','#18263c','#22344e','#152438'],layers:[ // papyrus-bundle columns under their architraves, standing in the water
+  nun:{inner:1,sky:['#0b111c','#18263c','#22344e','#152438'],layers:[ // papyrus-bundle columns under their architraves, standing in the water
     {f:0.08,kind:'pcolon',col:'#2a3852',gap:30,w:7,lift:-30},{f:0.15,kind:'pcolon',col:'#131c2c',gap:64,w:13,lift:-30},{f:0.15,kind:'water',col:'rgba(130,160,200,.16)',lift:-30},{f:0.25,kind:'ropes',col:'#06090f',lift:0,jar:1}]},
   west:{sky:['#1a2452','#363c78','#9a5a62','#3c2838'],layers:[ // the Theban hills with el-Qurn, a temple's pylons and flagstaffs, palms
     {f:0,kind:'stars',moon:'#f3e6c4'},{f:0.002,kind:'clouds',col:'rgba(170,140,180,.13)',drift:2.5},
     {f:0.005,kind:'qurn',col:'#463a62',lift:8},{f:0.07,kind:'pylons',col:'#2a2044',win:'#ffc070',lift:14},{f:0.13,kind:'palms',col:'#140f26',lift:26},{f:0.25,kind:'near',v:'reeds',col:'#0a0718',lift:30}]},
   blue:{sky:['#0e1c4c','#24398e','#5470bc','#22306c'],layers:[ // Saqqara: the step pyramid and its niched enclosure wall on the desert's edge
     {f:0,kind:'stars',moon:'#e6ecff'},{f:0.012,kind:'hills',col:'#2a3c78',lift:-4},{f:0.034,kind:'steppyr',col:'#22346a',lift:6},{f:0.06,kind:'niched',col:'#18264e',lift:12},{f:0.13,kind:'palms',col:'#0a1230',lift:24},{f:0.25,kind:'near',v:'stone',col:'#050a1e',lift:28}]},
-  meroe:{sky:['#140404','#3e0f08','#8a3010','#b8461a'],nostars:1,layers:[ // Meroë: the steep royal pyramids behind the smelting furnaces and their smoke
+  meroe:{inner:1,sky:['#140404','#3e0f08','#8a3010','#b8461a'],nostars:1,layers:[ // Meroë: the steep royal pyramids behind the smelting furnaces and their smoke
     {f:0.002,kind:'farridge',col:'#4a1a10',haze:0.5,lift:2},{f:0.036,kind:'kushpyr',col:'#4a1a10',lift:2},{f:0.1,kind:'chimneys',col:'#3a1c14',glow:'#ff7a30',lift:8},{f:0.17,kind:'furnaces',col:'#1e0b07',glow:'#ff8a3a',lift:16},{f:0.06,kind:'smoke',col:'rgba(30,18,16,.55)',drift:4},{f:0.25,kind:'ropes',col:'#0a0403',lift:0}]},
   osiris:{sky:['#06120f','#14342c','#2a5a4c','#183c33'],layers:[ // obelisks and lit shrines under a cavetto cornice, trees
     {f:0.002,kind:'farridge',col:'#1e4238',haze:0.55,lift:4},{f:0.075,kind:'obelisks',col:'#1e4238',glow:'#7fffd0',lift:6},{f:0.12,kind:'shrines',col:'#0e221c',glow:'#8fffd8',lift:14},{f:0.002,kind:'clouds',col:'rgba(120,190,170,.12)',drift:3.5},{f:0.145,kind:'trees',col:'#050c0a',lift:24},{f:0.25,kind:'near',v:'reeds',col:'#020605',lift:28}]},
@@ -9744,7 +9745,7 @@ const bgArt=th=>BGART[th.look]||BGART.nun;
 const bgCache=new Map();
 const bgRGB=c=>c[0]==='#'?hexRGB(c):c.match(/[\d.]+/g).slice(0,3).map(Number);
 // (round 27b) a far layer takes the air between: its colour goes toward the sky's horizon stop (aerial perspective, Leonardo's 'perspective of disappearance')
-function bgHaze(art,ly,tod){const r=mixRGB(bgRGB(todColor(ly.col,tod)),bgRGB(todSky(art.sky,tod)[2]),ly.haze);return 'rgb('+r.map(Math.round)+')';}
+function bgHaze(art,ly,tod){const r=mixRGB(bgRGB(todColor(ly.col,tod)),bgRGB(art.skyT?art.skyT[tod][2]:todSky(art.sky,tod)[2]),ly.haze);return 'rgb('+r.map(Math.round)+')';}
 const BGQ=0.42; // the background is painted at this fraction of screen resolution: cheaper, and soft like distant scenery
 function bgLayers(look,tod=0){const key=look+':'+tod+':'+VS.toFixed(2);let v=bgCache.get(key);if(v)return v;
   const art=BGART[look]||BGART.nun,sc=Math.max(0.5,VS*BGQ),style=look;
@@ -9760,7 +9761,7 @@ function bgLayers(look,tod=0){const key=look+':'+tod+':'+VS.toFixed(2);let v=bgC
     if(GLFX.bgblur&&ly.kind!=='stars')bgSoften(c,g,bgBlurR(ly.f)*sc);
     // (round 25e) whether the strip's top and bottom rows hold anything: the strip is carried on past its edges with them (found once here)
     const ed=g.getImageData(0,0,c.width,1).data,eb=g.getImageData(0,c.height-1,c.width,1).data;let et=0,ebm=0;for(let k=3;k<ed.length;k+=4){et=Math.max(et,ed[k]);ebm=Math.max(ebm,eb[k]);}
-    return {c,f:ly.f,drift:ly.drift||0,top:et>0,bot:ebm>0,moon:!!ly.moonOnly};});
+    return {c,f:ly.f,drift:ly.drift||0,top:et>0,bot:ebm>0,moon:!!ly.moonOnly,sky:ly.kind==='stars'||ly.kind==='clouds'};});
   bgCache.set(key,v);return v;}
 // ---- distance blur (S3 unit B, item 9; GLFX.bgblur): the view through the arches is a little out of focus, so the playfield
 // reads first. Done once, when a layer is painted (never per frame): the nearer layers stay sharper than the far ones, like a
@@ -9908,7 +9909,7 @@ let bgC=null,bgG=null;
 // as the camera crosses a row: each opening keeps its own anchor (the seams between storeys lie in the stone between them). The screen
 // shake moves the view with the keep; a zoom does not slide it.
 const BG_VK=0.2,BG_FSKY=0,BG_MOONW=48; // (BG_FSKY: the sky and the sun move as the farthest layer, the stars)
-const BGV={x:0,y:0,sx:0}; // the camera the view is seen from: x without the shake (sx, added in screen space), y with it
+const BGV={x:0,y:0,sx:0,flat:false}; // the camera the view is seen from: x without the shake (sx, added in screen space), y with it
 function bgRest(yb){const r=Math.floor((yb-1)/TH);return clamp(SURF(r)-ROOM_H*FRAME,0,Math.max(0,L.rows*TH-ROOM_H));} // (the view's top when the camera rests on the floor an opening's foot stands on)
 // each opening's anchor, found once a floor: openings that touch (a window knocked into a breach) are one hole and share the anchor of
 // the largest of them, so no seam runs through a hole and no anchor depends on what is in view
@@ -9916,23 +9917,44 @@ const bgKey=r=>Math.round(r[0])*8192+Math.round(r[1]);
 function bgAnchors(){if(L._bgA)return L._bgA;const all=openingsIn(-1e9,1e9,-1e9,1e9),n=all.length,par=all.map((_,i)=>i),fd=i=>{while(par[i]!==i)i=par[i]=par[par[i]];return i;};
   for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){const a=all[i],b=all[j];if(a[0]<=b[0]+b[2]+4&&b[0]<=a[0]+a[2]+4&&a[1]<=b[1]+b[3]+4&&b[1]<=a[1]+a[3]+4)par[fd(i)]=fd(j);}
   const big=new Map();for(let i=0;i<n;i++){const g=fd(i),q=big.get(g);if(q===undefined||all[i][2]*all[i][3]>all[q][2]*all[q][3])big.set(g,i);}
-  const m=new Map();for(let i=0;i<n;i++){const q=all[big.get(fd(i))];m.set(bgKey(all[i]),bgRest(q[1]+q[3]));}
+  const m=new Map();for(let i=0;i<n;i++){const q=all[big.get(fd(i))];m.set(bgKey(all[i]),bgRest(bgFoot(q)));}
   return L._bgA=m;}
-function bgAnchor(r){const v=bgAnchors().get(bgKey(r));return v===undefined?bgRest(r[1]+r[3]):v;}
+function bgAnchor(r){const v=bgAnchors().get(bgKey(r));return v===undefined?bgRest(bgFoot(r)):v;}
+// (round 47b, owner: one horizon per storey; "Do NOT move the windows' anchor ... the court and the arches on a storey must match the windows") A
+// window stands in the headroom row over its floor, so bgRest of its foot is the rest of that row, one storey above the floor it looks out from; an
+// open arch's, a breach's and a court bay's foot is in the floor's own row. Until 47b each took bgRest of its own foot, so on one storey the window's
+// view stood 0.8-0.85 of a storey (51-54 px) above the arch's and the court's. Now every opening but a window counts its foot one storey up: all the
+// openings of a storey share the window's anchor, and so every layer's place (bgLayerY) and the sky.
+function bgFoot(r){return r[1]+r[3]-(r[4]===1?0:TH);}
 function drawBackdrop(ctx,cx,cy,vw,vh,VZ,camD,camDY){
   BGV.x=cam.x;BGV.sx=cx+vw/2-viewW/2-cam.x;BGV.y=cy+vh*0.6-ROOM_H*0.6;
-  const ops=openingsIn(cx,cx+vw,cy,cy+vh);if(!ops.length)return;
+  let ops=openingsIn(cx,cx+vw,cy,cy+vh);if(CT_DBG.top&&CT_DBG.top!=='bays')ops=ops.filter(r=>!r[5]);else if(CT_DBG.top)ops=ops.filter(r=>r[5]);if(!ops.length)return;
   const art=bgArt(L.theme),ly=bgLayers(L.theme.look,L.prog?L.prog.tod:0),k=VZ/VS;
   // only the part of the screen the openings cover is painted (in view units)
   // openings close together (a run of arches) and looking out from the same storey are painted as one box; scattered windows each get their own
   const boxes=[];
-  for(const r of ops){const an=bgAnchor(r);let b=[(r[0]*VZ-camD)/VS-1,(r[1]*VZ-camDY)/VS-1,0,0,an];b[2]=b[0]+r[2]*k+2;b[3]=b[1]+r[3]*k+2;
-    for(let i=boxes.length-1;i>=0;i--){const q=boxes[i];if(q[4]===an&&q[0]<=b[2]+6&&b[0]<=q[2]+6&&q[1]<=b[3]+6&&b[1]<=q[3]+6){b=[Math.min(b[0],q[0]),Math.min(b[1],q[1]),Math.max(b[2],q[2]),Math.max(b[3],q[3]),an];boxes.splice(i,1);}}
+  for(const r of ops){const an=bgAnchor(r),ck=r[5]||null;let b=[(r[0]*VZ-camD)/VS-1,(r[1]*VZ-camDY)/VS-1,0,0,an,ck];b[2]=b[0]+r[2]*k+2;b[3]=b[1]+r[3]*k+2;
+    for(let i=boxes.length-1;i>=0;i--){const q=boxes[i];if(q[4]===an&&q[5]===ck&&q[0]<=b[2]+6&&b[0]<=q[2]+6&&q[1]<=b[3]+6&&b[1]<=q[3]+6){b=[Math.min(b[0],q[0]),Math.min(b[1],q[1]),Math.max(b[2],q[2]),Math.max(b[3],q[3]),an,ck];boxes.splice(i,1);}}
     boxes.push(b);}
-  for(const bb of boxes)paintBackdrop(ctx,art,ly,Math.max(0,Math.floor(bb[0])),Math.max(0,Math.floor(bb[1])),Math.min(viewW,Math.ceil(bb[2])),Math.min(ROOM_H,Math.ceil(bb[3])),bb[4]);
-  ctBg(ctx,cx,cy,vw,vh,VZ,camD,camDY);} // (round 45: the court beyond, after the theme's view)
+  for(const bb of boxes){const cv=bb[5]?ctViewOf(bb[5]):null;paintBackdrop(ctx,cv?cv.art:art,cv?cv.ly:ly,Math.max(0,Math.floor(bb[0])),Math.max(0,Math.floor(bb[1])),Math.min(viewW,Math.ceil(bb[2])),Math.min(ROOM_H,Math.ceil(bb[3])),bb[4]);}
+  if(!CT_DBG.top)ctBg(ctx,cx,cy,vw,vh,VZ,camD,camDY);} // (round 45: the court beyond, after the theme's view)
+// (test hook, CT_DBG.top: the courts' openings, their view and layers laid over the finished frame, nothing in front of them)
+function ctTop(ctx,cx,cy,vw,vh,VZ,camD,camDY){const cs=L.courts;if(!cs||!cs.length)return;ctx.save();ctx.setTransform(VZ,0,0,VZ,-camD,-camDY);ctx.fillStyle='#f0f';
+  for(const k of cs)if(k.k!=='well')ctx.fillRect(k.c0*TW,(k.r-1)*TH,(k.c1-k.c0+1)*TW,ctCut(k));ctx.restore();
+  if(!CT_DBG.noview){const t=CT_DBG.top;CT_DBG.top='bays';drawBackdrop(ctx,cx,cy,vw,vh,VZ,camD,camDY);CT_DBG.top=t;}ctBg(ctx,cx,cy,vw,vh,VZ,camD,camDY);ctx.setTransform(VS,0,0,VS,0,0);}
 // where a layer of depth factor f stands on the screen (view units) for an opening anchored at an (bgAnchor), the camera at BGV
-function bgLayerY(f,an){const midY=L.rows*TH/2,hz=ROOM_H*0.7-BG_BASE,sink=L.prog?L.prog.sink:0;
+// (round 47b, owner chose C: "one horizon per storey") The view's horizon (where land at f 0 meets the sky) is the storey's eye line, 44 px over
+// the floor's back edge, as the court's own and the Crossing's: at the camera's rest on a storey (BGV.y = its windows' anchor + TH) it stands at
+// BG_EYE from the view's top for every depth (bgEyeY: 25e's parallax taken about that rest; the anchor itself is the windows', bgRest of the
+// headroom row, shared by every opening of the storey). Under it the land drops by perspective: a layer of depth f lies 29.4 f Hc px under the horizon, Hc the keep's height
+// over the land (bgHc: 9 m on floor 1, 0.6 m more a floor, to 60 m), so climbing the keep the near land falls away while the far ridge stays on the
+// horizon (until 47b `L.prog.sink` lowered every layer alike, the horizon too). Each layer then moves with the keep less 25e's parallax, as before.
+// The interiors (BGART `inner`: the Cistern, the Forges' halls) keep their halls' own places (25e and 27b, the old formula), on the shared anchor.
+const BG_EYE=ROOM_H*FRAME-HY-44,BG_SKY=90;
+function bgHc(){return Math.min(60,9+0.6*(((L&&L.n)||1)-1));}
+function bgEyeY(f,an){return BG_EYE-(1-BG_VK*(1-f))*(BGV.y-an-TH);} // (the eye line for a layer of depth f, view units: at the rest on the storey's floor, an + TH, BG_EYE for every f)
+function bgLayerY(f,an,inner,own,sky){if(!inner)return sky?bgEyeY(f,an)-BG_SKY:bgEyeY(f,an)-BG_BASE+29.4*f*(own||bgHc()); // (the sky's stars, moon and clouds: the moon 44 px over the horizon)
+  const midY=L.rows*TH/2,hz=ROOM_H*0.7-BG_BASE,sink=L.prog?L.prog.sink:0;
   return hz+sink-clamp((an-midY)*f*0.18,-22,22)-(1-BG_VK*(1-f))*(BGV.y-an);} // (at rest, the old place for that storey; then the keep's motion less the parallax)
 function paintBackdrop(ctx,art,ly,bx0,by0,bx1,by1,an){if(bx1<=bx0||by1<=by0)return;
   // compose sky and layers at low resolution, then one scaled copy onto the screen (no clip: the room images drawn
@@ -9942,14 +9964,15 @@ function paintBackdrop(ctx,art,ly,bx0,by0,bx1,by1,an){if(bx1<=bx0||by1<=by0)retu
   else{if(!bgC||bgC.width!==cw||bgC.height!==ch){bgC=document.createElement('canvas');bgC.width=cw;bgC.height=ch;bgG=bgC.getContext('2d');}g=bgG;src=bgC;}
   if(an===undefined)an=BGV.y;
   const sn=v=>Math.round(v*q)/q; // (round 27b) a place snapped to the target's pixel grid
-  const tod=L.prog?L.prog.tod:0,gk='grad'+tod,sk=art[gk]||(art[gk]=(()=>{const st=todSky(art.sky,tod),gr=g.createLinearGradient(0,0,0,ROOM_H);gr.addColorStop(0,st[0]);gr.addColorStop(0.45,st[1]);gr.addColorStop(0.72,st[2]);gr.addColorStop(1,st[3]);return gr;})());
-  const so=-(1-BG_VK*(1-BG_FSKY))*(BGV.y-an); // (round 25e) the sky goes with the view: the gradient made once, moved by the transform (past its ends it pads with its end stops)
+  const tod=L.prog?L.prog.tod:0,gk='grad'+tod,sk=art[gk]||(art[gk]=(()=>{const st=art.skyT?art.skyT[tod]:todSky(art.sky,tod),gr=g.createLinearGradient(0,0,0,ROOM_H);gr.addColorStop(0,st[0]);gr.addColorStop(0.45,st[1]);gr.addColorStop(0.72,st[2]);gr.addColorStop(1,st[3]);return gr;})());
+  const so=art.inner?-(1-BG_VK*(1-BG_FSKY))*(BGV.y-an):bgEyeY(BG_FSKY,an)-ROOM_H*0.72; // (round 47b: the horizon stop on the storey's horizon) // (round 25e) the sky goes with the view: the gradient made once, moved by the transform (past its ends it pads with its end stops)
   g.setTransform(q,0,0,q,0,so*q);g.fillStyle=sk;g.fillRect(bx0,by0-so,bx1-bx0,by1-by0);
   if(tod===2){const sx=viewW*0.62-BGV.sx,gr=art.sun||(art.sun=(()=>{const r=g.createRadialGradient(0,ROOM_H*0.7,2,0,ROOM_H*0.7,ROOM_H*0.9);r.addColorStop(0,'rgba(255,214,150,.55)');r.addColorStop(1,'rgba(255,170,110,0)');return r;})());
     g.setTransform(q,0,0,q,sx*q,so*q);g.fillStyle=gr;g.fillRect(bx0-sx,by0-so,bx1-bx0,by1-by0);} // the sun just under the skyline (made once, moved by the transform: no gradient a frame)
   g.setTransform(q,0,0,q,0,0);
-  for(const L2 of ly){if(L2.moon){const d=Math.abs(BGV.y-an)/BG_MOONW;if(d>=1)continue;g.globalAlpha=1-d*d*(3-2*d);} // (the moon, for the storey the camera is at)
-    const W=BG_W,oy=bgLayerY(L2.f,an),sx=L2.c.width/BG_W,sy=L2.c.height/BG_H;let ox=-((((BGV.x*L2.f+gameTime*L2.drift)%W)+W)%W)-BGV.sx;while(ox>bx0)ox-=W;
+  for(const L2 of ly){if(BGV.flat)break; // (tests: beamjag.py measures the beams over the sky alone; the view's own edges under the haze are not the S pass's)
+    if(L2.moon){const d=Math.min(Math.abs(BGV.y-an-TH),Math.abs(BGV.y-an))/BG_MOONW;if(d>=1)continue;g.globalAlpha=1-d*d*(3-2*d);} // (the moon, for the storey the camera is at)
+    const W=BG_W,oy=bgLayerY(L2.f,an,art.inner,0,L2.sky),sx=L2.c.width/BG_W,sy=L2.c.height/BG_H;let ox=-((((BGV.x*L2.f+gameTime*L2.drift)%W)+W)%W)-BGV.sx;while(ox>bx0)ox-=W;
     // (round 27b) the joins between the strip's copies, and between the strip and its carried-on rows, fall on whole pixels of the
     // target (sn): two copies meeting inside a pixel each covered part of it and left a faint line down the view at every join
     const ya=sn(oy),yb=sn(oy+BG_H);
@@ -9971,7 +9994,7 @@ function paintBackdrop(ctx,art,ly,bx0,by0,bx1,by1,an){if(bx1<=bx0||by1<=by0)retu
 // Musawwarat, Naqa; its far side per look, CT_FAR), 'well' a light well (Amarna's clerestories) in the interior themes' halls. A one-storey spiked
 // pit inside a court is a sunken pool (its stakes not drawn): a fall into it drowns him at the water's surface (die('drown'), the only play change).
 // Layers: the cut, the colonnade, posts, parapet and well are L1 in the room picture; the ceiling's front face over the court (architrave, vine
-// canopy, palm logs) is L3 in the room picture; the court beyond is L0 (ctBg, baked strips at f 0.12-0.7 under G2D.na); the pool is L2x (far half
+// canopy, palm logs) is L3 in the room picture; the court beyond is L0 (the theme's view in its bays, then ctBg: its own layers at their true depths, f 0.12-0.25, on the storey's horizon, under G2D.na; round 47b); the pool is L2x (far half
 // before the figures, near half and its cut face after); the hanging vine is L2 near (after the figures, inside the corridor's x); the dapple and
 // the well's shaft are light (drawEmissive). No sky beam from a court (a court-wide beam is a slab of haze): broad sky lights instead (ctLights).
 const CT_MIN=4,CT_MAX=8,CT_WANT=7,CT_GAP=14,CT_DR=3,CT_PD=11,CT_NOF=new Set(['shaftfoot','banner','lift','chain','hurtdrop']);
@@ -10100,18 +10123,36 @@ function ctOver(g,rx,ry,th){const cs=L.courts;if(!cs||!cs.length)return;
       ctVine(g,rnd,0,W,-10,-2,Math.round(W/3),false);for(let i=0;i<Math.round(W/30);i++)ctGrapes(g,6+rnd()*(W-12),-6+rnd()*3);g.fillStyle='rgba(0,0,0,.35)';g.fillRect(0,-41,W,1);}
     else if(k.k==='perg'){ctVine(g,rnd,0,W,-18,-2,Math.round(W/2),false);} // (Kerma: the vine over the palm logs)
     g.restore();}}
-// ---- L0: the court beyond, baked once per kind, far side, look, hour and scale into three strips (ground, far side, near trees) 640 world px wide,
-// tiled; each moves by its own depth factor (round 27b) about the court's middle, and vertically by round 25e's rule (BG_VK) from the court's rest.
-// The ground at depth f lies at eye + (floor - eye) f (the Crossing's pinhole, eye 44 px over the floor's back edge); a strip's y 0 is that edge
-const CTB=new Map(),CTB_W=640,CTB_T=124,CTB_B=24,CTB_F={G:0.7,F:0.18,M:0.5};
-function ctBake(k){const look=L.theme.look,tod=ctTod(),K=Math.max(1,Math.min(3,Math.round(VS*0.6*4)/4)),key=k.k+'|'+(k.far||'')+'|'+look+'|'+tod+'|'+K;let b=CTB.get(key);if(b)return b;
-  const mk=()=>{const c=document.createElement('canvas');c.width=Math.ceil(CTB_W*K);c.height=Math.ceil((CTB_T+CTB_B)*K);const g=c.getContext('2d');g.setTransform(K,0,0,K,0,CTB_T*K);return [c,g];};
-  const [cG,gG]=mk(),[cF,gF]=mk(),[cM,gM]=mk(),sk=ctSky(),hz=sk[3],lk=[0.92,0.62,0.95][tod],sunL=tod===0,rnd=mulberry32(hash2(look.length*31+tod,k.k.length*7));
+// ---- L0: the court beyond (round 47b, owner: "the background they show isn't in sync with what the windows show, different scenery and it is
+// moving way too fast"; chose C, one horizon per storey). Until 47b three strips baked per kind slid at 0.7 (the ground), 0.5 (trees) and 0.18 (the
+// far side) against the windows' 0-0.25, each drawn at another depth than it moved (a pylon drawn at 0.12 moved 0.18, Aksum's ambas drawn at 0.004
+// moved 0.18, Meroe's pyramids moved with the walls), and their eye line stood 44 px over the floor on every floor while the windows' land sank with
+// the keep and stood a storey higher. Now a court's bays show the theme's own view (paintBackdrop: the windows' layers, anchor, factors, sky, sun and
+// moon) less the layers nearer than the court's far side, which would stand inside the court (ctViewOf; Meroe's courts its outdoor view,
+// BGART.meroeCt); over it the court's own lit art (as v88's), baked once per kind, far side, look, hour and scale (CTB) into layers, each at its true
+// depth f = Z0/Z and drawn at that scale (h = 29.4 f H px for H m): the far side at CT_FARF (temple and pylon courts 40 m deep, Medinet Habu's
+// 42 m, Luxor's 45-56 m: 0.12; a garden 19 m: 0.22; Aksum's palace court 21 m, Dungur's: 0.2), what stands in the court between it and 0.25 (the
+// nearest the view may hold, round 27b), and the court's floor, a plane seen from the eye 1.5 m (44 px) over it: its row at depth f lies 44 f px
+// under the horizon (the Crossing's pinhole, v88's GY). The floor's strip has no feature along x (only rows), so its speed shows nothing; its
+// joints, paving and stones are drawn live at their own rows' f (ctFloorLive). Each layer slides f of the walls' motion about the court's middle,
+// and its eye line is the storey's (bgEyeY, the windows' anchor): window, arch and court share one horizon.
+const CTB=new Map(),CTB_W=640,CTB_T=124,CTB_B=24,CT_FARF={peri:0.12,kush:0.12,mud:0.12,rock:0.12,granite:0.2,perg:0.22};
+const ctFarF=k=>CT_FARF[k.k==='fore'?k.far||'kush':k.k]||0.12;
+const CT_DBG={only:null,noview:false,top:false}; // (tests: panscan.py draws one court layer at a time, `only` its index, -1 none; `noview` paints a court's bays a flat key colour instead of the theme's view; `top` lays the court's opening, view and layers over the finished Classic frame, with nothing in front, so each is measured whole)
+// the view through a court's bays: the theme's layers no nearer than its far side (Meroe: its outdoor sky, far ridge and pyramids, round 45c's G2)
+function ctViewOf(k){const ff=ctFarF(k),out=L.theme.look==='meroe',tod=L.prog?L.prog.tod:0,key='ctv:'+L.theme.look+':'+ff+':'+tod+':'+VS.toFixed(2);let o=bgCache.get(key);if(o)return o;
+  if(out&&!BGART.meroeCt){const g=CT_GRADE.meroe;BGART.meroeCt={sky:g.sky[0].concat(['#6a4a46']),skyT:g.sky.map((c,i)=>c.concat([['#6a4a46','#1a1c2c','#7a5a56'][i]])),
+    layers:[{f:0,kind:'stars',moon:'#f0e6d0'},{f:0.002,kind:'farridge',col:'#6a5060',haze:0.5,lift:2},{f:0.036,kind:'kushpyr',col:'#7a6062',lift:2}]};}
+  const lk=out?'meroeCt':L.theme.look,art=BGART[lk]||BGART.nun;
+  o={art,ly:bgLayers(lk,tod).filter(q=>q.f<=ff+1e-6)};bgCache.set(key,o);return o;}
+function ctBake(k){const look=L.theme.look,tod=ctTod(),K=Math.max(1,Math.min(3,Math.round(VS*0.6*4)/4)),ff=ctFarF(k),key=k.k+'|'+(k.far||'')+'|'+look+'|'+tod+'|'+K;let b=CTB.get(key);if(b)return b;
+  const LY=[],lay=(f,dx,fl)=>{const c=document.createElement('canvas');c.width=Math.ceil(CTB_W*K);c.height=Math.ceil((CTB_T+CTB_B)*K);const g=c.getContext('2d');g.setTransform(K,0,0,K,0,CTB_T*K);LY.push({c,f,dx:dx||0,fl:!!fl});return g;};
+  const gG=lay(ff,0,1),sk=ctSky(),hz=sk[3],lk=[0.92,0.62,0.95][tod],sunL=tod===0,rnd=mulberry32(hash2(look.length*31+tod,k.k.length*7)),dxM=((k.h>>>3)%7-3)*24;let gF=null,gM=null;
   const GY=f=>-44*(1-f),hzK=f=>Math.min(0.85,(1-f)*0.75),col=(c,f,l)=>ctC(mixRGB(ctMul(c,lk*(l||1)),hz,hzK(f))),W=CTB_W;
   const wrap=(g,fn)=>{for(const o of [-W,0,W]){g.save();g.translate(o,0);fn(g);g.restore();}}; // (drawn three times a strip apart: seamless when tiled)
+  // the floor: rows only (their ticks are live, ctFloorLive)
   const ground=(c0,c1,ft,rows)=>{const e0=GY(ft),gr=gG.createLinearGradient(0,e0,0,4);gr.addColorStop(0,ctC(mixRGB(ctMul(c1,lk),hz,0.62)));gr.addColorStop(1,ctC(ctMul(c0,lk)));gG.fillStyle=gr;gG.fillRect(0,e0,W,CTB_B+4-e0);
-    if(rows){gG.fillStyle='rgba(0,0,0,.12)';for(const f of [0.92,0.8,0.69,0.6,0.52,0.45,0.39,0.34,0.3,0.26,0.22,0.19,0.16])if(f>=ft)gG.fillRect(0,GY(f),W,0.5);
-      for(const f of [0.86,0.64,0.48,0.36])if(f>=ft){const s=40*f;for(let x=0;x<W;x+=s)gG.fillRect(x,GY(f+0.06),0.5,GY(f-0.06)-GY(f+0.06)+0.5);}}};
+    if(rows){gG.fillStyle='rgba(0,0,0,.12)';for(const f of [0.92,0.8,0.69,0.6,0.52,0.45,0.39,0.34,0.3,0.26,0.22,0.19,0.16,0.14])if(f>ft)gG.fillRect(0,GY(f),W,0.5);}};
   const syc=(g,x,f,h,w)=>{const y=GY(f),s=29.4*f;wrap(g,g=>{const r3=mulberry32(hash2(Math.round(x),Math.round(f*100)));g.fillStyle=col([74,56,40],f);
       g.beginPath();g.moveTo(x-0.35*s,y);g.lineTo(x-0.2*s,y-h*0.5*s);g.lineTo(x-1.1*s,y-h*0.72*s);g.lineTo(x-0.9*s,y-h*0.74*s);g.lineTo(x,y-h*0.6*s);g.lineTo(x+1*s,y-h*0.76*s);g.lineTo(x+1.15*s,y-h*0.73*s);g.lineTo(x+0.22*s,y-h*0.48*s);g.lineTo(x+0.4*s,y);g.closePath();g.fill();
       for(let i=0;i<46;i++){const a=r3()*6.283,rr=Math.sqrt(r3()),cx=x+Math.cos(a)*w*s*0.5*rr,cy=y-h*0.8*s+Math.sin(a)*h*0.2*s*rr,lt=(sunL?-1:1)*(cx-x)/(w*s*0.5)-(cy-(y-h*0.8*s))/(h*0.2*s)*0.6;
@@ -10119,18 +10160,22 @@ function ctBake(k){const look=L.theme.look,tod=ctTod(),K=Math.max(1,Math.min(3,M
   const palm=(g,x,f,h,w)=>{const y=GY(f),s=29.4*f;wrap(g,g=>{g.fillStyle=col([86,64,44],f);g.fillRect(x-0.25*s,y-h*s,0.5*s,h*s);g.fillStyle=col([0,0,0],f,0);g.globalAlpha=0.18;for(let yy=y-h*s;yy<y;yy+=0.6*s)g.fillRect(x-0.25*s,yy,0.5*s,0.15*s);g.globalAlpha=1;
       for(let i=0;i<11;i++){const a=-Math.PI/2+(i-5)*0.36,L2=w*s*(0.8+0.3*Math.abs(Math.sin(i*1.7)));g.strokeStyle=col(i%2?[52,82,40]:[70,104,50],f);g.lineWidth=Math.max(0.8,0.28*s);
         g.beginPath();g.moveTo(x,y-h*s);g.quadraticCurveTo(x+Math.cos(a)*L2*0.6,y-h*s+Math.sin(a)*L2*0.6,x+Math.cos(a)*L2,y-h*s+Math.sin(a)*L2*0.5+L2*0.35);g.stroke();}});};
-  if(k.k==='peri'){ground([196,176,140],[168,150,120],0.26,1);
-    const f=0.26,y=GY(f),s=29.4*f;wrap(gF,g=>{g.fillStyle=col([34,28,26],f);g.fillRect(0,y-4.6*s,W,4.6*s);
-      for(let x=0;x<W;x+=3.2*s){g.fillStyle=col([200,182,150],f);g.fillRect(x-0.35*s,y-4*s,0.7*s,4*s);g.fillRect(x-0.55*s,y-4.15*s,1.1*s,0.4*s);g.fillStyle='rgba(0,0,0,.3)';g.fillRect(x+(sunL?0.05:-0.35)*s,y-3.7*s,0.3*s,3.7*s);}
-      g.fillStyle=col([206,188,156],f);g.fillRect(0,y-5.2*s,W,1.1*s);g.fillStyle=col([226,208,176],f);g.fillRect(0,y-5.6*s,W,0.4*s);});
-    syc(gM,150,0.44,6.2,5);syc(gM,470,0.48,6,5.2);}
-  else if(k.k==='perg'){ground([92,104,64],[120,124,84],0.36,0);
+  if(k.k==='peri'){ground([196,176,140],[168,150,120],ff,1);
+    // the far portico of a temple court 40 m off (Medinet Habu's second court, Luxor's colonnade): its shade 8.3 m, closed-bud columns 7.2 m tall and
+    // 1.26 m thick every 5.8 m, the architrave and cornice to 10 m
+    const f=ff,y=GY(f),s=29.4*f;gF=lay(ff);wrap(gF,g=>{g.fillStyle=col([34,28,26],f);g.fillRect(0,y-8.3*s,W,8.3*s);
+      for(let x=0;x<W;x+=5.8*s){g.fillStyle=col([200,182,150],f);g.fillRect(x-0.63*s,y-7.2*s,1.26*s,7.2*s);g.fillRect(x-1*s,y-7.47*s,2*s,0.72*s);g.fillStyle='rgba(0,0,0,.3)';g.fillRect(x+(sunL?0.09:-0.63)*s,y-6.66*s,0.54*s,6.66*s);}
+      g.fillStyle=col([206,188,156],f);g.fillRect(0,y-9.36*s,W,1.98*s);g.fillStyle=col([226,208,176],f);g.fillRect(0,y-10.08*s,W,0.72*s);});
+    gM=lay(0.16,dxM);syc(gM,150,0.16,6.2,5);syc(gM,470,0.16,6,5.2);}
+  else if(k.k==='perg'){ground([92,104,64],[120,124,84],ff,0);
     gG.fillStyle=col([150,170,190],0.7,0.9);gG.fillRect(0,GY(0.74),W,GY(0.56)-GY(0.74));gG.fillStyle=col([200,186,150],0.75);gG.fillRect(0,GY(0.75)-0.6,W,1.4);gG.fillRect(0,GY(0.56)-0.6,W,1);
-    for(let i=0;i<26;i++){const f=0.66,x=rnd()*W,y=GY(f)+rnd()*2;gG.fillStyle=col([60,110,58],f);gG.beginPath();gG.ellipse(x,y,2.2,0.7,0,0,6.283);gG.fill();if(i%3===0){gG.fillStyle=col([230,236,250],f);gG.fillRect(x-0.5,y-1,1,1);}}
-    palm(gF,120,0.38,7.5,3);palm(gF,430,0.4,8,3.2);palm(gM,40,0.5,8,3.2);syc(gM,220,0.46,5.5,4.6);palm(gM,360,0.52,8.6,3);syc(gM,560,0.48,5.2,4.8);}
-  else if(k.k==='fore'){const fv=k.far||'kush';ground(fv==='granite'?[150,140,120]:fv==='rock'?[200,184,150]:[206,166,112],fv==='granite'?[170,160,140]:[214,184,140],0.12,1);
+    {const gL=lay(0.66,dxM);for(let i=0;i<26;i++){const f=0.66,x=rnd()*W,y=GY(f)+rnd()*2;gL.fillStyle=col([60,110,58],f);gL.beginPath();gL.ellipse(x,y,2.2,0.7,0,0,6.283);gL.fill();if(i%3===0){gL.fillStyle=col([230,236,250],f);gL.fillRect(x-0.5,y-1,1,1);}}} // (lotus on the channel, at its row)
+    // a garden 19 m deep: its far wall (2.5 m, whitewashed mudbrick with a coping) and the palms before it; nearer palms and sycomores at 0.24
+    const f=ff,y=GY(f),s=29.4*f;gF=lay(ff);wrap(gF,g=>{g.fillStyle=col([214,204,184],f);g.fillRect(0,y-2.5*s,W,2.5*s);g.fillStyle=col([236,228,210],f);g.fillRect(0,y-2.75*s,W,0.3*s);g.fillStyle='rgba(0,0,0,.1)';for(let x=0;x<W;x+=6*s)g.fillRect(x,y-2.5*s,0.6*s,2.5*s);});
+    palm(gF,120,f,7.5,3);palm(gF,430,f,8,3.2);gM=lay(0.24,dxM);palm(gM,40,0.24,8,3.2);syc(gM,220,0.24,5.5,4.6);palm(gM,360,0.24,8.6,3);syc(gM,560,0.24,5.2,4.8);}
+  else if(k.k==='fore'){const fv=k.far||'kush';ground(fv==='granite'?[150,140,120]:fv==='rock'?[200,184,150]:[206,166,112],fv==='granite'?[170,160,140]:[214,184,140],ff,fv!=='granite');
     {const sg=gG.createLinearGradient(0,GY(0.6),0,4);sg.addColorStop(0,'rgba(80,50,30,0)');sg.addColorStop(1,'rgba(80,50,30,.35)');gG.fillStyle=sg;gG.fillRect(0,GY(0.6),W,4-GY(0.6));}
-    const f=0.12,y=GY(f),s=29.4*f,X=W/2,C0=(c,l)=>ctC(mixRGB(ctMul(c,lk*(l||1)),hz,fv==='granite'?0.1:fv==='rock'?0.22:0.38)),lit=sunL?-1:1;
+    const f=ff,y=GY(f),s=29.4*f,X=W/2,C0=(c,l)=>ctC(mixRGB(ctMul(c,lk*(l||1)),hz,fv==='granite'?0.1:fv==='rock'?0.22:0.38)),lit=sunL?-1:1;gF=lay(ff);
     if(fv==='kush'||fv==='mud'){const tw=11*s,th2=13*s,gw=4.5*s,base=fv==='mud'?[176,128,90]:[222,176,124];
       for(const sd of [-1,1]){const xi=X+sd*gw/2,xo=X+sd*(gw/2+tw),bat=1.1*s;
         gF.fillStyle=C0(base,sd===lit?1.1:0.78);gF.beginPath();gF.moveTo(xi,y);gF.lineTo(xo,y);gF.lineTo(xo-sd*bat,y-th2);gF.lineTo(xi,y-th2);gF.closePath();gF.fill();
@@ -10139,48 +10184,63 @@ function ctBake(k){const look=L.theme.look,tod=ctTod(),K=Math.max(1,Math.min(3,M
         if(fv==='kush'){gF.fillStyle=C0([120,84,60],0.9);gF.fillRect(xi+sd*tw*0.38-1.6*s,y-th2*0.78,3.2*s,th2*0.45);}
         for(const u of [0.25,0.72]){const fx=xi+sd*tw*u;gF.strokeStyle=C0([70,48,30]);gF.lineWidth=0.8;gF.beginPath();gF.moveTo(fx,y-th2*0.5);gF.lineTo(fx,y-th2-5*s);gF.stroke();}}
       gF.fillStyle=C0(base,0.9);gF.fillRect(X-gw/2,y-th2*0.66,gw,th2*0.66);gF.fillStyle=C0(ctMul(base,0.7));gF.fillRect(X-gw/2-0.3*s,y-th2*0.66-0.9*s,gw+0.6*s,0.9*s);gF.fillStyle=C0([34,22,18]);gF.fillRect(X-gw*0.26,y-th2*0.46,gw*0.52,th2*0.46);
-      if(fv==='kush')for(let i=0;i<8;i++){const sd=i%2?1:-1,f2=0.16+Math.floor(i/2)*0.045,s2=29.4*f2,x=X+sd*(gw*0.6+(f2/f)*2.2*s),yy=GY(f2);
-        gF.fillStyle=C0([196,152,108],0.95);gF.fillRect(x-1.3*s2,yy-0.55*s2,2.6*s2,0.55*s2);gF.fillStyle=C0([214,170,122],sd===lit?1.05:0.85);gF.beginPath();gF.ellipse(x,yy-0.9*s2,1.05*s2,0.38*s2,0,0,6.283);gF.fill();gF.beginPath();gF.arc(x-sd*0.95*s2,yy-1.25*s2,0.33*s2,0,6.283);gF.fill();}
-      palm(gM,X-250,0.32,9,3.4);palm(gM,X+260,0.36,8,3.2);}
+      // the ram sphinxes of the avenue to the gate (Naqa, Musawwarat), in two rows of four nearer than the pylon, each row a layer at its own depth
+      if(fv==='kush')for(const f2 of [0.15,0.2]){const g2=lay(f2),s2=29.4*f2,yy=GY(f2);for(let i=0;i<4;i++){const sd=i%2?1:-1,x=X+sd*(gw*0.6+(f2/f)*2.2*s+Math.floor(i/2)*7*s2);
+        g2.fillStyle=C0([196,152,108],0.95);g2.fillRect(x-1.3*s2,yy-0.55*s2,2.6*s2,0.55*s2);g2.fillStyle=C0([214,170,122],sd===lit?1.05:0.85);g2.beginPath();g2.ellipse(x,yy-0.9*s2,1.05*s2,0.38*s2,0,0,6.283);g2.fill();g2.beginPath();g2.arc(x-sd*0.95*s2,yy-1.25*s2,0.33*s2,0,6.283);g2.fill();}}
+      gM=lay(0.19,dxM);palm(gM,X-250,0.19,9,3.4);palm(gM,X+260,0.19,8,3.2);}
     else if(fv==='rock'){wrap(gF,g=>{g.fillStyle=C0([214,196,160]);g.beginPath();g.moveTo(0,y);for(let x=0;x<=W;x+=20)g.lineTo(x,y-14*s-3*s*Math.sin(x*0.031)-1.5*s*Math.sin(x*0.11));g.lineTo(W,y);g.closePath();g.fill(); // the cliff's face, in level beds
         g.fillStyle='rgba(0,0,0,.12)';for(let yy=y-2*s;yy>y-13*s;yy-=1.7*s)g.fillRect(0,yy,W,0.5);
         for(const x of [90,250,420,560]){g.fillStyle=C0([150,130,100]);g.fillRect(x-2.6*s,y-5.5*s,5.2*s,5.5*s);g.fillStyle=C0([30,22,18]);g.fillRect(x-1.4*s,y-4.2*s,2.8*s,4.2*s);}}); // rock-cut tomb doorways, a rebate round each
-      syc(gM,170,0.42,5,4);syc(gM,500,0.46,5.4,4.4);}
-    else{ // (round 45c, owner chose S1) Aksum: depth in layers: the flat-topped ambas far off, storeyed stelae at three depths with their shade sides,
-      // storeys, false windows and long shadows, a low wall of rubble between timber beams, the Great Stela lying broken in front, paving converging to a
-      // vanishing point at eye height, darker near, loose stones with their shadows
+      gM=lay(0.17,dxM);syc(gM,170,0.17,5,4);syc(gM,500,0.17,5.4,4.4);}
+    else{ // (round 45c, owner chose S1; 47b) Aksum: the palace court's low wall of rubble between timber beams at 0.2 (21 m), small stelae and the Great
+      // Stela lying broken inside it at 0.23; beyond the wall the theme's own view: the ambas (0.004) and the field of storeyed stelae (0.11), on the
+      // storey's horizon with the land; the court's paving converges live (ctFloorLive)
       const sunR=!sunL,CA=(c,f2,l)=>ctC(mixRGB(ctMul(c,lk*(l||1)),hz,Math.min(0.9,(1-f2)*0.95)));
       const stela=(g,x,f2,h)=>wrap(g,g=>{const s2=29.4*f2,ww=0.11*h*s2,y=GY(f2),H=h*s2;g.fillStyle=CA([110,102,94],f2);g.beginPath();g.moveTo(x-ww/2,y);g.lineTo(x-ww/2,y-H);g.quadraticCurveTo(x,y-H-ww*0.6,x+ww/2,y-H);g.lineTo(x+ww/2,y);g.closePath();g.fill();
         g.fillStyle=CA([70,62,56],f2);g.fillRect(sunR?x-ww/2:x,y-H,ww/2,H);g.fillStyle='rgba(255,240,220,.18)';g.fillRect(sunR?x+ww/2-Math.max(0.6,ww*0.12):x-ww/2,y-H,Math.max(0.6,ww*0.12),H);
         g.fillStyle='rgba(0,0,0,.22)';for(let yy=y-H*0.18;yy>y-H*0.95;yy-=H*0.12){g.fillRect(x-ww/2,yy,ww,Math.max(0.4,ww*0.06));for(let xx=x-ww/2+ww*0.2;xx<x+ww/2-ww*0.1;xx+=ww*0.3)g.fillRect(xx,yy-H*0.06,ww*0.12,ww*0.12);}
         g.fillStyle='rgba(0,0,0,.25)';g.beginPath();g.ellipse(x+(sunR?-1:1)*H*0.35,y,H*0.38,0.8*s2*0.3+0.6,0,0,6.283);g.fill();});
-      {const gr=gG.createLinearGradient(0,GY(0.06),0,4);gr.addColorStop(0,CA([170,158,140],0.06));gr.addColorStop(0.5,CA([138,126,110],0.4,0.9));gr.addColorStop(1,ctC(ctMul([96,86,74],lk)));gG.fillStyle=gr;gG.fillRect(0,GY(0.06),W,CTB_B+4-GY(0.06));
-        gG.strokeStyle='rgba(0,0,0,.22)';gG.lineWidth=0.6;for(const f2 of [0.85,0.62,0.45,0.33,0.24,0.17,0.12,0.09]){gG.beginPath();gG.moveTo(0,GY(f2));gG.lineTo(W,GY(f2));gG.stroke();}
-        for(let x=-W;x<=2*W;x+=40){gG.beginPath();gG.moveTo(320+(x-320)*0.06,GY(0.06));gG.lineTo(320+(x-320),4);gG.stroke();}
-        const r=mulberry32(4242);for(let i=0;i<40;i++){const f2=0.1+r()*0.8,x=r()*W,s2=29.4*f2,y=GY(f2);gG.fillStyle=CA([70,62,54],f2);gG.beginPath();gG.ellipse(x,y,0.35*s2,0.12*s2,0,0,6.283);gG.fill();gG.fillStyle='rgba(0,0,0,.25)';gG.beginPath();gG.ellipse(x+(sunR?-1:1)*0.5*s2,y+0.05*s2,0.5*s2,0.08*s2,0,0,6.283);gG.fill();}}
-      wrap(gF,g=>{g.fillStyle=CA([96,108,130],0.004);g.beginPath();g.moveTo(0,GY(0.02));for(let x=0;x<=W;x+=16)g.lineTo(x,GY(0.02)-12-8*Math.abs(Math.sin(x*0.013))-(x%160<60?10:0));g.lineTo(W,GY(0.02));g.closePath();g.fill();});
-      for(const [x,f2,h] of [[70,0.05,20],[150,0.06,24],[240,0.045,16],[330,0.07,33],[440,0.055,21],[540,0.065,26],[610,0.05,17]])stela(gF,x,f2,h);
-      wrap(gF,g=>{const f2=0.16,s2=29.4*f2,y=GY(f2);g.fillStyle=CA([100,88,76],f2);g.fillRect(0,y-1.6*s2,W,1.6*s2);g.fillStyle=CA([62,46,34],f2);for(let yy=y-1.4*s2;yy<y;yy+=0.55*s2)g.fillRect(0,yy,W,0.14*s2);for(let x=4;x<W;x+=1.4*s2){g.beginPath();g.arc(x,y-1.1*s2,0.16*s2,0,6.283);g.fill();}});
-      for(const [x,f2,h] of [[110,0.22,7],[300,0.26,9],[500,0.2,6]])stela(gM,x,f2,h);
-      wrap(gM,g=>{const f2=0.42,s2=29.4*f2,y=GY(f2),x=400;g.fillStyle=CA([110,102,92],f2);g.save();g.translate(x,y-0.35*s2);g.rotate(-0.03);g.fillRect(-4*s2,-0.4*s2,4.6*s2,0.8*s2);g.fillRect(1.1*s2,-0.36*s2,3*s2,0.72*s2);g.fillStyle='rgba(0,0,0,.25)';for(let xx=-3.6*s2;xx<4*s2;xx+=0.7*s2)g.fillRect(xx,-0.4*s2,0.12*s2,0.8*s2);g.fillStyle='rgba(0,0,0,.3)';g.fillRect(-4*s2,0.4*s2,8.2*s2,0.18*s2);g.restore();});}}
-  for(const [c,g] of [[cG,gG],[cF,gF],[cM,gM]])crossRim(c,{tod},K,0.75); // (night: a silver rim on every edge that faces the moon, as the Crossing's)
-  b={G:cG,F:cF,M:cM,K};CTB.set(key,b);if(CTB.size>9)CTB.delete(CTB.keys().next().value);return b;}
-// laid down inside each court's opening after the theme's backdrop (in drawBackdrop, under G2D.na); the pennants are live (the wind moves them)
+      {const gr=gG.createLinearGradient(0,GY(ff),0,4);gr.addColorStop(0,CA([158,146,128],ff));gr.addColorStop(0.5,CA([138,126,110],0.5,0.9));gr.addColorStop(1,ctC(ctMul([96,86,74],lk)));gG.fillStyle=gr;gG.fillRect(0,GY(ff),W,CTB_B+4-GY(ff));
+        gG.strokeStyle='rgba(0,0,0,.22)';gG.lineWidth=0.6;for(const f2 of [0.85,0.62,0.45,0.33,0.24])if(f2>ff){gG.beginPath();gG.moveTo(0,GY(f2));gG.lineTo(W,GY(f2));gG.stroke();}}
+      wrap(gF,g=>{const f2=ff,s2=29.4*f2,y=GY(f2);g.fillStyle=CA([100,88,76],f2);g.fillRect(0,y-1.6*s2,W,1.6*s2);g.fillStyle=CA([62,46,34],f2);for(let yy=y-1.4*s2;yy<y;yy+=0.55*s2)g.fillRect(0,yy,W,0.14*s2);for(let x=4;x<W;x+=1.4*s2){g.beginPath();g.arc(x,y-1.1*s2,0.16*s2,0,6.283);g.fill();}});
+      gM=lay(0.23,dxM);for(const [x,h] of [[110,7],[300,9],[500,6]])stela(gM,x,0.23,h);
+      wrap(gM,g=>{const f2=0.23,s2=29.4*f2,y=GY(f2),x=400;g.fillStyle=CA([110,102,92],f2);g.save();g.translate(x,y-0.35*s2);g.rotate(-0.03);g.fillRect(-4*s2,-0.4*s2,4.6*s2,0.8*s2);g.fillRect(1.1*s2,-0.36*s2,3*s2,0.72*s2);g.fillStyle='rgba(0,0,0,.25)';for(let xx=-3.6*s2;xx<4*s2;xx+=0.7*s2)g.fillRect(xx,-0.4*s2,0.12*s2,0.8*s2);g.fillStyle='rgba(0,0,0,.3)';g.fillRect(-4*s2,0.4*s2,8.2*s2,0.18*s2);g.restore();});}}
+  for(const q of LY)crossRim(q.c,{tod},K,0.75); // (night: a silver rim on every edge that faces the moon, as the Crossing's)
+  LY.sort((a,b)=>(b.fl-a.fl)||(a.f-b.f)); // (the floor first, then far to near)
+  b={L:LY,K,ff,st:[ctC(mixRGB(ctMul([70,62,54],lk),hz,0.45)),ctC(mixRGB(ctMul([70,62,54],lk),hz,0.2))]};CTB.set(key,b);if(CTB.size>9)CTB.delete(CTB.keys().next().value);return b;}
+// the court's anchor: its bays' (bgAnchors: the storey's windows' anchor)
+function ctAnchor(k){return bgAnchor([k.c0*TW,(k.r-1)*TH,Math.min(2,k.c1-k.c0+1)*TW,ctCut(k),0,k]);}
+// each court layer's place this frame, world units (for ctBg and the tests): x of the strip's left edge (one copy), y of its top, the eye line
+function ctLayersOf(k,cx,vw,VZ,camDY){const b=ctBake(k),W=(k.c1-k.c0+1)*TW,xr=k.c0*TW+W/2,mid=cx+vw/2,an=ctAnchor(k),wY=v=>(v*VS+camDY)/VZ;
+  return b.L.map(q=>{const eye=wY(bgEyeY(q.f,an));return {f:q.f,fl:q.fl,c:q.c,x:xr+(1-q.f)*(mid-xr)-CTB_W/2+q.dx,y:eye+44-CTB_T,eye};});}
+// laid down inside each court's opening after the theme's view (in drawBackdrop, under G2D.na); the floor's features and the pennants are live
 function ctBg(ctx,cx,cy,vw,vh,VZ,camD,camDY){const cs=L.courts;if(!cs||!cs.length||lyOff('court'))return;
-  for(const k of cs){if(k.k==='well')continue;const W=(k.c1-k.c0+1)*TW,ox=k.c0*TW,oy=(k.r-1)*TH,cut=ctCut(k),ys=SURF(k.r),fl=ys-HY;
-    if(ox>cx+vw||ox+W<cx||oy>cy+vh||oy+cut<cy)continue;const b=ctBake(k),mid=cx+vw/2,xr=ox+W/2,dyR=cy-bgRest(ys);
-    ctx.save();ctx.setTransform(VZ,0,0,VZ,-camD,-camDY);ctx.beginPath();ctx.rect(ox,oy,W,cut);ctx.clip();ctOwnSky(ctx,k,ox,oy,W,cut);
-    for(const [nm,cv] of [['G',b.G],['F',b.F],['M',b.M]]){const f=CTB_F[nm],sx=xr+(1-f)*(mid-xr)-CTB_W/2+((k.h>>>3)%7-3)*(nm==='F'?0:24),y=fl-CTB_T+BG_VK*(1-f)*dyR;
-      let x0=sx;while(x0>ox)x0-=CTB_W;for(let x=x0;x<ox+W;x+=CTB_W)ctx.drawImage(cv,x,y,CTB_W,CTB_T+CTB_B);}
-    if(k.far==='kush'||k.far==='mud'){const f=CTB_F.F,s=29.4*0.12,X=xr+(1-f)*(mid-xr),y=fl-44*(1-0.12)+BG_VK*(1-f)*dyR,th2=13*s,gw=4.5*s,tw=11*s,wv=windAt(xr,ys),t=gameTime;
-      for(const sd of [-1,1])for(const u of [0.25,0.72]){const fx=X+sd*gw/2+sd*tw*u,py=y-th2-4.7*s,dir=wv<-0.05?-1:1,str=0.6+Math.min(1,Math.abs(wv));ctx.fillStyle=u<0.5?'#a04a3c':'#e2dacb';ctx.beginPath();ctx.moveTo(fx,py); // a pennant on its flagstaff, streaming with the wind
-        for(let i=0;i<=10;i++)ctx.lineTo(fx+dir*i*0.75*s,py+i*0.05*s+Math.sin(t*(5+3*str)-i*0.8+u*7)*0.45*s*(i/10)*str);
-        for(let i=10;i>=0;i--)ctx.lineTo(fx+dir*i*0.75*s,py+i*0.05*s+Math.sin(t*(5+3*str)-i*0.8+u*7)*0.45*s*(i/10)*str+0.9*s*(1-i/12));ctx.closePath();ctx.fill();}}
+  for(const k of cs){if(k.k==='well')continue;const W=(k.c1-k.c0+1)*TW,ox=k.c0*TW,oy=(k.r-1)*TH,cut=ctCut(k),ys=SURF(k.r);
+    if(ox>cx+vw||ox+W<cx||oy>cy+vh||oy+cut<cy)continue;const b=ctBake(k),mid=cx+vw/2,xr=ox+W/2,an=ctAnchor(k),lys=ctLayersOf(k,cx,vw,VZ,camDY);
+    ctx.save();ctx.setTransform(VZ,0,0,VZ,-camD,-camDY);ctx.beginPath();ctx.rect(ox,oy,W,cut);ctx.clip();
+    for(let i=0;i<lys.length;i++){const q=lys[i];if(CT_DBG.only!==null&&CT_DBG.only!==i)continue;let x0=q.x;while(x0>ox)x0-=CTB_W;while(x0+CTB_W<ox)x0+=CTB_W;for(let x=x0;x<ox+W;x+=CTB_W)ctx.drawImage(q.c,x,q.y,CTB_W,CTB_T+CTB_B);
+      if(q.fl)ctFloorLive(ctx,k,b,ox,W,mid,xr,f=>(bgEyeY(f,an)*VS+camDY)/VZ+44*f);}
+    if((k.far==='kush'||k.far==='mud')&&(CT_DBG.only===null||lys[CT_DBG.only]&&lys[CT_DBG.only].f===b.ff&&!lys[CT_DBG.only].fl)){const F=lys.find(q=>q.f===b.ff&&!q.fl),s=29.4*b.ff,gy=F.eye+44*b.ff,th2=13*s,gw=4.5*s,tw=11*s,wv=windAt(xr,ys),t=gameTime;
+      for(let X=F.x+CTB_W/2-2*CTB_W;X<ox+W+CTB_W;X+=CTB_W){if(X<ox-tw-gw||X>ox+W+tw+gw)continue;
+        for(const sd of [-1,1])for(const u of [0.25,0.72]){const fx=X+sd*gw/2+sd*tw*u,py=gy-th2-4.7*s,dir=wv<-0.05?-1:1,str=0.6+Math.min(1,Math.abs(wv));ctx.fillStyle=u<0.5?'#a04a3c':'#e2dacb';ctx.beginPath();ctx.moveTo(fx,py); // a pennant on its flagstaff, streaming with the wind
+          for(let i=0;i<=10;i++)ctx.lineTo(fx+dir*i*0.75*s,py+i*0.05*s+Math.sin(t*(5+3*str)-i*0.8+u*7)*0.45*s*(i/10)*str);
+          for(let i=10;i>=0;i--)ctx.lineTo(fx+dir*i*0.75*s,py+i*0.05*s+Math.sin(t*(5+3*str)-i*0.8+u*7)*0.45*s*(i/10)*str+0.9*s*(1-i/12));ctx.closePath();ctx.fill();}}}
     ctx.restore();}}
+// the court floor's features along x, live at their own rows' depth (a point X across the floor at depth f is drawn at mid + f (X - mid): it slides
+// f of the walls' motion): the joints of the paving rows (1.36 m apart), Aksum's paving converging to the vanishing point and its loose stones
+function ctFloorLive(ctx,k,b,ox,W,mid,xr,rowY){const ff=b.ff,ph=((k.h>>>5)%40);
+  if(k.far==='granite'){ctx.strokeStyle='rgba(0,0,0,.22)';ctx.lineWidth=0.6;const fn=0.9,ya=rowY(ff),yb=rowY(fn),X0=mid+(ox-mid)/ff,X1=mid+(ox+W-mid)/ff;
+    ctx.beginPath();for(let X=xr+ph+Math.ceil((X0-xr-ph)/40)*40;X<=X1;X+=40){ctx.moveTo(mid+ff*(X-mid),ya);ctx.lineTo(mid+fn*(X-mid),yb);}ctx.stroke();
+    const v=ctPrep(k),st=v.st;for(let i=0;i<st.length;i+=2){const f=st[i],x=mid+f*(xr+st[i+1]-mid),y=rowY(f),s2=29.4*f;if(x<ox-6||x>ox+W+6)continue;
+      ctx.fillStyle=b.st[f<0.5?0:1];ctx.beginPath();ctx.ellipse(x,y,0.35*s2,0.12*s2,0,0,6.283);ctx.fill();ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(x+(ctTod()===0?1:-1)*0.5*s2,y+0.05*s2,0.5*s2,0.08*s2,0,0,6.283);ctx.fill();}
+    return;}
+  if(k.k==='perg')return;ctx.fillStyle='rgba(0,0,0,.12)';
+  for(const f of [0.48,0.36,0.27,0.2,0.16]){if(f<ff+0.02)continue;const y0=rowY(f-0.03),y1=rowY(f+0.03),X0=mid+(ox-mid)/f,X1=mid+(ox+W-mid)/f;
+    for(let X=xr+ph+Math.ceil((X0-xr-ph)/40)*40;X<=X1;X+=40)ctx.fillRect(mid+f*(X-mid),y0,0.5,y1-y0);}}
 // the opening's boxes (openingsIn): the theme's backdrop is painted there, each bay of two cells sends its sky light (gatherLights) and shares the
 // court's anchor (bgAnchors)
 function ctOpen(out,x0,x1,y0,y1){const cs=L.courts;if(!cs)return out;for(const k of cs){if(k.k==='well')continue;const ox=k.c0*TW,W=(k.c1-k.c0+1)*TW,oy=(k.r-1)*TH,cut=ctCut(k);
-    if(ox>x1+40||ox+W<x0-40||oy>y1+TH||oy+cut<y0-TH)continue;for(let c=k.c0;c<=k.c1;c+=2)out.push([c*TW,oy,Math.min(2,k.c1-c+1)*TW,cut]);}return out;}
+    if(ox>x1+40||ox+W<x0-40||oy>y1+TH||oy+cut<y0-TH)continue;for(let c=k.c0;c<=k.c1;c+=2)out.push([c*TW,oy,Math.min(2,k.c1-c+1)*TW,cut,0,k]);}return out;} // (r[5]: its court, round 47b)
 function ctBox(x0,y0,x1,y1){const cs=L.courts;if(!cs)return false;for(const k of cs){if(k.k==='well')continue;const ox=k.c0*TW,W=(k.c1-k.c0+1)*TW,oy=(k.r-1)*TH;if(x1>ox+2&&x0<ox+W-2&&y1>oy+2&&y0<SURF(k.r)-2)return true;}return false;}
 // the court's daylight (or moonlight): a few broad lights along it in a pale tone of the hour's light (no beam), the well's shaft its own light
 function ctLights(add,x0,x1,y0,y1){const cs=L.courts;if(!cs||!cs.length)return;const tod=ctTod(),s=ctSun(),c=(tod===1?mixRGB(s,[200,214,255],0.5):mixRGB(s,[250,250,250],0.8)).map(Math.round).join(','),sc=s.join(',');
@@ -10193,6 +10253,7 @@ function ctPrep(k){if(k._v)return k._v;const W=(k.c1-k.c0+1)*TW,ox=k.c0*TW,oy=(k
     const m=Math.round(W/3.2),r2=mulberry32(hash2(k.c0,515));v.dp=new Float32Array(m*5);for(let i=0;i<m;i++){v.dp[i*5]=0.2+r2()*0.76;v.dp[i*5+1]=r2();v.dp[i*5+2]=1.4+r2()*3.6;v.dp[i*5+3]=r2()*6.28;v.dp[i*5+4]=r2();}}
   if(k.pits.length){v.lo=[];for(const [a,b] of k.pits){const q=L._ctP.get(k.r*L.cols+a),r3=mulberry32(hash2(q.X,77)),n=Math.round(q.W/9),pads=new Float32Array(n*3);
       for(let i=0;i<n;i++){pads[i*3]=0.1+r3()*0.8;pads[i*3+1]=r3();pads[i*3+2]=i;}v.lo.push(pads);}}
+  if(k.far==='granite'){const r4=mulberry32(hash2(k.c0,4242)),n=18;v.st=new Float32Array(n*2);for(let i=0;i<n;i++){const f=0.24+r4()*0.56;v.st[i*2]=f;v.st[i*2+1]=(r4()-0.5)*(W+60)/f;}}
   if(k.k==='well'){v.mo=new Float32Array(26*2);for(let i=0;i<26;i++){const h=hash2(i*31+k.c0,7);v.mo[i*2]=(h&255)/255;v.mo[i*2+1]=((h>>>8)&255)/255;}}
   return k._v=v;}
 function ctPoolCols(p){if(p._c)return p._c;const sk=ctSky(),tod=ctTod();
@@ -10247,7 +10308,7 @@ function ctRel(n,VZ,camD,camDY){const cs=L.courts;if(!cs)return n;for(const k of
 // accurate"). Meroe's furnace halls keep their warm forge grade; inside its courts (the cut, the floor before it and him there, feathered at the
 // edges) Torchlight's composite mixes to the court's own: cooler shadows and lights, less saturation and a white balance toward daylight
 // (u_cgb: up to four court boxes in view). Classic gets the matching grade: a cool multiply and a partial desaturation over the same boxes, after the
-// light pass. The court's view gets its own outdoor sky with Meroe's steep pyramids far off (ctBg), not the furnace interior the theme's view shows
+// light pass. The court's view gets its own outdoor sky with Meroe's steep pyramids far off (BGART.meroeCt through ctViewOf since round 47b), not the furnace interior the theme's view shows
 const CT_GRADE={meroe:{sh:[.95,.99,1.06],hi:[.98,1.0,1.04],sat:.84,wb:[.88,.96,1.08],c2d:'rgb(222,234,255)',
   sky:[['#3a4a7a','#9a7fa0','#e2b48a'],['#0b1430','#26304e','#3d3c52'],['#4a5a8a','#c9a0a8','#f0c896']],pyr:['rgb(120,96,98)','rgb(30,34,52)','rgb(150,110,104)']}};
 const CGB=new Float32Array(16),CGN=[1,1,1];
@@ -10258,11 +10319,6 @@ function ctGradeU(gl,U,VZ,camD,camDY,w,h,on){let n=0;const g=on?ctGradeBoxes((x,
 function ctGrade2D(ctx){if(!L||!L.courts)return;const {VZ,camD,camDY}=renderXf;ctx.save();ctx.setTransform(VZ,0,0,VZ,-camD,-camDY);
   ctGradeBoxes((x,y,W,H)=>{ctx.globalCompositeOperation='multiply';ctx.globalAlpha=1;ctx.fillStyle=CT_GRADE[L.theme.look].c2d;ctx.fillRect(x,y,W,H);ctx.globalCompositeOperation='saturation';ctx.globalAlpha=1-CT_GRADE[L.theme.look].sat;ctx.fillStyle='#808080';ctx.fillRect(x,y,W,H);});
   ctx.restore();}
-// the court's own sky (Meroe): a gradient of the hour and the steep pyramids far off, laid over the theme's view inside the court's box
-function ctOwnSky(ctx,k,ox,oy,W,cut){const g=CT_GRADE[L.theme.look];if(!g)return;const tod=L.prog?L.prog.tod:0;
-  if(!k._sky||k._skt!==tod){k._skt=tod;const gr=ctx.createLinearGradient(0,oy,0,oy+cut),c=g.sky[tod];gr.addColorStop(0,c[0]);gr.addColorStop(0.62,c[1]);gr.addColorStop(1,c[2]);k._sky=gr;}
-  ctx.fillStyle=k._sky;ctx.fillRect(ox,oy,W,cut);ctx.fillStyle=g.pyr[tod];const y=oy+cut*0.62;
-  for(let i=0;i<5;i++){const x=ox+20+i*W/5+((k.h>>>i)%9),h=10+((k.h>>>(i*2))%3)*5;ctx.beginPath();ctx.moveTo(x-h*0.55,y);ctx.lineTo(x,y-h);ctx.lineTo(x+h*0.55,y);ctx.closePath();ctx.fill();}}
 // ---- the court's thresholds (round 45c, owner: "we need some kind of transition between the court and regular"; chose C, "respecting the theme: no
 // standard single way of doing it"): at each end of a court a near jamb stands on the front plane and he passes behind it. It is an L3 part in a cell
 // that is not a wall (the layering rule's one exception, layers.md), drawn live after the figures and the air (ctJambs, after windDraw), so it covers
@@ -12594,6 +12650,7 @@ function render(){PF.s();
   if(gf.light&&!lyOff('emissive'))drawEmissive(ctx,cx,cx+vw,cy,cy+vh);
   ctx.restore();
   ctx.setTransform(VS,0,0,VS,0,0);
+  if(CT_DBG.top&&!sh)ctTop(ctx,cx,cy,vw,vh,VZ,camD,camDY);
   if(gf.atmo&&!lyOff('haze'))hazePass(ctx);
   if(L.ext.chase&&L.ext.chase.on&&!stormGL()){ctx.save();ctx.setTransform(VZ,0,0,VZ,-camD,-camDY);ctx.beginPath();ctx.rect(cx,cy,vw,vh);ctx.clip();drawDark2D(ctx,cx,cx+vw,cy,cy+vh);ctx.restore();ctx.setTransform(VS,0,0,VS,0,0);} // (round 29)
   PF.p('atmo2d');if(sh)PF.gl=GLP.gl;
@@ -14547,7 +14604,7 @@ Object.assign(window.__HK,{hurt,HK,DISS,sandP,SAND_HP,GLFX,setClock:f=>{performa
 Object.assign(window.__HK,{ryLow,beamBlockers,BLK,ryBlkLit,sandSegs,SDS,RY_BLUR,glPrecStr,renderXf,tileB:(c,r)=>B(L,c,r),get WALL(){return WALL;}}); // (round 46: the beams' cases and the device's precision, for beamjag.py)
 Object.assign(window.__HK,{FLM,FLV,ventState,cyc}); // FL (flames: the sheets and the vent's look, for tests)
 Object.assign(window.__HK,{GLFX,GLREL,clearRooms,bgCache,bgLayers,solidBelow:(c,r)=>solidBelow(L,c,r),roomCanvas}); // (unit B's switches and caches, for its tests)
-Object.assign(window.__HK,{openingsIn,bgAnchor,bgLayerY,BGV,BG_VK,BG_FSKY}); // (round 25e: the backdrop's place for each opening, for egyptr25e.py)
+Object.defineProperty(window.__HK,'VS',{get:()=>VS});Object.assign(window.__HK,{openingsIn,bgAnchor,bgLayerY,BGV,BG_VK,BG_FSKY,bgEyeY,bgHc,BG_EYE,bgFoot,ctLayersOf,ctFarF,ctViewOf,CTB,CT_DBG}); // (round 25e: the backdrop's place for each opening, for egyptr25e.py)
 Object.assign(window.__HK,{GLS,G2D,g2Target,g2Begin,g2Replay,EC,g2col,HKPath,drawFigureHD,figDraw,paintBackdrop,bgLayers,BGART,lightSprite,drawLight,drawGate,drawJaws,drawDoor,drawHourglass,drawFlask,drawSnakeHD,drawLift}); // (unit WGL, for its parity tests)
 Object.assign(window.__HK,{GLA,PF,BENCH,G2UP,g2Warm,roomCache}); // (the mask atlas's layout, for wgl_maskcmp.py; ?prof and ?bench for wgl_prof.py)
 Object.assign(window.__HK,{B:(c,r)=>B(L,c,r),F:(c,r)=>F(L,c,r),WALL,wallPress,wallRows,livePose,drawActor,PAL_HERO}); // (round 42a: the kick shaft's chimney, for egyptr42a.py)

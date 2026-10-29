@@ -103,6 +103,21 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
 
+## What round 47b found
+
+The owner: "the courts - the background they show isn't in sync with what the windows show, different scenery and it is moving way too
+fast. Do research." On round 47's research he chose C, one horizon per storey, with the windows' anchor left where it is, the keep's rise as
+proposed, the far side lit as before ([courts](elements/courts.md), [openings and backdrop](elements/openings-and-backdrop.md)).
+
+| Finding (v88) | Where | Round 47b | Seen in |
+|---|---|---|---|
+| The court's strips slid at 0.70 (ground), 0.50 (trees) and 0.18 (far side) of the walls' motion against the windows' 0-0.25 | `ctBg`, `CTB_F` | one layer a depth, each at its true f (`CT_FARF` 0.12 / 0.22 / 0.2, in the court 0.15-0.24), the floor's features live at their rows' f; `panscan: ok` (v88 fails all 33 cases) | courts |
+| Drawn at one depth, moved at another: the pylon 0.12 / 0.18, the far colonnade 0.26 / 0.18, Aksum's ambas 0.004 / 0.18, Meroë's pyramids drawn with the walls (1.0) | `ctBake`, `ctOwnSky` | each drawn at its layer's scale; Aksum's ambas and stelae and Meroë's pyramids are the view's own layers | courts |
+| The court's own scene covered the theme's land | `ctBg` | the bays show the theme's view less the layers nearer than the far side (`ctViewOf`; Meroë `BGART.meroeCt`) | courts |
+| Two horizons: the court's eye 44 px over the floor on every floor, the theme's land sinking 1.7 px a floor with its horizon (off the screen from floor 53) | `bgLayerY`, `sink` | one horizon at the floor's eye (`bgEyeY`), the land under it by perspective (`bgHc`) | openings, courts |
+| A window's view stood 51.2 px (0.8 of a storey) above an arch's or court's on the same storey | `bgAnchors` | every opening takes the window's anchor (`bgFoot`); `viewscan: ok`, 0.00 px in 2,520 views (v88 54.4 px) | openings |
+| The moon never showed in a window at rest (its crossfade measured from the anchor, a storey off) | `paintBackdrop` | measured from the storey's rest | openings |
+
 ## What round 47a found
 
 The owner: "the hills/heaps/drifts - you shouldn't be able to jump over them, only way is to walk at the pace they let you"; on r47's

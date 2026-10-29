@@ -4,7 +4,8 @@
 # Static checks first: every shader that works out world positions (wpos, u_cam, tile() is compiled in highp where the device has it (its own
 # 'precision highp' or GLCHEAD's guard; S7), and no texture read across a beam is set to NEAREST (the profiles in glcRy, the tile map in
 # glcTiles; S4). Then pictures: each case is one opening's beam, the prince out of view (or in it), the guards away, the clock frozen and the beams' moving
-# parts off (GLFX.ryClean: the haze's drift, the motes, the dither), drawn twice, with the beams and without them (window.__RYOFF), at a phone's
+# parts off (GLFX.ryClean: the haze's drift, the motes, the dither; since round 47b BGV.flat: the view through the openings is its sky alone, so
+# the land's edges, weighted by the haze where it lies over the dark, are not read as steps), drawn twice, with the beams and without them (window.__RYOFF), at a phone's
 # 852 x 393 at device scale 2: D = the luma the beams add. D is sampled along lines parallel to the light inside the opening's box swept
 # down the light (skyBeam); a beam's light changes slowly along the light, so what is left after a Gaussian of 3 quarter-size texels along
 # each line is the staircase (pixels near an edge of the frame without beams, the stone's own detail, are left out). A line steps when its
@@ -75,7 +76,7 @@ FIND = r'''([n,sd,kind])=>{const H=__HK;window.__HKfreeze=true;for(const id in H
       return [n,s,H.themeName(n),o.kind,o.sh.key,L.prog?L.prog.tod:0];}}return null;}'''
 SHOW = r'''([mode,rs,off])=>{const H=__HK,O=window.__O,P=H.P,sb=H.skyBeam();P.inv=1e9;
   P.x=O.fig?O.x+sb.dx/sb.dy*(O.fl-O.y)+4:O.x+340+H.viewW/2;P.y=O.fl;P.state='stand';P.face=-1;for(const g of H.G||[])g.x=-1e5; /* (the guards out of the way: a figure in a beam is the forced case's, the prince) */H.cam.x=O.x-H.viewW/2;H.cam.y=O.y-40;H.cam.gy=H.cam.y;
-  H.S.set.lightMode=mode;H.mode='play';H.GLP.pipe=false;H.GLP.rs=rs;H.GLP.inSession=true;window.__HKnoauto=true;H.GLFX.ryClean=true;H.GLFX.caustics=false;window.__RYOFF=off;
+  H.S.set.lightMode=mode;H.mode='play';H.GLP.pipe=false;H.GLP.rs=rs;H.GLP.inSession=true;window.__HKnoauto=true;H.GLFX.ryClean=true;H.GLFX.caustics=false;window.__RYOFF=off;H.BGV.flat=true;
   for(let i=0;i<4;i++)H.render();if(mode==='torch'&&!(H.GLC&&H.GLC.on&&H.GLC.S&&H.GLC.S.p))return {dead:1}; // (the shafts' shader did not compile or link: Torchlight fell back)
   const X=(H.renderXf||H.XF),cv=document.getElementById('game'),kc=cv.getBoundingClientRect().width/cv.width; // (kc: CSS px per canvas px)
   const ops=H.ryOps().filter(o=>!o.sh.own).map(o=>[(o.x0*X.VZ-X.camD)*kc,(o.y0*X.VZ-X.camDY)*kc,(o.x1*X.VZ-X.camD)*kc,(o.y1*X.VZ-X.camDY)*kc,o.kind]);

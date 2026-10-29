@@ -50,7 +50,7 @@ is a placeholder: only the built `index.html` carries the release number.
    it starts): `play` (the bot and play checks: run2, featbot, p4bot, forktest, hinttest, grablabel, swingtest, liftkick, lowceil,
    r38b_tests, sawceil, hilljump, primtest, hdtest, lifttest, respawnplates, slabresume, gratepeek), `gen` (generator and layout scans: metrics40,
    guardscan, forkscan, puzzlescan, vertscan, featurescan, orphanscan, mazescan, wellcorr, lampscan, slabscan, sandshaft, wellscan, hillscan, windscan, courtscan) and
-   `render` (drawing checks: rendersmoke, liftscan, crossscan, cpscan, shadowscan, doorscan, openscan, tilescan, beamjag, heapscan, solidscan, contourscan, stormfair, glauto,
+   `render` (drawing checks: rendersmoke, liftscan, crossscan, cpscan, shadowscan, doorscan, openscan, tilescan, beamjag, heapscan, solidscan, contourscan, viewscan, panscan, stormfair, glauto,
    metaltest, rewindrooms, figscan). The tier chooses the jobs; `--suite play,render` runs only those suites, in that order (default
    all: play, gen, render). The suites run in sequence (owner): each has the whole pool of workers and GPU slots, finishes, writes and
    prints its summary with its own wall time, then the next starts; `--stop-on-fail` skips the suites still to run once one fails
@@ -104,6 +104,8 @@ is a placeholder: only the built `index.html` carries the release number.
 | `heapscan.py [file] [lo hi] [seeds] [torch\|classic\|both]` (release) | heaps and drifts are opaque solids (round 46b, `dev/docs/layers.md` R5-R7): each hill's drawn pixels (the frame with it less without it, eroded a world px) unchanged with the back wall's art flattened, the sky beams, the lamp shadow or the relief off, both modes, the bloom held out; floors 3-48 x 2 seeds in four GPU jobs | `heapscan: ok` |
 | `solidscan.py [file] [lo hi] [seeds] [torch\|classic\|both] [per=K] [things=]` (release) | the other solids are opaque too (round 46c, layers.md R5-R7): a pushed block, a fallen roof block laid down, a court's jambs, a lift at its foot, the sky clock: drawn pixels (inside its own box, a lift's shaft back left out) unchanged with the wall's art flattened, the beams (not the clock), the lamp shadow or the relief off, both modes; floors 1-48 in four GPU jobs | `solidscan: ok` |
 | `contourscan.py [file] [lo hi] [seeds] [torch\|classic] [kinds=] [per=K] [nofigures]` (release) | the contour rule (rounds 46c, 46d): no prop's or figure's edge a fixed near-black ink; each kind's edge pixels (a world px in from its outline) under 60 are within 40 levels of `selOut` (k .45-1.15) of its fill 2-3.5 px in, under 2% failing a view (and 80 px); Classic, floors 1-48 in four light jobs; the figures (guard, snake, the prince standing clear of walls) judged alike since round 46d | `contourscan: ok` |
+| `viewscan.py [file] [lo hi] [seeds]` | one horizon per storey (round 47b): a window, an open arch or breach and a court on one storey place each layer of the view at the same screen y (the camera at rest and 40, 100 px over and 40 px under it), and the court's own art on the windows' horizon | spreads <= 0.5 px, `viewscan: ok` |
+| `panscan.py [file] [lo hi] [seeds]` (release) | the courts' layers at their true depths (round 47b): each court layer alone panned 32 px, every band at its f within 0.01 (the floor's rows at theirs), the theme's view in its bays no nearer than the far side; every theme and hour, Classic | `panscan: ok` |
 | `doorscan.py lo hi`, `openscan.py lo hi`, `tilescan.py lo hi views=2` (release) | no wall art over a doorway (round 15), a window, gate or lift mouth (16c), a floor tile (35c), both modes | every count 0, `tilescan: ok` |
 
 Run by hand, not in `suite.py`: `layoutcmp.py` (layouts identical against a release, for look-only rounds; a generator round differs on
@@ -790,8 +792,8 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   above, a shaft of light and motes; Nun, one Meroe court in three); Osiris takes peristyle or pergola by a hash a floor. Inside a court
   `inOpening` holds: no window, arch, decor or hanging, its lamps free (`lampFree`); no sky beam from a court (`ctBox` in `ryOps`), broad `sky`
   lights instead (`ctLights`, x0.5 in Torchlight). Layers: the cut and what stands on the back plane L1 (room picture, after the AO, `ctBack`),
-  the ceiling's face over it L3 (`ctOver`), the court beyond L0 (`ctBake`: three strips a kind, far side, look, hour, at f 0.7 / 0.18 / 0.5, the
-  Crossing's ground rule, moonlit rims by `crossRim`; `ctBg` in `drawBackdrop` under `G2D.na`, round 27b's and 25e's parallax), live pennants
+  the ceiling's face over it L3 (`ctOver`), the court beyond L0 (the theme's view in its bays, then `ctBake`'s layers at their true depths on the
+  storey's horizon since round 47b, below; moonlit rims by `crossRim`; `ctBg` in `drawBackdrop` under `G2D.na`), live pennants
   in the wind. The pool (owner: "a fall into water kills"): a one-storey spiked pit inside a court off the route's way is a sunken pool (`L._ctP`,
   stakes not drawn), water `CT_PD` 11 px under the coping, L2x (far half before the figures, near half and the cut at the front plane after,
   down to the pit floor's lip), lotus, rings, `SHC` pool, relief rubbed (`ctRel`); falling through its surface is `die('drown')` (card "Drowned
@@ -815,6 +817,30 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   the court beyond in layers (ambas, stelae at three depths with shade sides and long shadows, a rubble-and-timber wall, the fallen Great Stela,
   converging paving). Courts' gusts come from the wind's openings rule (below). Pictures `egyptr45c.py old=FILE` (r45c_jambs.png,
   r45c_jambs_phone.png, r45c_meroe.png, r45c_aksum.png, r45c_gust.gif).
+  Round 47b (owner: "the courts - the background they show isn't in sync with what the windows show, different scenery and it is moving way
+  too fast"; chose C, one horizon per storey; the keep's rise as proposed; "Do NOT move the windows' anchor"; the far side lit as in v88;
+  depths 40 m, 19 m, 21 m; `dev/docs/elements/courts.md`, top). v88 (33 courts, every theme but Nun at every hour, a window of the same storey
+  beside each): the court's strips slid at 0.70 (ground), 0.50 (trees) and 0.18 (far side) against the windows' 0-0.25, each drawn at another
+  depth than it moved (the pylon drawn at 0.12 moved 0.18, Aksum's ambas drawn at 0.004 moved 0.18, Meroë's pyramids moved with the walls);
+  its own lit scene covered the theme's land; its eye line stood 44 px over the floor (67.2 px from the view's top at rest) on every floor
+  while the theme's land in its own bays stood at 89-133 px on floor 5 and off the screen (200-250) from floor 53 (`sink`); and a window,
+  anchored on its headroom row, showed the land 51.2 px above an arch or court of the same storey. Now: every opening of a storey takes the
+  window's anchor (`bgFoot`: the others count their foot a storey up); one horizon, the floor's eye (`BG_EYE`, `bgEyeY`), the land under it
+  by perspective, 29.4 f Hc px for a layer of depth f (`bgHc`: 9 m + 0.6 m a floor to 60 m; it replaces `sink`, kept for the interiors,
+  `BGART` `inner`); the sky's horizon stop, sun, stars, moon and clouds on it (`BG_SKY`). A court's bays show the theme's view less the layers
+  nearer than its far side (`ctViewOf`; Meroë `BGART.meroeCt`, its grade kept; `ctOwnSky` gone); over it `ctBake`'s lit layers, one a depth,
+  drawn at that scale and moved at it (`ctLayersOf`): far side `CT_FARF` (peristyle, pylon and rock courts 0.12, a 40 m court; gardens 0.22;
+  Aksum 0.2), in the court 0.15-0.24 (sphinxes, palms, sycomores, small stelae), the floor a plane 44 f px under the horizon with rows only,
+  its joints, Aksum's converging paving and stones live at their rows' f (`ctFloorLive`). `CT_DBG` (`only`, `noview`) for the tests.
+  `viewscan.py` (window, arch and court on a storey: each layer's y within 0.5 px, the court's eye on the windows' horizon; v88 54.4 px and
+  40-101 px, 1,928 views failing; 47b 0.00 in 2,520 views on floors 3-48 x 2) and `panscan.py` (each court layer alone panned 32 px: every
+  band at its f within 0.01, the floor's rows at theirs, the view no nearer than the far side; v88 fails all 33 cases) in suite.py, render.
+  `beamjag.py` draws the view through the openings as its sky alone (`BGV.flat`): with Meroë's furnaces now in an arch's view the haze over
+  their blurred silhouettes (weighted by the scene's darkness at full resolution, not the S pass) read as steps on floor 13 (STEP 0.026 at
+  `GLP.rs` .5); v87 still fails 39 frames on floors 1-24, 47b ok. Checks: courtscan, viewscan, panscan, openscan, crossscan quick, solidscan
+  things=jamb, beamjag 1-24 ok; rendersmoke 13-18 both ok (0.59 ms/frame mean); egyptr25e the view's slide in descents at most 0.65 px a frame.
+  Look only: `layoutcmp.py` against v88 same (144 of 144). Pictures `egyptr47b.py old.html new.html [outdir]` (r47b_<look>_phone.png,
+  r47b_<look>_3x.png: v88 | 47b, Napata, Aksum, Meroë, Shali and Kerma at each hour on a low and a high floor; r47b_pan_<look>.gif).
 - The sand lift's spike pit (round 41, owner: "The sand lifts become a trap: the sand drains, the door opens, but he has to jump, because the
   slab keeps going"; answers: missing it is death, every sand lift, off by a jump or a step; round 41b, owner: "let's simplify: put spikes at
   the bottom instead of being bottomless"). The slab does not stop at the foot: it sinks on at `SAND_LV` 140 px/s through the foot (now a hole,
@@ -1269,6 +1295,10 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   strip's copies join on whole target pixels (`sn` in paintBackdrop): no seams. Distance blur keys on log depth (`bgBlurR`). The vertical stays
   25e's (BG_VK 0.2: the view moves 0.8-0.85 with the keep up and down, its slide held under 1 px a frame). Look only, both modes.
   `egyptr27b.py` (table of layers, the equation, screen speeds, pan strips, the cost; r27b_parallax.png/.gif).
+  One horizon per storey (round 47b, with the courts, below): every opening of a storey shares the window's anchor (`bgFoot`: a window's foot
+  is in the headroom row; arches, breaches and court bays count theirs a storey up); at the camera's rest on the floor every layer's eye line
+  is the floor's eye, 44 px over its back edge (`bgEyeY`, `BG_EYE` 67.2), and a layer of depth f lies 29.4 f Hc px under it (`bgHc`, the keep's
+  height over the land, 9 m + 0.6 m a floor to 60 m), replacing the uniform `sink`; the interiors (`inner`) keep their old place. `viewscan.py`.
 - Doors are drawn live, but Torchlight's relief reads the room's picture: the back wall's art is flattened under each doorway and its
   frame (`drawRoomStatic`). `doorscan.py` checks every door (floors 1 to 48, both modes) for art over the opening. At the exit he
   climbs the doorway's stairs tread by tread (`EX_*`, `P.exS`). (round 26f, owner: "the prince climbs the wall, he should instead

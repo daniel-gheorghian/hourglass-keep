@@ -11,6 +11,57 @@ Courts are look only. They are laid last in `genLevel` from hashes, with no gene
 windows are untouched (`layoutcmp.py` against v86: same, 144 of 144). The one play change is the pool: a fall into it drowns him at the
 water's surface instead of impaling him on the stakes a storey lower.
 
+## Round 47b: one horizon per storey (owner)
+
+The owner: "the courts - the background they show isn't in sync with what the windows show, different scenery and it is moving way too
+fast. Do research." He chose C from round 47's alternatives: one horizon per storey, the court's far side at its true depth. His answers:
+the keep's rise as proposed (`bgHc`), the windows' anchor left where it is (the arches and courts match the windows instead), the far side
+lit as in v88 (not a silhouette), Meroë's outdoor variant and grade kept, Nun's light wells unchanged, and the depths below.
+
+What v88 did (measured on 33 courts, every theme but Nun at every hour, each with a window of the same storey beside it):
+
+| Fault (v88) | Numbers |
+|---|---|
+| The court's three strips slid too fast | the ground at 0.70, the trees at 0.50, the far side at 0.18 of the walls' motion (measured by pixel shift: 0.696-0.709, 0.497, 0.168-0.187), against 0 (sky) to 0.25 (the nearest band) through the windows |
+| Things drawn at one depth moved at another | the Kushite pylon drawn at 0.12 moved 0.18; the peristyle's far colonnade drawn at 0.26 moved 0.18; Aksum's ambas drawn at 0.004 moved 0.18 (45 times too fast), its far stelae drawn at 0.045-0.07 moved 0.18; Meroë's pyramids (`ctOwnSky`) were drawn with the walls (1.0) |
+| A different scene | the court's own lit ground, far side and trees covered the theme's view; the land the windows show (el-Qurn, the step pyramid, Gebel Barkal, the Deffufa, Shali) showed only above the far side |
+| Two horizons | the court's eye line stood 44 px over the floor (67.2 px from the view's top at rest) on every floor; the theme's land in the same court's bays at 89-133 px on floor 5 and 200-250 px (off the screen) from floor 53, as `L.prog.sink` lowered every layer, the horizon too |
+| Windows a storey higher | a window stands in the headroom row, so its anchor (`bgRest` of its foot) was the rest of the row above the floor; arches, breaches and court bays anchored on the floor itself: the window's land stood 51.2 px (0.8 of a storey) above theirs on the same storey |
+
+What round 47b does:
+
+- **One anchor a storey.** The windows keep theirs; every other opening counts its foot one storey up (`bgFoot`), so all the openings of
+  a storey share the window's anchor. The 51 px are gone the other way round: the arches and courts moved up to the windows (as did
+  Meroë's and the Cistern's interiors in their arches).
+- **One horizon.** At the camera's rest on a storey every layer's eye line is the floor's eye, 44 px over its back edge (`BG_EYE` 67.2 px
+  from the view's top; `bgEyeY`: 25e's vertical parallax taken about that rest, on the windows' anchor). The land lies under it by
+  perspective: a layer of depth f 29.4 f Hc px lower, Hc the keep's height over the land (`bgHc`: 9 m on floor 1, 0.6 m a floor, to 60 m),
+  so as he climbs the near land falls away and the far ridge stays on the horizon. The sky's horizon stop, the dawn sun, the stars, moon and
+  clouds go with it (`BG_SKY`: the moon 44 px over the horizon). The interiors (`inner`: Nun, Meroë's halls) keep their old placement on
+  the shared anchor.
+- **The court shows the theme's view** in its bays (the windows' own layers, factors, sky, sun and moon), less the layers nearer than its
+  far side (`ctViewOf`; Meroë: its outdoor view `BGART.meroeCt`, sky by the hour from `CT_GRADE`, far ridge and pyramids at 0.036, with its
+  own grade as before; `ctOwnSky` is gone).
+- **Its own lit art at true depth.** `ctBake` bakes one layer per depth, drawn at that depth's scale (h = 29.4 f H) and moved at it about
+  the court's middle (`ctLayersOf`, `ctBg`), each on the storey's horizon:
+
+| Kind | Far side (`CT_FARF`) | In the court |
+|---|---|---|
+| peristyle (West, Blue, Hawara, Osiris) | 0.12, a temple court 40 m deep (Medinet Habu's courts 42 m, Luxor's 45-56 m): the far portico, closed-bud columns 7.2 m every 5.8 m, architrave to 10 m | sycomores at 0.16 |
+| pylon court, Kushite (Napata, Meroë) and mudbrick (Garama) | 0.12: the pylon 13 m, flagstaffs and live pennants | ram sphinxes in two rows at 0.15 and 0.2 (Kush), palms at 0.19 |
+| rock (the Well Corridors) | 0.12: the cliff in beds with rock-cut doorways | sycomores at 0.17 |
+| granite (Aksum) | 0.2, a palace court 21 m (Dungur): the low wall of rubble between timber beams | small stelae and the Great Stela lying at 0.23; beyond the wall the theme's ambas (0.004) and stelae (0.11) |
+| pergola (Shali, Kerma, Osiris) | 0.22, a garden 19 m: its far wall, whitewashed mudbrick, and palms before it | palms and sycomores at 0.24, lotus on the channel at its row (0.66) |
+
+  The court's floor is a plane seen from the eye 1.5 m (44 px) over it: its row at depth f lies 44 f px under the horizon. Its baked layer
+  holds rows only, nothing along x, so its speed shows nothing; the joints of its paving (every 1.36 m on rows 0.16-0.48), Aksum's paving
+  converging to the vanishing point and its stones are drawn live at their own rows' f (`ctFloorLive`).
+
+Checks: `viewscan.py` (window, arch and court on one storey: every layer's screen y within 0.5 px, and the court's eye on the windows'
+horizon; v88 54.4 px and 40-101 px off, 1,928 views failing; 47b 0.00 px in 2,520 views, floors 3-48 x 2 seeds) and `panscan.py` (each
+court layer alone, panned: every band at its f within 0.01, the floor's rows at theirs, the theme's view no nearer than the far side; v88
+fails every theme and hour). `layoutcmp.py` against v88: same. Pictures `egyptr47b.py old.html new.html [outdir]`.
+
 ## Round 45c: thresholds, Meroë's grade, Aksum's depth (owner)
 
 **Thresholds** (owner chose C, "respecting the theme: no standard single way of doing it"). At each end of a court a near jamb stands on the
@@ -42,7 +93,8 @@ cells' lips are its own, `OWN`), `shadowscan` kind `jamb`.
 3 cells); the 7-8 courts a floor are unchanged.
 
 **Meroë's grade** (owner: G2 "plus a true per-court grading in Torchlight ... even if it is harder it is more accurate"). Meroë's courts show
-their own outdoor sky with Meroë's steep pyramids far off (`ctOwnSky`, in `ctBg`; the theme's view is the furnace halls). In Torchlight the
+their own outdoor sky with Meroë's steep pyramids far off (`ctOwnSky`, in `ctBg`; the theme's view is the furnace halls; since round 47b
+`BGART.meroeCt` through `paintBackdrop`, on the storey's horizon). In Torchlight the
 composite takes up to four court boxes in view (`u_cgb`, `ctGradeU`) and mixes there, feathered at the edges, to the court's own grade
 (`CT_GRADE.meroe`: cooler shadows and lights, saturation 0.84, a white balance toward daylight); the furnace halls keep their warm forge grade.
 Classic gets the matching grade after its light pass (`ctGrade2D`: a cool multiply and a partial desaturation over the same boxes).
@@ -60,11 +112,11 @@ Pictures: `egyptr45c.py old=FILE` (r45c_jambs.png, r45c_jambs_phone.png, r45c_me
 
 | | |
 |---|---|
-| Code | `L.courts` (`{k, r, c0, c1, pits, h, far}`): `k` is the kind, `r` the row he walks in, `c0..c1` its cells, `pits` the pools' columns, `far` a pylon court's far side. `L._ctS` holds the court's cells (rows `r-1` and `r`) and `L._ctP` the pools by cell. Placement: `placeCourts`, `ctKindOf`, `CT_KIND`, `CT_FAR`, `CT_MIN` 4, `CT_MAX` 8, `CT_WANT` 7, `CT_GAP` 14, `CT_DR` 3, `CT_PD` 11. Drawing: `ctBack`, `ctStruct`, `ctColumn`, `ctWell`, `ctOver`, `ctBake` (`CTB`), `ctBg`, `ctOpen`, `ctBox`, `ctLights`, `ctLive`, `ctEmis`, `ctRel`. Play: `ctPoolHit`, `die('drown')`. Wind: `ctGustSrc` |
+| Code | `L.courts` (`{k, r, c0, c1, pits, h, far}`): `k` is the kind, `r` the row he walks in, `c0..c1` its cells, `pits` the pools' columns, `far` a pylon court's far side. `L._ctS` holds the court's cells (rows `r-1` and `r`) and `L._ctP` the pools by cell. Placement: `placeCourts`, `ctKindOf`, `CT_KIND`, `CT_FAR`, `CT_MIN` 4, `CT_MAX` 8, `CT_WANT` 7, `CT_GAP` 14, `CT_DR` 3, `CT_PD` 11. Drawing: `ctBack`, `ctStruct`, `ctColumn`, `ctWell`, `ctOver`, `ctBake` (`CTB`, `CT_FARF`, `ctFarF`), `ctViewOf`, `ctAnchor`, `ctLayersOf`, `ctBg`, `ctFloorLive`, `CT_DBG`, `ctOpen`, `ctBox`, `ctLights`, `ctLive`, `ctEmis`, `ctRel`. Play: `ctPoolHit`, `die('drown')`. Wind: `ctGustSrc` |
 | Layer | The cut and what stands on the back plane (colonnade, posts and vine, parapet, piers, the light well's recess) are L1 in the room picture. The ceiling's face over a court is L3 in the room picture. The court beyond is L0 (`ctBg`, under `G2D.na`). A pool is L2x: its far half before the figures, its near half and cut face after them. The hanging vine is L2, near side, after the figures. The dapple and the well's shaft are light. See [layers](../layers.md) |
 | Generated by | `placeCourts`, after `placeHills` and before `placeWinds`: hashes of the seed, the row and the cells (no generator stream) |
 | Bot | No new action. The bot never falls into a pool (pools are only off the route's own way) |
-| Checks | `courtscan.py` (in suite.py, gen); `layoutcmp.py` (same); `windscan.py` (a court is a gust source); `lampscan.py`, `doorscan.py`, `openscan.py`; `layerscan.py kinds=court,pool,vine,dapple,lwell`; `shadowscan.py kinds=pool,vine`; `run2.py`, `featbot.py`, `p4bot.py`, `forktest.py`; `rendersmoke.py` |
+| Checks | `courtscan.py` (in suite.py, gen); `viewscan.py`, `panscan.py` (render, round 47b); `layoutcmp.py` (same); `windscan.py` (a court is a gust source); `lampscan.py`, `doorscan.py`, `openscan.py`; `layerscan.py kinds=court,pool,vine,dapple,lwell`; `shadowscan.py kinds=pool,vine`; `run2.py`, `featbot.py`, `p4bot.py`, `forktest.py`; `rendersmoke.py` |
 | Pictures | `egyptr45.py old=FILE`: r45_courts.png (each kind and hour, before and after, 3x, both modes), r45_phone.png, r45_pool.png (a fall into a pool), r45_gust.gif, r45_vine.gif |
 
 ## Example
@@ -139,17 +191,20 @@ It stays the front plane: nothing live is drawn over it.
 
 ### The court beyond (L0)
 
-`ctBake` paints three strips once per kind, far side, look, hour and scale (`CTB`, nine kept): the ground (`f` 0.7), the far side (0.18)
-and the near trees and sphinxes (0.5). Each strip is 640 world px wide, tiled seamlessly, at 0.6 of the view's scale (at most 3). The ground
-at depth `f` lies at `eye + (floor - eye) f`, with the eye 44 px over the floor's back edge, as in the Crossing. Things fade toward the sky's
-horizon colour with depth. At night every edge facing the moon takes a silver rim (`crossRim`).
+The court's bays (two cells each) are openings (`ctOpen`, each carrying its court): the theme's view is painted there by `paintBackdrop`,
+the windows' layers, anchor, factors, sky, sun and moon, less the layers nearer than the court's far side (`ctViewOf`; Meroë's outdoor
+`BGART.meroeCt`). Each bay sends its `sky` light, and they share the storey's anchor (`bgAnchors`, `bgFoot`: the windows').
 
-`ctBg` lays them inside each court's opening after the theme's own backdrop, in `drawBackdrop` under `G2D.na`. Each strip moves by its depth
-factor about the court's middle (round 27b) and vertically by round 25e's rule from the court's rest (`BG_VK`). The pylon's pennants are
-live: they stream with the wind (`windAt`) and flutter faster in it.
+`ctBake` paints the court's own layers once per kind, far side, look, hour and scale (`CTB`, nine kept), one canvas a depth: the floor
+(rows only), the far side at `CT_FARF` and what stands in the court (0.15-0.24; lotus at 0.66 on the channel). Each is 640 world px wide,
+tiled seamlessly, at 0.6 of the view's scale (at most 3), drawn at its depth's scale (h = 29.4 f H). The floor at depth `f` lies 44 f px
+under the eye line, the eye 44 px over the floor's back edge (the Crossing's pinhole). Things fade toward the sky's horizon colour with
+depth. At night every edge facing the moon takes a silver rim (`crossRim`).
 
-The court's bays (two cells each) are openings (`ctOpen`): the theme's view is painted there, each sends its `sky` light, and they share
-one anchor (`bgAnchors`).
+`ctBg` lays them inside each court's opening after the theme's view, in `drawBackdrop` under `G2D.na`, floor first, then far to near
+(`ctLayersOf`): each moves by its f about the court's middle (round 27b) and stands on the storey's eye line for its depth (`bgEyeY`,
+round 47b). The floor's features along x are live at their own rows' f (`ctFloorLive`). The pylon's pennants are live: they stream with the
+wind (`windAt`) and flutter faster in it. `CT_DBG` (`only`, `noview`) serves `panscan.py`.
 
 ### Live parts
 
@@ -194,13 +249,16 @@ keeps state: rewind-safe.
   `layoutcmp: same`.
 - The pool's death is the only play: a court's pool is a pit the route never enters.
 - The ceiling's face over a court is the front plane, in the room picture. Nothing live is drawn over it.
-- The court beyond is baked once (strips) and laid down live. A new far side is one more case in `ctBake`, in whole periods of 640 px.
+- The court beyond is baked once (a layer a depth) and laid down live. A new far side or thing in a court is drawn at its depth's scale
+  (h = 29.4 f H) on its own layer at that f (no nearer than 0.25 above the floor), in whole periods of 640 px; anything along x on the floor
+  is live at its row's f. `viewscan.py` and `panscan.py` must print ok.
 - `courtscan.py` must print `courtscan: ok`; `layerscan.py` with the new kinds and `shadowscan.py kinds=pool,vine` must pass.
 
 ## History
 
 - round 45: courts (peristyle, vine pergola, pylon court, light well, pool); the arch dust softened.
 - round 45c: thresholds (a near jamb of the theme's architecture at each end, worn with the wall), Meroë's own sky and grade, Aksum's depth in layers, court gusts from the openings' rule.
+- round 47b: one horizon per storey: the theme's view in the bays on the windows' anchor, the court's own art at true depths (`CT_FARF`) on the shared horizon, the floor's features live, Meroë's outdoor view through `paintBackdrop`; `viewscan.py`, `panscan.py`.
 - round 46c: a jamb's shaded edge is its own material darker, opaque (was black at .55), and on a round column it and the lit edge hug the shaft (`jambEdge`: they stood beside it on the wall); in Torchlight its body takes the scene alpha mark (`jambMark`, `HILL_A`), so the sky beams' haze is left off it (L3); the architrave's, logs' and beams' edges and rings and the vine's tendrils by the contour rule (`selC`, `selOut`).
 
 Details in CLAUDE.md.
