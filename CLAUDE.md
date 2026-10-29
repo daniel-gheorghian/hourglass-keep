@@ -48,7 +48,7 @@ is a placeholder: only the built `index.html` carries the release number.
 2. Run the regression suite from `dev/tools` with `python3 suite.py release`. It runs every test below spread over the
    machine's cores. Every job belongs to one of three suites by its group (`SUITES` in suite.py; a group in none stops the run before
    it starts): `play` (the bot and play checks: run2, featbot, p4bot, forktest, hinttest, grablabel, swingtest, liftkick, lowceil,
-   r38b_tests, sawceil, primtest, hdtest, lifttest, respawnplates, slabresume, gratepeek), `gen` (generator and layout scans: metrics40,
+   r38b_tests, sawceil, hilljump, primtest, hdtest, lifttest, respawnplates, slabresume, gratepeek), `gen` (generator and layout scans: metrics40,
    guardscan, forkscan, puzzlescan, vertscan, featurescan, orphanscan, mazescan, wellcorr, lampscan, slabscan, sandshaft, wellscan, hillscan, windscan, courtscan) and
    `render` (drawing checks: rendersmoke, liftscan, crossscan, cpscan, shadowscan, doorscan, openscan, tilescan, beamjag, heapscan, solidscan, contourscan, stormfair, glauto,
    metaltest, rewindrooms, figscan). The tier chooses the jobs; `--suite play,render` runs only those suites, in that order (default
@@ -96,6 +96,7 @@ is a placeholder: only the built `index.html` carries the release number.
 | `layerscan.py lo hi [classic]` (by hand) | nothing in the corridor drawn over the front plane: each kind drawn and left out, the faces' and lips' pixels unchanged (round 39, `dev/docs/layers.md`) | `layerscan: ok` |
 | `lampscan.py`, `slabscan.py`, `sandshaft.py`, `wellscan.py`, `figscan.py` | lamps keep clear (round 19); a slab slides up into stone (25d); every sand lift in a shaft (26e); the wells' sand (21b); the body's poses against v69 (round 23; only where `hk_v69_release.html` is) | `ok`, `slabscan: ok`, `sandshaft: ok`, `ok`, `figscan: ok` |
 | `hillscan.py lo hi [seeds]` | round 43's heaps and drifts: only on a run's plain floor (`flat` segs, never `breathe()`'s padding), off timed stretches, the chase and fighters' ground, a heap open above, sizes, themes; at least one a floor from floor 3; counts and the time they add | `hillscan: ok` |
+| `hilljump.py [file] lo hi [seeds] [step=N]` | round 47a: no jump onto a hill: running (every 4 px 2-122 px before its foot), standing (2-50) and from on it, by the game's physics; no flight but the low leap lands on or past a hill's foot or leaves the floor on one, no crossing beats its pace by over 0.1 s, no crawl enters one | `hilljump: ok` |
 | `windscan.py lo hi [seeds] [nopush] [noease]` | the wind (round 44; round 45c's placement by openings): every zone on headroom over plain floor or a one-storey gap he jumps, every seg there calm or a gap jump and no other within a cell, off timed stretches, the chase, fighters' ground, doors; against the run; 3-8 cells; gusts only from floor 7 with the peak by band, a lull of 1.8 s or more; a steady zone over a jump made at its strength; he stands in every gust 9 s and stays in it; a death eases a zone to 0.6, a rewind keeps it, a second death 0.3 | `windscan: ok` |
 | `courtscan.py lo hi [seeds] [nodrown]` | round 45's courts: 4-8 cells of headroom under stone (a light well 2), 7-8 a floor from floor 3, none on 1-2, never two in view (3 rows, 14 cells), none by a lift or door, kinds by theme, every one-storey spiked pit inside a court a pool (and every pool one), no window, arch or breach beam, own opening, wall lamp or hanging left inside one; a walk off a pool's coping drowns him at its surface; each court's two jambs of its theme's kind, 3 cells open between them, none intact beside a breach | `courtscan: ok` |
 | `shadowscan.py lo hi` (release) | no figure's lamp shadow on what stands before the back wall, Torchlight (round 38a) | `shadowscan: ok` |
@@ -660,12 +661,12 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   slowing terrain, `L.hills` (not features, not traps: G1 untouched), laid by `placeHills` last in `genLevel` from hashes only (no stream:
   `layoutcmp.py` against v86 same, 144 of 144; `metrics40.py` v86 identical): a rubble heap (2 tiles, crest 22-25 px; B1 tumbled dressed
   blocks of the theme's stone on a dark grit mound, B2 a rain-washed mudbrick slump in Kerma and Shali, B3 a fallen papyrus-bundle column
-  one heap in four) he clambers over at `HILL_CLIMB` 35 px/s, drawn on its surface (`hillLift`, look only as round 16a's block; a running
-  jump taken before it clears it); a sand drift (C2: 3-6 tiles, a dune; round 43b, owner: "Wind truly against him, to justify the slowing down": the
+  one heap in four) he clambers over at `HILL_CLIMB` 35 px/s, drawn on its surface (`hillLift`, look only as round 16a's block; since
+  round 47a no jump carries him onto it, below); a sand drift (C2: 3-6 tiles, a dune; round 43b, owner: "Wind truly against him, to justify the slowing down": the
   wind blows from ahead, so he meets the slip face at 34 degrees first, wades up it (leaning harder, look only) and goes down the long windward
   back, the brink curving across the depth, sand streaming off the crest toward him (`hillStream`, the jet stream along a path made once); banked against the back wall, ripples, grain-flow streaks; one in
   three with half-buried blocks, C4) he wades at `HILL_WADE` 42 px/s, drawn `HILL_WD` 13 px deep (the near sand over his shins), with no
-  jump of any kind (`tryJump`, `startJump`, `stRun`); wading or clambering he is drawn on the clip's walk cycle (43 px a cycle) with a lean.
+  jump of any kind (`tryJump`, `startJump`, `stRun`; a heap too since round 47a); wading or clambering he is drawn on the clip's walk cycle (43 px a cycle) with a lean.
   Placement: the run menu's plain floor only (`flat` segs; `breathe()`'s padding never, but it may serve as the margins `HILL_M0` 1 before,
   `HILL_M1` 3 after, so no run-up is slowed), never between a timed gate's plate and its gate (by the route's segs; so estPath and the timers
   are unchanged), never in the chase, on fighters' ground, a lamp's cell, by a clock, flask, door, lift, block or side passage; heaps from
@@ -714,6 +715,30 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   37-48 both modes 0 of 180 views; rendersmoke 13-15 both ok (0.59 ms/frame mean, a heapscan running beside it). Test switches: `HILL_DBG` (`stream` off for heapscan; `end` forces a look). Pictures
   `egyptr46b.py old.html new.html [outdir]` (r46b_<case>_3x.png and _phone.png: the owner's B3, B1, B2, a drift before an opening, C4, B1
   in the Blue Chambers, before | after, both modes; r46b_ends_3x.png: v87 and the three ends on two columns).
+  No jumping over them (round 47a, owner: "the hills/heaps/drifts - you shouldn't be able to jump over them, only way is to walk at the pace
+  they let you"; his choices on r47's research and pictured alternatives: A2, the checked leap; at the foot PoP's stop with the test foot, "I
+  always liked that in PoP"; no crawling on a hill; no words; the low leap keeps its way). v88 (`hilljump.py`, floors 3-48 x 2 seeds, 344
+  hills): a running jump from the floor before cleared every heap (saving up to 1.57 s of its 1.83 s clamber) and landed half way into every
+  drift (up to 2.2 s), a standing jump landed inside every one, Jump on a heap was a standing jump off it (up to 1.5 s), the crawl (42 px/s)
+  beat the clamber (35): 341 of 344 hills broken (the 3 others have no floor before them). Now: no jump of any kind while his feet are on
+  a hill, no crawl into one (`stCrouch`); Jump whose level arc would carry him onto a hill ahead on his row (`hillAhead`: his half width BW
+  over its foot) is checked (`hillCheck`, `startJump`): the carry is cut in `launch` so he lands `PB_GAP` (BW+2) short of its foot (a pit
+  or trap before it still cleared, its far lip + `JS_FOOT`), with no run-on (`P.pbQ`), and there he tests it with his foot; with less than
+  `PB_MIN` 24 px (running) / `PB_MINS` 16 (standing) of carry left there is no leap at all: he brakes to the foot (PoP's runstop, SDLPoP
+  seqtbl.c frames 53-56 and 49-52, 9 x-units of slide; drawn on CMU 16_08's sudden stop, `settlePose('stop')`, P.x eased to a stop at
+  it) or steps up to it (standing, the careful step). The test foot (state `probe`, `PB_T` 0.62 s, `startProbe`, `pbA`, `pbHx`, `tpTgt`'s
+  edge 2): PoP's testfoot (seqtbl.c: frames 121-126 reach the lead foot out, 86 tests, 116-119 stand back up, net dx 0) on the
+  motion-capture body (`stepPose`: 139_29's careful stance and round 33b's envelope; no new keys): he sinks on the rear leg (`PB_H`), leans
+  (`PB_L`), the drawn hip lunges toward it with the rear foot planted (`pbHx`, `P.pose.ox`, look only) and the lead foot's ball goes onto
+  the surface where it first stands `PB_HS` 3 px high (`P.pbR`, at most `PB_RMAX`; a drift's toe eases in), pitched with the rubble's
+  slope (`PB_P`) or `PB_SINK` into the sand, held and drawn back; a trickle of grit or sand at the toe and its footfall (`pbTouch`) are the
+  only cue. P.x never enters the hill; he then stands, and the arrow held takes him in at its pace. The low leap (a ceiling at his height)
+  is left as it was (355 of 17,272 tries in hilljump). Layouts, `L.path`, estPath, the timers and the bot unchanged (it never jumps at a
+  hill): `layoutcmp.py` against v88 same (144 of 144), `metrics40.py` no flags, the bot's frames on floors 3-48 x 2 identical to v88's (92
+  of 92). `hilljump.py` (suite.py play, four jobs, not quick): no flight but the low leap lands on or past a hill's foot or leaves the
+  floor on one, no crossing beats its pace by over 0.1 s, no crawl enters one; v88 FAIL 341 of 344, round 47a `hilljump: ok`. Pictures
+  `egyptr47a.py old.html new.html [outdir]` (r47a_<case>_<mode>.png: v88 | 47a strips at 3x, the checked leap, the braking stop and the
+  careful step, each with the test foot, at a heap and a drift; r47a_<case>_phone.png; r47a_<case>.gif).
 - Wind (round 44, owner after r44's alternatives W1-W5: "your recommendation"; `dev/docs/elements/wind.md`). `L.winds` (not features, not
   traps), laid by `placeWinds` after `placeHills` from hashes only (layouts, `L.path`, timers unchanged: `layoutcmp.py` v86 same, 144 of 144;
   `metrics40.py` v86 identical), on `plainRuns`' stretches (round 43's finder, shared) and `WIND_JM` 3 cells clear of every seg that is not

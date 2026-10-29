@@ -2199,7 +2199,7 @@ function lerpPose(a,b,t,out){out=out||mk({});for(const k of PK)out[k]=a[k]+(b[k]
 // (LAGM): the clip cycles (run, walk, crawl, climb, drink, swing) carry their own overlap and are followed as before; held hands are IK'd
 // to their grips (gF/gB at the full rate), so a grip never lags. In the air the legs trail the body too (they are no contact there).
 const PKR=PK.map(k=>({aF:0.7,aB:0.7,eF:0.55,eB:0.55,head:0.75,hp:0.75,sb:0.85}[k]||1)),PKRA=PK.map((k,j)=>PKR[j]*({hF:0.75,hB:0.75,kF:0.7,kB:0.7}[k]||1));
-const LAGM={stand:1,turn:1,stop:1,land:1,jumpPrep:1,landHurt:1,step:1,edgeWalk:1,bonk:1,garde:1,advance:1,retreat:1,blocked:1,strike:1,parry:1,hurt:1,lowStrike:1,dead:1,air:2,jumpUp:2,hang:2,slide:2};
+const LAGM={probe:1,stand:1,turn:1,stop:1,land:1,jumpPrep:1,landHurt:1,step:1,edgeWalk:1,bonk:1,garde:1,advance:1,retreat:1,blocked:1,strike:1,parry:1,hurt:1,lowStrike:1,dead:1,air:2,jumpUp:2,hang:2,slide:2};
 function followPose(cur,tgt,dt,rate,m){if(!m)return lerpPose(cur,tgt,1-Math.exp(-dt*rate),cur);const R=m===2?PKRA:PKR;
   for(let j=0;j<PK.length;j++){const k=PK[j];cur[k]+=(tgt[k]-cur[k])*(1-Math.exp(-dt*rate*R[j]));}return cur;}
 // (2) Settles, measured (r23poses.py SETTLE: MCK.set_land from 16_05's landing, MCK.set_stop from 16_08's sudden stop): keyed by the time
@@ -3026,7 +3026,7 @@ function respawn(){S.floorDeaths=(S.floorDeaths||0)+1;S.deaths++;S.floorTime=lev
 // Every 0.1s the whole moving world is copied into a ring of snapshots (about 10s). Turning back the sands
 // plays them in reverse to a calm moment about five seconds before the fall, and play resumes from there.
 const SANDS=3,REW=[];let rewTick=0,rw=null,deathAt=0;
-const REW_STATES=['stand','run','stop','garde','advance','retreat','crouch','step','turn','land'];
+const REW_STATES=['stand','run','stop','garde','advance','retreat','crouch','step','turn','land','probe'];
 const cloneE=o=>{const c=Object.assign({},o);if(o.pose)c.pose=Object.assign({},o.pose);if(o.cs)c.cs=Object.assign({},o.cs);if(o.ledge)c.ledge=Object.assign({},o.ledge);return c;};
 function snapAll(){const p=cloneE(P);p.foe=P.foe?G.indexOf(P.foe):-1;p.drinkIt=P.drinkIt?L.items.indexOf(P.drinkIt):-1;
   return {t:gameTime,P:p,G:G.map(cloneE),SN:SN.map(o=>Object.assign({},o)),pg:pendingGuards.map(q=>({at:q.at,src:q.src?G.indexOf(q.src):-1,spec:q.spec})),
@@ -3053,7 +3053,7 @@ function stepRewind(){rw.acc+=1.6;while(rw.acc>=1&&rw.idx>rw.target){rw.acc-=1;r
   applySnap(REW[rw.idx]);
   if(rw.idx<=rw.target){REW.length=rw.target+1;rw=null;rwEnd=performance.now()/1000;mode='play';GLP.quiet=performance.now()+3000;clearInput();P.inv=1.2;P.stumble=0;deadT=0;
     msg((S.sands>0?'The hours turn back. '+S.sands+(S.sands===1?' hour':' hours')+' left in hand.':'The hours turn back. You have none left until the next sky clock.'),2.8);}}
-const STABLE=['stand','run','stop','garde','advance','retreat','land','crouch','step','turn','parry','strike','blocked'];
+const STABLE=['stand','run','stop','garde','advance','retreat','land','crouch','step','turn','parry','strike','blocked','probe'];
 function snapshotResume(){
   if(!L||!P||mode!=='play'||!STABLE.includes(P.state)||!supported())return;
   if(L.lifts.some(f=>P.x>f.ca*TW-20&&P.x<(f.cb+1)*TW+20&&P.y>=f.yT-1&&P.y<=f.yB+1))return; // (the platform is back at its first end when the floor is rebuilt)
@@ -3154,8 +3154,55 @@ function hazardEdge(maxD){
   }
   return null;
 }
-function tryJump(){if(hillOn(P.x,P.y,1))return;const e=hazardEdge(30);if(e!==null&&Math.abs(e-P.x)>6){P.tx=e-P.face*4;setState('edgeWalk');return;}startJump('stand');}
-function startJump(kind){if(hillOn(P.x,P.y,1))return;P.jumpKind=kind;if(kind==='run')launch();else{P.jLow=beamOverhead(false);P.jFx=feetX(P.pose)+(P.pose.ox||0);setState('jumpPrep');}} // (round 32: jLow, the wind-up's look under a ceiling)
+// ---- Round 47a (owner: "the hills/heaps/drifts - you shouldn't be able to jump over them, only way is to walk at the pace they let you";
+// his choices on r47's research: A2, the checked leap; at the foot PoP's stop with the test foot, "I always liked that in PoP"; no crawling on
+// a hill; no words; the low leap keeps its way). v88: a running jump from the floor before cleared every heap (264 of 264, saving up to 1.57 s
+// of its 1.83 s clamber) and landed half way into every drift (up to 2.2 s); a standing jump landed inside every one; Jump on a heap was a
+// standing jump off it (up to 1.5 s); the crawl (42 px/s) beat the clamber (35). Now:
+//  - no jump of any kind while his feet are on a hill (a heap too, as a drift was), and no crawl into one (stCrouch);
+//  - Jump whose level arc would carry him onto a hill ahead on his row (his half width BW over its foot) is checked (hillCheck): the carry is
+//    cut so he lands PB_GAP short of the foot (launch; a pit or trap before the foot is still cleared, its far lip + JS_FOOT), no run-on, and
+//    there he tests the hill with his foot; with less than PB_MIN (running) / PB_MINS (standing) of carry left there is no leap at all: he
+//    brakes to the foot (running, PoP's runstop: SDLPoP seqtbl.c frames 53-56 then 49-52, 9 x-units of slide, on CMU 16_08's braking,
+//    settlePose 'stop') or steps up to it (standing, the careful step) and tests it. The test foot is PoP's (seqtbl.c testfoot: frames
+//    121-126 reach the lead foot forward, 86 tests, 116-119 stand back up, net dx 0, about 1 s at 12 fps): on the motion-capture body
+//    (stepPose, the clip 139_29's careful stance, round 33b's TT envelope) he sinks on the rear leg and sets the lead foot's ball PB_IN onto
+//    the rubble's slope (pitched with it) or into the sand (PB_SINK under its surface), holds it and draws it back; a trickle of grit or
+//    sand at the toe and its footfall (pbTouch) are the only cue (owner: no words). P.x never enters the hill; then he stands, and the arrow
+//    held takes him in at the hill's pace.
+//  - the low leap (a ceiling at his height) is left as it was (owner). Look and play only here: layouts, estPath, timers and the bot (which
+//    never jumps at a hill: 0 of 641 on floors 3-48 x 4) unchanged. hilljump.py checks it.
+const PB_GAP=BW+2,PB_MIN=24,PB_MINS=16,PB_T=0.62,PB_IN=5,PB_HS=3,PB_RMAX=24,PB_LG=12,PB_SINK=2.5,PB_H=4,PB_L=0.3,PB_P=0.6,PBH={h:null,x:0,f:1,r:0};
+// the test foot's envelope at u (0..1 of PB_T): out, held, drawn back (PoP 121-126 out, 86 held, 116-119 back)
+function pbA(u){return s32(u/0.3)*(1-s32((u-0.66)/0.3));}
+// the drawn hip's lunge toward it (look only, the rear foot planted): what the ball's reach needs past PB_LG ahead of the hip
+function pbHx(u){return Math.max(0,(P.pbR||0)-PB_LG)*pbA(u);}
+// the nearest hill ahead on his row whose foot a level arc of carry D px reaches (BW past its foot): {h,i,e (its foot's x),ds}
+function hillAhead(D){const hs=L&&L.hills;if(!hs||!hs.length)return null;const r=pRow();let best=null;
+  for(let i=0;i<hs.length;i++){const h=hs[i];if(h.r!==r)continue;const e=P.face>0?h.c*TW:(h.c+h.n)*TW,ds=(e-P.x)*P.face;if(ds<0||ds>=D+BW)continue;if(!best||ds<best.ds)best={h,i,e,ds};}
+  return best;}
+// a jump of this kind checked by a hill: null (no hill in its reach, or the low leap), else the carry c that lands it PB_GAP short of the
+// foot (never short of a pit's or trap's far lip before it)
+function hillCheck(kind){const run=kind==='run';if(beamOverhead(run))return null;
+  const D=(run?183:132)*2*(run?190:159)/GRAV,q=hillAhead(D);if(!q)return null;
+  let need=0,cc=pCol();const fc=P.face,r=pRow();
+  for(let k=0;k<6;k++){cc+=fc;if(((fc>0?cc*TW:(cc+1)*TW)-P.x)*fc>=q.ds)break;if(jsHaz(cc,r))need=Math.abs((fc>0?(cc+1)*TW:cc*TW)-P.x)+JS_FOOT;}
+  return {q,c:Math.max(q.ds-PB_GAP,need),need};}
+// at the foot: brake (running), step up (standing, further than TT_D) or none, then the test foot (state 'probe')
+function startProbe(q){let d=(q.e-P.face*PB_GAP-P.x)*P.face;if(d<0)d=0;const v=Math.abs(P.vx);
+  P.sx=P.x;P.pbX=P.x+P.face*d;P.pbI=q.i;P.pbE=q.e;P.pbM=v>20?1:d>TT_D?2:0;P.pbB=P.pbM===1?clamp(2*d/v,0.08,0.7):P.pbM===2?STEP_T:0;
+  P.pbS=clamp(v/RUN,0.35,1);P.vx=0;P.pbQ=null;P.pbT=0;P.pendingJump=false;TP.d=-1;
+  {const h=L.hills[q.i],Ln=h.n*TW;let k=PB_IN;while(k<PB_RMAX&&hillTop(h,P.face>0?k:Ln-k)<PB_HS)k++;P.pbR=PB_GAP+k;} // (the ball's reach from the hip: to where its surface stands PB_HS high, a drift's toe eases in)
+  setState('probe');P.stT=gameTime;pbSet();}
+function pbSet(){PBH.h=L.hills[P.pbI]||null;PBH.x=P.pbX;PBH.f=P.face;PBH.r=P.pbR||PB_GAP+PB_IN;}
+// the toe meets it: a trickle of grit or sand where it presses, and its footfall (look only)
+function pbTouch(){const h=L.hills[P.pbI];if(!h)return;const x=P.pbX+P.face*(P.pbR||PB_GAP+PB_IN),y=P.y-Math.max(1,hillTop(h,x-h.c*TW)-1);
+  for(let i=0;i<(h.d?5:3);i++)FX.push({x:x+(Math.random()-0.3)*3*P.face,y,vx:-P.face*(6+Math.random()*14),vy:-Math.random()*(h.d?18:8),g:h.d?40:120,life:0.35+Math.random()*0.25,t:0,col:h.d?'rgba(214,190,140,.6)':'rgba(120,104,92,.75)',sz:h.d?1.4:1.1});
+  Snd.play(h.d?'sandstep':'step');}
+function tryJump(){if(hillOn(P.x,P.y))return;const e=hazardEdge(30);if(e!==null&&Math.abs(e-P.x)>6){P.tx=e-P.face*4;setState('edgeWalk');return;}startJump('stand');}
+function startJump(kind){if(hillOn(P.x,P.y))return;P.pbQ=null;P.pbC=null;
+  {const hc=hillCheck(kind);if(hc){if(!hc.need&&hc.c<(kind==='run'?PB_MIN:PB_MINS)){startProbe(hc.q);return;}P.pbQ={i:hc.q.i,e:hc.q.e};P.pbC=hc.c;}} // (round 47a: the checked leap)
+  P.jumpKind=kind;if(kind==='run')launch();else{P.jLow=beamOverhead(false);P.jFx=feetX(P.pose)+(P.pose.ox||0);setState('jumpPrep');}} // (round 32: jLow, the wind-up's look under a ceiling)
 // Under stone at his height (a gate's or a guillotine's lintel, a corridor one storey tall, an upper floor's slab) a full
 // jump would put his head through it: he takes a low, flat leap instead, ducked forward. It carries a little less far, and it
 // is taken wherever the full arc meets a ceiling, even where it may fall short (falling short is his own doing; going through
@@ -3195,6 +3242,7 @@ const RJ_K=0.75,RJ_DV=GRAV*STEP*(1/RJ_K-1)/2;
 function rjK(){return P.jumpKind==='run'?RJ_K:1;}
 function launch(){const run=P.jumpKind==='run';P.jx=P.x;P.jy=P.y;let vx=run?183:132,vy=run?190:159;P.lowJump=false;
   if(beamOverhead(run)){[vx,vy]=LOWJ[run?'run':'stand'];P.lowJump=true;}
+  if(P.pbQ&&P.pbC!=null&&!P.lowJump)vx=Math.max(0,P.pbC)/(2*vy/GRAV); // (round 47a: the checked leap lands PB_GAP short of the hill's foot)
   const k=run?RJ_K:1; // (round 35a: the running jump's clock, see RJ_K; vx, vy here are the arc's geometry)
   // (round 32, look only) the leg that takes off: the gather's choice, else the foot on the floor now; the drawn x carried into the arc
   if(run){if(P.jGo==null)P.jMir=(((P.ph%1)+1)%1)<0.5;}else P.jMir=false;P.jGo=null;P.jLe=null;
@@ -3463,6 +3511,10 @@ function tpToe(u,uc){return u<uc-0.1||u>uc+0.09?0:u<uc?s32((u-(uc-0.1))/0.09):1-
 // the feet's targets at u (TPT: each ball's x from the hip, its lowest point over the floor, its pitch; the hip's height before the reach)
 function tpTgt(u,hx,d,edge){const E=MCS.ev,F=MCS.F,B=MCS.B,v=tpWarp(u),T=TPT;T.v=v;T.a=0;
   const rest=TP.RB*(1-s32(u/0.06)+s32((u-0.94)/0.06)); // (standing, the rear foot rests 0.8 px up on a bent knee; it takes the weight first)
+  if(edge===2){const a=pbA(u),H=PBH,h=H.h;T.a=a; // (round 47a: the test foot onto a hill: the ball set PB_IN into it, on the rubble's slope or into the sand)
+    const bx=TP.F0+(H.r-TP.F0)*a,hu=H.x+H.f*bx-(h?h.c*TW:0),hs=h?hillTop(h,hu):0,sl=h?(hillTop(h,hu+H.f*2)-hillTop(h,hu-H.f*2))/4:0,on=s32((u-0.22)/0.16)*(1-s32((u-0.6)/0.22));
+    T.bF=bx-hx;T.lF=Math.max(0,hs-(h&&h.d?PB_SINK:0.8)*on)+2.4*Math.sin(Math.PI*clamp(u/0.32,0,1))*(1-on);T.pF=PB_P*clamp(Math.atan(sl),0,1)*on*(h&&h.d?0.5:1);
+    T.bB=TP.B0-hx;T.lB=rest;T.pB=0;T.hy=TP.H0-PB_H*a;return T;}
   if(edge&&d<TT_D){const a=s32(u/0.35)*(1-s32((u-0.62)/0.33));T.a=a; // (PoP's test foot, frame 86: sink on the rear leg, lean out, probe the edge)
     T.bF=TP.F0+TT_X*a-hx;T.lF=1.2*Math.sin(Math.PI*clamp(u/0.3,0,1))-TT_Y*s32((u-0.2)/0.2)*(1-s32((u-0.6)/0.25));T.pF=-TT_P*a;
     T.bB=TP.B0-hx;T.lB=rest;T.pB=0;T.hy=TP.H0-TT_H*a;return T;}
@@ -3477,14 +3529,14 @@ function tpShort(){const T=TPT;let s=0;tpLeg(T.bF,T.hy,T.lF,T.pF);if(T.lF<0.6)s=
 // the hip's extra drop over a step of d px (TPH, px at TP_N+1 points of u, made once a step): what the feet on the floor need to stay down,
 // spread over TP_SPR of the step either side as a smooth bump, so the hip goes down before it must and comes up after (no corner)
 function tpDrop(d,edge){if(d===TP.d&&edge===TP.e)return;TP.d=d;TP.e=edge;
-  for(let j=0;j<=TP_N;j++){const u=j/TP_N;tpTgt(u,d*ease(u),d,edge);const h0=TPT.hy;let need=0;
+  for(let j=0;j<=TP_N;j++){const u=j/TP_N;tpTgt(u,edge===2?pbHx(u):d*ease(u),d,edge);const h0=TPT.hy;let need=0;
     for(let it=0;it<4;it++){TPT.hy=h0-need;const s=tpShort();if(s<0.01)break;need+=s*1.3;}TPS[j]=need;}
   for(let j=0;j<=TP_N;j++){let m=0;for(let k=0;k<=TP_N;k++){const x=Math.abs(j-k)/TP_N/TP_SPR;if(x<1){const w=Math.cos(Math.PI/2*x)**2,q=TPS[k]*w;if(q>m)m=q;}}TPH[j]=m;}}
 // the careful step at u (0..1 of STEP_T): hx the hip's progress (px, facing) from the step's start, d the step's length, edge: toward a drop
 function stepPose(u,hx,d,edge,out){if(!TP.init&&out!==TP_END)tpInit();tpDrop(d,edge);
   const T=tpTgt(u,hx,d,edge);seqU(TPK,T.v,out);
   out.hold=0;out.hb=0;out.mh=0;out.kn=0;out.rot=0;out.sw=PS.stand.sw;out.sm=1;out.air=1;out.khF=out.khB=0;out.hp=0;
-  if(T.a>0){const a=T.a;out.lean+=TT_L*a;out.head-=0.5*TT_L*a;out.aF+=TT_A*a;out.eF-=0.5*TT_A*a;}
+  if(T.a>0){const a=T.a,tl=edge===2?PB_L:TT_L;out.lean+=tl*a;out.head-=0.5*tl*a;out.aF+=TT_A*a;out.eF-=0.5*TT_A*a;}
   const f=clamp(u,0,1)*TP_N,i=Math.min(TP_N-1,Math.floor(f)),w=f-i,hy=Math.min(TP.H0,T.hy-(TPH[i]+(TPH[i+1]-TPH[i])*w));
   tpLeg(T.bF,hy,T.lF,T.pF);out.hF=tpQ[0];out.kF=tpQ[1];out.fpF=T.pF;tpLeg(T.bB,hy,T.lB,T.pB);out.hB=tpQ[0];out.kB=tpQ[1];out.fpB=T.pB;out.hy=hy;
   return out;}
@@ -3502,6 +3554,7 @@ function poseOx(dt){const p=P.pose;let ox=0;
   else if(P.state==='air'&&(P.jumpKind==='run'||P.jumpKind==='stand')&&!P.chm){const t=P.t;ox=(P.jO0||0)*Math.exp(-t/OX_T2)+(P.jB||0)*t*Math.exp(-t/OX_T3);}
   else if((P.state==='land'||P.state==='stand')&&(P.stK==='rl'||P.stK==='sl')){const t=gameTime-P.stT;ox=clamp(P.jFx-feetX(p,P.stK==='sl'?0:P.jMir?2:1),-6,6)*(1-s32((t-0.12)/0.33));}
   else if(P.state==='run'&&P.lnT!=null)ox=(P.jO0||0)*Math.exp(-(gameTime-P.lnT)/0.12);
+  else if(P.state==='probe'&&P.t>=P.pbB)ox=pbHx(Math.min(1,(P.t-P.pbB)/PB_T)); // (round 47a: the test foot's lunge, the rear foot planted)
   const prev=p.ox||0;p.ox=ox;P.jOv=dt>0?(ox-prev)/dt:0;}
 function startStep(){
   const row=pRow();let tx=P.x+P.face*13,ed=0;
@@ -3544,7 +3597,7 @@ function startPoke(){setState('poke');P.hitDone=false;Snd.play('swish');}
 function killSnake(sn){sn.alive=false;sn.t=0;sn.state='dead';Snd.play('hit');sparks(sn.x,sn.y-4,6,'#a6c45a');}
 function pushBack(dir,dist){let tx=P.x+dir*dist;if(!solidBelow(L,pCol(tx),pRow()))tx=P.x;P.x=clampMove(P.x,tx,P.y,P,P.state==='crouch');}
 function trapHit(cause,dir){if(P.inv>0||P.state==='dead')return;P.inv=0.9;hurt(1,cause);if(P.state==='dead')return;
-  if(['stand','run','stop','step','turn','garde','advance','retreat','strike','parry','blocked','land','drink','edgeWalk','lowStrike'].includes(P.state)){pushBack(dir,12);P.vx=0;setState('landHurt');}}
+  if(['stand','run','stop','step','turn','garde','advance','retreat','strike','parry','blocked','land','drink','edgeWalk','lowStrike','probe'].includes(P.state)){pushBack(dir,12);P.vx=0;setState('landHurt');}}
 const CROUCH_ROOM=14; // a crouch leans the head well forward: keep this much room before a wall (the drawing presses back the rest)
 function crouchLimit(face){const hc=Math.floor((P.x+face*CROUCH_ROOM)/TW);if(B(L,hc,pRow())!==WALL)return null;return face>0?hc*TW-CROUCH_ROOM-0.01:(hc+1)*TW+CROUCH_ROOM+0.01;}
 function stCrouch(dt,ix){
@@ -3565,6 +3618,7 @@ function stCrouch(dt,ix){
   if(ix){
     if(ix!==P.face){P.face=ix;return;}
     const want=P.x+ix*CRAWL*dt;
+    if(hillOn(want,P.y))return; // (round 47a: no crawling on a hill: he stands and clambers or wades)
     if(!solidBelow(L,Math.floor((want+ix*6)/TW),pRow()))return;
     let nx=clampMove(P.x,want,P.y,P,true);
     const lim=crouchLimit(ix);if(lim!==null&&(nx-lim)*ix>0)nx=(P.x-lim)*ix>0?P.x:lim;
@@ -3703,7 +3757,7 @@ function land(h){
   // (round 32, owner: "borrow PoP's structure") a running jump that lands on its own level with the way still held runs straight on, as PoP1's
   // runjump ends in the run (SDLPoP seqtbl.c): the run's speed kept, its stride carried on from the foot that lands (the lead foot: phase 0, or
   // 0.5 when the other leg led); let go, he stops in the crouch as before
-  if(jk==='run'&&dist<=40&&!I.g&&P.stumble<=0&&((I.r?1:0)-(I.l?1:0))===P.face){const o=P.pose.ox||0;setState('run');P.vx=P.face*RUN;P.ph=P.jMir?0.5:0;P.lnT=gameTime;P.jO0=o;
+  if(jk==='run'&&dist<=40&&!I.g&&!P.pbQ&&P.stumble<=0&&((I.r?1:0)-(I.l?1:0))===P.face){const o=P.pose.ox||0;setState('run');P.vx=P.face*RUN;P.ph=P.jMir?0.5:0;P.lnT=gameTime;P.jO0=o;
     Snd.play('land');if(GFX().fx)dust(P.x,P.y,3);standOn();return;}
   P.vx=0;
   if(dist>=100){flashScreen('#ffffff',0.45,0.24);shake(2.6);hurt(1,'fall');if(P.state==='dead')return;setState('landHurt');P.stK='land';P.stT=gameTime+0.6-0.133;P.stS=1;Snd.play('thud');dust(P.x,P.y,8);
@@ -3756,7 +3810,7 @@ function stRun(dt,ix){
   else if(ix===-P.face){P.vx=approach(P.vx,0,1000*dt);if(Math.abs(P.vx)<8){P.face=ix;P.vx=0;return setState('turn');}}
   else{setState('stop');}
   if(took('j')&&P.stumble<=0)P.pendingJump=true;
-  if(hl&&hl.d)P.pendingJump=false; // (no jump of any kind in a drift)
+  if(hl)P.pendingJump=false; // (no jump of any kind on a hill: round 47a, a heap too)
   if(P.pendingJump&&Math.abs(P.vx)>50){const wa=wallAhead();if(wa&&B(L,wa.wc,pRow()-1)===WALL&&B(L,wa.wc-P.face,pRow()-1)!==WALL){P.jLe=null;if(wa.d<=30){P.pendingJump=false;return startWallRun();}runMove(dt);return;}}
   P.jLe=null;
   if(P.pendingJump){
@@ -4058,7 +4112,9 @@ const sf=F(L,pCol(),pRow());if(sf&&sf.t==='spikes')learn('spikes');setState('sta
       // (or Up), and in 'stand' Down held is a crouch: so he arrives standing, and the key held for the ride does nothing more
       // until it is let go (P.liftHold)
       if(f.arr){f.arr=0;P.liftHold=I.d?'d':I.u?'u':null;setState('stand');standOn();}break;}
-    case'land':if(P.t>=P.landDur)setState('stand');break;
+    case'land':if(P.t>=P.landDur){if(P.pbQ&&Math.abs(P.y-SURF(pRow()))<1.5){const h=L.hills[P.pbQ.i];if(h&&h.r===pRow())startProbe({i:P.pbQ.i,e:P.pbQ.e});else{P.pbQ=null;setState('stand');}}else{P.pbQ=null;setState('stand');}}break; // (round 47a: after the checked leap, the test foot)
+    case'probe':{const tb=P.pbB;if(P.t<tb){const k=P.t/tb;P.x=lerp(P.sx,P.pbX,P.pbM===1?1-(1-k)*(1-k):ease(k));}else P.x=P.pbX; // (round 47a: brake or step to the foot, then the test foot; P.x never enters the hill)
+      if(!supported()){startFall(0);break;}standOn();{const u=(P.t-tb)/PB_T;if(u>=0.42&&!P.pbT){P.pbT=1;pbTouch();}if(u>=1){setState('stand');P.stK='tip';P.stT=gameTime;}}break;}
     case'landHurt':if(P.t>=0.6)setState('stand');break;
     case'hang':{const lg=P.ledge;if(!solidBelow(L,lg.c,lg.r)){startFall(0);break;}
       if(I.u||took('u')||(P.sandUp&&ix===P.face)){P.cs={x0:P.x,y0:P.y,x1:lg.xe-lg.s*10,y1:lg.ys};setState('climb');Snd.play('grab');break;} // (round 41: caught from a sand slab with the way still held, he climbs on)
@@ -4131,6 +4187,8 @@ const sf=F(L,pCol(),pRow());if(sf&&sf.t==='spikes')learn('spikes');setState('sta
     case'turn':tgt=turnSettle(gameTime-P.stT,lerpPose(PS.turn,PS.turn,0,stP));rate=40;break;
     case'step':{const d=(P.tx-P.sx)*P.face; // (round 33b: PoP's step-to on the clip's body, see stepPose; a long step off a lift or aside walks)
       if(d<-0.5||d>TP_DMAX){tgt=walkPose(Math.abs(P.x-P.sx)/43+0.25);rate=40;}else{tgt=stepPose(Math.min(1,P.t/STEP_T),(P.x-P.sx)*P.face,Math.max(0,d),!!P.sEd,stpP);rate=30;}break;}
+    case'probe':{const tb=P.pbB;if(P.t<tb){const d=(P.pbX-P.sx)*P.face;tgt=P.pbM===1?settlePose('stop',P.t,P.pbS,PS.stand,stP):d>TP_DMAX?walkPose(Math.abs(P.x-P.sx)/43+0.25):stepPose(P.t/tb,(P.x-P.sx)*P.face,d,false,stpP);} // (round 47a: PoP's runstop on 16_08's braking, or the careful step)
+      else{pbSet();const u=Math.min(1,(P.t-tb)/PB_T);tgt=stepPose(u,pbHx(u),0,2,stpP);}rate=30;break;} // (then PoP's test foot onto the hill, see tpTgt)
     case'edgeWalk':tgt=walkPose(Math.abs(P.x-P.sx)/43+0.25);rate=40;break; // (round 33b: walking up to the lip before a standing jump, the feet planted: was the step's pose blended in)
     case'crouch':tgt=crawlPose(P.ph);if(P.lowSword){tgt.hold=0;tgt.aF=0.55+0.1*Math.sin(P.ph*6.2832);tgt.eF=-0.45;tgt.sw=0.03;}rate=30;break;
     case'poke':{tgt=crawlPose(P.ph);const k=P.t<0.1?P.t/0.1:Math.max(0,1-(P.t-0.16)/0.18);tgt.hold=0;tgt.aF=0.55+0.9*k;tgt.eF=-0.45+0.45*k;tgt.sw=0.03;rate=60;break;} // (round 23: the sword arm free of the crawl's palm on the floor)
@@ -6312,7 +6370,7 @@ const BLK_W=22,BLK_H=10;
 // block takes a climb. So he walks or runs over it with no key: it no longer stops him (clampMove; guards still keep to their
 // side), and while his feet are over its top (at his depth, its middle BLK_W wide) he is drawn standing on it, easing up and down
 // over its edges (updateLook, 36 ms). His place, falls and hit boxes stay on the floor's level; the bot just runs on (runover).
-const BLK_STEP_ST=new Set(['stand','run','stop','step','turn','crouch','land','landHurt','drink','garde','advance','retreat','strike','parry','hurt','jumpPrep','poke','lowStrike','blocked','dead']);
+const BLK_STEP_ST=new Set(['probe','stand','run','stop','step','turn','crouch','land','landHurt','drink','garde','advance','retreat','strike','parry','hurt','jumpPrep','poke','lowStrike','blocked','dead']);
 function blockStep(x,y,st){if(!L||!BLK_STEP_ST.has(st))return 0;const r=rowOf(y);if(Math.abs(y-SURF(r))>1.5)return 0;const c0=Math.floor(x/TW);
   for(let c=c0-1;c<=c0+1;c++){if(!stoneLying(c,r))continue;const d=Math.abs(x-(c*TW+16))-BLK_W/2;if(d<9)return BLK_H*clamp((9-d)/7,0,1);}return 0;}
 // (round 13, owner: "the sand animation needs to be faster and also the slab falling animation"): roof blocks and sand floors' slabs fall

@@ -86,7 +86,7 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [fire vent](elements/fire-vent.md) | fire light (110 px) | casts shadows; not carved | glint rubbed | no (lights the metal) | footprint on the grate | off its tile (`FT_FLAT`) | no | 1 life (no height test) | never placed or hit |
 | [darts](elements/darts.md) | visible shooter only | no | no (trap-light ellipse) | no (glint painted) | no | spent dart 255 | no | 1 life | no / no |
 | [roof blocks](elements/roof-blocks.md) | while hanging and falling | falling and lying carved (`SHC`) | `glRelRoofFall` (falling, as clipped), `glRelRoof` (lying) | no | footprint cut | block 255, rubble 251 | no | 1 life | stop at it / no |
-| [heaps and drifts](elements/heaps-and-drifts.md) | lit as the scene | carved (`SHC` heap, drift) by the one outline `hillSil` | `hillRel` (hard-edged quads, the same outline) | no | none on them: a solid (round 46b; Torchlight the alpha mark `HILL_A` 253, `hlGate`; Classic and `?wgl=0` `sandSegs`) | off (`hlGate`) | no | no (slows him: 42 / 35 px/s; no jump in a drift) | stop at its edge |
+| [heaps and drifts](elements/heaps-and-drifts.md) | lit as the scene | carved (`SHC` heap, drift) by the one outline `hillSil` | `hillRel` (hard-edged quads, the same outline) | no | none on them: a solid (round 46b; Torchlight the alpha mark `HILL_A` 253, `hlGate`; Classic and `?wgl=0` `sandSegs`) | off (`hlGate`) | no | no (slows him: 42 / 35 px/s; no jump on or onto one, round 47a) | stop at its edge |
 | [wind](elements/wind.md) | lamps in it flicker (`windGut`) | not carved (air) | `windRel` (billowing hangings) | no | lit as the scene | streamers 255 | no | no (slows him: 65 / 40 px/s, jumps into it shorter by its drag) | never posted near it |
 | [courts](elements/courts.md) | broad `sky` lights along it; lamps there free | L1 parts take it; pool, vine and jambs carved (`SHC` pool, vine, jamb); the sky none | stone as any wall; `ctRel` over a pool and the jambs | no | no beam from a court; the jambs block beams | as the scene | the jambs | a pool drowns him at its surface | allowed |
 | [movable blocks](elements/movable-blocks.md) | no | carved as a wall | `glRelFloors` | no | as a wall | 255 | yes, as a wall cell | no | blocked / no |
@@ -102,6 +102,18 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [flasks and secrets](elements/flasks-and-secrets.md) | a coloured item light | flasks carved (`SHC`) | its light's ellipse (`glRelEx`) | no | no footprint (255) | no | no | poison: 1 life | an ambush guard at the gold flask |
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
+
+## What round 47a found
+
+The owner: "the hills/heaps/drifts - you shouldn't be able to jump over them, only way is to walk at the pace they let you"; on r47's
+research: A2 (the checked leap), PoP's stop with the test foot at the foot, no crawling on a hill, no words, the low leap left as it is
+([heaps and drifts](elements/heaps-and-drifts.md)).
+
+| Finding (v88) | Where | Round 47a | Seen in |
+|---|---|---|---|
+| A running jump from the floor before a heap cleared it (264 of 264, up to 1.57 s of its 1.83 s clamber); one at a drift landed half way in (77 of 77, up to 2.2 s); a standing jump landed inside every hill (up to 1.07 s); Jump on a heap was a standing jump off it (up to 1.5 s): `hilljump.py` (new, floors 3-48 x 2 seeds) 341 of 344 hills broken | `tryJump`, `startJump`, `stRun` (a drift only), `launch` | no jump on a hill; a jump whose arc would carry him onto one is cut to land short of its foot (`hillCheck`), then PoP's test foot (state `probe`); too close for a leap, the braking stop or the careful step to the foot and the test foot. `hilljump: ok` | heaps and drifts |
+| The crawl (`CRAWL` 42 px/s) crossed a heap faster than the clamber (35) | `stCrouch` | no crawl into a hill | heaps and drifts |
+| Every running jump over a heap drew his legs through the rubble (the drawn apex 2.5-4 px, round 33a, against a 22-25 px crest) | `jhK` | gone with the jump: none flies over a hill but the low leap | heaps and drifts |
 
 ## What round 46d found
 
