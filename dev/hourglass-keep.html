@@ -4333,6 +4333,10 @@ function sawX(f,T){const p=cyc(f,T);return f.x0+(f.x1-f.x0)*(0.5-0.5*Math.cos(p*
 function danger(f,T){if(f.t==='chomp'){const s=gameTime;gameTime=T;const k=chompK(f);gameTime=s;return k>0.3;}if(f.t==='vent'){const p=cyc(f,T);return p>0.7||p<0.03;}return false;}
 // spike needles, back to front: [x in tile, depth 0 front..1 back, height, lean]; guillotine teeth: [width, length, tip offset]
 const SPK=[[25,0.78,10,3],[7,0.66,16,-1.9],[19,0.48,21,0.6],[12.5,0.26,11,-0.8]];const SPK_NEAR=0.45; // (round 39e: a stake rooted nearer than this is in front of a figure at mid-depth: drawNeedles)
+// (round 47d, owner: "I am constantly missing spikes"; option A of round 47c's alternatives) the stakes are pale polished bronze, the lightest
+// thing on their tile as PoP 1989's spikes are: SPK_C [lit face, lower shaft, shaded side], the edge selOut of the shaded side (the contour
+// rule); v88's acacia shafts with bronze tips were #c8a060 / #7a5a36 / #6a4a20, 1.9-4.3 L* off what stood behind them at night
+const SPK_C=['#fff5dc','#ecd2a0','#d2ae78'];
 const CH_UP=[[4,8,0.4],[3.5,5,0],[4.5,11,-0.6],[3.5,4,0.3],[4,9,0.5],[4.5,6,-0.3],[4,10,0.2]];
 const CH_LO=[[2,5,-0.4],[4,9,0.3],[4,5,0],[4.5,10,-0.5],[3.5,4,0.2],[4,8,0.4],[4,6,-0.2],[2,4,0.3]];
 function chompK(f){const p=(((gameTime+f.off)%f.per)+f.per)%f.per/f.per;if(p<0.07)return p/0.07;if(p<0.15)return 1;if(p<0.3)return 1-(p-0.15)/0.15;return 0;}
@@ -8414,11 +8418,11 @@ function drawNeedles0(ctx,o,f,X,ys,near,sy){const e=f.ext;if(e<=0.02)return;cons
     else if(sy!==null&&!near&&shcBeg(-1e5,-1e5,1e5,cy,2)){shcPt(x-3.3,b+1.2);shcPt(tx-1.2,tip-2.2);shcPt(tx+1.2,tip-2.2);shcPt(x+3.3,b+1.2);shcRing();shcEnd();}
     if((d<SPK_NEAR)!==!!near)continue;
     if(sy!==null){ctx.save();ctx.beginPath();ctx.rect(X-200,cy-400,TW+400,400);ctx.clip();}
-    ctx.fillStyle='rgba(8,6,12,.55)';ctx.beginPath();ctx.ellipse(x,b+0.6,3.4,1.3,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=selC(EGP.traps?'#7a5a36':'#8d94a2',0.55);ctx.beginPath();ctx.moveTo(x-2.8,b+0.9); // (round 46c, the contour rule: its edge the shaft darker)
+    ctx.fillStyle='rgba(8,6,12,.55)';ctx.beginPath();ctx.ellipse(x,b+0.6,3.4,1.3,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=selC(EGP.traps?SPK_C[2]:'#8d94a2',0.55);ctx.beginPath();ctx.moveTo(x-2.8,b+0.9); // (round 46c, the contour rule: its edge the shaded side darker)
     ctx.lineTo(tx,tip-1.6);ctx.lineTo(x+2.8,b+0.9);ctx.fill();
-    ctx.fillStyle=EGP.traps?'#c8a060':'#eef0f5';ctx.beginPath();ctx.moveTo(x-1.3,b);ctx.lineTo(tx,tip);ctx.lineTo(x+0.15,b);ctx.fill();
-    if(EGP.traps){ctx.fillStyle='#7a5a36';ctx.beginPath();ctx.moveTo(x-1.3,b);ctx.lineTo(x+(tx-x)*0.55,b+(tip-b)*0.55);ctx.lineTo(x+1.3,b);ctx.fill();} // acacia shafts, bronze tips
-    ctx.fillStyle=EGP.traps?'#6a4a20':'#8d94a2';ctx.beginPath();ctx.moveTo(x+0.15,b);ctx.lineTo(tx,tip);ctx.lineTo(x+1.3,b);ctx.fill();
+    ctx.fillStyle=EGP.traps?SPK_C[0]:'#eef0f5';ctx.beginPath();ctx.moveTo(x-1.3,b);ctx.lineTo(tx,tip);ctx.lineTo(x+0.15,b);ctx.fill();
+    if(EGP.traps){ctx.fillStyle=SPK_C[1];ctx.beginPath();ctx.moveTo(x-1.3,b);ctx.lineTo(x+(tx-x)*0.55,b+(tip-b)*0.55);ctx.lineTo(x+1.3,b);ctx.fill();} // the lower shaft a shade deeper (round 47d: pale polished bronze)
+    ctx.fillStyle=EGP.traps?SPK_C[2]:'#8d94a2';ctx.beginPath();ctx.moveTo(x+0.15,b);ctx.lineTo(tx,tip);ctx.lineTo(x+1.3,b);ctx.fill();
     if(f.sl){let px=x,py=b,w=3.4; // (round 41e: where it breaks through the slab's top, as wide as the stake there; at rest its foot's own shadow, 3.4 by 1.3)
       if(sy!==null){ctx.restore();const k=(b-cy)/(b-tip);px=x+(tx-x)*k;py=cy;w=Math.max(1.2,(1-k)*2.5+0.9);
         ctx.fillStyle='rgba(8,6,12,.6)';ctx.beginPath();ctx.ellipse(px,py+0.6,w,w*0.38,0,0,Math.PI*2);ctx.fill();}
@@ -14638,7 +14642,7 @@ Object.assign(window.__HK,{respawn,startRewind,die,startEntry,entryOpen,entryX,s
 Object.defineProperty(window.__HK,'intro',{get(){return intro;},set(v){intro=v;}}); // (the floor's title banner, for egyptprop.py)
 Object.assign(window.__HK,{GATE_G,liftCell,windowPath,gateGeom,stoneTex,STONES,THEME_STONE,SLAB_STONE,stoneLying,BLK_W,BLK_H,looseWell,WELL_V,blockStep,wellGroup,wellSolve,wellTip,sandTex});
 Object.assign(window.__HK,{EGP,nutClock,conceptClock2,barqueClock,conceptClock,flaskBody,flaskR,heart,setHero,HERO_VAR,PAL_HERO,SCHED,floorsOf,BGART,bgArt,LFX,themeOf,get PF(){return PF;}}); // (the themes' backdrops and effects, for egyptshot.py and egyptfx.py)
-Object.assign(window.__HK,{hurt,HK,DISS,sandP,SAND_HP,GLFX,AMB_LIFT,setClock:f=>{performance.now=f;}}); // S3-A (tests)
+Object.assign(window.__HK,{hurt,HK,DISS,sandP,SAND_HP,GLFX,AMB_LIFT,SPK_C,setClock:f=>{performance.now=f;}}); // S3-A (tests)
 Object.assign(window.__HK,{ryLow,beamBlockers,BLK,ryBlkLit,sandSegs,SDS,RY_BLUR,glPrecStr,renderXf,tileB:(c,r)=>B(L,c,r),get WALL(){return WALL;}}); // (round 46: the beams' cases and the device's precision, for beamjag.py)
 Object.assign(window.__HK,{FLM,FLV,ventState,cyc}); // FL (flames: the sheets and the vent's look, for tests)
 Object.assign(window.__HK,{GLFX,GLREL,clearRooms,bgCache,bgLayers,solidBelow:(c,r)=>solidBelow(L,c,r),roomCanvas}); // (unit B's switches and caches, for its tests)

@@ -103,6 +103,16 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
 
+## What round 47d found
+
+The owner, on round 47c's spike alternatives: option A, pale polished bronze, "everywhere": all hours, both modes, every kind of stake
+([spikes](elements/spikes.md)).
+
+| Finding (round 47c) | Where | Round 47d | Seen in |
+|---|---|---|---|
+| At night away from lamps the stakes (contact shadow left out) differed from what stood behind them by a median 2.2 L* in Torchlight and 2.9 in Classic; 63% and 51% under 3 L* (170 stakes a mode: live, pit and sand-lift pit spikes, 12 night floors, phone size) | `drawNeedles0` | `SPK_C` `#fff5dc` / `#ecd2a0` / `#d2ae78` (was `#c8a060` / `#7a5a36` / `#6a4a20`), the edge `selC` of the shaded side at .55: median 10.3 and 10.7 L*, 6.5% and 8.2% under 3 (live stakes alone 13.9% and 16.7%: all on pale floor or a lit wall, L* 24-53 behind, where the old dark stakes read as dark shapes and the pale ones sit at the background's mean inside their dark edge) | spikes, both modes |
+| By a lamp, Torchlight | composite | the lit face reaches white on 18% of a lamp-lit stake's pixels (1% before); the bloom over them +4.2 luma mean (+2.6 before): no halo | spikes |
+
 ## What round 47c found
 
 The owner: "increase the minimum brightness of the levels. 5-10%". On round 47c's research he chose C, the ambient floor raised by points of

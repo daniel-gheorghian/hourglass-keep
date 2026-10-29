@@ -2,7 +2,8 @@
 
 Stakes in the floor, after PoP1's spikes. Live spikes lie in a run or a side passage and rise as he comes near; fixed spikes stand at the
 foot of every pit (a gap or a run of loose floor) and kill whatever lands on them. Live spikes from floor 2, spiked pits from floor 1.
-In the Egyptian looks (`EGP.traps`) they are bronze-tipped stakes on acacia shafts; with `EGP.traps` off, v61's steel needles.
+In the Egyptian looks (`EGP.traps`) they are pale polished bronze stakes (round 47d: the lightest thing on their tile, as PoP1's are); with
+`EGP.traps` off, v61's steel needles.
 
 ## At a glance
 | | |
@@ -67,7 +68,8 @@ A needle rooted nearer than `SPK_NEAR` 0.45 (the front one, depth .26) is in fro
 
 | Look | Lit face | Lower shaft | Shaded side |
 |---|---|---|---|
-| `EGP.traps` (default): bronze tip on an acacia shaft | `#c8a060` | `#7a5a36` (55% of the height) | `#6a4a20` |
+| `EGP.traps` (default, round 47d): pale polished bronze (`SPK_C`) | `#fff5dc` | `#ecd2a0` (55% of the height) | `#d2ae78` |
+| v88 to round 47c: bronze tip on an acacia shaft | `#c8a060` | `#7a5a36` | `#6a4a20` |
 | `EGP.traps` off (v61) | `#eef0f5` steel | none | `#8d94a2` |
 
 ```
@@ -132,4 +134,7 @@ drawDynamic    ... L.dyn: the three far stakes (255, drawn live) ... guards, pri
 - Round 39 (v84): the front stake drawn after the figures (`drawNeedles`, `SPK_NEAR`), under the same `CUT_AT_WALL` cut; the Layer row.
 - Round 41b: the spike pit under a sand lift's foot; needles hidden in its sand under the slab (`f.sl`).
 - Round 41e: the pit's needles cut at the sinking slab's top at each needle's own depth, a puncture where each breaks through; the lamp shadow's carve takes only what shows. Pictures `egyptr41e.py`.
+- Round 47d (owner: "I am constantly missing spikes"; option A of round 47c's alternatives): pale polished bronze (`SPK_C`), every kind (live,
+  fixed, the sand lift's pit, saws turned into spikes), both modes, all hours; the dark edge `selC` of the shaded side at .55 (the contour rule).
+  Geometry, shadow carve, relief, punctures and the near stake's pass unchanged.
 - Details in CLAUDE.md.

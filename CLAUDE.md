@@ -1405,8 +1405,8 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   or decoration. Pictures and sources: `egyptshot.py`, `egyptfx.py`, `egyptpage.py` (egypt_themes.html).
   Built in (owner, round 3): the themes' lamps (`drawLampEg`) and the re-skinned traps are on by default: granite portcullis
   (`egSlab`; the lift mouths are `egSlab`s too, in the theme's own stone `THEME_STONE`, bars only with `EGP.traps` off; no metal mask; modelled by the key light: lit narrow face, a crisp arris, a core-shadow band and
-  dark far edge on the broad face, a cast shadow on floor and wall, raised in round 16c so the edge reads in every theme), sliding roof block with sand (`egRoofSlot`, `egRoofHang`, `egRoofFall`, `egRoofLying`, `roofStone`), sand floor, bronze-
-  tipped stakes (the chase was a granite plug from round 4 to v75; round 29 made it the dark, below).
+  dark far edge on the broad face, a cast shadow on floor and wall, raised in round 16c so the edge reads in every theme), sliding roof block with sand (`egRoofSlot`, `egRoofHang`, `egRoofFall`, `egRoofLying`, `roofStone`), sand floor, pale
+  polished bronze stakes (`SPK_C`, round 47d, owner: "I am constantly missing spikes"; before, bronze tips on acacia shafts) (the chase was a granite plug from round 4 to v75; round 29 made it the dark, below).
   Look only: hit boxes, timing, generator and bot unchanged. `EGP={lamps,traps}` turns them off for debugging (metaltest's
   gate scene tests the iron gate that way). Nut's sky clock
   (`nutClock`, round 8; round 4's Karnak clepsydra and round 7's barque clock, `barqueClock`, kept for pictures, were rejected) replaces
