@@ -1181,7 +1181,12 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   the same joints, off trap tiles and saw slots, cut where a figure stands. A new floor look goes in `floorFx`, never back in the mist pass.
   Pictures and numbers `egyptr31.py` (r31_sheen.png).
 - Torchlight's ambient light never drops under `AMB_MIN` (0.45 of full on its brightest channel, `glAmbK`; owner, v56 and v57: the Forge by
-  Moonlight fell to 0.26), and each sky opening adds a soft bounce light where its beam meets the floor (`gatherLights`, Torchlight only).
+  Moonlight fell to 0.26). Round 47c (owner: "increase the minimum brightness of the levels. 5-10%"; "Go with C"; night darker "but not so
+  dark that you don't see traps"; the sky "Stay as is") adds `AMB_LIFT` [dusk .10, night .075, dawn .10] of full to the ambient's brightest
+  channel in both modes, the colour kept, each mode from its own level (Classic stays brighter): Torchlight's floor is .55 at dusk and dawn,
+  .525 at night. It lights what the rooms draw only, never L0: Torchlight adds it in the composite times the scene's alpha (`u_ad`,
+  `ambLift`), Classic fills its light map with it and takes it back where the sky shows (`ambUp`, `ambSkyCut`, `skyMaskDraw`, shared with
+  `fillCut`); the light map keeps v88's ambient (the shafts', embers' and bloom's tests unchanged). `__HK.AMB_LIFT` for tests. And each sky opening adds a soft bounce light where its beam meets the floor (`gatherLights`, Torchlight only).
   The fire vent burns over its whole grate (`VJETS`: a jet per slot, back and front rows, merging into one sheet); its timing and
   hit test are unchanged.
 - The swing bar is a trapeze (v57, owner): his swing is a damped pendulum (`P.swTh`, `P.swOm`; `swingStep`) that dies down to a still

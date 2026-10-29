@@ -249,7 +249,12 @@ Two facade flags carry meaning for later passes:
 | Classic | `lightPass`: ambient `lookOf(style).amb`, each light's sprite (`lightSprite`) added, the grade strip multiplied, all multiplied over the scene |
 
 Ambient: `lookOf(style).amb` times `glAmbK(style,lk)`, which is `GLAMBT[style]` (palace 0.62, forge 0.6, dungeon 0.78, tile 0.8, crypt
-0.9) raised so the brightest channel is at least `AMB_MIN` 0.45 of full. Each light is a quad with the classic sprite's falloff (1 to
+0.9) raised so the brightest channel is at least `AMB_MIN` 0.45 of full. Round 47c adds `AMB_LIFT` of full to the brightest channel by the
+hour (dusk .10, night .075, dawn .10; `ambLift`), the colour kept, in both modes and on what the rooms draw only: Torchlight in the composite
+(`l += u_ad * cov` after the relief and the lamp shadow, so it is flat and the shadow takes it only by its .4; times the scene's alpha, so the backdrop keeps v88's light; the light map, and so the S pass's `u_bq.y`, the embers' `u_fl.w`
+and the bloom, keep the old ambient), Classic in `lightPass` (the map filled with `ambUp(...).s`, the lift taken back over the sky by a
+`difference` draw of `ambSkyCut`, the quarter-size sky mask `skyMaskDraw` that `fillCut` uses too). The `?wgl=0` path lifts the sky as
+well (its scene has no alpha). Each light is a quad with the classic sprite's falloff (1 to
 0.62 at 0.28 of r, 0.2 at 0.62, 0 at the edge) and a flicker by kind (`GLFLICK`: torch 0.6, fire 1, door 0.5, item 0.35; times 0.3 in
 "Softer flashes"). Classic has no per-kind flicker; both modes flicker a lamp's radius (`flK`).
 

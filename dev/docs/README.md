@@ -103,6 +103,19 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
 
+## What round 47c found
+
+The owner: "increase the minimum brightness of the levels. 5-10%". On round 47c's research he chose C, the ambient floor raised by points of
+full scale in both modes, each from its own level; night darker "but not so dark that you don't see traps. I am constantly missing spikes";
+the sky through the openings "Stay as is" ([lamps and light](elements/lamps-and-light.md), [rendering](rendering.md)).
+
+| Finding (b7c056e) | Where | Round 47c | Seen in |
+|---|---|---|---|
+| `AMB_MIN` 0.45 decided Torchlight's ambient in 34 of 36 themes and hours; away from lamps the walls and floor were 13-31 levels of luma (p10 5-15) at phone size, the darkest half 7.6-9.2 (L* 2-3) on the night floors | `glAmbK` | `AMB_LIFT` dusk .10, night .075, dawn .10 of full on the brightest channel: walls and floor away from lamps +9 to +21% in Torchlight (12 views; F33 night 25.7 to 27.9 luma, F13 dusk 25.9 to 29.1), +9 to +16% in Classic; lamp pools +5 to +9% | every floor, both modes |
+| Classic's ambient had no floor (brightest channel 0.38-0.60), 20-60% brighter than Torchlight's in the dark | `lightPass` | the same points added to its own `lk.amb` (the difference between the modes kept, owner) | Classic |
+| A raise through the light map would light the backdrop too (the map multiplies the sky in both modes) | composite, `lightPass` | Torchlight adds the lift times the scene's alpha (`u_ad`), Classic takes it back over the sky (`ambSkyCut`): the openings' inner pixels unchanged against b7c056e (0.00-0.9 levels mean on 20 views, the rest on their quarter-size edges) | openings |
+| Spikes at night away from lamps differ from what is behind them by a median 1.9-4.3 L* (half of the stakes and pit spikes under 3); a brighter ambient lifts the stakes and what is behind them alike (+0.1 to +0.3 L* of contrast at .075) | `drawNeedles0` | not changed here: the ambient alone does not make them read; alternatives (value, rim, glint) went to the owner | traps |
+
 ## What round 47b found
 
 The owner: "the courts - the background they show isn't in sync with what the windows show, different scenery and it is moving way too

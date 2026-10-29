@@ -32,6 +32,7 @@ scar). `lampscan.py` found 2,165 such lamps of about 9,600 on floors 1-48 before
 | Lamps on worn wall have fallen | `lightWear` >= 2 (or in a breach): `broken`, a scar on the wall and the lamp lying broken and cold on the floor; a working one is placed within 6 columns on wall that stands, by `lampClear`, at least 4 from another lit lamp | the keep's decay (`settleLights`) |
 | More fall each cycle up the tower | `L.prog.wear` 1, 2, 3: a further 10%, 20%, 30% by hash, but never the last one lit within 9 columns and 1 row | progression reads as decay, never as a dark stretch |
 | The floor's light never drops under `AMB_MIN` | Torchlight's ambient is at least 0.45 of full on its brightest channel | owner, v56: "make it feel dark, not be dark" |
+| The ambient raised by the hour (`AMB_LIFT`) | +.10 of full at dusk and dawn, +.075 at night, both modes, never on the sky | owner, round 47c: "increase the minimum brightness of the levels. 5-10%" |
 | Every trap keeps a faint glint of its own | a `trap` light (r 30 to 60) on spikes, plates, saws, lifts, darts, bars, the pendulum, roof blocks, falling sand | the dark never hides a trap |
 | Moving or dropping a lamp never changes a layout | `settleLights` reads no generator stream | layouts identical across look changes |
 
@@ -172,6 +173,10 @@ Torchlight's ambient is `lookOf(style).amb` (the theme's `lk` over its style's, 
 shadow, owner v41), raised so the brightest channel is at least `AMB_MIN` 0.45 of full. Only the low ones rise. In the Forges of Meroë at
 night the ambient is (104, 87, 100): the forge's 0.6 gives 62 on its brightest channel (0.24 of full); `glAmbK` lifts the factor to
 1.10, so 115 (0.45). Classic uses `lk.amb` as it is. The Crossing has its own ambient (`CR.amb`).
+Round 47c (owner: "increase the minimum brightness of the levels. 5-10%", reading C) adds `AMB_LIFT` of full to the brightest channel by
+the hour, dusk and dawn .10, night .075 (night stays darker), in both modes from each mode's own level, on what the rooms draw only: the
+sky through the openings keeps v88's light (Torchlight: `u_ad` times the scene's alpha in the composite; Classic: `ambSkyCut`). AMB_MIN
+binds in 34 of the 36 themes and hours, so Torchlight's floor is .55 at dusk and dawn, .525 at night.
 
 ### The door light and the exit
 
@@ -228,6 +233,7 @@ and bloom all of it; a lamp under 0.01 adds nothing. Only lamps are drained; the
 - Round 42b: lamp flames and free stands carved out of the lamp shadow (`shcFlame`, `shcStand`).
 - v41: Torchlight's ambient darker than Classic's, so the gaps between lamps fall into shadow (`GLAMBT`).
 - v56-v57: `AMB_MIN` 0.45 (the Forge by Moonlight had fallen to 0.26); the sky openings' bounce light.
+- Round 47c: `AMB_LIFT` by the hour (.10 / .075 / .10), both modes, never on the sky.
 - v58, v58b: sky beams with depth; forge and crypt windows lit from within.
 - Unit FL: flipbook flames, the same in both modes.
 - Round 3-4 (owner): the themes' own lamps built in (`drawLampEg`, `EGP.lamps`).

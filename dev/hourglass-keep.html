@@ -9219,6 +9219,36 @@ let lightC=null,lightG=null;
 // shows (where the room images are clear: an opening, less any block in front of it), except where a figure stands in front (its
 // silhouette); null when no fill light reaches an opening in view (ryOps: the fills are then drawn with the other lights, as before)
 const FCUT={c:null,g:null,m:null,mg:null};
+// (Classic, quarter size) where the sky shows: opaque white where the backdrop is seen, clear where the rooms, the figures or a court's
+// jambs cover it (shared by the fills' cut, round 25c, and the ambient's lift, round 47c)
+function skyMaskDraw(m,T,x0,y0,x1,y1,lw,lh){
+  m.setTransform(1,0,0,1,0,0);m.globalAlpha=1;m.globalCompositeOperation='source-over';m.fillStyle='#fff';m.fillRect(0,0,lw,lh);m.setTransform(...T);
+  m.globalCompositeOperation='destination-out';m.imageSmoothingEnabled=true;
+  for(let ry=Math.floor(y0/ROOM_H);ry<=Math.floor((y1-0.01)/ROOM_H);ry++)for(let rx=Math.floor(x0/ROOM_W);rx<=Math.floor(x1/ROOM_W);rx++)m.drawImage(roomCanvas(rx,ry),rx*ROOM_W,ry*ROOM_H,ROOM_W,ROOM_H); // (what the rooms cover is not sky)
+  SIL.m.clear();SIL.m2.clear();
+  const fig=e=>{const sl=glSilhouette(e,true);if(sl)m.drawImage(sl,chimSX(e)-48,e.y+(e.yo||0)-80,96,96);};
+  if(P&&P.state!=='dead'&&P.state!=='exit'&&!(P.state==='enter'&&P.enU>0)&&!(P.y>L.rows*TH))fig(P);for(const e of G)if(e.alive&&!e.gone&&e.x>x0-60&&e.x<x1+60)fig(e);
+  ctJambEach((x,y,w,h)=>m.fillRect(x,y,w,h)); // (round 45c: a court's jambs stand over the room picture's clear sky, as the figures do: they keep their fill)
+}
+// (round 47c, Classic) the ambient's lift: lk.amb with AMB_LIFT of full added to its brightest channel, the colour kept (s), and the lift
+// alone (d), cached as strings per colour and lift
+const AMBUP=new Map();
+function ambUp(amb,ak){const key=amb+'|'+ak;let o=AMBUP.get(key);if(o)return o;const a=amb.split(',').map(Number),mx=Math.max(a[0],a[1],a[2])||1,f=(mx+ak*255)/mx,
+  n=a.map(v=>Math.min(255,Math.round(v*f)));o={s:n.join(','),d:n.map((v,i)=>v-a[i]).join(',')};AMBUP.set(key,o);return o;}
+// (round 47c, Classic) the lift where the sky shows (colour d, quarter size), taken back out of the light map so L0 keeps v88's light;
+// null when no opening or court is in view
+const AMBK={c:null,g:null};
+function ambSkyCut(sc,camD,camDY,lw,lh,d){if(!GFX().bg||!L)return null;
+  const x0=camD/sc,y0=camDY/sc,x1=x0+lw*4/sc,y1=y0+lh*4/sc;
+  let any=false;for(const o of ryOps())if(!(o.x1<x0||o.x0>x1||o.y1<y0||o.y0>y1)){any=true;break;}
+  if(!any)for(const k of L.courts||[]){const ox=k.c0*TW,W=(k.c1-k.c0+1)*TW,oy=(k.r-1)*TH;if(ox<x1&&ox+W>x0&&oy<y1&&oy+2*TH>y0){any=true;break;}}
+  if(!any){for(const w of L.windows){const x=w.c*TW+16,y=w.r*TH+38;if(x>x0-40&&x<x1+40&&y>y0-60&&y<y1+60){any=true;break;}}}
+  if(!any)return null;
+  if(!AMBK.c){AMBK.c=document.createElement('canvas');AMBK.g=AMBK.c.getContext('2d');}
+  const c=AMBK.c,m=AMBK.g;if(c.width!==lw||c.height!==lh){c.width=lw;c.height=lh;}
+  skyMaskDraw(m,[sc/4,0,0,sc/4,-camD/4,-camDY/4],x0,y0,x1,y1,lw,lh);
+  m.setTransform(1,0,0,1,0,0);m.globalCompositeOperation='source-in';m.fillStyle='rgb('+d+')';m.fillRect(0,0,lw,lh);m.globalCompositeOperation='source-over';
+  return c;}
 function fillCut(lights,sc,camD,camDY,lw,lh){if(!GFX().bg||!L)return null;
   const x0=camD/sc,y0=camDY/sc,x1=x0+lw*4/sc,y1=y0+lh*4/sc,fl=[];for(const q of lights)if(q.kind==='fill')fl.push(q);if(!fl.length)return null;
   const ops=[];for(const o of ryOps()){if(o.x1<x0||o.x0>x1||o.y1<y0||o.y0>y1)continue;if(fl.some(q=>o.x1>q.x-q.r&&o.x0<q.x+q.r&&o.y1>q.y-q.r&&o.y0<q.y+q.r))ops.push(o);}
@@ -9228,13 +9258,7 @@ function fillCut(lights,sc,camD,camDY,lw,lh){if(!GFX().bg||!L)return null;
   const g=FCUT.g,m=FCUT.mg,T=[sc/4,0,0,sc/4,-camD/4,-camDY/4];
   g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='source-over';g.clearRect(0,0,lw,lh);g.setTransform(...T);g.globalCompositeOperation='lighter';
   for(const q of fl){g.globalAlpha=Math.min(1,q.a);g.drawImage(lightSprite(q.col),q.x-q.r,q.y-q.r,2*q.r,2*q.r);}
-  m.setTransform(1,0,0,1,0,0);m.globalAlpha=1;m.globalCompositeOperation='source-over';m.fillStyle='#fff';m.fillRect(0,0,lw,lh);m.setTransform(...T);
-  m.globalCompositeOperation='destination-out';m.imageSmoothingEnabled=true;
-  for(let ry=Math.floor(y0/ROOM_H);ry<=Math.floor((y1-0.01)/ROOM_H);ry++)for(let rx=Math.floor(x0/ROOM_W);rx<=Math.floor(x1/ROOM_W);rx++)m.drawImage(roomCanvas(rx,ry),rx*ROOM_W,ry*ROOM_H,ROOM_W,ROOM_H); // (what the rooms cover is not sky)
-  SIL.m.clear();SIL.m2.clear();
-  const fig=e=>{const sl=glSilhouette(e,true);if(sl)m.drawImage(sl,chimSX(e)-48,e.y+(e.yo||0)-80,96,96);};
-  if(P&&P.state!=='dead'&&P.state!=='exit'&&!(P.state==='enter'&&P.enU>0)&&!(P.y>L.rows*TH))fig(P);for(const e of G)if(e.alive&&!e.gone&&e.x>x0-60&&e.x<x1+60)fig(e);
-  ctJambEach((x,y,w,h)=>m.fillRect(x,y,w,h)); // (round 45c: a court's jambs stand over the room picture's clear sky, as the figures do: they keep their fill)
+  skyMaskDraw(m,T,x0,y0,x1,y1,lw,lh);
   g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='destination-out';g.drawImage(FCUT.m,0,0);g.globalCompositeOperation='source-over';
   return FCUT.c;}
 // one low-resolution light map (ambient + every light, then the colour grade) multiplied over the scene
@@ -9245,7 +9269,9 @@ function lightPass(ctx,lights,sc,camD,camDY,gradeOnly){
     return;}
   if(!lightC||lightC.width!==lw||lightC.height!==lh){lightC=document.createElement('canvas');lightC.width=lw;lightC.height=lh;lightG=lightC.getContext('2d');}
   const l=lightG;l.setTransform(1,0,0,1,0,0);l.globalCompositeOperation='source-over';l.globalAlpha=1;
-  if(g.light&&!gradeOnly){l.fillStyle='rgb('+lk.amb+')';l.fillRect(0,0,lw,lh);l.globalCompositeOperation='lighter';l.setTransform(sc/4,0,0,sc/4,-camD/4,-camDY/4);
+  if(g.light&&!gradeOnly){const ak=ambLift(),A=ak?ambUp(lk.amb,ak):null;l.fillStyle='rgb('+(A?A.s:lk.amb)+')';l.fillRect(0,0,lw,lh);
+    if(A){const K=ambSkyCut(sc,camD,camDY,lw,lh,A.d);if(K){l.globalCompositeOperation='difference';l.drawImage(K,0,0);}} // (round 47c) the lift, kept off the sky
+    l.globalCompositeOperation='lighter';l.setTransform(sc/4,0,0,sc/4,-camD/4,-camDY/4);
     const cut=fillCut(lights,sc,camD,camDY,lw,lh); // (round 25c) the figures' fill light, kept off the sky
     for(const q of lights){if(cut&&q.kind==='fill')continue;l.globalAlpha=Math.min(1,q.a);l.drawImage(lightSprite(q.col),q.x-q.r,q.y-q.r,2*q.r,2*q.r);}
     l.globalAlpha=1;l.setTransform(1,0,0,1,0,0);if(cut){l.globalCompositeOperation='lighter';l.drawImage(cut,0,0);}}
@@ -11662,6 +11688,7 @@ const GLSH={
     uniform sampler2D u_rl;uniform float u_rk; // relief lighting (unit B): the factor from glRelief, and its strength (0 = off)
     uniform sampler2D u_cs,u_cm;uniform vec2 u_cfx; // atmosphere (glAtmo): shafts and caustics, mist and sheen
     uniform vec3 u_sd; // (round 29) the tint the air before the dark greys toward
+    uniform vec3 u_ad; // (round 47c) the ambient's lift, on what the rooms draw only (times the scene's alpha: never on the backdrop)
     ${GLSL_FG}${GLSL_FL}
     ${GLSL_M}
     void main(){
@@ -11676,6 +11703,7 @@ const GLSH={
       l*=1.+(texture2D(u_rl,v_u).r-.5)*2.*u_rk*(1.-mcv); // relief: lamp light raking across the stone (not across metal in front of it)
       float sh=(m.r*2.+texture2D(u_mk,mkUV(v_u+vec2(u_mp.x,0.))).r+texture2D(u_mk,mkUV(v_u-vec2(u_mp.x,0.))).r+texture2D(u_mk,mkUV(v_u+vec2(0.,u_mp.y))).r+texture2D(u_mk,mkUV(v_u-vec2(0.,u_mp.y))).r)/6.*cov; // (round 25c: the figures' shadows fall on the stone, never on the sky)
       l*=1.-sh*.85*u_fx.x; // a shadow takes the light away and a little of the ambient
+      l+=u_ad*cov; // (round 47c) the ambient's lift: flat (no relief, the lamp shadow only by the .4 below), and never on the sky (cov)
       vec3 c=s*l*(1.-sh*.4*u_fx.x);
       c=msApply(c,uv,s,mcv,sh*u_fx.x); // unit MS: metal lit by the lamps
       float hg=hlGate(cov); // (round 46b) not on a heap or drift
@@ -11707,7 +11735,7 @@ function glInit(){
     const c=document.createElement('canvas');c.id='glc';c.width=cv.width;c.height=cv.height;
     const gl=c.getContext('webgl2',{alpha:false,antialias:false,depth:false,stencil:false,powerPreference:'high-performance'})||c.getContext('webgl',{alpha:false,antialias:false,depth:false,stencil:false});
     if(!gl)throw new Error('no webgl');
-    const P={light:glLink(gl,glMake(gl,GLSH.light),['u_s','u_t']),bright:glLink(gl,glMake(gl,msPlain(GLSH.bright)),['u_sc','u_map','u_px','u_cs','u_csk','u_mk','u_ocT','u_ocC','u_fc','u_fg','u_fsz','u_ft']),blur:glLink(gl,glMake(gl,GLSH.blur),['u_t0','u_d']),final:glLink(gl,glMake(gl,msPlain(GLSH.final)),['u_sc','u_map','u_bl','u_mk','u_d','u_vg','u_px','u_mp','u_t','u_sat','u_fx','u_sh','u_hi','u_mkT','u_mkC','u_cgb','u_cgn','u_cgt','u_cgs','u_cgh','u_cgw'])};
+    const P={light:glLink(gl,glMake(gl,GLSH.light),['u_s','u_t']),bright:glLink(gl,glMake(gl,msPlain(GLSH.bright)),['u_sc','u_map','u_px','u_cs','u_csk','u_mk','u_ocT','u_ocC','u_fc','u_fg','u_fsz','u_ft']),blur:glLink(gl,glMake(gl,GLSH.blur),['u_t0','u_d']),final:glLink(gl,glMake(gl,msPlain(GLSH.final)),['u_sc','u_map','u_bl','u_mk','u_d','u_vg','u_px','u_mp','u_t','u_sat','u_fx','u_sh','u_hi','u_mkT','u_mkC','u_cgb','u_cgn','u_cgt','u_cgs','u_cgh','u_cgw','u_ad'])};
     // (attribute slots are fixed so one buffer layout serves every program)
     for(const k of ['bright','blur','final'])gl.bindAttribLocation(P[k].p,0,'a_p');
     const lp=P.light.p;gl.bindAttribLocation(lp,0,'a_k');gl.bindAttribLocation(lp,1,'a_c');gl.bindAttribLocation(lp,2,'a_o');gl.bindAttribLocation(lp,3,'a_col');
@@ -12061,6 +12089,15 @@ const GLAMBT={dungeon:0.78,tile:0.8,crypt:0.9,palace:0.62,forge:0.6};
 // the ambient never under AMB_MIN of full on its brightest channel (owner, v56: the Forge by Moonlight fell to .26 while the other
 // themes sit at .40 to .48; dark but readable, the Level Design Book's 'make it feel dark, not be dark'). Only the low ones rise.
 const AMB_MIN=0.45;
+// (round 47c, owner: "increase the minimum brightness of the levels. 5-10%"; "Go with C": the ambient floor raised by points of full scale,
+// each mode from its own level, so Classic stays as much brighter as it was; night stays darker, "but not so dark that you don't see traps.
+// I am constantly missing spikes"; the sky seen through the openings stays as it is) AMB_LIFT[tod] is added to the ambient's brightest
+// channel (dusk, night, dawn), the colour kept: Torchlight's AMB_MIN .45 becomes .55 at dusk and dawn, NIGHT at night. It is light on what
+// the rooms draw only (L1-L3 and the figures), never on L0, the backdrop: Torchlight adds it in the composite times the scene's alpha (u_ad,
+// ambLift), Classic fills its light map with it and takes it back where the sky shows (lightPass, skyMask). The light map itself keeps
+// v88's ambient, so the shafts' and the embers' tests against the ambient (u_bq.y, u_fl.w) and the bloom are unchanged.
+const AMB_LIFT=[0.10,0.075,0.10];
+function ambLift(){return mode==='cross'||!L||!L.prog?0:AMB_LIFT[L.prog.tod]||0;}
 function glAmbK(st,lk){const am=lk.amb.split(',');return Math.max(GLAMBT[st]||0.55,AMB_MIN*255/Math.max(+am[0],+am[1],+am[2]));}
 const GLFLICK={torch:0.6,fire:1,door:0.5,item:0.35};
 // ---- what reaches WebGL each frame (owner, v51: Torchlight fell back to Classic on the phone at 40 fps) ----
@@ -12186,7 +12223,8 @@ function glFrame(lights,VZ,camD,camDY,th){
   PF.p('bloom');gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);glClr(gl);bind(0,GLP.stex);bind(1,GLP.fb.map.t);bind(2,GLP.fb.bl.t);bind(3,GLP.mt);
   msPasses(m=>{gl.useProgram(P.final.p);
   {const U=P.final.u,gr=gradeOf(th.style),on=GLFX.grade&&GFX().grade;gl.uniform1i(U.u_mk,3);gl.uniform4fv(U.u_mkT,GLA.kT);gl.uniform4fv(U.u_mkC,GLA.kC);gl.uniform2f(U.u_px,1/w,1/h);gl.uniform2f(U.u_mp,1/lw,1/lh);gl.uniform1f(U.u_t,t%1000);
-    gl.uniform4f(U.u_fx,GLFX.shadow?1:0,GLFX.heat?1:0,GLFX.storm?1:0,S.set.calm?0.3:1);gl.uniform1f(U.u_sat,on?gr.sat:1);gl.uniform3fv(U.u_sh,on?gr.sh:GLNEUT);gl.uniform3fv(U.u_hi,on?gr.hi:GLNEUT);ctGradeU(gl,U,VZ,camD,camDY,w,h,on);glAtmoU(U,cfx);glStormU(U);}
+    gl.uniform4f(U.u_fx,GLFX.shadow?1:0,GLFX.heat?1:0,GLFX.storm?1:0,S.set.calm?0.3:1);gl.uniform1f(U.u_sat,on?gr.sat:1);gl.uniform3fv(U.u_sh,on?gr.sh:GLNEUT);gl.uniform3fv(U.u_hi,on?gr.hi:GLNEUT);ctGradeU(gl,U,VZ,camD,camDY,w,h,on);glAtmoU(U,cfx);glStormU(U);
+    {const ak=ambLift(),am=glcRGB(lk.amb),mx=Math.max(am[0],am[1],am[2])||1;gl.uniform3f(U.u_ad,am[0]/mx*ak,am[1]/mx*ak,am[2]/mx*ak);}} // (round 47c)
   hkUniforms(P.final.u,VZ,camD,camDY,w,h); // S3-A
   glReliefUse(); // (unit B)
   if(m)glMetalU(MS.uf); // (unit MS)
@@ -14600,7 +14638,7 @@ Object.assign(window.__HK,{respawn,startRewind,die,startEntry,entryOpen,entryX,s
 Object.defineProperty(window.__HK,'intro',{get(){return intro;},set(v){intro=v;}}); // (the floor's title banner, for egyptprop.py)
 Object.assign(window.__HK,{GATE_G,liftCell,windowPath,gateGeom,stoneTex,STONES,THEME_STONE,SLAB_STONE,stoneLying,BLK_W,BLK_H,looseWell,WELL_V,blockStep,wellGroup,wellSolve,wellTip,sandTex});
 Object.assign(window.__HK,{EGP,nutClock,conceptClock2,barqueClock,conceptClock,flaskBody,flaskR,heart,setHero,HERO_VAR,PAL_HERO,SCHED,floorsOf,BGART,bgArt,LFX,themeOf,get PF(){return PF;}}); // (the themes' backdrops and effects, for egyptshot.py and egyptfx.py)
-Object.assign(window.__HK,{hurt,HK,DISS,sandP,SAND_HP,GLFX,setClock:f=>{performance.now=f;}}); // S3-A (tests)
+Object.assign(window.__HK,{hurt,HK,DISS,sandP,SAND_HP,GLFX,AMB_LIFT,setClock:f=>{performance.now=f;}}); // S3-A (tests)
 Object.assign(window.__HK,{ryLow,beamBlockers,BLK,ryBlkLit,sandSegs,SDS,RY_BLUR,glPrecStr,renderXf,tileB:(c,r)=>B(L,c,r),get WALL(){return WALL;}}); // (round 46: the beams' cases and the device's precision, for beamjag.py)
 Object.assign(window.__HK,{FLM,FLV,ventState,cyc}); // FL (flames: the sheets and the vent's look, for tests)
 Object.assign(window.__HK,{GLFX,GLREL,clearRooms,bgCache,bgLayers,solidBelow:(c,r)=>solidBelow(L,c,r),roomCanvas}); // (unit B's switches and caches, for its tests)
