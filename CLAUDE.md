@@ -1439,6 +1439,13 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   `turn-bannerK`). (round 26g) The walls kept over the foot storey's cells beside the shaft are a ceiling at his height (`ceilY`): a jump the
   route takes on the foot storey after the ride whose full arc meets them (beamOverhead's test) would be the low leap and fall short, so that
   move is the banner slide too (13 more of 344 on floors 1-48, 3 seeds). `sandshaft.py` (floors 1-48, 3 seeds) must print `sandshaft: ok`; pictures `egyptr26e.py`.
+- The closing plate gives no warning (round 48a, owner: "The red tiles that slam shut the doors: they shouldn't be red and have a different
+  design. They should look the same and have no warning"; chose B): a `closer` is drawn by the `plate` case (`th.top` washed 18% white, the
+  same press), both modes; no approach hint (a slab closer shows `slabplate`, true for it too), `closer`/`slabcloser` reworded and shown only
+  after the slam; the Grab label's `hazardEdge(64, true)` leaves closers out (no 'Step'), while standing and running Jump still edge-walk to
+  its lip (bot `dashjump`, the in-line timers); the jam message and help page neutral; `plateClick` plays `plate` (a stone click) as a foot
+  first comes down on either kind. Glint, `CTL_WATCH`, `FT_FLAT` were already the same. Generator, `L.path`, timers and the bot unchanged
+  (`layoutcmp.py` v89 same). Pictures `egyptr48a.py old.html new.html [outdir]` (r48a_closer_<mode>.png, r48a_phone.png).
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized three ways (Trap density, above); only P4's race uses the careful pace.
 - Pose angles are measured from straight down; positive means forward.

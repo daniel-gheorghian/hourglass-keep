@@ -199,7 +199,7 @@ On death (`die`) the mode is `dead` and the save's resume point is dropped. Then
 ## Timed gates
 
 A plate raises a gate (`pressPlate`). A latching plate keeps it open for good; a timed one starts its timer (`f.g.tm = f.g.dur`) and
-the gate drops when it runs out; a closing plate (`closer`) slams it. The HUD shows the nearest running timer.
+the gate drops when it runs out; a closing plate (`closer`, since round 48a drawn exactly as an opening plate, with no warning) slams it. The HUD shows the nearest running timer.
 
 | Gate | Timer (`g.dur`) |
 |---|---|

@@ -28,7 +28,7 @@ the gate empties. Stepping on the closer slams the gate in 0.25 s.
 |---|---|---|
 | A gate is a barrier only while `open < 0.5` | `clampMove` stops a body's front (`BW` 6 px) at the cell's middle | a thin plane across the corridor, not a wall cell: walls, kicks (`wallTouch`) and grabs ignore it |
 | Opening | `open += 3/s` while `tm > 0` (full in 0.33 s) | |
-| Closing | slammed by a closer (`slam`) 4/s; a timed gate (`dur > 0`) 2.6/s once `tm` runs out, so it blocks again 0.19 s later | a closer is beaten only by jumping it; a closer can also shut a latched gate, and pressing the latched plate again reopens it |
+| Closing | slammed by a closer (`slam`) 4/s; a timed gate (`dur > 0`) 2.6/s once `tm` runs out, so it blocks again 0.19 s later | a closer is beaten only by jumping it; since round 48a it looks like any plate (no warning, see [plates](plates.md)); a closer can also shut a latched gate, and pressing the latched plate again reopens it |
 | Latched | `tm = Infinity` from the first press; sound `door`, message `gateMsg` | most in-line gates and most side-passage gates |
 | Timed | `tm = dur`, reset on every frame he stands on the plate, counts down once he leaves it | race: the clock starts at the plate's edge |
 | Held | `dur` 0.2 (`blockGate`: slab gate P2, block gate): shut 0.2 s + 0.19 s after the plate is released | only a slab or a block can hold it |
@@ -43,7 +43,7 @@ the gate empties. Stepping on the closer slams the gate in 0.25 s.
 | Respawn at a checkpoint | latched plates pressed before it (`S.cpPlates` = `pressedPlates()`) reopen their gates (`tm` Infinity, `open` 1); timed ones start shut | `respawnplates.py` |
 | Continue (`S.resume`) | latched-open gates (`lg`) reopened by `applyResume` | |
 
-Sounds: `gate` (five ticks) when a plate starts a shut gate, when a closer slams (with `shake(0.9)`) and when a closing gate in view
+Sounds: `plate` (a stone click, round 48a) as a foot first comes down on a plate or closer; `gate` (five ticks) when a plate starts a shut gate, when a closer slams (with `shake(0.9)`) and when a closing gate in view
 passes half shut; `door` (a long rumble) when a latched plate first latches.
 
 ## The prince and the guards
@@ -142,5 +142,6 @@ is: the top piece over the lintel's side face (round 14's look; the owner's call
 - round 26a: the top piece in the ceiling's shade.
 - round 38a: down slabs (portcullis, lift and sand lift mouths) carved out of the lamp shadow (`SHC`); lift mouth slabs block beams (`blkSlab`); the shader tests 8 blockers; the fork's grating takes a footprint on its bars (`fpMarkGrate`).
 - round 39 (v84): the far half and slots cut at a floor's lip beside the lintel; `glRelSlab` from the ceiling's edge. Look only.
+- round 48a: the closer no longer warns (drawn as the opening plate, no approach hint or 'Step' label); its slam unchanged.
 - round 46c: the slab's outline is its stone in shade (`selC`), the groove up the back wall opaque (the wall's art showed in it at .82); a slab that is down takes no sky beam in Torchlight (`solidMark`, the scene alpha `HILL_A`, layers.md R7; `solidscan.py`). Look only.
 - Details in CLAUDE.md (Themes, 16c, 20a, 20b, 25d, 26a, Forks, Trap density).

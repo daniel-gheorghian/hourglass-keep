@@ -103,6 +103,19 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
 
+## What round 48a found
+
+The owner: "The red tiles that slam shut the doors: they shouldn't be red and have a different design. They should look the same and have
+no warning"; on the pictured alternatives he chose B, the closing plate drawn exactly as the opening plate ([plates](elements/plates.md)).
+
+| Finding (v89) | Where | Round 48a | Seen in |
+|---|---|---|---|
+| The closer was dark red with three grooves | `drawDynamic` | drawn by the plate's case, both modes, every theme and hour | plates |
+| Approach hints `closer` (two tiles ahead) and `slabcloser` (150 px) named it before he stepped on it | `checkHints` | none for a closer; a slab closer shows `slabplate`; both hints reworded and shown after the slam (`standOn`) | plates |
+| The Grab button read 'Step' before a closer (`hazardEdge`) | `grabLabel` | `hazardEdge(64, true)` leaves closers out; the jumps' invisible edge-walk kept (bot `dashjump`, timers) | plates, controls |
+| The jam message and the help page named a red or closing plate | `jamAt`, help | neutral words | plates |
+| A plate sounded only when it started a gate, a closer only when it slammed | `standOn` | `plateClick`: a stone click (`plate`) as a foot first comes down on either | plates, gates |
+
 ## What round 47d found
 
 The owner, on round 47c's spike alternatives: option A, pale polished bronze, "everywhere": all hours, both modes, every kind of stake

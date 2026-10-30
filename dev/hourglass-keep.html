@@ -165,7 +165,7 @@ body.crossing #bGrab,body.crossing #bPause{visibility:hidden}
           <dt>Blocks</dt><dd>Hold <kbd>Grab</kbd> and press toward a loose block to push it, away to pull it. A block holds a plate down for good, and you can climb over it.</dd>
           <dt>Crawl</dt><dd>Down gets you on hands and knees, left or right crawls, up stands. Low tunnels and swinging blades call for it.</dd>
           <dt>Fight</dt><dd><kbd>Grab</kbd> strikes. Up blocks when the guard raises his blade, then strike back fast; better guards parry a flurry and answer it. Down sheathes. Strike snakes before they coil, or crouch and <kbd>Grab</kbd> to draw your blade low and thrust at them in a tunnel. Skeletons only fall to a pit, so drive them over the edge.</dd>
-          <dt>Gates</dt><dd>A plate raises a gate. A sky clock on a gate means it shuts again, with the time left shown at the top. A red plate right in front of a gate slams it shut, so jump over it. Some gates open from a plate out of sight, up a climb or down a hole; colour-marked gates answer to the plate of the same colour.</dd>
+          <dt>Gates</dt><dd>A plate raises a gate. A sky clock on a gate means it shuts again, with the time left shown at the top. Some plates shut a gate instead, and look like any other. Some gates open from a plate out of sight, up a climb or down a hole; colour-marked gates answer to the plate of the same colour.</dd>
           <dt>Traps</dt><dd>Jump saw blades as they come. Crouch under darts. When the dark wakes behind you, run and do not stop until the arch.</dd>
           <dt>Hours</dt><dd>When you fall, <kbd>Grab</kbd> turns back time about five seconds. You carry three hours; every sky clock gives them back.</dd>
           <dt>Flasks</dt><dd>Stand on one and tap <kbd>Grab</kbd> to drink. A small red flask heals one life, a large red one heals them all, gold adds a life, dark blue is poison. Large red flasks are rare and wait at the far ends of gated side passages; gold ones hide in passages without a gate.</dd>
@@ -2918,6 +2918,7 @@ const Snd={ctx:null,master:null,nb:null,
       case'rip':N(0.07,{vol:0.055,f:2300+Math.random()*900,type:'bandpass',q:1.6});break;
       case'push':N(0.45,{vol:0.1,f:240,type:'bandpass',q:2,att:0.05});break;
       case'saw':N(0.16,{vol:0.05,f:3400,type:'bandpass',q:6});break;
+      case'plate':N(0.03,{vol:0.06,f:900,type:'bandpass',q:3});T(190,0.05,{vol:0.025,type:'triangle'});break; // (round 48a: stone settling on stone)
       case'tick':T(1700,0.035,{vol:0.03,type:'square'});break;
       case'dart':N(0.09,{vol:0.07,f:2800,type:'bandpass',to:1400,q:3});break;
       case'storm':N(2.2,{vol:0.16,f:260,att:0.4,to:120});T(48,1.8,{vol:0.07,type:'sine',att:0.4});break;
@@ -3141,7 +3142,7 @@ function clampMove(x0,x1,y,self,crawl){
 function startFall(vx){setState('air');P.vx=vx;P.vy=0;P.fallY=P.y;P.autoGrab=false;P.jumpKind=null;}
 function nearGuard(range){let best=null,bd=1e9;for(const g of G){if(!g.alive||g.state==='drop'||g.state==='fall')continue;if(Math.abs(g.y-P.y)>8)continue;const d=Math.abs(g.x-P.x);if(d<range&&d<bd){best=g;bd=d;}}return best;}
 function enterGarde(g){P.foe=g;P.face=g.x>P.x?1:-1;if(!P.sword)Snd.play('draw');P.sword=true;P.lowSword=false;P.vx=0;setState('garde');hint(g.skel?'skel':'fight');if(!g.skel&&(g.tier>0||g.cap)&&(S.hints.fight||S.learned.fight))hint('ranks');}
-function hazardEdge(maxD){
+function hazardEdge(maxD,vis){ // vis: the Grab button's label asks, and a closing plate is no edge to it (round 48a: it would name the plate)
   const row=pRow();let c=pCol();
   for(let i=0;i<3;i++){
     const edge=P.face>0?(c+1)*TW:c*TW;
@@ -3150,7 +3151,7 @@ function hazardEdge(maxD){
     if(B(L,nc,row)===WALL)return null;
     const f=F(L,nc,row);
     if(f&&f.t==='gate'&&f.open<0.5)return null;
-    if(!solidBelow(L,nc,row)||(f&&(f.t==='spikes'||(f.t==='loose'&&!(f.sturdy&&f.s===0))||f.t==='closer')))return edge;
+    if(!solidBelow(L,nc,row)||(f&&(f.t==='spikes'||(f.t==='loose'&&!(f.sturdy&&f.s===0))||(f.t==='closer'&&!vis))))return edge;
     c=nc;
   }
   return null;
@@ -3663,7 +3664,7 @@ function pressedPlates(){return L.dyn.filter(o=>(o.f.t==='plate'&&o.f.latch&&o.f
 // jams it, and it no longer slams its gate (Prince of Persia levels 4, 5, 9 and 11).
 function jamAt(c,r){const f=F(L,c,r);if(!f||f.jam||(f.t!=='plate'&&f.t!=='closer'))return;f.jam=1;f.press=gameTime;
   if(f.t==='plate'){f.latch=true;f.g.latch=true;f.near=true;pressPlate(f);msg('The slab lands on the plate and holds it down. A gate grinds open and stays open.',3.6);}
-  else msg('The slab jams the closing plate. It will not spring now.',3.4);}
+  else msg('The slab lands on the plate and holds it down.',3.4);} // (round 48a: no word of a closing plate)
 // (a floor rebuilt after a checkpoint: a jam made before it is made again, the slab already fallen)
 function jamRestore(o){const f=o.f;if(!f.slabF)return;f.jam=1;f.press=-9;if(f.t==='plate'){f.latch=true;f.g.latch=true;}
   const sl=L.dyn.find(q=>q.f===f.slabF);if(sl){sl.f.s=2;L.base[sl.r*L.cols+sl.c]=EMPTY;}L.rubble.add(o.r*L.cols+o.c);}
@@ -3694,14 +3695,16 @@ function armPassage(f){if(f.armed)return;f.armed=1;
   if(f.chain){f.chain.forEach((t,k)=>{if(t.s===0){t.s=1;t.tm=-(1.8+dk+0.36*k);}});Snd.play('creak');msg((f.g?gateMsg(f)+' ':'')+'The cracked floor behind you is starting to give way. Run!',3.8);}
   if(f.amb&&!quiet)pendingGuards.push({at:gameTime+0.6+dk,spec:f.amb});}
 function triggerLoose(f){if(f.s!==0)return;if(f.drop&&!f.sturdy)learn('collapse');if(f.sturdy){if(!f.creaked){f.creaked=1;Snd.play('creak');}return;}f.s=1;f.tm=0;Snd.play('creak');}
+// (round 48a) a plate's click as a foot first comes down on it, the same for an opening and a closing plate, whatever it does to a gate
+function plateClick(f){if(gameTime-f.press>0.2)Snd.play('plate');}
 function standOn(){
   const c=pCol(),r=pRow(),f=F(L,c,r);
   if(f){
     if(f.t==='loose')triggerLoose(f);
-    else if(f.t==='plate'){learn('plate');pressPlate(f);}
+    else if(f.t==='plate'){learn('plate');if(!f.jam)plateClick(f);pressPlate(f);}
     else if(f.t==='trigger')armPassage(f);
     else if(f.t==='lplate'){f.press=gameTime;const lf=f.lf,y=f.e?lf.yB:lf.yT;if(!liftDocked(lf,!f.e)&&lf.tgt!==y&&!(P.state==='lift'&&P.lift===lf)){lf.tgt=y;Snd.play('gate');hint('lift');}}
-    else if(f.t==='closer'&&!f.jam){f.press=gameTime;if(f.g.tm>0||f.g.open>0.05){f.g.tm=0;f.g.slam=true;Snd.play('gate');shake(0.9);hint('closer');}}
+    else if(f.t==='closer'&&!f.jam){plateClick(f);f.press=gameTime;if(f.g.tm>0||f.g.open>0.05){f.g.tm=0;f.g.slam=true;Snd.play('gate');shake(0.9);hint(f.slabF?'slabcloser':'closer');}}
     else if(f.t==='xplate'){f.press=gameTime;if(!L.door.opening&&L.door.open<1){L.door.opening=true;msg('A heavy door grinds open somewhere on this floor.',3.4);Snd.play('door');}}
   }
   for(let i=0;i<L.cps.length;i++){const cp=L.cps[i];if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<14){cp.on=true;cp.onAt=gameTime;L.cpIndex=i;S.cp=i;S.floorTime=levelTime;S.cpPlates=pressedPlates();const fill=(S.sands|0)<SANDS;S.sands=SANDS;writeSave();msg(fill?'The sky clock lights, and your hours are restored. If you fall, you rise here.':'The sky clock lights. If you fall, you rise here.',3.2);Snd.play('cp');sparks(cpX(cp),SURF(cp.r)-26,10,'rgb('+(L.theme.glow||'232,196,127')+')');}}
@@ -4546,7 +4549,7 @@ const HINTS={
   vent:'Fire vents. Watch them flare, then cross between bursts.',
   skel:'A skeleton. Your sword only drives it back. Push it over the edge into the pit.',
   reinf:'Another guard drops in from the gallery.',
-  closer:'A closing plate. Step on it and the gate slams shut. Jump over it.',
+  closer:'That plate shut the gate. Some plates close a gate instead of opening it, and they look like any other. Open the gate again, and jump this one.',
   latch:'This gate opens from a plate somewhere out of sight. Look above, or below.',
   sandgate:'The sky clock on this gate means it will not stay open. Its plate is out of sight; find it, then race back before its sun sets.',
   wallrun:'Run at a wall and press Jump to run up it. You can reach a ledge two floors up and catch it.',
@@ -4566,7 +4569,7 @@ const HINTS={
   loopgate:'A violet gate. It opens from the violet plate, which lies on the long way round.',
   slabplate:'A loose slab hangs in the gallery over this plate. Run across it up there and it falls and holds the plate down.',
   slabgate:'This gate shuts the moment the plate is let go. Something heavy must hold the plate down: look for a loose slab above it.',
-  slabcloser:'A closing plate too wide to jump. A loose slab hangs in the gallery above it: let it fall and the plate is jammed.',
+  slabcloser:'Those plates shut the gate, and they look like any other. A loose slab hangs in the gallery above them: let it fall and it jams them.',
   racegate:'The sky clock on this gate means it will not stay open. Its plate lies back the way you came: press it, then run for the gate.',
   collapse:'This ledge will not hold. Stand on it and let it drop you to the floor below.',
   jgrab:'A ledge a floor up across a pit. Run, jump, and hold Grab in the air to catch its edge; then press up to climb.',
@@ -4596,7 +4599,7 @@ function checkHints(){
       if(f&&f.t==='hurtdrop'){hint('hurtdrop');break;}
       if(!solidBelow(L,nc,r)){let w=0;for(let k=0;k<4;k++){if(!solidBelow(L,nc+P.face*k,r)&&B(L,nc+P.face*k,r)!==WALL)w++;else break;}
         if(w>=3){let bar=false;for(let k=0;k<4;k++){const ff=F(L,nc+P.face*k,r);if(ff&&ff.t==='bar')bar=true;}hint(bar?'swing':'wide');}else if(edgeBelow()&&B(L,nc,r+1)!==WALL&&solidBelow(L,nc,r+1))hint('drop');else hint('gap');break;}
-      if(f){if(f.t==='spikes')hint('spikes');else if(f.t==='loose')hint(f.plank?'bridge':f.drop?'collapse':'loose');else if(f.t==='plate')hint('plate');else if(f.t==='chomp')hint('chomp');else if(f.t==='low')hint('crawl');else if(f.t==='closer')hint(f.slabF?'slabcloser':'closer');else if(f.t==='vent')hint('vent');else if(f.t==='pend')hint('pend');break;}
+      if(f){if(f.t==='spikes')hint('spikes');else if(f.t==='loose')hint(f.plank?'bridge':f.drop?'collapse':'loose');else if(f.t==='plate')hint('plate');else if(f.t==='chomp')hint('chomp');else if(f.t==='low')hint('crawl');else if(f.t==='vent')hint('vent');else if(f.t==='pend')hint('pend');break;}
     }
     if(canClimbUp())hint('climb');
     for(const f of L.lifts){if(f.sand){if(f.s===0&&f.rT===r&&Math.abs(f.sc*TW+16-P.x)<110)hint('sandfall');continue;} // (round 41: its own words, 'sandfall', learned by getting off one: a save that learned the old 'sandlift' still sees them) // (round 38b: a sand lift has no plate: its own hint, by its slab while it waits)
@@ -4608,7 +4611,7 @@ function checkHints(){
     for(const cp of L.cps)if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<70)hint('cp');
     for(const sn of SN)if(sn.alive&&sn.r===r&&Math.abs(sn.x-P.x)<110){hint('snake');if(lowAt(sn.x,sn.r)||lowAt(sn.x-20,sn.r)||lowAt(sn.x+20,sn.r))hint('poke');}
     for(const o of L.dyn)if(o.f.t==='gate'&&o.f.far&&o.f.open<0.5&&o.r===r&&Math.abs(o.c*TW+16-P.x)<110){hint(o.f.loop?'loopgate':o.f.pair!==undefined?'double':o.f.slab?'slabgate':o.f.race?'racegate':o.f.latch?'latch':'sandgate');}
-    for(const o of L.dyn)if(o.f.slabF&&!o.f.jam&&o.r===r&&Math.abs(o.c*TW+16-P.x)<150)hint(o.f.t==='closer'?'slabcloser':'slabplate');
+    for(const o of L.dyn)if(o.f.slabF&&!o.f.jam&&o.r===r&&Math.abs(o.c*TW+16-P.x)<150)hint('slabplate'); // (round 48a: a closing plate under a slab shows the opening plate's words, which hold for it too: no warning before it slams)
     for(const o of L.dyn)if(o.f.t==='pend'&&o.r===r&&Math.abs(o.c*TW+16-P.x)<110)hint('pend');
     for(const o of L.dyn){if(o.r!==r)continue;const dx=Math.abs(o.c*TW+16-P.x);if(o.f.t==='saw'&&dx<120)hint('saw');if(o.f.t==='darter'&&dx<200)hint('darts');}
     for(const bl of L.ext.blocks)if(bl.r===r&&Math.abs(bl.c*TW+16-P.x)<90)hint('block');
@@ -9018,10 +9021,8 @@ function drawDynamic(ctx,x0,x1,y0,y1){
           else{let rb=o.r+1;while(rb<L.rows&&!solidBelow(L,o.c,rb)&&rb-o.r<4)rb++;const yb=rb<L.rows&&rb-o.r<4?SURF(rb)-0.8-sh:ft+70; // (round 16a: no sand under it, a corridor: only grit sifting from its cracks)
             for(const ex of [fx+1,fx+15,fx+TW-1])sandFlow(ctx,ex,ft+4,Math.min(yb,ft+6+30*sk),sk*0.22,ex*0.07);}} // (short: a sifting, not a pour)
         ctx.restore();if(!tip&&!ck)fpMark(ctx,X,ys);}break;
-      case'closer':{dynSlab(ctx,o.c,o.r,X,ys,th);const dn=f.jam||gameTime-f.press<0.12,lift=dn?1:2.4;
-        ctx.save();ctx.translate(0,-lift);floorQuad(ctx,X+1,X+31,0.03,0.97,ys,lift,selC('#8f2f2a',0.6));ctx.fillStyle='#8f2f2a';ctx.fill();ctx.strokeStyle=selC('#8f2f2a',0.6);ctx.lineWidth=0.7;ctx.stroke(); // (round 46c: its rim and grooves the plate's red darker, the contour rule)
-        ctx.strokeStyle=selC('#8f2f2a',0.66);ctx.lineWidth=1.1;ctx.beginPath();for(let i=0;i<3;i++){const a=onFloor(X+9+i*7,0.25,ys),b=onFloor(X+9+i*7,0.75,ys);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}ctx.stroke();ctx.restore();fpMark(ctx,X,ys,lift);if(f.jam)drawHeap(ctx,o,X,ys,th);break;}
-      case'plate':case'xplate':case'lplate':{const lf=f.t==='lplate'&&EGP.traps&&f.lf&&f.lf.t==='lift'&&!f.lf.sand?f.lf:null,inL=lf&&o.c===lf.sc-1?T_SLAB+1:0,inR=lf&&o.c===lf.sc+1?T_SLAB+1:0; // (beside a lift's mouth: clear of its slab)
+      case'plate':case'closer':case'xplate':case'lplate':{ // (round 48a, owner: "they should look the same and have no warning": a closing plate is drawn exactly as the opening plate, its press sinking the same; it was red with three grooves)
+const lf=f.t==='lplate'&&EGP.traps&&f.lf&&f.lf.t==='lift'&&!f.lf.sand?f.lf:null,inL=lf&&o.c===lf.sc-1?T_SLAB+1:0,inR=lf&&o.c===lf.sc+1?T_SLAB+1:0; // (beside a lift's mouth: clear of its slab)
         const me=lf&&(inL||inR)?(o.r===lf.rB?1:0):-1,cut=me>=0&&(me?lf.sB:lf.sT)===(inL?-1:1);if(cut){ctx.save();liftMouthCut(ctx,lf,me);} // (round 16c: the slab stands on this cell's floor, in front of it: the floor and plate are cut round it, no longer the slab's foot drawn again over them, which doubled its shading in a band and hid the ropes there)
         dynSlab(ctx,o.c,o.r,X,ys,th);const dn=f.jam||gameTime-f.press<0.12,lift=dn?1:2.4;
         ctx.save();ctx.translate(0,-lift);const pc=f.t==='xplate'?'#d8b04a':f.t==='lplate'?'#b98a4a':f.pair!==undefined?PAIRC[f.pair]:th.top;floorQuad(ctx,X+1+inR,X+31-inL,0.03,0.97,ys,lift,selC(pc,0.6));ctx.fillStyle=pc;ctx.fill();
@@ -12877,7 +12878,7 @@ function grabLabel(){
       if(bl&&!bl.mv&&P.stumble<=0&&Math.abs((P.face>0?(pCol()+P.face)*TW:(pCol()+P.face+1)*TW)-P.x)<=26){
         if(ix===-P.face)return blockCanMove(bl,-P.face,'pull')?'Pull':'Grab'; // pad held away: a pull (a refused pull still eats the press)
         if(blockCanMove(bl,P.face,'push'))return 'Push';}
-      {const f=F(L,pCol(),pRow());if(hazardEdge(64)!==null||(f&&f.t==='spikes'))return 'Step';} // spikes (under him or ahead) or an edge ahead: Grab + a tap toward it is a careful step
+      {const f=F(L,pCol(),pRow());if(hazardEdge(64,true)!==null||(f&&f.t==='spikes'))return 'Step';} // spikes (under him or ahead) or an edge ahead: Grab + a tap toward it is a careful step
       return 'Grab';}
     case'crouch':
       if(P.lowSword)return 'Thrust';

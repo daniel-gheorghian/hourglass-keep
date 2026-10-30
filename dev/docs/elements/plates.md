@@ -28,7 +28,7 @@ teal timer is `estPath` of the gallery's way back plus the drop, times `timerK()
 | `plate`, latched (`latch`) | `pressPlate`: `g.tm = Infinity` (stays open); `door` sound and `gateMsg` unless `near` | in-line gates, P1/P5 branch plates (62% of timed ones made latched after the build), P3's plate, the amber double plate, the violet plate |
 | `plate`, timed | `g.tm = g.dur` every frame he stands on it, `slam` cleared; the clock runs once he steps off; `gateMsg` once (`told`) | in-line timed gates, the teal double plate, P4 (`fwd`: the gate is "ahead", in the next turn) |
 | `plate`, held | a 0.2 s gate: open only while something stays on it | P2 (`slabF`: a gallery slab above it) and `blockSeg` (a block) |
-| `closer` | `g.tm = 0`, `slam`: the gate drops at 4/s; `gate` sound, `shake(0.9)`, hint `closer`; nothing once `jam` | right before an in-line gate (floor 4 on: 45% of in-line gates with `m` >= 3 and no pit); four in a row before P3's gate |
+| `closer` | `g.tm = 0`, `slam`: the gate drops at 4/s; `gate` sound, `shake(0.9)`, hint `closer` (or `slabcloser`) after the slam, never before (round 48a); nothing once `jam` | right before an in-line gate (floor 4 on: 45% of in-line gates with `m` >= 3 and no pit); four in a row before P3's gate |
 | `xplate` | `L.door.opening`: the exit door opens at 0.45/s (2.2 s); `door` sound; message "A heavy door grinds open somewhere on this floor." | one a floor, past 82% of the route, before the exit's guard |
 | `lplate` | sends its lift (`lf`) to its end (`e`: 0 top, 1 bottom) unless docked there or ridden; `gate` sound, hint `lift` | one on each landing of a counterweight lift (see [lifts](lifts.md)) |
 | `trigger` | the flask tile of a gateless secret passage: arms its crumbling chain and ambush (`armPassage`) | no gate; drawn as plain floor under the flask (see [flasks and secrets](flasks-and-secrets.md)) |
@@ -81,7 +81,7 @@ line when the left HUD reaches the middle; gold over half, orange over a quarter
 | Latched plate pressed, then a closer stepped on | the gate slams; pressing the latched plate again reopens it |
 | A slab falling onto a plate while he stands under it | the slab hurts him (1 life, `crush`) as any falling slab, then lies on the plate |
 | Guards | never press plates; a guard can stand past a solved gate (`gateDue`) |
-| Learning | the first press sets `learn('plate')`; hints `plate`, `closer`, `slabplate`, `slabcloser`, `block`, `door`, `lift` |
+| Learning | the first press sets `learn('plate')`; hints `plate` and `slabplate` on approach (a slab closer shows `slabplate` too, round 48a), `closer` and `slabcloser` only after a slam, `block`, `door`, `lift` |
 
 ## How it is drawn
 Live in `drawDynamic`, both modes; the room picture leaves the cell out (`drawRoomStatic` returns before the floor tile for `plate`,
@@ -101,7 +101,7 @@ floor tile, then the plate is a raised slab on it:
 | `plate` | the theme's floor top (`th.top`), washed 18% white; a paired plate in `PAIRC[pair]` (amber `#e0a43a`, teal `#45b8b0`, violet `#a77ee6`) |
 | `xplate` | gold `#d8b04a` with a small dark dot at its middle |
 | `lplate` | `#b98a4a`; beside a lift's mouth it is narrowed by `T_SLAB + 1` and its cell is cut round the mouth slab (`liftMouthCut`, round 16c) |
-| `closer` | dark red `#8f2f2a` with three dark grooves running back in depth |
+| `closer` | exactly the `plate` (round 48a, owner: "they should look the same and have no warning"; chose B): same code path in `drawDynamic`; until v89 dark red `#8f2f2a` with three grooves |
 | jammed | a rubble heap on it (`drawHeap`), drawn pressed |
 
 A latched plate springs back up when he steps off (only the gate stays open); a jammed one stays down.
@@ -119,6 +119,24 @@ A latched plate springs back up when he steps off (only the gate stays open); a 
 | Heat, the dark | none |
 | Bloom, grade, vignette | none of its own |
 | Classic | same drawing and glint; no relief or footprint gate |
+
+## No warning (round 48a)
+The owner: "The red tiles that slam shut the doors: they shouldn't be red and have a different design. They should look the same and have no
+warning"; on the pictured alternatives he chose B, the closing plate drawn exactly as the opening plate. Nothing tells them apart before he
+steps on one:
+
+| Tell (v89) | Round 48a |
+|---|---|
+| Red `#8f2f2a` with three grooves | drawn by the `plate` case (`th.top` washed 18% white, the same rim and press), both modes, every theme and hour |
+| Approach hints `closer` / `slabcloser` (two tiles ahead; a slab closer within 150 px) | no approach hint for a closer; a slab closer shows `slabplate` as a slab plate does (its words hold for it). `closer` and `slabcloser` are reworded and shown after the slam, from `standOn` |
+| The Grab button read 'Step' two tiles before a closer (`hazardEdge` counted it) | `hazardEdge(64, true)` for the label leaves closers out. The invisible help stays: standing Jump edge-walks to a closer's lip and a running Jump waits for it (`tryJump`, `stRun`), which the bot's `dashjump` and the in-line timers rely on |
+| A jammed closer's message named it ("The slab jams the closing plate") | "The slab lands on the plate and holds it down." |
+| The help page: "A red plate right in front of a gate slams it shut" | "Some plates shut a gate instead, and look like any other." |
+| Sound: a closer was silent unless it slammed; a plate made a sound only when it started a gate | `plateClick` plays `plate` (a short stone click) as a foot first comes down on either kind (not on a jammed one), whatever it does |
+
+Already the same and kept: the glint in `gatherLights`, `CTL_WATCH` (the controls fade over either), `FT_FLAT`/`fpMark`, `GLREL_LIVE`,
+`CUT_AT_WALL`, Classic's embers. Generator, `L.path`, `estPath`, timers and the bot unchanged (`layoutcmp.py` against v89 same, 144 of 144).
+Pictures `egyptr48a.py old.html new.html [outdir]` (r48a_closer_<mode>.png, r48a_phone.png).
 
 ## Relations to other elements
 | Element | Relation |
@@ -147,4 +165,5 @@ A latched plate springs back up when he steps off (only the gate stays open); a 
 - round 16c: the lift plate cut round a mouth slab.
 - round 35b: live flat tiles marked 254 (`fpMark`) so beam footprints land on them.
 - round 35c: live tiles rubbed out of the relief (`glRelFloors`, `GLREL_Q` 160).
+- round 48a: the closing plate looks, sounds and is hinted exactly as the opening plate until it slams (above).
 - Details in CLAUDE.md (Trap density, Forks, Fighters, 16c, 35b, 35c).
