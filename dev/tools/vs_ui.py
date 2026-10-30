@@ -1,11 +1,5 @@
-# UI: title, menus, pause, hint banners, between-floors cards, death, portrait, gate countdown.
+# UI: title, menus, pause, between-floors cards, death, portrait, gate countdown. (round 49a: no hint banners or game messages any more)
 import json
-HINTS = [('spikes', 4, "return V.dynSpot(L,'spikes','o.f.fixed===false',3)"), ('chomp', 5, "return V.dynSpot(L,'chomp',null,3)"), ('plate', 4, "return V.dynSpot(L,'plate','!o.f.slabF&&o.f.pair===undefined&&!o.f.fwd',3)"),
-         ('latch', 5, "return V.dynSpot(L,'gate','o.f.far&&o.f.latch&&o.f.pair===undefined&&!o.f.blockGate&&!o.f.puz',3)"), ('hurtdrop', 8, "return V.dynSpot(L,'hurtdrop',null,3)"),
-         ('lift', 8, "const f=L.lifts.find(f=>f.t==='lift'&&V.near(f.sc,f.rT,3));return f&&V.near(f.sc,f.rT,3)"), ('wide', 6, "const o=L.segs.find(s=>s.k==='gap3');return o&&V.near(o.c0,o.r0,3)"),
-         ('collapse', 9, "return V.segSpot(L,'^turn-collapse')")]
-
-
 def run(rig):
     px = lambda: rig.pg.wait_for_timeout
     repro = lambda sid: 'cd dev/tools && python3 vshots.py ui ' + sid
@@ -34,7 +28,7 @@ def run(rig):
     rig.pg.click('#bNew'); rig.pg.wait_for_timeout(900)
     snap('U-floor-intro', 'The floor title shown as a floor begins ("Floor 1", theme name).', 'ui-play', 'play')
     rig.pg.wait_for_timeout(3200)
-    snap('U-hint-move', 'First hint banner on floor 1 (movement), controls and HUD as in play.', 'ui-play', 'play')
+    snap('U-play-start', 'Floor 1 in play after its title: controls and HUD (round 49a: no hint banner).', 'ui-play', 'play')
     rig.pg.click('#bPause'); rig.pg.wait_for_timeout(400)
     snap('U-pause', 'Pause screen with this floor, times, falls and the settings toggles.', 'ui-menus', 'paused')
     rig.pg.click('#bGfxP'); rig.pg.wait_for_timeout(300)
@@ -50,18 +44,6 @@ def run(rig):
     rig.pg.evaluate("document.getElementById('bPause').click()"); rig.pg.wait_for_timeout(300)
     rig.pg.click('#tLefty'); rig.pg.click('#bResume'); rig.pg.wait_for_timeout(1500)
     snap('U-play-lefty', 'Play with the pad on the right ("Pad on right" setting): controls mirrored.', 'ui-play', 'play')
-    # banner hints at their features
-    rig.fresh()
-    rig.keepbanner = True
-    for k, (hid, n, pred) in enumerate(HINTS):
-        rig.scene('U-hint-' + hid, n, 13000 + k * 30, pred, 'Hint banner "%s" shown near the feature it is about.' % hid, 'ui', 'ui-play', tries=150, modes=('torch',), ticks=30,
-                  js2="H.banner={text:H.HINTS[%s],t:0.6,dur:9,kind:'hint'}" % json.dumps(hid))
-    rig.keepbanner = False
-    # a game message (orange kind)
-    rig.keepbanner = True
-    rig.scene('U-msg-gate', 6, 13300, "return V.dynSpot(L,'gate','o.f.race&&!o.f.latch',3)", 'A game message (not a hint): the sands turn back / a gate message.', 'ui', 'ui-play', tries=150, modes=('torch',), ticks=30,
-              js2="H.banner={text:'The sands turn back. 2 turns of the glass left.',t:0.6,dur:9,kind:'msg'}")
-    rig.keepbanner = False
     rig.scene('U-gate-timer', 6, 13320, "return V.dynSpot(L,'gate','o.f.race&&!o.f.latch',2)", 'HUD gate countdown (hourglass and seconds at the top centre) while a timed gate is open.', 'ui', 'ui-play',
               tries=150, modes=('torch',), ticks=10, js2='const f=V.dynAt(s).f;f.tm=6.5;f.dur=11;f.open=1')
     # cards

@@ -44,7 +44,7 @@ is dug; floor 6 seed 91266 and floor 6 seed 91297 (column 105) hold trapped ones
 | Rule | Example or number | Why |
 |---|---|---|
 | Counterweight: on the platform, Up or Down held rides it at `LIFT_V`; let go, it stops where it is | a storey takes 1 s | he controls the ride; he is on it within 17 px of the shaft's middle and 2.5 px of `f.y` (`liftUnder`) |
-| A call plate on each landing (`lplate`, `f.e` 0 top, 1 bottom) sends the platform to its landing | not while he rides it or it is already there | so the platform can be fetched from either side; `hint('lift')` |
+| A call plate on each landing (`lplate`, `f.e` 0 top, 1 bottom) sends the platform to its landing | not while he rides it or it is already there | so the platform can be fetched from either side |
 | Each mouth is shut while the platform is away from it (`f.gT`, `f.gB`: 1 open, eased at 3/s) | `clampMove` stops him (and guards) at the plane `liftGx` | nobody walks into an empty shaft |
 | A platform resting at the top is floor (`L.base` of the top mouth cell = `FLOOR`; `L.base0` keeps the open shaft) | he can walk over it to the far side | the top landing reads as a floor |
 | The ride ends standing; the key held for it does nothing until released (`P.liftHold`) | Down held at the bottom is not a crouch | owner (liftgfx): he used to arrive crouching |
@@ -172,7 +172,7 @@ round the slab's screen shape (`liftMouthCut`) so the slab stands on it; see [pl
   `L.base`, `LIFT_V` and the boarding windows are play. The foot cell stays `FLOOR` in play; a pit is drawn only where nobody can stand on
   the foot while it shows (a lift whose far side opens on a drop keeps its tile).
 - A lift is never a trap: a slab coming down shoves, a platform catches; only an empty shaft is a fall. The exception (round 41, owner): the
-  sand lift, whose slab does not stop at the foot but carries him into a spike pit; it must warn (its hint, the foot's mouth starting up
+  sand lift, whose slab does not stop at the foot but carries him into a spike pit; it must warn (its hint until v89, the foot's mouth starting up
   before the window) and give a window a phone pad can take (a held arrow or a buffered Jump, 0.59 s).
 - No wall plant or kick in any cell a lift travels through (`inLiftShaft`); `liftkick.py` must print `ALL OK`.
 - Everything in a shaft is at or behind his depth: anything new drawn there goes inside `liftOccl` (and `liftNearCut` for the column on its

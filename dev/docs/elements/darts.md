@@ -35,7 +35,7 @@ from behind the step's front face with only a tick and a hiss to tell of them.
 | Damage | `trapHit`: 1 life (`hurt(1,'dart')`), `P.inv=0.9` s, push 12 px along the dart, `landHurt` from standing states; the dart is removed | death card "Struck by a dart" |
 | While invulnerable | the hit test is skipped and the dart flies on | |
 | End of run | at `f.x0`, a dart whose tile is in view becomes a spent dart (`spendDart`); otherwise it is just removed | it has no wall to hit |
-| Hint | `darts` within 200 px on his row: "Darts fly from that wall at chest height. Crouch and crawl under them, or time your run." | |
+| Hint | none since round 49a (no hint banners; until v89: `darts` within 200 px on his row: "Darts fly from that wall at chest height. Crouch and crawl under them, or time your run.") | |
 | Sound | `dart` and a dust `puff` at the mouth, both only when the shooter's tile is in view | |
 | Rewind | `L.ext` (darts in flight) and the feature's `lastPh` are in every snapshot (`snapAll`); `SPENT` is not saved and is emptied on a floor or clock reset (`clearSpent`) | spent darts are look only |
 

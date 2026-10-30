@@ -56,8 +56,8 @@ nearly still and pumps: a press of the way he will swing next, at human timing, 
 | Situation | What happens |
 |---|---|
 | Missing the bar, or letting go short | a fall into the pit onto fixed spikes ([spikes](spikes.md)) |
-| Caught | state `swing`, `P.bar`; `hint('swing')`; the Grab button reads Swing while a bar is in reach (`grabLabel`); the touch controls ghost while he swings over them |
-| Approaching a gap of three tiles or more with a bar in the next four cells | `hint('swing')` instead of `wide` |
+| Caught | state `swing`, `P.bar`; the Grab button reads Swing while a bar is in reach (`grabLabel`); the touch controls ghost while he swings over them |
+| Approaching a gap of three tiles or more with a bar in the next four cells | nothing since round 49a (until v89 `hint('swing')` instead of `wide`) |
 | Rewind | `P.swTh`, `P.swOm` (in `P`) and `f.ps`, `f.pw` (on the feature) come back (`swingtest.py`) |
 | Guards | none: they never swing |
 | The bot | pumps by holding the way he moves while the amplitude is under 0.8, then lets go of the pad and presses Jump moving forward at 0.15 to 0.3 rad; on a hang it climbs; fails with "missed the bar" or "swing short" |

@@ -29,11 +29,11 @@ held, he steps across 13 px at a time while the stakes stand round his feet; a r
 | A careful step is safe | `startStep`: 13 px over `STEP_T`, no spike test; `stand` on a spike tile is safe | PoP1's careful step |
 | Running or skidding onto one kills | `runMove` (state `run` and `stop`): entering a spike tile with \|`P.vx`\| > 35 sets `ext` 1 and `die('spikes')`; a run starts at 35 and gains 650 px/s² | |
 | Landing on one kills, live or fixed, from any height | `land()`: `die('spikes')` before the fall-damage test, so a one-storey drop into a pit kills | PoP1's spiked pit |
-| Death, not a life | `die`: red sparks; card "Impaled on the stakes", then "Spikes spare a careful step: hold Grab and tap toward them." | |
+| Death, not a life | `die`: red sparks; card "Impaled on the stakes" (its tip "Spikes spare a careful step..." dropped in round 49a) | |
 | Run spikes | 1 tile, or 2 from floor 6 (40%), then one plain tile; side passages the same | |
 | Fixed spikes | `fixed:true, ext:1`, never updated; at the foot of every pit 1 or 2 storeys down (`pit()`) | |
 | Jumps are taken at their edge | `hazardEdge` counts a spike tile as an edge (with no floor, loose floor and a closer): a standing jump walks to it first (`tryJump`, `edgeWalk`, within 30 px), a running jump pressed early is held to the lip (within 80 px, `P.jLe`); the Grab button reads "Step" on or before spikes | |
-| Hints | `HINTS.spikes` on the tile; learned by a careful step that ends on a spike tile or a jump that clears one (`land`) | |
+| Hints | none since round 49a (no hint banners; until v89: `HINTS.spikes` on the tile; learned by a careful step that ends on a spike tile or a jump that clears one (`land`)) | |
 | Touch controls | fade to a ghost when a spike tile is under them (`CTL_WATCH`) | |
 | Rewind | `ext` and `hold` are restored with the features (`snapAll`) | |
 

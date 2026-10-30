@@ -31,7 +31,7 @@ and knocks him back 12 px. Crouched, he crawls under it untouched, as the bot do
 | Damage | `trapHit('pend')`: one life, `P.inv` 0.9 s, pushed back 12 px away from the blade and `landHurt` if on foot; card "Struck by the pendulum" | |
 | Layout | 5 plain tiles, the pendulum on the third (a side passage: a 5-tile part, on its third) | |
 | Sound | `swoosh` each time it passes the bottom, while its tile is in view | |
-| Hint | `HINTS.pend` within 110 px on his row: "A swinging blade. Crawl under it, or time your run." | |
+| Hint | none since round 49a (no hint banners; until v89: `HINTS.pend` within 110 px on his row: "A swinging blade. Crawl under it, or time your run.") | |
 | Route time | `estPath` `crawl`: tiles x 0.8 + 1.3 s | |
 
 ```

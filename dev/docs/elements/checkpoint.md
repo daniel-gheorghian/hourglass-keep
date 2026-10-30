@@ -32,14 +32,14 @@ before, 0 after (floors 1-48, seeds 1-3).
 | Rule | Example or number | Why |
 |---|---|---|
 | Lights when he stands on its row within 14 px of `cp.x` | tested by `standOn` (each grounded frame and each landing); not while in the air | |
-| Lighting refills the rewinds | `S.sands = SANDS` (3); the message says "your hours are restored" only if some were spent | the clock is the rewind's own measure |
+| Lighting refills the rewinds | `S.sands = SANDS` (3); the HUD's three clocks fill (until v89 a message, "your hours are restored" if some were spent; none since round 49a) | the clock is the rewind's own measure |
 | Lighting saves | `S.cp`, `S.floorTime = levelTime`, `S.cpPlates = pressedPlates()`, `writeSave()` | a respawn rebuilds the floor from these |
 | The rise point | `respawn()` calls `startLevel(S.level, L.cpIndex)`: he stands at `cp.x` on `SURF(cp.r)`; every clock up to that index is lit | |
 | What a respawn keeps | latched plates and slab-jammed plates and closers before it stay pressed (`S.cpPlates`, `jamRestore`), their gates open; guards and snakes placed before it (`ord`) are gone | so a respawn never repeats a solved part |
 | What it does not keep | the floor is rebuilt: red flasks taken before it are back; the gold flask stays taken (`S.lifeTaken`) | |
 | No checkpoint lit | the rise point is the floor gate (the start); "Tap Jump to rise at the floor gate" | |
 | A respawn refills the rewinds | `respawn()` sets `S.sands = SANDS` | the death screen offers Rewind (Grab, while `S.sands` > 0) or Rise (Jump) |
-| Hint | `hint('cp')` within 70 px of an unlit clock on his row: "Touch the sky clock. If you fall after it, you start again from here." | |
+| Hint | none since round 49a (no hint banners; until v89: `hint('cp')` within 70 px of an unlit clock on his row: "Touch the sky clock. If you fall after it, you start again from here.") | |
 | The clock's own time | lit: the sun runs back to Nut's mouth over 0.7 s (`cpClockF`), then her night runs out over 8 s and round again | look only |
 | Sound and sparks | `Snd.play('cp')`; `sparks(cpX(cp), SURF(r)-26, 10, theme glow)` | |
 

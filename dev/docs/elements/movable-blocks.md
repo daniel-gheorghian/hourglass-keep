@@ -30,10 +30,10 @@ drops off its far side and walks through. In the pull variant the block starts o
 | Start a move | standing, Grab held, pad toward (push) or away (pull), the block in the next cell ahead and his body within 26 px of its face | |
 | Refused when | the target is out of range or WALL; the target holds a feature other than a plate; a guard stands within 26 px of the target's middle; for a pull, the cell behind him is WALL, has no floor, or holds spikes, a cracked slab, jaws, a saw or a low ceiling | no crushing, no pulling him into a trap |
 | A refused pull | eats the press: he does not turn | the pad away is read as a pull |
-| The move | `bl.mv {from,to,t,dur:0.55}`; the target cell becomes WALL at once, the old one goes back to its floor at the end; he slides one tile with it (`P.sx -> P.tx`, eased), sound `push`, hint `block` | both cells are solid while it moves |
+| The move | `bl.mv {from,to,t,dur:0.55}`; the target cell becomes WALL at once, the old one goes back to its floor at the end; he slides one tile with it (`P.sx -> P.tx`, eased), sound `push` | both cells are solid while it moves |
 | On a plate | a block at rest on a plate presses it every frame (`pressPlate`) and sets `f.g.heldAt`, so the gate never starts its fall and the HUD shows no timer for it | "its weight holds a plate down for good" |
 | Gate | `dur 0.2`, tagged `blockGate` (tools such as `gateopt.py` and `pace.py` leave it out of timer statistics) | a gate that drops far too fast to outrun |
-| Hint | `block` within 90 px on his row: "A loose block. Hold Grab and press toward it to push, away to pull. Its weight holds a plate down for good, and you can climb over it." | |
+| Hint | none since round 49a (no hint banners; until v89: `block` within 90 px on his row: "A loose block. Hold Grab and press toward it to push, away to pull. Its weight holds a plate down for good, and you can climb over it.") | |
 | Grab button | reads `Push` or `Pull` when a move would happen (`grabLabel` asks `blockCanMove`), else `Grab` | |
 | Rewind | `L.ext` (blocks, `mv`) and `L.base` are in every snapshot; `applySnap` calls `rebuildBlocks` | |
 | Respawn, Continue | the floor is rebuilt from the generator; `S.resume` records no block, so the block is back where it started | |

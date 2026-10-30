@@ -56,7 +56,7 @@ a fixed grid, no single-wall kicks, no hints).
 | Kicks off a single wall anywhere else are gone; the wall run outside the shafts stays; a lift's shaft has no `shaftfoot`, so nothing locks there | | owner's answer 6 |
 | `estPath` `walljump` | 1.6 + 0.9 k s, kept: the climb takes 1.65-1.93 s (k 2), 2.15-2.43 s (k 3) from the press | gate timers unchanged |
 | A `G2` gate may stand on the ledge at the top (a kit that ends with the shaft and carries on the same way) | `slotOk('G2')`; drawn three times as often when a kit has it | the rarest gate slot |
-| No hint (round 48b: the `shaft` and `walljump` texts are gone); the jet stream shows the way | the stream stays at 1 (0.65 for a save that learned `shaft` before round 48b) | owner's answer 7 |
+| No hint (round 48b: the `shaft` and `walljump` texts are gone); the jet stream shows the way | the stream at 1, then 0.65 once `shaft` is learned (round 49a: at the Y out of the top, `chimY`) | owner's answer 7 |
 | A rewind restores him in the chimney: `cloneE` copies `P.lock`, `P.plant`, `P.chIn` and the drawing session `P.chm` whole | | |
 
 ## The prince and the guards

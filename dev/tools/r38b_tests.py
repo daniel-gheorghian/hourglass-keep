@@ -7,9 +7,8 @@
 #              fall or late: he never catches a lip (no hang), lands two storeys down and loses exactly one life
 #  3 banner    a slide cuts a banner; a death and a rewind to before it: the cloth is whole again (bn.a, bn.b -1) and its cells
 #              still share one cut record
-#  4 sandhint  by a sand lift's slab the hint is its own (round 41: 'sandfall', the bottomless lift's warning, shown even to a save that
-#              learned round 38b's 'sandlift'; not the plate lift's words); getting off it at the foot learns 'sandfall', never 'lift'; by a
-#              counterweight lift the hint is still 'lift'
+#  4 sandhint  (round 49a: no hint banners) by a sand lift's slab, riding it and by a counterweight lift no banner shows, even to a save
+#              that learned round 38b's 'sandlift'; boarding learns nothing; getting off it at the foot learns 'sandfall', never 'lift'
 #  5 sandtop   riding a sand lift he cannot walk off the slab before its foot's mouth opens (round 41: then he can; the slab goes on to the spike pit under the foot, 41b);
 #              the top's play plane stands only while the slab is within the top storey; once it is gone, walking back at the top he steps
 #              into the hole (falls)
@@ -68,15 +67,14 @@ J3 = r'''()=>{const H=__HK,T=__T;const fd=T.find(4,30,4,L=>{for(const o of L.dyn
   const same=cells.every(o=>o.f.bn===bn);
   return {n:fd.n,s:fd.s,c,r,slid,cut,after:{a:bn.a,b:bn.b},same,mode:H.mode,sands0:sands,sands:H.S.sands,state:P.state};}'''
 
-# 4. the sand lift's hint and learned key, and the counterweight lift's
+# 4. no banner by a sand lift or a counterweight lift (round 49a); the sand lift's learned key
 J4 = r'''()=>{const H=__HK,T=__T,S=H.S;const fd=T.find(4,40,4,L=>L.lifts.find(f=>f.sand)?1:null);if(!fd)return {err:'no sand lift'};
-  const name=t=>Object.keys(H.HINTS).find(k=>H.HINTS[k]===t)||t;
-  const seen=(fr,until)=>{const out=[];for(let i=0;i<fr;i++){H.tick(1);const b=H.banner;if(b&&b.kind==='hint'){const id=name(b.text);if(!out.includes(id))out.push(id);H.banner=null;}if(until&&until())break;}return out;};
+  const seen=(fr,until)=>{const out=[];for(let i=0;i<fr;i++){H.tick(1);const b=H.banner;if(b){if(!out.includes(b.text))out.push(b.text);H.banner=null;}if(until&&until())break;}return out;};
   H.load(fd.n,fd.s,true);let f=H.L.lifts.find(q=>q.sand);S.learned={sandlift:1};S.hints={sandlift:1};H.banner=null; // (round 41: a save that learned the old sand lift)
   T.put(f.sc+2*f.sT,f.rT,-f.sT);const near=seen(120);
   const k=f.sT<0?'r':'l';T.keys({[k]:1});const ride=seen(240,()=>H.P.state==='lift');const rode=H.P.state==='lift';
   const learnedRide=!!S.learned.sandfall;seen(600,()=>H.P.state==='stand'&&H.P.y===f.yB);T.keys({});
-  const res={n:fd.n,s:fd.s,hints:near,rideHints:ride,sandText:H.HINTS.sandfall,rode,learnedRide,off:H.P.y===f.yB,learnedSand:!!S.learned.sandfall,learnedLift:!!S.learned.lift};
+  const res={n:fd.n,s:fd.s,hints:near,rideHints:ride,rode,learnedRide,off:H.P.y===f.yB,learnedSand:!!S.learned.sandfall,learnedLift:!!S.learned.lift};
   const fc=T.find(3,40,4,L=>L.lifts.find(q=>q.t==='lift'&&!q.sand)?1:null);
   if(fc){seen(200);H.load(fc.n,fc.s,true);f=H.L.lifts.find(q=>q.t==='lift'&&!q.sand);S.learned={};S.hints={};H.banner=null;T.put(f.sc+2*f.sT,f.rT,-f.sT);
     res.cw={n:fc.n,s:fc.s,hints:seen(120)};}
@@ -184,9 +182,9 @@ with sync_playwright() as p:
         if 'err' in r: report('sandhint', False, r['err'])
         else:
             cw = r.get('cw') or {}
-            ok = 'sandfall' in r['hints'] and 'lift' not in r['hints'] + r['rideHints'] and 'plate' not in r['sandText'] and 'not stop' in r['sandText'] and r['rode'] and not r['learnedRide'] and r['off'] and r['learnedSand'] and not r['learnedLift'] and 'lift' in cw.get('hints', []) and not errs
-            report('sandhint', ok, 'floor %d seed %d: hints by the sand lift %s, stepping on %s (%r), rode %s (learned on boarding %s), off at the foot %s, learned sandfall %s, lift %s; by a counterweight lift (floor %s seed %s) %s %s' % (
-                r['n'], r['s'], r['hints'], r['rideHints'], r['sandText'], r['rode'], r['learnedRide'], r['off'], r['learnedSand'], r['learnedLift'], cw.get('n'), cw.get('s'), cw.get('hints'), errs[:1]))
+            ok = not r['hints'] and not r['rideHints'] and r['rode'] and not r['learnedRide'] and r['off'] and r['learnedSand'] and not r['learnedLift'] and 'hints' in cw and not cw['hints'] and not errs
+            report('sandhint', ok, 'floor %d seed %d: banners by the sand lift %s, stepping on %s, rode %s (learned on boarding %s), off at the foot %s, learned sandfall %s, lift %s; banners by a counterweight lift (floor %s seed %s) %s %s' % (
+                r['n'], r['s'], r['hints'], r['rideHints'], r['rode'], r['learnedRide'], r['off'], r['learnedSand'], r['learnedLift'], cw.get('n'), cw.get('s'), cw.get('hints'), errs[:1]))
     if want('sandtop'):
         pg, errs = page(b, SRC); r = pg.evaluate(J5); pg.close()
         if 'err' in r: report('sandtop', False, r['err'])

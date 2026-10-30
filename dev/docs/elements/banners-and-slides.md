@@ -51,7 +51,7 @@ case: from a hang on the lip, Grab and Down take the cloth at once.
 | The cut: on the first frame `bn.a` is set at his hands (`P.y - HANG + 3`, less 6 px), then `bn.b` follows his hands down to `bn.bot + 8` | it stays cut; a rewind undoes the cut: `snapAll` copies the shared `bn` into each snapshot, `applySnap` puts its values back into the same object, so the cells still share one record (round 38b) | look; the slide works the same on a cut cloth |
 | `estPath` `slide` | careful 4.0 s, else 2.2 | gate timers |
 | A `G3` gate may stand on the foot's floor (a plate's gate in the turn) | `slotOk('G3')`: the kit holds a banner that is not its last move, or the turn carries on the same way | the slide is one way: the gate is met after it |
-| Learning: entering `slide` learns `banner` (`LRN_ST`); `hint('banner')` when the next cell ahead is a hanging | | |
+| Learning: entering `slide` learns `banner` (`LRN_ST`); no hint (round 49a: no hint banners) | | |
 
 ## The prince and the guards
 

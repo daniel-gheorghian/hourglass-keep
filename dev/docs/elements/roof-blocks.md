@@ -25,7 +25,7 @@ the corridor with a crash, a billow of sand and a small shake; he can walk back 
 
 | Rule | Example or number | Why |
 |---|---|---|
-| Trigger | the prince on the block's row, `abs(P.x-(c*TW+16))<22`, not `hang`, `climb`, `climbDown` (in the air counts): `f.s=1`, sound `creak`, hint `stone` | only he wakes it |
+| Trigger | the prince on the block's row, `abs(P.x-(c*TW+16))<22`, not `hang`, `climb`, `climbDown` (in the air counts): `f.s=1`, sound `creak` | only he wakes it |
 | Shift | 0.3 s (`f.tm>=0.3`): then `f.s=2`, a `rock` debris at `ceilingY+14`, sound `crumble` | the warning: sand trickle, then the pour |
 | Fall | `DROP_G` 1400 px/s^2 (GRAV is 700), capped at 720 px/s; the open-hall pass normally gives a corridor a storey of headroom (`stones()` needs the wall two rows up for the slot), so the ceiling is two storeys over his floor and the block reaches a standing head about 0.3 s after letting go | round 13: about 0.6 s from the shift's start to his head |
 | Hit | once (`d.hitP`): `abs(P.x-d.x)<11`, the block between his feet and head (`d.y>P.y-48`, `d.y-8<P.y`) and still above his waist the frame before (`py<P.y-20`), state not `air` | a jump under it is safe |

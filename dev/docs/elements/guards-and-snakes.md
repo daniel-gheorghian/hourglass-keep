@@ -20,7 +20,7 @@ tunnels from floor 5. Both have their own small budgets per floor (unit GB); the
 Floor 10 (a captain floor). The run's last stretch past 84% of the route holds the exit plate; `exitGuard` lays seven plain tiles and
 posts the captain at the sixth (`CAPT`: hit points `ghp+2` = 5, the khopesh, a leather corselet). The budget kept two places for
 him (`reserved()`: the captain and his reinforcement, from floor 6). When he falls, 0.9 s later a veteran with his hit points drops in
-2 to 4 tiles ahead of the prince on clear floor (`dropSpot`, hint `reinf`), so the way to the door goes through a second fight.
+2 to 4 tiles ahead of the prince on clear floor (`dropSpot`; no hint or message since round 49a), so the way to the door goes through a second fight.
 
 ## In play
 

@@ -73,6 +73,7 @@ an hour and is reborn at dawn), set in places of Egypt, Kush and the Sahara. Twe
 | No churches, crosses or the Ark | Aksum is shown "before its churches": stelae, tombs, granite; nothing Christian in its crossing either |
 | No living peoples as enemies or decoration | the enemies are tomb robbers (guards), skeletons, snakes and the dark; the crossings have animals only, no people |
 | No chains | everything that hangs is rope (`barRope`, `ropeOf`): the swing, the pendulum's lashing, lamps, lifts, backdrops. Iron chains only behind `EGP.traps`/`EGP.lamps` off |
+| Found, not told (round 49a) | no hint banners or messages that say what to do or what happened: the looks, the sounds and the Grab button's word tell; a gate opening out of sight is heard from where it stands and glanced at (`gateCue`); How to play keeps the buttons and the short rules ([gameplay](gameplay.md#no-hints-learned-moves-round-49a)) |
 | No arrows in the world | hints of a way (kick shafts, the swing's throw, the jgrab jump) are sand blown along a path (`jetStream`), not chevrons |
 | The sky clock, not an hourglass | the checkpoint is Nut's sky clock (`nutClock`, drawn by `drawHourglass`; round 8, after round 4's clepsydra and round 7's barque clock were rejected); the HUD's sands and gate timers are the same clock (`drawGlass`); the words are "sky clock" and "hours". `S.sands` and every timing are unchanged |
 | Post and lintel | arches, doors and windows are post and lintel; the dungeon style's vaults stay round |
@@ -102,7 +103,7 @@ title -> floor n: entry -> play (deaths: rewind or rise) -> exit stairs -> card 
                                      theme changes at n+1? -> the Crossing -> floor n+1: entry
 ```
 
-- **The floor's banner**: "Floor n" and the theme's name for 2.6 s as play starts (`intro`); hints wait for it.
+- **The floor's banner**: "Floor n" and the theme's name for 2.6 s as play starts (`intro`). No hint banners follow (round 49a).
 - **The card** (`levelComplete`, mode `card`): "Floor n cleared", the theme's name, the floor's time, falls and lives, and "Next:
   Floor n+1, <name>." A rare flag on the next floor is named (`FLAG_TEXT`: tower, rotten, barracks, longway, maze). The ordinary
   featured families are left for the player to find. Climb on, or Title screen.
@@ -123,7 +124,7 @@ The sands are the run's rewinds: three "hours" (`SANDS` 3, `S.sands`) shown as t
 - After a death, Grab turns time back about five seconds (to a calm moment at least 4.5 s back in a 10 s ring of snapshots) for one
   hour. Jump, or no hours left, rises at the last checkpoint instead.
 - Hours come back in full at every checkpoint lit, every rise and every new floor.
-- Example: two slicer deaths in a row leave one hour; the next sky clock lights "and your hours are restored".
+- Example: two slicer deaths in a row leave one hour; the next sky clock lit fills the HUD's three clocks again (no words since round 49a).
 
 Numbers and rules: [gameplay.md](gameplay.md#death-the-sands-and-checkpoints).
 
@@ -132,12 +133,12 @@ Numbers and rules: [gameplay.md](gameplay.md#death-the-sands-and-checkpoints).
 | | |
 |---|---|
 | Where | `localStorage`, key `hourglass-keep-v1` (`KEY`; not renamed): one save per browser and site, on the device only |
-| What | the run (`level`, `seed`, `maxHp`, `time`, `deaths`, `lifeTaken`), the floor in progress (`cp`, `floorTime`, `floorDeaths`, `cpPlates`, `resume`), `sands`, `hints`, `learned`, `set` (settings) |
+| What | the run (`level`, `seed`, `maxHp`, `time`, `deaths`, `lifeTaken`), the floor in progress (`cp`, `floorTime`, `floorDeaths`, `cpPlates`, `resume`), `sands`, `hints` (unused since round 49a), `learned`, `set` (settings) |
 | When | every 3 s of play (`snapshotResume`, only in a stable state and not on a lift), on pause, on leaving the page, at checkpoints, deaths and floor ends |
 | Generator version | `GEN` 9: a save from another generator version keeps the run but drops the checkpoint, the resume point and the floor time |
 | Continue on Floor N | the floor rebuilt at the last lit checkpoint (`startLevel(S.level, S.cp)`), then the resume point laid on it (`applyResume`): his place and hearts, dead guards and snakes, taken flasks, fallen slabs, rubble, lit clocks, the opened door, fallen roof blocks, latched gates. A death clears the resume point, so Continue after a death starts at the checkpoint |
 | Restart floor | the floor from its start door, with the entry; checkpoints and pressed plates cleared; the floor's clock runs on |
-| New run | asks first if a run exists ("Start over?"); a new seed and floor 1; settings, hints and learned moves are kept (`newSave(prev)`) |
+| New run | asks first if a run exists ("Start over?"); a new seed and floor 1; settings and learned moves are kept (`newSave(prev)`) |
 | Benchmark | `?bench` never writes the save (`writeSave` returns while `BENCH.run`) |
 
 ## Title, fonts, names

@@ -92,7 +92,8 @@ is a placeholder: only the built `index.html` carries the release number.
 | `wellcorr.py lo hi [seeds]` | no sand well stands in a corridor: every well's pit is walled on both sides down to its floor (round 30) | `wellcorr: ok` |
 | `cpscan.py lo hi [seeds]` | no pixel of the sky clock (the checkpoint) over a wall's front face, a step or a low ceiling beside it, both modes (round 37c) | `cpscan: ok` |
 | `chimtest.py [file] [lo hi] [seeds]` | round 48b's locked chimney, every kick shaft (floors 1-48 x 3: 236): climbed by a running Jump, a standing Jump or Up at the foot, then one Up a stance, every stance on its grid to the pixel, the Y landing 12 px past the lip with the standing landing; Up held gives one kick; Jump does nothing; Down at each stance lets go at once with a fall's damage; a rewind in mid-kick restores his own copies; walking in does not lock; no plant, kick or lock off a single wall elsewhere | `chimtest: ok` |
-| `r38b_tests.py` | round 38b's play faults, one check each: the roof block and `P.inv`, the damaging drop's lip, a banner's rewind, the sand lift's hint and top, the recruit's colour, the timed gates' waits | `r38b: ok` |
+| `r38b_tests.py` | round 38b's play faults, one check each: the roof block and `P.inv`, the damaging drop's lip, a banner's rewind, the sand lift (no banner since round 49a, `sandfall` learned on getting off) and its top, the recruit's colour, the timed gates' waits | `r38b: ok` |
+| `hinttest.py lo hi` | round 49a: no banner while the bot plays a floor, the moves it uses learned (`S.learned`), and at every remote plate the glance (one when its gate is out of view, none in view or twice, he stays in view, the view goes toward the gate and back, the timer at its rate); floor 1 the old-save migration | `FAILURES 0` |
 | `sawceil.py lo hi [seeds]` | no saw under a ceiling at his height: each one turned into spikes is tiptoed, and the bot plays its floor (round 38c) | `sawceil: ok` |
 | `layerscan.py lo hi [classic]` (by hand) | nothing in the corridor drawn over the front plane: each kind drawn and left out, the faces' and lips' pixels unchanged (round 39, `dev/docs/layers.md`) | `layerscan: ok` |
 | `lampscan.py`, `slabscan.py`, `sandshaft.py`, `wellscan.py`, `figscan.py` | lamps keep clear (round 19); a slab slides up into stone (25d); every sand lift in a shaft (26e); the wells' sand (21b); the body's poses against v69 (round 23; only where `hk_v69_release.html` is) | `ok`, `slabscan: ok`, `sandshaft: ok`, `ok`, `figscan: ok` |
@@ -209,7 +210,7 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   flask) starts, a few small gold four-point stars twinkle on the lip's top face along its edge in depth (`secretCues`, found once per
   floor from the tiles and kept in `L._scue`; `drawSecretCue` in `drawDynamic`): an ascent on the ledge he grabs, lifting a little; a
   descent on the floor edge he hangs from, slipping toward the hole. Gone once the flask is taken. Look only, both modes, no allocation a
-  frame; the hint is `secret` (up) or `secretdn` (down). Pictures: `egyptr17.py`.
+  frame (the hint `secret`/`secretdn` went in round 49a: the stars are the cue). Pictures: `egyptr17.py`.
 - No chains (round 18b, owner): every chain drawn in play is rope: the swing (above), the pendulum's pivot lashing, Siwa's hanging lamp
   (a palm cord and a sling), fallen lamps' scars and the fallen lantern's cord (`ropeEnd`), the Nun and Meroë backdrops (`ropes`
   layer: knots, jar slings, baskets); the lifts were rope from round 13. Iron chains remain only behind `EGP.traps`/`EGP.lamps` off
@@ -570,7 +571,7 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   print `sawceil: ok` (4 conversions on floors 1-48 x 3 seeds; a build without the conversion fails 4). `layoutcmp.py [baseline] [lo hi]
   [seeds] [file=] [notimers]` holds round 38b's layoutcmp_play.py (gone): tiles, features at any depth, the bot's path, start, exit, lights,
   windows, checkpoints, items, guards, snakes, lifts, `L.dyn`, forks and hurtdrops; must print `layoutcmp: same`; run by hand for look-only
-  rounds (a generator round differs on purpose). `hinttest.py` checks that a sand lift ride learns `sandlift`.
+  rounds (a generator round differs on purpose). `hinttest.py` checks the moves the bot uses are learned (round 49a: and that no banner shows).
   The release suite then found three more. `liftscan.py`'s flush check (round 37a) failed on seven worn lifts in Classic (floors 7, 17, 24,
   37, 40, 43, 57; v82 fails the same on those tried, 17, 40 and 43: it was committed 31 min after 37a's check, less than a full suite run):
   the platform sits flush, but a worn lip's chips are as dark as the pit's floor and read as uncovered (floor 40 seed 45240: 0.51 worn, 1
@@ -889,7 +890,7 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   simple visual reaction is about 0.25 s; here a held key or a 0.3 s buffer, as a first ride is a surprise; PoP 1989 has no ride to time, its
   jump up to a ledge a storey above, SDLPoP's jumpup/jumphanglong, is the late window's move). Only the mouth on his way opens (`f.mo`,
   `sandOpen(f,s)`, plays `f.gB`/`f.gF`): on a two-mouth lift the other side is a dead end behind the hole after the ride, so it stays shut
-  (round 41's open issue). The warning: the hint `sandfall` (replacing round 38b's `sandlift` on its trigger, by the slab while it waits:
+  (round 41's open issue). The warning (round 49a: the words are gone, the mouth and the shaft remain): the hint `sandfall` (replacing round 38b's `sandlift` on its trigger, by the slab while it waits:
   "This slab sits on running sand and will not stop at the bottom: there are spikes below it. When the door at the foot opens, step off
   through it, or jump for the edge."), learned by getting off one, not by boarding, so a save that learned the old `sandlift` still sees it;
   and the mouth starting up before the window. Generator (post pass, after the open-hall pass): the storey under the foot must be rock three
@@ -1474,6 +1475,30 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   its lip (bot `dashjump`, the in-line timers); the jam message and help page neutral; `plateClick` plays `plate` (a stone click) as a foot
   first comes down on either kind. Glint, `CTL_WATCH`, `FT_FLAT` were already the same. Generator, `L.path`, timers and the bot unchanged
   (`layoutcmp.py` v89 same). Pictures `egyptr48a.py old.html new.html [outdir]` (r48a_closer_<mode>.png, r48a_phone.png).
+- No hint messages (round 49a, owner: "the Dark Souls thing ... the part where you discover how and what works. I would drop all hint
+  messages, rely only on subtle graphic hints ... I would keep the how to play screen that describes what the buttons do"; his answers on
+  the research in .claude/research/r49hints; `dev/docs/gameplay.md` "No hints; learned moves"). Gone: `HINTS` (53 texts), `checkHints`,
+  `hint()`, its queue, the 'hint' banner kind, round 48a's post-slam `closer`/`slabcloser` and every message that told what to do or what
+  happened: the flask names, the rewind's "N hours left", the sky clock's "...If you fall, you rise here.", "No room to draw a sword..." (the
+  `bump` alone), "Sealed..." at a shut exit (a rattle, `Snd` `sealed`), `gateMsg` and the exit plate's line, the slab's jam, the crumbling
+  chain's "Run!", the dark's waking and dawn, the ambush, the death card's spikes tip. Kept: the Grab button's word, the floor's banner and the
+  card's `FLAG_TEXT`, the Crossing's pad cue, the death card's cause, Rewind and rise lines, `msg` itself (the bench's lines). `learn()` and
+  `S.learned` stay (`LEARN_IDS`) for the looks that read them (jgrab's jet stream until learned, the swing's 0.75 and the kick shaft's 0.65
+  after; `shaft` is learned at the Y, `chimY`, since nothing learned it after round 48b); `S.hints` stays in the save unused;
+  `__HK.HINTS` is an object of `LEARN_IDS` (`__HK.HINT_MOVE` their Set), so the tools' `for(const id in H.HINTS)` loops still set every
+  learned flag. In place of `gateMsg` and the door's line (`gateCue(g, big)`, from `pressPlate`, `jamAt` and the `xplate`): the gate's sound
+  from where it stands (`Snd.playAt(n,x,y)`: `grind` for a timed gate, `door` for one that stays open and the exit; a lowpass, gain and
+  `StereoPanner` between the sound and the master: pan dx/280 to 0.9, gain 1.15 - d/900 to 0.35, cutoff 9000/(1+d/220)/(1+0.7 storeys)) and,
+  if it is out of view, a glance (`glanceAt`, `GLN`, `GL_T` 1.6 s: the camera's target eased toward it over `GL_IN` 0.35 s and back over
+  `GL_OUT` 0.5 s; input stays live and he is kept `GL_M` 44 px inside the view's sides and wholly in it, so it costs no time and no timer is
+  held; once a plate; never in a chase, a fight, dead, a test load (`__HK.load` sets `GLN.off`) or `?bench`; a rewind or new floor ends
+  it). PoP 1989 has neither (SDLPoP: a plate's door opens off screen in silence); Zelda and Metroid Prime cut or pan to a door a switch opened,
+  Dark Souls plays its far sound. How to play (`#how`) keeps the buttons and the short rules: Run; Jump; Up, Down (with 48b's chimney: Up
+  kicks higher, Down lets go, Up at the top leaps out); Grab (its word, catching a ledge or tapestry, the careful step, push, pull, drink,
+  strike, Up blocks and Down sheathes); after a fall; the three hours; the flasks' colours; keys. Tests: `hinttest.py` reworked (above, the
+  same suite jobs), `r38b_tests.py` `sandhint` checks no banner and `sandfall` learned, `vs_ui.py`'s banner scenes removed. Look and sound only:
+  `layoutcmp.py` against v89 same (144 of 144), the bot's runs unchanged. New cues come in rounds 49b and 49c. Pictures
+  `egyptr49a.py old.html new.html [outdir]` (r49a_how.png, r49a_death.png, r49a_glance.gif and .png: old | new at phone size, Classic).
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized three ways (Trap density, above); only P4's race uses the careful pace.
 - Pose angles are measured from straight down; positive means forward.

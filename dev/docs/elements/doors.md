@@ -17,8 +17,9 @@ on every floor; the generator places them, everything else is look and the two s
 
 ## Example
 
-He reaches a sealed exit and presses Up: "Sealed. A floor plate somewhere opens this door." He finds the `xplate` ("A heavy door grinds
-open somewhere on this floor."); the leaf rises at 0.45 a second. Back at the door he presses Up 14 px right of its middle, facing left.
+He reaches a sealed exit and presses Up: the leaf rattles in its slot (`sealed`; until v89 "Sealed. A floor plate somewhere opens this
+door."). He finds the `xplate`: the door's rumble comes from where it stands, panned and muffled by the distance, and if it is out of view
+the view glances toward it (round 49a, `gateCue`; until v89 "A heavy door grinds open somewhere on this floor."); the leaf rises at 0.45 a second. Back at the door he presses Up 14 px right of its middle, facing left.
 He walks left to the middle at 40 px/s, turns to face the stairs (they recede to the right; `EX_TURN` 0.16 s) and climbs: 3.2 treads a
 second, one footfall each. From the first rise (`EX_CUT`) he is cut at the doorway's lintel and jambs, as SDLPoP's `clip_char` cuts the kid
 at the level door; his own pixels warm and whiten toward the stair light and fade; he is gone at tread 3.5 (`EX_GONE`), his steps go on
@@ -29,8 +30,8 @@ out of sight (`stairsaway`), the doorway's light swells, and the card comes at t
 | Rule | Example or number | Why |
 |---|---|---|
 | The exit opens from its plate | `xplate` sets `L.door.opening`; `open` rises 0.45 a second; a floor without an exit plate starts open | PoP's exit plate |
-| Up at the exit | `atDoor()`: same row, within 16 px of `L.door.x`; `open >= 0.95` starts `exit` (sword sheathed), else the sealed message | |
-| Hints | within 120 px on its row: `door` (shut) or `enter` (open) | |
+| Up at the exit | `atDoor()`: same row, within 16 px of `L.door.x`; `open >= 0.95` starts `exit` (sword sheathed), else the rattle `sealed` (round 49a; a message until v89) | |
+| Hints | none since round 49a (no hint banners; until v89: within 120 px on its row: `door` (shut) or `enter` (open)) | |
 | The exit walk | to `L.door.x` at 40 px/s facing the way he goes; a turn takes `EX_TURN` 0.16 s; at the middle he faces right | `P.exX` never takes his facing: facing left, v72 drifted him onto the left jamb |
 | The climb | `P.exS` counts treads at `EX_RATE` 3.2 a second; each tread lifts him `EX_RS + EX_SY` and moves him `EX_SX` right, eased in the second half of the tread; the first also lifts `EX_UP` from mid-depth onto the tread | his feet land on drawn treads (`stairscan.py`) |
 | The end | `levelComplete` at `EX_N` 4.6 treads (or 3.6 s in the state): the card, `S.level` + 1, checkpoint and floor clock reset, save, `clear` | about 1.4 s of climbing after the walk |

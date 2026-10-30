@@ -18,7 +18,7 @@ may place it and which stream it may draw from.
 | File | Covers |
 |---|---|
 | [concept.md](concept.md) | what the game is, the twelve themes and their order, the owner's content rules, the two lighting modes, a floor's flow, the sands, save and Continue |
-| [gameplay.md](gameplay.md) | controls and the pause menu, every move with its numbers, physics, falls, lives and flasks, what hurts, death and rewind, timed gates, fighting, the chase, hints, the bot |
+| [gameplay.md](gameplay.md) | controls and the pause menu, every move with its numbers, physics, falls, lives and flasks, what hurts, death and rewind, timed gates, fighting, the chase, learned moves and the glance (no hints since round 49a), the bot |
 | [level-design.md](level-design.md) | seed to floor: routes, runs, turns and chambers, forks, the spice and flags, puzzles, trap density, budgets, secrets, the damaging drop's test, timers, the random streams, invariants and their checks |
 | [rendering.md](rendering.md) | both modes, the frame, draw order, the view and its cuts, every Torchlight pass (anchors below), floor alpha marks, the checklist for a new live element |
 | [layers.md](layers.md) | the layering rule (round 39): L0 backdrop, L1 back wall, L2 corridor with its depths and air, L3 front plane, L4 overlay; what may cover what, what each light pass may touch, the approved exceptions, and every element's parts with their layer and the cut that keeps the nearer stone in front |
@@ -102,6 +102,24 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [flasks and secrets](elements/flasks-and-secrets.md) | a coloured item light | flasks carved (`SHC`) | its light's ellipse (`glRelEx`) | no | no footprint (255) | no | no | poison: 1 life | an ambush guard at the gold flask |
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
+
+## What round 49a found
+
+The owner: "the Dark Souls thing ... the part where you discover how and what works. I would drop all hint messages, rely only on subtle
+graphic hints ... I would keep the how to play screen that describes what the buttons do". His answers on the research
+(.claude/research/r49hints): keep the Grab button's word; the off-screen lines become a directional sound and a short glance at the gate;
+the flask names and the rewind's "N hours left" go; the death card's spikes tip goes; How to play keeps the buttons and the short rules;
+the new cues are later rounds (49b, 49c) ([gameplay](gameplay.md#no-hints-learned-moves-round-49a)).
+
+| Finding (v89 + 48a/48b) | Where | Round 49a | Seen in |
+|---|---|---|---|
+| 53 hint banners named what lay ahead and how to pass it (two of them, `chase` and `sandlift`, never shown) | `HINTS`, `checkHints`, `hint()` | gone; `learn()` and `S.learned` kept (`LEARN_IDS`), for the looks that read them | gameplay, every element's Hint row |
+| A remote plate's gate and the exit door named themselves in words ("A gate grinds open far below..."; "A heavy door grinds open somewhere on this floor.") | `gateMsg`, `xplate` | heard where they stand (`Snd.playAt`: pan, distance, storeys muffle) and glanced at when out of view (`gateCue`, `GLN`: 1.6 s, he stays in view, input live, no timer held) | gameplay, gates, plates, doors |
+| Messages told what had happened or what to do: the flask names, the rewind's hours, the sky clock's "If you fall, you rise here", no room to draw, the sealed exit, the slab's jam, the crumbling chain's "Run!", the dark's waking and dawn, the ambush | `msg` calls | gone; the sealed exit rattles (`sealed`), no room to draw bumps | gameplay, checkpoint, doors, the dark, plates |
+| The death card's tip on spikes ("Spikes spare a careful step...") | `drawOverlayText` | gone; the cause and the two lines (Rewind, rise) kept | spikes |
+| How to play taught tactics (jump distances, trap and gate rules, fights) and still described round 48b's old wall kicks | `#how` | the buttons (Up and Down now with the chimney's kicks) and the short rules (hours, sky clocks, flasks) | gameplay |
+| Nothing learned `shaft` since round 48b, so the kick shaft's stream never faded | `chimY` | learned at the Y out of the top | kick shafts |
+| `hinttest.py` checked hint banners | tools | it checks that no banner shows while the bot plays, the moves it uses are learned, and the glance at each remote plate; `r38b_tests.py` `sandhint` checks no banner and `sandfall` learned; `vs_ui.py`'s banner scenes gone | tools |
 
 ## What round 48b found
 

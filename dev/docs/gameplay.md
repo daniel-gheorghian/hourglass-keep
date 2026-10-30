@@ -25,6 +25,12 @@ it and he hangs (`tryGrab`). Up climbs (`climb`, 0.72 s). The bot's action for t
 - The controls fade to a ghost (`ctlThin`, checked every 0.2 s) while a trap, lip, door, flask or the hanging prince is under them
   (`CTL_WATCH`).
 - During the Crossing Grab and pause are hidden and Jump is the skip ([the Crossing](elements/the-crossing.md)).
+- How to play (title and pause menus; round 49a, owner: "keep the how to play screen that describes what the buttons do") says what each
+  button does and the few rules no look shows: Run, Jump (from a standstill or from a run), Up and Down (climb, hang and let go, crouch and
+  crawl, the chimney's kicks, Down to let go, Up at the top to leap out), Grab (its word; catching a ledge or a tapestry while falling; the
+  careful step; push, pull, drink, strike; in a fight Up blocks and Down sheathes), after a fall (Grab turns back the hours, Jump rises at
+  the last sky clock or the floor's start), the three hours and the sky clocks, the flasks' colours, the keys. No jump distances, no trap,
+  gate or fight tactics: those are found in play.
 
 ### The Grab button's word
 
@@ -56,7 +62,7 @@ Pause shows the floor's name, this floor's time, the run's time and the falls, t
 | Graphics… | `S.set.gfx` and `S.set.lightMode` | toggles Lighting, Atmosphere, Colour grade, Lit characters, Effects & camera, New characters, Background (`GFX()`, all on by default); and the lighting mode button "Lighting: Torchlight / Classic" (`gShader`) |
 | Tools… | `S.set.fps` and reloads | Show FPS (off by default); Benchmark, Benchmark (classic), Benchmark (auto scale), Profiler reload with `?bench`, `?bench=classic`, `?bench=auto`, `?prof` |
 | Restart floor | | the floor from its start door, checkpoints and pressed plates cleared; the floor clock runs on |
-| How to play, Title screen | | |
+| How to play, Title screen | | How to play (round 49a): the buttons and the short rules only (below) |
 
 Torchlight draws only when the mode is `torch` and Graphics' Lighting toggle is on (`shaderOn()`); see
 [concept.md](concept.md#lighting-modes) and [rendering.md](rendering.md).
@@ -243,16 +249,53 @@ corridor's second column heading right, four tiles behind him, moves after 0.7 s
 he runs at 100) and surges when he gets more than 190 - 30 `L.d` px ahead, so any stop lets it catch up. It kills when he is less than
 4 px ahead of its line (`die('sand')`), and ends at the arch at the far end (`chs.done`). Details: [the dark](elements/the-dark.md).
 
-## Hints and learned moves
+## No hints; learned moves (round 49a)
 
-- A hint is a banner (`msg`, 3.8 s) chosen by `checkHints` from what is ahead of him (traps two tiles on, ledges, lifts, flasks,
-  checkpoints, gates, guards, the door). One at a time; one waiting over 2.5 s is dropped.
-- Move hints (`HINT_MOVE`: gap, wide, climb, drop, spikes, crawl, fight, parried, poke, snake, potion, plate, block, wallrun,
-  swing, banner, collapse, jgrab, lift, chain; round 48b dropped walljump and shaft) come back once a floor until the move is done (`learn(id)`, stored in
-  `S.learned`). Every other hint shows once ever (`S.hints`).
-- Both survive a new run (`newSave(prev)` keeps `hints`, `learned` and `set`).
-- Learning changes some looks: the kick shaft's jet stream is at 0.65 for a save that learned `shaft` before round 48b (nothing learns it now), the jgrab jump's goes once
-  `jgrab` is learned ([kick shafts and jet streams](elements/kick-shafts-and-jet-streams.md)).
+- No hint banners (round 49a, owner: "the Dark Souls thing ... the part where you discover how and what works. I would drop all hint
+  messages, rely only on subtle graphic hints ... I would keep the how to play screen that describes what the buttons do"). Until v89 a
+  banner (`msg`, 3.8 s, chosen by `checkHints`) named what lay ahead: 53 texts in `HINTS` (traps, ledges, lifts, flasks, checkpoints,
+  gates, guards, the door), move hints coming back each floor until learned. They are gone with `checkHints`, `hint()`, its queue and the
+  'hint' banner kind. So are the messages that told what to do or what happened: the flask names ("Red flask. One life restored.", the
+  large red, gold and poison lines), the rewind's "The hours turn back. N hours left", the sky clock's "...your hours are restored. If you
+  fall, you rise here.", "No room to draw a sword in here..." (now the `bump` alone), "Sealed. A floor plate somewhere opens this door."
+  (now a rattle, `sealed`), the gate lines (`gateMsg`) and "A heavy door grinds open somewhere on this floor." (the glance, below), "The
+  slab lands on the plate and holds it down.", "The cracked floor behind you is starting to give way. Run!", "The dark wakes behind you.
+  Run!", "Dawn breaks at the arch...", "Ambush! A guard drops in...", and the death card's "Spikes spare a careful step...".
+- Kept: the Grab button's word (`grabLabel`), the floor's banner and the card's rare flag (`FLAG_TEXT`), the Crossing's pad cue, the death
+  card's cause and its two lines (Rewind, rise), How to play (the buttons and the short rules, below), the tools' messages (`?bench`).
+- What tells instead: the looks (the jet streams, the gold flask's stars, a gate's sky clock and the HUD's countdown, the cracks, the sand
+  running from a roof block), the sounds, and for a gate or door opening out of sight the glance (below).
+- `learn(id)` still sets `S.learned` where a move succeeds (`LRN_ST`, `learnGrab`, `land`, ...; the ids in `LEARN_IDS`), and the looks read
+  it: the jgrab jump's jet stream is drawn until `jgrab` is learned, the swing's throw at 0.75 once `swing` is, the kick shaft's at 0.65
+  once `shaft` is (learned at the Y out of the top since round 49a). `S.hints` stays in the save, unused; `newSave(prev)` keeps `learned`
+  and `set`. `__HK.HINTS` is an object of `LEARN_IDS` (and `__HK.HINT_MOVE` their Set), so the tools' `for(const id in H.HINTS)` loops still
+  set every learned flag.
+
+### Out of sight: heard where it is, and a glance (round 49a)
+
+A gate whose plate is far from it (a remote plate, `f.where`: P1 detours, P4 races, the loop's violet plate; a latched gate's first press;
+a slab that lands on a plate) and the exit door (`xplate`) used to name themselves in a banner (`gateMsg`: "A gate grinds open far below,
+but its hours are running out..."; "A heavy door grinds open somewhere on this floor."). Now (`gateCue`):
+
+- **Its sound from where it stands** (`Snd.playAt(n, x, y)`): the gate's grind (`grind`, a timed gate) or the long rumble (`door`, a gate
+  that stays open, the exit) routed through a lowpass, a gain and a `StereoPanner`: panned by its side of him (dx / 280 px, at most 0.9),
+  quieter with distance (1.15 - d/900, at least 0.35, d with storeys weighted 1.6) and muffled the farther it is and the more storeys of
+  stone lie between (9000 / (1 + d/220) / (1 + 0.7 storeys) Hz, 380 to 12000).
+- **A glance** (`glanceAt`, `GLN`, `updateCamera`) when the gate is out of view: the view's target eases toward it over `GL_IN` 0.35 s,
+  holds, and eases back over `GL_OUT` 0.5 s (`GL_T` 1.6 s in all; the camera follows at 4.5/s while it looks). Play goes on: input stays
+  live and the prince is kept inside the view (`GL_M` 44 px from its sides, wholly inside it up and down), so the glance costs no time and
+  hides nothing; no timer is held (a held timer would have needed play paused, which breaks a P4 race's run over its plate). If the gate
+  is farther than the view allows he stays at its edge and the view shows the way to it. Once a plate (`f.told`; a latched gate once).
+  None while the dark chases, in a fight, dead, on a test load (`__HK.load` sets `GLN.off`) or under `?bench`; a rewind or a new floor ends
+  one.
+- Why: PoP 1989 has neither (SDLPoP: a plate's event opens its door wherever it is, silently off screen; the player learns the level).
+  Zelda (Ocarina of Time onward) and Metroid Prime cut or pan to a door a switch opened, with a chime; Dark Souls plays the far door's
+  sound and, for the great ones, a short camera cut. Here the owner chose the sound plus a short glance (round 49 research); the glance
+  keeps the prince in view because play never stops in this game but for death and the menus.
+- `hinttest.py` checks it at every remote plate (the suite's floors 1-35; floors 1-16: 26 remote plates, 26 glances): one glance when the gate is out of view, none when in
+  view or for the same plate again, the prince inside the view every frame, the view 100-240 px nearer the gate and back at rest, the
+  timer at the game's rate.
+
 
 ## The bot: the reference player
 

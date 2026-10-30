@@ -31,7 +31,7 @@ at the start of the stretch until a run would never be within 21 px of the vent 
 | The bot's window | `danger`: phase > 0.7 or < 0.03, margin 21 px (`safeRun`): wider than the hit on both counts | |
 | Layout | 5 or 6 plain tiles, vents on the 2nd (and 4th); in a side passage a 7-tile part, vents on its 3rd (and 5th) | |
 | Sound | `fire` at the whoomp (phase crossing 0.75), while its tile is in view | |
-| Hint | `HINTS.vent` on its tile: "Fire vents. Watch them flare, then cross between bursts." | |
+| Hint | none since round 49a (no hint banners; until v89: `HINTS.vent` on its tile: "Fire vents. Watch them flare, then cross between bursts.") | |
 | Rewind | a function of the clock | |
 | Route time | `estPath` `timed`: tiles x 0.32 + 2.6 s | |
 

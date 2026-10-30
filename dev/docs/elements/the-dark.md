@@ -32,17 +32,17 @@ him in black tatters with gold edges, and settles as ash.
 | The segment | `chaseSeg`: `want = ri(26,34) + floor(8d)` columns from a menu: flat 2-4, one-tile gap, two-tile gap (floor 7+), loose floor (two from floor 8, 40%), one spike, a step down, a step up; roof stones in the dungeon generator style, a plank bridge in the palace style; no guards, no gates, nothing to wait for | a chase must flow |
 | The arch | a `sanctum` feature on the cell after the segment (`c1`) | |
 | Speed | `v = clamp((len TW + 4 TW) / (estT + margin + 0.8), 55, 92)`; `estT` = len 0.33 s + climbs 1.25 s + jumps 0.05 s + downs 0.15 s + 0.4 s; `margin` = 3.6 - 1.6d + up to 0.8 s | sized from the run so a careful pace still gets through |
-| Waking | he crosses `(c0+1) TW` heading right on a storm row, within `c0+4`; `wx = min(P.x - 4 TW, (c0-1) TW)`; it waits 0.7 s; message "The dark wakes behind you. Run!" | crossing the line, not landing past it: a route may pass the row the other way first |
+| Waking | he crosses `(c0+1) TW` heading right on a storm row, within `c0+4`; `wx = min(P.x - 4 TW, (c0-1) TW)`; it waits 0.7 s; the storm and a howl (until v89 also "The dark wakes behind you. Run!") | crossing the line, not landing past it: a route may pass the row the other way first |
 | The surge | `wx += (v + max(0, lead - keep) 1.3) dt`, `keep = 190 - 30d` | it hangs on his heels |
 | Kill line | `P.x < wx + 4` on a row from `rTop` to `rBot` (the segment's rows, one either side): `die('sand')`, a black flash | |
-| End | when `wx >= c1 TW - 20` or he is past `c1 TW + 8`: "Dawn breaks at the arch, and the dark tears away." | |
+| End | when `wx >= c1 TW - 20` or he is past `c1 TW + 8`: its tearing apart and the crumble (until v89 also "Dawn breaks at the arch, and the dark tears away.") | |
 | Dawn | `diss`: the front rushes to `P.x + 40` over 0.45-0.95 s, the body moves only 40 px and burns away, `fade` over 1.3 s from 0.15 s | look only: it cannot kill once `done` |
 | Shake and sound | shake when within 150 px; `storm` and `howl` at waking; `Snd.rumble(stormNear())` rising as it nears (from 320 px); `crumble` at dawn | |
 | Camera | he is framed at 64% of the view's width while it runs (`storm` in the camera), so the dark behind him shows | |
 | Rewind | `L.ext` (with the chase) is in every rewind snapshot as JSON: a rewind puts the front back where it was | |
 | Respawn | the floor is rebuilt: the chase is asleep again, and the checkpoint before it is the rise point | |
 | Softer flashes (`S.set.calm`) | its look's clock at half speed, no gold flecks in the flakes, the lens at 0.3 | |
-| Hint | `chase`: "The dark is coming down the corridor behind you. Keep running and jump everything in your way; it cannot pass the arch at the far end." | |
+| Hint | none since round 49a (no hint banners; until v89: `chase`: "The dark is coming down the corridor behind you. Keep running and jump everything in your way; it cannot pass the arch at the far end.") | |
 
 ## The prince and the guards
 

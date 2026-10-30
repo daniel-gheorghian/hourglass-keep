@@ -31,7 +31,7 @@ since round 35b it is not laid over the blade or its slot (`egyptr35b.py`).
 | Runs heading left | `x0`/`x1` mirrored with the run (`PXx`) | runs are built in mirrored column space |
 | Under a ceiling | if any cell of the row above, from the column before the slot to the column after, is not open (or the row is 0), the saw becomes spikes on its slot's tiles, the bot's action `tiptoe`, the segment `spikes` | a ceiling at his height makes every jump the low leap, which cannot clear the blade (v60, owner); `sawceil.py` checks it |
 | Sound | `saw` every 0.25 s while its tile is in view; `sawSparks` every 1/8 s from both lips where the blade is | |
-| Hint | `HINTS.saw` within 120 px on his row | |
+| Hint | none since round 49a (no hint banners; until v89: `HINTS.saw` within 120 px on his row) | |
 | Touch controls | fade over the slot (`CTL_WATCH`) | |
 | Route time | `estPath` has no entry for `saw`: the slot adds no time to a gate's timer (only the walk to `from` counts) | none is needed: no timed stretch holds a saw (round 38b: floors 1-48 x 3 seeds, and P4 forced) |
 

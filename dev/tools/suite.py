@@ -78,7 +78,7 @@ if mode == 'release':
     J += [('featbot fight', ['featbot.py', '3', 'fight', 'flags', str(n), 'flag:' + w], feat_check) for n in [9, 18, 24, 25, 27] for w in ['tower', 'rotten', 'barracks', 'longway', 'maze']] # one flag on one floor per job
 unit = ['forkscan.py', 'respawnplates.py', 'puzzlescan.py', 'slabresume.py', 'primtest.py',
         'hdtest.py', 'vertscan.py', 'lifttest.py', 'featurescan.py', 'orphanscan.py', 'mazescan.py', 'glauto.py', 'metaltest.py', 'rewindrooms.py']
-J += [('hinttest', ['hinttest.py', str(n), str(n)], tail_check()) for n in [1, 3, 6, 9, 10, 12, 16, 20, 24, 27, 32, 35]] # hints until learned: moves the bot uses are learned, their hints stop (floor 1 also checks the old-save migration)
+J += [('hinttest', ['hinttest.py', str(n), str(n)], tail_check()) for n in [1, 3, 6, 9, 10, 12, 16, 20, 24, 27, 32, 35]] # (round 49a) no banner while the bot plays, the moves it uses learned, the glance at each remote plate's gate (floor 1 also checks the old-save migration)
 J += [('grablabel', ['grablabel.py', str(n), str(n)], tail_check()) for n in [1, 3, 6, 9, 12, 16, 20, 24, 27, 32]] # the Grab button's label: scenes, fit and screenshots on floor 1; on the others the bot's Grab presses must have been announced
 J += [(u[:-3], [u], tail_check()) for u in unit if os.path.exists(os.path.join(HERE, u))]
 J += [('swingtest', ['swingtest.py', str(n), str(n + 2)], tail_check()) for n in [6, 12, 20]] # the swing bar is a trapeze: rest, one-way hold, pumping, the run-in catch, releases, rewind

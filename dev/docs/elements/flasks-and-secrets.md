@@ -20,7 +20,7 @@ twinkling cue where the way to it starts; alcoves and gated side passages hold r
 Floor 9 (a gold flask floor: `n % 3 === 0`). Between 25% and 55% of the route (`secretAt`), `secretPassage` cuts a gallery two storeys above
 the corridor: he climbs from the corridor to a ledge and on into it, walks out over a mini level of obstacles to the gold flask at the
 far end, and comes back. On the ledge's lip over the corridor, five small gold four-point stars rise and fade (`drawSecretCue`); within
-120 px of it the hint says "Something glints up there. Side passages without gates hide gold flasks." From floor 5, half the floors (a hash
+120 px of it a hint said "Something glints up there. Side passages without gates hide gold flasks." until v89 (none since round 49a: the stars are the cue). From floor 5, half the floors (a hash
 of the seed, `wantAmb`) with guard budget left put an ambush in the passage: when he steps on the flask's tile a guard comes 1.1 s later,
 and when the passage drew a chain (60%) five cracked tiles behind him start to give way.
 
@@ -44,7 +44,7 @@ and when the passage drew a chain (60%) five cracked tiles behind him start to g
 | Thinning | the gold flask always stays; then the large and the grating's, alcoves, floor flasks; each kept only `FLASK_GAP` = round(35 x `padK`) (51-53 tiles) of route from a kept one; a grating's flask always stays | |
 | Grating flask (fork kind 4) | with `lp.grate` (20%, 70% on longway floors) the hole is a grating; the flask (`fork: true`, large unless the floor has one) lies below behind a violet gate whose plate is near the end of the upper run | the long way's reward |
 | Secret's chain and ambush | the flask's tile arms them (`armPassage`): the chain's tiles start to give way 2.3 s after, 0.36 s apart; the ambush guard enters 1.1 s after | the drink's 1.3 s is allowed for |
-| Hints | `secret` (gallery) / `secretdn` (cellar) within 120 px of `L.secret`, one row either way, while the gold flask is not taken | |
+| Hints | none since round 49a (no hint banners; until v89: `secret` (gallery) / `secretdn` (cellar) within 120 px of `L.secret`, one row either way, while the gold flask is not taken) | |
 
 ## The prince and the guards
 

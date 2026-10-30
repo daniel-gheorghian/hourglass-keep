@@ -65,7 +65,7 @@ The view is oblique: depth recedes up and to the right by `DX` 16 and `DY` 8 px 
 | A step is one storey of `WALL` | `up()`: `(c+1,r)` stays wall, `(c+1,r-1)` becomes floor; bot `climb` | climb at its near face |
 | Steps down | `down()` one storey (64 px: safe, under 100); `drop2()` two storeys, bot `hangdrop` (hang first) | falls: under 100 px safe, 100+ hurts, 170+ kills (see [gameplay](../gameplay.md)) |
 | A low ceiling (`low` feature) is a crawl | `tunnel()`: 3 to 4 cells (to 5 from floor 12), the cell above must be wall; bot `crawl` | `clampMove` stops him walking into a `low` cell unless crawling |
-| Under a low ceiling | Up/Jump bump (`hint('crawl')`); the sword cannot be drawn (draw it low before crawling in: crouch, then Grab); snakes may lurk | `underLow()` keeps him crouched |
+| Under a low ceiling | Up/Jump bump; the sword cannot be drawn (Grab bumps; draw it low before crawling in: crouch, then Grab); snakes may lurk | `underLow()` keeps him crouched |
 | A ceiling at his height makes any floor jump the low leap | `ceilY`: a wall's bottom or an upper floor's slab (`CEIL_LIP` 5 under the row's top), two rows up at most; `beamOverhead` tests the full arc, a graze of `CEIL_TOL` 3 px keeps the full jump; `LOWJ` run 212/128, stand 150/112 | his head would go through the stone; falling short is his own doing (v60) |
 | A saw under a ceiling becomes spikes | after the open-hall pass, any saw with stone over its span | the low leap cannot clear its blade |
 | The open-hall pass opens one row of headroom over every floor, gap and shaft top | a non-wall cell under a `WALL` gets its upper cell set `EMPTY` | so most corridors are two storeys tall and jumps have room |

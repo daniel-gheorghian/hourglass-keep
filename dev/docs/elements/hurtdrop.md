@@ -35,7 +35,7 @@ hole. `hdtest.py` finds such floors (floors 5, 8, ... 26; seeds `40000+s*131+n*1
 | Fork kinds | kind 2: a damaging descent beside the long safe way (its kit any of down, drop2, banners, collapse, jumpdown); kind 4: one-way, its kit only `down` and `drop2`; both start with the `drop2` at the hole. Weights 2/4: floors 6-9 0.25/0.40, 10-17 0.20/0.25, 18 on 0.20/0.20; longway flag: all kind 4 below floor 10, then half kind 3, half kind 4 | kind 2 after PoP1 levels 5 and 7 |
 | Grating instead | a kind 4 with `lp.grate` (`frng() < 0.2`, 0.7 on longway) is not a hole: a grating over the shaft and a flask behind a violet gate below | see [gates](gates.md) |
 | Length | floor length and gate timers are counted along the safe way (`L.path`, `estPath`) | the bot never drops in |
-| Hint | `hurtdrop` one or two tiles ahead while standing, running, stepping or stopping: "A long drop. It will hurt, or take the way round." (it replaces the fork hints) | |
+| Hint | none since round 49a (no hint banners; until v89: `hurtdrop` one or two tiles ahead while standing, running, stepping or stopping: "A long drop. It will hurt, or take the way round." (it replaces the fork hints)) | |
 | State | none: a tile with no timer or flag; rewind and respawn change nothing | |
 
 ## The prince and the guards
