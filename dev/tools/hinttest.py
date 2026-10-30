@@ -1,6 +1,6 @@
 # Hints until learned: python3 hinttest.py [lo [hi]]
 # For each floor: with a fresh save, the bot plays the floor (the game's own input); every move its path uses is learned
-# (jgrab, climb, crawl, tiptoe over spikes -> spikes, walljump, wallrun, slide -> banner, ...). Then on the next floor the
+# (jgrab, climb, crawl, tiptoe over spikes -> spikes, wallrun, slide -> banner, ...; round 48b: the kick shaft has no hint, nothing to learn). Then on the next floor the
 # hint of a learned move never shows. A move hint that was not learned shows once a floor, again on the next floor, and
 # never twice on one floor; an info hint shows once ever. lo = 1 also checks the old-save migration.
 from playwright.sync_api import sync_playwright
@@ -8,7 +8,7 @@ import json, sys
 lo = int(sys.argv[1]) if len(sys.argv) > 1 else 1
 hi = int(sys.argv[2]) if len(sys.argv) > 2 else lo
 f = '/Users/dan/Documents/Projects/hourglass-keep/dev/hourglass-keep.html'
-ACT = {'jgrab': ['jgrab', 'gap'], 'climb': ['climb'], 'crawl': ['crawl'], 'tiptoe': ['spikes'], 'walljump': ['walljump', 'shaft'],
+ACT = {'jgrab': ['jgrab', 'gap'], 'climb': ['climb'], 'crawl': ['crawl'], 'tiptoe': ['spikes'],
        'wallrun': ['wallrun'], 'slide': ['banner'], 'swing': ['swing'], 'collapse': ['collapse'], 'drink': ['potion'], 'push': ['block'], 'pull': ['block'],
        'lift': ['lift'], 'chain': ['chain'], 'sandlift': ['sandfall']}  # (a chain lift is a 'lift' action with chn: it learns 'chain', not 'lift';
        # a sand lift's ride learns its own 'sandlift' from round 38b; round 41: getting off the bottomless one learns 'sandfall')

@@ -84,6 +84,7 @@ J += [(u[:-3], [u], tail_check()) for u in unit if os.path.exists(os.path.join(H
 J += [('swingtest', ['swingtest.py', str(n), str(n + 2)], tail_check()) for n in [6, 12, 20]] # the swing bar is a trapeze: rest, one-way hold, pumping, the run-in catch, releases, rewind
 J += [('stormfair', ['stormfair.py', str(n), str(n + 1)], tail_check()) for n in [6, 9, 13, 17, 21, 25]] # the dark's front reads where it kills, Classic and Torchlight, every theme (round 29: the rip on every row, the jackal on his)
 J += [('liftkick', ['liftkick.py'], tail_check(r'ALL OK'))] # no wall plant or kick in a lift's shaft; kick shafts still climb
+J += [('chimtest', ['chimtest.py', str(lo), str(hi), '1' if mode == 'quick' else '3'], tail_check(r'chimtest: ok')) for lo, hi in ((1, 16), (17, 32), (33, 48))] # (round 48b) the locked chimney: every kick shaft climbed press by press to the Y, Down at each stance, held Up, Jump, rewind, no single-wall kick; three jobs
 J += [('liftscan', ['liftscan.py', str(n), str(n + 5), '3', 'both'], tail_check(r'ALL OK')) for n in range(3, 61, 6)] # no part of a lift or its rider over a wall's front, a low ceiling or a grating in front of it (Classic and Torchlight)
 J += [('lowceil', ['lowceil.py'], tail_check(r'ALL OK'))] # under a ceiling at his height a jump is the low leap and never goes through the stone
 J += [('wellcorr', ['wellcorr.py', str(n), str(n + 11)], tail_check(r'wellcorr: ok')) for n in range(1, 49, 12)] # (round 30) no sand well stands in a corridor: every well's pit is walled on both sides down to its floor
@@ -135,7 +136,7 @@ if mode == 'release': # (the art-over-openings scans of rounds 15, 16c and 35c, 
     J += [('panscan', ['panscan.py', str(lo), str(hi)], tail_check(r'panscan: ok')) for lo, hi in ((3, 60), (61, 120), (121, 180))]
 # Suites: every group belongs to exactly one (a group with none stops the run here, before anything starts: add it below)
 SUITES = {
-    'play': ('run2', 'run2 fight', 'featbot', 'featbot fight', 'p4bot', 'forktest', 'hinttest', 'grablabel', 'swingtest', 'liftkick',
+    'play': ('run2', 'run2 fight', 'featbot', 'featbot fight', 'p4bot', 'forktest', 'hinttest', 'grablabel', 'swingtest', 'liftkick', 'chimtest',
              'lowceil', 'r38b_tests', 'sawceil', 'hilljump', 'primtest', 'hdtest', 'lifttest', 'respawnplates', 'slabresume', 'gratepeek'), # the bot and play checks
     'gen': ('metrics40', 'guardscan', 'forkscan', 'puzzlescan', 'vertscan', 'featurescan', 'orphanscan', 'mazescan', 'wellcorr', 'lampscan',
             'slabscan', 'sandshaft', 'wellscan', 'hillscan', 'windscan', 'courtscan'), # generator and layout scans (the tiles, no picture)

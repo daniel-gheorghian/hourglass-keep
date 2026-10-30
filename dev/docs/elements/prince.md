@@ -65,7 +65,7 @@ The body that plays is a few numbers on `P`; the drawn figure never feeds back i
 | `step` (`STEP_T` 0.3 s), `edgeWalk` | `stepPose` (feet by IK, no slide); steps over `TP_DMAX` 22 px and `edgeWalk` use `walkPose` |
 | `crouch`, `poke`, `lowStrike` | `crawlPose` (the low blade with `P.lowSword`); the thrust; `PS.windup` then `PS.lowStrike` |
 | `jumpPrep` (`JP_T` 0.28 s) | `prepPose` (13_11's wind-up), feet held where they stood (`poseOx`) |
-| `air` | in a kick shaft's column (round 42a) `chimPose` (stances 'f' and 'b', the push, the tuck, the reach); else by `P.jumpKind`: `run`/`stand` `flightPose`, `kick` `kickPose`, `wall` `wallRunIK`, plant `plantPose`, none `PS.fall` with the limbs moving; `P.yo` from `jumpYo` |
+| `air` | in a kick shaft's column (round 42a) `chimPose` (stances 'f' and 'b', the push, the tuck, the reach; round 48b: the locked chimney, the Y's gather 'y' and its flight on `flightPose('stand')` cut by the faces until his feet clear the lip); else by `P.jumpKind`: `run`/`stand` `flightPose`, `kick` `kickPose`, `wall` `wallRunIK`, plant `plantPose`, none `PS.fall` with the limbs moving; `P.yo` from `jumpYo` |
 | `land`, `landHurt` | `landSeq` or `settlePose('land')`; `PS.crouch` |
 | `hang`, `climb` (`CLIMB_T` 0.72 s), `climbDown` (0.6 s), `jumpUp`, `bonk` | `PS.hang` and its swing; `climbFrame`; `PS.crouch` then `PS.reach` |
 | `drink` (`DR_T` 1.3 s), `push`/`pull` (0.55 s) | `drinkFrame`; the run's legs at part stride, arms on the block |
@@ -222,6 +222,10 @@ Classic's beam cut and `fillCut`. The sword shows in it only while drawn at a fo
   wall shows; in a kick shaft he is drawn in the middle and cut by both walls (his head loses about 4 px). Look only.
 - round 42a: in a kick shaft he is drawn as a climber in a chimney, back and foot (`chimPose`, `chimBrace`, `chimLeg`, session `P.chm`,
   drawn facing `P.dF`, clip `chimClip`); his silhouette's uses take his drawn x there (`chimSX`). Look only.
+- round 48b: the locked chimney (play: one kick a press of Up, Down lets go, the Y at the top). The stances and kicks are drawn as in 42a;
+  new are the Y's gather (stance 'y': the near foot under the seat on the wall behind, the hands on the lip) and the Y, flown on the standing
+  jump's keys from where he sat (the push takes `P.x` to his drawn hip) and cut by the faces (`chimClip`) until his feet clear the lip,
+  landed with `landSeq 'sl'`. Pictures `egyptr48b.py`.
 - round 46d: the contour rule on the figure: each outline the shade of the fill beside it (`FIG_K`), both levels of detail; `contourscan.py`
   judges him (standing clear of walls, floors 1-48: v87 32 of 48 views bad, 0 now). Look only: the silhouettes identical.
 

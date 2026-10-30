@@ -49,7 +49,7 @@ may place it and which stream it may draw from.
 | [lifts](elements/lifts.md) | counterweight, paternoster, sand lift |
 | [swing bar](elements/swing-bar.md) | the trapeze |
 | [banners and slides](elements/banners-and-slides.md) | the cloth he slides down |
-| [kick shafts and jet streams](elements/kick-shafts-and-jet-streams.md) | wall-to-wall kicks and the drifting-sand hint |
+| [kick shafts and jet streams](elements/kick-shafts-and-jet-streams.md) | the locked chimney (round 48b: one Up a kick, Down lets go, the Y at the top) and the drifting-sand hint |
 | [checkpoint](elements/checkpoint.md) | Nut's sky clock |
 | [flasks and secrets](elements/flasks-and-secrets.md) | flasks, the gold flask, secret passages, alcoves, the cue |
 | [the dark](elements/the-dark.md) | the chase |
@@ -102,6 +102,21 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [flasks and secrets](elements/flasks-and-secrets.md) | a coloured item light | flasks carved (`SHC`) | its light's ellipse (`glRelEx`) | no | no footprint (255) | no | no | poison: 1 life | an ambush guard at the gold flask |
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
+
+## What round 48b found
+
+The owner: "run jump in the chimney, then lock in the kicks positions, jump button does nothing, control the prince with the up/down buttons
+to perform one kick and climb a bit, pressing down disengages and the prince falls. When at the top pressing up again uses the Y leap to
+land"; his answers on the research (.claude/research/r48chimney2) settled the ways in, the press per kick, Down at once, the grid, no
+single-wall kicks and no hints ([kick shafts](elements/kick-shafts-and-jet-streams.md)).
+
+| Finding (v89) | Where | Round 48b | Seen in |
+|---|---|---|---|
+| A climb was a tic-tac on Jump: each plant held 0.11-0.45 s, then he slipped | `stPlant` | locked in a stance as long as he likes; one Up a kick on a fixed grid (feet 50 + 46 n px); Down lets go at once | kick shafts, gameplay |
+| A running Jump at a shaft was a wall run: on a two-storey shaft it caught the lip and skipped the kicks | `stRun` | a running Jump at a kick shaft's wall is the way in (`chimLaunch`); the wall run stays elsewhere | kick shafts |
+| Any wall gave a kick, in a shaft or not | `stAir` | only the chimney kicks (`chimAir`) | gameplay |
+| The top was a catch of the lip, a hang and a climb (1.3 s) | | the Y: a standing leap up past the lip and onto the ledge | kick shafts, prince |
+| Jump did everything; hints `shaft`, `walljump` | `HINTS` | Jump and Grab do nothing in the chimney (dimmed); the hints are gone, the jet stream on the new zigzag | kick shafts, controls |
 
 ## What round 48a found
 

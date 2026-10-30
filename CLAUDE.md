@@ -47,7 +47,7 @@ is a placeholder: only the built `index.html` carries the release number.
 1. Change the source, then build with the next N.
 2. Run the regression suite from `dev/tools` with `python3 suite.py release`. It runs every test below spread over the
    machine's cores. Every job belongs to one of three suites by its group (`SUITES` in suite.py; a group in none stops the run before
-   it starts): `play` (the bot and play checks: run2, featbot, p4bot, forktest, hinttest, grablabel, swingtest, liftkick, lowceil,
+   it starts): `play` (the bot and play checks: run2, featbot, p4bot, forktest, hinttest, grablabel, swingtest, liftkick, chimtest, lowceil,
    r38b_tests, sawceil, hilljump, primtest, hdtest, lifttest, respawnplates, slabresume, gratepeek), `gen` (generator and layout scans: metrics40,
    guardscan, forkscan, puzzlescan, vertscan, featurescan, orphanscan, mazescan, wellcorr, lampscan, slabscan, sandshaft, wellscan, hillscan, windscan, courtscan) and
    `render` (drawing checks: rendersmoke, liftscan, crossscan, cpscan, shadowscan, doorscan, openscan, tilescan, beamjag, heapscan, solidscan, contourscan, viewscan, panscan, stormfair, glauto,
@@ -91,6 +91,7 @@ is a placeholder: only the built `index.html` carries the release number.
 | `featurescan.py [file]`, `featbot.py` | a floor's featured families hold their share of their category (mean and minimum), flags come about one floor in nine, floors differ more than before (sameness); the bot plays floors forced to every flag and family (`window.__FEAT`) | shares near or over 40%, 0 damage |
 | `wellcorr.py lo hi [seeds]` | no sand well stands in a corridor: every well's pit is walled on both sides down to its floor (round 30) | `wellcorr: ok` |
 | `cpscan.py lo hi [seeds]` | no pixel of the sky clock (the checkpoint) over a wall's front face, a step or a low ceiling beside it, both modes (round 37c) | `cpscan: ok` |
+| `chimtest.py [file] [lo hi] [seeds]` | round 48b's locked chimney, every kick shaft (floors 1-48 x 3: 236): climbed by a running Jump, a standing Jump or Up at the foot, then one Up a stance, every stance on its grid to the pixel, the Y landing 12 px past the lip with the standing landing; Up held gives one kick; Jump does nothing; Down at each stance lets go at once with a fall's damage; a rewind in mid-kick restores his own copies; walking in does not lock; no plant, kick or lock off a single wall elsewhere | `chimtest: ok` |
 | `r38b_tests.py` | round 38b's play faults, one check each: the roof block and `P.inv`, the damaging drop's lip, a banner's rewind, the sand lift's hint and top, the recruit's colour, the timed gates' waits | `r38b: ok` |
 | `sawceil.py lo hi [seeds]` | no saw under a ceiling at his height: each one turned into spikes is tiptoed, and the bot plays its floor (round 38c) | `sawceil: ok` |
 | `layerscan.py lo hi [classic]` (by hand) | nothing in the corridor drawn over the front plane: each kind drawn and left out, the faces' and lips' pixels unchanged (round 39, `dev/docs/layers.md`) | `layerscan: ok` |
@@ -223,7 +224,7 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   inverse); faint added haze wisps that grow; rare glints; in a shaft a soft clamp keeps grains off the walls (`wall`: they hug and peel).
   Everything is a pure function of the clock (no state, no allocation a frame, rewind-safe); three sprite batches a stream; only in view.
   Used by `drawJetHints` (in `drawDynamic`, places found once per floor in `L._jet` by `jetPlaces`): every kick shaft, either side (full
-  until `shaft` is learned, then 0.65); the swing's throw while `P.swRdy` (`jsSwingPath`, the release's own numbers: lands within ~7 px);
+  until `shaft` is learned, then 0.65; round 48b: nothing learns it now, so 1 but for saves that learned it before; the zigzag on the chimney's stances); the swing's throw while `P.swRdy` (`jsSwingPath`, the release's own numbers: lands within ~7 px);
   the jgrab jump only until `jgrab` is learned. Not on gap jumps, lifts, banners, hurtdrops or secrets (clutter, or against their look).
   A new place is one entry in `jetPlaces` and one call. Pictures: `egyptr18.py`; videos before/after `egyptr18c.py`.
 - Lamps keep clear (round 19, owner: "sometimes lamps or torches are placed just like that"): a lamp burns only where both cells beside
@@ -620,8 +621,8 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   hips up, then the feet walk up the far wall. Games kick between the walls (Tomb Raider: Underworld's chimney jump, Prince of Persia: The
   Sands of Time's wall-to-wall jumps, Celeste's wall jump: a squash and a sprite flip) and draw no brace; PoP 1989 has no shaft. No CMU clip
   climbs a chimney (the database's climbs are a playground, ladders and steps), so like the plant before it the stance is two-bone IK on the
-  motion-capture body (constants `CHM_*` outside the generated blocks; r23poses.py unchanged). Play is unchanged (he still kicks wall to wall,
-  `P.face` flipping each kick); the drawing reads the two halves of the kick as the climber's two pushes: in a shaft column (`chimShaft`: a wall
+  motion-capture body (constants `CHM_*` outside the generated blocks; r23poses.py unchanged). Play was unchanged then (he kicked wall to wall on
+  Jump, `P.face` flipping each kick; round 48b, below, locks him in); the drawing reads the two halves of the kick as the climber's two pushes: in a shaft column (`chimShaft`: a wall
   each side, `chimWall`) a session `P.chm` draws him facing `F`, the ledge's side (`chimLedge`; else the first wall's), seated `CHM_HB` 8.6 px
   from the wall behind him (`chimX`); planted on the ledge's wall both soles are flat on it (`chimLeg`: the foot turned toes up, `fp` pi/2, its
   sole `CHM_GAP` 1.4 px off the face, by the drawn foot `FOOTP`), stance 'f'; planted on the wall behind, his near foot is tucked under the seat
@@ -639,6 +640,33 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   identical on 21 floors with and without shafts (`botcmp`), layouts untouched. Checks: figscan, lowceil, liftkick, run2 5-27, layerscan
   floors 5-14 kinds shaftfoot,jet both modes, shadowscan 9-11. Pictures `egyptr42a.py old.html new.html [measure|nogif|gifonly|quick]`
   (r42a_chimney.png: each phase of a climb before | 42a, both modes, 3x, Torchlight with a lamp up the shaft, phone size; r42a_chimney.gif).
+  The locked chimney (round 48b, owner: "run jump in the chimney, then lock in the kicks positions, jump button does nothing, control the prince
+  with the up/down buttons to perform one kick and climb a bit, pressing down disengages and the prince falls. When at the top pressing up again
+  uses the Y leap to land"; his answers on the research, .claude/research/r48chimney2). v89 kicked on Jump with a tic-tac's timing (a plant of
+  0.11-0.45 s, then a slip), off any wall; a running Jump at a shaft was a wall run, which on a two-storey shaft caught the lip and skipped the
+  kicks. Now: three ways in lock him (`P.lock`): a running Jump at a kick shaft's wall (`stRun`, `chimLaunch`, in place of `startWallRun`), a
+  standing Jump at its foot facing the ledge's wall, or Up at its foot either way (`chimPrep`: the standing jump's wind-up, then `launch` hands it
+  to `chimLaunch`); the foot is `chimFoot` (a `shaftfoot` cell under an open column walled both sides, the ledge on one side at the top), so a
+  lift's shaft never locks; walking or falling in does not. The jump in (`CHM_IN_T` 0.3 s) goes straight to the first stance, where both walls
+  are. The stances stand on a fixed grid, feet `CHM_G0` 50 + `CHM_GS` 46 n px over the foot's floor (`chimH`), on the ledge's wall and the wall
+  behind in turn, whatever the way in: two storeys 50, 96; three 50, 96, 142. Every flight is scripted (`chimFly`: vx even, vy so the game's own
+  steps end on the stance's height to the pixel). He rests in a stance as long as he likes; each new press of Up (`took('u',0.15)`: held Up does
+  not repeat, a press up to 0.15 s before a plant is kept, the pad's dead zone and out again is a new press) is one kick (`kickOff(lk,sd)`,
+  `KICK_VX` 62, 19 frames, after `PLANT_MIN` 0.11 s planted); Down lets go at once (`chimAir`: no hold, `jumpKind` 'slip', `P.fallY` there, the
+  usual fall damage: from 50 and 96 px unhurt, 142 one life); Jump and Grab do nothing (`#bJump.dim`, `#bGrab.dim`, `updateGrabLabel`). At the
+  top stance (the lip within `CHM_YD` 50 px, `chimTop`) Up is the Y (`chimY`): `CHM_YP` 0.18 s gathering (stance 'y': the near foot under the
+  seat on the wall behind, the hands on the lip), then from his drawn hip (`P.x` takes `P.chm.hx`) a push straight up until his feet pass the
+  wall's top, then across to land `CHM_YX` 12 px past the lip at the top of a rise `CHM_YC` 12 px over it; flown on the standing jump's keys
+  (`flightPose('stand')`, `P.yLeap`, `P.yo` 0), cut by the faces (`chimClip`, the session kept) until his feet clear the lip, landed with
+  `landSeq 'sl'`. Press to standing on the ledge: two storeys 1.93 s (a running Jump 1.65), three 2.43 (2.15); the Y about 0.5 s. Kicks off a
+  single wall anywhere else are gone (`stAir`); the wall run outside shafts stays. The hints `shaft` and `walljump` are gone (no hint; the jet
+  stream stays, its zigzag on the grid, `jetPlaces`). A rewind keeps him in the chimney: `cloneE` copies `P.lock`, `P.plant`, `P.chIn`, `P.chm`
+  (its `ct`, `kp`) whole. The look of the stances and kicks is round 42a's. Bot `walljump`: a standing Jump at the foot (`opts.chimIn` 'u' or
+  'run'), then one Up in each new stance. `estPath` walljump (1.6 + 0.9 k) kept: `layoutcmp.py` against v89 same (144 of 144, timers too).
+  Checks: `chimtest.py` (new, suite.py play, three jobs), liftkick (Jump and Up in the air plant, kick or lock nowhere; Up and Jump at a lift's
+  foot do not lock), run2 5-27 x 2 and fight 6-12, primtest, vertscan, figscan, lowceil, hinttest, grablabel, r38b, layerscan 5-14
+  shaftfoot,jet both modes, shadowscan 9-11. Pictures `egyptr48b.py old.html new.html [outdir] [quick]` (r48b_keys_<shaft>.png, r48b_old_,
+  r48b_down_, r48b_phone_, r48b_climb_<shaft>.gif v89 | 48b, floor 11 seed 1 two storeys and floor 7 seed 1 three).
 - Three overlaps off layers.md's list (round 42b, owner: "Fix the drawing overlaps you choose are most noticeable"). (1) The lamp shadow:
   what stands before the back wall but was still not recorded in `SHC` (round 38a) is now, as drawn this frame (`SHC_E` 128, `SHC_PN` 4096,
   thin parts 1.2-2 px wider): the swing bar's log, ropes and pole (`bar`), a counterweight lift's hoist beam, brace, hanger and sheave (`rig`),
@@ -1331,7 +1359,7 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   (`glRelSlab`: the back wall's courses and friezes were embossed on them); `openscan.py` checks windows, gates and lift mouths for
   wall art over the opening (floors 1 to 48, both modes; `EGP.noover` leaves out the hangings and lamp scars drawn after windows).
 - A dart shooter firing left sits on a wall's hidden left face: no head is drawn and its darts come from behind the front face.
-- Lifts (v60, owner): no wall plant or kick inside a lift's shaft (`inLiftShaft` in `wallTouch`, from v59; `liftkick.py`). Lift parts are cut
+- Lifts (v60, owner): no wall plant or kick inside a lift's shaft (`inLiftShaft` in `wallTouch`, from v59; since round 48b only a kick shaft's foot locks him into the chimney, `chimFoot`; `liftkick.py`). Lift parts are cut
   out behind the walls' front faces in front of them (`liftOccl`), the counterweight runs in the back wall behind the platform, and
   they follow the stonework's wear (`liftWear`). Paternoster slabs and a counterweight platform stopped mid-shaft are solid to him in
   the air (`liftAir`); a slab coming down on him at the foot steps him aside, never hurts. A ride held on Down ends standing (`P.liftHold`).

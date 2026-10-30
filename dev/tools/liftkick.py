@@ -2,7 +2,10 @@
 # going up (counterweight lift2u/lift3u, chain-loop chn2u/chn3u): (a) the bot's own wall-jump routine, started in the shaft,
 # must not climb it (he never reaches the top landing without riding); (b) put in the air against each wall of the shaft,
 # at every storey, Jump must not plant or kick. And the same two checks in an ordinary kick shaft (shaft2/shaft3) must still
-# climb and kick. Run from dev/tools: python3 liftkick.py [file]
+# climb and kick. Round 48b: kicks are the locked chimney's only (no kick off a single wall), so (b) presses Jump and then Up, and in
+# every shaft, lift or kick shaft, nothing in the air plants, kicks or locks; (c) standing at a lift shaft's foot Up and Jump do not
+# lock him (the chimney is the kick shaft's alone, by its foot); the kick shafts' bot (the locked climb) still climbs.
+# Run from dev/tools: python3 liftkick.py [file]
 from playwright.sync_api import sync_playwright
 import sys,os
 SRC=sys.argv[1] if len(sys.argv)>1 else os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','hourglass-keep.html')
@@ -21,13 +24,17 @@ BOT='''([n,seed,kind])=>{'''+SHAFT+'''
  return {why:r.ok||r.why,rode,top,sh};}'''
 AIR='''([n,seed,kind])=>{'''+SHAFT+'''
  let tries=0,kicks=0;
- for(let r=sh.rT;r<=sh.rB;r++)for(let c=sh.ca;c<=sh.cb;c++)for(const sd of [1,-1]){
+ for(let r=sh.rT;r<=sh.rB;r++)for(let c=sh.ca;c<=sh.cb;c++)for(const sd of [1,-1]){let k=false,any=false;
+   for(const key of ['j','u']){ // (round 48b: Jump, then Up, each from a fresh start in the air: Up after he has landed at a kick shaft's foot is its way in)
    H.load(n,seed,true);const P=H.P;P.x=c*32+16+sd*9.5;P.y=r*64+40;P.fallY=P.y;P.state='air';P.vx=0;P.vy=-60;P.jumpKind='stand';P.autoGrab=false;P.face=sd;
    if(H.L.base[r*H.L.cols+c+sd]!==2)continue; // (only where a wall is really there)
-   tries++;H.setKey('kb','j',true);H.tick(2);H.setKey('kb','j',false);
-   let k=false;for(let i=0;i<30;i++){if(H.P.plant||H.P.jumpKind==='kick')k=true;H.tick(1);}
-   if(k)kicks++;}
- return {tries,kicks};}'''
+   any=true;H.setKey('kb',key,true);H.tick(2);H.setKey('kb',key,false);
+   for(let i=0;i<30&&H.P.state==='air';i++){if(H.P.plant||H.P.lock||H.P.jumpKind==='kick')k=true;H.tick(1);}}
+   if(any)tries++;if(k)kicks++;}
+ // (c) at the shaft's foot, facing its top's side: Up, then Jump: no lock
+ let locks=0;for(const key of ['u','j']){H.load(n,seed,true);H.mode='play';const P=H.P;P.x=sh.from*32+16;P.y=(sh.rB+1)*64-4;P.fallY=P.y;P.state='stand';P.vx=0;P.vy=0;P.face=sh.dir||1;P.jumpKind=null;
+   H.tick(2);H.setKey('kb',key,true);H.tick(2);H.setKey('kb',key,false);for(let i=0;i<60;i++){if(H.P.lock||H.P.plant)locks++;H.tick(1);}}
+ return {tries,kicks,locks};}'''
 bad=0
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page(viewport={'width':844,'height':390}); errs=[]
@@ -38,8 +45,8 @@ with sync_playwright() as p:
         if not fl: bad+=1;print('%-7s no floor'%kind);continue
         n,seed=fl
         a=pg.evaluate(BOT,[n,seed,kind]); c=pg.evaluate(AIR,[n,seed,kind])
-        if kind.startswith('shaft'): good=a['top'] and c['kicks']>0
-        else: good=not a['top'] and c['kicks']==0 and c['tries']>0
+        if kind.startswith('shaft'): good=a['top'] and c['kicks']==0 and c['tries']>0
+        else: good=not a['top'] and c['kicks']==0 and c['tries']>0 and c['locks']==0
         if not good: bad+=1
-        print('%-7s n=%d seed=%d  bot climbs by kicks: %-5s  air kicks %d/%d  %s'%(kind,n,seed,a['top'],c['kicks'],c['tries'],'ok' if good else 'BAD %s'%a))
+        print('%-7s n=%d seed=%d  bot climbs by kicks: %-5s  air kicks %d/%d  locks at the foot %d  %s'%(kind,n,seed,a['top'],c['kicks'],c['tries'],c['locks'],'ok' if good else 'BAD %s'%a))
     print('ALL OK' if not bad and not errs else 'FAILURES %d errors %s'%(bad,errs[:3])); b.close()

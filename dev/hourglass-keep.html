@@ -2030,8 +2030,8 @@ function plantPose(){if(!KP){KP=mk({lean:-0.34,head:-0.42,air:1,hy:25,aF:-0.25,e
 // Cambridge, "On Chimneys"; Freedom of the Hills): the back on one wall, the soles on the other, the palms pushing on the back wall low by
 // the hips; to go up, the hands and one foot tucked under the seat onto the back wall push the hips up, then the feet walk up the far wall.
 // No CMU clip climbs a chimney (the database's climbs are a playground, ladders and steps), so, like round 23's kick-shaft plant, the
-// stances are two-bone IK on the motion-capture body (soles flat on the stone, chimLeg; palms on it, hold grips). Play is unchanged: he
-// still kicks from wall to wall, P.face flipping each kick. The drawing reads those two halves as the climber's two pushes: in a shaft
+// stances are two-bone IK on the motion-capture body (soles flat on the stone, chimLeg; palms on it, hold grips). He kicks from wall to
+// wall, P.face flipping each kick (round 48b: locked in the chimney, one kick a press of Up, chimAir). The drawing reads those two halves as the climber's two pushes: in a shaft
 // column (a wall each side) he is drawn facing P.chm.F, the ledge's side (or the first wall's), seated CHM_HB from the wall behind him;
 // planted on the ledge's wall both soles are on it ('f'), planted on the wall behind him his near foot is tucked under the seat on it
 // ('b'); a kick is the push (each sole and palm stays on the stone until its limb is straight, CHM_PUSH), a tuck, and the reach for the
@@ -2060,14 +2060,14 @@ function chimBrace(k,hx,hy,out){const ch=P.chm,F=ch.F,[xa,xb]=chimX(ch),XA=(xa-h
   Object.assign(out,CHM_TUCK);out.lean=CHM_LEAN;out.head=CHM_HEAD;out.ox=0;out.oy=0;
   const ya=wa?[wa[0]+9-hy,wa[1]-3-hy]:[-99,99],yb=wb?[wb[0]+3-hy,wb[1]-8-hy]:[-99,99];
   chimLeg(XA,clamp(CHM_FY[1],ya[0],ya[1]),Math.PI/2,1,chQ);out.hB=chQ[0];out.kB=chQ[1];out.fpB=Math.PI/2;
-  if(k==='b'&&wb){chimLeg(XB,clamp(CHM_BK[1],yb[0],yb[1]),-Math.PI/2,-1,chQ);out.fpF=-Math.PI/2;}
+  if((k==='b'||k==='y')&&wb){chimLeg(XB,clamp(CHM_BK[1],yb[0],yb[1]),-Math.PI/2,-1,chQ);out.fpF=-Math.PI/2;} // (round 48b: 'y', the Y's gather: the near foot under the seat on the wall behind, the hands on the lip)
   else{chimLeg(XA,clamp(CHM_FY[0],ya[0],ya[1]),Math.PI/2,1,chQ);out.fpF=Math.PI/2;}
   out.hF=chQ[0];out.kF=chQ[1];
   // the trunk upright against the wall behind (where there is one at the shoulders), the palms on it
   if(wb&&wb[0]<=hy-16&&wb[1]>=hy-8){out.hold=out.hb=1;out.gFx=out.gBx=XB+CHM_HX;out.gFy=CHM_HY[0];out.gBy=CHM_HY[1];out.eF=out.eB=0.4;}
   else{out.lean=CHM_LEAN-0.16;out.head=CHM_HEAD-0.1;out.aF=-0.45;out.eF=0.9;out.aB=-0.75;out.eB=0.7;out.hold=out.hb=0;} // (no wall behind his back, at the shaft's foot: leaning off the wall his feet are on, as the plant was)
   // (the lip: the wall ahead ending 30 to 50 px over the hip) the hands reach for its corner
-  if(wa&&k==='f'){const d=hy-wa[0],w=clamp((CHM_LIP[1]-d)/(CHM_LIP[1]-CHM_LIP[0]),0,1);
+  if(wa&&(k==='f'||k==='y')){const d=hy-wa[0],w=k==='y'?1:clamp((CHM_LIP[1]-d)/(CHM_LIP[1]-CHM_LIP[0]),0,1);
     if(w>0){const tx=XA-1.2,ty=wa[0]-hy-0.5;if(!out.hold){out.gFx=out.gBx=tx;out.gFy=out.gBy=ty;}
       out.gFx+=(tx-out.gFx)*w;out.gFy+=(ty-out.gFy)*w;out.gBx+=(tx-1.6-out.gBx)*w;out.gBy+=(ty+0.6-out.gBy)*w;out.hold=out.hb=Math.max(out.hold,w);out.head-=0.06*w;}}
   if(out.hold){const sx=LEN.to*Math.sin(out.lean),sy=-LEN.to*Math.cos(out.lean),R=(LEN.ua+LEN.fa)*0.97; // (within reach: skel lowers the body to a hand out of reach overhead)
@@ -2081,6 +2081,9 @@ function chimEnd(){P.chm=null;P.dF=0;}
 // the chimney's target pose this frame (and the session in P.chm), or null when he is not climbing a shaft; rate into CHM.r
 const CHM={r:36};
 function chimPose(){let ch=P.chm;const c=pCol(),jk=P.jumpKind,y=P.y;
+  if(P.lock&&P.lock.ph==='yfly'){ // (round 48b) the Y: the standing jump's flight from where he sat, cut by the faces (chimClip) until his feet clear the lip
+    if(!ch||ch.c!==c||y<=P.lock.ys-2){if(ch)chimEnd();return null;}
+    ch.hx=P.x;P.dF=0;CHM.r=26;return flightPose('stand',false,P.t/(P.jT||0.5),1,false,lpP);}
   if(ch&&ch.c!==c){chimEnd();ch=null;}
   if(!(P.plant||jk==='kick'||jk==='slip'||jk==='stand')){if(ch)chimEnd();return null;}
   if(!ch){if(jk==='slip'||!chimShaft(c,y))return null;
@@ -2095,7 +2098,7 @@ function chimPose(){let ch=P.chm;const c=pCol(),jk=P.jumpKind,y=P.y;
     ch.kt=P.kickT;Object.assign(P.pose,CHLP);ch.from=-P.face===F?'f':'b';ch.hk=ch.hx;ch.u0=-1;const s=skel(P.pose),hy0=y-s.hipH;
     ch.ct=[ch.hx+F*s.fF[0],hy0+s.fF[1],ch.hx+F*s.fB[0],hy0+s.fB[1],ch.hx+F*s.hF[0],hy0+s.hF[1],ch.hx+F*s.hB[0],hy0+s.hB[1]];
     ch.kp=mk(P.pose);}
-  if(P.plant){ch.k=P.plant.sd===F?'f':'b';tgt=chimBrace(ch.k,hx,hy,chP);CHM.r=45;if(P.lk&&P.lk.sq<CHM_SQ)P.lk.sq=CHM_SQ;} // (the plant's squash widens him 1/sq: kept small between the walls)
+  if(P.plant){ch.k=P.plant.y!=null?'y':P.plant.sd===F?'f':'b';tgt=chimBrace(ch.k,hx,hy,chP);CHM.r=45;if(P.lk&&P.lk.sq<CHM_SQ)P.lk.sq=CHM_SQ;} // (the plant's squash widens him 1/sq: kept small between the walls)
   else if(jk==='slip'){tgt=chimBrace(ch.k,hx,hy,chP);tgt.hF-=0.15;tgt.hB-=0.1;CHM.r=24;}
   else{ // in the air: kicked (or jumping in from the foot) toward the wall ahead (P.face)
     const d=P.face>0?(c+1)*TW-BW-P.x:P.x-c*TW-BW,u=clamp(1-d/20,0,1),eu=ease(u),t=jk==='kick'?gameTime-P.kickT:9;
@@ -3029,7 +3032,9 @@ function respawn(){S.floorDeaths=(S.floorDeaths||0)+1;S.deaths++;S.floorTime=lev
 // plays them in reverse to a calm moment about five seconds before the fall, and play resumes from there.
 const SANDS=3,REW=[];let rewTick=0,rw=null,deathAt=0;
 const REW_STATES=['stand','run','stop','garde','advance','retreat','crouch','step','turn','land','probe'];
-const cloneE=o=>{const c=Object.assign({},o);if(o.pose)c.pose=Object.assign({},o.pose);if(o.cs)c.cs=Object.assign({},o.cs);if(o.ledge)c.ledge=Object.assign({},o.ledge);return c;};
+const cloneE=o=>{const c=Object.assign({},o);if(o.pose)c.pose=Object.assign({},o.pose);if(o.cs)c.cs=Object.assign({},o.cs);if(o.ledge)c.ledge=Object.assign({},o.ledge);
+  if(o.plant)c.plant=Object.assign({},o.plant);if(o.lock)c.lock=Object.assign({},o.lock);if(o.chIn)c.chIn=Object.assign({},o.chIn);if(o.chm){c.chm=Object.assign({},o.chm);if(o.chm.ct)c.chm.ct=o.chm.ct.slice();if(o.chm.kp)c.chm.kp=Object.assign({},o.chm.kp);} // (round 48b: the chimney's plant, lock and drawing session are his own, copied whole)
+  return c;};
 function snapAll(){const p=cloneE(P);p.foe=P.foe?G.indexOf(P.foe):-1;p.drinkIt=P.drinkIt?L.items.indexOf(P.drinkIt):-1;
   return {t:gameTime,P:p,G:G.map(cloneE),SN:SN.map(o=>Object.assign({},o)),pg:pendingGuards.map(q=>({at:q.at,src:q.src?G.indexOf(q.src):-1,spec:q.spec})),
     dyn:L.dyn.map(o=>{const c=Object.assign({},o.f);if(o.f.bn)c.bn=Object.assign({},o.f.bn);return c;}), // (round 38b: a banner's cut record bn is shared by its cells: copied, so a rewind undoes the cut)
@@ -3095,7 +3100,7 @@ const LRN_ST={climb:['climb'],drink:['potion'],push:['block'],pull:['block'],sli
 function learn(...ids){let w=false;for(const id of ids)if(!S.learned[id]){S.learned[id]=1;w=true;}if(w)writeSave();}
 // (round 41: a sand lift is learned by getting off it, 'sandfall', in sandRide; P.sandUp, a lip caught from its slab, lasts to the hang)
 function setState(s){if(P&&P.state==='drink'&&s!=='drink'){dropFlask();if(P.dkG&&!P.dkFx&&s!=='dead'&&s!=='exit')drinkFx();} // knocked out of the drink with the flask in hand: it takes effect at once and the flask falls
-  if(P){const lk=LRN_ST[s];if(lk)learn(...lk);else if(s==='lift'&&P.lift&&!P.lift.sand)learn(P.lift.t==='chain'?'chain':'lift');if(s!=='jumpUp'&&s!=='hang')P.sandUp=0;}if((s==='stop'||s==='turn')&&P.state==='run'&&GFX().fx&&Math.abs(P.vx)>60)dust(P.x-P.face*4,P.y,4);if(P){P.state0=P.state;if(P.state==='air'&&s!=='air')P.yo=0;P.lnT=null;if(s!=='run'){P.jLe=null;if(s!=='air')P.jGo=null;}}P.state=s;P.t=0;if(s!=='crouch'&&s!=='poke')P.lowSword=false;if(s!=='air')P.plant=null;
+  if(P){const lk=LRN_ST[s];if(lk)learn(...lk);else if(s==='lift'&&P.lift&&!P.lift.sand)learn(P.lift.t==='chain'?'chain':'lift');if(s!=='jumpUp'&&s!=='hang')P.sandUp=0;}if((s==='stop'||s==='turn')&&P.state==='run'&&GFX().fx&&Math.abs(P.vx)>60)dust(P.x-P.face*4,P.y,4);if(P){P.state0=P.state;if(P.state==='air'&&s!=='air')P.yo=0;P.lnT=null;if(s!=='run'){P.jLe=null;if(s!=='air')P.jGo=null;}}P.state=s;P.t=0;if(s!=='crouch'&&s!=='poke')P.lowSword=false;if(s!=='air'){P.plant=null;P.lock=null;P.yLeap=false;}if(s!=='jumpPrep')P.chIn=null; // (round 48b: the chimney's lock ends when he leaves the air)
   if(P){if(s==='stop'||s==='turn'){P.stK=s;P.stT=gameTime;P.stS=s==='stop'?clamp(Math.abs(P.vx)/RUN,0.35,1):1;}else if(s!=='stand')P.stK=null; // (round 25f: the settle, see settlePose)
     if(s==='hang'){P.hgT=gameTime;P.hgA=HG_A[P.state0]||HG_A.air;} // (round 25f: the hang's swing, see livePose)
     if(s==='step')P.sEd=0;else if(s==='edgeWalk')P.sx=P.x;else if(s==='stand'&&P.state0==='step'){P.stK='tip';P.stT=gameTime;}}} // (round 33b: look only, see stepPose)
@@ -3202,7 +3207,7 @@ function pbTouch(){const h=L.hills[P.pbI];if(!h)return;const x=P.pbX+P.face*(P.p
   for(let i=0;i<(h.d?5:3);i++)FX.push({x:x+(Math.random()-0.3)*3*P.face,y,vx:-P.face*(6+Math.random()*14),vy:-Math.random()*(h.d?18:8),g:h.d?40:120,life:0.35+Math.random()*0.25,t:0,col:h.d?'rgba(214,190,140,.6)':'rgba(120,104,92,.75)',sz:h.d?1.4:1.1});
   Snd.play(h.d?'sandstep':'step');}
 function tryJump(){if(hillOn(P.x,P.y))return;const e=hazardEdge(30);if(e!==null&&Math.abs(e-P.x)>6){P.tx=e-P.face*4;setState('edgeWalk');return;}startJump('stand');}
-function startJump(kind){if(hillOn(P.x,P.y))return;P.pbQ=null;P.pbC=null;
+function startJump(kind){if(hillOn(P.x,P.y))return;P.pbQ=null;P.pbC=null;P.chIn=null;
   {const hc=hillCheck(kind);if(hc){if(!hc.need&&hc.c<(kind==='run'?PB_MIN:PB_MINS)){startProbe(hc.q);return;}P.pbQ={i:hc.q.i,e:hc.q.e};P.pbC=hc.c;}} // (round 47a: the checked leap)
   P.jumpKind=kind;if(kind==='run')launch();else{P.jLow=beamOverhead(false);P.jFx=feetX(P.pose)+(P.pose.ox||0);setState('jumpPrep');}} // (round 32: jLow, the wind-up's look under a ceiling)
 // Under stone at his height (a gate's or a guillotine's lintel, a corridor one storey tall, an upper floor's slab) a full
@@ -3242,7 +3247,8 @@ function beamOverhead(run){const row=pRow(),vx=run?183:132,vy=run?190:159,T=2*vy
 // frame, here the 24th); a landing elsewhere is found at most one frame's step (4 px of arc) past the point it crosses, as before (3 px).
 const RJ_K=0.75,RJ_DV=GRAV*STEP*(1/RJ_K-1)/2;
 function rjK(){return P.jumpKind==='run'?RJ_K:1;}
-function launch(){const run=P.jumpKind==='run';P.jx=P.x;P.jy=P.y;let vx=run?183:132,vy=run?190:159;P.lowJump=false;
+function launch(){if(P.chIn){const lk=P.chIn;P.chIn=null;return chimLaunch(lk,false);} // (round 48b: the wind-up at a kick shaft's foot: the jump in to the first stance)
+  const run=P.jumpKind==='run';P.jx=P.x;P.jy=P.y;let vx=run?183:132,vy=run?190:159;P.lowJump=false;
   if(beamOverhead(run)){[vx,vy]=LOWJ[run?'run':'stand'];P.lowJump=true;}
   if(P.pbQ&&P.pbC!=null&&!P.lowJump)vx=Math.max(0,P.pbC)/(2*vy/GRAV); // (round 47a: the checked leap lands PB_GAP short of the hill's foot)
   const k=run?RJ_K:1; // (round 35a: the running jump's clock, see RJ_K; vx, vy here are the arc's geometry)
@@ -3788,8 +3794,9 @@ function stStand(ix){
   if(P.peace<=0){const g=nearGuard(64);if(g)return enterGarde(g);}
   if(P.sword&&!nearGuard(110))P.sword=false;
   const wob=P.stumble>0;
-  if(took('j')){if(wob)return;return tryJump();}
+  if(took('j')){if(wob)return;{const lk=chimFoot(pCol(),pRow());if(lk&&P.face===lk.F)return chimPrep(lk);}return tryJump();} // (round 48b: Jump at a kick shaft's foot, facing its ledge's wall: into the chimney)
   if(wob&&took('u'))return;
+  if(I.buf.u!==undefined&&gameTime-I.buf.u<=0.15){const lk=chimFoot(pCol(),pRow());if(lk){took('u');return chimPrep(lk);}} // (round 48b: Up at the foot, either way he faces, is the way into the chimney; else the press is left for the checks below)
   // a lift: on its platform, Up or Down held rides it
   {const lf=liftUnder();if(lf&&lf.sand){if(lf.s===0&&Math.abs(P.x-(lf.sc*TW+16))<12){lf.s=1;lf.tm=0;lf.snd=0.2;P.lift=lf;P.vx=0;setState('lift');Snd.play('creak');return;}} // (round 16a: on a sand lift's slab, it starts; round 38b: its hint comes as he nears it, checkHints)
   else if(lf&&!wob&&((I.u&&!I.d&&lf.y>lf.yT+0.01)||(I.d&&!I.u&&lf.y<lf.yB-0.01))){P.lift=lf;setState('lift');return;}}
@@ -3815,7 +3822,7 @@ function stRun(dt,ix){
   else{setState('stop');}
   if(took('j')&&P.stumble<=0)P.pendingJump=true;
   if(hl)P.pendingJump=false; // (no jump of any kind on a hill: round 47a, a heap too)
-  if(P.pendingJump&&Math.abs(P.vx)>50){const wa=wallAhead();if(wa&&B(L,wa.wc,pRow()-1)===WALL&&B(L,wa.wc-P.face,pRow()-1)!==WALL){P.jLe=null;if(wa.d<=30){P.pendingJump=false;return startWallRun();}runMove(dt);return;}}
+  if(P.pendingJump&&Math.abs(P.vx)>50){const wa=wallAhead();if(wa&&B(L,wa.wc,pRow()-1)===WALL&&B(L,wa.wc-P.face,pRow()-1)!==WALL){P.jLe=null;if(wa.d<=30){P.pendingJump=false;{const lk=chimFoot(wa.wc-P.face,pRow());if(lk&&lk.F===P.face&&pCol()===lk.c)return chimLaunch(lk,true);}return startWallRun();}runMove(dt);return;}}
   P.jLe=null;
   if(P.pendingJump){
     const e=hazardEdge(80);
@@ -3825,16 +3832,71 @@ function stRun(dt,ix){
   if(took('u')||took('d')){P.pendingJump=false;setState('stop');}
   runMove(dt);
 }
-// ---- kicking up a shaft from wall to wall ----
-// The Two Thrones guides give the rhythm: "Wait for the Prince to hit each side of the wall then tap the jump button
-// again"; a parkour tic-tac plants the ball of the foot, leans away from the wall and pushes up and away with the head
-// already turned to the target. The first version launched him so hard (95 across, 300 up) that he was still rising fast
-// when he reached the far wall and kicked straight on, arms overhead the whole way: a steady climb through the air with
-// no contact, which read as flying. Now each kick is a lower arc that tops out as he reaches the far wall (about a third
-// of a second across, ~52px up), the soles plant there for a beat (knees folded, body leaning away, arms drawn back),
-// and only then does the push send him on. Jump pressed early is kept for the plant; with no Jump the soles hold for a
-// moment and then slip, and he drops away from the wall.
-const KICK_VX=62,KICK_VY=-275,PLANT_MIN=0.11,PLANT_STICK=0.16,PLANT_MAX=0.45;
+// ---- the kick shaft: the locked chimney (round 48b) ----
+// (owner: "run jump in the chimney, then lock in the kicks positions, jump button does nothing, control the prince with the up/down buttons
+// to perform one kick and climb a bit, pressing down disengages and the prince falls. When at the top pressing up again uses the Y leap to
+// land") Until v89 he kicked from wall to wall on Jump with the timing of a tic-tac (a plant of 0.11-0.45 s, then he slipped), from any wall
+// at all; a running Jump at a shaft was a wall run, which on a two-storey shaft caught the lip and skipped the kicks. Now the shaft is a
+// chimney he locks into: a running Jump at its wall, a standing Jump at its foot facing the ledge's wall, or Up at its foot (walking or
+// falling in does not lock him) takes him in one jump to the first stance, CHM_G0 px over the foot's floor, where both walls are (the wall
+// behind starts a storey up). The stances stand on a fixed grid, CHM_G0 + CHM_GS n px (feet over the foot's floor), on the ledge's wall
+// and the wall behind in turn, whatever the way in. In a stance he rests as long as he likes (no stamina); each new press of Up is one
+// kick to the next stance (held Up does not repeat; a press up to 0.15 s before a plant is kept; on the pad a slide back to the dead zone
+// and out again is a new press); Down lets go at once, whatever the height (a fall's usual damage: 100 px hurts, 170 kills); Jump and
+// Grab do nothing (their buttons dimmed). At the top stance (the lip within CHM_YD px over his feet) Up is the Y: the near foot to the
+// wall behind and the hands to the lip for CHM_YP s, then a push up past the lip (its top CHM_YC px over it) and across, flown on the
+// standing jump's keys and landed with its landing, standing CHM_YX px past the lip. Every flight is scripted (chimFly: the game's own
+// integration, exact at its last frame), so a plant is at its grid height to the pixel. The drawing of the stances and kicks is round
+// 42a's (chimPose). Kicks off a single wall anywhere else are gone; the wall run outside the shafts stays.
+const KICK_VX=62,PLANT_MIN=0.11,CHM_G0=50,CHM_GS=46,CHM_YD=50,CHM_IN_T=0.3,CHM_YP=0.18,CHM_YC=12,CHM_YX=12;
+// a stance's feet over the foot's floor; is stance n the top one (the Y next)
+function chimH(n){return CHM_G0+CHM_GS*n;}
+function chimTop(lk){return lk.y0-lk.ys-chimH(lk.n)<=CHM_YD;}
+// the kick shaft whose foot is cell (c, r): its 'shaftfoot' tile under an open column walled both sides a storey up, the ledge on one side
+// at its top (the row where that side opens onto a floor); null if not one (a lift's shaft never: it has no shaftfoot)
+function chimFoot(c,r){const f=F(L,c,r);if(!f||f.t!=='shaftfoot'||r<1||B(L,c,r-1)===WALL||B(L,c-1,r-1)!==WALL||B(L,c+1,r-1)!==WALL)return null;
+  const sd=chimLedge(c,r-1);if(!sd)return null;let rr=r-1;while(rr>0&&B(L,c-1,rr)===WALL&&B(L,c+1,rr)===WALL&&B(L,c,rr)!==WALL)rr--;
+  if(B(L,c,rr)===WALL||B(L,c+sd,rr)===WALL||!solidBelow(L,c+sd,rr))return null;
+  return {c,F:sd,y0:SURF(r),ys:SURF(rr),n:-1,ph:'in',fn:0,xt:0,yt:0,fx:0,mv:0};}
+// his x pressed to the wall on side sd of column c (as clampMove stops him)
+function chimPX(c,sd){return sd>0?(c+1)*TW-BW-0.01:c*TW+BW+0.01;}
+// a flight of nf frames from where he is to (xt, yt): vx even, vy so that the game's own steps (vy += g dt, then y += vy dt) end on yt
+function chimFly(lk,xt,yt,nf){lk.fn=nf;lk.xt=xt;lk.yt=yt;lk.ph='fly';P.vx=(xt-P.x)/(nf*STEP);P.vy=((yt-P.y)-GRAV*STEP*STEP*nf*(nf+1)/2)/(nf*STEP);P.fallY=P.y;}
+// the standing ways in: the wind-up first (jumpPrep, launch hands it to chimLaunch)
+function chimPrep(lk){P.face=lk.F;P.chIn=lk;P.jumpKind='stand';P.jLow=false;P.pbQ=null;P.pbC=null;P.jFx=feetX(P.pose)+(P.pose.ox||0);setState('jumpPrep');}
+// the jump in: from where he stands (or runs) to the first stance on the ledge's wall
+function chimLaunch(lk,run){P.face=lk.F;P.jx=P.x;P.jy=P.y;P.lowJump=false;P.jMir=false;P.jGo=null;P.jLe=null;P.jO0=P.pose.ox||0;P.jB=0;P.jumpKind='stand';
+  setState('air');P.lock=lk;lk.n=-1;P.plant=null;P.autoGrab=false;P.pendingJump=false;
+  chimFly(lk,chimPX(lk.c,lk.F),lk.y0-chimH(0),Math.round(CHM_IN_T/STEP));P.jT=CHM_IN_T;P.jS=1;P.jKe=null;Snd.play('jump');}
+function startPlant(sd,go){P.plant={sd,t0:gameTime,go,y:null};P.vx=0;P.vy=0;P.face=sd;
+  Snd.play('plant');if(GFX().fx)dust(P.x+sd*7,P.y-22,2);if(P.lk)P.lk.sq=0.92;}
+// a kick: from the stance on side sd across to the next stance on the other wall
+function kickOff(lk,sd){P.plant=null;P.face=-sd;P.autoGrab=false;P.jumpKind='kick';P.kickT=gameTime;
+  chimFly(lk,chimPX(lk.c,-sd),lk.y0-chimH(lk.n+1),Math.round((TW-2*BW)/KICK_VX/STEP));
+  P.pose=mk(PS.kickPush); // the facing flips here: the push leg is already stretched back to the wall
+  Snd.play('kick');dust(P.x+sd*6,P.y-20,4);if(P.lk)P.lk.sqv+=2.2;}
+// the Y: up past the lip and across onto the ledge, from where he is drawn seated (the push starts there)
+function chimY(lk){P.plant=null;P.face=lk.F;const hx=P.chm?P.chm.hx:P.x;P.x=clamp(hx,lk.c*TW+BW+0.01,(lk.c+1)*TW-BW-0.01);
+  const vy=Math.sqrt(2*GRAV*(P.y-lk.ys+CHM_YC));lk.ph='yfly';lk.mv=0;lk.fx=lk.F>0?(lk.c+1)*TW+CHM_YX:lk.c*TW-CHM_YX;
+  P.jx=P.x;P.jy=P.y;P.jumpKind='stand';P.jMir=false;P.lowJump=false;P.jO0=0;P.jB=0;P.vx=0;P.vy=-vy;P.fallY=P.y;P.t=0;P.yLeap=true;
+  P.jT=vy/GRAV+Math.sqrt(2*CHM_YC/GRAV);P.jS=1;P.jKe=null;Snd.play('jump');}
+// one tick in the chimney (P.lock): true when the tick is done; false after Down (the rest of the air tick runs: he falls)
+function chimAir(dt){const lk=P.lock;took('j');took('g');P.autoGrab=false;
+  if(lk.ph!=='yfly'&&I.d&&!I.u){P.lock=null;P.plant=null;P.jumpKind='slip';P.vx=0;if(P.vy<0)P.vy=0;P.fallY=P.y;return false;} // Down: he lets go, at once
+  if(lk.ph==='plant'){const pl=P.plant,pt=gameTime-pl.t0;P.vx=0;P.vy=0;P.fallY=P.y;
+    if(pl.y!=null){if(gameTime-pl.y>=CHM_YP)chimY(lk);return true;}
+    if(!pl.go&&took('u',0.15))pl.go=true;
+    if(pl.go&&pt>=PLANT_MIN){if(chimTop(lk)){pl.y=gameTime;pl.go=false;Snd.play('grab');}else kickOff(lk,pl.sd);}
+    return true;}
+  const py=P.y;P.vy+=GRAV*dt;
+  if(lk.ph==='yfly'){ // feet past the wall's top: the push carries him across to land CHM_YX past the lip
+    if(!lk.mv&&P.y<=lk.ys+4){const d=lk.ys-P.y,t=(-P.vy+Math.sqrt(Math.max(0,P.vy*P.vy+2*GRAV*d)))/GRAV;P.vx=(lk.fx-P.x)/Math.max(t,STEP);lk.mv=1;}
+    P.x+=P.vx*dt;P.y+=P.vy*dt;
+    if(P.vy>0){const h=landingSurface(py,P.y);if(h){land(h);return true;}}
+    if(P.y>L.rows*TH+90)die('fall');return true;}
+  P.x+=P.vx*dt;P.y+=P.vy*dt;
+  if(--lk.fn<=0){P.x=lk.xt;P.y=lk.yt;lk.n++;lk.ph='plant';startPlant(lk.n%2?-lk.F:lk.F,false);}
+  return true;}
 // sliding down a hanging (case 'slide'): steady speed, braking, and the blade's drawn length: it points into the cloth,
 // so it is drawn short, along the depth direction (up and right)
 const SL_V=170,SL_A=1100,SL_BLADE=9;
@@ -3893,32 +3955,11 @@ function handsIn(){const p=P.pose,st=P.state,ps=P.dhS,f=P.dF||P.face;
   P.dhFx=bx+f*(s.hF[0]*c-s.hF[1]*sn);P.dhFy=by+s.hF[0]*sn+s.hF[1]*c;P.dhBx=bx+f*(s.hB[0]*c-s.hB[1]*sn);P.dhBy=by+s.hB[0]*sn+s.hB[1]*c;P.dhX=bx;P.dhS=st;}
 // the blade's drawn length while he takes the cloth: none until the sword hand is halfway there, then it sinks in to SL_BLADE
 function slBlade(){const r=P.slI;if(!r)return SL_BLADE;const u=s5((gameTime-r.t0-r.d[0])/r.h[0]);return u<0.5?0:2+(SL_BLADE-2)*s5((u-0.5)/0.5);}
-function startPlant(sd,go){P.plant={sd,t0:gameTime,go};P.vx=0;P.face=sd;
-  Snd.play('plant');if(GFX().fx)dust(P.x+sd*7,P.y-22,2);if(P.lk)P.lk.sq=0.92;}
-function kickOff(sd){P.plant=null;P.vx=-sd*KICK_VX;P.vy=KICK_VY;P.face=-sd;P.fallY=P.y;P.autoGrab=true;P.jumpKind='kick';P.kickT=gameTime;P.wallT=-9;
-  P.pose=mk(PS.kickPush); // the facing flips here: the push leg is already stretched back to the wall
-  Snd.play('kick');dust(P.x+sd*6,P.y-20,4);hint('walljump');learn('walljump','shaft');if(P.lk)P.lk.sqv+=2.2;}
-// one tick planted on a wall; false once he has left it (the rest of the air tick then runs as usual)
-function stPlant(dt){const pl=P.plant,pt=gameTime-pl.t0;
-  if(!pl.go&&took('j',0.15))pl.go=true;
-  if(pl.go&&pt>=PLANT_MIN){kickOff(pl.sd);return true;}
-  // where the wall ends below his hands (a ledge just under them) the soles don't hold: he slides down to catch its edge
-  const edge=B(L,Math.floor((P.x+pl.sd*(BW+1.5))/TW),rowOf(P.y-HANG+2))!==WALL;
-  P.vy=edge?approach(P.vy,190,1500*dt):pt<PLANT_STICK?approach(P.vy,0,1800*dt):approach(P.vy,120,600*dt);
-  if(pt>PLANT_MAX||wallTouch()!==pl.sd){P.plant=null;P.jumpKind='slip';return false;}
-  const py=P.y;P.y+=P.vy*dt;
-  if(P.vy>0){if((P.autoGrab||I.g)&&tryGrab(py)){P.plant=null;return true;}const h=landingSurface(py,P.y);if(h){P.plant=null;land(h);return true;}}
-  return true;}
 function stAir(dt){
-  if(P.plant&&stPlant(dt))return;
+  if(P.lock&&chimAir(dt))return; // (round 48b: the locked chimney)
   {const k=rjK();P.vy=Math.min(P.vy+GRAV/(k*k)*dt,480/k);}windDrag(dt); // (round 44: a flight into the wind meets its drag) (round 35a: a running jump flies its arc on its own clock, RJ_K)
   if(P.vx){const want=P.x+P.vx*dt,nx=clampMove(P.x,want,P.y,P);if(Math.abs(nx-want)>0.01)P.vx=0;P.x=nx;}
-  let ws=wallTouch();if(P.jumpKind==='kick'&&ws===-P.face&&gameTime-(P.kickT||-9)<0.15)ws=0; // the wall he has just left
-  if(ws){P.wallT=gameTime;P.wallS=ws;}
-  // arriving at the far wall from a kick, the soles plant on it
-  if(ws&&P.jumpKind==='kick'&&!P.plant&&ws===P.face&&gameTime-(P.kickT||-9)>0.1){startPlant(ws,false);stPlant(dt);return;}
-  // kick off a wall: Jump while touching one (or just after leaving it)
-  if(gameTime-(P.wallT||-9)<0.12&&took('j',0.12)){if(ws){startPlant(ws,true);stPlant(dt);}else kickOff(P.wallS);return;}
+  // (round 48b: no kick off a single wall: the kicks are the chimney's, chimAir)
   const py=P.y;P.y+=P.vy*dt;
   if(P.vy>0){const pl=ctPoolHit(P.x,py,P.y);if(pl){P.y=pl.wy;die('drown');Snd.play('splash');return;}} // (round 45) a fall into a court's pool drowns him at its surface (the stakes' death, a storey sooner)
   // a jump from the floor never carries his head into the stone or the slab overhead: rising, or falling in under a
@@ -4210,7 +4251,7 @@ const sf=F(L,pCol(),pRow());if(sf&&sf.t==='spikes')learn('spikes');setState('sta
       tgt.sw=P.face>0?0.46:Math.PI-0.46;rate=P.slI||P.dhS!=='slide'?SI_RATE:P.t<0.1?50:36;break;} // (round 33c: taking the cloth folds the knees at SI_RATE, not the bite's 50)
     case'swing':tgt=swingPose(P.swTh||0,P.swOm||0,P.swPump);rate=90;break;
     case'air':
-      P.yo=(P.jumpKind==='run'||P.jumpKind==='stand')&&!P.plant?jumpYo():0; // (round 27a: drawn on a lower arc; round 33a: PoP's ticks, both jumps, see jhK)
+      P.yo=(P.jumpKind==='run'||P.jumpKind==='stand')&&!P.plant&&!P.lock?jumpYo():0; // (round 27a: drawn on a lower arc; round 33a: PoP's ticks, both jumps, see jhK)
       {const q=chimPose();if(q){tgt=q;rate=CHM.r;break;}} // (round 42a: in a kick shaft, the chimney)
       if(P.plant){tgt=plantPose();rate=45;break;}
       if(P.jumpKind==='kick'){tgt=kickPose();rate=36;break;}
@@ -4553,10 +4594,8 @@ const HINTS={
   latch:'This gate opens from a plate somewhere out of sight. Look above, or below.',
   sandgate:'The sky clock on this gate means it will not stay open. Its plate is out of sight; find it, then race back before its sun sets.',
   wallrun:'Run at a wall and press Jump to run up it. You can reach a ledge two floors up and catch it.',
-  walljump:'Kick off walls: press Jump each time you touch one. Bounce between close walls to climb a shaft.',
   swing:'A swing bar. Press the way he swings, each time he turns, to pump it up (a tap is enough); when it chimes it will carry you: Jump as you swing forward. Hold Down to let go.',
   banner:'A long tapestry hangs down this shaft. Hold Grab as you fall to slide down it safely.',
-  shaft:'A narrow shaft with a ledge at the top. Jump into a wall, then kick from wall to wall with Jump.',
   saw:'A saw blade runs along the floor. Jump it as it comes at you.',
   darts:'Darts fly from that wall at chest height. Crouch and crawl under them, or time your run.',
   block:'A loose block. Hold Grab and press toward it to push, away to pull. Its weight holds a plate down for good, and you can climb over it.',
@@ -4582,7 +4621,7 @@ const HINTS={
 };
 // A hint for a move comes back (once a floor) until the move is done; the moves are the ids in HINT_MOVE, learned by learn() where they succeed.
 // Every other hint is plain information and shows once ever. One hint at a time: while one waits or shows, new ones are dropped (they come again).
-const HINT_MOVE=new Set(['gap','wide','climb','drop','spikes','crawl','fight','parried','poke','snake','potion','plate','block','wallrun','walljump','swing','banner','shaft','collapse','jgrab','lift','chain','sandlift','sandfall']);
+const HINT_MOVE=new Set(['gap','wide','climb','drop','spikes','crawl','fight','parried','poke','snake','potion','plate','block','wallrun','swing','banner','collapse','jgrab','lift','chain','sandlift','sandfall']);
 let hintFloor=-1,hintSeen={};
 function hintDue(id){return HINT_MOVE.has(id)?!S.learned[id]&&!hintSeen[id]:!S.hints[id];}
 function hint(id){if(hintQ.length||!hintDue(id))return;hintQ.push({id,t:gameTime});}
@@ -4604,7 +4643,7 @@ function checkHints(){
     if(canClimbUp())hint('climb');
     for(const f of L.lifts){if(f.sand){if(f.s===0&&f.rT===r&&Math.abs(f.sc*TW+16-P.x)<110)hint('sandfall');continue;} // (round 41: its own words, 'sandfall', learned by getting off one: a save that learned the old 'sandlift' still sees them) // (round 38b: a sand lift has no plate: its own hint, by its slab while it waits)
       if((f.rT===r||f.rB===r)&&Math.abs(f.sc*TW+16-P.x)<110)hint(f.t==='chain'?'chain':'lift');}
-    {const f0=F(L,pCol(),r),f1=F(L,pCol()+P.face,r);if((f0&&f0.t==='shaftfoot')||(f1&&f1.t==='shaftfoot'))hint('shaft');const fb=F(L,pCol()+P.face,r);if(fb&&fb.t==='banner')hint('banner');}
+    {const fb=F(L,pCol()+P.face,r);if(fb&&fb.t==='banner')hint('banner');} // (round 48b: no hint for the kick shaft: the jet stream shows the way)
     {const nc=pCol()+P.face;if(B(L,nc,r)===WALL&&B(L,nc,r-1)===WALL&&B(L,pCol(),r-1)!==WALL&&B(L,pCol(),r-2)===EMPTY&&solidBelow(L,nc,r-2))hint('wallrun');}
     const e=edgeBelow();if(e&&solidBelow(L,e.c+e.s,e.r+2)&&!solidBelow(L,e.c+e.s,e.r+1))hint('drop');
     for(const it of L.items)if(!it.taken&&it.r===r&&Math.abs(it.x-P.x)<40)hint('potion');
@@ -8373,10 +8412,10 @@ function jetPlaces(){if(L._jet)return L._jet;const out={shafts:[],jg:[]};
     for(;tr>0&&r-tr<6;tr--){if(B(L,c+1,tr)===FLOOR){sd=1;break;}if(B(L,c-1,tr)===FLOOR){sd=-1;break;}}
     if(!sd)continue;const p=jsPath(),ys=SURF(r),ly=SURF(tr),X=c*TW,xs=X+16+sd*6,xo=X+16-sd*6,hb=30; // (his hips plant 9.5 px off the cell's middle; the stream keeps inside the light down the shaft's back wall)
     jsReset(p);jsAdd(p,X+16,ys-4);                                   // drawn in at the foot
-    const y1=ys-11-hb,yN=ly+21-hb,R=y1-yN,nl=Math.max(2,2*Math.round(R/96));
-    jsQuad(p,X+16,y1+20,xs,y1,6);                                    // up into the wall on the ledge's side
-    for(let k=1;k<=nl;k++){const ax=p.x[p.n-1],bx=k%2?xo:xs,by=y1-R*k/nl;jsQuad(p,ax+(bx-ax)*0.15,by,bx,by,8);} // kick to kick, each arc topping out at the far wall
-    jsQuad(p,xs,ly-hb-8,xs+sd*16,ly-hb,6);jsAdd(p,xs+sd*34,ly-hb+2);   // over the lip and out onto the ledge
+    let N=0;while(ys-ly-chimH(N)>CHM_YD&&N<12)N++;const sy=n=>ys-chimH(n)-hb; // (round 48b: the chimney's stances, on its fixed grid)
+    jsQuad(p,X+16,sy(0)+20,xs,sy(0),6);                              // up into the first stance, on the ledge's wall
+    for(let k=1;k<=N;k++){const ax=p.x[p.n-1],bx=k%2?xo:xs,by=sy(k);jsQuad(p,ax+(bx-ax)*0.15,by,bx,by,8);} // kick to kick, each arc topping out at the far wall
+    {const ax=p.x[p.n-1];jsQuad(p,ax,ly-hb-CHM_YC-6,xs+sd*16,ly-hb,6);jsAdd(p,xs+sd*34,ly-hb+2);} // the Y: up past the lip and out onto the ledge
     out.shafts.push({p,c,r0:tr,r1:r,seed:hash2(c,r)&1023,wall:{wx0:X,wx1:X+TW-HX,wy:ly}});} // (round 39: the right wall's front face starts HX left of its cell: grains kept to X+30 ran 6 px onto it)
   for(const a of L.path){if(a.a!=='jgrab')continue;const d=a.to>a.from?1:-1;let r=-1;
     for(let rr=1;rr<L.rows-1&&r<0;rr++){const f=F(L,a.from+d,rr);if(f&&f.t==='jgrab')r=rr;}
@@ -12891,6 +12930,7 @@ function grabLabel(){
     case'lowStrike':case'poke':return 'Grab';
     case'slide':return 'Slide';
     case'air':{
+      if(P.lock)return 'Grab'; // (round 48b: nothing for Grab to do in the chimney)
       if(barNear())return 'Swing';
       if(P.vy>0&&bannerAt())return 'Slide';
       // a ledge the hands will pass in the next moment: down the fall ahead (0.45 s), or after the top of a jump
@@ -12909,7 +12949,9 @@ function glFit(){bGrab.style.removeProperty('--lk');
   if(tw>lim)bGrab.style.setProperty('--lk',Math.max(0.5,Math.floor(lim/tw*100)/100));}
 function glSet(t){glShown=t;bGrab.textContent=t;bGrab.classList.toggle('dim',t==='Grab');glFit();}
 // A new word shows after ~0.15 s of agreeing predictions, the plain word after 0.3 s; Rewind, Rise and Strike switch at once
+let chDim=false;
 function updateGrabLabel(ts){
+  {const lk=mode==='play'&&!!P&&!!P.lock;if(lk!==chDim){chDim=lk;bJump.classList.toggle('dim',lk);if(lk&&glShown!=='Grab')glSet('Grab');}} // (round 48b: in the chimney Jump and Grab do nothing: both dimmed)
   const want=grabLabel();
   if(want!==glCand){glCand=want;glSince=ts;}
   if(want===glShown)return;
@@ -14644,7 +14686,7 @@ addEventListener('orientationchange',()=>setTimeout(layout,120));
 if(window.claude&&window.claude.hot&&window.claude.hot.snapshot){try{window.claude.hot.snapshot(()=>({save:S}));}catch(e){}}
 
 // test hooks
-window.__HK={die:c=>die(c),openingsIn,windLull,windReach,windJumpE,windPeak,windZoneAt,windEase,ctJambsOf,jambKind,startRewind,get windDeaths(){return S.windDeaths;},placeCourts,ctIn,ctPoolHit,CTB,ctBake,ctKindOf,get courts(){return L.courts;},windAt,windE,windCap,windGust,WIND_MS,WIND_GP,WIND_DE,WIND_JM,WIND_G0,WIND_PUSH,WIND_P,WIND_CDA,WIND_GT,plainRuns,keyLight,hillOn,hillTop,hillH,hillCanvas,hillBox,hillSil,hillSegs,hillEnd,hillMeshTop,HILL_DBG,HILL_WADE,HILL_CLIMB,get frameLights(){return frameLights;},jetPlaces,jsSwingPath,jetStream,tapCloth,THEMES,progOf,themeName,hint,learn,HINTS,HINT_MOVE,get banner(){return banner;},set banner(v){banner=v;},genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
+window.__HK={chimFoot:(c,r)=>chimFoot(c,r),chimH:n=>chimH(n),CHM:()=>({G0:CHM_G0,GS:CHM_GS,YD:CHM_YD,YP:CHM_YP,YC:CHM_YC,YX:CHM_YX,IN_T:CHM_IN_T}),die:c=>die(c),openingsIn,windLull,windReach,windJumpE,windPeak,windZoneAt,windEase,ctJambsOf,jambKind,startRewind,get windDeaths(){return S.windDeaths;},placeCourts,ctIn,ctPoolHit,CTB,ctBake,ctKindOf,get courts(){return L.courts;},windAt,windE,windCap,windGust,WIND_MS,WIND_GP,WIND_DE,WIND_JM,WIND_G0,WIND_PUSH,WIND_P,WIND_CDA,WIND_GT,plainRuns,keyLight,hillOn,hillTop,hillH,hillCanvas,hillBox,hillSil,hillSegs,hillEnd,hillMeshTop,HILL_DBG,HILL_WADE,HILL_CLIMB,get frameLights(){return frameLights;},jetPlaces,jsSwingPath,jetStream,tapCloth,THEMES,progOf,themeName,hint,learn,HINTS,HINT_MOVE,get banner(){return banner;},set banner(v){banner=v;},genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
   load(n,seed,test){clearInput();quiet=!!test;L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;mode="play";intro=0;FX.length=0;STORMG.length=0;clearRooms();cam.snap=true;updateCamera(0);return L;},
   loadMap(spec){return spec;},
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},

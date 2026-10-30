@@ -35,7 +35,7 @@ function* botGen(n, seed, opts) {
   // (round 26f) a floor's entry (opts.entry plays it, as the game does on a fresh floor): the bot waits, keys up, until control is given
   if (opts.entry && !opts.at) H.startEntry();
   while (H.P.state === 'enter') { allOff(); yield 0; }
-  let f1 = 0, i = 0, ph = 0, f0 = 0, frames = 0, r0 = 0, hurtCount = 0, lastHp = H.P.hp, fights = 0, swGo = false;
+  let f1 = 0, i = 0, ph = 0, f0 = 0, frames = 0, r0 = 0, hurtCount = 0, lastHp = H.P.hp, fights = 0, swGo = false, chN = -9;
   const maxPer = 60 * 90;
   const P = () => H.P;
   const row = () => Math.floor((P().y - 1) / 64);
@@ -222,13 +222,17 @@ function* botGen(n, seed, opts) {
         }
         break;
       case 'walljump':
-        if (ph === 0) { if (gotoD(cx(ins.from), dir)) { ph = 1; r0 = row(); } }
-        else if (ph === 1) { press('j'); ph = 2; f1 = frames; }
+        // (round 48b) the locked chimney: in by a standing Jump at the foot (opts.chimIn 'u': Up; 'run': a running Jump at its wall), then
+        // one press of Up in each stance (a kick to the next; at the top stance, the Y onto the ledge)
+        if (ph === 0) { chN = -9; if (gotoD(cx(opts.chimIn === 'run' ? ins.from - 2 * dir : ins.from), dir)) { ph = 1; r0 = row(); } }
+        else if (ph === 1) {
+          if (opts.chimIn === 'run') { set('g', false); set(fwd, true); if (p.state === 'run' && (p.x - (cx(ins.from) - 30 * dir)) * dir >= 0) { press('j'); ph = 2; f1 = frames; } }
+          else { press(opts.chimIn === 'u' ? 'u' : 'j'); ph = 2; f1 = frames; }
+        }
         else if (ph === 2) {
-          const topYs = (r0 - ins.k + 1) * 64 - 4;
-          const wt = H.wallTouch(); // on the wall across from the ledge, kick for it even with the hands above it already
-          if (p.state === 'air' && wt && p.vy > -170 && frames - f1 > 3 && (p.y - 57 > topYs + 2 || wt === -dir)) { press('j'); f1 = frames; }
-          if (p.state === 'hang') set('u', true);
+          if (p.state !== 'run') set(fwd, false);
+          const lk = p.lock;
+          if (lk && lk.ph === 'plant' && p.plant && p.plant.y == null && !p.plant.go && lk.n !== chN) { chN = lk.n; press('u'); f1 = frames; }
           if (p.state === 'stand' && row() < r0) next();
           else if (p.state === 'stand' && frames - f1 > 30) { allOff(); ph = 0; }
         }

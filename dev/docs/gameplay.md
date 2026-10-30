@@ -107,8 +107,8 @@ States are `P.state`; each is a case in `updatePlayer`. Times are in seconds.
 | Low leap | either jump where the full arc would meet a ceiling (`beamOverhead`) | running 212 / 128 (reach ~75 px, rise 11.7, 0.27); standing 150 / 112 (reach ~48 px) | `LOWJ`; it may fall short, by design; the head clamp holds every frame |
 | Running jump onto a ledge a storey up (`jgrab`) | Jump while running, hold Grab in the air | | without Grab held a jump catches only ledges at or below its take-off (`findLedge`) |
 | Jump up | Up under an open cell | a hop (0.46) | under a ledge within 28 px of its edge he jumps to hang from it (0.1 + 0.22); under a ceiling he bonks (0.3) and knocks a cracked slab above loose |
-| Wall run | Jump while running at a wall within 30 px, two storeys of wall ahead, open above him | 234 px/s up at half gravity (`WR_V`, `WR_G`): rises 78 px; catches a ledge two rows up | `startWallRun`; learned as `wallrun` |
-| Kick (wall to wall) | Jump touching a wall in the air (or within 0.12 of leaving it) | `KICK_VX` 62, `KICK_VY` 275 up (54 px a kick); the soles plant `PLANT_MIN` 0.11 at least | no Jump: they hold to `PLANT_STICK` 0.16, slip from `PLANT_MAX` 0.45; no kicks in a lift's shaft (`inLiftShaft`); [kick shafts](elements/kick-shafts-and-jet-streams.md) |
+| Wall run | Jump while running at a wall within 30 px, two storeys of wall ahead, open above him (not a kick shaft's wall: round 48b) | 234 px/s up at half gravity (`WR_V`, `WR_G`): rises 78 px; catches a ledge two rows up | `startWallRun`; learned as `wallrun` |
+| The chimney (kick shaft, round 48b) | in: a running Jump at its wall, a standing Jump at its foot facing the ledge's wall, or Up at its foot (walking or falling in does not lock him); then one press of Up a kick; Up at the top stance is the Y; Down lets go at once; Jump and Grab do nothing (dimmed) | the jump in 0.3 to the first stance; stances at feet 50 + 46 n px over the foot's floor (`CHM_G0`, `CHM_GS`), resting as long as he likes; a kick 62 px/s across, 0.32; the Y: 0.18 gathering, up 12 px past the lip, landing 12 px onto the ledge; press to standing on the ledge 1.65-1.93 (two storeys), 2.15-2.43 (three) | no kick off a single wall anywhere; nothing locks in a lift's shaft; [kick shafts](elements/kick-shafts-and-jet-streams.md) |
 
 The drawn jump differs from the physics (lower apex, stride for the distance, take-off foot): look only, see CLAUDE.md rounds 26c-35a
 and [prince](elements/prince.md).
@@ -120,7 +120,7 @@ and [prince](elements/prince.md).
 | Hang from an edge | Down within 26 px of an edge with open space beyond | `climbDown` 0.6 | never from a broken lip (`hurtdrop`) |
 | Climb up | Up (or held) while hanging | `climb` 0.72 | |
 | Let go | Down or Jump while hanging | the fall starts from the hang, his feet already 57 px under the lip | the way to take the sting out of a two-storey drop |
-| Catch a ledge | Grab held while falling; any jump, kick, wall run or swing release catches on its own (`P.autoGrab`) | the hands pass the lip's height within 12 px of the hang point (`findLedge`) | a fall without Grab catches nothing; a cracked slab grabbed starts to give way |
+| Catch a ledge | Grab held while falling; any jump, wall run or swing release catches on its own (`P.autoGrab`; not the chimney's flights) | the hands pass the lip's height within 12 px of the hang point (`findLedge`) | a fall without Grab catches nothing; a cracked slab grabbed starts to give way |
 | Slide down a hanging | hold Grab while falling past one, or Grab + Down while hanging over one | bites for 0.07, then `SL_V` 170 px/s (braking `SL_A` 1100) | no fall damage at the foot; letting go of Grab drops him; [banners and slides](elements/banners-and-slides.md) |
 | Swing | catch a bar in reach of the hands (15 px across, 20 up or down) | period 1.15 (`SW_W`); dies down in ~4 (`SW_TAU`); a press of the way he swings arms one pump (`SW_KICK`, `SW_PRE` 0.8) | Jump throws him, more the faster he swings; it carries over from `SW_CLEAR` 0.55 (a chime); Down held 0.15 lets go; [swing bar](elements/swing-bar.md) |
 | Ride a counterweight lift | stand on the platform, hold Up or Down | `LIFT_V` 64 px/s | a plate on each landing calls it (`lplate`); he arrives standing (`P.liftHold`); [lifts](elements/lifts.md) |
@@ -129,7 +129,7 @@ and [prince](elements/prince.md).
 
 ## Falls
 
-The drop is measured from where the fall began (`P.fallY`: the take-off floor of a jump, the hang, the last kick) to the floor he
+The drop is measured from where the fall began (`P.fallY`: the take-off floor of a jump, the hang, the chimney's stance he let go from) to the floor he
 lands on (`land`).
 
 | Drop | Result | Example |
@@ -248,10 +248,10 @@ he runs at 100) and surges when he gets more than 190 - 30 `L.d` px ahead, so an
 - A hint is a banner (`msg`, 3.8 s) chosen by `checkHints` from what is ahead of him (traps two tiles on, ledges, lifts, flasks,
   checkpoints, gates, guards, the door). One at a time; one waiting over 2.5 s is dropped.
 - Move hints (`HINT_MOVE`: gap, wide, climb, drop, spikes, crawl, fight, parried, poke, snake, potion, plate, block, wallrun,
-  walljump, swing, banner, shaft, collapse, jgrab, lift, chain) come back once a floor until the move is done (`learn(id)`, stored in
+  swing, banner, collapse, jgrab, lift, chain; round 48b dropped walljump and shaft) come back once a floor until the move is done (`learn(id)`, stored in
   `S.learned`). Every other hint shows once ever (`S.hints`).
 - Both survive a new run (`newSave(prev)` keeps `hints`, `learned` and `set`).
-- Learning changes some looks: the kick shaft's jet stream fades to 0.65 once `shaft` is learned, the jgrab jump's goes once
+- Learning changes some looks: the kick shaft's jet stream is at 0.65 for a save that learned `shaft` before round 48b (nothing learns it now), the jgrab jump's goes once
   `jgrab` is learned ([kick shafts and jet streams](elements/kick-shafts-and-jet-streams.md)).
 
 ## The bot: the reference player
