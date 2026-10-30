@@ -392,7 +392,8 @@ for(const t of THEMES){t.cloth=tapOf(t).g;t.cloth2=tapOf(t).a;}
 // Progress up the tower: every 20 floors the keep turns over one cycle. Cycle 0 is dusk, 1 night (moon and stars, a cool
 // grade), 2 dawn (a warm grade), then the day repeats: the night's three watches, ending at sunrise on floor 60. Each cycle
 // the keep is more worn (more breaches, rubble, cobwebs and cracks, fewer lit lamps), and the land seen through the windows
-// sinks a little every floor: he is climbing a tower.
+// sinks a little every floor: he is climbing a tower (round 47b: by perspective, bgHc: the near land falls away, the horizon stays at the eye;
+// `sink` is kept for the interiors' old placement).
 // Which theme a floor has (owner, round 4): four floors to a theme; each block of four takes the drawing style the generator builds
 // it by (GEN_STYLE[block % 5]), and within that style SCHED picks the theme by the light the block falls in (dusk, night, dawn: one
 // 20-floor cycle each) and by which 60-floor turn of the day it is (three turns, then it repeats: 180 floors). The old five looks
@@ -428,7 +429,7 @@ const skyOf=th=>todSkyCol(th.sky,L&&L.prog?L.prog.tod:0);
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=9;
-const APP_VERSION='88'; // set by the build; shown on the title and pause screens
+const APP_VERSION='89'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},learned:prev?prev.learned:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(!s.learned){s.learned={};if(s.level>2){s.learned.gap=s.learned.climb=s.learned.drop=1;}if(s.maxHp>3)s.learned.potion=1;} // an old save: whoever got past floor 2 can run, jump, climb and let go; the rest of the moves come back as hints until done
@@ -2210,7 +2211,7 @@ function lerpPose(a,b,t,out){out=out||mk({});for(const k of PK)out[k]=a[k]+(b[k]
 // (LAGM): the clip cycles (run, walk, crawl, climb, drink, swing) carry their own overlap and are followed as before; held hands are IK'd
 // to their grips (gF/gB at the full rate), so a grip never lags. In the air the legs trail the body too (they are no contact there).
 const PKR=PK.map(k=>({aF:0.7,aB:0.7,eF:0.55,eB:0.55,head:0.75,hp:0.75,sb:0.85}[k]||1)),PKRA=PK.map((k,j)=>PKR[j]*({hF:0.75,hB:0.75,kF:0.7,kB:0.7}[k]||1));
-const LAGM={stand:1,turn:1,stop:1,land:1,jumpPrep:1,landHurt:1,step:1,edgeWalk:1,bonk:1,garde:1,advance:1,retreat:1,blocked:1,strike:1,parry:1,hurt:1,lowStrike:1,dead:1,air:2,jumpUp:2,hang:2,slide:2};
+const LAGM={probe:1,stand:1,turn:1,stop:1,land:1,jumpPrep:1,landHurt:1,step:1,edgeWalk:1,bonk:1,garde:1,advance:1,retreat:1,blocked:1,strike:1,parry:1,hurt:1,lowStrike:1,dead:1,air:2,jumpUp:2,hang:2,slide:2};
 function followPose(cur,tgt,dt,rate,m){if(!m)return lerpPose(cur,tgt,1-Math.exp(-dt*rate),cur);const R=m===2?PKRA:PKR;
   for(let j=0;j<PK.length;j++){const k=PK[j];cur[k]+=(tgt[k]-cur[k])*(1-Math.exp(-dt*rate*R[j]));}return cur;}
 // (2) Settles, measured (r23poses.py SETTLE: MCK.set_land from 16_05's landing, MCK.set_stop from 16_08's sudden stop): keyed by the time
@@ -3037,7 +3038,7 @@ function respawn(){S.floorDeaths=(S.floorDeaths||0)+1;S.deaths++;S.floorTime=lev
 // Every 0.1s the whole moving world is copied into a ring of snapshots (about 10s). Turning back the sands
 // plays them in reverse to a calm moment about five seconds before the fall, and play resumes from there.
 const SANDS=3,REW=[];let rewTick=0,rw=null,deathAt=0;
-const REW_STATES=['stand','run','stop','garde','advance','retreat','crouch','step','turn','land'];
+const REW_STATES=['stand','run','stop','garde','advance','retreat','crouch','step','turn','land','probe'];
 const cloneE=o=>{const c=Object.assign({},o);if(o.pose)c.pose=Object.assign({},o.pose);if(o.cs)c.cs=Object.assign({},o.cs);if(o.ledge)c.ledge=Object.assign({},o.ledge);return c;};
 function snapAll(){const p=cloneE(P);p.foe=P.foe?G.indexOf(P.foe):-1;p.drinkIt=P.drinkIt?L.items.indexOf(P.drinkIt):-1;
   return {t:gameTime,P:p,G:G.map(cloneE),SN:SN.map(o=>Object.assign({},o)),pg:pendingGuards.map(q=>({at:q.at,src:q.src?G.indexOf(q.src):-1,spec:q.spec})),
@@ -3064,7 +3065,7 @@ function stepRewind(){rw.acc+=1.6;while(rw.acc>=1&&rw.idx>rw.target){rw.acc-=1;r
   applySnap(REW[rw.idx]);
   if(rw.idx<=rw.target){REW.length=rw.target+1;rw=null;rwEnd=performance.now()/1000;mode='play';GLP.quiet=performance.now()+3000;clearInput();P.inv=1.2;P.stumble=0;deadT=0;
     msg((S.sands>0?'The hours turn back. '+S.sands+(S.sands===1?' hour':' hours')+' left in hand.':'The hours turn back. You have none left until the next sky clock.'),2.8);}}
-const STABLE=['stand','run','stop','garde','advance','retreat','land','crouch','step','turn','parry','strike','blocked'];
+const STABLE=['stand','run','stop','garde','advance','retreat','land','crouch','step','turn','parry','strike','blocked','probe'];
 function snapshotResume(){
   if(!L||!P||mode!=='play'||!STABLE.includes(P.state)||!supported())return;
   if(L.lifts.some(f=>P.x>f.ca*TW-20&&P.x<(f.cb+1)*TW+20&&P.y>=f.yT-1&&P.y<=f.yB+1))return; // (the platform is back at its first end when the floor is rebuilt)
@@ -3165,8 +3166,55 @@ function hazardEdge(maxD){
   }
   return null;
 }
-function tryJump(){if(hillOn(P.x,P.y,1))return;const e=hazardEdge(30);if(e!==null&&Math.abs(e-P.x)>6){P.tx=e-P.face*4;setState('edgeWalk');return;}startJump('stand');}
-function startJump(kind){if(hillOn(P.x,P.y,1))return;P.jumpKind=kind;if(kind==='run')launch();else{P.jLow=beamOverhead(false);P.jFx=feetX(P.pose)+(P.pose.ox||0);setState('jumpPrep');}} // (round 32: jLow, the wind-up's look under a ceiling)
+// ---- Round 47a (owner: "the hills/heaps/drifts - you shouldn't be able to jump over them, only way is to walk at the pace they let you";
+// his choices on r47's research: A2, the checked leap; at the foot PoP's stop with the test foot, "I always liked that in PoP"; no crawling on
+// a hill; no words; the low leap keeps its way). v88: a running jump from the floor before cleared every heap (264 of 264, saving up to 1.57 s
+// of its 1.83 s clamber) and landed half way into every drift (up to 2.2 s); a standing jump landed inside every one; Jump on a heap was a
+// standing jump off it (up to 1.5 s); the crawl (42 px/s) beat the clamber (35). Now:
+//  - no jump of any kind while his feet are on a hill (a heap too, as a drift was), and no crawl into one (stCrouch);
+//  - Jump whose level arc would carry him onto a hill ahead on his row (his half width BW over its foot) is checked (hillCheck): the carry is
+//    cut so he lands PB_GAP short of the foot (launch; a pit or trap before the foot is still cleared, its far lip + JS_FOOT), no run-on, and
+//    there he tests the hill with his foot; with less than PB_MIN (running) / PB_MINS (standing) of carry left there is no leap at all: he
+//    brakes to the foot (running, PoP's runstop: SDLPoP seqtbl.c frames 53-56 then 49-52, 9 x-units of slide, on CMU 16_08's braking,
+//    settlePose 'stop') or steps up to it (standing, the careful step) and tests it. The test foot is PoP's (seqtbl.c testfoot: frames
+//    121-126 reach the lead foot forward, 86 tests, 116-119 stand back up, net dx 0, about 1 s at 12 fps): on the motion-capture body
+//    (stepPose, the clip 139_29's careful stance, round 33b's TT envelope) he sinks on the rear leg and sets the lead foot's ball PB_IN onto
+//    the rubble's slope (pitched with it) or into the sand (PB_SINK under its surface), holds it and draws it back; a trickle of grit or
+//    sand at the toe and its footfall (pbTouch) are the only cue (owner: no words). P.x never enters the hill; then he stands, and the arrow
+//    held takes him in at the hill's pace.
+//  - the low leap (a ceiling at his height) is left as it was (owner). Look and play only here: layouts, estPath, timers and the bot (which
+//    never jumps at a hill: 0 of 641 on floors 3-48 x 4) unchanged. hilljump.py checks it.
+const PB_GAP=BW+2,PB_MIN=24,PB_MINS=16,PB_T=0.62,PB_IN=5,PB_HS=3,PB_RMAX=24,PB_LG=12,PB_SINK=2.5,PB_H=4,PB_L=0.3,PB_P=0.6,PBH={h:null,x:0,f:1,r:0};
+// the test foot's envelope at u (0..1 of PB_T): out, held, drawn back (PoP 121-126 out, 86 held, 116-119 back)
+function pbA(u){return s32(u/0.3)*(1-s32((u-0.66)/0.3));}
+// the drawn hip's lunge toward it (look only, the rear foot planted): what the ball's reach needs past PB_LG ahead of the hip
+function pbHx(u){return Math.max(0,(P.pbR||0)-PB_LG)*pbA(u);}
+// the nearest hill ahead on his row whose foot a level arc of carry D px reaches (BW past its foot): {h,i,e (its foot's x),ds}
+function hillAhead(D){const hs=L&&L.hills;if(!hs||!hs.length)return null;const r=pRow();let best=null;
+  for(let i=0;i<hs.length;i++){const h=hs[i];if(h.r!==r)continue;const e=P.face>0?h.c*TW:(h.c+h.n)*TW,ds=(e-P.x)*P.face;if(ds<0||ds>=D+BW)continue;if(!best||ds<best.ds)best={h,i,e,ds};}
+  return best;}
+// a jump of this kind checked by a hill: null (no hill in its reach, or the low leap), else the carry c that lands it PB_GAP short of the
+// foot (never short of a pit's or trap's far lip before it)
+function hillCheck(kind){const run=kind==='run';if(beamOverhead(run))return null;
+  const D=(run?183:132)*2*(run?190:159)/GRAV,q=hillAhead(D);if(!q)return null;
+  let need=0,cc=pCol();const fc=P.face,r=pRow();
+  for(let k=0;k<6;k++){cc+=fc;if(((fc>0?cc*TW:(cc+1)*TW)-P.x)*fc>=q.ds)break;if(jsHaz(cc,r))need=Math.abs((fc>0?(cc+1)*TW:cc*TW)-P.x)+JS_FOOT;}
+  return {q,c:Math.max(q.ds-PB_GAP,need),need};}
+// at the foot: brake (running), step up (standing, further than TT_D) or none, then the test foot (state 'probe')
+function startProbe(q){let d=(q.e-P.face*PB_GAP-P.x)*P.face;if(d<0)d=0;const v=Math.abs(P.vx);
+  P.sx=P.x;P.pbX=P.x+P.face*d;P.pbI=q.i;P.pbE=q.e;P.pbM=v>20?1:d>TT_D?2:0;P.pbB=P.pbM===1?clamp(2*d/v,0.08,0.7):P.pbM===2?STEP_T:0;
+  P.pbS=clamp(v/RUN,0.35,1);P.vx=0;P.pbQ=null;P.pbT=0;P.pendingJump=false;TP.d=-1;
+  {const h=L.hills[q.i],Ln=h.n*TW;let k=PB_IN;while(k<PB_RMAX&&hillTop(h,P.face>0?k:Ln-k)<PB_HS)k++;P.pbR=PB_GAP+k;} // (the ball's reach from the hip: to where its surface stands PB_HS high, a drift's toe eases in)
+  setState('probe');P.stT=gameTime;pbSet();}
+function pbSet(){PBH.h=L.hills[P.pbI]||null;PBH.x=P.pbX;PBH.f=P.face;PBH.r=P.pbR||PB_GAP+PB_IN;}
+// the toe meets it: a trickle of grit or sand where it presses, and its footfall (look only)
+function pbTouch(){const h=L.hills[P.pbI];if(!h)return;const x=P.pbX+P.face*(P.pbR||PB_GAP+PB_IN),y=P.y-Math.max(1,hillTop(h,x-h.c*TW)-1);
+  for(let i=0;i<(h.d?5:3);i++)FX.push({x:x+(Math.random()-0.3)*3*P.face,y,vx:-P.face*(6+Math.random()*14),vy:-Math.random()*(h.d?18:8),g:h.d?40:120,life:0.35+Math.random()*0.25,t:0,col:h.d?'rgba(214,190,140,.6)':'rgba(120,104,92,.75)',sz:h.d?1.4:1.1});
+  Snd.play(h.d?'sandstep':'step');}
+function tryJump(){if(hillOn(P.x,P.y))return;const e=hazardEdge(30);if(e!==null&&Math.abs(e-P.x)>6){P.tx=e-P.face*4;setState('edgeWalk');return;}startJump('stand');}
+function startJump(kind){if(hillOn(P.x,P.y))return;P.pbQ=null;P.pbC=null;
+  {const hc=hillCheck(kind);if(hc){if(!hc.need&&hc.c<(kind==='run'?PB_MIN:PB_MINS)){startProbe(hc.q);return;}P.pbQ={i:hc.q.i,e:hc.q.e};P.pbC=hc.c;}} // (round 47a: the checked leap)
+  P.jumpKind=kind;if(kind==='run')launch();else{P.jLow=beamOverhead(false);P.jFx=feetX(P.pose)+(P.pose.ox||0);setState('jumpPrep');}} // (round 32: jLow, the wind-up's look under a ceiling)
 // Under stone at his height (a gate's or a guillotine's lintel, a corridor one storey tall, an upper floor's slab) a full
 // jump would put his head through it: he takes a low, flat leap instead, ducked forward. It carries a little less far, and it
 // is taken wherever the full arc meets a ceiling, even where it may fall short (falling short is his own doing; going through
@@ -3206,6 +3254,7 @@ const RJ_K=0.75,RJ_DV=GRAV*STEP*(1/RJ_K-1)/2;
 function rjK(){return P.jumpKind==='run'?RJ_K:1;}
 function launch(){const run=P.jumpKind==='run';P.jx=P.x;P.jy=P.y;let vx=run?183:132,vy=run?190:159;P.lowJump=false;
   if(beamOverhead(run)){[vx,vy]=LOWJ[run?'run':'stand'];P.lowJump=true;}
+  if(P.pbQ&&P.pbC!=null&&!P.lowJump)vx=Math.max(0,P.pbC)/(2*vy/GRAV); // (round 47a: the checked leap lands PB_GAP short of the hill's foot)
   const k=run?RJ_K:1; // (round 35a: the running jump's clock, see RJ_K; vx, vy here are the arc's geometry)
   // (round 32, look only) the leg that takes off: the gather's choice, else the foot on the floor now; the drawn x carried into the arc
   if(run){if(P.jGo==null)P.jMir=(((P.ph%1)+1)%1)<0.5;}else P.jMir=false;P.jGo=null;P.jLe=null;
@@ -3474,6 +3523,10 @@ function tpToe(u,uc){return u<uc-0.1||u>uc+0.09?0:u<uc?s32((u-(uc-0.1))/0.09):1-
 // the feet's targets at u (TPT: each ball's x from the hip, its lowest point over the floor, its pitch; the hip's height before the reach)
 function tpTgt(u,hx,d,edge){const E=MCS.ev,F=MCS.F,B=MCS.B,v=tpWarp(u),T=TPT;T.v=v;T.a=0;
   const rest=TP.RB*(1-s32(u/0.06)+s32((u-0.94)/0.06)); // (standing, the rear foot rests 0.8 px up on a bent knee; it takes the weight first)
+  if(edge===2){const a=pbA(u),H=PBH,h=H.h;T.a=a; // (round 47a: the test foot onto a hill: the ball set PB_IN into it, on the rubble's slope or into the sand)
+    const bx=TP.F0+(H.r-TP.F0)*a,hu=H.x+H.f*bx-(h?h.c*TW:0),hs=h?hillTop(h,hu):0,sl=h?(hillTop(h,hu+H.f*2)-hillTop(h,hu-H.f*2))/4:0,on=s32((u-0.22)/0.16)*(1-s32((u-0.6)/0.22));
+    T.bF=bx-hx;T.lF=Math.max(0,hs-(h&&h.d?PB_SINK:0.8)*on)+2.4*Math.sin(Math.PI*clamp(u/0.32,0,1))*(1-on);T.pF=PB_P*clamp(Math.atan(sl),0,1)*on*(h&&h.d?0.5:1);
+    T.bB=TP.B0-hx;T.lB=rest;T.pB=0;T.hy=TP.H0-PB_H*a;return T;}
   if(edge&&d<TT_D){const a=s32(u/0.35)*(1-s32((u-0.62)/0.33));T.a=a; // (PoP's test foot, frame 86: sink on the rear leg, lean out, probe the edge)
     T.bF=TP.F0+TT_X*a-hx;T.lF=1.2*Math.sin(Math.PI*clamp(u/0.3,0,1))-TT_Y*s32((u-0.2)/0.2)*(1-s32((u-0.6)/0.25));T.pF=-TT_P*a;
     T.bB=TP.B0-hx;T.lB=rest;T.pB=0;T.hy=TP.H0-TT_H*a;return T;}
@@ -3488,14 +3541,14 @@ function tpShort(){const T=TPT;let s=0;tpLeg(T.bF,T.hy,T.lF,T.pF);if(T.lF<0.6)s=
 // the hip's extra drop over a step of d px (TPH, px at TP_N+1 points of u, made once a step): what the feet on the floor need to stay down,
 // spread over TP_SPR of the step either side as a smooth bump, so the hip goes down before it must and comes up after (no corner)
 function tpDrop(d,edge){if(d===TP.d&&edge===TP.e)return;TP.d=d;TP.e=edge;
-  for(let j=0;j<=TP_N;j++){const u=j/TP_N;tpTgt(u,d*ease(u),d,edge);const h0=TPT.hy;let need=0;
+  for(let j=0;j<=TP_N;j++){const u=j/TP_N;tpTgt(u,edge===2?pbHx(u):d*ease(u),d,edge);const h0=TPT.hy;let need=0;
     for(let it=0;it<4;it++){TPT.hy=h0-need;const s=tpShort();if(s<0.01)break;need+=s*1.3;}TPS[j]=need;}
   for(let j=0;j<=TP_N;j++){let m=0;for(let k=0;k<=TP_N;k++){const x=Math.abs(j-k)/TP_N/TP_SPR;if(x<1){const w=Math.cos(Math.PI/2*x)**2,q=TPS[k]*w;if(q>m)m=q;}}TPH[j]=m;}}
 // the careful step at u (0..1 of STEP_T): hx the hip's progress (px, facing) from the step's start, d the step's length, edge: toward a drop
 function stepPose(u,hx,d,edge,out){if(!TP.init&&out!==TP_END)tpInit();tpDrop(d,edge);
   const T=tpTgt(u,hx,d,edge);seqU(TPK,T.v,out);
   out.hold=0;out.hb=0;out.mh=0;out.kn=0;out.rot=0;out.sw=PS.stand.sw;out.sm=1;out.air=1;out.khF=out.khB=0;out.hp=0;
-  if(T.a>0){const a=T.a;out.lean+=TT_L*a;out.head-=0.5*TT_L*a;out.aF+=TT_A*a;out.eF-=0.5*TT_A*a;}
+  if(T.a>0){const a=T.a,tl=edge===2?PB_L:TT_L;out.lean+=tl*a;out.head-=0.5*tl*a;out.aF+=TT_A*a;out.eF-=0.5*TT_A*a;}
   const f=clamp(u,0,1)*TP_N,i=Math.min(TP_N-1,Math.floor(f)),w=f-i,hy=Math.min(TP.H0,T.hy-(TPH[i]+(TPH[i+1]-TPH[i])*w));
   tpLeg(T.bF,hy,T.lF,T.pF);out.hF=tpQ[0];out.kF=tpQ[1];out.fpF=T.pF;tpLeg(T.bB,hy,T.lB,T.pB);out.hB=tpQ[0];out.kB=tpQ[1];out.fpB=T.pB;out.hy=hy;
   return out;}
@@ -3513,6 +3566,7 @@ function poseOx(dt){const p=P.pose;let ox=0;
   else if(P.state==='air'&&(P.jumpKind==='run'||P.jumpKind==='stand')&&!P.chm){const t=P.t;ox=(P.jO0||0)*Math.exp(-t/OX_T2)+(P.jB||0)*t*Math.exp(-t/OX_T3);}
   else if((P.state==='land'||P.state==='stand')&&(P.stK==='rl'||P.stK==='sl')){const t=gameTime-P.stT;ox=clamp(P.jFx-feetX(p,P.stK==='sl'?0:P.jMir?2:1),-6,6)*(1-s32((t-0.12)/0.33));}
   else if(P.state==='run'&&P.lnT!=null)ox=(P.jO0||0)*Math.exp(-(gameTime-P.lnT)/0.12);
+  else if(P.state==='probe'&&P.t>=P.pbB)ox=pbHx(Math.min(1,(P.t-P.pbB)/PB_T)); // (round 47a: the test foot's lunge, the rear foot planted)
   const prev=p.ox||0;p.ox=ox;P.jOv=dt>0?(ox-prev)/dt:0;}
 function startStep(){
   const row=pRow();let tx=P.x+P.face*13,ed=0;
@@ -3555,7 +3609,7 @@ function startPoke(){setState('poke');P.hitDone=false;Snd.play('swish');}
 function killSnake(sn){sn.alive=false;sn.t=0;sn.state='dead';Snd.play('hit');sparks(sn.x,sn.y-4,6,'#a6c45a');}
 function pushBack(dir,dist){let tx=P.x+dir*dist;if(!solidBelow(L,pCol(tx),pRow()))tx=P.x;P.x=clampMove(P.x,tx,P.y,P,P.state==='crouch');}
 function trapHit(cause,dir){if(P.inv>0||P.state==='dead')return;P.inv=0.9;hurt(1,cause);if(P.state==='dead')return;
-  if(['stand','run','stop','step','turn','garde','advance','retreat','strike','parry','blocked','land','drink','edgeWalk','lowStrike'].includes(P.state)){pushBack(dir,12);P.vx=0;setState('landHurt');}}
+  if(['stand','run','stop','step','turn','garde','advance','retreat','strike','parry','blocked','land','drink','edgeWalk','lowStrike','probe'].includes(P.state)){pushBack(dir,12);P.vx=0;setState('landHurt');}}
 const CROUCH_ROOM=14; // a crouch leans the head well forward: keep this much room before a wall (the drawing presses back the rest)
 function crouchLimit(face){const hc=Math.floor((P.x+face*CROUCH_ROOM)/TW);if(B(L,hc,pRow())!==WALL)return null;return face>0?hc*TW-CROUCH_ROOM-0.01:(hc+1)*TW+CROUCH_ROOM+0.01;}
 function stCrouch(dt,ix){
@@ -3576,6 +3630,7 @@ function stCrouch(dt,ix){
   if(ix){
     if(ix!==P.face){P.face=ix;return;}
     const want=P.x+ix*CRAWL*dt;
+    if(hillOn(want,P.y))return; // (round 47a: no crawling on a hill: he stands and clambers or wades)
     if(!solidBelow(L,Math.floor((want+ix*6)/TW),pRow()))return;
     let nx=clampMove(P.x,want,P.y,P,true);
     const lim=crouchLimit(ix);if(lim!==null&&(nx-lim)*ix>0)nx=(P.x-lim)*ix>0?P.x:lim;
@@ -3714,7 +3769,7 @@ function land(h){
   // (round 32, owner: "borrow PoP's structure") a running jump that lands on its own level with the way still held runs straight on, as PoP1's
   // runjump ends in the run (SDLPoP seqtbl.c): the run's speed kept, its stride carried on from the foot that lands (the lead foot: phase 0, or
   // 0.5 when the other leg led); let go, he stops in the crouch as before
-  if(jk==='run'&&dist<=40&&!I.g&&P.stumble<=0&&((I.r?1:0)-(I.l?1:0))===P.face){const o=P.pose.ox||0;setState('run');P.vx=P.face*RUN;P.ph=P.jMir?0.5:0;P.lnT=gameTime;P.jO0=o;
+  if(jk==='run'&&dist<=40&&!I.g&&!P.pbQ&&P.stumble<=0&&((I.r?1:0)-(I.l?1:0))===P.face){const o=P.pose.ox||0;setState('run');P.vx=P.face*RUN;P.ph=P.jMir?0.5:0;P.lnT=gameTime;P.jO0=o;
     Snd.play('land');if(GFX().fx)dust(P.x,P.y,3);standOn();return;}
   P.vx=0;
   if(dist>=100){flashScreen('#ffffff',0.45,0.24);shake(2.6);hurt(1,'fall');if(P.state==='dead')return;setState('landHurt');P.stK='land';P.stT=gameTime+0.6-0.133;P.stS=1;Snd.play('thud');dust(P.x,P.y,8);
@@ -3767,7 +3822,7 @@ function stRun(dt,ix){
   else if(ix===-P.face){P.vx=approach(P.vx,0,1000*dt);if(Math.abs(P.vx)<8){P.face=ix;P.vx=0;return setState('turn');}}
   else{setState('stop');}
   if(took('j')&&P.stumble<=0)P.pendingJump=true;
-  if(hl&&hl.d)P.pendingJump=false; // (no jump of any kind in a drift)
+  if(hl)P.pendingJump=false; // (no jump of any kind on a hill: round 47a, a heap too)
   if(P.pendingJump&&Math.abs(P.vx)>50){const wa=wallAhead();if(wa&&B(L,wa.wc,pRow()-1)===WALL&&B(L,wa.wc-P.face,pRow()-1)!==WALL){P.jLe=null;if(wa.d<=30){P.pendingJump=false;return startWallRun();}runMove(dt);return;}}
   P.jLe=null;
   if(P.pendingJump){
@@ -4069,7 +4124,9 @@ const sf=F(L,pCol(),pRow());if(sf&&sf.t==='spikes')learn('spikes');setState('sta
       // (or Up), and in 'stand' Down held is a crouch: so he arrives standing, and the key held for the ride does nothing more
       // until it is let go (P.liftHold)
       if(f.arr){f.arr=0;P.liftHold=I.d?'d':I.u?'u':null;setState('stand');standOn();}break;}
-    case'land':if(P.t>=P.landDur)setState('stand');break;
+    case'land':if(P.t>=P.landDur){if(P.pbQ&&Math.abs(P.y-SURF(pRow()))<1.5){const h=L.hills[P.pbQ.i];if(h&&h.r===pRow())startProbe({i:P.pbQ.i,e:P.pbQ.e});else{P.pbQ=null;setState('stand');}}else{P.pbQ=null;setState('stand');}}break; // (round 47a: after the checked leap, the test foot)
+    case'probe':{const tb=P.pbB;if(P.t<tb){const k=P.t/tb;P.x=lerp(P.sx,P.pbX,P.pbM===1?1-(1-k)*(1-k):ease(k));}else P.x=P.pbX; // (round 47a: brake or step to the foot, then the test foot; P.x never enters the hill)
+      if(!supported()){startFall(0);break;}standOn();{const u=(P.t-tb)/PB_T;if(u>=0.42&&!P.pbT){P.pbT=1;pbTouch();}if(u>=1){setState('stand');P.stK='tip';P.stT=gameTime;}}break;}
     case'landHurt':if(P.t>=0.6)setState('stand');break;
     case'hang':{const lg=P.ledge;if(!solidBelow(L,lg.c,lg.r)){startFall(0);break;}
       if(I.u||took('u')||(P.sandUp&&ix===P.face)){P.cs={x0:P.x,y0:P.y,x1:lg.xe-lg.s*10,y1:lg.ys};setState('climb');Snd.play('grab');break;} // (round 41: caught from a sand slab with the way still held, he climbs on)
@@ -4142,6 +4199,8 @@ const sf=F(L,pCol(),pRow());if(sf&&sf.t==='spikes')learn('spikes');setState('sta
     case'turn':tgt=turnSettle(gameTime-P.stT,lerpPose(PS.turn,PS.turn,0,stP));rate=40;break;
     case'step':{const d=(P.tx-P.sx)*P.face; // (round 33b: PoP's step-to on the clip's body, see stepPose; a long step off a lift or aside walks)
       if(d<-0.5||d>TP_DMAX){tgt=walkPose(Math.abs(P.x-P.sx)/43+0.25);rate=40;}else{tgt=stepPose(Math.min(1,P.t/STEP_T),(P.x-P.sx)*P.face,Math.max(0,d),!!P.sEd,stpP);rate=30;}break;}
+    case'probe':{const tb=P.pbB;if(P.t<tb){const d=(P.pbX-P.sx)*P.face;tgt=P.pbM===1?settlePose('stop',P.t,P.pbS,PS.stand,stP):d>TP_DMAX?walkPose(Math.abs(P.x-P.sx)/43+0.25):stepPose(P.t/tb,(P.x-P.sx)*P.face,d,false,stpP);} // (round 47a: PoP's runstop on 16_08's braking, or the careful step)
+      else{pbSet();const u=Math.min(1,(P.t-tb)/PB_T);tgt=stepPose(u,pbHx(u),0,2,stpP);}rate=30;break;} // (then PoP's test foot onto the hill, see tpTgt)
     case'edgeWalk':tgt=walkPose(Math.abs(P.x-P.sx)/43+0.25);rate=40;break; // (round 33b: walking up to the lip before a standing jump, the feet planted: was the step's pose blended in)
     case'crouch':tgt=crawlPose(P.ph);if(P.lowSword){tgt.hold=0;tgt.aF=0.55+0.1*Math.sin(P.ph*6.2832);tgt.eF=-0.45;tgt.sw=0.03;}rate=30;break;
     case'poke':{tgt=crawlPose(P.ph);const k=P.t<0.1?P.t/0.1:Math.max(0,1-(P.t-0.16)/0.18);tgt.hold=0;tgt.aF=0.55+0.9*k;tgt.eF=-0.45+0.45*k;tgt.sw=0.03;rate=60;break;} // (round 23: the sword arm free of the crawl's palm on the floor)
@@ -4285,6 +4344,10 @@ function sawX(f,T){const p=cyc(f,T);return f.x0+(f.x1-f.x0)*(0.5-0.5*Math.cos(p*
 function danger(f,T){if(f.t==='chomp'){const s=gameTime;gameTime=T;const k=chompK(f);gameTime=s;return k>0.3;}if(f.t==='vent'){const p=cyc(f,T);return p>0.7||p<0.03;}return false;}
 // spike needles, back to front: [x in tile, depth 0 front..1 back, height, lean]; guillotine teeth: [width, length, tip offset]
 const SPK=[[25,0.78,10,3],[7,0.66,16,-1.9],[19,0.48,21,0.6],[12.5,0.26,11,-0.8]];const SPK_NEAR=0.45; // (round 39e: a stake rooted nearer than this is in front of a figure at mid-depth: drawNeedles)
+// (round 47d, owner: "I am constantly missing spikes"; option A of round 47c's alternatives) the stakes are pale polished bronze, the lightest
+// thing on their tile as PoP 1989's spikes are: SPK_C [lit face, lower shaft, shaded side], the edge selOut of the shaded side (the contour
+// rule); v88's acacia shafts with bronze tips were #c8a060 / #7a5a36 / #6a4a20, 1.9-4.3 L* off what stood behind them at night
+const SPK_C=['#fff5dc','#ecd2a0','#d2ae78'];
 const CH_UP=[[4,8,0.4],[3.5,5,0],[4.5,11,-0.6],[3.5,4,0.3],[4,9,0.5],[4.5,6,-0.3],[4,10,0.2]];
 const CH_LO=[[2,5,-0.4],[4,9,0.3],[4,5,0],[4.5,10,-0.5],[3.5,4,0.2],[4,8,0.4],[4,6,-0.2],[2,4,0.3]];
 function chompK(f){const p=(((gameTime+f.off)%f.per)+f.per)%f.per/f.per;if(p<0.07)return p/0.07;if(p<0.15)return 1;if(p<0.3)return 1-(p-0.15)/0.15;return 0;}
@@ -6323,7 +6386,7 @@ const BLK_W=22,BLK_H=10;
 // block takes a climb. So he walks or runs over it with no key: it no longer stops him (clampMove; guards still keep to their
 // side), and while his feet are over its top (at his depth, its middle BLK_W wide) he is drawn standing on it, easing up and down
 // over its edges (updateLook, 36 ms). His place, falls and hit boxes stay on the floor's level; the bot just runs on (runover).
-const BLK_STEP_ST=new Set(['stand','run','stop','step','turn','crouch','land','landHurt','drink','garde','advance','retreat','strike','parry','hurt','jumpPrep','poke','lowStrike','blocked','dead']);
+const BLK_STEP_ST=new Set(['probe','stand','run','stop','step','turn','crouch','land','landHurt','drink','garde','advance','retreat','strike','parry','hurt','jumpPrep','poke','lowStrike','blocked','dead']);
 function blockStep(x,y,st){if(!L||!BLK_STEP_ST.has(st))return 0;const r=rowOf(y);if(Math.abs(y-SURF(r))>1.5)return 0;const c0=Math.floor(x/TW);
   for(let c=c0-1;c<=c0+1;c++){if(!stoneLying(c,r))continue;const d=Math.abs(x-(c*TW+16))-BLK_W/2;if(d<9)return BLK_H*clamp((9-d)/7,0,1);}return 0;}
 // (round 13, owner: "the sand animation needs to be faster and also the slab falling animation"): roof blocks and sand floors' slabs fall
@@ -6560,7 +6623,7 @@ function hgBulbs(ctx,w,h){ctx.beginPath();ctx.moveTo(-w,-h);ctx.quadraticCurveTo
   ctx.lineTo(w,h);ctx.quadraticCurveTo(w*1.15,h*0.28,0.9,0);ctx.quadraticCurveTo(w*1.15,-h*0.28,w,-h);ctx.closePath();}
 // the carved fittings' stone per theme (the hourglass pedestal, the dart spout): light, body, shade
 const FIT_STONE={palace:['#c69a64','#a8794c','#5f432a'],tile:['#b9ae92','#9a8f74','#5a5240'],forge:['#3a2c2a','#2a2224','#171011'],crypt:['#5f9c86','#3d6f5c','#1a3b32'],dungeon:['#6c7590','#535c74','#2b3041']};
-function drawHgPedestal(ctx,th,st,x,fl,h,wear){const q=mulberry32(h);
+function drawHgPedestal(ctx,th,st,x,fl,h,wear,hc){const q=mulberry32(h);if(hc)hc[0]=0; // (hc: the rubble chips' boxes as drawn, for glRelClock, round 47e)
   const stone=FIT_STONE[st]||FIT_STONE.dungeon,K=selC(stone[1],0.5); // (round 46c, the contour rule: each slab's edge its stone darker; a chip the stone in shade)
   const box=(x0,y0,w,hh,c)=>{ctx.fillStyle=selC(c,0.58);ctx.fillRect(x0-0.6,y0-0.6,w+1.2,hh+1.2);ctx.fillStyle=c;ctx.fillRect(x0,y0,w,hh);};
   // base, shaft, top slab
@@ -6582,7 +6645,10 @@ function drawHgPedestal(ctx,th,st,x,fl,h,wear){const q=mulberry32(h);
     ctx.fillStyle=stone[2];ctx.beginPath();ctx.moveTo(cx+sx*a*0.9,cy);ctx.lineTo(cx+sx*a*0.4,cy+sy*b*0.45);ctx.lineTo(cx,cy+sy*b*0.9);ctx.closePath();ctx.fill();}
   if(wear>=2){ctx.strokeStyle='rgba(0,0,0,.65)';ctx.lineWidth=0.7;ctx.beginPath();let cx=x-3+q()*5,cy=fl-11;ctx.moveTo(cx,cy);
     for(let i=0;i<2+wear;i++){cx+=(q()-0.5)*3;cy+=1.6+q()*1.4;if(cy>fl-0.5)break;ctx.lineTo(cx,cy);}ctx.stroke();}
-  for(let i=0;i<(wear-1)*2+1;i++){const rx=x+(q()<0.5?-1:1)*(8.5+q()*4),w=1.2+q()*1.6;ctx.fillStyle=K;ctx.fillRect(rx-0.4,fl-w*0.7-0.4,w+0.8,w*0.7+0.8);ctx.fillStyle=stone[1];ctx.fillRect(rx,fl-w*0.7,w,w*0.7);}}
+  for(let i=0;i<(wear-1)*2+1;i++){const rx=x+(q()<0.5?-1:1)*(8.5+q()*4),w=1.2+q()*1.6;ctx.fillStyle=K;ctx.fillRect(rx-0.4,fl-w*0.7-0.4,w+0.8,w*0.7+0.8);ctx.fillStyle=stone[1];ctx.fillRect(rx,fl-w*0.7,w,w*0.7);
+    if(hc&&hc[0]<HG_CHIPS){const j=1+4*hc[0]++;hc[j]=rx-0.4;hc[j+1]=fl-w*0.7-0.4;hc[j+2]=rx+w+0.4;hc[j+3]=fl+0.4;}}}
+const HG_CHIPS=7,HGC=new WeakMap(); // (at most (3-1)*2+1 = 5 chips at the deepest wear; one array a checkpoint, kept off the checkpoint itself)
+function hgChipsOf(cp){let a=HGC.get(cp);if(!a){a=new Float32Array(1+4*HG_CHIPS);HGC.set(cp,a);}return a;}
 function cpClockF(cp){if(!cp.on)return 0;const turn=cp.onAt!==undefined?clamp((gameTime-cp.onAt)/0.7,0,1):1;return turn<1?ease(turn):1-((gameTime-(cp.onAt||0)-0.7)%8)/8;}
 // (round 37c, owner after v81: "The timer checkpoint over the front wall") The clock stands at mid-depth, but a wall's front face (a
 // step's, a low ceiling's) stands HX nearer and HX further left, so in the cell before a wall its right half (Nut's feet, the arch, the
@@ -6610,7 +6676,7 @@ function drawHourglass(ctx,cp){
   if(!off){
     // the pedestal: the theme's own stone and ornament, worn as much as the wall behind it (wearLevel, the same random
     // patches as the walls: pristine, worn, damaged, partly fallen); the glass above it is never damaged
-    drawHgPedestal(ctx,th,st,x,fl,hash2(cp.c*37+11,cp.r*19+3),wearLevel(cp.x,fl-20));
+    drawHgPedestal(ctx,th,st,x,fl,hash2(cp.c*37+11,cp.r*19+3),wearLevel(cp.x,fl-20),hgChipsOf(cp));
     const ptop=fl-11;
     ctx.fillStyle='rgba(0,0,0,'+(0.32-bob*0.03)+')';ctx.beginPath();ctx.ellipse(x,ptop+0.4,4.6-bob*0.3,0.9,0,0,6.2832);ctx.fill();
     if(lit){ctx.save();ctx.globalCompositeOperation='lighter';ctx.fillStyle='rgba('+gl+',.35)';ctx.beginPath();ctx.ellipse(x,ptop+0.2,6.5,1.5,0,0,6.2832);ctx.fill();ctx.restore();}
@@ -8366,11 +8432,11 @@ function drawNeedles0(ctx,o,f,X,ys,near,sy){const e=f.ext;if(e<=0.02)return;cons
     else if(sy!==null&&!near&&shcBeg(-1e5,-1e5,1e5,cy,2)){shcPt(x-3.3,b+1.2);shcPt(tx-1.2,tip-2.2);shcPt(tx+1.2,tip-2.2);shcPt(x+3.3,b+1.2);shcRing();shcEnd();}
     if((d<SPK_NEAR)!==!!near)continue;
     if(sy!==null){ctx.save();ctx.beginPath();ctx.rect(X-200,cy-400,TW+400,400);ctx.clip();}
-    ctx.fillStyle='rgba(8,6,12,.55)';ctx.beginPath();ctx.ellipse(x,b+0.6,3.4,1.3,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=selC(EGP.traps?'#7a5a36':'#8d94a2',0.55);ctx.beginPath();ctx.moveTo(x-2.8,b+0.9); // (round 46c, the contour rule: its edge the shaft darker)
+    ctx.fillStyle='rgba(8,6,12,.55)';ctx.beginPath();ctx.ellipse(x,b+0.6,3.4,1.3,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=selC(EGP.traps?SPK_C[2]:'#8d94a2',0.55);ctx.beginPath();ctx.moveTo(x-2.8,b+0.9); // (round 46c, the contour rule: its edge the shaded side darker)
     ctx.lineTo(tx,tip-1.6);ctx.lineTo(x+2.8,b+0.9);ctx.fill();
-    ctx.fillStyle=EGP.traps?'#c8a060':'#eef0f5';ctx.beginPath();ctx.moveTo(x-1.3,b);ctx.lineTo(tx,tip);ctx.lineTo(x+0.15,b);ctx.fill();
-    if(EGP.traps){ctx.fillStyle='#7a5a36';ctx.beginPath();ctx.moveTo(x-1.3,b);ctx.lineTo(x+(tx-x)*0.55,b+(tip-b)*0.55);ctx.lineTo(x+1.3,b);ctx.fill();} // acacia shafts, bronze tips
-    ctx.fillStyle=EGP.traps?'#6a4a20':'#8d94a2';ctx.beginPath();ctx.moveTo(x+0.15,b);ctx.lineTo(tx,tip);ctx.lineTo(x+1.3,b);ctx.fill();
+    ctx.fillStyle=EGP.traps?SPK_C[0]:'#eef0f5';ctx.beginPath();ctx.moveTo(x-1.3,b);ctx.lineTo(tx,tip);ctx.lineTo(x+0.15,b);ctx.fill();
+    if(EGP.traps){ctx.fillStyle=SPK_C[1];ctx.beginPath();ctx.moveTo(x-1.3,b);ctx.lineTo(x+(tx-x)*0.55,b+(tip-b)*0.55);ctx.lineTo(x+1.3,b);ctx.fill();} // the lower shaft a shade deeper (round 47d: pale polished bronze)
+    ctx.fillStyle=EGP.traps?SPK_C[2]:'#8d94a2';ctx.beginPath();ctx.moveTo(x+0.15,b);ctx.lineTo(tx,tip);ctx.lineTo(x+1.3,b);ctx.fill();
     if(f.sl){let px=x,py=b,w=3.4; // (round 41e: where it breaks through the slab's top, as wide as the stake there; at rest its foot's own shadow, 3.4 by 1.3)
       if(sy!==null){ctx.restore();const k=(b-cy)/(b-tip);px=x+(tx-x)*k;py=cy;w=Math.max(1.2,(1-k)*2.5+0.9);
         ctx.fillStyle='rgba(8,6,12,.6)';ctx.beginPath();ctx.ellipse(px,py+0.6,w,w*0.38,0,0,Math.PI*2);ctx.fill();}
@@ -9171,6 +9237,36 @@ let lightC=null,lightG=null;
 // shows (where the room images are clear: an opening, less any block in front of it), except where a figure stands in front (its
 // silhouette); null when no fill light reaches an opening in view (ryOps: the fills are then drawn with the other lights, as before)
 const FCUT={c:null,g:null,m:null,mg:null};
+// (Classic, quarter size) where the sky shows: opaque white where the backdrop is seen, clear where the rooms, the figures or a court's
+// jambs cover it (shared by the fills' cut, round 25c, and the ambient's lift, round 47c)
+function skyMaskDraw(m,T,x0,y0,x1,y1,lw,lh){
+  m.setTransform(1,0,0,1,0,0);m.globalAlpha=1;m.globalCompositeOperation='source-over';m.fillStyle='#fff';m.fillRect(0,0,lw,lh);m.setTransform(...T);
+  m.globalCompositeOperation='destination-out';m.imageSmoothingEnabled=true;
+  for(let ry=Math.floor(y0/ROOM_H);ry<=Math.floor((y1-0.01)/ROOM_H);ry++)for(let rx=Math.floor(x0/ROOM_W);rx<=Math.floor(x1/ROOM_W);rx++)m.drawImage(roomCanvas(rx,ry),rx*ROOM_W,ry*ROOM_H,ROOM_W,ROOM_H); // (what the rooms cover is not sky)
+  SIL.m.clear();SIL.m2.clear();
+  const fig=e=>{const sl=glSilhouette(e,true);if(sl)m.drawImage(sl,chimSX(e)-48,e.y+(e.yo||0)-80,96,96);};
+  if(P&&P.state!=='dead'&&P.state!=='exit'&&!(P.state==='enter'&&P.enU>0)&&!(P.y>L.rows*TH))fig(P);for(const e of G)if(e.alive&&!e.gone&&e.x>x0-60&&e.x<x1+60)fig(e);
+  ctJambEach((x,y,w,h)=>m.fillRect(x,y,w,h)); // (round 45c: a court's jambs stand over the room picture's clear sky, as the figures do: they keep their fill)
+}
+// (round 47c, Classic) the ambient's lift: lk.amb with AMB_LIFT of full added to its brightest channel, the colour kept (s), and the lift
+// alone (d), cached as strings per colour and lift
+const AMBUP=new Map();
+function ambUp(amb,ak){const key=amb+'|'+ak;let o=AMBUP.get(key);if(o)return o;const a=amb.split(',').map(Number),mx=Math.max(a[0],a[1],a[2])||1,f=(mx+ak*255)/mx,
+  n=a.map(v=>Math.min(255,Math.round(v*f)));o={s:n.join(','),d:n.map((v,i)=>v-a[i]).join(',')};AMBUP.set(key,o);return o;}
+// (round 47c, Classic) the lift where the sky shows (colour d, quarter size), taken back out of the light map so L0 keeps v88's light;
+// null when no opening or court is in view
+const AMBK={c:null,g:null};
+function ambSkyCut(sc,camD,camDY,lw,lh,d){if(!GFX().bg||!L)return null;
+  const x0=camD/sc,y0=camDY/sc,x1=x0+lw*4/sc,y1=y0+lh*4/sc;
+  let any=false;for(const o of ryOps())if(!(o.x1<x0||o.x0>x1||o.y1<y0||o.y0>y1)){any=true;break;}
+  if(!any)for(const k of L.courts||[]){const ox=k.c0*TW,W=(k.c1-k.c0+1)*TW,oy=(k.r-1)*TH;if(ox<x1&&ox+W>x0&&oy<y1&&oy+2*TH>y0){any=true;break;}}
+  if(!any){for(const w of L.windows){const x=w.c*TW+16,y=w.r*TH+38;if(x>x0-40&&x<x1+40&&y>y0-60&&y<y1+60){any=true;break;}}}
+  if(!any)return null;
+  if(!AMBK.c){AMBK.c=document.createElement('canvas');AMBK.g=AMBK.c.getContext('2d');}
+  const c=AMBK.c,m=AMBK.g;if(c.width!==lw||c.height!==lh){c.width=lw;c.height=lh;}
+  skyMaskDraw(m,[sc/4,0,0,sc/4,-camD/4,-camDY/4],x0,y0,x1,y1,lw,lh);
+  m.setTransform(1,0,0,1,0,0);m.globalCompositeOperation='source-in';m.fillStyle='rgb('+d+')';m.fillRect(0,0,lw,lh);m.globalCompositeOperation='source-over';
+  return c;}
 function fillCut(lights,sc,camD,camDY,lw,lh){if(!GFX().bg||!L)return null;
   const x0=camD/sc,y0=camDY/sc,x1=x0+lw*4/sc,y1=y0+lh*4/sc,fl=[];for(const q of lights)if(q.kind==='fill')fl.push(q);if(!fl.length)return null;
   const ops=[];for(const o of ryOps()){if(o.x1<x0||o.x0>x1||o.y1<y0||o.y0>y1)continue;if(fl.some(q=>o.x1>q.x-q.r&&o.x0<q.x+q.r&&o.y1>q.y-q.r&&o.y0<q.y+q.r))ops.push(o);}
@@ -9180,13 +9276,7 @@ function fillCut(lights,sc,camD,camDY,lw,lh){if(!GFX().bg||!L)return null;
   const g=FCUT.g,m=FCUT.mg,T=[sc/4,0,0,sc/4,-camD/4,-camDY/4];
   g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='source-over';g.clearRect(0,0,lw,lh);g.setTransform(...T);g.globalCompositeOperation='lighter';
   for(const q of fl){g.globalAlpha=Math.min(1,q.a);g.drawImage(lightSprite(q.col),q.x-q.r,q.y-q.r,2*q.r,2*q.r);}
-  m.setTransform(1,0,0,1,0,0);m.globalAlpha=1;m.globalCompositeOperation='source-over';m.fillStyle='#fff';m.fillRect(0,0,lw,lh);m.setTransform(...T);
-  m.globalCompositeOperation='destination-out';m.imageSmoothingEnabled=true;
-  for(let ry=Math.floor(y0/ROOM_H);ry<=Math.floor((y1-0.01)/ROOM_H);ry++)for(let rx=Math.floor(x0/ROOM_W);rx<=Math.floor(x1/ROOM_W);rx++)m.drawImage(roomCanvas(rx,ry),rx*ROOM_W,ry*ROOM_H,ROOM_W,ROOM_H); // (what the rooms cover is not sky)
-  SIL.m.clear();SIL.m2.clear();
-  const fig=e=>{const sl=glSilhouette(e,true);if(sl)m.drawImage(sl,chimSX(e)-48,e.y+(e.yo||0)-80,96,96);};
-  if(P&&P.state!=='dead'&&P.state!=='exit'&&!(P.state==='enter'&&P.enU>0)&&!(P.y>L.rows*TH))fig(P);for(const e of G)if(e.alive&&!e.gone&&e.x>x0-60&&e.x<x1+60)fig(e);
-  ctJambEach((x,y,w,h)=>m.fillRect(x,y,w,h)); // (round 45c: a court's jambs stand over the room picture's clear sky, as the figures do: they keep their fill)
+  skyMaskDraw(m,T,x0,y0,x1,y1,lw,lh);
   g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='destination-out';g.drawImage(FCUT.m,0,0);g.globalCompositeOperation='source-over';
   return FCUT.c;}
 // one low-resolution light map (ambient + every light, then the colour grade) multiplied over the scene
@@ -9197,7 +9287,9 @@ function lightPass(ctx,lights,sc,camD,camDY,gradeOnly){
     return;}
   if(!lightC||lightC.width!==lw||lightC.height!==lh){lightC=document.createElement('canvas');lightC.width=lw;lightC.height=lh;lightG=lightC.getContext('2d');}
   const l=lightG;l.setTransform(1,0,0,1,0,0);l.globalCompositeOperation='source-over';l.globalAlpha=1;
-  if(g.light&&!gradeOnly){l.fillStyle='rgb('+lk.amb+')';l.fillRect(0,0,lw,lh);l.globalCompositeOperation='lighter';l.setTransform(sc/4,0,0,sc/4,-camD/4,-camDY/4);
+  if(g.light&&!gradeOnly){const ak=ambLift(),A=ak?ambUp(lk.amb,ak):null;l.fillStyle='rgb('+(A?A.s:lk.amb)+')';l.fillRect(0,0,lw,lh);
+    if(A){const K=ambSkyCut(sc,camD,camDY,lw,lh,A.d);if(K){l.globalCompositeOperation='difference';l.drawImage(K,0,0);}} // (round 47c) the lift, kept off the sky
+    l.globalCompositeOperation='lighter';l.setTransform(sc/4,0,0,sc/4,-camD/4,-camDY/4);
     const cut=fillCut(lights,sc,camD,camDY,lw,lh); // (round 25c) the figures' fill light, kept off the sky
     for(const q of lights){if(cut&&q.kind==='fill')continue;l.globalAlpha=Math.min(1,q.a);l.drawImage(lightSprite(q.col),q.x-q.r,q.y-q.r,2*q.r,2*q.r);}
     l.globalAlpha=1;l.setTransform(1,0,0,1,0,0);if(cut){l.globalCompositeOperation='lighter';l.drawImage(cut,0,0);}}
@@ -9667,14 +9759,14 @@ const BG_W=640,BG_H=210,BG_BASE=176;
 // horizon colour) where the farthest land was near; a near band (`near`: fallen blocks, scrub or reeds, 1-4 m at d 17 m, f 0.25, the
 // nearest anything in the view stands) in front in the open themes. Interiors (the Cistern, the Forge) keep their hall's own depths.
 const BGART={
-  nun:{sky:['#0b111c','#18263c','#22344e','#152438'],layers:[ // papyrus-bundle columns under their architraves, standing in the water
+  nun:{inner:1,sky:['#0b111c','#18263c','#22344e','#152438'],layers:[ // papyrus-bundle columns under their architraves, standing in the water
     {f:0.08,kind:'pcolon',col:'#2a3852',gap:30,w:7,lift:-30},{f:0.15,kind:'pcolon',col:'#131c2c',gap:64,w:13,lift:-30},{f:0.15,kind:'water',col:'rgba(130,160,200,.16)',lift:-30},{f:0.25,kind:'ropes',col:'#06090f',lift:0,jar:1}]},
   west:{sky:['#1a2452','#363c78','#9a5a62','#3c2838'],layers:[ // the Theban hills with el-Qurn, a temple's pylons and flagstaffs, palms
     {f:0,kind:'stars',moon:'#f3e6c4'},{f:0.002,kind:'clouds',col:'rgba(170,140,180,.13)',drift:2.5},
     {f:0.005,kind:'qurn',col:'#463a62',lift:8},{f:0.07,kind:'pylons',col:'#2a2044',win:'#ffc070',lift:14},{f:0.13,kind:'palms',col:'#140f26',lift:26},{f:0.25,kind:'near',v:'reeds',col:'#0a0718',lift:30}]},
   blue:{sky:['#0e1c4c','#24398e','#5470bc','#22306c'],layers:[ // Saqqara: the step pyramid and its niched enclosure wall on the desert's edge
     {f:0,kind:'stars',moon:'#e6ecff'},{f:0.012,kind:'hills',col:'#2a3c78',lift:-4},{f:0.034,kind:'steppyr',col:'#22346a',lift:6},{f:0.06,kind:'niched',col:'#18264e',lift:12},{f:0.13,kind:'palms',col:'#0a1230',lift:24},{f:0.25,kind:'near',v:'stone',col:'#050a1e',lift:28}]},
-  meroe:{sky:['#140404','#3e0f08','#8a3010','#b8461a'],nostars:1,layers:[ // Meroë: the steep royal pyramids behind the smelting furnaces and their smoke
+  meroe:{inner:1,sky:['#140404','#3e0f08','#8a3010','#b8461a'],nostars:1,layers:[ // Meroë: the steep royal pyramids behind the smelting furnaces and their smoke
     {f:0.002,kind:'farridge',col:'#4a1a10',haze:0.5,lift:2},{f:0.036,kind:'kushpyr',col:'#4a1a10',lift:2},{f:0.1,kind:'chimneys',col:'#3a1c14',glow:'#ff7a30',lift:8},{f:0.17,kind:'furnaces',col:'#1e0b07',glow:'#ff8a3a',lift:16},{f:0.06,kind:'smoke',col:'rgba(30,18,16,.55)',drift:4},{f:0.25,kind:'ropes',col:'#0a0403',lift:0}]},
   osiris:{sky:['#06120f','#14342c','#2a5a4c','#183c33'],layers:[ // obelisks and lit shrines under a cavetto cornice, trees
     {f:0.002,kind:'farridge',col:'#1e4238',haze:0.55,lift:4},{f:0.075,kind:'obelisks',col:'#1e4238',glow:'#7fffd0',lift:6},{f:0.12,kind:'shrines',col:'#0e221c',glow:'#8fffd8',lift:14},{f:0.002,kind:'clouds',col:'rgba(120,190,170,.12)',drift:3.5},{f:0.145,kind:'trees',col:'#050c0a',lift:24},{f:0.25,kind:'near',v:'reeds',col:'#020605',lift:28}]},
@@ -9697,7 +9789,7 @@ const bgArt=th=>BGART[th.look]||BGART.nun;
 const bgCache=new Map();
 const bgRGB=c=>c[0]==='#'?hexRGB(c):c.match(/[\d.]+/g).slice(0,3).map(Number);
 // (round 27b) a far layer takes the air between: its colour goes toward the sky's horizon stop (aerial perspective, Leonardo's 'perspective of disappearance')
-function bgHaze(art,ly,tod){const r=mixRGB(bgRGB(todColor(ly.col,tod)),bgRGB(todSky(art.sky,tod)[2]),ly.haze);return 'rgb('+r.map(Math.round)+')';}
+function bgHaze(art,ly,tod){const r=mixRGB(bgRGB(todColor(ly.col,tod)),bgRGB(art.skyT?art.skyT[tod][2]:todSky(art.sky,tod)[2]),ly.haze);return 'rgb('+r.map(Math.round)+')';}
 const BGQ=0.42; // the background is painted at this fraction of screen resolution: cheaper, and soft like distant scenery
 function bgLayers(look,tod=0){const key=look+':'+tod+':'+VS.toFixed(2);let v=bgCache.get(key);if(v)return v;
   const art=BGART[look]||BGART.nun,sc=Math.max(0.5,VS*BGQ),style=look;
@@ -9713,7 +9805,7 @@ function bgLayers(look,tod=0){const key=look+':'+tod+':'+VS.toFixed(2);let v=bgC
     if(GLFX.bgblur&&ly.kind!=='stars')bgSoften(c,g,bgBlurR(ly.f)*sc);
     // (round 25e) whether the strip's top and bottom rows hold anything: the strip is carried on past its edges with them (found once here)
     const ed=g.getImageData(0,0,c.width,1).data,eb=g.getImageData(0,c.height-1,c.width,1).data;let et=0,ebm=0;for(let k=3;k<ed.length;k+=4){et=Math.max(et,ed[k]);ebm=Math.max(ebm,eb[k]);}
-    return {c,f:ly.f,drift:ly.drift||0,top:et>0,bot:ebm>0,moon:!!ly.moonOnly};});
+    return {c,f:ly.f,drift:ly.drift||0,top:et>0,bot:ebm>0,moon:!!ly.moonOnly,sky:ly.kind==='stars'||ly.kind==='clouds'};});
   bgCache.set(key,v);return v;}
 // ---- distance blur (S3 unit B, item 9; GLFX.bgblur): the view through the arches is a little out of focus, so the playfield
 // reads first. Done once, when a layer is painted (never per frame): the nearer layers stay sharper than the far ones, like a
@@ -9861,7 +9953,7 @@ let bgC=null,bgG=null;
 // as the camera crosses a row: each opening keeps its own anchor (the seams between storeys lie in the stone between them). The screen
 // shake moves the view with the keep; a zoom does not slide it.
 const BG_VK=0.2,BG_FSKY=0,BG_MOONW=48; // (BG_FSKY: the sky and the sun move as the farthest layer, the stars)
-const BGV={x:0,y:0,sx:0}; // the camera the view is seen from: x without the shake (sx, added in screen space), y with it
+const BGV={x:0,y:0,sx:0,flat:false}; // the camera the view is seen from: x without the shake (sx, added in screen space), y with it
 function bgRest(yb){const r=Math.floor((yb-1)/TH);return clamp(SURF(r)-ROOM_H*FRAME,0,Math.max(0,L.rows*TH-ROOM_H));} // (the view's top when the camera rests on the floor an opening's foot stands on)
 // each opening's anchor, found once a floor: openings that touch (a window knocked into a breach) are one hole and share the anchor of
 // the largest of them, so no seam runs through a hole and no anchor depends on what is in view
@@ -9869,23 +9961,44 @@ const bgKey=r=>Math.round(r[0])*8192+Math.round(r[1]);
 function bgAnchors(){if(L._bgA)return L._bgA;const all=openingsIn(-1e9,1e9,-1e9,1e9),n=all.length,par=all.map((_,i)=>i),fd=i=>{while(par[i]!==i)i=par[i]=par[par[i]];return i;};
   for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){const a=all[i],b=all[j];if(a[0]<=b[0]+b[2]+4&&b[0]<=a[0]+a[2]+4&&a[1]<=b[1]+b[3]+4&&b[1]<=a[1]+a[3]+4)par[fd(i)]=fd(j);}
   const big=new Map();for(let i=0;i<n;i++){const g=fd(i),q=big.get(g);if(q===undefined||all[i][2]*all[i][3]>all[q][2]*all[q][3])big.set(g,i);}
-  const m=new Map();for(let i=0;i<n;i++){const q=all[big.get(fd(i))];m.set(bgKey(all[i]),bgRest(q[1]+q[3]));}
+  const m=new Map();for(let i=0;i<n;i++){const q=all[big.get(fd(i))];m.set(bgKey(all[i]),bgRest(bgFoot(q)));}
   return L._bgA=m;}
-function bgAnchor(r){const v=bgAnchors().get(bgKey(r));return v===undefined?bgRest(r[1]+r[3]):v;}
+function bgAnchor(r){const v=bgAnchors().get(bgKey(r));return v===undefined?bgRest(bgFoot(r)):v;}
+// (round 47b, owner: one horizon per storey; "Do NOT move the windows' anchor ... the court and the arches on a storey must match the windows") A
+// window stands in the headroom row over its floor, so bgRest of its foot is the rest of that row, one storey above the floor it looks out from; an
+// open arch's, a breach's and a court bay's foot is in the floor's own row. Until 47b each took bgRest of its own foot, so on one storey the window's
+// view stood 0.8-0.85 of a storey (51-54 px) above the arch's and the court's. Now every opening but a window counts its foot one storey up: all the
+// openings of a storey share the window's anchor, and so every layer's place (bgLayerY) and the sky.
+function bgFoot(r){return r[1]+r[3]-(r[4]===1?0:TH);}
 function drawBackdrop(ctx,cx,cy,vw,vh,VZ,camD,camDY){
   BGV.x=cam.x;BGV.sx=cx+vw/2-viewW/2-cam.x;BGV.y=cy+vh*0.6-ROOM_H*0.6;
-  const ops=openingsIn(cx,cx+vw,cy,cy+vh);if(!ops.length)return;
+  let ops=openingsIn(cx,cx+vw,cy,cy+vh);if(CT_DBG.top&&CT_DBG.top!=='bays')ops=ops.filter(r=>!r[5]);else if(CT_DBG.top)ops=ops.filter(r=>r[5]);if(!ops.length)return;
   const art=bgArt(L.theme),ly=bgLayers(L.theme.look,L.prog?L.prog.tod:0),k=VZ/VS;
   // only the part of the screen the openings cover is painted (in view units)
   // openings close together (a run of arches) and looking out from the same storey are painted as one box; scattered windows each get their own
   const boxes=[];
-  for(const r of ops){const an=bgAnchor(r);let b=[(r[0]*VZ-camD)/VS-1,(r[1]*VZ-camDY)/VS-1,0,0,an];b[2]=b[0]+r[2]*k+2;b[3]=b[1]+r[3]*k+2;
-    for(let i=boxes.length-1;i>=0;i--){const q=boxes[i];if(q[4]===an&&q[0]<=b[2]+6&&b[0]<=q[2]+6&&q[1]<=b[3]+6&&b[1]<=q[3]+6){b=[Math.min(b[0],q[0]),Math.min(b[1],q[1]),Math.max(b[2],q[2]),Math.max(b[3],q[3]),an];boxes.splice(i,1);}}
+  for(const r of ops){const an=bgAnchor(r),ck=r[5]||null;let b=[(r[0]*VZ-camD)/VS-1,(r[1]*VZ-camDY)/VS-1,0,0,an,ck];b[2]=b[0]+r[2]*k+2;b[3]=b[1]+r[3]*k+2;
+    for(let i=boxes.length-1;i>=0;i--){const q=boxes[i];if(q[4]===an&&q[5]===ck&&q[0]<=b[2]+6&&b[0]<=q[2]+6&&q[1]<=b[3]+6&&b[1]<=q[3]+6){b=[Math.min(b[0],q[0]),Math.min(b[1],q[1]),Math.max(b[2],q[2]),Math.max(b[3],q[3]),an,ck];boxes.splice(i,1);}}
     boxes.push(b);}
-  for(const bb of boxes)paintBackdrop(ctx,art,ly,Math.max(0,Math.floor(bb[0])),Math.max(0,Math.floor(bb[1])),Math.min(viewW,Math.ceil(bb[2])),Math.min(ROOM_H,Math.ceil(bb[3])),bb[4]);
-  ctBg(ctx,cx,cy,vw,vh,VZ,camD,camDY);} // (round 45: the court beyond, after the theme's view)
+  for(const bb of boxes){const cv=bb[5]?ctViewOf(bb[5]):null;paintBackdrop(ctx,cv?cv.art:art,cv?cv.ly:ly,Math.max(0,Math.floor(bb[0])),Math.max(0,Math.floor(bb[1])),Math.min(viewW,Math.ceil(bb[2])),Math.min(ROOM_H,Math.ceil(bb[3])),bb[4]);}
+  if(!CT_DBG.top)ctBg(ctx,cx,cy,vw,vh,VZ,camD,camDY);} // (round 45: the court beyond, after the theme's view)
+// (test hook, CT_DBG.top: the courts' openings, their view and layers laid over the finished frame, nothing in front of them)
+function ctTop(ctx,cx,cy,vw,vh,VZ,camD,camDY){const cs=L.courts;if(!cs||!cs.length)return;ctx.save();ctx.setTransform(VZ,0,0,VZ,-camD,-camDY);ctx.fillStyle='#f0f';
+  for(const k of cs)if(k.k!=='well')ctx.fillRect(k.c0*TW,(k.r-1)*TH,(k.c1-k.c0+1)*TW,ctCut(k));ctx.restore();
+  if(!CT_DBG.noview){const t=CT_DBG.top;CT_DBG.top='bays';drawBackdrop(ctx,cx,cy,vw,vh,VZ,camD,camDY);CT_DBG.top=t;}ctBg(ctx,cx,cy,vw,vh,VZ,camD,camDY);ctx.setTransform(VS,0,0,VS,0,0);}
 // where a layer of depth factor f stands on the screen (view units) for an opening anchored at an (bgAnchor), the camera at BGV
-function bgLayerY(f,an){const midY=L.rows*TH/2,hz=ROOM_H*0.7-BG_BASE,sink=L.prog?L.prog.sink:0;
+// (round 47b, owner chose C: "one horizon per storey") The view's horizon (where land at f 0 meets the sky) is the storey's eye line, 44 px over
+// the floor's back edge, as the court's own and the Crossing's: at the camera's rest on a storey (BGV.y = its windows' anchor + TH) it stands at
+// BG_EYE from the view's top for every depth (bgEyeY: 25e's parallax taken about that rest; the anchor itself is the windows', bgRest of the
+// headroom row, shared by every opening of the storey). Under it the land drops by perspective: a layer of depth f lies 29.4 f Hc px under the horizon, Hc the keep's height
+// over the land (bgHc: 9 m on floor 1, 0.6 m more a floor, to 60 m), so climbing the keep the near land falls away while the far ridge stays on the
+// horizon (until 47b `L.prog.sink` lowered every layer alike, the horizon too). Each layer then moves with the keep less 25e's parallax, as before.
+// The interiors (BGART `inner`: the Cistern, the Forges' halls) keep their halls' own places (25e and 27b, the old formula), on the shared anchor.
+const BG_EYE=ROOM_H*FRAME-HY-44,BG_SKY=90;
+function bgHc(){return Math.min(60,9+0.6*(((L&&L.n)||1)-1));}
+function bgEyeY(f,an){return BG_EYE-(1-BG_VK*(1-f))*(BGV.y-an-TH);} // (the eye line for a layer of depth f, view units: at the rest on the storey's floor, an + TH, BG_EYE for every f)
+function bgLayerY(f,an,inner,own,sky){if(!inner)return sky?bgEyeY(f,an)-BG_SKY:bgEyeY(f,an)-BG_BASE+29.4*f*(own||bgHc()); // (the sky's stars, moon and clouds: the moon 44 px over the horizon)
+  const midY=L.rows*TH/2,hz=ROOM_H*0.7-BG_BASE,sink=L.prog?L.prog.sink:0;
   return hz+sink-clamp((an-midY)*f*0.18,-22,22)-(1-BG_VK*(1-f))*(BGV.y-an);} // (at rest, the old place for that storey; then the keep's motion less the parallax)
 function paintBackdrop(ctx,art,ly,bx0,by0,bx1,by1,an){if(bx1<=bx0||by1<=by0)return;
   // compose sky and layers at low resolution, then one scaled copy onto the screen (no clip: the room images drawn
@@ -9895,14 +10008,15 @@ function paintBackdrop(ctx,art,ly,bx0,by0,bx1,by1,an){if(bx1<=bx0||by1<=by0)retu
   else{if(!bgC||bgC.width!==cw||bgC.height!==ch){bgC=document.createElement('canvas');bgC.width=cw;bgC.height=ch;bgG=bgC.getContext('2d');}g=bgG;src=bgC;}
   if(an===undefined)an=BGV.y;
   const sn=v=>Math.round(v*q)/q; // (round 27b) a place snapped to the target's pixel grid
-  const tod=L.prog?L.prog.tod:0,gk='grad'+tod,sk=art[gk]||(art[gk]=(()=>{const st=todSky(art.sky,tod),gr=g.createLinearGradient(0,0,0,ROOM_H);gr.addColorStop(0,st[0]);gr.addColorStop(0.45,st[1]);gr.addColorStop(0.72,st[2]);gr.addColorStop(1,st[3]);return gr;})());
-  const so=-(1-BG_VK*(1-BG_FSKY))*(BGV.y-an); // (round 25e) the sky goes with the view: the gradient made once, moved by the transform (past its ends it pads with its end stops)
+  const tod=L.prog?L.prog.tod:0,gk='grad'+tod,sk=art[gk]||(art[gk]=(()=>{const st=art.skyT?art.skyT[tod]:todSky(art.sky,tod),gr=g.createLinearGradient(0,0,0,ROOM_H);gr.addColorStop(0,st[0]);gr.addColorStop(0.45,st[1]);gr.addColorStop(0.72,st[2]);gr.addColorStop(1,st[3]);return gr;})());
+  const so=art.inner?-(1-BG_VK*(1-BG_FSKY))*(BGV.y-an):bgEyeY(BG_FSKY,an)-ROOM_H*0.72; // (round 47b: the horizon stop on the storey's horizon) // (round 25e) the sky goes with the view: the gradient made once, moved by the transform (past its ends it pads with its end stops)
   g.setTransform(q,0,0,q,0,so*q);g.fillStyle=sk;g.fillRect(bx0,by0-so,bx1-bx0,by1-by0);
   if(tod===2){const sx=viewW*0.62-BGV.sx,gr=art.sun||(art.sun=(()=>{const r=g.createRadialGradient(0,ROOM_H*0.7,2,0,ROOM_H*0.7,ROOM_H*0.9);r.addColorStop(0,'rgba(255,214,150,.55)');r.addColorStop(1,'rgba(255,170,110,0)');return r;})());
     g.setTransform(q,0,0,q,sx*q,so*q);g.fillStyle=gr;g.fillRect(bx0-sx,by0-so,bx1-bx0,by1-by0);} // the sun just under the skyline (made once, moved by the transform: no gradient a frame)
   g.setTransform(q,0,0,q,0,0);
-  for(const L2 of ly){if(L2.moon){const d=Math.abs(BGV.y-an)/BG_MOONW;if(d>=1)continue;g.globalAlpha=1-d*d*(3-2*d);} // (the moon, for the storey the camera is at)
-    const W=BG_W,oy=bgLayerY(L2.f,an),sx=L2.c.width/BG_W,sy=L2.c.height/BG_H;let ox=-((((BGV.x*L2.f+gameTime*L2.drift)%W)+W)%W)-BGV.sx;while(ox>bx0)ox-=W;
+  for(const L2 of ly){if(BGV.flat)break; // (tests: beamjag.py measures the beams over the sky alone; the view's own edges under the haze are not the S pass's)
+    if(L2.moon){const d=Math.min(Math.abs(BGV.y-an-TH),Math.abs(BGV.y-an))/BG_MOONW;if(d>=1)continue;g.globalAlpha=1-d*d*(3-2*d);} // (the moon, for the storey the camera is at)
+    const W=BG_W,oy=bgLayerY(L2.f,an,art.inner,0,L2.sky),sx=L2.c.width/BG_W,sy=L2.c.height/BG_H;let ox=-((((BGV.x*L2.f+gameTime*L2.drift)%W)+W)%W)-BGV.sx;while(ox>bx0)ox-=W;
     // (round 27b) the joins between the strip's copies, and between the strip and its carried-on rows, fall on whole pixels of the
     // target (sn): two copies meeting inside a pixel each covered part of it and left a faint line down the view at every join
     const ya=sn(oy),yb=sn(oy+BG_H);
@@ -9924,7 +10038,7 @@ function paintBackdrop(ctx,art,ly,bx0,by0,bx1,by1,an){if(bx1<=bx0||by1<=by0)retu
 // Musawwarat, Naqa; its far side per look, CT_FAR), 'well' a light well (Amarna's clerestories) in the interior themes' halls. A one-storey spiked
 // pit inside a court is a sunken pool (its stakes not drawn): a fall into it drowns him at the water's surface (die('drown'), the only play change).
 // Layers: the cut, the colonnade, posts, parapet and well are L1 in the room picture; the ceiling's front face over the court (architrave, vine
-// canopy, palm logs) is L3 in the room picture; the court beyond is L0 (ctBg, baked strips at f 0.12-0.7 under G2D.na); the pool is L2x (far half
+// canopy, palm logs) is L3 in the room picture; the court beyond is L0 (the theme's view in its bays, then ctBg: its own layers at their true depths, f 0.12-0.25, on the storey's horizon, under G2D.na; round 47b); the pool is L2x (far half
 // before the figures, near half and its cut face after); the hanging vine is L2 near (after the figures, inside the corridor's x); the dapple and
 // the well's shaft are light (drawEmissive). No sky beam from a court (a court-wide beam is a slab of haze): broad sky lights instead (ctLights).
 const CT_MIN=4,CT_MAX=8,CT_WANT=7,CT_GAP=14,CT_DR=3,CT_PD=11,CT_NOF=new Set(['shaftfoot','banner','lift','chain','hurtdrop']);
@@ -10053,18 +10167,36 @@ function ctOver(g,rx,ry,th){const cs=L.courts;if(!cs||!cs.length)return;
       ctVine(g,rnd,0,W,-10,-2,Math.round(W/3),false);for(let i=0;i<Math.round(W/30);i++)ctGrapes(g,6+rnd()*(W-12),-6+rnd()*3);g.fillStyle='rgba(0,0,0,.35)';g.fillRect(0,-41,W,1);}
     else if(k.k==='perg'){ctVine(g,rnd,0,W,-18,-2,Math.round(W/2),false);} // (Kerma: the vine over the palm logs)
     g.restore();}}
-// ---- L0: the court beyond, baked once per kind, far side, look, hour and scale into three strips (ground, far side, near trees) 640 world px wide,
-// tiled; each moves by its own depth factor (round 27b) about the court's middle, and vertically by round 25e's rule (BG_VK) from the court's rest.
-// The ground at depth f lies at eye + (floor - eye) f (the Crossing's pinhole, eye 44 px over the floor's back edge); a strip's y 0 is that edge
-const CTB=new Map(),CTB_W=640,CTB_T=124,CTB_B=24,CTB_F={G:0.7,F:0.18,M:0.5};
-function ctBake(k){const look=L.theme.look,tod=ctTod(),K=Math.max(1,Math.min(3,Math.round(VS*0.6*4)/4)),key=k.k+'|'+(k.far||'')+'|'+look+'|'+tod+'|'+K;let b=CTB.get(key);if(b)return b;
-  const mk=()=>{const c=document.createElement('canvas');c.width=Math.ceil(CTB_W*K);c.height=Math.ceil((CTB_T+CTB_B)*K);const g=c.getContext('2d');g.setTransform(K,0,0,K,0,CTB_T*K);return [c,g];};
-  const [cG,gG]=mk(),[cF,gF]=mk(),[cM,gM]=mk(),sk=ctSky(),hz=sk[3],lk=[0.92,0.62,0.95][tod],sunL=tod===0,rnd=mulberry32(hash2(look.length*31+tod,k.k.length*7));
+// ---- L0: the court beyond (round 47b, owner: "the background they show isn't in sync with what the windows show, different scenery and it is
+// moving way too fast"; chose C, one horizon per storey). Until 47b three strips baked per kind slid at 0.7 (the ground), 0.5 (trees) and 0.18 (the
+// far side) against the windows' 0-0.25, each drawn at another depth than it moved (a pylon drawn at 0.12 moved 0.18, Aksum's ambas drawn at 0.004
+// moved 0.18, Meroe's pyramids moved with the walls), and their eye line stood 44 px over the floor on every floor while the windows' land sank with
+// the keep and stood a storey higher. Now a court's bays show the theme's own view (paintBackdrop: the windows' layers, anchor, factors, sky, sun and
+// moon) less the layers nearer than the court's far side, which would stand inside the court (ctViewOf; Meroe's courts its outdoor view,
+// BGART.meroeCt); over it the court's own lit art (as v88's), baked once per kind, far side, look, hour and scale (CTB) into layers, each at its true
+// depth f = Z0/Z and drawn at that scale (h = 29.4 f H px for H m): the far side at CT_FARF (temple and pylon courts 40 m deep, Medinet Habu's
+// 42 m, Luxor's 45-56 m: 0.12; a garden 19 m: 0.22; Aksum's palace court 21 m, Dungur's: 0.2), what stands in the court between it and 0.25 (the
+// nearest the view may hold, round 27b), and the court's floor, a plane seen from the eye 1.5 m (44 px) over it: its row at depth f lies 44 f px
+// under the horizon (the Crossing's pinhole, v88's GY). The floor's strip has no feature along x (only rows), so its speed shows nothing; its
+// joints, paving and stones are drawn live at their own rows' f (ctFloorLive). Each layer slides f of the walls' motion about the court's middle,
+// and its eye line is the storey's (bgEyeY, the windows' anchor): window, arch and court share one horizon.
+const CTB=new Map(),CTB_W=640,CTB_T=124,CTB_B=24,CT_FARF={peri:0.12,kush:0.12,mud:0.12,rock:0.12,granite:0.2,perg:0.22};
+const ctFarF=k=>CT_FARF[k.k==='fore'?k.far||'kush':k.k]||0.12;
+const CT_DBG={only:null,noview:false,top:false}; // (tests: panscan.py draws one court layer at a time, `only` its index, -1 none; `noview` paints a court's bays a flat key colour instead of the theme's view; `top` lays the court's opening, view and layers over the finished Classic frame, with nothing in front, so each is measured whole)
+// the view through a court's bays: the theme's layers no nearer than its far side (Meroe: its outdoor sky, far ridge and pyramids, round 45c's G2)
+function ctViewOf(k){const ff=ctFarF(k),out=L.theme.look==='meroe',tod=L.prog?L.prog.tod:0,key='ctv:'+L.theme.look+':'+ff+':'+tod+':'+VS.toFixed(2);let o=bgCache.get(key);if(o)return o;
+  if(out&&!BGART.meroeCt){const g=CT_GRADE.meroe;BGART.meroeCt={sky:g.sky[0].concat(['#6a4a46']),skyT:g.sky.map((c,i)=>c.concat([['#6a4a46','#1a1c2c','#7a5a56'][i]])),
+    layers:[{f:0,kind:'stars',moon:'#f0e6d0'},{f:0.002,kind:'farridge',col:'#6a5060',haze:0.5,lift:2},{f:0.036,kind:'kushpyr',col:'#7a6062',lift:2}]};}
+  const lk=out?'meroeCt':L.theme.look,art=BGART[lk]||BGART.nun;
+  o={art,ly:bgLayers(lk,tod).filter(q=>q.f<=ff+1e-6)};bgCache.set(key,o);return o;}
+function ctBake(k){const look=L.theme.look,tod=ctTod(),K=Math.max(1,Math.min(3,Math.round(VS*0.6*4)/4)),ff=ctFarF(k),key=k.k+'|'+(k.far||'')+'|'+look+'|'+tod+'|'+K;let b=CTB.get(key);if(b)return b;
+  const LY=[],lay=(f,dx,fl)=>{const c=document.createElement('canvas');c.width=Math.ceil(CTB_W*K);c.height=Math.ceil((CTB_T+CTB_B)*K);const g=c.getContext('2d');g.setTransform(K,0,0,K,0,CTB_T*K);LY.push({c,f,dx:dx||0,fl:!!fl});return g;};
+  const gG=lay(ff,0,1),sk=ctSky(),hz=sk[3],lk=[0.92,0.62,0.95][tod],sunL=tod===0,rnd=mulberry32(hash2(look.length*31+tod,k.k.length*7)),dxM=((k.h>>>3)%7-3)*24;let gF=null,gM=null;
   const GY=f=>-44*(1-f),hzK=f=>Math.min(0.85,(1-f)*0.75),col=(c,f,l)=>ctC(mixRGB(ctMul(c,lk*(l||1)),hz,hzK(f))),W=CTB_W;
   const wrap=(g,fn)=>{for(const o of [-W,0,W]){g.save();g.translate(o,0);fn(g);g.restore();}}; // (drawn three times a strip apart: seamless when tiled)
+  // the floor: rows only (their ticks are live, ctFloorLive)
   const ground=(c0,c1,ft,rows)=>{const e0=GY(ft),gr=gG.createLinearGradient(0,e0,0,4);gr.addColorStop(0,ctC(mixRGB(ctMul(c1,lk),hz,0.62)));gr.addColorStop(1,ctC(ctMul(c0,lk)));gG.fillStyle=gr;gG.fillRect(0,e0,W,CTB_B+4-e0);
-    if(rows){gG.fillStyle='rgba(0,0,0,.12)';for(const f of [0.92,0.8,0.69,0.6,0.52,0.45,0.39,0.34,0.3,0.26,0.22,0.19,0.16])if(f>=ft)gG.fillRect(0,GY(f),W,0.5);
-      for(const f of [0.86,0.64,0.48,0.36])if(f>=ft){const s=40*f;for(let x=0;x<W;x+=s)gG.fillRect(x,GY(f+0.06),0.5,GY(f-0.06)-GY(f+0.06)+0.5);}}};
+    if(rows){gG.fillStyle='rgba(0,0,0,.12)';for(const f of [0.92,0.8,0.69,0.6,0.52,0.45,0.39,0.34,0.3,0.26,0.22,0.19,0.16,0.14])if(f>ft)gG.fillRect(0,GY(f),W,0.5);}};
   const syc=(g,x,f,h,w)=>{const y=GY(f),s=29.4*f;wrap(g,g=>{const r3=mulberry32(hash2(Math.round(x),Math.round(f*100)));g.fillStyle=col([74,56,40],f);
       g.beginPath();g.moveTo(x-0.35*s,y);g.lineTo(x-0.2*s,y-h*0.5*s);g.lineTo(x-1.1*s,y-h*0.72*s);g.lineTo(x-0.9*s,y-h*0.74*s);g.lineTo(x,y-h*0.6*s);g.lineTo(x+1*s,y-h*0.76*s);g.lineTo(x+1.15*s,y-h*0.73*s);g.lineTo(x+0.22*s,y-h*0.48*s);g.lineTo(x+0.4*s,y);g.closePath();g.fill();
       for(let i=0;i<46;i++){const a=r3()*6.283,rr=Math.sqrt(r3()),cx=x+Math.cos(a)*w*s*0.5*rr,cy=y-h*0.8*s+Math.sin(a)*h*0.2*s*rr,lt=(sunL?-1:1)*(cx-x)/(w*s*0.5)-(cy-(y-h*0.8*s))/(h*0.2*s)*0.6;
@@ -10072,18 +10204,22 @@ function ctBake(k){const look=L.theme.look,tod=ctTod(),K=Math.max(1,Math.min(3,M
   const palm=(g,x,f,h,w)=>{const y=GY(f),s=29.4*f;wrap(g,g=>{g.fillStyle=col([86,64,44],f);g.fillRect(x-0.25*s,y-h*s,0.5*s,h*s);g.fillStyle=col([0,0,0],f,0);g.globalAlpha=0.18;for(let yy=y-h*s;yy<y;yy+=0.6*s)g.fillRect(x-0.25*s,yy,0.5*s,0.15*s);g.globalAlpha=1;
       for(let i=0;i<11;i++){const a=-Math.PI/2+(i-5)*0.36,L2=w*s*(0.8+0.3*Math.abs(Math.sin(i*1.7)));g.strokeStyle=col(i%2?[52,82,40]:[70,104,50],f);g.lineWidth=Math.max(0.8,0.28*s);
         g.beginPath();g.moveTo(x,y-h*s);g.quadraticCurveTo(x+Math.cos(a)*L2*0.6,y-h*s+Math.sin(a)*L2*0.6,x+Math.cos(a)*L2,y-h*s+Math.sin(a)*L2*0.5+L2*0.35);g.stroke();}});};
-  if(k.k==='peri'){ground([196,176,140],[168,150,120],0.26,1);
-    const f=0.26,y=GY(f),s=29.4*f;wrap(gF,g=>{g.fillStyle=col([34,28,26],f);g.fillRect(0,y-4.6*s,W,4.6*s);
-      for(let x=0;x<W;x+=3.2*s){g.fillStyle=col([200,182,150],f);g.fillRect(x-0.35*s,y-4*s,0.7*s,4*s);g.fillRect(x-0.55*s,y-4.15*s,1.1*s,0.4*s);g.fillStyle='rgba(0,0,0,.3)';g.fillRect(x+(sunL?0.05:-0.35)*s,y-3.7*s,0.3*s,3.7*s);}
-      g.fillStyle=col([206,188,156],f);g.fillRect(0,y-5.2*s,W,1.1*s);g.fillStyle=col([226,208,176],f);g.fillRect(0,y-5.6*s,W,0.4*s);});
-    syc(gM,150,0.44,6.2,5);syc(gM,470,0.48,6,5.2);}
-  else if(k.k==='perg'){ground([92,104,64],[120,124,84],0.36,0);
+  if(k.k==='peri'){ground([196,176,140],[168,150,120],ff,1);
+    // the far portico of a temple court 40 m off (Medinet Habu's second court, Luxor's colonnade): its shade 8.3 m, closed-bud columns 7.2 m tall and
+    // 1.26 m thick every 5.8 m, the architrave and cornice to 10 m
+    const f=ff,y=GY(f),s=29.4*f;gF=lay(ff);wrap(gF,g=>{g.fillStyle=col([34,28,26],f);g.fillRect(0,y-8.3*s,W,8.3*s);
+      for(let x=0;x<W;x+=5.8*s){g.fillStyle=col([200,182,150],f);g.fillRect(x-0.63*s,y-7.2*s,1.26*s,7.2*s);g.fillRect(x-1*s,y-7.47*s,2*s,0.72*s);g.fillStyle='rgba(0,0,0,.3)';g.fillRect(x+(sunL?0.09:-0.63)*s,y-6.66*s,0.54*s,6.66*s);}
+      g.fillStyle=col([206,188,156],f);g.fillRect(0,y-9.36*s,W,1.98*s);g.fillStyle=col([226,208,176],f);g.fillRect(0,y-10.08*s,W,0.72*s);});
+    gM=lay(0.16,dxM);syc(gM,150,0.16,6.2,5);syc(gM,470,0.16,6,5.2);}
+  else if(k.k==='perg'){ground([92,104,64],[120,124,84],ff,0);
     gG.fillStyle=col([150,170,190],0.7,0.9);gG.fillRect(0,GY(0.74),W,GY(0.56)-GY(0.74));gG.fillStyle=col([200,186,150],0.75);gG.fillRect(0,GY(0.75)-0.6,W,1.4);gG.fillRect(0,GY(0.56)-0.6,W,1);
-    for(let i=0;i<26;i++){const f=0.66,x=rnd()*W,y=GY(f)+rnd()*2;gG.fillStyle=col([60,110,58],f);gG.beginPath();gG.ellipse(x,y,2.2,0.7,0,0,6.283);gG.fill();if(i%3===0){gG.fillStyle=col([230,236,250],f);gG.fillRect(x-0.5,y-1,1,1);}}
-    palm(gF,120,0.38,7.5,3);palm(gF,430,0.4,8,3.2);palm(gM,40,0.5,8,3.2);syc(gM,220,0.46,5.5,4.6);palm(gM,360,0.52,8.6,3);syc(gM,560,0.48,5.2,4.8);}
-  else if(k.k==='fore'){const fv=k.far||'kush';ground(fv==='granite'?[150,140,120]:fv==='rock'?[200,184,150]:[206,166,112],fv==='granite'?[170,160,140]:[214,184,140],0.12,1);
+    {const gL=lay(0.66,dxM);for(let i=0;i<26;i++){const f=0.66,x=rnd()*W,y=GY(f)+rnd()*2;gL.fillStyle=col([60,110,58],f);gL.beginPath();gL.ellipse(x,y,2.2,0.7,0,0,6.283);gL.fill();if(i%3===0){gL.fillStyle=col([230,236,250],f);gL.fillRect(x-0.5,y-1,1,1);}}} // (lotus on the channel, at its row)
+    // a garden 19 m deep: its far wall (2.5 m, whitewashed mudbrick with a coping) and the palms before it; nearer palms and sycomores at 0.24
+    const f=ff,y=GY(f),s=29.4*f;gF=lay(ff);wrap(gF,g=>{g.fillStyle=col([214,204,184],f);g.fillRect(0,y-2.5*s,W,2.5*s);g.fillStyle=col([236,228,210],f);g.fillRect(0,y-2.75*s,W,0.3*s);g.fillStyle='rgba(0,0,0,.1)';for(let x=0;x<W;x+=6*s)g.fillRect(x,y-2.5*s,0.6*s,2.5*s);});
+    palm(gF,120,f,7.5,3);palm(gF,430,f,8,3.2);gM=lay(0.24,dxM);palm(gM,40,0.24,8,3.2);syc(gM,220,0.24,5.5,4.6);palm(gM,360,0.24,8.6,3);syc(gM,560,0.24,5.2,4.8);}
+  else if(k.k==='fore'){const fv=k.far||'kush';ground(fv==='granite'?[150,140,120]:fv==='rock'?[200,184,150]:[206,166,112],fv==='granite'?[170,160,140]:[214,184,140],ff,fv!=='granite');
     {const sg=gG.createLinearGradient(0,GY(0.6),0,4);sg.addColorStop(0,'rgba(80,50,30,0)');sg.addColorStop(1,'rgba(80,50,30,.35)');gG.fillStyle=sg;gG.fillRect(0,GY(0.6),W,4-GY(0.6));}
-    const f=0.12,y=GY(f),s=29.4*f,X=W/2,C0=(c,l)=>ctC(mixRGB(ctMul(c,lk*(l||1)),hz,fv==='granite'?0.1:fv==='rock'?0.22:0.38)),lit=sunL?-1:1;
+    const f=ff,y=GY(f),s=29.4*f,X=W/2,C0=(c,l)=>ctC(mixRGB(ctMul(c,lk*(l||1)),hz,fv==='granite'?0.1:fv==='rock'?0.22:0.38)),lit=sunL?-1:1;gF=lay(ff);
     if(fv==='kush'||fv==='mud'){const tw=11*s,th2=13*s,gw=4.5*s,base=fv==='mud'?[176,128,90]:[222,176,124];
       for(const sd of [-1,1]){const xi=X+sd*gw/2,xo=X+sd*(gw/2+tw),bat=1.1*s;
         gF.fillStyle=C0(base,sd===lit?1.1:0.78);gF.beginPath();gF.moveTo(xi,y);gF.lineTo(xo,y);gF.lineTo(xo-sd*bat,y-th2);gF.lineTo(xi,y-th2);gF.closePath();gF.fill();
@@ -10092,48 +10228,63 @@ function ctBake(k){const look=L.theme.look,tod=ctTod(),K=Math.max(1,Math.min(3,M
         if(fv==='kush'){gF.fillStyle=C0([120,84,60],0.9);gF.fillRect(xi+sd*tw*0.38-1.6*s,y-th2*0.78,3.2*s,th2*0.45);}
         for(const u of [0.25,0.72]){const fx=xi+sd*tw*u;gF.strokeStyle=C0([70,48,30]);gF.lineWidth=0.8;gF.beginPath();gF.moveTo(fx,y-th2*0.5);gF.lineTo(fx,y-th2-5*s);gF.stroke();}}
       gF.fillStyle=C0(base,0.9);gF.fillRect(X-gw/2,y-th2*0.66,gw,th2*0.66);gF.fillStyle=C0(ctMul(base,0.7));gF.fillRect(X-gw/2-0.3*s,y-th2*0.66-0.9*s,gw+0.6*s,0.9*s);gF.fillStyle=C0([34,22,18]);gF.fillRect(X-gw*0.26,y-th2*0.46,gw*0.52,th2*0.46);
-      if(fv==='kush')for(let i=0;i<8;i++){const sd=i%2?1:-1,f2=0.16+Math.floor(i/2)*0.045,s2=29.4*f2,x=X+sd*(gw*0.6+(f2/f)*2.2*s),yy=GY(f2);
-        gF.fillStyle=C0([196,152,108],0.95);gF.fillRect(x-1.3*s2,yy-0.55*s2,2.6*s2,0.55*s2);gF.fillStyle=C0([214,170,122],sd===lit?1.05:0.85);gF.beginPath();gF.ellipse(x,yy-0.9*s2,1.05*s2,0.38*s2,0,0,6.283);gF.fill();gF.beginPath();gF.arc(x-sd*0.95*s2,yy-1.25*s2,0.33*s2,0,6.283);gF.fill();}
-      palm(gM,X-250,0.32,9,3.4);palm(gM,X+260,0.36,8,3.2);}
+      // the ram sphinxes of the avenue to the gate (Naqa, Musawwarat), in two rows of four nearer than the pylon, each row a layer at its own depth
+      if(fv==='kush')for(const f2 of [0.15,0.2]){const g2=lay(f2),s2=29.4*f2,yy=GY(f2);for(let i=0;i<4;i++){const sd=i%2?1:-1,x=X+sd*(gw*0.6+(f2/f)*2.2*s+Math.floor(i/2)*7*s2);
+        g2.fillStyle=C0([196,152,108],0.95);g2.fillRect(x-1.3*s2,yy-0.55*s2,2.6*s2,0.55*s2);g2.fillStyle=C0([214,170,122],sd===lit?1.05:0.85);g2.beginPath();g2.ellipse(x,yy-0.9*s2,1.05*s2,0.38*s2,0,0,6.283);g2.fill();g2.beginPath();g2.arc(x-sd*0.95*s2,yy-1.25*s2,0.33*s2,0,6.283);g2.fill();}}
+      gM=lay(0.19,dxM);palm(gM,X-250,0.19,9,3.4);palm(gM,X+260,0.19,8,3.2);}
     else if(fv==='rock'){wrap(gF,g=>{g.fillStyle=C0([214,196,160]);g.beginPath();g.moveTo(0,y);for(let x=0;x<=W;x+=20)g.lineTo(x,y-14*s-3*s*Math.sin(x*0.031)-1.5*s*Math.sin(x*0.11));g.lineTo(W,y);g.closePath();g.fill(); // the cliff's face, in level beds
         g.fillStyle='rgba(0,0,0,.12)';for(let yy=y-2*s;yy>y-13*s;yy-=1.7*s)g.fillRect(0,yy,W,0.5);
         for(const x of [90,250,420,560]){g.fillStyle=C0([150,130,100]);g.fillRect(x-2.6*s,y-5.5*s,5.2*s,5.5*s);g.fillStyle=C0([30,22,18]);g.fillRect(x-1.4*s,y-4.2*s,2.8*s,4.2*s);}}); // rock-cut tomb doorways, a rebate round each
-      syc(gM,170,0.42,5,4);syc(gM,500,0.46,5.4,4.4);}
-    else{ // (round 45c, owner chose S1) Aksum: depth in layers: the flat-topped ambas far off, storeyed stelae at three depths with their shade sides,
-      // storeys, false windows and long shadows, a low wall of rubble between timber beams, the Great Stela lying broken in front, paving converging to a
-      // vanishing point at eye height, darker near, loose stones with their shadows
+      gM=lay(0.17,dxM);syc(gM,170,0.17,5,4);syc(gM,500,0.17,5.4,4.4);}
+    else{ // (round 45c, owner chose S1; 47b) Aksum: the palace court's low wall of rubble between timber beams at 0.2 (21 m), small stelae and the Great
+      // Stela lying broken inside it at 0.23; beyond the wall the theme's own view: the ambas (0.004) and the field of storeyed stelae (0.11), on the
+      // storey's horizon with the land; the court's paving converges live (ctFloorLive)
       const sunR=!sunL,CA=(c,f2,l)=>ctC(mixRGB(ctMul(c,lk*(l||1)),hz,Math.min(0.9,(1-f2)*0.95)));
       const stela=(g,x,f2,h)=>wrap(g,g=>{const s2=29.4*f2,ww=0.11*h*s2,y=GY(f2),H=h*s2;g.fillStyle=CA([110,102,94],f2);g.beginPath();g.moveTo(x-ww/2,y);g.lineTo(x-ww/2,y-H);g.quadraticCurveTo(x,y-H-ww*0.6,x+ww/2,y-H);g.lineTo(x+ww/2,y);g.closePath();g.fill();
         g.fillStyle=CA([70,62,56],f2);g.fillRect(sunR?x-ww/2:x,y-H,ww/2,H);g.fillStyle='rgba(255,240,220,.18)';g.fillRect(sunR?x+ww/2-Math.max(0.6,ww*0.12):x-ww/2,y-H,Math.max(0.6,ww*0.12),H);
         g.fillStyle='rgba(0,0,0,.22)';for(let yy=y-H*0.18;yy>y-H*0.95;yy-=H*0.12){g.fillRect(x-ww/2,yy,ww,Math.max(0.4,ww*0.06));for(let xx=x-ww/2+ww*0.2;xx<x+ww/2-ww*0.1;xx+=ww*0.3)g.fillRect(xx,yy-H*0.06,ww*0.12,ww*0.12);}
         g.fillStyle='rgba(0,0,0,.25)';g.beginPath();g.ellipse(x+(sunR?-1:1)*H*0.35,y,H*0.38,0.8*s2*0.3+0.6,0,0,6.283);g.fill();});
-      {const gr=gG.createLinearGradient(0,GY(0.06),0,4);gr.addColorStop(0,CA([170,158,140],0.06));gr.addColorStop(0.5,CA([138,126,110],0.4,0.9));gr.addColorStop(1,ctC(ctMul([96,86,74],lk)));gG.fillStyle=gr;gG.fillRect(0,GY(0.06),W,CTB_B+4-GY(0.06));
-        gG.strokeStyle='rgba(0,0,0,.22)';gG.lineWidth=0.6;for(const f2 of [0.85,0.62,0.45,0.33,0.24,0.17,0.12,0.09]){gG.beginPath();gG.moveTo(0,GY(f2));gG.lineTo(W,GY(f2));gG.stroke();}
-        for(let x=-W;x<=2*W;x+=40){gG.beginPath();gG.moveTo(320+(x-320)*0.06,GY(0.06));gG.lineTo(320+(x-320),4);gG.stroke();}
-        const r=mulberry32(4242);for(let i=0;i<40;i++){const f2=0.1+r()*0.8,x=r()*W,s2=29.4*f2,y=GY(f2);gG.fillStyle=CA([70,62,54],f2);gG.beginPath();gG.ellipse(x,y,0.35*s2,0.12*s2,0,0,6.283);gG.fill();gG.fillStyle='rgba(0,0,0,.25)';gG.beginPath();gG.ellipse(x+(sunR?-1:1)*0.5*s2,y+0.05*s2,0.5*s2,0.08*s2,0,0,6.283);gG.fill();}}
-      wrap(gF,g=>{g.fillStyle=CA([96,108,130],0.004);g.beginPath();g.moveTo(0,GY(0.02));for(let x=0;x<=W;x+=16)g.lineTo(x,GY(0.02)-12-8*Math.abs(Math.sin(x*0.013))-(x%160<60?10:0));g.lineTo(W,GY(0.02));g.closePath();g.fill();});
-      for(const [x,f2,h] of [[70,0.05,20],[150,0.06,24],[240,0.045,16],[330,0.07,33],[440,0.055,21],[540,0.065,26],[610,0.05,17]])stela(gF,x,f2,h);
-      wrap(gF,g=>{const f2=0.16,s2=29.4*f2,y=GY(f2);g.fillStyle=CA([100,88,76],f2);g.fillRect(0,y-1.6*s2,W,1.6*s2);g.fillStyle=CA([62,46,34],f2);for(let yy=y-1.4*s2;yy<y;yy+=0.55*s2)g.fillRect(0,yy,W,0.14*s2);for(let x=4;x<W;x+=1.4*s2){g.beginPath();g.arc(x,y-1.1*s2,0.16*s2,0,6.283);g.fill();}});
-      for(const [x,f2,h] of [[110,0.22,7],[300,0.26,9],[500,0.2,6]])stela(gM,x,f2,h);
-      wrap(gM,g=>{const f2=0.42,s2=29.4*f2,y=GY(f2),x=400;g.fillStyle=CA([110,102,92],f2);g.save();g.translate(x,y-0.35*s2);g.rotate(-0.03);g.fillRect(-4*s2,-0.4*s2,4.6*s2,0.8*s2);g.fillRect(1.1*s2,-0.36*s2,3*s2,0.72*s2);g.fillStyle='rgba(0,0,0,.25)';for(let xx=-3.6*s2;xx<4*s2;xx+=0.7*s2)g.fillRect(xx,-0.4*s2,0.12*s2,0.8*s2);g.fillStyle='rgba(0,0,0,.3)';g.fillRect(-4*s2,0.4*s2,8.2*s2,0.18*s2);g.restore();});}}
-  for(const [c,g] of [[cG,gG],[cF,gF],[cM,gM]])crossRim(c,{tod},K,0.75); // (night: a silver rim on every edge that faces the moon, as the Crossing's)
-  b={G:cG,F:cF,M:cM,K};CTB.set(key,b);if(CTB.size>9)CTB.delete(CTB.keys().next().value);return b;}
-// laid down inside each court's opening after the theme's backdrop (in drawBackdrop, under G2D.na); the pennants are live (the wind moves them)
+      {const gr=gG.createLinearGradient(0,GY(ff),0,4);gr.addColorStop(0,CA([158,146,128],ff));gr.addColorStop(0.5,CA([138,126,110],0.5,0.9));gr.addColorStop(1,ctC(ctMul([96,86,74],lk)));gG.fillStyle=gr;gG.fillRect(0,GY(ff),W,CTB_B+4-GY(ff));
+        gG.strokeStyle='rgba(0,0,0,.22)';gG.lineWidth=0.6;for(const f2 of [0.85,0.62,0.45,0.33,0.24])if(f2>ff){gG.beginPath();gG.moveTo(0,GY(f2));gG.lineTo(W,GY(f2));gG.stroke();}}
+      wrap(gF,g=>{const f2=ff,s2=29.4*f2,y=GY(f2);g.fillStyle=CA([100,88,76],f2);g.fillRect(0,y-1.6*s2,W,1.6*s2);g.fillStyle=CA([62,46,34],f2);for(let yy=y-1.4*s2;yy<y;yy+=0.55*s2)g.fillRect(0,yy,W,0.14*s2);for(let x=4;x<W;x+=1.4*s2){g.beginPath();g.arc(x,y-1.1*s2,0.16*s2,0,6.283);g.fill();}});
+      gM=lay(0.23,dxM);for(const [x,h] of [[110,7],[300,9],[500,6]])stela(gM,x,0.23,h);
+      wrap(gM,g=>{const f2=0.23,s2=29.4*f2,y=GY(f2),x=400;g.fillStyle=CA([110,102,92],f2);g.save();g.translate(x,y-0.35*s2);g.rotate(-0.03);g.fillRect(-4*s2,-0.4*s2,4.6*s2,0.8*s2);g.fillRect(1.1*s2,-0.36*s2,3*s2,0.72*s2);g.fillStyle='rgba(0,0,0,.25)';for(let xx=-3.6*s2;xx<4*s2;xx+=0.7*s2)g.fillRect(xx,-0.4*s2,0.12*s2,0.8*s2);g.fillStyle='rgba(0,0,0,.3)';g.fillRect(-4*s2,0.4*s2,8.2*s2,0.18*s2);g.restore();});}}
+  for(const q of LY)crossRim(q.c,{tod},K,0.75); // (night: a silver rim on every edge that faces the moon, as the Crossing's)
+  LY.sort((a,b)=>(b.fl-a.fl)||(a.f-b.f)); // (the floor first, then far to near)
+  b={L:LY,K,ff,st:[ctC(mixRGB(ctMul([70,62,54],lk),hz,0.45)),ctC(mixRGB(ctMul([70,62,54],lk),hz,0.2))]};CTB.set(key,b);if(CTB.size>9)CTB.delete(CTB.keys().next().value);return b;}
+// the court's anchor: its bays' (bgAnchors: the storey's windows' anchor)
+function ctAnchor(k){return bgAnchor([k.c0*TW,(k.r-1)*TH,Math.min(2,k.c1-k.c0+1)*TW,ctCut(k),0,k]);}
+// each court layer's place this frame, world units (for ctBg and the tests): x of the strip's left edge (one copy), y of its top, the eye line
+function ctLayersOf(k,cx,vw,VZ,camDY){const b=ctBake(k),W=(k.c1-k.c0+1)*TW,xr=k.c0*TW+W/2,mid=cx+vw/2,an=ctAnchor(k),wY=v=>(v*VS+camDY)/VZ;
+  return b.L.map(q=>{const eye=wY(bgEyeY(q.f,an));return {f:q.f,fl:q.fl,c:q.c,x:xr+(1-q.f)*(mid-xr)-CTB_W/2+q.dx,y:eye+44-CTB_T,eye};});}
+// laid down inside each court's opening after the theme's view (in drawBackdrop, under G2D.na); the floor's features and the pennants are live
 function ctBg(ctx,cx,cy,vw,vh,VZ,camD,camDY){const cs=L.courts;if(!cs||!cs.length||lyOff('court'))return;
-  for(const k of cs){if(k.k==='well')continue;const W=(k.c1-k.c0+1)*TW,ox=k.c0*TW,oy=(k.r-1)*TH,cut=ctCut(k),ys=SURF(k.r),fl=ys-HY;
-    if(ox>cx+vw||ox+W<cx||oy>cy+vh||oy+cut<cy)continue;const b=ctBake(k),mid=cx+vw/2,xr=ox+W/2,dyR=cy-bgRest(ys);
-    ctx.save();ctx.setTransform(VZ,0,0,VZ,-camD,-camDY);ctx.beginPath();ctx.rect(ox,oy,W,cut);ctx.clip();ctOwnSky(ctx,k,ox,oy,W,cut);
-    for(const [nm,cv] of [['G',b.G],['F',b.F],['M',b.M]]){const f=CTB_F[nm],sx=xr+(1-f)*(mid-xr)-CTB_W/2+((k.h>>>3)%7-3)*(nm==='F'?0:24),y=fl-CTB_T+BG_VK*(1-f)*dyR;
-      let x0=sx;while(x0>ox)x0-=CTB_W;for(let x=x0;x<ox+W;x+=CTB_W)ctx.drawImage(cv,x,y,CTB_W,CTB_T+CTB_B);}
-    if(k.far==='kush'||k.far==='mud'){const f=CTB_F.F,s=29.4*0.12,X=xr+(1-f)*(mid-xr),y=fl-44*(1-0.12)+BG_VK*(1-f)*dyR,th2=13*s,gw=4.5*s,tw=11*s,wv=windAt(xr,ys),t=gameTime;
-      for(const sd of [-1,1])for(const u of [0.25,0.72]){const fx=X+sd*gw/2+sd*tw*u,py=y-th2-4.7*s,dir=wv<-0.05?-1:1,str=0.6+Math.min(1,Math.abs(wv));ctx.fillStyle=u<0.5?'#a04a3c':'#e2dacb';ctx.beginPath();ctx.moveTo(fx,py); // a pennant on its flagstaff, streaming with the wind
-        for(let i=0;i<=10;i++)ctx.lineTo(fx+dir*i*0.75*s,py+i*0.05*s+Math.sin(t*(5+3*str)-i*0.8+u*7)*0.45*s*(i/10)*str);
-        for(let i=10;i>=0;i--)ctx.lineTo(fx+dir*i*0.75*s,py+i*0.05*s+Math.sin(t*(5+3*str)-i*0.8+u*7)*0.45*s*(i/10)*str+0.9*s*(1-i/12));ctx.closePath();ctx.fill();}}
+  for(const k of cs){if(k.k==='well')continue;const W=(k.c1-k.c0+1)*TW,ox=k.c0*TW,oy=(k.r-1)*TH,cut=ctCut(k),ys=SURF(k.r);
+    if(ox>cx+vw||ox+W<cx||oy>cy+vh||oy+cut<cy)continue;const b=ctBake(k),mid=cx+vw/2,xr=ox+W/2,an=ctAnchor(k),lys=ctLayersOf(k,cx,vw,VZ,camDY);
+    ctx.save();ctx.setTransform(VZ,0,0,VZ,-camD,-camDY);ctx.beginPath();ctx.rect(ox,oy,W,cut);ctx.clip();
+    for(let i=0;i<lys.length;i++){const q=lys[i];if(CT_DBG.only!==null&&CT_DBG.only!==i)continue;let x0=q.x;while(x0>ox)x0-=CTB_W;while(x0+CTB_W<ox)x0+=CTB_W;for(let x=x0;x<ox+W;x+=CTB_W)ctx.drawImage(q.c,x,q.y,CTB_W,CTB_T+CTB_B);
+      if(q.fl)ctFloorLive(ctx,k,b,ox,W,mid,xr,f=>(bgEyeY(f,an)*VS+camDY)/VZ+44*f);}
+    if((k.far==='kush'||k.far==='mud')&&(CT_DBG.only===null||lys[CT_DBG.only]&&lys[CT_DBG.only].f===b.ff&&!lys[CT_DBG.only].fl)){const F=lys.find(q=>q.f===b.ff&&!q.fl),s=29.4*b.ff,gy=F.eye+44*b.ff,th2=13*s,gw=4.5*s,tw=11*s,wv=windAt(xr,ys),t=gameTime;
+      for(let X=F.x+CTB_W/2-2*CTB_W;X<ox+W+CTB_W;X+=CTB_W){if(X<ox-tw-gw||X>ox+W+tw+gw)continue;
+        for(const sd of [-1,1])for(const u of [0.25,0.72]){const fx=X+sd*gw/2+sd*tw*u,py=gy-th2-4.7*s,dir=wv<-0.05?-1:1,str=0.6+Math.min(1,Math.abs(wv));ctx.fillStyle=u<0.5?'#a04a3c':'#e2dacb';ctx.beginPath();ctx.moveTo(fx,py); // a pennant on its flagstaff, streaming with the wind
+          for(let i=0;i<=10;i++)ctx.lineTo(fx+dir*i*0.75*s,py+i*0.05*s+Math.sin(t*(5+3*str)-i*0.8+u*7)*0.45*s*(i/10)*str);
+          for(let i=10;i>=0;i--)ctx.lineTo(fx+dir*i*0.75*s,py+i*0.05*s+Math.sin(t*(5+3*str)-i*0.8+u*7)*0.45*s*(i/10)*str+0.9*s*(1-i/12));ctx.closePath();ctx.fill();}}}
     ctx.restore();}}
+// the court floor's features along x, live at their own rows' depth (a point X across the floor at depth f is drawn at mid + f (X - mid): it slides
+// f of the walls' motion): the joints of the paving rows (1.36 m apart), Aksum's paving converging to the vanishing point and its loose stones
+function ctFloorLive(ctx,k,b,ox,W,mid,xr,rowY){const ff=b.ff,ph=((k.h>>>5)%40);
+  if(k.far==='granite'){ctx.strokeStyle='rgba(0,0,0,.22)';ctx.lineWidth=0.6;const fn=0.9,ya=rowY(ff),yb=rowY(fn),X0=mid+(ox-mid)/ff,X1=mid+(ox+W-mid)/ff;
+    ctx.beginPath();for(let X=xr+ph+Math.ceil((X0-xr-ph)/40)*40;X<=X1;X+=40){ctx.moveTo(mid+ff*(X-mid),ya);ctx.lineTo(mid+fn*(X-mid),yb);}ctx.stroke();
+    const v=ctPrep(k),st=v.st;for(let i=0;i<st.length;i+=2){const f=st[i],x=mid+f*(xr+st[i+1]-mid),y=rowY(f),s2=29.4*f;if(x<ox-6||x>ox+W+6)continue;
+      ctx.fillStyle=b.st[f<0.5?0:1];ctx.beginPath();ctx.ellipse(x,y,0.35*s2,0.12*s2,0,0,6.283);ctx.fill();ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(x+(ctTod()===0?1:-1)*0.5*s2,y+0.05*s2,0.5*s2,0.08*s2,0,0,6.283);ctx.fill();}
+    return;}
+  if(k.k==='perg')return;ctx.fillStyle='rgba(0,0,0,.12)';
+  for(const f of [0.48,0.36,0.27,0.2,0.16]){if(f<ff+0.02)continue;const y0=rowY(f-0.03),y1=rowY(f+0.03),X0=mid+(ox-mid)/f,X1=mid+(ox+W-mid)/f;
+    for(let X=xr+ph+Math.ceil((X0-xr-ph)/40)*40;X<=X1;X+=40)ctx.fillRect(mid+f*(X-mid),y0,0.5,y1-y0);}}
 // the opening's boxes (openingsIn): the theme's backdrop is painted there, each bay of two cells sends its sky light (gatherLights) and shares the
 // court's anchor (bgAnchors)
 function ctOpen(out,x0,x1,y0,y1){const cs=L.courts;if(!cs)return out;for(const k of cs){if(k.k==='well')continue;const ox=k.c0*TW,W=(k.c1-k.c0+1)*TW,oy=(k.r-1)*TH,cut=ctCut(k);
-    if(ox>x1+40||ox+W<x0-40||oy>y1+TH||oy+cut<y0-TH)continue;for(let c=k.c0;c<=k.c1;c+=2)out.push([c*TW,oy,Math.min(2,k.c1-c+1)*TW,cut]);}return out;}
+    if(ox>x1+40||ox+W<x0-40||oy>y1+TH||oy+cut<y0-TH)continue;for(let c=k.c0;c<=k.c1;c+=2)out.push([c*TW,oy,Math.min(2,k.c1-c+1)*TW,cut,0,k]);}return out;} // (r[5]: its court, round 47b)
 function ctBox(x0,y0,x1,y1){const cs=L.courts;if(!cs)return false;for(const k of cs){if(k.k==='well')continue;const ox=k.c0*TW,W=(k.c1-k.c0+1)*TW,oy=(k.r-1)*TH;if(x1>ox+2&&x0<ox+W-2&&y1>oy+2&&y0<SURF(k.r)-2)return true;}return false;}
 // the court's daylight (or moonlight): a few broad lights along it in a pale tone of the hour's light (no beam), the well's shaft its own light
 function ctLights(add,x0,x1,y0,y1){const cs=L.courts;if(!cs||!cs.length)return;const tod=ctTod(),s=ctSun(),c=(tod===1?mixRGB(s,[200,214,255],0.5):mixRGB(s,[250,250,250],0.8)).map(Math.round).join(','),sc=s.join(',');
@@ -10146,6 +10297,7 @@ function ctPrep(k){if(k._v)return k._v;const W=(k.c1-k.c0+1)*TW,ox=k.c0*TW,oy=(k
     const m=Math.round(W/3.2),r2=mulberry32(hash2(k.c0,515));v.dp=new Float32Array(m*5);for(let i=0;i<m;i++){v.dp[i*5]=0.2+r2()*0.76;v.dp[i*5+1]=r2();v.dp[i*5+2]=1.4+r2()*3.6;v.dp[i*5+3]=r2()*6.28;v.dp[i*5+4]=r2();}}
   if(k.pits.length){v.lo=[];for(const [a,b] of k.pits){const q=L._ctP.get(k.r*L.cols+a),r3=mulberry32(hash2(q.X,77)),n=Math.round(q.W/9),pads=new Float32Array(n*3);
       for(let i=0;i<n;i++){pads[i*3]=0.1+r3()*0.8;pads[i*3+1]=r3();pads[i*3+2]=i;}v.lo.push(pads);}}
+  if(k.far==='granite'){const r4=mulberry32(hash2(k.c0,4242)),n=18;v.st=new Float32Array(n*2);for(let i=0;i<n;i++){const f=0.24+r4()*0.56;v.st[i*2]=f;v.st[i*2+1]=(r4()-0.5)*(W+60)/f;}}
   if(k.k==='well'){v.mo=new Float32Array(26*2);for(let i=0;i<26;i++){const h=hash2(i*31+k.c0,7);v.mo[i*2]=(h&255)/255;v.mo[i*2+1]=((h>>>8)&255)/255;}}
   return k._v=v;}
 function ctPoolCols(p){if(p._c)return p._c;const sk=ctSky(),tod=ctTod();
@@ -10200,7 +10352,7 @@ function ctRel(n,VZ,camD,camDY){const cs=L.courts;if(!cs)return n;for(const k of
 // accurate"). Meroe's furnace halls keep their warm forge grade; inside its courts (the cut, the floor before it and him there, feathered at the
 // edges) Torchlight's composite mixes to the court's own: cooler shadows and lights, less saturation and a white balance toward daylight
 // (u_cgb: up to four court boxes in view). Classic gets the matching grade: a cool multiply and a partial desaturation over the same boxes, after the
-// light pass. The court's view gets its own outdoor sky with Meroe's steep pyramids far off (ctBg), not the furnace interior the theme's view shows
+// light pass. The court's view gets its own outdoor sky with Meroe's steep pyramids far off (BGART.meroeCt through ctViewOf since round 47b), not the furnace interior the theme's view shows
 const CT_GRADE={meroe:{sh:[.95,.99,1.06],hi:[.98,1.0,1.04],sat:.84,wb:[.88,.96,1.08],c2d:'rgb(222,234,255)',
   sky:[['#3a4a7a','#9a7fa0','#e2b48a'],['#0b1430','#26304e','#3d3c52'],['#4a5a8a','#c9a0a8','#f0c896']],pyr:['rgb(120,96,98)','rgb(30,34,52)','rgb(150,110,104)']}};
 const CGB=new Float32Array(16),CGN=[1,1,1];
@@ -10211,11 +10363,6 @@ function ctGradeU(gl,U,VZ,camD,camDY,w,h,on){let n=0;const g=on?ctGradeBoxes((x,
 function ctGrade2D(ctx){if(!L||!L.courts)return;const {VZ,camD,camDY}=renderXf;ctx.save();ctx.setTransform(VZ,0,0,VZ,-camD,-camDY);
   ctGradeBoxes((x,y,W,H)=>{ctx.globalCompositeOperation='multiply';ctx.globalAlpha=1;ctx.fillStyle=CT_GRADE[L.theme.look].c2d;ctx.fillRect(x,y,W,H);ctx.globalCompositeOperation='saturation';ctx.globalAlpha=1-CT_GRADE[L.theme.look].sat;ctx.fillStyle='#808080';ctx.fillRect(x,y,W,H);});
   ctx.restore();}
-// the court's own sky (Meroe): a gradient of the hour and the steep pyramids far off, laid over the theme's view inside the court's box
-function ctOwnSky(ctx,k,ox,oy,W,cut){const g=CT_GRADE[L.theme.look];if(!g)return;const tod=L.prog?L.prog.tod:0;
-  if(!k._sky||k._skt!==tod){k._skt=tod;const gr=ctx.createLinearGradient(0,oy,0,oy+cut),c=g.sky[tod];gr.addColorStop(0,c[0]);gr.addColorStop(0.62,c[1]);gr.addColorStop(1,c[2]);k._sky=gr;}
-  ctx.fillStyle=k._sky;ctx.fillRect(ox,oy,W,cut);ctx.fillStyle=g.pyr[tod];const y=oy+cut*0.62;
-  for(let i=0;i<5;i++){const x=ox+20+i*W/5+((k.h>>>i)%9),h=10+((k.h>>>(i*2))%3)*5;ctx.beginPath();ctx.moveTo(x-h*0.55,y);ctx.lineTo(x,y-h);ctx.lineTo(x+h*0.55,y);ctx.closePath();ctx.fill();}}
 // ---- the court's thresholds (round 45c, owner: "we need some kind of transition between the court and regular"; chose C, "respecting the theme: no
 // standard single way of doing it"): at each end of a court a near jamb stands on the front plane and he passes behind it. It is an L3 part in a cell
 // that is not a wall (the layering rule's one exception, layers.md), drawn live after the figures and the air (ctJambs, after windDraw), so it covers
@@ -11559,6 +11706,7 @@ const GLSH={
     uniform sampler2D u_rl;uniform float u_rk; // relief lighting (unit B): the factor from glRelief, and its strength (0 = off)
     uniform sampler2D u_cs,u_cm;uniform vec2 u_cfx; // atmosphere (glAtmo): shafts and caustics, mist and sheen
     uniform vec3 u_sd; // (round 29) the tint the air before the dark greys toward
+    uniform vec3 u_ad; // (round 47c) the ambient's lift, on what the rooms draw only (times the scene's alpha: never on the backdrop)
     ${GLSL_FG}${GLSL_FL}
     ${GLSL_M}
     void main(){
@@ -11573,6 +11721,7 @@ const GLSH={
       l*=1.+(texture2D(u_rl,v_u).r-.5)*2.*u_rk*(1.-mcv); // relief: lamp light raking across the stone (not across metal in front of it)
       float sh=(m.r*2.+texture2D(u_mk,mkUV(v_u+vec2(u_mp.x,0.))).r+texture2D(u_mk,mkUV(v_u-vec2(u_mp.x,0.))).r+texture2D(u_mk,mkUV(v_u+vec2(0.,u_mp.y))).r+texture2D(u_mk,mkUV(v_u-vec2(0.,u_mp.y))).r)/6.*cov; // (round 25c: the figures' shadows fall on the stone, never on the sky)
       l*=1.-sh*.85*u_fx.x; // a shadow takes the light away and a little of the ambient
+      l+=u_ad*cov; // (round 47c) the ambient's lift: flat (no relief, the lamp shadow only by the .4 below), and never on the sky (cov)
       vec3 c=s*l*(1.-sh*.4*u_fx.x);
       c=msApply(c,uv,s,mcv,sh*u_fx.x); // unit MS: metal lit by the lamps
       float hg=hlGate(cov); // (round 46b) not on a heap or drift
@@ -11604,7 +11753,7 @@ function glInit(){
     const c=document.createElement('canvas');c.id='glc';c.width=cv.width;c.height=cv.height;
     const gl=c.getContext('webgl2',{alpha:false,antialias:false,depth:false,stencil:false,powerPreference:'high-performance'})||c.getContext('webgl',{alpha:false,antialias:false,depth:false,stencil:false});
     if(!gl)throw new Error('no webgl');
-    const P={light:glLink(gl,glMake(gl,GLSH.light),['u_s','u_t']),bright:glLink(gl,glMake(gl,msPlain(GLSH.bright)),['u_sc','u_map','u_px','u_cs','u_csk','u_mk','u_ocT','u_ocC','u_fc','u_fg','u_fsz','u_ft']),blur:glLink(gl,glMake(gl,GLSH.blur),['u_t0','u_d']),final:glLink(gl,glMake(gl,msPlain(GLSH.final)),['u_sc','u_map','u_bl','u_mk','u_d','u_vg','u_px','u_mp','u_t','u_sat','u_fx','u_sh','u_hi','u_mkT','u_mkC','u_cgb','u_cgn','u_cgt','u_cgs','u_cgh','u_cgw'])};
+    const P={light:glLink(gl,glMake(gl,GLSH.light),['u_s','u_t']),bright:glLink(gl,glMake(gl,msPlain(GLSH.bright)),['u_sc','u_map','u_px','u_cs','u_csk','u_mk','u_ocT','u_ocC','u_fc','u_fg','u_fsz','u_ft']),blur:glLink(gl,glMake(gl,GLSH.blur),['u_t0','u_d']),final:glLink(gl,glMake(gl,msPlain(GLSH.final)),['u_sc','u_map','u_bl','u_mk','u_d','u_vg','u_px','u_mp','u_t','u_sat','u_fx','u_sh','u_hi','u_mkT','u_mkC','u_cgb','u_cgn','u_cgt','u_cgs','u_cgh','u_cgw','u_ad'])};
     // (attribute slots are fixed so one buffer layout serves every program)
     for(const k of ['bright','blur','final'])gl.bindAttribLocation(P[k].p,0,'a_p');
     const lp=P.light.p;gl.bindAttribLocation(lp,0,'a_k');gl.bindAttribLocation(lp,1,'a_c');gl.bindAttribLocation(lp,2,'a_o');gl.bindAttribLocation(lp,3,'a_col');
@@ -11844,13 +11993,14 @@ function glRelFloors(n,VZ,camD,camDY){const cx=camD/VZ,cy=camDY/VZ,c0=Math.max(0
   // (round 46c, solidscan.py) the sky clock stands at mid depth before the back wall, drawn live: the relief embossed the wall's art on Nut's
   // arch, her limbs and the pedestal (layers.md had it left). Rubbed back by its own shapes as drawShcClock's outline, not by a box: the wall seen
   // inside the arch keeps its relief
-  for(const cp of L.cps){if(lyOff('clock')||CP_DBG.off)continue;const x=cpX(cp),fl=SURF(cp.r)-1;if(x+20<cx||x-20>cx+cv.width/VZ||fl<cy||fl-50>cy+cv.height/VZ)continue;n=glRelClock(n,x,fl,fl-25+Math.sin(gameTime*1.7+cp.x*0.05)*1.6,VZ,camD,camDY);}
-  if(EGP.traps){for(const o of L.dyn)if(o.f.t==='stone'&&o.f.s>=2&&L.rubble.has(o.r*L.cols+o.c))n=glRelRoof(n,o.c*TW+16-HX-BLK_W/2,SURF(o.r)+HY-BLK_H,VZ,camD,camDY);
+  for(const cp of L.cps){if(lyOff('clock')||CP_DBG.off)continue;const x=cpX(cp),fl=SURF(cp.r)-1;if(x+20<cx||x-20>cx+cv.width/VZ||fl<cy||fl-50>cy+cv.height/VZ)continue;n=glRelClock(n,x,fl,fl-25+Math.sin(gameTime*1.7+cp.x*0.05)*1.6,VZ,camD,camDY,HGC.get(cp));}
+  if(EGP.traps){for(const o of L.dyn)if(o.f.t==='stone'&&o.f.s>=2&&L.rubble.has(o.r*L.cols+o.c)){n=glRelRoof(n,o.c*TW+16-HX-BLK_W/2,SURF(o.r)+HY-BLK_H,VZ,camD,camDY);n=glRelRoofRubble(n,o,VZ,camD,camDY);}
     for(const d of L.debris)if(d.kind==='rock'&&d.y0!==undefined&&d.r!==undefined){const yc=ceilingY(d.c,d.r),ys=SURF(d.r),p=clamp((d.y-d.y0)/Math.max(1,ys-d.y0),0,1);n=glRelRoofFall(n,d.c,lerp(yc-BLK_H,ys+HY-BLK_H,p),yc,VZ,camD,camDY);}}
   return n;}
-function glRelClock(n,x,fl,cy,VZ,camD,camDY){const s=1.9,R=NUT.R,a0=NUT.a0,a1=NUT.a1,ny=cy+NUT.cy*s,B=(x0,y0,x1,y1)=>{n=glRelQ(n,x0,y0,x1,y0,x1,y1,x0,y1,VZ,camD,camDY);};
+function glRelClock(n,x,fl,cy,VZ,camD,camDY,hc){const s=1.9,R=NUT.R,a0=NUT.a0,a1=NUT.a1,ny=cy+NUT.cy*s,B=(x0,y0,x1,y1)=>{n=glRelQ(n,x0,y0,x1,y0,x1,y1,x0,y1,VZ,camD,camDY);};
   B(x-8.9,fl-4.3,x+8.9,fl+0.9);B(x-6.4,fl-9.9,x+6.4,fl-3.1);B(x-7.9,fl-11.9,x+7.9,fl-8.5);B(x-7.8*s,cy+(NUT.cy+0.8)*s,x+7.8*s,cy+(NUT.cy+3.2)*s); // the pedestal, the earth
   for(let k=0;k<2;k++){const a=k?a1:a0,qx=x+Math.cos(a)*R*s,qy=cy+(NUT.cy-Math.sin(a)*R)*s;B(qx-2.6,qy-2,qx+2.6,cy+(NUT.cy+1.6)*s);} // her arms and legs
+  if(hc)for(let i=0;i<hc[0];i++){const j=1+4*i;B(hc[j]-0.3,hc[j+1]-0.3,hc[j+2]+0.3,hc[j+3]+0.3);} // (round 47e) the pedestal's rubble chips as drawHgPedestal laid them
   const P=(i,r)=>{const a=a0+(a1-a0)*(1.06*i/8-0.03);return [x+Math.cos(a)*r*s,ny-Math.sin(a)*r*s];};
   for(let i=0;i<8;i++){const p=P(i,R+1.9),q=P(i+1,R+1.9),u=P(i+1,R-1.9),v=P(i,R-1.9);n=glRelQ(n,p[0],p[1],q[0],q[1],u[0],u[1],v[0],v[1],VZ,camD,camDY);} // her body, the arch
   return n;}
@@ -11858,6 +12008,16 @@ function glRelClock(n,x,fl,cy,VZ,camD,camDY){const s=1.9,R=NUT.R,a0=NUT.a0,a1=NU
 function glRelRoof(n,x0,yt,VZ,camD,camDY){const cx=camD/VZ,cy=camDY/VZ;if(x0+BLK_W+DX<cx||x0>cx+cv.width/VZ||yt+BLK_H<cy||yt-DY>cy+cv.height/VZ)return n;
   n=glRelQ(n,x0,yt,x0+BLK_W,yt,x0+BLK_W,yt+BLK_H,x0,yt+BLK_H,VZ,camD,camDY);n=glRelQ(n,x0,yt,x0+BLK_W,yt,x0+BLK_W+DX,yt-DY,x0+DX,yt-DY,VZ,camD,camDY);
   return glRelQ(n,x0+BLK_W,yt,x0+BLK_W+DX,yt-DY,x0+BLK_W+DX,yt+BLK_H-DY,x0+BLK_W,yt+BLK_H,VZ,camD,camDY);}
+// (round 47e) what lies on the floor round a fallen roof block, as egRoofLying draws it: its two sand heaps (egHeap's dark rim cone,
+// inside the trapezoid on its foot and apex: the quadratic's tangents at its ends are the trapezoid's sides) and the wear's chips
+// (wearRubble's stream replayed, a box round each chip); drawn live over the floor's top, so the relief embossed the wall's art on them
+function glRelHeap(n,x,y,w,h,VZ,camD,camDY){const a=w/2+0.9+0.4,yb=y+1,yt=y+0.6-(h*2+1+0.6)/2-0.4;return glRelQ(n,x-a,yb,x+a,yb,x+a/2,yt,x-a/2,yt,VZ,camD,camDY);}
+function glRelRoofRubble(n,o,VZ,camD,camDY){const R=roofStone(o),x0=R.xc-BLK_W/2,cx=camD/VZ,cy=camDY/VZ;if(x0+BLK_W+DX+40<cx||x0-40>cx+cv.width/VZ||R.ys+HY<cy||R.ys-DY>cy+cv.height/VZ)return n;
+  n=glRelHeap(n,o.c*TW+16-18,R.ys,12,2.6,VZ,camD,camDY);n=glRelHeap(n,o.c*TW+16+19,R.ys,10,2.2,VZ,camD,camDY);
+  const W=Math.max(2,R.W),q=mulberry32(R.sd+9),x1=x0+BLK_W+DX;
+  for(let i=0;i<W*2;i++){const side=i%2,px=side?x1+2+q()*6:x0-2-q()*6,d=0.25+q()*0.6,pt=onFloor(px,d,R.ys),s=0.7+q()*1.2,e=s+0.75;q();q(); // (px, d, s, then the two turns)
+    const yc=pt.y-s*0.45;n=glRelQ(n,pt.x-e,yc-e,pt.x+e,yc-e,pt.x+e,yc+e,pt.x-e,yc+e,VZ,camD,camDY);}
+  return n;}
 // (round 39e) a falling roof block's box rubbed back only where egRoofFall draws it (roofFallClip): each face cut by row to below the ceiling's
 // edge or inside the slot's hole, and short of the next column's front face on a row where it has one. RCP holds the polygon being cut
 const RCP=new Float64Array(32),RCP2=new Float64Array(32);
@@ -11958,6 +12118,15 @@ const GLAMBT={dungeon:0.78,tile:0.8,crypt:0.9,palace:0.62,forge:0.6};
 // the ambient never under AMB_MIN of full on its brightest channel (owner, v56: the Forge by Moonlight fell to .26 while the other
 // themes sit at .40 to .48; dark but readable, the Level Design Book's 'make it feel dark, not be dark'). Only the low ones rise.
 const AMB_MIN=0.45;
+// (round 47c, owner: "increase the minimum brightness of the levels. 5-10%"; "Go with C": the ambient floor raised by points of full scale,
+// each mode from its own level, so Classic stays as much brighter as it was; night stays darker, "but not so dark that you don't see traps.
+// I am constantly missing spikes"; the sky seen through the openings stays as it is) AMB_LIFT[tod] is added to the ambient's brightest
+// channel (dusk, night, dawn), the colour kept: Torchlight's AMB_MIN .45 becomes .55 at dusk and dawn, NIGHT at night. It is light on what
+// the rooms draw only (L1-L3 and the figures), never on L0, the backdrop: Torchlight adds it in the composite times the scene's alpha (u_ad,
+// ambLift), Classic fills its light map with it and takes it back where the sky shows (lightPass, skyMask). The light map itself keeps
+// v88's ambient, so the shafts' and the embers' tests against the ambient (u_bq.y, u_fl.w) and the bloom are unchanged.
+const AMB_LIFT=[0.10,0.075,0.10];
+function ambLift(){return mode==='cross'||!L||!L.prog?0:AMB_LIFT[L.prog.tod]||0;}
 function glAmbK(st,lk){const am=lk.amb.split(',');return Math.max(GLAMBT[st]||0.55,AMB_MIN*255/Math.max(+am[0],+am[1],+am[2]));}
 const GLFLICK={torch:0.6,fire:1,door:0.5,item:0.35};
 // ---- what reaches WebGL each frame (owner, v51: Torchlight fell back to Classic on the phone at 40 fps) ----
@@ -12083,7 +12252,8 @@ function glFrame(lights,VZ,camD,camDY,th){
   PF.p('bloom');gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);glClr(gl);bind(0,GLP.stex);bind(1,GLP.fb.map.t);bind(2,GLP.fb.bl.t);bind(3,GLP.mt);
   msPasses(m=>{gl.useProgram(P.final.p);
   {const U=P.final.u,gr=gradeOf(th.style),on=GLFX.grade&&GFX().grade;gl.uniform1i(U.u_mk,3);gl.uniform4fv(U.u_mkT,GLA.kT);gl.uniform4fv(U.u_mkC,GLA.kC);gl.uniform2f(U.u_px,1/w,1/h);gl.uniform2f(U.u_mp,1/lw,1/lh);gl.uniform1f(U.u_t,t%1000);
-    gl.uniform4f(U.u_fx,GLFX.shadow?1:0,GLFX.heat?1:0,GLFX.storm?1:0,S.set.calm?0.3:1);gl.uniform1f(U.u_sat,on?gr.sat:1);gl.uniform3fv(U.u_sh,on?gr.sh:GLNEUT);gl.uniform3fv(U.u_hi,on?gr.hi:GLNEUT);ctGradeU(gl,U,VZ,camD,camDY,w,h,on);glAtmoU(U,cfx);glStormU(U);}
+    gl.uniform4f(U.u_fx,GLFX.shadow?1:0,GLFX.heat?1:0,GLFX.storm?1:0,S.set.calm?0.3:1);gl.uniform1f(U.u_sat,on?gr.sat:1);gl.uniform3fv(U.u_sh,on?gr.sh:GLNEUT);gl.uniform3fv(U.u_hi,on?gr.hi:GLNEUT);ctGradeU(gl,U,VZ,camD,camDY,w,h,on);glAtmoU(U,cfx);glStormU(U);
+    {const ak=ambLift(),am=glcRGB(lk.amb),mx=Math.max(am[0],am[1],am[2])||1;gl.uniform3f(U.u_ad,am[0]/mx*ak,am[1]/mx*ak,am[2]/mx*ak);}} // (round 47c)
   hkUniforms(P.final.u,VZ,camD,camDY,w,h); // S3-A
   glReliefUse(); // (unit B)
   if(m)glMetalU(MS.uf); // (unit MS)
@@ -12547,6 +12717,7 @@ function render(){PF.s();
   if(gf.light&&!lyOff('emissive'))drawEmissive(ctx,cx,cx+vw,cy,cy+vh);
   ctx.restore();
   ctx.setTransform(VS,0,0,VS,0,0);
+  if(CT_DBG.top&&!sh)ctTop(ctx,cx,cy,vw,vh,VZ,camD,camDY);
   if(gf.atmo&&!lyOff('haze'))hazePass(ctx);
   if(L.ext.chase&&L.ext.chase.on&&!stormGL()){ctx.save();ctx.setTransform(VZ,0,0,VZ,-camD,-camDY);ctx.beginPath();ctx.rect(cx,cy,vw,vh);ctx.clip();drawDark2D(ctx,cx,cx+vw,cy,cy+vh);ctx.restore();ctx.setTransform(VS,0,0,VS,0,0);} // (round 29)
   PF.p('atmo2d');if(sh)PF.gl=GLP.gl;
@@ -14496,11 +14667,11 @@ Object.assign(window.__HK,{respawn,startRewind,die,startEntry,entryOpen,entryX,s
 Object.defineProperty(window.__HK,'intro',{get(){return intro;},set(v){intro=v;}}); // (the floor's title banner, for egyptprop.py)
 Object.assign(window.__HK,{GATE_G,liftCell,windowPath,gateGeom,stoneTex,STONES,THEME_STONE,SLAB_STONE,stoneLying,BLK_W,BLK_H,looseWell,WELL_V,blockStep,wellGroup,wellSolve,wellTip,sandTex});
 Object.assign(window.__HK,{EGP,nutClock,conceptClock2,barqueClock,conceptClock,flaskBody,flaskR,heart,setHero,HERO_VAR,PAL_HERO,SCHED,floorsOf,BGART,bgArt,LFX,themeOf,get PF(){return PF;}}); // (the themes' backdrops and effects, for egyptshot.py and egyptfx.py)
-Object.assign(window.__HK,{hurt,HK,DISS,sandP,SAND_HP,GLFX,setClock:f=>{performance.now=f;}}); // S3-A (tests)
+Object.assign(window.__HK,{hurt,HK,DISS,sandP,SAND_HP,GLFX,AMB_LIFT,SPK_C,setClock:f=>{performance.now=f;}}); // S3-A (tests)
 Object.assign(window.__HK,{ryLow,beamBlockers,BLK,ryBlkLit,sandSegs,SDS,RY_BLUR,glPrecStr,renderXf,tileB:(c,r)=>B(L,c,r),get WALL(){return WALL;}}); // (round 46: the beams' cases and the device's precision, for beamjag.py)
 Object.assign(window.__HK,{FLM,FLV,ventState,cyc}); // FL (flames: the sheets and the vent's look, for tests)
 Object.assign(window.__HK,{GLFX,GLREL,clearRooms,bgCache,bgLayers,solidBelow:(c,r)=>solidBelow(L,c,r),roomCanvas}); // (unit B's switches and caches, for its tests)
-Object.assign(window.__HK,{openingsIn,bgAnchor,bgLayerY,BGV,BG_VK,BG_FSKY}); // (round 25e: the backdrop's place for each opening, for egyptr25e.py)
+Object.defineProperty(window.__HK,'VS',{get:()=>VS});Object.assign(window.__HK,{openingsIn,bgAnchor,bgLayerY,BGV,BG_VK,BG_FSKY,bgEyeY,bgHc,BG_EYE,bgFoot,ctLayersOf,ctFarF,ctViewOf,CTB,CT_DBG}); // (round 25e: the backdrop's place for each opening, for egyptr25e.py)
 Object.assign(window.__HK,{GLS,G2D,g2Target,g2Begin,g2Replay,EC,g2col,HKPath,drawFigureHD,figDraw,paintBackdrop,bgLayers,BGART,lightSprite,drawLight,drawGate,drawJaws,drawDoor,drawHourglass,drawFlask,drawSnakeHD,drawLift}); // (unit WGL, for its parity tests)
 Object.assign(window.__HK,{GLA,PF,BENCH,G2UP,g2Warm,roomCache}); // (the mask atlas's layout, for wgl_maskcmp.py; ?prof and ?bench for wgl_prof.py)
 Object.assign(window.__HK,{B:(c,r)=>B(L,c,r),F:(c,r)=>F(L,c,r),WALL,wallPress,wallRows,livePose,drawActor,PAL_HERO}); // (round 42a: the kick shaft's chimney, for egyptr42a.py)
