@@ -94,7 +94,7 @@ gate (`gateRoundel`), and the rewind's large clock running back ("The hours turn
 | Light map (`gatherLights`) | lit: kind `item` at `cpX`, 26 px up, radius 150 x k, strength 0.95 k, bloom core r 26 (k ramps over 0.7 s), plus the sun disc's own small light (kind `trap`, 46 px) that travels along Nut's arch; unlit: a faint glint (38 px, 0.42). Room light: not cut by the faces |
 | Key light (`keyLight` sx) | a lit clock weighs in like a torch for nearby figures (kind `item` counts; its `trap` sun light does not) |
 | Lamp shadow mask (`glShadow`) | casts none; carved (round 38a): `shcClock` records the pedestal's boxes, Nut's arch, arms and legs, the earth, her head and (lit) the sun in `SHC` (kind `clock`) at the drawn x, so a figure's shadow falls on the wall behind it; the wall seen inside the arch keeps the shadow; the wall between the earth and the pedestal's top (0 to 1.3 px as the clock bobs) is carved with them when under `SHC_TEX` (round 40) |
-| Relief | partly rubbed: `glRelEx`'s soft ellipses round its lights (the lit `item` light and the sun's `trap` light, half sizes 26 by 30 px; unlit, 23 by 27) flatten the relief over most of the clock; the rest of the pedestal and the arch keep the room picture's relief (left as it is, round 39). No `glRel*` of its own |
+| Relief | partly rubbed: `glRelEx`'s soft ellipses round its lights (the lit `item` light and the sun's `trap` light, half sizes 26 by 30 px; unlit, 23 by 27) flatten the relief over most of the clock; the rest of the pedestal and the arch keep the room picture's relief (left as it is, round 39). Since round 46c rubbed off by its own shapes (`glRelClock`), since round 47e its pedestal's rubble chips too |
 | Metal | none |
 | Sky beams | blocks none (`beamBlockers`); Torchlight: drawn live at alpha 255, so `fpGate` keeps beam footprints off it; Classic: `ryStand` cuts the pedestal's base (18 by 12.6 px at `cpX`) out of the footprint (round 39; before, the footprint lay over it) |
 | Mist / wall looks | as any live drawing over the wall |
@@ -147,3 +147,5 @@ gate (`gateRoundel`), and the rewind's large clock running back ("The hours turn
 - round 46c: the contour rule (Nut's limbs, body and head, the earth, the sun's ring and the pedestal's slabs and chips by their own colours,
   `selC`); Torchlight's relief rubbed off the clock by its own shapes (`glRelClock`: the pedestal's slabs, the earth, her limbs, the arch
   in eight quads; the wall inside the arch keeps it), which embossed the wall's art on it (`solidscan.py`: 5-10% of its pixels). Look only.
+- round 47e: the pedestal's rubble chips rubbed too (`drawHgPedestal` records their boxes, `hgChipsOf`; `glRelClock` rubs them): solidscan's
+  relief on floors 24 and 47 (0.18% and 0.44% in v88, 0.63% and 0.86% after round 47c's brighter ambient) now 0. Look only.

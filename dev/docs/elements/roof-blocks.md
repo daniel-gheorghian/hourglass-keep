@@ -82,7 +82,7 @@ a plain rock polygon falling, and no lying block drawn (play is the same). Sand 
 | Light map (`gatherLights`) | waiting or shifting: a faint `trap` light at the ceiling (r 34, 0.3) and, with `EGP.traps`, one at chest height over the floor (r 44, 0.32); falling: a `trap` light 20 px above the block (r 40, 0.3); fallen: none |
 | Key light (`keyLight` sx) | none: `stoneBox` lights the top (+0.14) and shades the side (0.34) by fixed amounts |
 | Lamp shadow mask (`glShadow`, `glMask`) | carved (round 38a, `EGP.traps`): falling (`egRoofFall`) and lying (`egRoofLying`), its box (front, top, right side, 0.8 px wider) is recorded in `SHC` (kind `roof`), so his shadow falls on the wall behind it; falling, the record's clip starts at the hole's top (round 39: above it is the ceiling's face, carved as a wall's). Hanging (`egRoofHang`), it is not recorded: its face is inside the wall's carved face |
-| Relief (`GLFX.relief`) | the falling block gets a soft neutral ellipse (`glRelEx`, 20 x 16 px, as all `L.debris`); each `trap` light while it hangs gets one too. With `EGP.traps`, lying it is rubbed back over its front, top and right side (`glRelRoof`, from `glRelFloors`; round 38a: the dado was embossed on 31 of 32 fallen blocks before); falling, only where `roofFallClip` lets it be drawn (`glRelRoofFall`, round 39: each face cut by row to below the ceiling's edge or inside the slot's hole and short of the next column's face, `rcpCut`, a fan of quads) |
+| Relief (`GLFX.relief`) | the falling block gets a soft neutral ellipse (`glRelEx`, 20 x 16 px, as all `L.debris`); each `trap` light while it hangs gets one too. With `EGP.traps`, lying it is rubbed back over its front, top and right side (`glRelRoof`, from `glRelFloors`; round 38a: the dado was embossed on 31 of 32 fallen blocks before), and the two sand heaps and wear chips lying beside it (`glRelRoofRubble`, round 47e); falling, only where `roofFallClip` lets it be drawn (`glRelRoofFall`, round 39: each face cut by row to below the ceiling's edge or inside the slot's hole and short of the next column's face, `rcpCut`, a fan of quads) |
 | Metal mask / shader | none |
 | Sky beams (`SKYB`, `beamBlockers`) | not a blocker. Footprint: Torchlight's `fpGate` leaves it out (drawn live, alpha 255); Classic's `ryStand` cuts the lying block's box out of the footprint (with `EGP.traps`) |
 | Mist / wall looks | none |
@@ -126,6 +126,7 @@ a plain rock polygon falling, and no lying block drawn (play is the same). Sand 
 - round 16a: a low obstacle he steps over with no key (`clampMove`, `blockStep`, bot `runover`).
 - round 35b: footprint light kept off it (`fpGate`; Classic `ryStand`).
 - round 38a: falling and lying, carved out of the lamp shadow (`SHC`) and rubbed out of the relief (`glRelRoof`).
+- round 47e: the relief rubbed off the sand heaps and wear chips beside a lying block too (`glRelRoofRubble`; solidscan's relief speck on floor 23, 3.6% in v88, 6.3% after round 47c's brighter ambient, now 0).
 - round 38b: the hit respects `P.inv` and gives 0.9 s, as `trapHit`.
 - round 39 (v84): the falling block, its sand and billow drawn only in the slot's hole and under the ceiling (`roofFallClip`), the hanging
   block's trickles cut at the next column's front plane; the `SHC` record from the hole's top; `glRelRoofFall`. Look only.

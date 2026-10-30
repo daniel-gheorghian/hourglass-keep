@@ -166,7 +166,11 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   a fallen roof block lying, a pushed block, a lift's platform and paternoster slabs and a court's jambs take the scene alpha mark in
   Torchlight (`solidMark`, `jambMark`, `HILL_A` 253: the composite leaves the sky beams' S and M passes off them, `hlGate`); Classic cuts
   blocks and lying roof blocks out of the haze (`rySolids`, `RYSO`); the relief is rubbed off the sky clock (`glRelClock`) and the lifts'
-  ropes (`glRelLifts`); the slab's groove up the back wall is opaque. `solidscan.py` checks them; `LIFT_DBG.noback` leaves a lift's shaft back and counterweight (L1) out of its frames. Pictures
+  ropes (`glRelLifts`); the slab's groove up the back wall is opaque. Round 47e (the release suite on round 47d: solidscan's relief on a
+  lying roof block 6.3% on floor 23, on the clock 0.63% and 0.86% on floors 24 and 47): the rubbing missed parts drawn live on the floor
+  round them, the pedestal's rubble chips (`drawHgPedestal` records their boxes, `hgChipsOf`, a WeakMap a checkpoint; `glRelClock` rubs
+  them) and the lying block's two sand heaps and wear chips (`glRelRoofRubble`: `egHeap`'s cone in a trapezoid, `wearRubble`'s stream
+  replayed); v88 had the same specks (3.6%, 0.18%, 0.44%) and round 47c's brighter ambient took them over the line; now 0. `solidscan.py` checks them; `LIFT_DBG.noback` leaves a lift's shaft back and counterweight (L1) out of its frames. Pictures
   `egyptr46c.py old.html new.html [outdir]` (r46c_props_<mode>.png: each prop changed, three themes and hours, v87 | 46c at 3x;
   r46c_phone_<n>.png).
   Round 46d's pictures `egyptr46d.py old.html new.html [outdir]` (r46d_figs_<mode>.png: the prince standing, running, hanging, crawling and

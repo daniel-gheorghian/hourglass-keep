@@ -32,15 +32,17 @@ THINGS = next((x[7:] for x in a if x.startswith('things=')), 'block,roof,jamb,li
 KINDS = next((x[6:] for x in a if x.startswith('kinds=')), 'noart,beam,shadow,relief').split(',')
 DUMP = next((x[5:] for x in a if x.startswith('dump=')), None)
 TH, LV, DSF = 0.005, 10, 2
-# Left, reported and not failed (layers.md, "Left as they are"): specks of a Torchlight beam's haze and of the relief on a fallen roof block lying
+# Left, reported and not failed (layers.md, "Left as they are"): specks of a Torchlight beam's haze on a fallen roof block lying
 # (up to 4% of its pixels on 10 of 22, round 46c: the mark and the rubbing cover its box, the specks sit on its stone's glints), and the
 # relief on a broken jamb's pieces lying on the floor beside it (4 of 92), and his lamp shadow on the edges of the sky clock's pedestal (8 of 94,
 # up to 2.7%: the carve is the pedestal's outline and the quarter-size mask is read blurred; widening it fails shadowscan.py, which masks the
 # clock by that outline); in Classic a speck of a beam's footprint by a pushed block's foot (1.3%, floor 21) and on a lift's mouth slab
 # (1%, floor 44). Each is known only up to its cap (KNOWN); 'strict' fails them too. Round 47c's brighter ambient (AMB_LIFT) moved two of these
-# specks over their old caps on the right edge of a lying roof block in Torchlight: the relief on floor 23 (x 6352) 5.6% (cap .05 to .06) and his
-# lamp shadow on floor 3 (x 5104) 0.6% (.01, newly listed); 22 and 37 px.
-KNOWN = {} if 'strict' in a else {('torch', 'roof', 'beam'): 0.05, ('torch', 'roof', 'relief'): 0.06, ('torch', 'roof', 'shadow'): 0.01, ('torch', 'jamb', 'relief'): 0.03, ('torch', 'clock', 'shadow'): 0.03,
+# specks over their old caps on the right edge of a lying roof block in Torchlight: the relief on floor 23 (x 6352) 5.6% and his
+# lamp shadow on floor 3 (x 5104) 0.6% (.01, newly listed); 22 and 37 px. Round 47e: the relief specks on a lying roof block were its sand heap
+# and those on the clock its pedestal's rubble chips, drawn live and never rubbed (glRelRoofRubble, glRelClock's chips): the roof's relief
+# cap is gone (max 0.22% on floors 1-48), the clock's relief 0.15% at most.
+KNOWN = {} if 'strict' in a else {('torch', 'roof', 'beam'): 0.05, ('torch', 'roof', 'shadow'): 0.01, ('torch', 'jamb', 'relief'): 0.03, ('torch', 'clock', 'shadow'): 0.03,
                                     ('classic', 'block', 'beam'): 0.02, ('classic', 'lift', 'beam'): 0.02}  # (each up to its cap: more fails)
 HIDE = {'block': 'block', 'roof': 'stone', 'jamb': 'jamb', 'lift': 'lift', 'clock': 'clock'}
 
