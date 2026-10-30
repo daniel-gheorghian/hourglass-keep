@@ -49,7 +49,7 @@ is a placeholder: only the built `index.html` carries the release number.
    machine's cores. Every job belongs to one of three suites by its group (`SUITES` in suite.py; a group in none stops the run before
    it starts): `play` (the bot and play checks: run2, featbot, p4bot, forktest, hinttest, grablabel, swingtest, liftkick, chimtest, lowceil,
    r38b_tests, sawceil, hilljump, primtest, hdtest, lifttest, respawnplates, slabresume, gratepeek, tellscan), `gen` (generator and layout scans: metrics40,
-   guardscan, forkscan, puzzlescan, vertscan, featurescan, orphanscan, mazescan, wellcorr, lampscan, slabscan, sandshaft, wellscan, hillscan, windscan, courtscan) and
+   guardscan, forkscan, puzzlescan, vertscan, featurescan, orphanscan, mazescan, wellcorr, lampscan, slabscan, sandshaft, wellscan, hillscan, windscan, courtscan, wearscan) and
    `render` (drawing checks: rendersmoke, liftscan, crossscan, cpscan, shadowscan, doorscan, openscan, tilescan, beamjag, heapscan, solidscan, contourscan, viewscan, panscan, stormfair, glauto,
    metaltest, rewindrooms, figscan). The tier chooses the jobs; `--suite play,render` runs only those suites, in that order (default
    all: play, gen, render). The suites run in sequence (owner): each has the whole pool of workers and GPU slots, finishes, writes and
@@ -94,6 +94,7 @@ is a placeholder: only the built `index.html` carries the release number.
 | `chimtest.py [file] [lo hi] [seeds]` | round 48b's locked chimney, every kick shaft (floors 1-48 x 3: 236): climbed by a running Jump, a standing Jump or Up at the foot, then one Up a stance, every stance on its grid to the pixel, the Y landing 12 px past the lip with the standing landing; Up held gives one kick; Jump does nothing; Down at each stance lets go at once with a fall's damage; a rewind in mid-kick restores his own copies; walking in does not lock; no plant, kick or lock off a single wall elsewhere | `chimtest: ok` |
 | `r38b_tests.py` | round 38b's play faults, one check each: the roof block and `P.inv`, the damaging drop's lip, a banner's rewind, the sand lift (no banner since round 49a, `sandfall` learned on getting off) and its top, the recruit's colour, the timed gates' waits | `r38b: ok` |
 | `tellscan.py [file] [lo hi] [per=K]` | round 49b's tells: at up to K spots a floor of each kind (reach, edge, stakes, flask, low) none before 0.5 s still, full by 1.2 s, the pose changed, the weight 0 the frame Grab is held and the pose back 0.35 s later, P.x/P.y/state identical with `TELL.off`; none while he moves | `tellscan: ok` |
+| `wearscan.py [file] [lo hi] [seeds]` | round 49c's wear marks and bones (floors 1-48 x 3): scuffs on every wall run up and nowhere else, drawn inside its face; grooves on every cell of each block's track and nowhere else, drawn inside the floor's top face; one set of bones a kind at the first trap of its kind by the route's order (its own list of the traps), every kind on a floor with the trap; on a route tile every pixel behind his walking line and under 6.5 px | `wearscan: ok` |
 | `hinttest.py lo hi` | round 49a: no banner while the bot plays a floor, the moves it uses learned (`S.learned`), and at every remote plate the glance (one when its gate is out of view, none in view or twice, he stays in view, the view goes toward the gate and back, the timer at its rate); floor 1 the old-save migration | `FAILURES 0` |
 | `sawceil.py lo hi [seeds]` | no saw under a ceiling at his height: each one turned into spikes is tiptoed, and the bot plays its floor (round 38c) | `sawceil: ok` |
 | `layerscan.py lo hi [classic]` (by hand) | nothing in the corridor drawn over the front plane: each kind drawn and left out, the faces' and lips' pixels unchanged (round 39, `dev/docs/layers.md`) | `layerscan: ok` |
@@ -1531,6 +1532,37 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   play) records each beat for the pictures. Checks: swingtest. Pictures and numbers `egyptr49b.py old.html new.html [outdir]` (r49b_tells_3x.png:
   each tell old | new, both modes, 3x; r49b_tells_phone.png; r49b_reach.gif; r49b_grit_3x.png, r49b_grit_phone.png, r49b_grit.gif;
   r49b_swing.png and .txt: the swing's angle with each beat's loudness, armed or not, the pumps and the chime).
+- Wear marks and the bones of earlier thieves (round 49c, owner after the round 49 research: "rely only on subtle graphic hints"; "All five
+  you suggested": the last two built here, to the research mocks' look; `dev/docs/gameplay.md` "Wear and bones"). Look only: layouts
+  (`layoutcmp.py` against v89 same, 144 of 144), play, the bot and every timer unchanged; placement from the layout alone (`D0`, `L.segs`,
+  `L.lifts`, features, hashes of cells), found once a floor (`wearList`, `L._wear`), no generator stream.
+  (1) Sandal scuffs (`wearFace`): on the front face of every wall the route runs up (each `wallrun` seg: the wall the run-up meets, its row
+  and the one over it), at the heights his feet strike it (`WR_STEPS` 6, 27, 48 px and `WR_TOP` 69 over the run's floor, fainter): a dark
+  translucent sole smudge (the theme's `lo` in shade, `selC` .5) with older fainter ones about it, a pale scratch over it, 4.6 px in from the
+  face's edge on the side he runs at (his foot meets the wall's side plane at mid depth, behind that edge; the mock's place). Part of the
+  face (L3), in the room's picture after `wallCell`. Kick shafts take none: their chipped grips and jet stream already mark them (the optional
+  stance wear was left out as clutter). (2) Drag grooves (`wearFloor`): on every cell of a movable block's track (`lo..hi` on its row, not
+  wall: the cells it can stand on), two shallow grooves where its bottom edges scrape (`WG_D` d .2 and .8), a dark line with a lit lower lip,
+  worn unevenly (hashes), a small ridge of grit at each end of the track; on the floor's layer of the room's picture (`rlBegin`/`rlEnd`: cut
+  by the faces in front, marked as the floor's face for the footprint), so the block, drawn live, stands over them where it is: they never
+  cross its face (the mock drew them after the block). (3) Bones of earlier thieves (`bonesDraw`, `bnBone`, `bnSkull`, `bnRibs`): one set at
+  the FIRST lethal trap of each kind on the floor by the route's order (the first seg of `L.segs` whose box holds it: a cell either side, a
+  row over, three under): a walled spike pit met only by a fall (remains among the stakes: a kilt's rag, a thigh bone and a shin, fallen
+  ribs, the skull; not a court's pool, not the sand lift's pit), a banner shaft's foot (at the back of the cell: a torn strip of the
+  runner in the theme's cloth, a thigh bone, ribs, the skull), a slicer (a skull and bones at the back on the side he comes from, clear of
+  the jaws' plane and slots), a sand lift's spike pit (half in the sand on the pit's floor, `wearSand`, live in `drawSandLift` after
+  `sandCut`, below the slab: seen while he rides down, under the slab at rest). Why the first of a kind: the lesson where the kind is first
+  met on a floor, not a signpost at each (Dark Souls' corpses mark where others failed, sparsely); 3.5 sets a floor. Lying, partial,
+  scattered, bleached and dusty (`WB_C` mixed 22% toward the floor's top), edges the fill in shade (`selC` .58), sockets the deepest shade
+  (.42), lit on top (1.12); never upright, no sword, no blood: unlike the skeleton guard in every read. On a route tile (banner foot,
+  slicer) every part lies behind his walking line (d >= `WB_DR` .55: he walks in front of them, never over them) and under `WB_HR` 6.5 px.
+  In the room's picture (pit, banner, slicer: drawn once; the relief reads them as raised, as the stone; the lamp shadow keeps off the
+  floor's top face as before) or with the sand (inside its `SHC` outline and relief rubbing): nothing allocated a frame, rewind-safe.
+  Floors 1-48 x 3 (run2's seeds): 47 walls scuffed, 46 block tracks (184 cells), bones 144 pits, 131 banner feet, 134 slicers, 101 sand
+  lifts (every floor with the kind). `WEAR.off`; layerscan kinds `scuff` (its own wall faces are its own: marks on L3), `groove`, `bones`
+  (the room's picture: the rooms are cleared around their frames); contourscan kind `bones`. `wearscan.py` (gen suite) checks the rules.
+  Pictures `egyptr49c.py old.html new.html [outdir]` (r49c_<case>_3x.png and _phone.png, old | new, Torchlight over Classic: scuff, groove
+  (and the block pushed a cell), pit, banner, slicer, sand; r49c_all_3x.png).
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized three ways (Trap density, above); only P4's race uses the careful pace.
 - Pose angles are measured from straight down; positive means forward.

@@ -225,5 +225,6 @@ round the slab's screen shape (`liftMouthCut`) so the slab stands on it; see [pl
 Round 46c: every rope's, timber's, wheel's and sling's edge by the contour rule (`barRope`, `liftTimber`, `liftWheelWood`, `ropeSeize`,
 `selC`); Torchlight's relief rubbed off the ropes too (`glRelLifts`); `solidscan.py` measures a lift at its foot with its shaft back (L1)
 left out (`LIFT_DBG.noback`). Look only.
+- Round 49c (owner: "rely only on subtle graphic hints"): the first sand lift of a floor with its spike pit (by the route's order) has an earlier thief's bones half in the sand on the pit's floor (`wearSand`, drawn after `sandCut` inside the lift's clip and below the slab, the sand's `SHC` outline and relief box over them): seen while he rides down, gone under the slab at rest. A pure function of the slab's y. Look only. `wearscan.py`.
 
 Details in CLAUDE.md.

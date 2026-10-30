@@ -316,6 +316,23 @@ Round 49b (owner after the round 49 research: "rely only on subtle graphic hints
 - **The swing's beat** (`swbeat`, `SWB`): each turn of the swing creaks on the log, louder and a little higher as the swing grows; while a
   pump is armed (a press waiting for the bottom) the turn is brighter, with a breath of air over it. Under the ready chime.
 
+### Wear and bones (round 49c)
+
+Round 49c (owner after the round 49 research: "rely only on subtle graphic hints"; "All five you suggested": the last two). What has been
+used is worn, and where a thief died before him his bones lie. Look only, placed from the layout alone (no generator stream: layouts,
+play, the bot and the timers unchanged). `wearscan.py` checks the rules.
+
+- **Sandal scuffs** on the face of every wall the route runs up (the wall run), at the heights his feet strike it (6, 27, 48 and 69 px over
+  the floor), near the face's edge on the side he runs at: dark translucent smudges of soles with fainter older ones and a pale scratch.
+  Kick shafts take none (their grips and jet stream already mark them).
+- **Drag grooves** on every cell a movable block can travel: two shallow grooves where its bottom edges scrape, a small ridge of grit at
+  each end of the track. In the floor's own picture, so the block stands over them and they never cross its face.
+- **Bones of earlier thieves** at the first trap of each lethal kind on the floor by the route's order: a walled spike pit (remains among
+  the stakes), a banner shaft's foot (bones and a torn strip of the runner), a slicer (a skull and bones by its jaws), a sand lift's
+  spike pit (half in the sand on the pit's floor, seen while he rides down). Once a kind a floor: the lesson where it is first met, not a
+  signpost at each one (about 3.5 sets a floor). Lying, partial, bleached and dusty, never upright, no sword, no blood, so never a
+  skeleton guard; on a route tile they lie behind his walking line, low, never in his way.
+
 
 `dev/tools/bot.js` plays a floor through the game's own input (`H.setKey('kb', ...)`), one action of `L.path` at a time:
 `runBot(n, seed, opts)` returns `{ok, n, seed, frames, hurt, fights}`. Every trap the generator lays pushes its action onto

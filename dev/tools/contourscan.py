@@ -3,7 +3,7 @@
 # tinting of course"; "apply it everywhere"; dev/docs/rendering.md "Contours"). An edge is never a fixed near-black ink: it is the fill beside
 # it, darker and moved toward the theme's shadow tint (selOut k < 1), or lighter toward the light's tint where light hits it (k > 1).
 # For each floor lo..hi (default 1-48) and seed (default 1), views are chosen to cover every instance of each kind (layerscan.py's list: a
-# feature's type in L.dyn, 'lamp', 'door', 'clock', 'block', 'flask', 'lift', 'jamb', 'heap', 'drift'; the figures 'guard', 'snake',
+# feature's type in L.dyn, 'lamp', 'door', 'clock', 'block', 'flask', 'lift', 'jamb', 'heap', 'drift', 'bones' (round 49c; the room's picture, cleared around its frame); the figures 'guard', 'snake',
 # 'prince', judged as the props since round 46d (reported only in 46c; `nofigures` leaves them out); each view is drawn whole and with one kind left out
 # (LAYER_DBG.hide; lamps' drawn glows out of both, the clock frozen, him out of view; a drift's sand stream and the wind's dust, air, held out
 # as heapscan.py does). The kind's pixels are those that differ (sum of
@@ -45,6 +45,7 @@ LIST = r'''([n,sd,kinds,figs])=>{const H=__HK;window.__HKfreeze=true;const L=H.l
   for(const lf of L.lifts)add('lift',lf.ca,lf.rB,(lf.ca+lf.cb+1)*TW/2,(lf.rT*TH+S(lf.rB))/2);
   for(const h of L.hills||[])add(h.d?'drift':'heap',h.c,h.r,(h.c+h.n/2)*TW);
   for(const k of L.courts||[]){add('jamb',k.c0,k.r,k.c0*TW);add('jamb',k.c1,k.r,(k.c1+1)*TW);}
+  if(H.wearList)for(const q of H.wearList().bones)if(q.k!=='sand')add('bones',q.c,q.r); // (round 49c: the bones of earlier thieves, in the room's picture)
   if(figs){for(const s of H.SN||[])add('snake',Math.floor(s.x/TW),Math.floor(s.y/TH),s.x,s.y);for(const g of H.G||[])add('guard',Math.floor(g.x/TW),Math.floor(g.y/TH),g.x,g.y);
     // (round 46d) him on the start's row where no wall stands in his cell or beside it, so no face cuts him (a cut is not his outline)
     const sr=L.start.r,clr=x=>{const c=Math.floor(x/TW);for(let d=-1;d<=1;d++){const q=c+d;if(q<0||q>=L.cols||L.base[sr*L.cols+q]===2)return false;}return true;}; // (2: WALL)
@@ -64,7 +65,7 @@ VIEW = r'''([n,sd,cx,cy,kinds,px,lo,DARK,NEAR,dump])=>{const H=__HK;window.__HKf
   const E=Math.max(1,Math.round(wp)),I0=2*wp,I1=3.5*wp,R=Math.round(4*wp);
   const lc=[parseInt(lo.slice(1,3),16),parseInt(lo.slice(3,5),16),parseInt(lo.slice(5,7),16)],KS=[];for(let k=0.45;k<1.151;k+=0.05)KS.push(k);
   const M=window.__CSM&&window.__CSM.length===N?window.__CSM:(window.__CSM=new Uint8Array(N)),D=window.__CSD&&window.__CSD.length===N?window.__CSD:(window.__CSD=new Uint16Array(N)),SA=window.__CSA&&window.__CSA.length===(W+1)*(Hh+1)*4?window.__CSA:(window.__CSA=new Float64Array((W+1)*(Hh+1)*4)),res={};
-  for(const k of kinds){H.LAYER_DBG.hide=new Set([k]);const B=grab();
+  for(const k of kinds){H.LAYER_DBG.hide=new Set([k]);const rk=k==='bones';if(rk)H.clearRooms();const B=grab();if(rk){H.LAYER_DBG.hide=null;H.clearRooms();} // (rk: drawn in the room's picture, round 49c)
     let any=0,mx0=1e9,my0=1e9,mx1=-1,my1=-1;for(let i=0,j=0;i<N;i++,j+=4){const a0=A[j],a1=A[j+1],a2=A[j+2],b0=B[j],b1=B[j+1],b2=B[j+2];
       if(Math.abs(a0-b0)+Math.abs(a1-b1)+Math.abs(a2-b2)<=30){M[i]=0;continue;}
       if(a0<=b0+2&&a1<=b1+2&&a2<=b2+2){const r0=(a0+1)/(b0+1),r1=(a1+1)/(b1+1),r2=(a2+1)/(b2+1),mx=Math.max(r0,r1,r2),mn=Math.min(r0,r1,r2);if(mx-mn<0.08&&(r0+r1+r2)/3<0.97){M[i]=0;continue;}}

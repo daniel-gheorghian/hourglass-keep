@@ -3,7 +3,8 @@
 # blocks' front faces, low ceilings' faces, floor slabs' lips, all drawn HX left of their cell); every live thing is drawn after it, so
 # a live thing stays behind a nearer face only where its drawing is cut. For each floor lo..hi (default 1-48) and seed (default 1),
 # in Classic and Torchlight: views are chosen to cover every instance of each kind (a feature's type in L.dyn, and 'lamp', 'door',
-# 'clock', 'block', 'flask', 'cue', 'jet', 'grit' (round 49b), 'well', 'snake', 'guard', plus once per view the air passes 'ambient', 'atmo', 'emissive');
+# 'clock', 'block', 'flask', 'cue', 'jet', 'grit' (round 49b), 'scuff', 'groove', 'bones' (round 49c: drawn in the room's picture, so the rooms
+# are cleared around their frames; a scuff's own wall faces are its own: marks on L3 itself), 'well', 'snake', 'guard', plus once per view the air passes 'ambient', 'atmo', 'emissive');
 # each view is drawn whole and then with one kind left out (LAYER_DBG.hide, which leaves its light, shadow carve and relief rubbing as
 # they are), at K clock phases where a kind moves (default 4: saws, pendulums, bars, jaws, vents, lifts' parts), and the pixels of the
 # front plane (1 canvas px in from each face's edge; not the kind's own tile where it is drawn live, nor a lift's shaft) must not
@@ -39,6 +40,8 @@ LIST = r'''([n,sd,kinds])=>{const H=__HK;window.__HKfreeze=true;const L=H.load(n
   for(const it of L.items){add('flask',it.c,it.r,it.x);if(it.hidden)add('cue',it.c,it.r,it.x);}
   for(const o of L.dyn)if(o.f.t==='shaftfoot')add('jet',o.c,o.r);
   if(H.gritList)for(const g of H.gritList())add('grit',g.c,g.r1,g.c*TW+16,(S(g.r0)+S(g.r1))/2); // (round 49b: the grit over a slab's plate)
+  if(H.wearList){const W=H.wearList();for(const q of W.scuff)add('scuff',q.c,q.r,q.c*TW+16-q.s*20,S(q.r)-40);for(const q of W.groove)add('groove',q.lo,q.r,(q.lo+q.hi+1)/2*TW);
+    for(const q of W.bones)add('bones',q.c,q.r);} // (round 49c: the wear marks and the bones of earlier thieves)
   for(const o of L.dyn)if(o.f.t==='loose'&&!o.f.plank&&o.f.wg&&o.f.wg.os&&o.f.wg.os[0]===o)add('well',o.c,o.r);
   for(const lf of L.lifts)add('lift',lf.ca,lf.rB,(lf.ca+lf.cb+1)*TW/2,(lf.rT*TH+S(lf.rB))/2);
   for(const h of L.hills||[])add(h.d?'drift':'heap',h.c,h.r,(h.c+h.n/2)*TW); // (round 43)
@@ -74,7 +77,7 @@ VIEW = r'''([n,sd,cx,cy,kinds,phases,own,vh])=>{const H=__HK;window.__HKfreeze=t
     const o=res[k]||(res[k]={n:0,box:null,face:null,ph:0});if(nb>o.n){o.n=nb;o.box=[bx0/sx,by0/sx,bx1/sx,by1/sx];o.face=wc;o.ph=ph;}};
   for(const ph of phases){H.setGT(ph);H.LAYER_DBG.hide=null;const A=grab().slice();
     for(const k of kinds){if(k.mv===false&&ph!==phases[0])continue;let A0=A;if(k.nb){H.GLFX.bloom=false;H.LAYER_DBG.hide=null;A0=grab().slice();} // (NOBLOOM: both frames without the bloom)
-      H.LAYER_DBG.hide=new Set([k.k]);const B=grab();if(k.nb)H.GLFX.bloom=true;rec(k.k,ph,A0,B);}
+      H.LAYER_DBG.hide=new Set([k.k]);if(k.rm)H.clearRooms();const B=grab();if(k.nb)H.GLFX.bloom=true;if(k.rm){H.LAYER_DBG.hide=null;H.clearRooms();}rec(k.k,ph,A0,B);} // (rm: a kind in the room's picture)
     H.LAYER_DBG.hide=null;const A2=grab();rec('_noise',ph,A,A2);}
   H.LAYER_DBG.hide=null;H.LAYER_DBG.glow=true;return {res,th:H.themeName(n)};}'''
 
@@ -82,6 +85,8 @@ VIEW = r'''([n,sd,cx,cy,kinds,phases,own,vh])=>{const H=__HK;window.__HKfreeze=t
 OWN = {'loose', 'plate', 'xplate', 'lplate', 'closer', 'grate', 'vent', 'jamb'}
 ABOVE = {'gate'}  # (a gate's timer dial and pair plaque are fixed on its lintel's face: L3 itself)
 SELF = {'chomp', 'gate'}  # (their plate's outline meets their own floor's front edge: its anti-aliased stroke on that lip is theirs)
+ROOMK = {'scuff', 'groove', 'bones'}  # (round 49c: drawn in the room's picture)
+WALLMARK = {'scuff'}  # (round 49c: sandal scuffs on the face of the wall run up, its row and the one over it: marks on L3 itself)
 GRIPS = {'shaftfoot'}  # (a kick shaft's chipped grips are cut into the right wall's face, rows up to five above its foot: marks on L3 itself)
 # (round 43) a heap or drift standing where the scene is bright (a sky beam's floor patch, a lamp-lit floor) takes part of that brightness
 # out of Torchlight's bloom, so less of it glows onto the lip below: light, not a draw-over (with GLFX.bloom off the lips match: 0 of 132
@@ -136,8 +141,9 @@ if __name__ == '__main__':
                         for k in ks:
                             if k in OWN: own[k] = [rr * li['cols'] + q[1] for q in inst if q[0] == k for rr in (q[2], q[2] + 1)]
                             if k in ABOVE or k in SELF: own[k] = [rr * li['cols'] + q[1] for q in inst if q[0] == k for rr in ((q[2] - 1,) if k in ABOVE else ()) + ((q[2],) if k in SELF else ())]
+                            if k in WALLMARK: own[k] = [rr * li['cols'] + q[1] for q in inst if q[0] == k for rr in (q[2] - 1, q[2])]
                             if k in GRIPS: own[k] = [rr * li['cols'] + q[1] + 1 for q in inst if q[0] == k for rr in range(q[2] - 5, q[2] + 1)]
-                        r = pg.evaluate(VIEW, [n, sd, cx, cy, [{'k': k, 'mv': k in MOVING, 'nb': k in NOBLOOM} for k in ks], phases, own, li['vh']])
+                        r = pg.evaluate(VIEW, [n, sd, cx, cy, [{'k': k, 'mv': k in MOVING, 'nb': k in NOBLOOM, 'rm': k in ROOMK} for k in ks], phases, own, li['vh']])
                         for k, o in r['res'].items():
                             s = stats.setdefault((mode, k), {'views': 0, 'bad': 0, 'worst': 0, 'where': []})
                             s['views'] += 1

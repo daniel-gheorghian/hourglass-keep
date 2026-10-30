@@ -4854,7 +4854,8 @@ function drawRoomStatic(g,rx,ry,stage){
     else if(b!==WALL&&isLow(gc,gr)&&rb!==WALL&&!isLow(gc+1,gr))sideFace(g,X+TW-HX,Y,Y+TH-34,th);});
   // 3. front faces of walls, low ceilings and cornices
   each((gc,gr,X,Y)=>{const b=B(L,gc,gr);
-    if(b===WALL){g.save();g.beginPath();g.rect(X-HX,Y,TW,TH);g.clip();wallCell(g,X-HX,Y,gc,gr,th);g.restore();
+    if(b===WALL){g.save();g.beginPath();g.rect(X-HX,Y,TW,TH);g.clip();wallCell(g,X-HX,Y,gc,gr,th);wearFace(g,X-HX,Y,gc,gr,th);g.restore(); // (round 49c: the sandal scuffs on a wall the route runs up)
+     
       if(st!=='dungeon'&&st!=='forge'&&B(L,gc,gr+1)!==WALL&&gr+1<L.rows&&!isLow(gc,gr+1))cornice(g,X-HX,Y,th,gc,gr);}
     else if(isLow(gc,gr))lowCeil(g,X,Y,gc,gr,th);});
   ctOver(g,rx,ry,th); // (round 45) the ceiling's face over a court
@@ -4869,6 +4870,7 @@ function drawRoomStatic(g,rx,ry,stage){
     const lo=B(L,gc-1,gr)!==WALL&&!solidBelow(L,gc-1,gr),ro=B(L,gc+1,gr)!==WALL&&!solidBelow(L,gc+1,gr);
     const ys=Y+TH-4;slab(g,X,ys,th,lo,ro,gc,gr,B(L,gc+1,gr)===WALL,false,true);if(LIFT_DBG.tiles)LIFT_DBG.tiles.add(gr*L.cols+gc); // (liftscan.py, round 37a: the floor tiles the room pictures draw) // (round 31: mark, the floor's own top face for Torchlight's floor looks)
     if(f&&f.t==='spikes'){gl.fillStyle='rgba(7,5,11,.8)';const m=gc%2?-1:1;for(const [bx,d] of SPK){const q=onFloor(X+16+m*(bx-16),d,ys);gl.beginPath();gl.ellipse(q.x,q.y,2.2,0.9,0,0,Math.PI*2);gl.fill();}}
+    wearFloor(gl,X,ys,gc,gr,th); // (round 49c: a block's drag grooves, the bones of an earlier thief, on the floor's layer)
     if(L.rubble.has(gr*L.cols+gc)){const rnd=mulberry32(hash2(gc,gr+77));for(let i=0;i<6;i++){gl.fillStyle=i%2?th.front:th.lo;const q=onFloor(X+4+rnd()*24,0.2+rnd()*0.6,ys),w=2+rnd()*4;gl.fillRect(q.x,q.y-1,w,1.6+rnd()*1.2);}}
   });
   // the damaging drop (a hole two storeys deep with no grip on its lip): ragged, bitten edges on both sides, a darker shaft
@@ -7939,7 +7941,7 @@ const CUT_AT_WALL=new Set(['plate','xplate','lplate','closer','loose','spikes'])
 // brackets, verdigris on the bronze in the damp themes, a chipped platform lip, streaks down the shaft; 3 a rotten bite out of the
 // beam's end bound with rope, heavier rust and soot or moss, a cracked platform. Never broken, never like a hurtdrop.
 function liftVisible(f,x0,x1,y0,y1){return (f.cb+1)*TW+80>x0&&f.ca*TW-80<x1&&(f.rD||f.rB)*TH+TH+10>y0&&f.rT*TH-40<y1;} // (round 41: a sand lift's deep shaft too)
-const LAYER_DBG={hide:null,glow:true};function lyOff(k){return LAYER_DBG.hide!==null&&LAYER_DBG.hide.has(k);} // (round 39: layerscan.py leaves one kind of thing out of a frame, a Set of kinds: 'lamp', 'door', 'clock', 'lift', a feature's type, 'block', 'dart', 'cue', 'jet', 'flask', 'well', 'dust', 'debris', 'snake', 'guard', 'prince', 'trail', 'sand', 'emissive', 'ambient', 'atmo', 'haze', 'grit' (round 49b); glow false: no lamp's drawn glow, which is light, GLOWK)
+const LAYER_DBG={hide:null,glow:true};function lyOff(k){return LAYER_DBG.hide!==null&&LAYER_DBG.hide.has(k);} // (round 39: layerscan.py leaves one kind of thing out of a frame, a Set of kinds: 'lamp', 'door', 'clock', 'lift', a feature's type, 'block', 'dart', 'cue', 'jet', 'flask', 'well', 'dust', 'debris', 'snake', 'guard', 'prince', 'trail', 'sand', 'emissive', 'ambient', 'atmo', 'haze', 'grit' (round 49b); 'scuff', 'groove', 'bones' (round 49c: in the room's picture, so clear the rooms around a change); glow false: no lamp's drawn glow, which is light, GLOWK)
 const LIFT_DBG={off:false,rider:false,gatesR:false,tiles:null,noback:false}; // (liftscan.py: off leaves the lifts out of a frame, rider the prince, and gatesR draws only the gratings on the shafts' right edges, to compare with frames that have them; tiles, a Set, collects the cells whose floor tile the room pictures draw)
 function drawLift(ctx,f,half){if(LIFT_DBG.off||lyOff('lift')||(LIFT_DBG.gatesR&&f.t==='chain'))return;if(f.sand)drawSandLift(ctx,f,half);else if(f.t==='chain')drawLiftChain(ctx,f,half);else drawLiftCounterweight(ctx,f,half);}
 function liftWear(f){if(f.wl===undefined||f.wn!==L.n){const x=(f.ca+f.cb+1)*TW/2,ym=(f.rT*TH+SURF(f.rB))/2;f.wn=L.n;f.wl=inBreach(x,ym,true)?3:wearLevel(x,ym);}return f.wl;}
@@ -8179,6 +8181,7 @@ function drawSandLift(ctx,f,half){
   ctx.restore();
   ctx.restore();for(const s of f.ms)if(s<0){sandMouth(ctx,f,s,0);liftMouthL(ctx,f,1,0);}ctx.save();liftOccl(ctx,f); // (round 26e: a left mouth behind the sand and slab; round 39e: its near half, but for the strip the sand and slab stand in front of, after the figures)
   if(ys<sb-0.5)sandCut(ctx,X-HX,ys+HY+5,sb+HY,f.yT+HY+5,h,f.s===1&&f.tm>=SAND_LW,f.sc*131+f.rT*7); // (round 41b: down into the spike pit)
+  if(ys<sb-0.5)wearSand(ctx,f,X,ys,sb); // (round 49c: an earlier thief's bones half in the sand on the pit's floor)
   if(f.s===1&&f.tm<SAND_LW+0.3){const k=Math.max(0,1-Math.abs(f.tm-SAND_LW)/0.3);if(k>0.02)dustCloud(ctx,X+16-HX,ys+HY+3,0.12+0.2*(1-k),0.6,0.55,0);} // a puff as it first gives
   if(f.s===1&&f.tm>=SAND_LW&&ys>f.yT+2)for(const ex of [X-HX+1.6,X+TW-HX-1.6])sandFlow(ctx,ex,f.yT+HY+5,ys+HY+1,0.16,ex*0.07); // grains left on the shaft's sides running down the gap after it
   // (round 19) the cells on the shaft's right are nearer than the slab's back right corner once it has left a landing: a wall's
@@ -8996,6 +8999,116 @@ function drawGrit(ctx,x0,x1,y0,y1){if(GRIT.off||lyOff('grit'))return;const t=gam
     ctx.restore();ctx.save();ctx.fillStyle=C.heap; // a few grains lying on the plate's top where they land (its depth: d .4 to .6)
     for(let i=0;i<6;i++){const d=0.4+0.2*gritH(sd,80+i),qx=xc+(gritH(sd,70+i)-0.5)*7+(d-0.5)*DX,qy=yb+(0.5-d)*DY;ctx.globalAlpha=0.35+0.2*gritH(sd,90+i);ctx.fillRect(qx-0.5,qy-0.6,1+0.5*gritH(sd,95+i),0.8);}
     ctx.restore();}}
+// ---- Wear marks and the bones of earlier thieves (round 49c, owner after the round 49 research: "rely only on subtle graphic hints";
+// "All five you suggested": the last two built here). What has been used is worn, and where a thief died before him his bones lie.
+// (1) Sandal scuffs (WR_STEPS): up the front face of every wall the route runs up (a 'wallrun' seg: the wall the run-up meets, its row and
+// the one above), at the heights his feet strike it (WR_STEPS 6, 27, 48 px and WR_TOP 69 over the run's floor), each a dark translucent
+// smudge of a sole, older fainter ones about it, a pale scratch over it, near the face's edge on the side he runs at (the mock's place:
+// his foot meets the wall's side plane at mid depth, which the face's edge stands in front of); part of the face (L3), in the room's picture.
+// (2) Drag grooves: on the floor's top face of every cell a movable block can travel (its lo..hi, the cells it can stand on), two shallow
+// grooves where its bottom edges scrape (d WG_D .2 and .8), a dark line with a lit lower lip, worn unevenly (hashes), a little ridge of grit
+// pushed up at each end of the track; in the room's floor layer (rlBegin/rlEnd: cut by the faces in front, marked as the floor's face), so the
+// block, drawn live, stands over them where it is: they never cross its face. (3) Bones of earlier thieves at the FIRST lethal trap of each
+// kind on the route (the segs' order, L.segs, the route as built): a walled spike pit (remains among the stakes), a banner shaft's foot (bones
+// and a torn strip of the runner, at the back of the cell by the wall), a slicer (a skull and bones by its jaws at the back, on the side he
+// comes from), a sand lift's spike pit (half buried in the sand at the pit's floor, seen as he rides down; under the slab at rest). Lying,
+// partial, scattered, bleached and dusty (WB_C mixed toward the floor's top), outlines the fill in shade (selC, the contour rule); never
+// upright, no sword, no blood. On a route tile (banner foot, slicer) they lie behind his walking line (mid depth), every part at d >= WB_DR, under WB_HR px high: he walks in front of them, never over them. One set a kind
+// a floor: a lesson for the first of a kind, not a signpost at each. Placement from the layout alone (D0, L.segs, L.lifts, features):
+// no generator stream (layouts unchanged), found once a floor (L._wear). Look only. All but the sand lift's are in the room's picture (drawn
+// once: nothing a frame; the relief reads them as raised, the lamp shadow keeps off the floor's top face as before); the sand lift's are drawn
+// live with the sand (inside its outline in SHC and its relief rubbing), a pure function of the slab's y. LAYER_DBG kinds 'scuff', 'groove',
+// 'bones' (the room's picture: layerscan clears the rooms); WEAR.off draws none of them. wearscan.py checks the placement rules.
+const WEAR={off:false},WG_D=[0.2,0.8],WB_C='#d6ccac',WB_DR=0.55,WB_HR=6.5;
+const wearH=(a,b)=>hash2(a,b)/4294967296;
+// the route's order: the first seg whose box (one cell either side, a row over, three under) holds the cell
+function wearSeg(c,r){const S=L.segs||[];for(let i=0;i<S.length;i++){const s=S[i],a=Math.min(s.c0,s.c1),b=Math.max(s.c0,s.c1),r0=Math.min(s.r0,s.r1),r1=Math.max(s.r0,s.r1);
+  if(c>=a-1&&c<=b+1&&r>=r0-1&&r<=r1+3)return i;}return 1e9;}
+function wearDir(i){const s=(L.segs||[])[i];return s?(s.dir||Math.sign(s.c1-s.c0)||1):1;}
+function wearList(){if(L._wear&&L._wear.L===L)return L._wear;const C=L.cols,W={L,scuff:[],groove:[],bones:[],face:new Map(),floor:new Map(),sand:new Map(),cand:{pit:[],banner:[],sand:[],slicer:[]}},
+    add=(M,c,r,v)=>{const k=r*C+c;let a=M.get(k);if(!a)M.set(k,a=[]);a.push(v);},th=L.theme,fl=th.top||'#b0a080',fill=mixHex(WB_C,fl[0]==='#'?fl:'#b0a080',0.22);
+  W.col={f:fill,e:selC(fill,0.58),k:selC(fill,0.42),h:selC(fill,1.12),d:selC(fill,0.78),cl:th.cloth||th.guard||'#7a3a2a',c2:th.cloth2||th.trim||'#c8a060',lo:th.lo||'#2a2018'};
+  W.col.ce=selC(W.col.cl,0.6);
+  // (1) the walls run up
+  for(const s of L.segs||[]){if(!/wallrun$/.test(s.k))continue;const d=s.dir||Math.sign(s.c1-s.c0)||1,r=s.r0;let wc=-1;
+    for(let c=s.c0,i=0;i<10;i++,c+=d)if(D0(c,r)===WALL&&D0(c,r-1)===WALL){wc=c;break;}
+    if(wc<0||D0(wc-d,r)===WALL)continue;const q={c:wc,r,s:d};W.scuff.push(q);add(W.face,wc,r,q);add(W.face,wc,r-1,q);}
+  // (2) the blocks' tracks
+  for(const b of L.ext.blocks){const lo=b.lo===undefined?b.c:b.lo,hi=b.hi===undefined?b.c:b.hi;const q={r:b.r,lo,hi,cells:[]};
+    for(let c=lo;c<=hi;c++){if(D0(c,b.r)===WALL)continue;q.cells.push(c);add(W.floor,c,b.r,{k:'groove',q,c});}W.groove.push(q);}
+  // (3) the first lethal trap of each kind
+  const pool=L._ctP;
+  for(let r=1;r<L.rows;r++)for(let c=1;c<C-1;c++){const f=F(L,c,r);if(!f||f.t!=='spikes'||f.sl||D0(c,r-1)!==EMPTY||(pool&&pool.has(r*C+c)))continue;
+    const sp=x=>{const g=F(L,x,r);return g&&g.t==='spikes'&&!g.sl&&D0(x,r-1)===EMPTY;};if(sp(c-1))continue;let e=c;while(sp(e+1))e++;
+    if(D0(c-1,r)!==WALL||D0(e+1,r)!==WALL)continue; // (a walled pit: its stakes are met only by a fall)
+    const k=e>c?c+Math.floor(wearH(c*7+L.seed,r)*(e-c+1)):c;W.cand.pit.push({k:'pit',c:k,r,o:wearSeg(c,r),c0:c,c1:e});}
+  for(let r=1;r<L.rows;r++)for(let c=1;c<C-1;c++){const f=F(L,c,r),u=F(L,c,r-1);if(!f||f.t!=='banner'||(u&&u.t==='banner'))continue;let rb=r;while(F(L,c,rb+1)&&F(L,c,rb+1).t==='banner')rb++;
+    const rf=rb+1;if(rf>=L.rows||D0(c,rf)===WALL||!solidBelowD(c,rf))continue;const o=wearSeg(c,r),d=wearDir(o),s=D0(c-d,rf)===WALL?-d:D0(c+d,rf)===WALL?d:-d;
+    W.cand.banner.push({k:'banner',c,r:rf,o,s});}
+  for(const o of L.dyn){if(o.f.t!=='chomp')continue;const i=wearSeg(o.c,o.r),d=wearDir(i);W.cand.slicer.push({k:'slicer',c:o.c,r:o.r,o:i+(d>0?o.c:-o.c)*1e-6,s:-d});}
+  for(const lf of L.lifts||[])if(lf.sand&&lf.rD!==undefined)W.cand.sand.push({k:'sand',c:lf.sc,r:lf.rD,o:wearSeg(lf.sc,lf.rT),lf});
+  for(const k in W.cand){const a=W.cand[k];if(!a.length)continue;let b=a[0];for(const q of a)if(q.o<b.o)b=q;W.bones.push(b);if(k==='sand')W.sand.set(b.lf,b);else add(W.floor,b.c,b.r,b);}
+  return L._wear=W;}
+// a point on the floor's top face of a cell: u across the cell (world px from its left, mirrored by m), d its depth (0 the front edge)
+const BNP={x:0,y:0};function bnP(X,ys,m,u,d){BNP.x=X+(m>0?u:TW-u)+(d-0.5)*DX;BNP.y=ys+(0.5-d)*DY;return BNP;}
+function bnBone(g,X,ys,m,u0,d0,u1,d1,w,C,dy0,dy1){let p=bnP(X,ys,m,u0,d0);const x0=p.x,y0=p.y-(dy0||0);p=bnP(X,ys,m,u1,d1);const x1=p.x,y1=p.y-(dy1||0);
+  g.lineCap='round';g.strokeStyle=C.e;g.lineWidth=w+0.9;g.beginPath();g.moveTo(x0,y0);g.lineTo(x1,y1);g.stroke();
+  g.fillStyle=C.e;g.beginPath();g.arc(x0,y0,w*0.72+0.45,0,6.284);g.arc(x1,y1,w*0.72+0.45,0,6.284);g.fill();
+  g.strokeStyle=C.f;g.lineWidth=w;g.beginPath();g.moveTo(x0,y0);g.lineTo(x1,y1);g.stroke();
+  g.fillStyle=C.f;g.beginPath();g.arc(x0,y0,w*0.72,0,6.284);g.fill();g.beginPath();g.arc(x1,y1,w*0.72,0,6.284);g.fill();
+  g.strokeStyle=C.h;g.lineWidth=0.45;g.globalAlpha*=0.7;g.beginPath();g.moveTo(x0,y0-w*0.35);g.lineTo(x1,y1-w*0.35);g.stroke();g.globalAlpha/=0.7;}
+// a skull lying on its side, face toward us a little: the cranium, the sockets and nose (holes: the fill's deepest shade), the teeth's line, lit on top
+function bnSkull(g,X,ys,m,u,d,C,rot){const p=bnP(X,ys,m,u,d),x=p.x,y=p.y-2.1,s=m;
+  g.fillStyle=C.e;g.beginPath();g.ellipse(x,y,3.5,2.75,rot*s,0,6.284);g.fill();g.fillStyle=C.f;g.beginPath();g.ellipse(x,y,2.95,2.2,rot*s,0,6.284);g.fill();
+  g.fillStyle=C.d;g.beginPath();g.ellipse(x+s*1.1,y+0.9,1.9,1.1,0,0,6.284);g.fill(); // the face's shade under the brow
+  g.fillStyle=C.k;g.beginPath();g.arc(x+s*0.3,y+0.25,0.6,0,6.284);g.arc(x+s*1.85,y+0.4,0.55,0,6.284);g.fill();g.fillRect(x+s*1.05-0.3,y+1.05,0.6,0.7);
+  g.fillStyle=C.e;g.fillRect(x+s*0.4-(s<0?1.9:0),y+2.05,1.9,0.55); // the teeth's line
+  g.fillStyle=C.h;g.globalAlpha*=0.8;g.beginPath();g.ellipse(x-s*0.8,y-1.3,1.5,0.55,-0.2*s,0,6.284);g.fill();g.globalAlpha/=0.8;}
+function bnRibs(g,X,ys,m,u,d,C,n){const p=bnP(X,ys,m,u,d),x=p.x,y=p.y-0.4;g.lineCap='round';
+  for(let pass=0;pass<2;pass++){g.strokeStyle=pass?C.f:C.e;g.lineWidth=pass?0.65:1.35;
+    for(let k=0;k<n;k++){g.beginPath();g.arc(x+m*k*1.55,y,2.9-k*0.28,m>0?Math.PI*1.0:Math.PI*1.05,m>0?Math.PI*1.95:Math.PI*2.0);g.stroke();}}}
+// the sets (u, d on the cell's floor; m mirrors them with the stakes, odd columns)
+function bonesDraw(g,X,ys,q,C){g.save();const sd=hash2(q.c*31+7,q.r*17+3),m=q.k==='slicer'&&q.s>0?-1:1,j=(sd&255)/255; // (laid out where the floor shows: a wall's face on the right hides u > 32 - 16 d)
+  if(q.k==='pit'){ // among the stakes: the rag of a kilt, a thigh bone and a shin, the ribs fallen in, the skull rolled to one side
+    g.fillStyle=mixHex(C.f,C.lo[0]==='#'?C.lo:'#2a2018',0.45);g.globalAlpha=0.55;let p=bnP(X,ys,m,3,0.42);g.beginPath();g.moveTo(p.x,p.y);p=bnP(X,ys,m,9,0.6);g.lineTo(p.x,p.y-0.6);
+      p=bnP(X,ys,m,15,0.5);g.lineTo(p.x,p.y-0.3);p=bnP(X,ys,m,12,0.3);g.lineTo(p.x,p.y);g.closePath();g.fill();g.globalAlpha=1;
+    bnBone(g,X,ys,m,2.5+j,0.36,12,0.16,1.35,C);bnBone(g,X,ys,m,9.5,0.1,17,0.26,1.1,C);bnRibs(g,X,ys,m,12.5,0.6,C,4);bnBone(g,X,ys,m,11.5,0.42,17.5,0.78,1.0,C,0,0.6);
+    bnSkull(g,X,ys,m,19.5,0.22,C,0.3);}
+  else if(q.k==='banner'){ // at the back by the wall: the runner's torn strip crumpled, a thigh bone, ribs, the skull against the wall
+    let p=bnP(X,ys,m,4,0.72);g.lineCap='round';g.lineJoin='round';g.strokeStyle=C.ce;g.lineWidth=3.3;g.beginPath();g.moveTo(p.x,p.y-0.4); // (flat on the floor in front of the bones)
+      p=bnP(X,ys,m,8.5,0.66);g.lineTo(p.x,p.y-0.5);p=bnP(X,ys,m,12,0.76);g.lineTo(p.x,p.y-0.5);p=bnP(X,ys,m,17,0.68);g.lineTo(p.x,p.y-0.4);g.lineTo(p.x+1.6,p.y);g.stroke();
+    g.strokeStyle=C.cl;g.lineWidth=2.4;g.stroke();g.strokeStyle=C.c2;g.lineWidth=0.55;g.globalAlpha=0.85;g.stroke();g.globalAlpha=1;
+    bnBone(g,X,ys,m,3,0.78,12,0.72,1.25,C);bnRibs(g,X,ys,m,10.5,0.9,C,3);bnSkull(g,X,ys,m,3.5,0.9,C,-0.25);}
+  else if(q.k==='slicer'){ // by the jaws' root at the back, on his side of the plane: a skull, a thigh bone along the wall, a few small bones
+    bnBone(g,X,ys,m,1.5,0.86,10.5,0.9,1.25,C);bnBone(g,X,ys,m,4,0.74,8.5,0.8,0.8,C);bnSkull(g,X,ys,m,7.5+2*j,0.8,C,0.15);
+    g.fillStyle=C.f;for(let i=0;i<3;i++){const p=bnP(X,ys,m,2+i*2.6,0.72+0.05*i);g.fillRect(p.x,p.y-0.6,1.2,0.7);}}
+  else{ // the sand lift's pit: half in the sand on its floor (drawn in the sand's frame: X the shaft's cell, ys the pit's floor)
+    bnBone(g,X,ys,m,2.5,0.32,10,0.5,1.35,C);bnRibs(g,X,ys,m,7.5,0.62,C,3);bnSkull(g,X,ys,m,17.5,0.4,C,0.35);}
+  g.restore();}
+// the scuffs on a wall's face (in the room's picture, inside its face's clip): fx, Y the face's left and top (room px), cell gc, gr
+function wearFace(g,fx,Y,gc,gr,th){if(WEAR.off||lyOff('scuff'))return;const a=wearList().face.get(gr*L.cols+gc);if(!a)return;
+  for(const q of a){const ex=q.s>0?fx:fx+TW,s=q.s,yf=Y+SURF(q.r)-gr*TH,sd=q.c*53+q.r*11,K=selC(th.lo||'#2a2018',0.5);g.save();g.fillStyle=K;
+    for(let i=0;i<4;i++){const h=i<3?WR_STEPS[i][1]:WR_TOP,top=i===3;
+      for(let k=0;k<(top?2:4);k++){const hk=wearH(sd+i*13,k),hy=yf-h-(k?(hk-0.5)*6:0)-(k===0?0:1),xx=ex+s*(4.6+(k?(wearH(sd+i,k+7)-0.5)*3.4:0)),w=5.2+1.8*wearH(sd,i*5+k);
+        if(hy<Y-4||hy>Y+TH+4)continue;g.globalAlpha=(k?0.2+0.12*hk:0.58-0.05*i)*(top?0.7:1);g.beginPath();g.ellipse(xx,hy,w*0.5,k?1.3:1.75,s*(0.12+0.18*hk),0,6.284);g.fill();
+        if(k===0){g.globalAlpha=0.5*g.globalAlpha;g.fillRect(xx+s*w*0.12-1.2,hy-0.4,2.4,1.1);}} // (the sole's ball pressed darker)
+      if(!top){const hy=yf-h-2.3;g.globalAlpha=0.2;g.fillStyle='#fff3dc';g.fillRect(ex+s*1.4-(s<0?4.2:0),hy,4.2,0.6);g.fillStyle=K;}} // a pale scratch where the sole's edge bit
+    g.restore();}}
+// the grooves and bones on a floor cell (on the floor's layer, gl): X the cell's left (room px), ys its floor line
+function wearFloor(g,X,ys,gc,gr,th){if(WEAR.off)return;const a=wearList().floor.get(gr*L.cols+gc);if(!a)return;const C=wearList().col;
+  for(const q of a){if(q.k==='groove'){if(lyOff('groove'))continue;const t=q.q,end0=gc===t.cells[0],end1=gc===t.cells[t.cells.length-1];g.save();
+      for(let i=0;i<2;i++){const d=WG_D[i];for(let s=0;s<4;s++){const u0=s*8,u1=u0+8,h=wearH(gc*29+i*7+s,gr*13),y0=(h-0.5)*0.5,a0=0.42+0.2*h;
+          const p0x=X+u0+(d-0.5)*DX,py=ys+(0.5-d)*DY,p1x=X+u1+(d-0.5)*DX;
+          g.globalAlpha=a0;g.strokeStyle=C.lo;g.lineWidth=1.0;g.beginPath();g.moveTo(p0x,py+y0);g.lineTo(p1x,py+y0+0.15);g.stroke();
+          g.globalAlpha=0.18+0.1*h;g.strokeStyle='#fff0d4';g.lineWidth=0.55;g.beginPath();g.moveTo(p0x,py+y0+0.85);g.lineTo(p1x,py+y0+1.0);g.stroke();}
+        for(const e of [end0?-1:0,end1?1:0]){if(!e)continue;const ux=e<0?X+1.2:X+TW-1.2,px=ux+(d-0.5)*DX,py=ys+(0.5-d)*DY;g.globalAlpha=0.5;g.fillStyle=C.d;g.fillRect(px-1.1,py-0.9,2.2,1.3);g.globalAlpha=0.35;g.fillStyle=C.h;g.fillRect(px-0.8,py-1.1,1.4,0.5);}}
+      g.restore();}
+    else if(!lyOff('bones'))bonesDraw(g,X,ys,q,C);}}
+// the sand lift's bones, half in the sand at its pit's floor while the slab is above it (drawn after the sand, in the lift's clip)
+function wearSand(ctx,f,X,ys,sb){if(WEAR.off||lyOff('bones'))return;const q=wearList().sand.get(f);if(!q)return;const yt=ys+HY+5;if(yt>sb-3)return;
+  const C=wearList().col,sc=sandC();ctx.save();ctx.beginPath();ctx.rect(X-HX,yt,TW,sb+HY-yt+1);ctx.clip();bonesDraw(ctx,X,sb,q,C);
+  ctx.fillStyle=sc.body;ctx.globalAlpha=0.55;ctx.beginPath();ctx.moveTo(X-HX,sb+HY);ctx.lineTo(X-HX,sb+0.6);ctx.quadraticCurveTo(X+4,sb-1.6,X+11,sb+0.4);ctx.quadraticCurveTo(X+18,sb-1.2,X+TW-HX,sb-0.2);ctx.lineTo(X+TW-HX,sb+HY);ctx.closePath();ctx.fill();
+  ctx.restore();}
 function drawDynamic(ctx,x0,x1,y0,y1){
   hudStones.length=0;
   drawWindHangs(ctx,x0,x1,y0,y1); // (round 44: the hangings over a wind billow: L1, first)
@@ -14691,7 +14804,7 @@ addEventListener('orientationchange',()=>setTimeout(layout,120));
 if(window.claude&&window.claude.hot&&window.claude.hot.snapshot){try{window.claude.hot.snapshot(()=>({save:S}));}catch(e){}}
 
 // test hooks
-window.__HK={TELL,tellKind:()=>tellKind(),GRIT,gritList:()=>gritList(),SWB,GLN,gateCue,glanceAt,glanceEnd,GL_T,Snd,chimFoot:(c,r)=>chimFoot(c,r),chimH:n=>chimH(n),CHM:()=>({G0:CHM_G0,GS:CHM_GS,YD:CHM_YD,YP:CHM_YP,YC:CHM_YC,YX:CHM_YX,IN_T:CHM_IN_T}),die:c=>die(c),openingsIn,windLull,windReach,windJumpE,windPeak,windZoneAt,windEase,ctJambsOf,jambKind,startRewind,get windDeaths(){return S.windDeaths;},placeCourts,ctIn,ctPoolHit,CTB,ctBake,ctKindOf,get courts(){return L.courts;},windAt,windE,windCap,windGust,WIND_MS,WIND_GP,WIND_DE,WIND_JM,WIND_G0,WIND_PUSH,WIND_P,WIND_CDA,WIND_GT,plainRuns,keyLight,hillOn,hillTop,hillH,hillCanvas,hillBox,hillSil,hillSegs,hillEnd,hillMeshTop,HILL_DBG,HILL_WADE,HILL_CLIMB,get frameLights(){return frameLights;},jetPlaces,jsSwingPath,jetStream,tapCloth,THEMES,progOf,themeName,learn,LEARN_IDS,HINTS:Object.fromEntries(LEARN_IDS.map(id=>[id,1])),HINT_MOVE:new Set(LEARN_IDS),get banner(){return banner;},set banner(v){banner=v;},genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
+window.__HK={WEAR,wearList:()=>wearList(),wearFloor:(g,X,ys,c,r)=>wearFloor(g,X,ys,c,r,L.theme),wearFace:(g,fx,Y,c,r)=>wearFace(g,fx,Y,c,r,L.theme),WG_D,WB_DR,WB_HR,TELL,tellKind:()=>tellKind(),GRIT,gritList:()=>gritList(),SWB,GLN,gateCue,glanceAt,glanceEnd,GL_T,Snd,chimFoot:(c,r)=>chimFoot(c,r),chimH:n=>chimH(n),CHM:()=>({G0:CHM_G0,GS:CHM_GS,YD:CHM_YD,YP:CHM_YP,YC:CHM_YC,YX:CHM_YX,IN_T:CHM_IN_T}),die:c=>die(c),openingsIn,windLull,windReach,windJumpE,windPeak,windZoneAt,windEase,ctJambsOf,jambKind,startRewind,get windDeaths(){return S.windDeaths;},placeCourts,ctIn,ctPoolHit,CTB,ctBake,ctKindOf,get courts(){return L.courts;},windAt,windE,windCap,windGust,WIND_MS,WIND_GP,WIND_DE,WIND_JM,WIND_G0,WIND_PUSH,WIND_P,WIND_CDA,WIND_GT,plainRuns,keyLight,hillOn,hillTop,hillH,hillCanvas,hillBox,hillSil,hillSegs,hillEnd,hillMeshTop,HILL_DBG,HILL_WADE,HILL_CLIMB,get frameLights(){return frameLights;},jetPlaces,jsSwingPath,jetStream,tapCloth,THEMES,progOf,themeName,learn,LEARN_IDS,HINTS:Object.fromEntries(LEARN_IDS.map(id=>[id,1])),HINT_MOVE:new Set(LEARN_IDS),get banner(){return banner;},set banner(v){banner=v;},genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
   load(n,seed,test){clearInput();quiet=!!test;GLN.off=true;glanceEnd();L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;mode="play";intro=0;FX.length=0;STORMG.length=0;clearRooms();cam.snap=true;updateCamera(0);return L;},
   loadMap(spec){return spec;},
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},

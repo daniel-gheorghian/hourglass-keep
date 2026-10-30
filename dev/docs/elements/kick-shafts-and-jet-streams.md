@@ -172,6 +172,7 @@ own sprites (`spr`, `crossSprites`) for sand streaming off the dunes' brinks and
   ways in lock him into the first stance where both walls are; one Up a kick on a fixed grid (50 + 46 n px); Down lets go at once; the Y at
   the top; Jump and Grab dimmed; no single-wall kicks; the `shaft` and `walljump` hints dropped; the jet stream on the grid. Layouts and
   timers unchanged (`layoutcmp.py` v89 same); `chimtest.py` new.
+- Round 49c: the wall run's walls (not the shafts) take sandal scuffs (stonework). The shafts' optional stance wear (at `chimH` heights) was left out: their chipped grips and the jet stream's zigzag already mark the stances, and more marks there read as clutter.
 
 Details in CLAUDE.md.
 - Round 39 (v84), after the merge: the shaft's stream is drawn inside `nearCut` of the walls round the shaft and above its foot's floor line (its haze wisps are wider than the grains' clamp); the jgrab hint is cut by the ledge's slab and the face under it, which stand nearer than the stream curling up onto it (`jetPlaces` keeps the ledge's cell on each `jg` entry).

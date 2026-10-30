@@ -132,4 +132,5 @@ plate. While k < 0.6 a faint dust shaft joins the jaws.
   metallic"): bronze, opaque, `JAWG`'s reflection band, the bevel, the spine, verdigris, the key light, `JAW_OV`, the `glMask` carve,
   `glRelJaws`, `JAWP` recorded in both modes.
 - Round 38a: the shafts' shader tests up to 8 blockers (`GLC_BK`), those in a beam's haze first.
+- Round 49c (owner: "rely only on subtle graphic hints"): by the first slicer of a floor (by the route's order) a skull and bones lie at the back of its cell on the side he comes from, clear of the jaws' plane and slots (`bonesDraw` 'slicer'), behind his walking line and low; in the room's picture, so the jaws, drawn live, close in front of them. Look only. `wearscan.py`.
 - Details in CLAUDE.md.

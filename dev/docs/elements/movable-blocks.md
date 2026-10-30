@@ -118,4 +118,5 @@ stone texture, no wear and no per-block variation; the same shapes in every styl
 - round 46c: its outline, face rim, courses and chipped corner by the contour rule (`selC` of its side, face and wall stone); the sky beams'
   haze is cut from its top and side in Classic (`rySolids`; its front face is its cell's wall face) and left off it in Torchlight
   (`solidMark`); `solidscan.py`. Look only.
+- Round 49c (owner: "rely only on subtle graphic hints"): drag grooves on every cell of a block's track (`lo..hi`, the cells it can stand on): two shallow grooves where its bottom edges scrape (`WG_D` d .2 and .8), a dark line with a lit lower lip, worn unevenly, a ridge of grit at each end (`wearFloor`). On the floor's layer of the room's picture (cut by the faces, marked as the floor's face), so the block, drawn live, stands over them where it is and they never cross its face (the round 49 mock drew them after the block). Look only. `wearscan.py`, layerscan kind `groove`.
 Details in CLAUDE.md.

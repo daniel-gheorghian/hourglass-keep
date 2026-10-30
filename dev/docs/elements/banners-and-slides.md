@@ -137,5 +137,6 @@ before, 0 after). He is drawn over the cloth. No wear level of its own.
 - round 38b: a rewind undoes the cut (`snapAll` copies `bn`, `applySnap` restores it in place).
 - round 39 (v84): the cloth cut at the next column's front plane (`nearCut`); its relief rubbed (`glRelBanners`). The owner's ruling: it
   covers the back wall, so it may be over windows and wall art. Look only.
+- Round 49c (owner: "rely only on subtle graphic hints"): the foot of the first banner shaft of a floor (by the route's order) holds an earlier thief's bones at the back of the cell, a torn strip of the runner in the theme's cloth lying in front of them (`bonesDraw` 'banner'): every part behind his walking line (d >= `WB_DR` .55) and under 6.5 px, so he walks in front of them. In the room's picture. Look only. `wearscan.py`.
 
 Details in CLAUDE.md.

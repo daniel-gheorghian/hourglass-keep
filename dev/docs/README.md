@@ -103,6 +103,17 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
 
+## What round 49c found
+
+Round 49c (owner after the round 49 research: "rely only on subtle graphic hints"; "All five you suggested": the wear marks and the bones of earlier thieves) ([gameplay](gameplay.md#wear-and-bones-round-49c)).
+
+| Finding (round 49 research) | Where | Round 49c | Seen in |
+|---|---|---|---|
+| Nothing on a wall told that it can be run up: the wall run's walls looked like every other | `wallrun` segs | sandal scuffs on the wall's face at his steps' heights (`wearFace`, layerscan kind `scuff`) | stonework, kick shafts |
+| A movable block looked like any wall block | `L.ext.blocks` | drag grooves along its track on the floor, under it where it stands (`wearFloor`, kind `groove`) | movable blocks |
+| The research mock drew the grooves after the block, over its face | the mock's draw hook | in the floor's layer of the room's picture, so the live block covers them | movable blocks |
+| With the death messages gone, the lethal traps showed nothing of what they do | spike pits, banner feet, slicers, sand lifts | the bones of an earlier thief at the first of each kind on a floor (`bonesDraw`, `wearSand`, kind `bones`, `wearscan.py`) | spikes, banners, slicer, lifts |
+
 ## What round 49b found
 
 Round 49b (owner after the round 49 research: "rely only on subtle graphic hints"; his choices: the animation tells, grit over a slab's plate, the swing's beat as sound) ([gameplay](gameplay.md#tells-his-body-the-grit-the-swings-beat-round-49b)).

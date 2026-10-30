@@ -137,4 +137,5 @@ drawDynamic    ... L.dyn: the three far stakes (255, drawn live) ... guards, pri
 - Round 47d (owner: "I am constantly missing spikes"; option A of round 47c's alternatives): pale polished bronze (`SPK_C`), every kind (live,
   fixed, the sand lift's pit, saws turned into spikes), both modes, all hours; the dark edge `selC` of the shaded side at .55 (the contour rule).
   Geometry, shadow carve, relief, punctures and the near stake's pass unchanged.
+- Round 49c (owner: "rely only on subtle graphic hints"): the first walled spike pit of a floor (by the route's order; met only by a fall; not a court's pool or the sand lift's pit) holds the remains of an earlier thief among its stakes (a kilt's rag, a thigh bone and a shin, fallen ribs, the skull; `bonesDraw` 'pit'), on the floor's layer of the room's picture, so the stakes, drawn live, stand through them. Lying, bleached, no blood; the sand lift's pit has its own set, half in the sand (lifts). Look only. `wearscan.py`, layerscan and contourscan kind `bones`.
 - Details in CLAUDE.md.

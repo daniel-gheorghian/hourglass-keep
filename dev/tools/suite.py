@@ -108,6 +108,7 @@ if mode != 'quick': # (round 47a) no jump (but the low leap) lands on or past a 
     J += [('hilljump', ['hilljump.py', str(lo), str(hi)], tail_check(r'hilljump: ok')) for lo, hi in ((3, 14), (15, 26), (27, 38), (39, 48))]
 J += [('windscan', ['windscan.py', str(n), str(n + 11)], tail_check(r'windscan: ok')) for n in range(1, 49, 12)] # (round 44) the wind only on a run's plain floor, clear of every jump, off timed stretches and the chase; a gust pushes him back but never off it
 J += [('courtscan', ['courtscan.py', str(n), str(n + 11)], tail_check(r'courtscan: ok')) for n in range(1, 49, 12)] # (round 45) courts on headroom under stone, 7-8 a floor from 3, never two in view, kinds by theme, every court pit a pool, nothing of the wall left; a fall into a pool drowns at its surface
+J += [('wearscan', ['wearscan.py'], tail_check(r'wearscan: ok'))] # (round 49c) the wear marks and bones of earlier thieves: scuffs on every wall run up, grooves on every block's track, one set of bones a kind at the first trap of its kind, off his walking line on a route tile (floors 1-48 x 3, about 30 s)
 # (round 47b) one horizon per storey: a window, an open arch or breach and a court on one storey place every layer of the view at the same screen y,
 # and the court's own art stands on the windows' horizon (to 0.5 px; analytic, no picture); two jobs
 J += [('viewscan', ['viewscan.py', str(lo), str(hi)], tail_check(r'viewscan: ok')) for lo, hi in ((3, 24), (25, 48))]
@@ -140,7 +141,7 @@ SUITES = {
     'play': ('run2', 'run2 fight', 'featbot', 'featbot fight', 'p4bot', 'forktest', 'hinttest', 'grablabel', 'swingtest', 'liftkick', 'chimtest', 'tellscan',
              'lowceil', 'r38b_tests', 'sawceil', 'hilljump', 'primtest', 'hdtest', 'lifttest', 'respawnplates', 'slabresume', 'gratepeek'), # the bot and play checks
     'gen': ('metrics40', 'guardscan', 'forkscan', 'puzzlescan', 'vertscan', 'featurescan', 'orphanscan', 'mazescan', 'wellcorr', 'lampscan',
-            'slabscan', 'sandshaft', 'wellscan', 'hillscan', 'windscan', 'courtscan'), # generator and layout scans (the tiles, no picture)
+            'slabscan', 'sandshaft', 'wellscan', 'hillscan', 'windscan', 'courtscan', 'wearscan'), # generator and layout scans (the tiles, no picture)
     'render': ('rendersmoke', 'liftscan', 'crossscan', 'crossscan torch', 'cpscan', 'shadowscan', 'doorscan', 'openscan', 'tilescan', 'beamjag',
                'heapscan', 'solidscan', 'contourscan', 'viewscan', 'panscan', 'stormfair', 'glauto', 'metaltest', 'rewindrooms', 'figscan')} # drawing checks (pixels, poses, the WebGL path)
 SUITE_OF = {g: su for su, gs in SUITES.items() for g in gs}

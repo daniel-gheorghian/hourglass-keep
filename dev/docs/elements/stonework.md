@@ -295,5 +295,6 @@ The cache holds 18 rooms (least recently used goes). Torchlight uploads a room w
 - round 39 (v84): the layering rule ([layers](../layers.md)): `rlEnd` cuts the floor's scratch layer at the faces; the hurtdrop's dark in
   stage 0; `nearCut`, `onFace`, `airCut`, `faceGap` keep live things and the air behind the front plane; faces on the left cut figures;
   the mist cropped; glints test the face. Look only: layouts identical against v83 (`layoutcmp.py` floors 1-24, seeds 1-2).
+- Round 49c (owner: "rely only on subtle graphic hints"): a wall the route runs up (the wall run, `wallrun` segs) carries sandal scuffs on its front face at the heights his feet strike it (`WR_STEPS` 6, 27, 48 px and `WR_TOP` 69), 4.6 px in from the edge on the side he runs at: dark translucent sole smudges (`selC` of the theme's `lo` at .5), older fainter ones, a pale scratch (`wearFace`, after `wallCell` in the room's picture: marks on L3 itself). Look only. `wearscan.py`, layerscan kind `scuff` (its own faces excluded).
 
 Details in CLAUDE.md.
