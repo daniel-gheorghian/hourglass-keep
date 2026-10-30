@@ -309,7 +309,8 @@ Round 49b (owner after the round 49 research: "rely only on subtle graphic hints
   (`stakes`); a flask on his floor up to 44 px ahead, he looks at it (`flask`); at the mouth of a low tunnel he stoops with a hand on the
   lintel's end (`low`); locked in the chimney, planted between kicks for `TL_CD` 0.5 s, he looks up the shaft (`chim`). Order when more
   than one holds: flask, stakes, edge, reach, low. `tellscan.py` checks them (none before 0.5 s, full by 1.2 s, gone the frame Grab is
-  held, the pose back 0.35 s later, play identical with `TELL.off`).
+  held, the pose back 0.35 s later, play identical with `TELL.off`; it takes no spot in or within 16 px of a wind zone, where `tellIdle` gives
+  none: the wind's lean and a gust's arm come first, and a lull can end at any moment; round 49d).
 - **Grit over a slab's plate** (`drawGrit`, `gritList`): where a cracked slab in a gallery can jam the plate or closer under it (the
   slab-holds-plate puzzles P2G1 and P3G1), single grains sift from its underside onto that plate, a few at a time with pauses, and a few
   lie on the plate; gone the moment the slab lets go. Faint and steady, unlike the roof block's thickening threads of sand.

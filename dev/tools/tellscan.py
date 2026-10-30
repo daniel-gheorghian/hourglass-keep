@@ -1,6 +1,7 @@
 # tellscan.py [file] [lo hi] [per=K]: round 49b's tells (look only), played through the game (__HK.load, setKey, tick).
 # On floors lo..hi (default 3-16, seed 4400+n), up to K spots of each kind a floor (tellKind: reach, edge, stakes, flask, low; default 2)
-# where he stands still facing it, checks:
+# where he stands still facing it (not in a wind zone, nor within 16 px of one: the game gives no tell in a wind, tellIdle, as a gust's
+# lull may end at any moment; round 49d), checks:
 #   wait    none before TL_D (0.45 s still: TELL.w 0)
 #   on      at 1.2 s still the tell is that kind at full weight, and the drawn pose differs from TELL.off's (head or hand by over 0.08)
 #   input   Grab held (it moves nothing standing): the weight drops to 0 in that frame, and 0.35 s later the pose is TELL.off's (head within 0.04)
@@ -19,7 +20,7 @@ JS = r'''([n,per])=>{const H=__HK,TW=32,S=r=>(r+1)*64-4,sd=4400+n,bad=[],cnt={};
  const keys=o=>{for(const k of ['l','r','u','d','j','g'])H.setKey('kb',k,!!(o&&o[k]));};
  let L=H.load(n,sd,false);const spots=[];
  for(let r=1;r<L.rows-1;r++)for(let c=2;c<L.cols-2;c++){if(H.B(c,r)===H.WALL||!H.solidBelow(c,r)||H.F(c,r))continue;
-   for(const fc of [1,-1]){const P=H.P;P.x=c*TW+16+fc*8;P.y=S(r);P.face=fc;const k=H.tellKind();if(k&&(cnt[k]||0)<per){cnt[k]=(cnt[k]||0)+1;spots.push([k,c,r,fc]);}}}
+   for(const fc of [1,-1]){const P=H.P;P.x=c*TW+16+fc*8;P.y=S(r);P.face=fc;if(H.windZoneAt(P.x,P.y,16)>=0)continue;const k=H.tellKind();if(k&&(cnt[k]||0)<per){cnt[k]=(cnt[k]||0)+1;spots.push([k,c,r,fc]);}}}
  const place=(c,r,fc,off)=>{L=H.load(n,sd,false);H.banner=null;H.mode='play';H.intro=0;H.TELL.off=off;keys();for(const e of H.G)e.x=-9999;for(const e of H.SN)e.x=-9999;
    const P=H.P;P.x=c*TW+16+fc*8;P.y=S(r);P.fallY=P.y;P.face=fc;P.state='stand';P.vx=P.vy=0;P.inv=1e9;P.t=0;return P;};
  const hand=P=>{const s=H.skel(P.pose);return [s.hF[0],s.hF[1]];};
