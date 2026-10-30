@@ -167,20 +167,12 @@ body.crossing #bGrab,body.crossing #bPause{visibility:hidden}
         <h2>How to play</h2>
         <dl class="how">
           <dt>Run</dt><dd>Hold left or right on the pad.</dd>
-          <dt>Tiptoe</dt><dd>Hold <kbd>Grab</kbd> and tap a direction. Stops at edges and walks over the stakes safely.</dd>
-          <dt>Jump</dt><dd><kbd>Jump</kbd> from a standstill clears one tile. From a run it clears two, and on a three-tile gap you catch the far ledge.</dd>
-          <dt>Climb</dt><dd>Up under an opening to pull yourself onto the ledge. Down at an edge to hang, down again to let go.</dd>
-          <dt>Catch</dt><dd>Hold <kbd>Grab</kbd> while falling to catch a ledge. Two-floor drops hurt unless you hang first, and a hard landing leaves you unsteady for a moment. Hold <kbd>Grab</kbd> as you fall past a long tapestry to slide down it.</dd>
-          <dt>Walls</dt><dd>Run at a wall two floors high and press <kbd>Jump</kbd> to run up it and catch the top. In the air against a wall, <kbd>Jump</kbd> kicks off it: bounce between close walls to climb a shaft.</dd>
-          <dt>Swing</dt><dd>Jump to catch a bar over a wide pit, then <kbd>Jump</kbd> again as you swing forward to fly across.</dd>
-          <dt>Blocks</dt><dd>Hold <kbd>Grab</kbd> and press toward a loose block to push it, away to pull it. A block holds a plate down for good, and you can climb over it.</dd>
-          <dt>Crawl</dt><dd>Down gets you on hands and knees, left or right crawls, up stands. Low tunnels and swinging blades call for it.</dd>
-          <dt>Fight</dt><dd><kbd>Grab</kbd> strikes. Up blocks when the guard raises his blade, then strike back fast; better guards parry a flurry and answer it. Down sheathes. Strike snakes before they coil, or crouch and <kbd>Grab</kbd> to draw your blade low and thrust at them in a tunnel. Skeletons only fall to a pit, so drive them over the edge.</dd>
-          <dt>Gates</dt><dd>A plate raises a gate. A sky clock on a gate means it shuts again, with the time left shown at the top. A red plate right in front of a gate slams it shut, so jump over it. Some gates open from a plate out of sight, up a climb or down a hole; colour-marked gates answer to the plate of the same colour.</dd>
-          <dt>Traps</dt><dd>Jump saw blades as they come. Crouch under darts. When the dark wakes behind you, run and do not stop until the arch.</dd>
-          <dt>Hours</dt><dd>When you fall, <kbd>Grab</kbd> turns back time about five seconds. You carry three hours; every sky clock gives them back.</dd>
-          <dt>Flasks</dt><dd>Stand on one and tap <kbd>Grab</kbd> to drink. A small red flask heals one life, a large red one heals them all, gold adds a life, dark blue is poison. Large red flasks are rare and wait at the far ends of gated side passages; gold ones hide in passages without a gate.</dd>
-          <dt>Exit</dt><dd>A floor plate somewhere opens the exit. Press up at the open door.</dd>
+          <dt>Jump</dt><dd><kbd>Jump</kbd> from a standstill or from a run.</dd>
+          <dt>Up, Down</dt><dd>Up climbs onto a ledge above. At an edge Down hangs, and Down again lets go. Down crouches; then left or right crawls, and Up stands. In a shaft, after a jump in, Up kicks you higher, Down lets go, and Up at the top leaps out.</dd>
+          <dt>Grab</dt><dd>Its word shows what it will do. Hold it while falling to catch a ledge or a tapestry. Hold it and tap a direction for a careful step. It also pushes and pulls, drinks and strikes; in a fight Up blocks and Down sheathes.</dd>
+          <dt>After a fall</dt><dd><kbd>Grab</kbd> turns back the hours. <kbd>Jump</kbd> rises at the last sky clock you lit, or at the floor&rsquo;s start.</dd>
+          <dt>Hours</dt><dd>You carry three hours. Every sky clock you touch gives them back.</dd>
+          <dt>Flasks</dt><dd>Small red heals a life, large red heals them all, gold adds a life, dark blue hurts.</dd>
           <dt>Keys</dt><dd>Arrows move, <kbd>Space</kbd> jumps, <kbd>Shift</kbd> grabs, <kbd>P</kbd> pauses.</dd>
         </dl>
         <div class="menu"><button id="bHowClose" class="primary" type="button">Got it</button></div>
@@ -429,7 +421,7 @@ const skyOf=th=>todSkyCol(th.sky,L&&L.prog?L.prog.tod:0);
 // ================= save =================
 const KEY='hourglass-keep-v1';
 const GEN=9;
-const APP_VERSION='89'; // set by the build; shown on the title and pause screens
+const APP_VERSION='90'; // set by the build; shown on the title and pause screens
 function newSave(prev){return {v:1,gen:GEN,chaseLen:1,lifeTaken:[],level:1,maxHp:3,deaths:0,time:0,floorTime:0,floorDeaths:0,seed:(Math.random()*2147483647)|0,cp:-1,started:false,
   hints:prev?prev.hints:{},learned:prev?prev.learned:{},set:prev?prev.set:{sound:true,saver:false,lefty:false,calm:false}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.set){if(!Array.isArray(s.lifeTaken))s.lifeTaken=[];if(!s.learned){s.learned={};if(s.level>2){s.learned.gap=s.learned.climb=s.learned.drop=1;}if(s.maxHp>3)s.learned.potion=1;} // an old save: whoever got past floor 2 can run, jump, climb and let go; the rest of the moves come back as hints until done
@@ -2041,8 +2033,8 @@ function plantPose(){if(!KP){KP=mk({lean:-0.34,head:-0.42,air:1,hy:25,aF:-0.25,e
 // Cambridge, "On Chimneys"; Freedom of the Hills): the back on one wall, the soles on the other, the palms pushing on the back wall low by
 // the hips; to go up, the hands and one foot tucked under the seat onto the back wall push the hips up, then the feet walk up the far wall.
 // No CMU clip climbs a chimney (the database's climbs are a playground, ladders and steps), so, like round 23's kick-shaft plant, the
-// stances are two-bone IK on the motion-capture body (soles flat on the stone, chimLeg; palms on it, hold grips). Play is unchanged: he
-// still kicks from wall to wall, P.face flipping each kick. The drawing reads those two halves as the climber's two pushes: in a shaft
+// stances are two-bone IK on the motion-capture body (soles flat on the stone, chimLeg; palms on it, hold grips). He kicks from wall to
+// wall, P.face flipping each kick (round 48b: locked in the chimney, one kick a press of Up, chimAir). The drawing reads those two halves as the climber's two pushes: in a shaft
 // column (a wall each side) he is drawn facing P.chm.F, the ledge's side (or the first wall's), seated CHM_HB from the wall behind him;
 // planted on the ledge's wall both soles are on it ('f'), planted on the wall behind him his near foot is tucked under the seat on it
 // ('b'); a kick is the push (each sole and palm stays on the stone until its limb is straight, CHM_PUSH), a tuck, and the reach for the
@@ -2071,14 +2063,14 @@ function chimBrace(k,hx,hy,out){const ch=P.chm,F=ch.F,[xa,xb]=chimX(ch),XA=(xa-h
   Object.assign(out,CHM_TUCK);out.lean=CHM_LEAN;out.head=CHM_HEAD;out.ox=0;out.oy=0;
   const ya=wa?[wa[0]+9-hy,wa[1]-3-hy]:[-99,99],yb=wb?[wb[0]+3-hy,wb[1]-8-hy]:[-99,99];
   chimLeg(XA,clamp(CHM_FY[1],ya[0],ya[1]),Math.PI/2,1,chQ);out.hB=chQ[0];out.kB=chQ[1];out.fpB=Math.PI/2;
-  if(k==='b'&&wb){chimLeg(XB,clamp(CHM_BK[1],yb[0],yb[1]),-Math.PI/2,-1,chQ);out.fpF=-Math.PI/2;}
+  if((k==='b'||k==='y')&&wb){chimLeg(XB,clamp(CHM_BK[1],yb[0],yb[1]),-Math.PI/2,-1,chQ);out.fpF=-Math.PI/2;} // (round 48b: 'y', the Y's gather: the near foot under the seat on the wall behind, the hands on the lip)
   else{chimLeg(XA,clamp(CHM_FY[0],ya[0],ya[1]),Math.PI/2,1,chQ);out.fpF=Math.PI/2;}
   out.hF=chQ[0];out.kF=chQ[1];
   // the trunk upright against the wall behind (where there is one at the shoulders), the palms on it
   if(wb&&wb[0]<=hy-16&&wb[1]>=hy-8){out.hold=out.hb=1;out.gFx=out.gBx=XB+CHM_HX;out.gFy=CHM_HY[0];out.gBy=CHM_HY[1];out.eF=out.eB=0.4;}
   else{out.lean=CHM_LEAN-0.16;out.head=CHM_HEAD-0.1;out.aF=-0.45;out.eF=0.9;out.aB=-0.75;out.eB=0.7;out.hold=out.hb=0;} // (no wall behind his back, at the shaft's foot: leaning off the wall his feet are on, as the plant was)
   // (the lip: the wall ahead ending 30 to 50 px over the hip) the hands reach for its corner
-  if(wa&&k==='f'){const d=hy-wa[0],w=clamp((CHM_LIP[1]-d)/(CHM_LIP[1]-CHM_LIP[0]),0,1);
+  if(wa&&(k==='f'||k==='y')){const d=hy-wa[0],w=k==='y'?1:clamp((CHM_LIP[1]-d)/(CHM_LIP[1]-CHM_LIP[0]),0,1);
     if(w>0){const tx=XA-1.2,ty=wa[0]-hy-0.5;if(!out.hold){out.gFx=out.gBx=tx;out.gFy=out.gBy=ty;}
       out.gFx+=(tx-out.gFx)*w;out.gFy+=(ty-out.gFy)*w;out.gBx+=(tx-1.6-out.gBx)*w;out.gBy+=(ty+0.6-out.gBy)*w;out.hold=out.hb=Math.max(out.hold,w);out.head-=0.06*w;}}
   if(out.hold){const sx=LEN.to*Math.sin(out.lean),sy=-LEN.to*Math.cos(out.lean),R=(LEN.ua+LEN.fa)*0.97; // (within reach: skel lowers the body to a hand out of reach overhead)
@@ -2092,6 +2084,9 @@ function chimEnd(){P.chm=null;P.dF=0;}
 // the chimney's target pose this frame (and the session in P.chm), or null when he is not climbing a shaft; rate into CHM.r
 const CHM={r:36};
 function chimPose(){let ch=P.chm;const c=pCol(),jk=P.jumpKind,y=P.y;
+  if(P.lock&&P.lock.ph==='yfly'){ // (round 48b) the Y: the standing jump's flight from where he sat, cut by the faces (chimClip) until his feet clear the lip
+    if(!ch||ch.c!==c||y<=P.lock.ys-2){if(ch)chimEnd();return null;}
+    ch.hx=P.x;P.dF=0;CHM.r=26;return flightPose('stand',false,P.t/(P.jT||0.5),1,false,lpP);}
   if(ch&&ch.c!==c){chimEnd();ch=null;}
   if(!(P.plant||jk==='kick'||jk==='slip'||jk==='stand')){if(ch)chimEnd();return null;}
   if(!ch){if(jk==='slip'||!chimShaft(c,y))return null;
@@ -2106,7 +2101,7 @@ function chimPose(){let ch=P.chm;const c=pCol(),jk=P.jumpKind,y=P.y;
     ch.kt=P.kickT;Object.assign(P.pose,CHLP);ch.from=-P.face===F?'f':'b';ch.hk=ch.hx;ch.u0=-1;const s=skel(P.pose),hy0=y-s.hipH;
     ch.ct=[ch.hx+F*s.fF[0],hy0+s.fF[1],ch.hx+F*s.fB[0],hy0+s.fB[1],ch.hx+F*s.hF[0],hy0+s.hF[1],ch.hx+F*s.hB[0],hy0+s.hB[1]];
     ch.kp=mk(P.pose);}
-  if(P.plant){ch.k=P.plant.sd===F?'f':'b';tgt=chimBrace(ch.k,hx,hy,chP);CHM.r=45;if(P.lk&&P.lk.sq<CHM_SQ)P.lk.sq=CHM_SQ;} // (the plant's squash widens him 1/sq: kept small between the walls)
+  if(P.plant){ch.k=P.plant.y!=null?'y':P.plant.sd===F?'f':'b';tgt=chimBrace(ch.k,hx,hy,chP);CHM.r=45;if(P.lk&&P.lk.sq<CHM_SQ)P.lk.sq=CHM_SQ;} // (the plant's squash widens him 1/sq: kept small between the walls)
   else if(jk==='slip'){tgt=chimBrace(ch.k,hx,hy,chP);tgt.hF-=0.15;tgt.hB-=0.1;CHM.r=24;}
   else{ // in the air: kicked (or jumping in from the foot) toward the wall ahead (P.face)
     const d=P.face>0?(c+1)*TW-BW-P.x:P.x-c*TW-BW,u=clamp(1-d/20,0,1),eu=ease(u),t=jk==='kick'?gameTime-P.kickT:9;
@@ -2880,11 +2875,18 @@ const Snd={ctx:null,master:null,nb:null,
   tone(f,dur,o={}){if(!this.ok())return;const c=this.ctx,t=c.currentTime+(o.at||0),os=c.createOscillator(),g=c.createGain();
     os.type=o.type||'triangle';os.frequency.setValueAtTime(f,t);if(o.to)os.frequency.exponentialRampToValueAtTime(o.to,t+dur);
     g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(o.vol||0.15,t+(o.att||0.006));g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-    os.connect(g);g.connect(this.master);os.start(t);os.stop(t+dur+0.03);},
+    os.connect(g);g.connect(this.dst||this.master);os.start(t);os.stop(t+dur+0.03);},
   noise(dur,o={}){if(!this.ok())return;const c=this.ctx,t=c.currentTime+(o.at||0),src=c.createBufferSource(),fl=c.createBiquadFilter(),g=c.createGain();
     src.buffer=this.nb;fl.type=o.type||'lowpass';fl.frequency.setValueAtTime(o.f||1200,t);if(o.to)fl.frequency.exponentialRampToValueAtTime(o.to,t+dur);fl.Q.value=o.q||0.8;
     g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(o.vol||0.15,t+(o.att||0.004));g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-    src.connect(fl);fl.connect(g);g.connect(this.master);src.start(t,Math.random()*0.3);src.stop(t+dur+0.03);},
+    src.connect(fl);fl.connect(g);g.connect(this.dst||this.master);src.start(t,Math.random()*0.3);src.stop(t+dur+0.03);},
+  // (round 49a) a sound from where it is in the keep, heard from the prince: panned by its side (StereoPanner), quieter with distance and
+  // muffled (a lowpass) the farther it is and the more storeys of stone lie between; a pure routing of play(n)'s tones and noises
+  playAt(n,x,y){if(!this.ok()||!P)return;const c=this.ctx,dx=x-P.x,dy=y-(P.y-30),st=Math.abs(Math.round(dy/TH)),d=Math.hypot(dx,dy*1.6);
+    const lp=c.createBiquadFilter(),g=c.createGain();lp.type='lowpass';lp.frequency.value=clamp(9000/(1+d/220)/(1+0.7*st),380,12000);lp.Q.value=0.5;
+    g.gain.value=clamp(1.15-d/900,0.35,1);lp.connect(g);let out=g;
+    if(c.createStereoPanner){const pn=c.createStereoPanner();pn.pan.value=clamp(dx/280,-1,1)*0.9;g.connect(pn);out=pn;}
+    out.connect(this.master);this.dst=lp;try{this.play(n);}finally{this.dst=null;}},
   play(n){if(!this.ok())return;const T=this.tone.bind(this),N=this.noise.bind(this);
     switch(n){
       case'step':N(0.05,{vol:0.035,f:700});break;
@@ -2913,6 +2915,8 @@ const Snd={ctx:null,master:null,nb:null,
       case'exitlight':T(523.3,1.3,{vol:0.03,type:'sine',att:0.5});T(784,1.1,{vol:0.018,type:'sine',att:0.55,at:0.1});N(1.1,{vol:0.025,f:2200,type:'bandpass',q:0.6,att:0.5});break; // (round 26f) the doorway's light swelling
       case'doorslide':N(0.26,{vol:0.07,f:260,to:520,type:'bandpass',q:1.6,att:0.04});break; // (round 26f) the entrance's leaf sliding down
       case'door':N(1.6,{vol:0.12,f:160,att:0.3});T(55,1.4,{vol:0.06,type:'sine',att:0.3});break;
+      case'grind':N(1.1,{vol:0.13,f:140,to:300,type:'bandpass',q:1.4,att:0.12});T(48,1.0,{to:58,vol:0.07,type:'sine',att:0.15});for(let i=0;i<5;i++)N(0.03,{vol:0.045,f:1700,type:'bandpass',q:3,at:0.15+i*0.17});break; // (round 49a) a timed gate grinding up, heard where it is
+      case'sealed':N(0.06,{vol:0.12,f:700,type:'bandpass',q:2});N(0.05,{vol:0.09,f:900,type:'bandpass',q:2,at:0.08});N(0.2,{vol:0.16,f:220,at:0.03});T(70,0.18,{to:45,vol:0.08,type:'sine'});break; // (round 49a) Up at the shut exit: the leaf rattles in its slot
       case'cp':T(880,0.6,{vol:0.05,type:'sine'});T(1318,0.5,{vol:0.03,type:'sine',at:0.08});break;
       case'splash':N(0.55,{vol:0.32,f:1400,to:180});N(0.3,{vol:0.14,f:3200,type:'highpass',at:0.04});T(150,0.35,{to:60,vol:0.08,type:'sine'});N(0.6,{vol:0.06,f:500,at:0.3,to:200});break;
       case'die':[587.3,554.4,466.2,370,293.7].forEach((f,i)=>T(f,0.3,{vol:0.07,type:'triangle',at:i*0.13}));break;
@@ -2929,6 +2933,7 @@ const Snd={ctx:null,master:null,nb:null,
       case'rip':N(0.07,{vol:0.055,f:2300+Math.random()*900,type:'bandpass',q:1.6});break;
       case'push':N(0.45,{vol:0.1,f:240,type:'bandpass',q:2,att:0.05});break;
       case'saw':N(0.16,{vol:0.05,f:3400,type:'bandpass',q:6});break;
+      case'plate':N(0.03,{vol:0.06,f:900,type:'bandpass',q:3});T(190,0.05,{vol:0.025,type:'triangle'});break; // (round 48a: stone settling on stone)
       case'tick':T(1700,0.035,{vol:0.03,type:'square'});break;
       case'dart':N(0.09,{vol:0.07,f:2800,type:'bandpass',to:1400,q:3});break;
       case'storm':N(2.2,{vol:0.16,f:260,att:0.4,to:120});T(48,1.8,{vol:0.07,type:'sine',att:0.4});break;
@@ -2938,7 +2943,9 @@ const Snd={ctx:null,master:null,nb:null,
           lf.frequency.value=5.2;lg.gain.value=f0*0.03;lf.connect(lg);lg.connect(os.frequency);bp.type='bandpass';bp.frequency.value=f0*2;bp.Q.value=1.4;lp.type='lowpass';lp.frequency.value=1500;
           g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(v,t+0.25);g.gain.setValueAtTime(v,t+1.1);g.gain.exponentialRampToValueAtTime(0.0001,t+1.8);
           os.connect(bp);bp.connect(lp);lp.connect(g);g.connect(this.master);os.start(t);lf.start(t);os.stop(t+1.85);lf.stop(t+1.85);}}break;
-      case'swing':N(0.07,{vol:0.045,f:330,type:'bandpass',q:7});N(0.09,{vol:0.04,f:290,type:'bandpass',q:7,at:0.06});break; // (round 18b) the turn: the ropes creak on the log (two short stick-slip groans, not a chain's rattle)
+      case'swing':N(0.07,{vol:0.045,f:330,type:'bandpass',q:7});N(0.09,{vol:0.04,f:290,type:'bandpass',q:7,at:0.06});break;
+      case'swbeat':{const k=SWB.k,a=SWB.arm,f=1+0.18*k+0.22*a;N(0.07,{vol:0.022+0.012*k+0.006*a,f:330*f,type:'bandpass',q:7});N(0.09,{vol:0.018+0.012*k+0.006*a,f:290*f,type:'bandpass',q:7,at:0.06});
+        if(a)N(0.16,{vol:0.016+0.008*k,f:1500,type:'bandpass',to:800,q:1.6,at:0.02});break;} // (round 49b) the turn's creak, by the swing's size; armed, brighter, with a breath of air // (round 18b) the turn: the ropes creak on the log (two short stick-slip groans, not a chain's rattle)
       case'sandstep':N(0.08,{vol:0.03,f:480});N(0.05,{vol:0.012,f:2400,type:'bandpass',q:0.7,at:0.012});break; // (round 36a) a footfall in sand: a dull push and a faint hiss of grains
       case'sandrun':N(0.07,{vol:0.045,f:560});N(0.06,{vol:0.018,f:2800,type:'bandpass',q:0.7,at:0.01});break;
       case'firmstep':N(0.045,{vol:0.04,f:900});T(110,0.05,{to:70,vol:0.02,type:'sine'});break; // (round 36b) the oasis: a footfall on firm, damp ground
@@ -2990,8 +2997,14 @@ const Snd={ctx:null,master:null,nb:null,
 function stormNear(){const c=L&&L.ext.chase;if(mode!=='play'||!c||!c.on||c.done||!P||P.state==='dead'||P.state==='dying')return 0;return 0.15+0.85*clamp(1-(P.x-c.wx)/320,0,1);}
 
 // ================= state =================
-let flashFx=null,quiet=false,L=null,P=null,G=[],SN=[],pendingGuards=[],gameTime=0,levelTime=0,mode='title',hitStop=0,deadT=0,banner=null,intro=0,saveTick=0,hintTick=0;
-const hintQ=[];const FX=[];
+let flashFx=null,quiet=false,L=null,P=null,G=[],SN=[],pendingGuards=[],gameTime=0,levelTime=0,mode='title',hitStop=0,deadT=0,banner=null,intro=0,saveTick=0;
+const FX=[];
+// (round 49a) the glance: a gate or the exit door that opens out of sight is heard where it is (Snd.playAt) and the view looks toward it
+// for GL_T s (gateCue, glanceAt; updateCamera). Play goes on: input stays live and the prince is kept inside the view (GL_M), so the
+// glance costs no time and leaves nothing hidden; no timer is held. None while the dark chases, in a fight, dead, on a test load
+// (__HK.load sets GLN.off) or under ?bench.
+const GLN={on:false,t:0,x:0,y:0,off:false,n:0};
+const GL_T=1.6,GL_IN=0.35,GL_OUT=0.5,GL_M=44;
 const I={l:0,r:0,u:0,d:0,j:0,g:0,src:{kb:{},touch:{}},buf:{}};
 function setKey(src,k,on){const was=I[k];I.src[src][k]=on?1:0;I[k]=(I.src.kb[k]||I.src.touch[k])?1:0;if(I[k]&&!was)I.buf[k]=gameTime;}
 function took(k,win=0.15){const t=I.buf[k];if(t!==undefined&&gameTime-t<=win){delete I.buf[k];return true;}return false;}
@@ -3018,7 +3031,7 @@ function makeSnake(sp){return {x:sp.x,r:sp.r,y:SURF(sp.r),lo:sp.lo,hi:sp.hi,dir:
 
 function startLevel(n,cpIdx,entry){GLP.pend=null;GLP.now=true;GLP.quiet=performance.now()+3000;GLP.upNeed=UP_N;GLP.fastN=0; // (a new floor: the step up's back-off starts again)
   if(S.set.torchRetry){delete S.set.torchRetry;if(S.set.lightMode==='classic'&&!GLP.dead){S.set.lightMode='torch';GLP.inSession=false;syncLightMode();writeSave();}} // (v63: a save left in Classic by the old automatic switch (it set torchRetry) gets Torchlight back; a Classic chosen in Graphics stays) // (each floor starts with the scene at full resolution: glTime scales it down if frames run slow)
-  quiet=false;if(hintFloor!==n){hintFloor=n;hintSeen={};}hintQ.length=0;L=genLevel(n,levelSeed(n),false,n===S.legacyFloor);REW.length=0;rw=null;if(cpIdx<0){S.sands=SANDS;S.cpPlates=[];}
+  quiet=false;GLN.off=false;glanceEnd();L=genLevel(n,levelSeed(n),false,n===S.legacyFloor);REW.length=0;rw=null;if(cpIdx<0){S.sands=SANDS;S.cpPlates=[];}
   G=L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];
   P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;
   if((S.lifeTaken||[]).includes(n))for(const it of L.items)if(it.type==='life')it.taken=true;
@@ -3039,7 +3052,9 @@ function respawn(){S.floorDeaths=(S.floorDeaths||0)+1;S.deaths++;S.floorTime=lev
 // plays them in reverse to a calm moment about five seconds before the fall, and play resumes from there.
 const SANDS=3,REW=[];let rewTick=0,rw=null,deathAt=0;
 const REW_STATES=['stand','run','stop','garde','advance','retreat','crouch','step','turn','land','probe'];
-const cloneE=o=>{const c=Object.assign({},o);if(o.pose)c.pose=Object.assign({},o.pose);if(o.cs)c.cs=Object.assign({},o.cs);if(o.ledge)c.ledge=Object.assign({},o.ledge);return c;};
+const cloneE=o=>{const c=Object.assign({},o);if(o.pose)c.pose=Object.assign({},o.pose);if(o.cs)c.cs=Object.assign({},o.cs);if(o.ledge)c.ledge=Object.assign({},o.ledge);
+  if(o.plant)c.plant=Object.assign({},o.plant);if(o.lock)c.lock=Object.assign({},o.lock);if(o.chIn)c.chIn=Object.assign({},o.chIn);if(o.chm){c.chm=Object.assign({},o.chm);if(o.chm.ct)c.chm.ct=o.chm.ct.slice();if(o.chm.kp)c.chm.kp=Object.assign({},o.chm.kp);} // (round 48b: the chimney's plant, lock and drawing session are his own, copied whole)
+  return c;};
 function snapAll(){const p=cloneE(P);p.foe=P.foe?G.indexOf(P.foe):-1;p.drinkIt=P.drinkIt?L.items.indexOf(P.drinkIt):-1;
   return {t:gameTime,P:p,G:G.map(cloneE),SN:SN.map(o=>Object.assign({},o)),pg:pendingGuards.map(q=>({at:q.at,src:q.src?G.indexOf(q.src):-1,spec:q.spec})),
     dyn:L.dyn.map(o=>{const c=Object.assign({},o.f);if(o.f.bn)c.bn=Object.assign({},o.f.bn);return c;}), // (round 38b: a banner's cut record bn is shared by its cells: copied, so a rewind undoes the cut)
@@ -3060,11 +3075,11 @@ function canRewind(){return (S.sands|0)>0&&REW.length>0;}
 function startRewind(){let ti=0;
   for(let i=REW.length-1;i>=0;i--){const sn=REW[i];if(sn.t<=deathAt-4.5&&REW_STATES.includes(sn.P.state)&&!sn.P.dead){ti=i;break;}}
   S.sands=(S.sands|0)-1;S.floorDeaths=(S.floorDeaths||0)+1;S.deaths++;writeSave();
-  rw={idx:REW.length-1,target:ti,acc:0};GLP.quiet=performance.now()+3500;rwBeg=performance.now()/1000;mode='rewind';banner=null;flashFx=null;FX.length=0;clearSpent();hitStop=0;Snd.play('rewind');}
+  rw={idx:REW.length-1,target:ti,acc:0};GLP.quiet=performance.now()+3500;rwBeg=performance.now()/1000;mode='rewind';banner=null;glanceEnd();flashFx=null;FX.length=0;clearSpent();hitStop=0;Snd.play('rewind');}
 function stepRewind(){rw.acc+=1.6;while(rw.acc>=1&&rw.idx>rw.target){rw.acc-=1;rw.idx--;}
   applySnap(REW[rw.idx]);
   if(rw.idx<=rw.target){REW.length=rw.target+1;rw=null;rwEnd=performance.now()/1000;mode='play';GLP.quiet=performance.now()+3000;clearInput();P.inv=1.2;P.stumble=0;deadT=0;
-    msg((S.sands>0?'The hours turn back. '+S.sands+(S.sands===1?' hour':' hours')+' left in hand.':'The hours turn back. You have none left until the next sky clock.'),2.8);}}
+  }} // (round 49a: no "The hours turn back. N hours left": the HUD's sky clocks show what is left)
 const STABLE=['stand','run','stop','garde','advance','retreat','land','crouch','step','turn','parry','strike','blocked','probe'];
 function snapshotResume(){
   if(!L||!P||mode!=='play'||!STABLE.includes(P.state)||!supported())return;
@@ -3105,7 +3120,7 @@ const LRN_ST={climb:['climb'],drink:['potion'],push:['block'],pull:['block'],sli
 function learn(...ids){let w=false;for(const id of ids)if(!S.learned[id]){S.learned[id]=1;w=true;}if(w)writeSave();}
 // (round 41: a sand lift is learned by getting off it, 'sandfall', in sandRide; P.sandUp, a lip caught from its slab, lasts to the hang)
 function setState(s){if(P&&P.state==='drink'&&s!=='drink'){dropFlask();if(P.dkG&&!P.dkFx&&s!=='dead'&&s!=='exit')drinkFx();} // knocked out of the drink with the flask in hand: it takes effect at once and the flask falls
-  if(P){const lk=LRN_ST[s];if(lk)learn(...lk);else if(s==='lift'&&P.lift&&!P.lift.sand)learn(P.lift.t==='chain'?'chain':'lift');if(s!=='jumpUp'&&s!=='hang')P.sandUp=0;}if((s==='stop'||s==='turn')&&P.state==='run'&&GFX().fx&&Math.abs(P.vx)>60)dust(P.x-P.face*4,P.y,4);if(P){P.state0=P.state;if(P.state==='air'&&s!=='air')P.yo=0;P.lnT=null;if(s!=='run'){P.jLe=null;if(s!=='air')P.jGo=null;}}P.state=s;P.t=0;if(s!=='crouch'&&s!=='poke')P.lowSword=false;if(s!=='air')P.plant=null;
+  if(P){const lk=LRN_ST[s];if(lk)learn(...lk);else if(s==='lift'&&P.lift&&!P.lift.sand)learn(P.lift.t==='chain'?'chain':'lift');if(s!=='jumpUp'&&s!=='hang')P.sandUp=0;}if((s==='stop'||s==='turn')&&P.state==='run'&&GFX().fx&&Math.abs(P.vx)>60)dust(P.x-P.face*4,P.y,4);if(P){P.state0=P.state;if(P.state==='air'&&s!=='air')P.yo=0;P.lnT=null;if(s!=='run'){P.jLe=null;if(s!=='air')P.jGo=null;}}P.state=s;P.t=0;if(s!=='crouch'&&s!=='poke')P.lowSword=false;if(s!=='air'){P.plant=null;P.lock=null;P.yLeap=false;}if(s!=='jumpPrep')P.chIn=null; // (round 48b: the chimney's lock ends when he leaves the air)
   if(P){if(s==='stop'||s==='turn'){P.stK=s;P.stT=gameTime;P.stS=s==='stop'?clamp(Math.abs(P.vx)/RUN,0.35,1):1;}else if(s!=='stand')P.stK=null; // (round 25f: the settle, see settlePose)
     if(s==='hang'){P.hgT=gameTime;P.hgA=HG_A[P.state0]||HG_A.air;} // (round 25f: the hang's swing, see livePose)
     if(s==='step')P.sEd=0;else if(s==='edgeWalk')P.sx=P.x;else if(s==='stand'&&P.state0==='step'){P.stK='tip';P.stT=gameTime;}}} // (round 33b: look only, see stepPose)
@@ -3151,8 +3166,8 @@ function clampMove(x0,x1,y,self,crawl){
 // ================= player =================
 function startFall(vx){setState('air');P.vx=vx;P.vy=0;P.fallY=P.y;P.autoGrab=false;P.jumpKind=null;}
 function nearGuard(range){let best=null,bd=1e9;for(const g of G){if(!g.alive||g.state==='drop'||g.state==='fall')continue;if(Math.abs(g.y-P.y)>8)continue;const d=Math.abs(g.x-P.x);if(d<range&&d<bd){best=g;bd=d;}}return best;}
-function enterGarde(g){P.foe=g;P.face=g.x>P.x?1:-1;if(!P.sword)Snd.play('draw');P.sword=true;P.lowSword=false;P.vx=0;setState('garde');hint(g.skel?'skel':'fight');if(!g.skel&&(g.tier>0||g.cap)&&(S.hints.fight||S.learned.fight))hint('ranks');}
-function hazardEdge(maxD){
+function enterGarde(g){P.foe=g;P.face=g.x>P.x?1:-1;if(!P.sword)Snd.play('draw');P.sword=true;P.lowSword=false;P.vx=0;setState('garde');}
+function hazardEdge(maxD,vis){ // vis: the Grab button's label asks, and a closing plate is no edge to it (round 48a: it would name the plate)
   const row=pRow();let c=pCol();
   for(let i=0;i<3;i++){
     const edge=P.face>0?(c+1)*TW:c*TW;
@@ -3161,7 +3176,7 @@ function hazardEdge(maxD){
     if(B(L,nc,row)===WALL)return null;
     const f=F(L,nc,row);
     if(f&&f.t==='gate'&&f.open<0.5)return null;
-    if(!solidBelow(L,nc,row)||(f&&(f.t==='spikes'||(f.t==='loose'&&!(f.sturdy&&f.s===0))||f.t==='closer')))return edge;
+    if(!solidBelow(L,nc,row)||(f&&(f.t==='spikes'||(f.t==='loose'&&!(f.sturdy&&f.s===0))||(f.t==='closer'&&!vis))))return edge;
     c=nc;
   }
   return null;
@@ -3212,7 +3227,7 @@ function pbTouch(){const h=L.hills[P.pbI];if(!h)return;const x=P.pbX+P.face*(P.p
   for(let i=0;i<(h.d?5:3);i++)FX.push({x:x+(Math.random()-0.3)*3*P.face,y,vx:-P.face*(6+Math.random()*14),vy:-Math.random()*(h.d?18:8),g:h.d?40:120,life:0.35+Math.random()*0.25,t:0,col:h.d?'rgba(214,190,140,.6)':'rgba(120,104,92,.75)',sz:h.d?1.4:1.1});
   Snd.play(h.d?'sandstep':'step');}
 function tryJump(){if(hillOn(P.x,P.y))return;const e=hazardEdge(30);if(e!==null&&Math.abs(e-P.x)>6){P.tx=e-P.face*4;setState('edgeWalk');return;}startJump('stand');}
-function startJump(kind){if(hillOn(P.x,P.y))return;P.pbQ=null;P.pbC=null;
+function startJump(kind){if(hillOn(P.x,P.y))return;P.pbQ=null;P.pbC=null;P.chIn=null;
   {const hc=hillCheck(kind);if(hc){if(!hc.need&&hc.c<(kind==='run'?PB_MIN:PB_MINS)){startProbe(hc.q);return;}P.pbQ={i:hc.q.i,e:hc.q.e};P.pbC=hc.c;}} // (round 47a: the checked leap)
   P.jumpKind=kind;if(kind==='run')launch();else{P.jLow=beamOverhead(false);P.jFx=feetX(P.pose)+(P.pose.ox||0);setState('jumpPrep');}} // (round 32: jLow, the wind-up's look under a ceiling)
 // Under stone at his height (a gate's or a guillotine's lintel, a corridor one storey tall, an upper floor's slab) a full
@@ -3252,7 +3267,8 @@ function beamOverhead(run){const row=pRow(),vx=run?183:132,vy=run?190:159,T=2*vy
 // frame, here the 24th); a landing elsewhere is found at most one frame's step (4 px of arc) past the point it crosses, as before (3 px).
 const RJ_K=0.75,RJ_DV=GRAV*STEP*(1/RJ_K-1)/2;
 function rjK(){return P.jumpKind==='run'?RJ_K:1;}
-function launch(){const run=P.jumpKind==='run';P.jx=P.x;P.jy=P.y;let vx=run?183:132,vy=run?190:159;P.lowJump=false;
+function launch(){if(P.chIn){const lk=P.chIn;P.chIn=null;return chimLaunch(lk,false);} // (round 48b: the wind-up at a kick shaft's foot: the jump in to the first stance)
+  const run=P.jumpKind==='run';P.jx=P.x;P.jy=P.y;let vx=run?183:132,vy=run?190:159;P.lowJump=false;
   if(beamOverhead(run)){[vx,vy]=LOWJ[run?'run':'stand'];P.lowJump=true;}
   if(P.pbQ&&P.pbC!=null&&!P.lowJump)vx=Math.max(0,P.pbC)/(2*vy/GRAV); // (round 47a: the checked leap lands PB_GAP short of the hill's foot)
   const k=run?RJ_K:1; // (round 35a: the running jump's clock, see RJ_K; vx, vy here are the arc's geometry)
@@ -3620,10 +3636,10 @@ function stCrouch(dt,ix){
       if(solidBelow(L,Math.floor(nx/TW),pRow()))P.x=nx;}}
   const tight=underLow();P.crawling=false;
   if(!tight&&P.peace<=0){const g=nearGuard(64);if(g)return enterGarde(g);}
-  if(took('u')||took('j')){if(tight){Snd.play('bump');hint('crawl');return;}P.lowSword=false;return setState('stand');}
+  if(took('u')||took('j')){if(tight){Snd.play('bump');return;}P.lowSword=false;return setState('stand');}
   if(took('g')){ // blade drawn low: Grab thrusts, even in a tunnel. Otherwise: strike a snake, drink, or draw the blade low.
     if(P.lowSword)return startPoke();
-    if(tight){msg('No room to draw a sword in here. Draw it before you crawl in: crouch, then Grab.',3.2);return;}
+    if(tight){Snd.play('bump');return;} // (round 49a: no words; the bump of the hilt on the stone)
     if(snakeNear(44))return startLowStrike();
     if(tryDrink())return;
     P.lowSword=true;Snd.play('draw');return;}
@@ -3651,10 +3667,10 @@ const flaskR=type=>type==='big'?5.4:type==='life'?4.2:3.2;
 function dropFlask(){if(P.dkRel||!P.dkG||!P.drinkIt)return;P.dkRel=true;const it=P.drinkIt,h=handFlask(),d=flaskR(it.type)+2,tl=drinkFrame(P.t).tilt;
   (L.flk||(L.flk=[])).push({type:it.type,x:h.x+P.face*(-d*Math.sin(tl)),y:h.y+d*Math.cos(tl),r:flaskR(it.type),gy:SURF(pRow())-3,face:P.face,vy:0,rot0:tl,rot:tl,ft:0,lt:0,fill:it.type==='poison'?0:0});}
 function drinkFx(){const it=P.drinkIt;P.dkFx=true;if(!it)return;
-  if(it.type==='heal'){P.hp=Math.min(S.maxHp,P.hp+1);flashScreen('#ff6a3d',0.38,0.3,true);msg('Red flask. One life restored.',2.2);}
-  else if(it.type==='big'){P.hp=S.maxHp;Snd.play('life');flashScreen('#ff6a3d',0.5,0.45,true);msg('Large red flask. All your lives restored.',2.6);}
-  else if(it.type==='life'){S.maxHp=Math.min(10,S.maxHp+1);P.hp=S.maxHp;flashScreen('#ffd76b',0.5,0.45,true);if(!S.lifeTaken.includes(L.n))S.lifeTaken.push(L.n);writeSave();Snd.play('life');msg('Gold flask. Your lives grow by one.',2.6);}
-  else{msg('Poison. Dark blue flasks hurt.',2.4);Snd.play('poison');flashScreen('#3fae66',0.4,0.32,true);hurt(1,'poison');}}
+  if(it.type==='heal'){P.hp=Math.min(S.maxHp,P.hp+1);flashScreen('#ff6a3d',0.38,0.3,true);}
+  else if(it.type==='big'){P.hp=S.maxHp;Snd.play('life');flashScreen('#ff6a3d',0.5,0.45,true);}
+  else if(it.type==='life'){S.maxHp=Math.min(10,S.maxHp+1);P.hp=S.maxHp;flashScreen('#ffd76b',0.5,0.45,true);if(!S.lifeTaken.includes(L.n))S.lifeTaken.push(L.n);writeSave();Snd.play('life');}
+  else{Snd.play('poison');flashScreen('#3fae66',0.4,0.32,true);hurt(1,'poison');}}
 function updateFlasks(dt){if(!L.flk)return;
   for(let i=L.flk.length-1;i>=0;i--){const f=L.flk[i];
     if(f.lt>0||f.y>=f.gy-f.r){f.y=f.gy-f.r;f.lt+=dt;f.rot=1.4;if(f.lt>0.35)L.flk.splice(i,1);continue;}
@@ -3664,23 +3680,19 @@ function hurt(n,cause){if(P.state==='dead')return;if(n>0)hitAt=performance.now()
 function die(cause){if(P.state==='dead')return;windDeath(); // (round 45c: a death in a wind zone eases it, S.windDeaths)
   deathAt=gameTime;S.resume=null;writeSave();setState('dead');P.cause=cause;P.flash=0;for(const g of G)if(g.flash>0)g.flash=0;P.vx=0;P.vy=0;P.hp=0;P.sword=false;P.yo=0;mode='dead';deadT=0;Snd.play('die');if(cause==='blade'||cause==='spikes'||cause==='sword')sparks(P.x,P.y-24,8,'#d94a3a');}
 const PAIRN=['amber','teal','violet'],PAIRC=['#e0a43a','#45b8b0','#a77ee6'];
-function gateMsg(f){if(f.fwd)return 'Somewhere ahead a gate grinds open, but its hours are running out. Run for it!';const nm=f.pair!==undefined?'The '+PAIRN[f.pair]+' gate':'A gate';
-  if(f.latch)return f.where?nm+' grinds open '+f.where+' and stays open.':'Somewhere on this floor, a gate grinds open and stays open.';
-  return nm+' grinds open '+f.where+', but its hours are running out. Get back before it shuts.';}
 // a passage's crumbling chain and ambush wake the first time its plate (or prize) is reached
 // the latching plates pressed so far on this floor (their gates stand open for good), as "c,r" keys
 function pressedPlates(){return L.dyn.filter(o=>(o.f.t==='plate'&&o.f.latch&&o.f.g.tm===Infinity)||(o.f.t==='closer'&&o.f.jam)).map(o=>o.c+','+o.r);}
 // A loose slab that lands on a plate presses it for good (the rubble stays on it); one that lands on a closing plate
 // jams it, and it no longer slams its gate (Prince of Persia levels 4, 5, 9 and 11).
 function jamAt(c,r){const f=F(L,c,r);if(!f||f.jam||(f.t!=='plate'&&f.t!=='closer'))return;f.jam=1;f.press=gameTime;
-  if(f.t==='plate'){f.latch=true;f.g.latch=true;f.near=true;pressPlate(f);msg('The slab lands on the plate and holds it down. A gate grinds open and stays open.',3.6);}
-  else msg('The slab jams the closing plate. It will not spring now.',3.4);}
+  if(f.t==='plate'){f.latch=true;f.g.latch=true;pressPlate(f);}} // (round 48a: no word of a closing plate; round 49a: no words at all, the gate is heard and glanced at)
 // (a floor rebuilt after a checkpoint: a jam made before it is made again, the slab already fallen)
 function jamRestore(o){const f=o.f;if(!f.slabF)return;f.jam=1;f.press=-9;if(f.t==='plate'){f.latch=true;f.g.latch=true;}
   const sl=L.dyn.find(q=>q.f===f.slabF);if(sl){sl.f.s=2;L.base[sl.r*L.cols+sl.c]=EMPTY;}L.rubble.add(o.r*L.cols+o.c);}
 function pressPlate(f){if(f.g.tm<=0&&f.g.open<0.05)Snd.play('gate');f.press=gameTime;
-  if(f.latch){if(f.g.tm!==Infinity){f.g.tm=Infinity;Snd.play('door');if(!f.chain&&!f.near)msg(gateMsg(f),3.4);}}
-  else{if(f.where&&!f.told){f.told=1;if(!f.chain)msg(gateMsg(f),3.8);}f.g.tm=f.g.dur;f.g.slam=false;}
+  if(f.latch){if(f.g.tm!==Infinity){f.g.tm=Infinity;gateCue(f.g,true);}}
+  else{if(f.where&&!f.told){f.told=1;gateCue(f.g);}f.g.tm=f.g.dur;f.g.slam=false;}
   armPassage(f);}
 // ---- movable blocks: solid cells that remember the floor beneath them ----
 function rebuildBlocks(LL){LL=LL||L;LL.blockAt=new Map();LL.blockUnder=new Map();for(const b of LL.ext.blocks){LL.blockAt.set(b.r*LL.cols+b.c,b);LL.blockUnder.set(b.r*LL.cols+b.c,b.under);if(b.mv)LL.blockUnder.set(b.r*LL.cols+b.mv.to,b.under2);}
@@ -3696,26 +3708,28 @@ function blockCanMove(bl,dir,kind){const r=bl.r,nc=bl.c+dir;
 function tryMoveBlock(bl,dir,kind){const r=bl.r,nc=bl.c+dir;
   if(!blockCanMove(bl,dir,kind))return false;
   bl.mv={from:bl.c,to:nc,t:0,dur:0.55};bl.under2=B(L,nc,r);L.base[r*L.cols+nc]=WALL;rebuildBlocks();invalidateCell(bl.c,r);invalidateCell(nc,r);
-  P.sx=P.x;P.tx=P.x+(kind==='push'?P.face:-P.face)*TW;setState(kind);Snd.play('push');hint('block');return true;}
+  P.sx=P.x;P.tx=P.x+(kind==='push'?P.face:-P.face)*TW;setState(kind);Snd.play('push');return true;}
 function updateBlocks(dt){for(const bl of L.ext.blocks){
   if(bl.mv){bl.mv.t+=dt;if(bl.mv.t>=bl.mv.dur){const fc=bl.mv.from;L.base[bl.r*L.cols+fc]=bl.under;bl.under=bl.under2;bl.c=bl.mv.to;bl.mv=null;rebuildBlocks();invalidateCell(fc,bl.r);invalidateCell(bl.c,bl.r);}}
   if(!bl.mv){const f=F(L,bl.c,bl.r);if(f&&f.t==='plate'){pressPlate(f);f.g.heldAt=gameTime;}}}}
 function armPassage(f){if(f.armed)return;f.armed=1;
   const dk=f.t==='trigger'?DR_T-0.8:0; // the flask's own tile arms it and the drink takes 1.3 s now (it took 0.8): the time to run for it is kept
-  if(f.chain){f.chain.forEach((t,k)=>{if(t.s===0){t.s=1;t.tm=-(1.8+dk+0.36*k);}});Snd.play('creak');msg((f.g?gateMsg(f)+' ':'')+'The cracked floor behind you is starting to give way. Run!',3.8);}
+  if(f.chain){f.chain.forEach((t,k)=>{if(t.s===0){t.s=1;t.tm=-(1.8+dk+0.36*k);}});Snd.play('creak');}
   if(f.amb&&!quiet)pendingGuards.push({at:gameTime+0.6+dk,spec:f.amb});}
 function triggerLoose(f){if(f.s!==0)return;if(f.drop&&!f.sturdy)learn('collapse');if(f.sturdy){if(!f.creaked){f.creaked=1;Snd.play('creak');}return;}f.s=1;f.tm=0;Snd.play('creak');}
+// (round 48a) a plate's click as a foot first comes down on it, the same for an opening and a closing plate, whatever it does to a gate
+function plateClick(f){if(gameTime-f.press>0.2)Snd.play('plate');}
 function standOn(){
   const c=pCol(),r=pRow(),f=F(L,c,r);
   if(f){
     if(f.t==='loose')triggerLoose(f);
-    else if(f.t==='plate'){learn('plate');pressPlate(f);}
+    else if(f.t==='plate'){learn('plate');if(!f.jam)plateClick(f);pressPlate(f);}
     else if(f.t==='trigger')armPassage(f);
-    else if(f.t==='lplate'){f.press=gameTime;const lf=f.lf,y=f.e?lf.yB:lf.yT;if(!liftDocked(lf,!f.e)&&lf.tgt!==y&&!(P.state==='lift'&&P.lift===lf)){lf.tgt=y;Snd.play('gate');hint('lift');}}
-    else if(f.t==='closer'&&!f.jam){f.press=gameTime;if(f.g.tm>0||f.g.open>0.05){f.g.tm=0;f.g.slam=true;Snd.play('gate');shake(0.9);hint('closer');}}
-    else if(f.t==='xplate'){f.press=gameTime;if(!L.door.opening&&L.door.open<1){L.door.opening=true;msg('A heavy door grinds open somewhere on this floor.',3.4);Snd.play('door');}}
+    else if(f.t==='lplate'){f.press=gameTime;const lf=f.lf,y=f.e?lf.yB:lf.yT;if(!liftDocked(lf,!f.e)&&lf.tgt!==y&&!(P.state==='lift'&&P.lift===lf)){lf.tgt=y;Snd.play('gate');}}
+    else if(f.t==='closer'&&!f.jam){plateClick(f);f.press=gameTime;if(f.g.tm>0||f.g.open>0.05){f.g.tm=0;f.g.slam=true;Snd.play('gate');shake(0.9);}}
+    else if(f.t==='xplate'){f.press=gameTime;if(!L.door.opening&&L.door.open<1){L.door.opening=true;gateCue(null,true);}}
   }
-  for(let i=0;i<L.cps.length;i++){const cp=L.cps[i];if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<14){cp.on=true;cp.onAt=gameTime;L.cpIndex=i;S.cp=i;S.floorTime=levelTime;S.cpPlates=pressedPlates();const fill=(S.sands|0)<SANDS;S.sands=SANDS;writeSave();msg(fill?'The sky clock lights, and your hours are restored. If you fall, you rise here.':'The sky clock lights. If you fall, you rise here.',3.2);Snd.play('cp');sparks(cpX(cp),SURF(cp.r)-26,10,'rgb('+(L.theme.glow||'232,196,127')+')');}}
+  for(let i=0;i<L.cps.length;i++){const cp=L.cps[i];if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<14){cp.on=true;cp.onAt=gameTime;L.cpIndex=i;S.cp=i;S.floorTime=levelTime;S.cpPlates=pressedPlates();S.sands=SANDS;writeSave();Snd.play('cp');sparks(cpX(cp),SURF(cp.r)-26,10,'rgb('+(L.theme.glow||'232,196,127')+')');}}
 }
 // a jump that ends hanging on a ledge: across a pit (gap, wide) or a storey up with Grab held (jgrab)
 function learnGrab(ys){const jk=P.jumpKind;if(jk!=='run'&&jk!=='stand')return;const dx=Math.abs(P.x-P.jx);if(dx>=40)learn('gap');if(jk==='run'&&ys<P.jy-40)learn('jgrab');else if(jk==='run'&&dx>=80)learn('wide');}
@@ -3796,12 +3810,13 @@ function stStand(ix){
   if(P.peace<=0){const g=nearGuard(64);if(g)return enterGarde(g);}
   if(P.sword&&!nearGuard(110))P.sword=false;
   const wob=P.stumble>0;
-  if(took('j')){if(wob)return;return tryJump();}
+  if(took('j')){if(wob)return;{const lk=chimFoot(pCol(),pRow());if(lk&&P.face===lk.F)return chimPrep(lk);}return tryJump();} // (round 48b: Jump at a kick shaft's foot, facing its ledge's wall: into the chimney)
   if(wob&&took('u'))return;
+  if(I.buf.u!==undefined&&gameTime-I.buf.u<=0.15){const lk=chimFoot(pCol(),pRow());if(lk){took('u');return chimPrep(lk);}} // (round 48b: Up at the foot, either way he faces, is the way into the chimney; else the press is left for the checks below)
   // a lift: on its platform, Up or Down held rides it
   {const lf=liftUnder();if(lf&&lf.sand){if(lf.s===0&&Math.abs(P.x-(lf.sc*TW+16))<12){lf.s=1;lf.tm=0;lf.snd=0.2;P.lift=lf;P.vx=0;setState('lift');Snd.play('creak');return;}} // (round 16a: on a sand lift's slab, it starts; round 38b: its hint comes as he nears it, checkHints)
   else if(lf&&!wob&&((I.u&&!I.d&&lf.y>lf.yT+0.01)||(I.d&&!I.u&&lf.y<lf.yB-0.01))){P.lift=lf;setState('lift');return;}}
-  if(took('u')){if(atDoor()){if(L.door.open>=0.95){setState('exit');P.sword=false;return;}msg('Sealed. A floor plate somewhere opens this door.',3);return;}return tryUp();}
+  if(took('u')){if(atDoor()){if(L.door.open>=0.95){setState('exit');P.sword=false;return;}Snd.play('sealed');return;}return tryUp();}
   if(P.liftHold&&!I[P.liftHold])P.liftHold=null;
   if(took('d'))return tryDown();
   if(I.d&&P.liftHold!=='d')return setState('crouch');
@@ -3823,7 +3838,7 @@ function stRun(dt,ix){
   else{setState('stop');}
   if(took('j')&&P.stumble<=0)P.pendingJump=true;
   if(hl)P.pendingJump=false; // (no jump of any kind on a hill: round 47a, a heap too)
-  if(P.pendingJump&&Math.abs(P.vx)>50){const wa=wallAhead();if(wa&&B(L,wa.wc,pRow()-1)===WALL&&B(L,wa.wc-P.face,pRow()-1)!==WALL){P.jLe=null;if(wa.d<=30){P.pendingJump=false;return startWallRun();}runMove(dt);return;}}
+  if(P.pendingJump&&Math.abs(P.vx)>50){const wa=wallAhead();if(wa&&B(L,wa.wc,pRow()-1)===WALL&&B(L,wa.wc-P.face,pRow()-1)!==WALL){P.jLe=null;if(wa.d<=30){P.pendingJump=false;{const lk=chimFoot(wa.wc-P.face,pRow());if(lk&&lk.F===P.face&&pCol()===lk.c)return chimLaunch(lk,true);}return startWallRun();}runMove(dt);return;}}
   P.jLe=null;
   if(P.pendingJump){
     const e=hazardEdge(80);
@@ -3833,16 +3848,71 @@ function stRun(dt,ix){
   if(took('u')||took('d')){P.pendingJump=false;setState('stop');}
   runMove(dt);
 }
-// ---- kicking up a shaft from wall to wall ----
-// The Two Thrones guides give the rhythm: "Wait for the Prince to hit each side of the wall then tap the jump button
-// again"; a parkour tic-tac plants the ball of the foot, leans away from the wall and pushes up and away with the head
-// already turned to the target. The first version launched him so hard (95 across, 300 up) that he was still rising fast
-// when he reached the far wall and kicked straight on, arms overhead the whole way: a steady climb through the air with
-// no contact, which read as flying. Now each kick is a lower arc that tops out as he reaches the far wall (about a third
-// of a second across, ~52px up), the soles plant there for a beat (knees folded, body leaning away, arms drawn back),
-// and only then does the push send him on. Jump pressed early is kept for the plant; with no Jump the soles hold for a
-// moment and then slip, and he drops away from the wall.
-const KICK_VX=62,KICK_VY=-275,PLANT_MIN=0.11,PLANT_STICK=0.16,PLANT_MAX=0.45;
+// ---- the kick shaft: the locked chimney (round 48b) ----
+// (owner: "run jump in the chimney, then lock in the kicks positions, jump button does nothing, control the prince with the up/down buttons
+// to perform one kick and climb a bit, pressing down disengages and the prince falls. When at the top pressing up again uses the Y leap to
+// land") Until v89 he kicked from wall to wall on Jump with the timing of a tic-tac (a plant of 0.11-0.45 s, then he slipped), from any wall
+// at all; a running Jump at a shaft was a wall run, which on a two-storey shaft caught the lip and skipped the kicks. Now the shaft is a
+// chimney he locks into: a running Jump at its wall, a standing Jump at its foot facing the ledge's wall, or Up at its foot (walking or
+// falling in does not lock him) takes him in one jump to the first stance, CHM_G0 px over the foot's floor, where both walls are (the wall
+// behind starts a storey up). The stances stand on a fixed grid, CHM_G0 + CHM_GS n px (feet over the foot's floor), on the ledge's wall
+// and the wall behind in turn, whatever the way in. In a stance he rests as long as he likes (no stamina); each new press of Up is one
+// kick to the next stance (held Up does not repeat; a press up to 0.15 s before a plant is kept; on the pad a slide back to the dead zone
+// and out again is a new press); Down lets go at once, whatever the height (a fall's usual damage: 100 px hurts, 170 kills); Jump and
+// Grab do nothing (their buttons dimmed). At the top stance (the lip within CHM_YD px over his feet) Up is the Y: the near foot to the
+// wall behind and the hands to the lip for CHM_YP s, then a push up past the lip (its top CHM_YC px over it) and across, flown on the
+// standing jump's keys and landed with its landing, standing CHM_YX px past the lip. Every flight is scripted (chimFly: the game's own
+// integration, exact at its last frame), so a plant is at its grid height to the pixel. The drawing of the stances and kicks is round
+// 42a's (chimPose). Kicks off a single wall anywhere else are gone; the wall run outside the shafts stays.
+const KICK_VX=62,PLANT_MIN=0.11,CHM_G0=50,CHM_GS=46,CHM_YD=50,CHM_IN_T=0.3,CHM_YP=0.18,CHM_YC=12,CHM_YX=12;
+// a stance's feet over the foot's floor; is stance n the top one (the Y next)
+function chimH(n){return CHM_G0+CHM_GS*n;}
+function chimTop(lk){return lk.y0-lk.ys-chimH(lk.n)<=CHM_YD;}
+// the kick shaft whose foot is cell (c, r): its 'shaftfoot' tile under an open column walled both sides a storey up, the ledge on one side
+// at its top (the row where that side opens onto a floor); null if not one (a lift's shaft never: it has no shaftfoot)
+function chimFoot(c,r){const f=F(L,c,r);if(!f||f.t!=='shaftfoot'||r<1||B(L,c,r-1)===WALL||B(L,c-1,r-1)!==WALL||B(L,c+1,r-1)!==WALL)return null;
+  const sd=chimLedge(c,r-1);if(!sd)return null;let rr=r-1;while(rr>0&&B(L,c-1,rr)===WALL&&B(L,c+1,rr)===WALL&&B(L,c,rr)!==WALL)rr--;
+  if(B(L,c,rr)===WALL||B(L,c+sd,rr)===WALL||!solidBelow(L,c+sd,rr))return null;
+  return {c,F:sd,y0:SURF(r),ys:SURF(rr),n:-1,ph:'in',fn:0,xt:0,yt:0,fx:0,mv:0};}
+// his x pressed to the wall on side sd of column c (as clampMove stops him)
+function chimPX(c,sd){return sd>0?(c+1)*TW-BW-0.01:c*TW+BW+0.01;}
+// a flight of nf frames from where he is to (xt, yt): vx even, vy so that the game's own steps (vy += g dt, then y += vy dt) end on yt
+function chimFly(lk,xt,yt,nf){lk.fn=nf;lk.xt=xt;lk.yt=yt;lk.ph='fly';P.vx=(xt-P.x)/(nf*STEP);P.vy=((yt-P.y)-GRAV*STEP*STEP*nf*(nf+1)/2)/(nf*STEP);P.fallY=P.y;}
+// the standing ways in: the wind-up first (jumpPrep, launch hands it to chimLaunch)
+function chimPrep(lk){P.face=lk.F;P.chIn=lk;P.jumpKind='stand';P.jLow=false;P.pbQ=null;P.pbC=null;P.jFx=feetX(P.pose)+(P.pose.ox||0);setState('jumpPrep');}
+// the jump in: from where he stands (or runs) to the first stance on the ledge's wall
+function chimLaunch(lk,run){P.face=lk.F;P.jx=P.x;P.jy=P.y;P.lowJump=false;P.jMir=false;P.jGo=null;P.jLe=null;P.jO0=P.pose.ox||0;P.jB=0;P.jumpKind='stand';
+  setState('air');P.lock=lk;lk.n=-1;P.plant=null;P.autoGrab=false;P.pendingJump=false;
+  chimFly(lk,chimPX(lk.c,lk.F),lk.y0-chimH(0),Math.round(CHM_IN_T/STEP));P.jT=CHM_IN_T;P.jS=1;P.jKe=null;Snd.play('jump');}
+function startPlant(sd,go){P.plant={sd,t0:gameTime,go,y:null};P.vx=0;P.vy=0;P.face=sd;
+  Snd.play('plant');if(GFX().fx)dust(P.x+sd*7,P.y-22,2);if(P.lk)P.lk.sq=0.92;}
+// a kick: from the stance on side sd across to the next stance on the other wall
+function kickOff(lk,sd){P.plant=null;P.face=-sd;P.autoGrab=false;P.jumpKind='kick';P.kickT=gameTime;
+  chimFly(lk,chimPX(lk.c,-sd),lk.y0-chimH(lk.n+1),Math.round((TW-2*BW)/KICK_VX/STEP));
+  P.pose=mk(PS.kickPush); // the facing flips here: the push leg is already stretched back to the wall
+  Snd.play('kick');dust(P.x+sd*6,P.y-20,4);if(P.lk)P.lk.sqv+=2.2;}
+// the Y: up past the lip and across onto the ledge, from where he is drawn seated (the push starts there)
+function chimY(lk){P.plant=null;P.face=lk.F;const hx=P.chm?P.chm.hx:P.x;P.x=clamp(hx,lk.c*TW+BW+0.01,(lk.c+1)*TW-BW-0.01);
+  const vy=Math.sqrt(2*GRAV*(P.y-lk.ys+CHM_YC));lk.ph='yfly';lk.mv=0;lk.fx=lk.F>0?(lk.c+1)*TW+CHM_YX:lk.c*TW-CHM_YX;
+  P.jx=P.x;P.jy=P.y;P.jumpKind='stand';P.jMir=false;P.lowJump=false;P.jO0=0;P.jB=0;P.vx=0;P.vy=-vy;P.fallY=P.y;P.t=0;P.yLeap=true;
+  P.jT=vy/GRAV+Math.sqrt(2*CHM_YC/GRAV);P.jS=1;P.jKe=null;Snd.play('jump');learn('shaft');} // (round 49a: out at the top, the shaft is learned: its jet stream fades to 0.65)
+// one tick in the chimney (P.lock): true when the tick is done; false after Down (the rest of the air tick runs: he falls)
+function chimAir(dt){const lk=P.lock;took('j');took('g');P.autoGrab=false;
+  if(lk.ph!=='yfly'&&I.d&&!I.u){P.lock=null;P.plant=null;P.jumpKind='slip';P.vx=0;if(P.vy<0)P.vy=0;P.fallY=P.y;return false;} // Down: he lets go, at once
+  if(lk.ph==='plant'){const pl=P.plant,pt=gameTime-pl.t0;P.vx=0;P.vy=0;P.fallY=P.y;
+    if(pl.y!=null){if(gameTime-pl.y>=CHM_YP)chimY(lk);return true;}
+    if(!pl.go&&took('u',0.15))pl.go=true;
+    if(pl.go&&pt>=PLANT_MIN){if(chimTop(lk)){pl.y=gameTime;pl.go=false;Snd.play('grab');}else kickOff(lk,pl.sd);}
+    return true;}
+  const py=P.y;P.vy+=GRAV*dt;
+  if(lk.ph==='yfly'){ // feet past the wall's top: the push carries him across to land CHM_YX past the lip
+    if(!lk.mv&&P.y<=lk.ys+4){const d=lk.ys-P.y,t=(-P.vy+Math.sqrt(Math.max(0,P.vy*P.vy+2*GRAV*d)))/GRAV;P.vx=(lk.fx-P.x)/Math.max(t,STEP);lk.mv=1;}
+    P.x+=P.vx*dt;P.y+=P.vy*dt;
+    if(P.vy>0){const h=landingSurface(py,P.y);if(h){land(h);return true;}}
+    if(P.y>L.rows*TH+90)die('fall');return true;}
+  P.x+=P.vx*dt;P.y+=P.vy*dt;
+  if(--lk.fn<=0){P.x=lk.xt;P.y=lk.yt;lk.n++;lk.ph='plant';startPlant(lk.n%2?-lk.F:lk.F,false);}
+  return true;}
 // sliding down a hanging (case 'slide'): steady speed, braking, and the blade's drawn length: it points into the cloth,
 // so it is drawn short, along the depth direction (up and right)
 const SL_V=170,SL_A=1100,SL_BLADE=9;
@@ -3873,6 +3943,49 @@ function siFrame(p,y){const s=skel(p),low=Math.max(s.fF[1],s.fB[1]);
 // a world point in that frame (the hip's, x forward)
 function siHip(fr,wx,wy){const dx=(wx-fr.x)*P.face,dy=wy-fr.y;return [dx*fr.c+dy*fr.s,-dx*fr.s+dy*fr.c];}
 function siGrip(p,i,h,w){if(i){p.gBx=h[0];p.gBy=h[1];p.hb=w;}else{p.gFx=h[0];p.gFy=h[1];p.hold=w;}}
+// The tells (round 49b, owner after the round 49 research, "Found, not told": "rely only on subtle graphic hints"; Limbo's lesson: the boy
+// turns toward what can be used, his arms reach before the player does). Standing still TL_D s (not in a fight, the chase, a wind, a stumble),
+// his body points at what is there to use or fear: under a ledge he can climb he looks up and lifts his hand toward its lip ('reach'); at an
+// edge he can hang from he glances down ('edge'); stakes within a step ahead, on his floor or in the pit before him, he eyes them ('stakes');
+// a flask near him on his floor, he looks at it ('flask'); at the mouth of a low tunnel he stoops with a hand on its lintel ('low'); locked
+// in the chimney (round 48b), planted between kicks, he looks up the shaft ('chim'). Look only, the prince only, on the motion-capture body:
+// the head's angle on the neck, the lean, the knees, and the hand by skel's two-bone solve to a grip (the lip where his hands would hang, the
+// lintel's end 10 px over its underside, on the end he faces), shortened to TL_RF of his reach so the elbow stays soft; eased in over TL_IN (followPose's overlap carries the arm and
+// head after the trunk) and dropped at once by any input (followPose eases it out). Shadows and silhouettes take P.pose: they follow.
+const TL_D=0.5,TL_IN=0.55,TL_RF=0.96,TL_CD=0.5;
+const TELL={k:null,w:0,x:0,y:0,ct:0,off:false}; // (TELL.off: none, for pictures and tests)
+const tlP=mk({});
+// what is there to tell of, standing where he is (sets TELL.x, TELL.y: the grip in world px, for 'reach' and 'low')
+function tellKind(){const r=pRow(),c=pCol(),fc=P.face;
+  for(const it of L.items){if(it.taken||it.hidden||it.r!==r)continue;const dx=(it.x-P.x)*fc;if(dx>-6&&dx<44)return 'flask';}
+  {const ca=c+fc,xe=fc>0?(c+1)*TW:c*TW,ne=Math.abs(P.x-xe)<26;
+    if(ne){const fa=F(L,ca,r);if(fa&&fa.t==='spikes')return 'stakes';if(B(L,ca,r)===EMPTY&&r+1<L.rows){const fb=F(L,ca,r+1);if(fb&&fb.t==='spikes')return 'stakes';}}}
+  {const e=edgeBelow();if(e&&e.s===fc)return 'edge';}
+  {const cu=canClimbUp();if(cu&&cu.s===fc){const HG=PS.hang,hx=cu.xe-fc*7,hy=SURF(r-1)+HANG;TELL.x=hx+HG.gFx*fc;TELL.y=hy-HG.hy+HG.gFy;return 'reach';}}
+  if(!underLow()){const ca=Math.floor((P.x+fc*14)/TW),fa=F(L,ca,r);if(ca!==c&&fa&&fa.t==='low'){const xe=fc>0?ca*TW:(ca+1)*TW;
+    if(Math.abs(P.x-xe)<24){TELL.x=fc>0?xe-HX+1.2:xe-0.5;TELL.y=r*TH+LOW_H-10;return 'low';}}} // (facing right: the lintel's front face's edge; left: its end face, seen, at mid depth)
+  return null;}
+function tellIdle(){const ch=L.ext.chase;return mode==='play'&&!TELL.off&&!(I.l||I.r||I.u||I.d||I.j||I.g)&&!(P.foe&&P.foe.alive)&&!(ch&&ch.on&&!ch.done)&&!(P.stumble>0)&&Math.abs(windAt(P.x,P.y))<0.03;}
+function tellTgt(tgt,dt){
+  if(P.state==='air'&&P.lock&&P.plant&&P.lock.ph!=='yfly'&&tellIdle()){TELL.ct+=dt;if(TELL.ct<TL_CD){TELL.w=0;return tgt;} // the locked chimney: between kicks, a look up the shaft
+    if(TELL.k!=='chim'){TELL.k='chim';TELL.w=0;}TELL.w=Math.min(1,TELL.w+dt/TL_IN);const w=s32(TELL.w);Object.assign(tlP,tgt);tlP.head-=0.34*w;return tlP;}
+  TELL.ct=0;
+  if(P.state!=='stand'||P.t<TL_D||(P.sword&&P.foe)||!tellIdle()){TELL.w=0;TELL.k=null;return tgt;}
+  const k=tellKind();if(k!==TELL.k){TELL.k=k;TELL.w=0;}if(!k)return tgt;
+  TELL.w=Math.min(1,TELL.w+dt/TL_IN);const w=s32(TELL.w),q=Object.assign(tlP,tgt);
+  switch(k){
+    case'edge':q.head+=0.42*w;q.lean+=0.07*w;q.aB-=0.12*w;q.aF+=0.06*w;q.kF+=0.05*w;break; // a glance over the edge, his weight kept back
+    case'stakes':q.head+=0.4*w;q.lean+=0.06*w;break; // eyeing the stakes before him (head pitched down and forward)
+    case'flask':q.head+=0.36*w;q.lean+=0.08*w;q.aF+=0.12*w;break;
+    case'reach':q.head-=0.48*w;q.lean-=0.05*w;tellGrip(q,w);break; // looking up at the lip, the hand lifted toward it
+    case'low':q.lean+=0.36*w;q.hF+=0.12*w;q.kF+=0.24*w;q.hB+=0.06*w;q.kB+=0.1*w;q.head-=0.24*w;tellGrip(q,w);break; // a stoop, a hand on the lintel, looking in
+  }
+  return q;}
+// the front hand toward the grip TELL.x,y: in the hip's frame as the figure is drawn (feet on P.y, P.rdx), shortened to TL_RF of the arm's reach
+function tellGrip(q,w){const a=Math.max(LEN.th*Math.cos(q.hF)+LEN.sh*Math.cos(q.hF-q.kF),LEN.th*Math.cos(q.hB)+LEN.sh*Math.cos(q.hB-q.kB)),fc=P.face,
+    hx=P.x+(P.rdx||0),hy=P.y+(P.rdy||0)+(P.yo||0)-a,sx=LEN.to*Math.sin(q.lean),sy=-LEN.to*Math.cos(q.lean);
+  let gx=(TELL.x-hx)*fc-sx,gy=TELL.y-hy-sy;const D=Math.hypot(gx,gy),R=(LEN.ua+LEN.fa)*TL_RF;if(D>R){gx*=R/D;gy*=R/D;}
+  q.gFx=sx+gx;q.gFy=sy+gy;q.hold=w;if(q.eF<0.3)q.eF=0.3;}
 function handsIn(){const p=P.pose,st=P.state,ps=P.dhS,f=P.dF||P.face;
   if(st==='slide'&&ps&&ps!=='slide'&&P.t<0.02){const dx=clamp((P.dhX-P.x)*f,-24,24),lg=ps==='air'?P.lgo:null,W=[[P.dhFx,P.dhFy],[P.dhBx,P.dhBy]];
     p.ox=dx;const fr=siFrame(p),r={t0:gameTime,dx,l:[0,0],W,H:[null,null],h:[0,0],d:[SI_D[0],SI_D[1]]},e=[0,0];
@@ -3901,32 +4014,11 @@ function handsIn(){const p=P.pose,st=P.state,ps=P.dhS,f=P.dF||P.face;
   P.dhFx=bx+f*(s.hF[0]*c-s.hF[1]*sn);P.dhFy=by+s.hF[0]*sn+s.hF[1]*c;P.dhBx=bx+f*(s.hB[0]*c-s.hB[1]*sn);P.dhBy=by+s.hB[0]*sn+s.hB[1]*c;P.dhX=bx;P.dhS=st;}
 // the blade's drawn length while he takes the cloth: none until the sword hand is halfway there, then it sinks in to SL_BLADE
 function slBlade(){const r=P.slI;if(!r)return SL_BLADE;const u=s5((gameTime-r.t0-r.d[0])/r.h[0]);return u<0.5?0:2+(SL_BLADE-2)*s5((u-0.5)/0.5);}
-function startPlant(sd,go){P.plant={sd,t0:gameTime,go};P.vx=0;P.face=sd;
-  Snd.play('plant');if(GFX().fx)dust(P.x+sd*7,P.y-22,2);if(P.lk)P.lk.sq=0.92;}
-function kickOff(sd){P.plant=null;P.vx=-sd*KICK_VX;P.vy=KICK_VY;P.face=-sd;P.fallY=P.y;P.autoGrab=true;P.jumpKind='kick';P.kickT=gameTime;P.wallT=-9;
-  P.pose=mk(PS.kickPush); // the facing flips here: the push leg is already stretched back to the wall
-  Snd.play('kick');dust(P.x+sd*6,P.y-20,4);hint('walljump');learn('walljump','shaft');if(P.lk)P.lk.sqv+=2.2;}
-// one tick planted on a wall; false once he has left it (the rest of the air tick then runs as usual)
-function stPlant(dt){const pl=P.plant,pt=gameTime-pl.t0;
-  if(!pl.go&&took('j',0.15))pl.go=true;
-  if(pl.go&&pt>=PLANT_MIN){kickOff(pl.sd);return true;}
-  // where the wall ends below his hands (a ledge just under them) the soles don't hold: he slides down to catch its edge
-  const edge=B(L,Math.floor((P.x+pl.sd*(BW+1.5))/TW),rowOf(P.y-HANG+2))!==WALL;
-  P.vy=edge?approach(P.vy,190,1500*dt):pt<PLANT_STICK?approach(P.vy,0,1800*dt):approach(P.vy,120,600*dt);
-  if(pt>PLANT_MAX||wallTouch()!==pl.sd){P.plant=null;P.jumpKind='slip';return false;}
-  const py=P.y;P.y+=P.vy*dt;
-  if(P.vy>0){if((P.autoGrab||I.g)&&tryGrab(py)){P.plant=null;return true;}const h=landingSurface(py,P.y);if(h){P.plant=null;land(h);return true;}}
-  return true;}
 function stAir(dt){
-  if(P.plant&&stPlant(dt))return;
+  if(P.lock&&chimAir(dt))return; // (round 48b: the locked chimney)
   {const k=rjK();P.vy=Math.min(P.vy+GRAV/(k*k)*dt,480/k);}windDrag(dt); // (round 44: a flight into the wind meets its drag) (round 35a: a running jump flies its arc on its own clock, RJ_K)
   if(P.vx){const want=P.x+P.vx*dt,nx=clampMove(P.x,want,P.y,P);if(Math.abs(nx-want)>0.01)P.vx=0;P.x=nx;}
-  let ws=wallTouch();if(P.jumpKind==='kick'&&ws===-P.face&&gameTime-(P.kickT||-9)<0.15)ws=0; // the wall he has just left
-  if(ws){P.wallT=gameTime;P.wallS=ws;}
-  // arriving at the far wall from a kick, the soles plant on it
-  if(ws&&P.jumpKind==='kick'&&!P.plant&&ws===P.face&&gameTime-(P.kickT||-9)>0.1){startPlant(ws,false);stPlant(dt);return;}
-  // kick off a wall: Jump while touching one (or just after leaving it)
-  if(gameTime-(P.wallT||-9)<0.12&&took('j',0.12)){if(ws){startPlant(ws,true);stPlant(dt);}else kickOff(P.wallS);return;}
+  // (round 48b: no kick off a single wall: the kicks are the chimney's, chimAir)
   const py=P.y;P.y+=P.vy*dt;
   if(P.vy>0){const pl=ctPoolHit(P.x,py,P.y);if(pl){P.y=pl.wy;die('drown');Snd.play('splash');return;}} // (round 45) a fall into a court's pool drowns him at its surface (the stakes' death, a storey sooner)
   // a jump from the floor never carries his head into the stone or the slab overhead: rising, or falling in under a
@@ -3934,7 +4026,7 @@ function stAir(dt){
   if(P.jumpKind==='run'||P.jumpKind==='stand'){const hh=P.lowJump?HEAD_LOW:HEAD_UP,cy=ceilOver(P.x,rowOf(P.y));
     if(cy!==null&&P.y-hh<cy){P.y=cy+hh;if(P.vy<0)P.vy=0;}}
   // a swing bar within reach of the hands
-  if(P.autoGrab||I.g){const b=barNear();if(b){swingCatch(b);Snd.play('grab');hint('swing');return;}}
+  if(P.autoGrab||I.g){const b=barNear();if(b){swingCatch(b);Snd.play('grab');return;}}
   if(L.lifts.length&&liftAir(py,dt))return; // a paternoster's slab meets his feet or head
   if(P.vy>0){
     if((P.autoGrab||I.g)&&tryGrab(py))return;
@@ -3981,6 +4073,13 @@ function swingCatch(b){const bp=barPos(b),fc=P.face,th=Math.asin(clamp((P.x-bp.x
   P.swIx=(I.r?1:0)-(I.l?1:0);P.swArm=0;P.swArmT=-9;P.swPT=-9;P.swPD=0;P.swKick=0;P.swKd=0;P.swKT=-9;P.swDn=0;
   P.bar=b;P.sw0=gameTime;P.vx=0;P.vy=0;setState('swing');swingPlace();}
 function swingPlace(){const bp=barPos(P.bar);P.x=bp.x+P.face*34*Math.sin(P.swTh);P.y=bp.y+34*Math.cos(P.swTh)+24.5;}
+// The swing's beat (round 49b, owner after the round 49 research: the swing's timing told by sound, no words): at each turn of the swing
+// while he hangs (swingStep: om changes sign, the amplitude over SWB.A0, from a near-still hang up) the ropes creak on the log, softly,
+// louder and a little higher as the swing grows (SWB.k: the amplitude between A0 and SW_CLEAR); while a pump is armed (P.swArm: a press
+// waiting for the bottom) the turn is brighter: the creak higher and a short breath of air over it, so the beat the press must meet is
+// heard. Mixed under the ready chime (swready 0.05): the beat 0.022 to 0.04. It replaces round 18b's turn creak ('swing', over 0.1 rad).
+// SWB.log (an array) records [time, amplitude, armed, angle] for egyptr49b.py; null in play.
+const SWB={k:0,arm:0,A0:0.05,log:null};
 function swingKick(d){P.swKick=0.12;P.swKd=d;P.swKT=gameTime;P.swArm=0;Snd.play('swpump');}
 function swingStep(dt,ix){const f=P.bar,fc=P.face,hd=ix*fc;let th=P.swTh,om=P.swOm;
   // a press arms a pump (see SW_KICK): fired now if he hangs still or has just passed the bottom going that way
@@ -3996,7 +4095,8 @@ function swingStep(dt,ix){const f=P.bar,fc=P.face,hd=ix*fc;let th=P.swTh,om=P.sw
   if(P.swArm&&Math.sign(om)===P.swArm&&th0*P.swArm<0&&th*P.swArm>=0){if(gameTime-P.swArmT<=SW_PRE)swingKick(P.swArm);else P.swArm=0;} // the bottom, going the armed way
   if(!hd&&P.swKick<=0&&Math.abs(th)<0.02&&Math.abs(om)<0.1){th*=0.9;om=0;}
   const A=swAmp(th,om);if(A>SW_MAX&&Math.abs(th)<SW_MAX){const e=1-Math.cos(SW_MAX)-(1-Math.cos(th));om=Math.sign(om)*SW_W*Math.sqrt(Math.max(0,2*e));}
-  if(Math.sign(om)!==Math.sign(P.swOm)&&P.swOm!==0&&swAmp(th,om)>0.1)Snd.play('swing'); // the creak of the turn
+  if(Math.sign(om)!==Math.sign(P.swOm)&&P.swOm!==0){const A=swAmp(th,om);if(A>SWB.A0){SWB.k=clamp((A-SWB.A0)/(SW_CLEAR-SWB.A0),0,1);SWB.arm=P.swArm?1:0;Snd.play('swbeat'); // the beat of the turn (round 49b)
+    if(SWB.log)SWB.log.push([gameTime,A,SWB.arm,th]);}}
   P.swPump=P.swKick>0||(hd&&hd*om>0)?1:0;P.swTh=th;P.swOm=om;
   // (round 16b) once ready it stays so down to 0.5, which still clears from a release at -0.2 to 0.2 rad
   const rdy=swAmp(th,om)>=(P.swRdy?SW_CLEAR-0.05:SW_CLEAR);if(rdy&&!P.swRdy){Snd.play('ropecreak');Snd.play('swready');P.swGl=gameTime;}P.swRdy=rdy;
@@ -4028,7 +4128,7 @@ function swingPose(th,om,pump){const p=SWP,ph=(Math.atan2(th,om/SW_W)+6.2832)%6.
   p.hy+=lf-lift;let a0=Math.atan2(dx,dy);if(a0<0)a0+=6.2832; // (overhead is near pi: kept on one side of the wrap, as the pose is blended)
   if(D>=R){p.aF=a0;p.eF=0;}else{const be=Math.acos(clamp((LEN.ua*LEN.ua+D*D-LEN.fa*LEN.fa)/(2*LEN.ua*D),-1,1)),ga=Math.acos(clamp((LEN.ua*LEN.ua+LEN.fa*LEN.fa-D*D)/(2*LEN.ua*LEN.fa),-1,1));p.aF=a0+be;p.eF=-(Math.PI-ga);}
   p.aB=p.aF-0.04;p.eB=p.eF;return p;}
-function startWallRun(){const wc=pCol()+P.face;P.x=P.face>0?wc*TW-BW-1:(wc+1)*TW+BW+1;P.vx=0;P.vy=-WR_V;P.fallY=P.y;P.autoGrab=true;P.jumpKind='wall';P.wrY0=P.y;P.wrPose=mk(P.pose);setState('wallrun');P.ph=0.25;Snd.play('jump');hint('wallrun');}
+function startWallRun(){const wc=pCol()+P.face;P.x=P.face>0?wc*TW-BW-1:(wc+1)*TW+BW+1;P.vx=0;P.vy=-WR_V;P.fallY=P.y;P.autoGrab=true;P.jumpKind='wall';P.wrY0=P.y;P.wrPose=mk(P.pose);setState('wallrun');P.ph=0.25;Snd.play('jump');}
 // distance to a wall face straight ahead on this floor (only across solid floor), or null
 function wallAhead(){const row=pRow();let c=pCol();for(let i=0;i<3;i++){const nc=c+P.face;if(B(L,nc,row)===WALL)return {d:P.face>0?nc*TW-P.x:P.x-(nc+1)*TW,wc:nc};if(!solidBelow(L,nc,row))return null;const f=F(L,nc,row);if(f&&(f.t==='gate'&&f.open<0.5))return null;c=nc;}return null;}
 function stGarde(ix){
@@ -4054,7 +4154,7 @@ function resolveStrike(att,def){
   if(def.state==='parry'&&def.t<0.32){
     if(att===P)setState('blocked');else setE(att,'blocked');
     if(isP)learn('parried');
-    if(!isP){if(Math.random()<def.ripo)def.ripoAt=def.t+0.08;if(!def.skel)hint('parried');}
+    if(!isP){if(Math.random()<def.ripo)def.ripoAt=def.t+0.08;}
     Snd.play('clang');sparks((att.x+def.x)/2+att.face*4,att.y-31,10,'#ffe6a8');ring((att.x+def.x)/2+att.face*4,att.y-31,'#ffe6a8',9);shake(0.8);hitStop=0.05;return;
   }
   if(att===P)learn('fight');
@@ -4218,7 +4318,7 @@ const sf=F(L,pCol(),pRow());if(sf&&sf.t==='spikes')learn('spikes');setState('sta
       tgt.sw=P.face>0?0.46:Math.PI-0.46;rate=P.slI||P.dhS!=='slide'?SI_RATE:P.t<0.1?50:36;break;} // (round 33c: taking the cloth folds the knees at SI_RATE, not the bite's 50)
     case'swing':tgt=swingPose(P.swTh||0,P.swOm||0,P.swPump);rate=90;break;
     case'air':
-      P.yo=(P.jumpKind==='run'||P.jumpKind==='stand')&&!P.plant?jumpYo():0; // (round 27a: drawn on a lower arc; round 33a: PoP's ticks, both jumps, see jhK)
+      P.yo=(P.jumpKind==='run'||P.jumpKind==='stand')&&!P.plant&&!P.lock?jumpYo():0; // (round 27a: drawn on a lower arc; round 33a: PoP's ticks, both jumps, see jhK)
       {const q=chimPose();if(q){tgt=q;rate=CHM.r;break;}} // (round 42a: in a kick shaft, the chimney)
       if(P.plant){tgt=plantPose();rate=45;break;}
       if(P.jumpKind==='kick'){tgt=kickPose();rate=36;break;}
@@ -4243,6 +4343,7 @@ const sf=F(L,pCol(),pRow());if(sf&&sf.t==='spikes')learn('spikes');setState('sta
   if(P.state==='blocked')tgt=lerpPose(PS.garde,PS.hurt,0.45,tmpP);
   if(P.stumble>0&&['stand','run','stop','turn','garde','advance','retreat'].includes(P.state)){const w=Math.min(1,P.stumble/0.8);
     tgt=lerpPose(tgt,PS.hurt,0.3*w,mk({}));tgt.lean+=0.22*w*Math.sin(P.t*7.5);tgt.head+=0.25*w*Math.sin(P.t*5.3+1);tgt.aB-=0.5*w;tgt.aF+=0.25*w*Math.sin(P.t*6);}
+  tgt=tellTgt(tgt,dt); // (round 49b: the tells, standing still where something can be used or feared)
   // (round 32) ease in as well as out: a wind-up or a take-off starts slow (the follow's rate rises over 0.08 s); the landing's impact does not
   tgt=windTgt(tgt,dt); // (round 44: into the wind he leans, the kilt blown back; in a gust the forearm over his eyes; pushed back he steps back)
   if(P.state==='jumpPrep'||(P.state==='air'&&(P.jumpKind==='run'||P.jumpKind==='stand')))rate*=0.35+0.65*s32(P.t/(0.08*rjK())); // (round 35a: a running flight's on its clock)
@@ -4465,7 +4566,7 @@ function updateFeatures(dt){
       case'loose':if(f.s===2&&f.tm<3)f.tm+=dt; // (round 16a: a well's sand runs out after it breaks)
         if(f.s===1){f.tm+=dt;if(f.tm>=(f.plank?0.42:0.5)){f.s=2;L.base[o.r*L.cols+o.c]=EMPTY;L.debris.push({x:o.c*TW+16,y:SURF(o.r),y0:SURF(o.r),vy:0,c:o.c,hitP:false,kind:f.plank?'plank':'slab',g:f.plank?undefined:DROP_G,wl:!f.plank&&looseWell(o)});Snd.play(f.plank?'creak':'crumble');invalidateCell(o.c,o.r);}}break;
       case'stone':
-        if(f.s===0){if(alive&&pr===o.r&&Math.abs(P.x-(o.c*TW+16))<22&&!['hang','climb','climbDown'].includes(P.state)){f.s=1;f.tm=0;Snd.play('creak');hint('stone');}}
+        if(f.s===0){if(alive&&pr===o.r&&Math.abs(P.x-(o.c*TW+16))<22&&!['hang','climb','climbDown'].includes(P.state)){f.s=1;f.tm=0;Snd.play('creak');}}
         else if(f.s===1){f.tm+=dt;if(f.tm>=0.3){f.s=2;L.debris.push({x:o.c*TW+16,y:ceilingY(o.c,o.r)+14,y0:ceilingY(o.c,o.r)+14,vy:0,c:o.c,r:o.r,hitP:false,kind:'rock',g:DROP_G});Snd.play('crumble');}}
         break;
       case'pend':{const b=pendTip(o,f),side=Math.sign(b.th);
@@ -4505,12 +4606,12 @@ function updateFeatures(dt){
     // it wakes as he crosses the line at c0+1 heading right, not when he lands past it: a route can pass this row the other way
     // first (dropping in off a ledge, which turns him to face right) and the storm would rise behind a prince who must go back
     const lx=chs.lx;chs.lx=P.x;
-    if(!chs.on&&alive&&mode==='play'&&lx!==undefined&&lx<=(chs.c0+1)*TW&&P.x>(chs.c0+1)*TW&&P.x<(chs.c0+4)*TW&&P.face>0&&pr>=chs.rTop&&pr<=chs.rBot){chs.on=true;chs.t=0;chs.wx=Math.min(P.x-4*TW,(chs.c0-1)*TW);msg('The dark wakes behind you. Run!',3);Snd.play('storm');Snd.play('howl');hint('chase');}
+    if(!chs.on&&alive&&mode==='play'&&lx!==undefined&&lx<=(chs.c0+1)*TW&&P.x>(chs.c0+1)*TW&&P.x<(chs.c0+4)*TW&&P.face>0&&pr>=chs.rTop&&pr<=chs.rBot){chs.on=true;chs.t=0;chs.wx=Math.min(P.x-4*TW,(chs.c0-1)*TW);Snd.play('storm');Snd.play('howl');}
     if(chs.on&&!chs.done){chs.t+=dt;if(alive){const near=clamp(1-(P.x-chs.wx)/150,0,1);if(near>0)shake(0.35+0.9*near);}const lead=P.x-chs.wx,keep=190-30*L.d;if(chs.t>0.7)chs.wx+=(chs.v+Math.max(0,lead-keep)*1.3)*dt; // it hangs on your heels: run ahead and it surges
       if(alive&&P.x<chs.wx+4&&pr>=chs.rTop&&pr<=chs.rBot){flashScreen('#000000',0.6,0.5);die('sand');}
       // it ends the moment he is through the arch: the dark makes one last rush after him and tears apart round him
       if(chs.wx>=chs.c1*TW-20||P.x>chs.c1*TW+8){chs.done=true;
-        if(P.state!=='dead'){msg('Dawn breaks at the arch, and the dark tears away.',3);Snd.play('crumble');shake(1.4);flashScreen('#ffe2a8',0.35,0.6);
+        if(P.state!=='dead'){Snd.play('crumble');shake(1.4);flashScreen('#ffe2a8',0.35,0.6);
           const tx=P.x+40;chs.diss={t:0,x0:chs.wx,tx,bx:chs.wx,ts:clamp((tx-chs.wx)/460,0.45,0.95)};STORMG.length=0;}}}
     if(chs.done){if(chs.diss){if(!chs.diss.over)updateStormDiss(chs,dt);}else if((chs.fade||0)<1)chs.fade=Math.min(1,(chs.fade||0)+dt*0.8);}}}
   if(L.door.opening&&L.door.open<1)L.door.open=Math.min(1,L.door.open+dt*0.45);
@@ -4530,106 +4631,12 @@ function sparks(x,y,n,col){for(let i=0;i<n;i++)FX.push({x,y,vx:(Math.random()-0.
 function dust(x,y,n){for(let i=0;i<n;i++)FX.push({x:x+(Math.random()-0.5)*10,y:y-1,vx:(Math.random()-0.5)*50,vy:-Math.random()*25,g:30,life:0.4+Math.random()*0.3,t:0,col:'rgba(210,200,180,.55)',sz:1.6});}
 function updateFX(dt){for(let i=FX.length-1;i>=0;i--){const p=FX[i];p.t+=dt;p.vy+=p.g*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.t>=p.life)FX.splice(i,1);}updateSpent(dt);sandUpdate(dt);}
 
-// ================= hints =================
-const HINTS={
-  move:'Hold left or right on the pad to run. Jump is on the right.',
-  gap:'Gap ahead. A standing jump clears one tile, a running jump clears two.',
-  wide:'Three tiles is too far to land. Run, jump, and you will catch the far ledge. Up climbs.',
-  climb:'Ledge above. Press up to climb.',
-  drop:'Press down at an edge to hang, down again to let go. Hanging first takes the sting out of long drops.',
-  spikes:'Stakes in the floor. Hold Grab and tap toward them to tiptoe across, or jump them.',
-  loose:'Sand in the cracks: those tiles give way under you. Keep running.',
-  plate:'A plate raises a gate. If the gate carries a sky clock it shuts again almost at once: run over the plate without stopping, and take any jump from the run.',
-  chomp:'Blades snap shut on a rhythm. Watch one cycle, then go.',
-  fight:'Grab strikes. Press up to block as his blade rises, then strike back at once.',
-  parried:'Parried. Guards block blows thrown in a rush, and the good ones strike straight back. Press up to block, then hit him while he reels.',
-  ranks:'Guards differ, and their dress shows it: ochre and rust, green and cream, crimson and gold, violet with a white plume. The better ones parry a flurry of blows.',
-  poke:'A snake in the tunnel. Crouch and press Grab before you crawl in to draw your blade low, then Grab thrusts. Or wait for it to come out.',
-  potion:'A flask. Stand on it and press Grab to drink.',
-  cp:'Touch the sky clock. If you fall after it, you start again from here.',
-  door:'The exit. It opens from a floor plate somewhere on this floor.',
-  enter:'The way up is open. Press up at the door.',
-  crawl:'Low passage. Press down to get on hands and knees, then left or right to crawl. Up stands you back up.',
-  snake:'A snake. Strike it with Grab before it coils.',
-  stone:'Sand running from the ceiling: a roof block is about to drop. Keep moving while you are underneath it.',
-  bridge:'Old planks. They give way a moment after you step on them, so run across.',
-  pend:'A swinging blade. Crawl under it, or time your run.',
-  vent:'Fire vents. Watch them flare, then cross between bursts.',
-  skel:'A skeleton. Your sword only drives it back. Push it over the edge into the pit.',
-  reinf:'Another guard drops in from the gallery.',
-  closer:'A closing plate. Step on it and the gate slams shut. Jump over it.',
-  latch:'This gate opens from a plate somewhere out of sight. Look above, or below.',
-  sandgate:'The sky clock on this gate means it will not stay open. Its plate is out of sight; find it, then race back before its sun sets.',
-  wallrun:'Run at a wall and press Jump to run up it. You can reach a ledge two floors up and catch it.',
-  walljump:'Kick off walls: press Jump each time you touch one. Bounce between close walls to climb a shaft.',
-  swing:'A swing bar. Press the way he swings, each time he turns, to pump it up (a tap is enough); when it chimes it will carry you: Jump as you swing forward. Hold Down to let go.',
-  banner:'A long tapestry hangs down this shaft. Hold Grab as you fall to slide down it safely.',
-  shaft:'A narrow shaft with a ledge at the top. Jump into a wall, then kick from wall to wall with Jump.',
-  saw:'A saw blade runs along the floor. Jump it as it comes at you.',
-  darts:'Darts fly from that wall at chest height. Crouch and crawl under them, or time your run.',
-  block:'A loose block. Hold Grab and press toward it to push, away to pull. Its weight holds a plate down for good, and you can climb over it.',
-  chase:'The dark is coming down the corridor behind you. Keep running and jump everything in your way; it cannot pass the arch at the far end.',
-  secret:'Something glints up there. Side passages without gates hide gold flasks.',
-  secretdn:'Something glints at the edge of that drop. Side passages without gates hide gold flasks.',
-  fork1:'Two ways on. Drop through the hole and fight a guard, or jump it and take the long way with its traps.',
-  fork3:'Two ways on. The hole is short but crowded with traps; the long way round is quieter.',
-  fork4:'A grating over a deep shaft. There is no way through. Crouch on it and hold Down to look: something waits below, behind a violet gate.',
-  loopgate:'A violet gate. It opens from the violet plate, which lies on the long way round.',
-  slabplate:'A loose slab hangs in the gallery over this plate. Run across it up there and it falls and holds the plate down.',
-  slabgate:'This gate shuts the moment the plate is let go. Something heavy must hold the plate down: look for a loose slab above it.',
-  slabcloser:'A closing plate too wide to jump. A loose slab hangs in the gallery above it: let it fall and the plate is jammed.',
-  racegate:'The sky clock on this gate means it will not stay open. Its plate lies back the way you came: press it, then run for the gate.',
-  collapse:'This ledge will not hold. Stand on it and let it drop you to the floor below.',
-  jgrab:'A ledge a floor up across a pit. Run, jump, and hold Grab in the air to catch its edge; then press up to climb.',
-  hurtdrop:'A long drop. It will hurt, or take the way round.',
-  lift:'Step on the plate to call the lift. Hold up or down to ride.',
-  chain:'Step on as a slab passes.',
-  sandlift:'This slab rests on sand. Step onto it and the sand runs out, lowering you down the shaft.',
-  sandfall:'This slab sits on running sand and will not stop at the bottom: there are spikes below it. When the door at the foot opens, step off through it, or jump for the edge.',
-  double:'Two marked gates. Each answers to the plate of its colour, one above and one below. The one with the sky clock will not stay open.',
-};
-// A hint for a move comes back (once a floor) until the move is done; the moves are the ids in HINT_MOVE, learned by learn() where they succeed.
-// Every other hint is plain information and shows once ever. One hint at a time: while one waits or shows, new ones are dropped (they come again).
-const HINT_MOVE=new Set(['gap','wide','climb','drop','spikes','crawl','fight','parried','poke','snake','potion','plate','block','wallrun','walljump','swing','banner','shaft','collapse','jgrab','lift','chain','sandlift','sandfall']);
-let hintFloor=-1,hintSeen={};
-function hintDue(id){return HINT_MOVE.has(id)?!S.learned[id]&&!hintSeen[id]:!S.hints[id];}
-function hint(id){if(hintQ.length||!hintDue(id))return;hintQ.push({id,t:gameTime});}
-function checkHints(){
-  if(mode!=='play'||!P||P.state==='dead')return;
-  if(L.n===1&&levelTime>1.2)hint('move');
-  const r=pRow();
-  if(['stand','run','step','stop'].includes(P.state)){
-    let c=pCol();
-    for(let i=1;i<=2;i++){const nc=c+P.face*i;const f=F(L,nc,r);
-      if(B(L,nc,r)===WALL)break;
-      if(f&&f.fork&&HINTS['fork'+f.fork]&&f.t!=='hurtdrop'){hint('fork'+f.fork);break;}
-      if(f&&f.t==='jgrab'){hint('jgrab');break;}
-      if(f&&f.t==='hurtdrop'){hint('hurtdrop');break;}
-      if(!solidBelow(L,nc,r)){let w=0;for(let k=0;k<4;k++){if(!solidBelow(L,nc+P.face*k,r)&&B(L,nc+P.face*k,r)!==WALL)w++;else break;}
-        if(w>=3){let bar=false;for(let k=0;k<4;k++){const ff=F(L,nc+P.face*k,r);if(ff&&ff.t==='bar')bar=true;}hint(bar?'swing':'wide');}else if(edgeBelow()&&B(L,nc,r+1)!==WALL&&solidBelow(L,nc,r+1))hint('drop');else hint('gap');break;}
-      if(f){if(f.t==='spikes')hint('spikes');else if(f.t==='loose')hint(f.plank?'bridge':f.drop?'collapse':'loose');else if(f.t==='plate')hint('plate');else if(f.t==='chomp')hint('chomp');else if(f.t==='low')hint('crawl');else if(f.t==='closer')hint(f.slabF?'slabcloser':'closer');else if(f.t==='vent')hint('vent');else if(f.t==='pend')hint('pend');break;}
-    }
-    if(canClimbUp())hint('climb');
-    for(const f of L.lifts){if(f.sand){if(f.s===0&&f.rT===r&&Math.abs(f.sc*TW+16-P.x)<110)hint('sandfall');continue;} // (round 41: its own words, 'sandfall', learned by getting off one: a save that learned the old 'sandlift' still sees them) // (round 38b: a sand lift has no plate: its own hint, by its slab while it waits)
-      if((f.rT===r||f.rB===r)&&Math.abs(f.sc*TW+16-P.x)<110)hint(f.t==='chain'?'chain':'lift');}
-    {const f0=F(L,pCol(),r),f1=F(L,pCol()+P.face,r);if((f0&&f0.t==='shaftfoot')||(f1&&f1.t==='shaftfoot'))hint('shaft');const fb=F(L,pCol()+P.face,r);if(fb&&fb.t==='banner')hint('banner');}
-    {const nc=pCol()+P.face;if(B(L,nc,r)===WALL&&B(L,nc,r-1)===WALL&&B(L,pCol(),r-1)!==WALL&&B(L,pCol(),r-2)===EMPTY&&solidBelow(L,nc,r-2))hint('wallrun');}
-    const e=edgeBelow();if(e&&solidBelow(L,e.c+e.s,e.r+2)&&!solidBelow(L,e.c+e.s,e.r+1))hint('drop');
-    for(const it of L.items)if(!it.taken&&it.r===r&&Math.abs(it.x-P.x)<40)hint('potion');
-    for(const cp of L.cps)if(!cp.on&&cp.r===r&&Math.abs(cp.x-P.x)<70)hint('cp');
-    for(const sn of SN)if(sn.alive&&sn.r===r&&Math.abs(sn.x-P.x)<110){hint('snake');if(lowAt(sn.x,sn.r)||lowAt(sn.x-20,sn.r)||lowAt(sn.x+20,sn.r))hint('poke');}
-    for(const o of L.dyn)if(o.f.t==='gate'&&o.f.far&&o.f.open<0.5&&o.r===r&&Math.abs(o.c*TW+16-P.x)<110){hint(o.f.loop?'loopgate':o.f.pair!==undefined?'double':o.f.slab?'slabgate':o.f.race?'racegate':o.f.latch?'latch':'sandgate');}
-    for(const o of L.dyn)if(o.f.slabF&&!o.f.jam&&o.r===r&&Math.abs(o.c*TW+16-P.x)<150)hint(o.f.t==='closer'?'slabcloser':'slabplate');
-    for(const o of L.dyn)if(o.f.t==='pend'&&o.r===r&&Math.abs(o.c*TW+16-P.x)<110)hint('pend');
-    for(const o of L.dyn){if(o.r!==r)continue;const dx=Math.abs(o.c*TW+16-P.x);if(o.f.t==='saw'&&dx<120)hint('saw');if(o.f.t==='darter'&&dx<200)hint('darts');}
-    for(const bl of L.ext.blocks)if(bl.r===r&&Math.abs(bl.c*TW+16-P.x)<90)hint('block');
-    if(L.secret&&Math.abs(L.secret.c*TW+16-P.x)<120&&Math.abs(L.secret.r-r)<=1&&L.items.some(it=>it.hidden&&!it.taken))hint(L.secret.gal?'secret':'secretdn');
-    if(L.door.r===r&&Math.abs(L.door.x-P.x)<120){if(L.door.open<0.95)hint('door');else hint('enter');}
-  }
-  if(hintQ.length&&intro>0)hintQ[0].t=gameTime; // the floor's title comes first
-  if(hintQ.length&&gameTime-hintQ[0].t>2.5)hintQ.length=0; // too late: he has moved on
-  if(!banner&&intro<=0&&hintQ.length){const id=hintQ.shift().id;if(hintDue(id)){S.hints[id]=1;hintSeen[id]=1;writeSave();msg(HINTS[id],3.8,'hint');}}
-}
+// ================= learned moves =================
+// (round 49a, owner: "drop all hint messages, rely only on subtle graphic hints") No hint banners: the 53 texts, their queue and checks
+// are gone. What stays is S.learned, set by learn() where a move succeeds (LRN_ST, learnGrab and the rest): the looks read it (the jet
+// streams: jgrab's drawn only until learned, the swing's and the kick shaft's fainter after). LEARN_IDS lists every id learn() sets, for
+// ?bench and the tools (__HK.HINTS is kept as an object of these ids, so the tools' `for(const id in H.HINTS)` loops still set them).
+const LEARN_IDS=['gap','wide','climb','drop','spikes','crawl','fight','parried','poke','snake','potion','plate','block','wallrun','swing','banner','collapse','jgrab','lift','chain','sandlift','sandfall','shaft'];
 
 // ================= main update =================
 const cam={rx:0,ry:0,x:0,y:0,gy:0,snap:true};
@@ -4643,6 +4650,16 @@ function gratePeek(){
     const fk=L.forks.find(q=>q.grate&&q.rUp===r),it=fk&&L.items.find(i=>i.fork&&!i.taken);if(!it)continue;
     return {y:SURF(it.r),x:fk.gate?(it.x+fk.gate.c*TW+16)/2:it.x};}
   return null;}
+// a gate g (null: the exit door) has opened: its sound from where it stands, and a glance if it is out of view
+function gateCue(g,big){let x,r;if(g){const o=L.dyn.find(q=>q.f===g);if(!o)return;x=o.c*TW+16;r=o.r;}else{if(!L.door)return;x=L.door.x;r=L.door.r;}
+  const y=SURF(r)-30;Snd.playAt(big?'door':'grind',x,y);glanceAt(x,y);}
+function glanceAt(x,y){if(GLN.off||quiet||BENCH.on||mode!=='play'||!P||P.state==='dead'||(P.foe&&P.foe.alive))return;
+  const chs=L.ext&&L.ext.chase;if(chs&&chs.on&&!chs.done)return;
+  if(x>cam.x+24&&x<cam.x+viewW-24&&y>cam.y+28&&y<cam.y+ROOM_H-20)return; // already in view
+  GLN.on=true;GLN.t=0;GLN.x=x;GLN.y=y;GLN.n++;}
+function glanceEnd(){GLN.on=false;GLN.t=0;}
+// the glance's weight: eased in over GL_IN, held, eased out over GL_OUT
+function glanceW(){const t=GLN.t,e=u=>u*u*(3-2*u);return t<GL_IN?e(t/GL_IN):t>GL_T-GL_OUT?e(clamp((GL_T-t)/GL_OUT,0,1)):1;}
 function updateCamera(dt){
   if(!P||!L)return;
   const foe=P.foe&&P.foe.alive?P.foe:null;
@@ -4665,8 +4682,12 @@ function updateCamera(dt){
   cam.gy=pk?cam.gy:gy;
   let ty=gy-ROOM_H*FRAME;
   const maxY=L.rows*TH-ROOM_H;
+  if(GLN.on&&(foe||storm||st==='dead'||pk||cam.snap))glanceEnd();
+  if(GLN.on){GLN.t+=dt||0;if(GLN.t>=GL_T)glanceEnd();else{const w=glanceW(); // toward the gate, he kept GL_M inside the view's sides and wholly inside it up and down
+    const tg=clamp(clamp(GLN.x-viewW/2,P.x-viewW+GL_M,P.x-GL_M),-viewW*0.15,L.cols*TW-viewW*0.85),tyg=clamp(GLN.y-ROOM_H*0.5,P.y-ROOM_H+14,P.y-64);
+    t+=(tg-t)*w;ty+=(tyg-ty)*w;}}
   if(cam.snap||!dt){cam.x=t;cam.y=ty;cam.snap=false;cam.pk=0;}
-  else{cam.x+=(t-cam.x)*(1-Math.exp(-dt*(pk?5:3.2)));cam.y+=(ty-cam.y)*(1-Math.exp(-dt*(pk?3:5)));}
+  else{const gl=GLN.on;cam.x+=(t-cam.x)*(1-Math.exp(-dt*(pk?5:gl?4.5:3.2)));cam.y+=(ty-cam.y)*(1-Math.exp(-dt*(pk?3:5)));}
   if(st!=='dead'&&!(cam.pk>0)){cam.y=Math.max(cam.y,P.y-ROOM_H+6);cam.y=Math.min(cam.y,P.y-56);}
   cam.y=clamp(cam.y,0,Math.max(0,maxY));
   cam.rx=Math.floor((cam.x+viewW/2)/ROOM_W);cam.ry=Math.floor((cam.y+ROOM_H/2)/ROOM_H);
@@ -4717,16 +4738,15 @@ function update(dt){
       if(u(sp.x)-u(P.x)>=3*TW-8){const [a,b]=clearRun(Math.floor(sp.x/TW),sp.r);s={x:sp.x,lo:a*TW+10,hi:b*TW+22,face:-dr};}
       else if(P.y===SURF(sp.r))s=dropSpot(dr,true);
       if(!s)continue;
-      pendingGuards.splice(i,1);spawnDrop(s,sp.r,sp.hp,sp.tier);msg('Ambush! A guard drops in to cut off the way back.',3);continue;}
+      pendingGuards.splice(i,1);spawnDrop(s,sp.r,sp.hp,sp.tier);continue;}
     // reinforcements drop in on the far side of the fallen guard, a few tiles ahead of the prince, wherever he has got to;
     // with no clear floor ahead of him yet they wait for some (never behind him), and give up after a while
     const sg=q.src,s=Math.abs(P.y-SURF(pRow()))<1?dropSpot(sg.side||1,true):null;
     if(!s){if(gameTime>q.at+8)pendingGuards.splice(i,1);continue;}
-    pendingGuards.splice(i,1);spawnDrop(s,pRow(),sg.maxHp,sg.tier);hint('reinf');}
+    pendingGuards.splice(i,1);spawnDrop(s,pRow(),sg.maxHp,sg.tier);}
   updateFX(dt);updateLook(dt);updateLookFx(dt);updateAmbient(dt);
   updateCamera(dt);updateCtlThin(dt);
   if(banner){banner.t+=dt;if(banner.t>=banner.dur)banner=null;}
-  hintTick-=dt;if(hintTick<=0){hintTick=0.25;checkHints();}
   saveTick+=dt;if(saveTick>3){saveTick=0;snapshotResume();S.floorTime=levelTime;writeSave();}
   if(mode==='dead'){deadT+=dt;if(P.cause==='drown'){const pl=ctPoolHit(P.x,P.y-60,P.y+1);if(pl&&P.y<pl.wy+58)P.y=Math.min(pl.wy+58,P.y+dt*(22+40*deadT));} // (round 45: he goes under; look only, after the death)
     if(canRewind()){if(deadT>0.7&&took('g',0.3))startRewind();else if(deadT>0.7&&took('j',0.3))respawn();}
@@ -4845,7 +4865,8 @@ function drawRoomStatic(g,rx,ry,stage){
     else if(b!==WALL&&isLow(gc,gr)&&rb!==WALL&&!isLow(gc+1,gr))sideFace(g,X+TW-HX,Y,Y+TH-34,th);});
   // 3. front faces of walls, low ceilings and cornices
   each((gc,gr,X,Y)=>{const b=B(L,gc,gr);
-    if(b===WALL){g.save();g.beginPath();g.rect(X-HX,Y,TW,TH);g.clip();wallCell(g,X-HX,Y,gc,gr,th);g.restore();
+    if(b===WALL){g.save();g.beginPath();g.rect(X-HX,Y,TW,TH);g.clip();wallCell(g,X-HX,Y,gc,gr,th);wearFace(g,X-HX,Y,gc,gr,th);g.restore(); // (round 49c: the sandal scuffs on a wall the route runs up)
+     
       if(st!=='dungeon'&&st!=='forge'&&B(L,gc,gr+1)!==WALL&&gr+1<L.rows&&!isLow(gc,gr+1))cornice(g,X-HX,Y,th,gc,gr);}
     else if(isLow(gc,gr))lowCeil(g,X,Y,gc,gr,th);});
   ctOver(g,rx,ry,th); // (round 45) the ceiling's face over a court
@@ -4860,6 +4881,7 @@ function drawRoomStatic(g,rx,ry,stage){
     const lo=B(L,gc-1,gr)!==WALL&&!solidBelow(L,gc-1,gr),ro=B(L,gc+1,gr)!==WALL&&!solidBelow(L,gc+1,gr);
     const ys=Y+TH-4;slab(g,X,ys,th,lo,ro,gc,gr,B(L,gc+1,gr)===WALL,false,true);if(LIFT_DBG.tiles)LIFT_DBG.tiles.add(gr*L.cols+gc); // (liftscan.py, round 37a: the floor tiles the room pictures draw) // (round 31: mark, the floor's own top face for Torchlight's floor looks)
     if(f&&f.t==='spikes'){gl.fillStyle='rgba(7,5,11,.8)';const m=gc%2?-1:1;for(const [bx,d] of SPK){const q=onFloor(X+16+m*(bx-16),d,ys);gl.beginPath();gl.ellipse(q.x,q.y,2.2,0.9,0,0,Math.PI*2);gl.fill();}}
+    wearFloor(gl,X,ys,gc,gr,th); // (round 49c: a block's drag grooves, the bones of an earlier thief, on the floor's layer)
     if(L.rubble.has(gr*L.cols+gc)){const rnd=mulberry32(hash2(gc,gr+77));for(let i=0;i<6;i++){gl.fillStyle=i%2?th.front:th.lo;const q=onFloor(X+4+rnd()*24,0.2+rnd()*0.6,ys),w=2+rnd()*4;gl.fillRect(q.x,q.y-1,w,1.6+rnd()*1.2);}}
   });
   // the damaging drop (a hole two storeys deep with no grip on its lip): ragged, bitten edges on both sides, a darker shaft
@@ -7930,7 +7952,7 @@ const CUT_AT_WALL=new Set(['plate','xplate','lplate','closer','loose','spikes'])
 // brackets, verdigris on the bronze in the damp themes, a chipped platform lip, streaks down the shaft; 3 a rotten bite out of the
 // beam's end bound with rope, heavier rust and soot or moss, a cracked platform. Never broken, never like a hurtdrop.
 function liftVisible(f,x0,x1,y0,y1){return (f.cb+1)*TW+80>x0&&f.ca*TW-80<x1&&(f.rD||f.rB)*TH+TH+10>y0&&f.rT*TH-40<y1;} // (round 41: a sand lift's deep shaft too)
-const LAYER_DBG={hide:null,glow:true};function lyOff(k){return LAYER_DBG.hide!==null&&LAYER_DBG.hide.has(k);} // (round 39: layerscan.py leaves one kind of thing out of a frame, a Set of kinds: 'lamp', 'door', 'clock', 'lift', a feature's type, 'block', 'dart', 'cue', 'jet', 'flask', 'well', 'dust', 'debris', 'snake', 'guard', 'prince', 'trail', 'sand', 'emissive', 'ambient', 'atmo', 'haze'; glow false: no lamp's drawn glow, which is light, GLOWK)
+const LAYER_DBG={hide:null,glow:true};function lyOff(k){return LAYER_DBG.hide!==null&&LAYER_DBG.hide.has(k);} // (round 39: layerscan.py leaves one kind of thing out of a frame, a Set of kinds: 'lamp', 'door', 'clock', 'lift', a feature's type, 'block', 'dart', 'cue', 'jet', 'flask', 'well', 'dust', 'debris', 'snake', 'guard', 'prince', 'trail', 'sand', 'emissive', 'ambient', 'atmo', 'haze', 'grit' (round 49b); 'scuff', 'groove', 'bones' (round 49c: in the room's picture, so clear the rooms around a change); glow false: no lamp's drawn glow, which is light, GLOWK)
 const LIFT_DBG={off:false,rider:false,gatesR:false,tiles:null,noback:false}; // (liftscan.py: off leaves the lifts out of a frame, rider the prince, and gatesR draws only the gratings on the shafts' right edges, to compare with frames that have them; tiles, a Set, collects the cells whose floor tile the room pictures draw)
 function drawLift(ctx,f,half){if(LIFT_DBG.off||lyOff('lift')||(LIFT_DBG.gatesR&&f.t==='chain'))return;if(f.sand)drawSandLift(ctx,f,half);else if(f.t==='chain')drawLiftChain(ctx,f,half);else drawLiftCounterweight(ctx,f,half);}
 function liftWear(f){if(f.wl===undefined||f.wn!==L.n){const x=(f.ca+f.cb+1)*TW/2,ym=(f.rT*TH+SURF(f.rB))/2;f.wn=L.n;f.wl=inBreach(x,ym,true)?3:wearLevel(x,ym);}return f.wl;}
@@ -8170,6 +8192,7 @@ function drawSandLift(ctx,f,half){
   ctx.restore();
   ctx.restore();for(const s of f.ms)if(s<0){sandMouth(ctx,f,s,0);liftMouthL(ctx,f,1,0);}ctx.save();liftOccl(ctx,f); // (round 26e: a left mouth behind the sand and slab; round 39e: its near half, but for the strip the sand and slab stand in front of, after the figures)
   if(ys<sb-0.5)sandCut(ctx,X-HX,ys+HY+5,sb+HY,f.yT+HY+5,h,f.s===1&&f.tm>=SAND_LW,f.sc*131+f.rT*7); // (round 41b: down into the spike pit)
+  if(ys<sb-0.5)wearSand(ctx,f,X,ys,sb); // (round 49c: an earlier thief's bones half in the sand on the pit's floor)
   if(f.s===1&&f.tm<SAND_LW+0.3){const k=Math.max(0,1-Math.abs(f.tm-SAND_LW)/0.3);if(k>0.02)dustCloud(ctx,X+16-HX,ys+HY+3,0.12+0.2*(1-k),0.6,0.55,0);} // a puff as it first gives
   if(f.s===1&&f.tm>=SAND_LW&&ys>f.yT+2)for(const ex of [X-HX+1.6,X+TW-HX-1.6])sandFlow(ctx,ex,f.yT+HY+5,ys+HY+1,0.16,ex*0.07); // grains left on the shaft's sides running down the gap after it
   // (round 19) the cells on the shaft's right are nearer than the slab's back right corner once it has left a landing: a wall's
@@ -8381,10 +8404,10 @@ function jetPlaces(){if(L._jet)return L._jet;const out={shafts:[],jg:[]};
     for(;tr>0&&r-tr<6;tr--){if(B(L,c+1,tr)===FLOOR){sd=1;break;}if(B(L,c-1,tr)===FLOOR){sd=-1;break;}}
     if(!sd)continue;const p=jsPath(),ys=SURF(r),ly=SURF(tr),X=c*TW,xs=X+16+sd*6,xo=X+16-sd*6,hb=30; // (his hips plant 9.5 px off the cell's middle; the stream keeps inside the light down the shaft's back wall)
     jsReset(p);jsAdd(p,X+16,ys-4);                                   // drawn in at the foot
-    const y1=ys-11-hb,yN=ly+21-hb,R=y1-yN,nl=Math.max(2,2*Math.round(R/96));
-    jsQuad(p,X+16,y1+20,xs,y1,6);                                    // up into the wall on the ledge's side
-    for(let k=1;k<=nl;k++){const ax=p.x[p.n-1],bx=k%2?xo:xs,by=y1-R*k/nl;jsQuad(p,ax+(bx-ax)*0.15,by,bx,by,8);} // kick to kick, each arc topping out at the far wall
-    jsQuad(p,xs,ly-hb-8,xs+sd*16,ly-hb,6);jsAdd(p,xs+sd*34,ly-hb+2);   // over the lip and out onto the ledge
+    let N=0;while(ys-ly-chimH(N)>CHM_YD&&N<12)N++;const sy=n=>ys-chimH(n)-hb; // (round 48b: the chimney's stances, on its fixed grid)
+    jsQuad(p,X+16,sy(0)+20,xs,sy(0),6);                              // up into the first stance, on the ledge's wall
+    for(let k=1;k<=N;k++){const ax=p.x[p.n-1],bx=k%2?xo:xs,by=sy(k);jsQuad(p,ax+(bx-ax)*0.15,by,bx,by,8);} // kick to kick, each arc topping out at the far wall
+    {const ax=p.x[p.n-1];jsQuad(p,ax,ly-hb-CHM_YC-6,xs+sd*16,ly-hb,6);jsAdd(p,xs+sd*34,ly-hb+2);} // the Y: up past the lip and out onto the ledge
     out.shafts.push({p,c,r0:tr,r1:r,seed:hash2(c,r)&1023,wall:{wx0:X,wx1:X+TW-HX,wy:ly}});} // (round 39: the right wall's front face starts HX left of its cell: grains kept to X+30 ran 6 px onto it)
   for(const a of L.path){if(a.a!=='jgrab')continue;const d=a.to>a.from?1:-1;let r=-1;
     for(let rr=1;rr<L.rows-1&&r<0;rr++){const f=F(L,a.from+d,rr);if(f&&f.t==='jgrab')r=rr;}
@@ -8960,6 +8983,143 @@ function windUpdraft(ctx,X,yb,yt,seed){const S=windSprites(),t=gameTime,H=yb-yt;
   for(let i=0;i<18;i++){const h=hash2(i*577+seed,33),q1=(h&255)/255,q2=((h>>>8)&255)/255,q3=((h>>>16)&255)/255,v=60+50*q1,pp=(t*v/H+q2)%1,
       y=yb-pp*H,x=X+4+q3*(TW-HX-8)+1.6*Math.sin(t*2+i*1.3+pp*6),a=(0.08+0.1*q1)*Math.sin(Math.PI*pp);if(a<0.01)continue;ctx.globalAlpha=a;jsStamp(ctx,S.v,x,y,0,-1,10+12*q2,4);}
   ctx.restore();}
+// Grit over a slab's plate (round 49b, owner after the round 49 research: the slab-holds-plate puzzle told with no words, "rely only on
+// subtle graphic hints"): while the cracked slab that can jam a plate (or a closer) under it still lies in the gallery (f.s 0), a thin,
+// intermittent sifting of grit falls from its underside at mid depth onto that plate, and a few grains lie on the plate. Unlike the roof
+// block's warning (sandFlow's threads and beads, growing as it shifts), these are single grains, faint and sparse, a few at a time with
+// pauses, at a steady drift; the colour of the grit on a heap (sandC().heap), never lit. GRIT_N grains, each on its own period GRIT_P
+// (hashes of the slab's cell and the grain), falling over GRIT_T s from rest; a cycle skipped one time in GRIT_GAP. A pure function of the
+// clock and f.s: rewind-safe, nothing allocated a frame. L2 air at the slab's mid depth, before the figures: cut by the front plane in
+// front of it on the rows it falls through (the slab's own lip hides the grain until it drops below it; nearCut), not by the plate's row,
+// where it lands on the plate's top. Gone the moment the slab lets go. Not in the lamp shadow's carve (air: SHC holds solids).
+const GRIT_N=14,GRIT_P=[1.7,3.6],GRIT_T=[1.05,1.35],GRIT_GAP=0.35,GRIT={off:false};
+// the slabs that can jam a plate or closer under them, found once a floor: {o: the slab's dyn entry, p: the plate's, c, r0, r1}
+function gritList(){if(L._grit)return L._grit;const out=[];
+  for(const o of L.dyn){const f=o.f;if(!f.slabF||(f.t!=='plate'&&f.t!=='closer'))continue;const sl=L.dyn.find(q=>q.f===f.slabF);if(!sl||sl.c!==o.c||sl.r>=o.r)continue;
+    let ok=true;for(let r=sl.r+1;r<o.r;r++)if(B(L,o.c,r)===WALL||solidBelow(L,o.c,r))ok=false;if(ok&&!out.some(g=>g.o===sl))out.push({o:sl,p:o,c:o.c,r0:sl.r,r1:o.r});}
+  return L._grit=out;}
+const gritH=(a,b)=>hash2(a,b)/4294967296;
+function drawGrit(ctx,x0,x1,y0,y1){if(GRIT.off||lyOff('grit'))return;const t=gameTime;
+  for(const g of gritList()){const sf=g.o.f;if(sf.s!==0)continue;const X=g.c*TW,ya=SURF(g.r0),pf=g.p.f,dn=pf.jam||gameTime-pf.press<0.12,yb=SURF(g.r1)-(dn?1:2.4);
+    if(X+TW<x0||X>x1||yb<y0||ya>y1+20)continue;const sd=g.c*131+g.r0*977,xc=X+15+2*gritH(sd,1)-1,ys=ya+FHH,H=yb-ys,C=sandC();
+    ctx.save();ctx.beginPath();ctx.rect(xc-8,ya,16,yb-ya+1);ctx.clip();nearCut(ctx,g.c-1,g.c+1,g.r0,g.r1-1,true);ctx.fillStyle=C.heap;
+    for(let i=0;i<GRIT_N;i++){const P0=GRIT_P[0]+(GRIT_P[1]-GRIT_P[0])*gritH(sd,10+i),T=GRIT_T[0]+(GRIT_T[1]-GRIT_T[0])*gritH(sd,30+i),cy=(t+gritH(sd,50+i)*P0)/P0,k=Math.floor(cy),u=(cy-k)*P0/T;
+      if(u>=1)continue;const hk=gritH(sd+i*7,k);if(hk<GRIT_GAP)continue;
+      const y=ys+H*(0.22*u+0.78*u*u),x=xc+(gritH(sd+i,k*3+1)-0.5)*3.2+Math.sin(u*4+i)*0.6*u,s=1+0.6*gritH(sd+i,k*3+2);
+      ctx.globalAlpha=(0.4+0.35*hk)*Math.min(1,u/0.08)*Math.min(1,(1-u)/0.06);ctx.fillRect(x-s/2,y-s/2,s,s);}
+    ctx.restore();ctx.save();ctx.fillStyle=C.heap; // a few grains lying on the plate's top where they land (its depth: d .4 to .6)
+    for(let i=0;i<6;i++){const d=0.4+0.2*gritH(sd,80+i),qx=xc+(gritH(sd,70+i)-0.5)*7+(d-0.5)*DX,qy=yb+(0.5-d)*DY;ctx.globalAlpha=0.35+0.2*gritH(sd,90+i);ctx.fillRect(qx-0.5,qy-0.6,1+0.5*gritH(sd,95+i),0.8);}
+    ctx.restore();}}
+// ---- Wear marks and the bones of earlier thieves (round 49c, owner after the round 49 research: "rely only on subtle graphic hints";
+// "All five you suggested": the last two built here). What has been used is worn, and where a thief died before him his bones lie.
+// (1) Sandal scuffs (WR_STEPS): up the front face of every wall the route runs up (a 'wallrun' seg: the wall the run-up meets, its row and
+// the one above), at the heights his feet strike it (WR_STEPS 6, 27, 48 px and WR_TOP 69 over the run's floor), each a dark translucent
+// smudge of a sole, older fainter ones about it, a pale scratch over it, near the face's edge on the side he runs at (the mock's place:
+// his foot meets the wall's side plane at mid depth, which the face's edge stands in front of); part of the face (L3), in the room's picture.
+// (2) Drag grooves: on the floor's top face of every cell a movable block can travel (its lo..hi, the cells it can stand on), two shallow
+// grooves where its bottom edges scrape (d WG_D .2 and .8), a dark line with a lit lower lip, worn unevenly (hashes), a little ridge of grit
+// pushed up at each end of the track; in the room's floor layer (rlBegin/rlEnd: cut by the faces in front, marked as the floor's face), so the
+// block, drawn live, stands over them where it is: they never cross its face. (3) Bones of earlier thieves at the FIRST lethal trap of each
+// kind on the route (the segs' order, L.segs, the route as built): a walled spike pit (remains among the stakes), a banner shaft's foot (bones
+// and a torn strip of the runner, at the back of the cell by the wall), a slicer (a skull and bones by its jaws at the back, on the side he
+// comes from), a sand lift's spike pit (half buried in the sand at the pit's floor, seen as he rides down; under the slab at rest). Lying,
+// partial, scattered, bleached and dusty (WB_C mixed toward the floor's top), outlines the fill in shade (selC, the contour rule); never
+// upright, no sword, no blood. On a route tile (banner foot, slicer) they lie behind his walking line (mid depth), every part at d >= WB_DR, under WB_HR px high: he walks in front of them, never over them. One set a kind
+// a floor: a lesson for the first of a kind, not a signpost at each. Placement from the layout alone (D0, L.segs, L.lifts, features):
+// no generator stream (layouts unchanged), found once a floor (L._wear). Look only. All but the sand lift's are in the room's picture (drawn
+// once: nothing a frame; the relief reads them as raised, the lamp shadow keeps off the floor's top face as before); the sand lift's are drawn
+// live with the sand (inside its outline in SHC and its relief rubbing), a pure function of the slab's y. LAYER_DBG kinds 'scuff', 'groove',
+// 'bones' (the room's picture: layerscan clears the rooms); WEAR.off draws none of them. wearscan.py checks the placement rules.
+const WEAR={off:false},WG_D=[0.2,0.8],WB_C='#d6ccac',WB_DR=0.55,WB_HR=6.5;
+const wearH=(a,b)=>hash2(a,b)/4294967296;
+// the route's order: the first seg whose box (one cell either side, a row over, three under) holds the cell
+function wearSeg(c,r){const S=L.segs||[];for(let i=0;i<S.length;i++){const s=S[i],a=Math.min(s.c0,s.c1),b=Math.max(s.c0,s.c1),r0=Math.min(s.r0,s.r1),r1=Math.max(s.r0,s.r1);
+  if(c>=a-1&&c<=b+1&&r>=r0-1&&r<=r1+3)return i;}return 1e9;}
+function wearDir(i){const s=(L.segs||[])[i];return s?(s.dir||Math.sign(s.c1-s.c0)||1):1;}
+function wearList(){if(L._wear&&L._wear.L===L)return L._wear;const C=L.cols,W={L,scuff:[],groove:[],bones:[],face:new Map(),floor:new Map(),sand:new Map(),cand:{pit:[],banner:[],sand:[],slicer:[]}},
+    add=(M,c,r,v)=>{const k=r*C+c;let a=M.get(k);if(!a)M.set(k,a=[]);a.push(v);},th=L.theme,fl=th.top||'#b0a080',fill=mixHex(WB_C,fl[0]==='#'?fl:'#b0a080',0.22);
+  W.col={f:fill,e:selC(fill,0.58),k:selC(fill,0.42),h:selC(fill,1.12),d:selC(fill,0.78),cl:th.cloth||th.guard||'#7a3a2a',c2:th.cloth2||th.trim||'#c8a060',lo:th.lo||'#2a2018'};
+  W.col.ce=selC(W.col.cl,0.6);
+  // (1) the walls run up
+  for(const s of L.segs||[]){if(!/wallrun$/.test(s.k))continue;const d=s.dir||Math.sign(s.c1-s.c0)||1,r=s.r0;let wc=-1;
+    for(let c=s.c0,i=0;i<10;i++,c+=d)if(D0(c,r)===WALL&&D0(c,r-1)===WALL){wc=c;break;}
+    if(wc<0||D0(wc-d,r)===WALL)continue;const q={c:wc,r,s:d};W.scuff.push(q);add(W.face,wc,r,q);add(W.face,wc,r-1,q);}
+  // (2) the blocks' tracks
+  for(const b of L.ext.blocks){const lo=b.lo===undefined?b.c:b.lo,hi=b.hi===undefined?b.c:b.hi;const q={r:b.r,lo,hi,cells:[]};
+    for(let c=lo;c<=hi;c++){if(D0(c,b.r)===WALL)continue;q.cells.push(c);add(W.floor,c,b.r,{k:'groove',q,c});}W.groove.push(q);}
+  // (3) the first lethal trap of each kind
+  const pool=L._ctP;
+  for(let r=1;r<L.rows;r++)for(let c=1;c<C-1;c++){const f=F(L,c,r);if(!f||f.t!=='spikes'||f.sl||D0(c,r-1)!==EMPTY||(pool&&pool.has(r*C+c)))continue;
+    const sp=x=>{const g=F(L,x,r);return g&&g.t==='spikes'&&!g.sl&&D0(x,r-1)===EMPTY;};if(sp(c-1))continue;let e=c;while(sp(e+1))e++;
+    if(D0(c-1,r)!==WALL||D0(e+1,r)!==WALL)continue; // (a walled pit: its stakes are met only by a fall)
+    const k=e>c?c+Math.floor(wearH(c*7+L.seed,r)*(e-c+1)):c;W.cand.pit.push({k:'pit',c:k,r,o:wearSeg(c,r),c0:c,c1:e});}
+  for(let r=1;r<L.rows;r++)for(let c=1;c<C-1;c++){const f=F(L,c,r),u=F(L,c,r-1);if(!f||f.t!=='banner'||(u&&u.t==='banner'))continue;let rb=r;while(F(L,c,rb+1)&&F(L,c,rb+1).t==='banner')rb++;
+    const rf=rb+1;if(rf>=L.rows||D0(c,rf)===WALL||!solidBelowD(c,rf))continue;const o=wearSeg(c,r),d=wearDir(o),s=D0(c-d,rf)===WALL?-d:D0(c+d,rf)===WALL?d:-d;
+    W.cand.banner.push({k:'banner',c,r:rf,o,s});}
+  for(const o of L.dyn){if(o.f.t!=='chomp')continue;const i=wearSeg(o.c,o.r),d=wearDir(i);W.cand.slicer.push({k:'slicer',c:o.c,r:o.r,o:i+(d>0?o.c:-o.c)*1e-6,s:-d});}
+  for(const lf of L.lifts||[])if(lf.sand&&lf.rD!==undefined)W.cand.sand.push({k:'sand',c:lf.sc,r:lf.rD,o:wearSeg(lf.sc,lf.rT),lf});
+  for(const k in W.cand){const a=W.cand[k];if(!a.length)continue;let b=a[0];for(const q of a)if(q.o<b.o)b=q;W.bones.push(b);if(k==='sand')W.sand.set(b.lf,b);else add(W.floor,b.c,b.r,b);}
+  return L._wear=W;}
+// a point on the floor's top face of a cell: u across the cell (world px from its left, mirrored by m), d its depth (0 the front edge)
+const BNP={x:0,y:0};function bnP(X,ys,m,u,d){BNP.x=X+(m>0?u:TW-u)+(d-0.5)*DX;BNP.y=ys+(0.5-d)*DY;return BNP;}
+function bnBone(g,X,ys,m,u0,d0,u1,d1,w,C,dy0,dy1){let p=bnP(X,ys,m,u0,d0);const x0=p.x,y0=p.y-(dy0||0);p=bnP(X,ys,m,u1,d1);const x1=p.x,y1=p.y-(dy1||0);
+  g.lineCap='round';g.strokeStyle=C.e;g.lineWidth=w+0.9;g.beginPath();g.moveTo(x0,y0);g.lineTo(x1,y1);g.stroke();
+  g.fillStyle=C.e;g.beginPath();g.arc(x0,y0,w*0.72+0.45,0,6.284);g.arc(x1,y1,w*0.72+0.45,0,6.284);g.fill();
+  g.strokeStyle=C.f;g.lineWidth=w;g.beginPath();g.moveTo(x0,y0);g.lineTo(x1,y1);g.stroke();
+  g.fillStyle=C.f;g.beginPath();g.arc(x0,y0,w*0.72,0,6.284);g.fill();g.beginPath();g.arc(x1,y1,w*0.72,0,6.284);g.fill();
+  g.strokeStyle=C.h;g.lineWidth=0.45;g.globalAlpha*=0.7;g.beginPath();g.moveTo(x0,y0-w*0.35);g.lineTo(x1,y1-w*0.35);g.stroke();g.globalAlpha/=0.7;}
+// a skull lying on its side, face toward us a little: the cranium, the sockets and nose (holes: the fill's deepest shade), the teeth's line, lit on top
+function bnSkull(g,X,ys,m,u,d,C,rot){const p=bnP(X,ys,m,u,d),x=p.x,y=p.y-2.1,s=m;
+  g.fillStyle=C.e;g.beginPath();g.ellipse(x,y,3.5,2.75,rot*s,0,6.284);g.fill();g.fillStyle=C.f;g.beginPath();g.ellipse(x,y,2.95,2.2,rot*s,0,6.284);g.fill();
+  g.fillStyle=C.d;g.beginPath();g.ellipse(x+s*1.1,y+0.9,1.9,1.1,0,0,6.284);g.fill(); // the face's shade under the brow
+  g.fillStyle=C.k;g.beginPath();g.arc(x+s*0.3,y+0.25,0.6,0,6.284);g.arc(x+s*1.85,y+0.4,0.55,0,6.284);g.fill();g.fillRect(x+s*1.05-0.3,y+1.05,0.6,0.7);
+  g.fillStyle=C.e;g.fillRect(x+s*0.4-(s<0?1.9:0),y+2.05,1.9,0.55); // the teeth's line
+  g.fillStyle=C.h;g.globalAlpha*=0.8;g.beginPath();g.ellipse(x-s*0.8,y-1.3,1.5,0.55,-0.2*s,0,6.284);g.fill();g.globalAlpha/=0.8;}
+function bnRibs(g,X,ys,m,u,d,C,n){const p=bnP(X,ys,m,u,d),x=p.x,y=p.y-0.4;g.lineCap='round';
+  for(let pass=0;pass<2;pass++){g.strokeStyle=pass?C.f:C.e;g.lineWidth=pass?0.65:1.35;
+    for(let k=0;k<n;k++){g.beginPath();g.arc(x+m*k*1.55,y,2.9-k*0.28,m>0?Math.PI*1.0:Math.PI*1.05,m>0?Math.PI*1.95:Math.PI*2.0);g.stroke();}}}
+// the sets (u, d on the cell's floor; m mirrors them with the stakes, odd columns)
+function bonesDraw(g,X,ys,q,C){g.save();const sd=hash2(q.c*31+7,q.r*17+3),m=q.k==='slicer'&&q.s>0?-1:1,j=(sd&255)/255; // (laid out where the floor shows: a wall's face on the right hides u > 32 - 16 d)
+  if(q.k==='pit'){ // among the stakes: the rag of a kilt, a thigh bone and a shin, the ribs fallen in, the skull rolled to one side
+    g.fillStyle=mixHex(C.f,C.lo[0]==='#'?C.lo:'#2a2018',0.45);g.globalAlpha=0.55;let p=bnP(X,ys,m,3,0.42);g.beginPath();g.moveTo(p.x,p.y);p=bnP(X,ys,m,9,0.6);g.lineTo(p.x,p.y-0.6);
+      p=bnP(X,ys,m,15,0.5);g.lineTo(p.x,p.y-0.3);p=bnP(X,ys,m,12,0.3);g.lineTo(p.x,p.y);g.closePath();g.fill();g.globalAlpha=1;
+    bnBone(g,X,ys,m,2.5+j,0.36,12,0.16,1.35,C);bnBone(g,X,ys,m,9.5,0.1,17,0.26,1.1,C);bnRibs(g,X,ys,m,12.5,0.6,C,4);bnBone(g,X,ys,m,11.5,0.42,17.5,0.78,1.0,C,0,0.6);
+    bnSkull(g,X,ys,m,19.5,0.22,C,0.3);}
+  else if(q.k==='banner'){ // at the back by the wall: the runner's torn strip crumpled, a thigh bone, ribs, the skull against the wall
+    let p=bnP(X,ys,m,4,0.72);g.lineCap='round';g.lineJoin='round';g.strokeStyle=C.ce;g.lineWidth=3.3;g.beginPath();g.moveTo(p.x,p.y-0.4); // (flat on the floor in front of the bones)
+      p=bnP(X,ys,m,8.5,0.66);g.lineTo(p.x,p.y-0.5);p=bnP(X,ys,m,12,0.76);g.lineTo(p.x,p.y-0.5);p=bnP(X,ys,m,17,0.68);g.lineTo(p.x,p.y-0.4);g.lineTo(p.x+1.6,p.y);g.stroke();
+    g.strokeStyle=C.cl;g.lineWidth=2.4;g.stroke();g.strokeStyle=C.c2;g.lineWidth=0.55;g.globalAlpha=0.85;g.stroke();g.globalAlpha=1;
+    bnBone(g,X,ys,m,3,0.78,12,0.72,1.25,C);bnRibs(g,X,ys,m,10.5,0.9,C,3);bnSkull(g,X,ys,m,3.5,0.9,C,-0.25);}
+  else if(q.k==='slicer'){ // by the jaws' root at the back, on his side of the plane: a skull, a thigh bone along the wall, a few small bones
+    bnBone(g,X,ys,m,1.5,0.86,10.5,0.9,1.25,C);bnBone(g,X,ys,m,4,0.74,8.5,0.8,0.8,C);bnSkull(g,X,ys,m,7.5+2*j,0.8,C,0.15);
+    g.fillStyle=C.f;for(let i=0;i<3;i++){const p=bnP(X,ys,m,2+i*2.6,0.72+0.05*i);g.fillRect(p.x,p.y-0.6,1.2,0.7);}}
+  else{ // the sand lift's pit: half in the sand on its floor (drawn in the sand's frame: X the shaft's cell, ys the pit's floor)
+    bnBone(g,X,ys,m,2.5,0.32,10,0.5,1.35,C);bnRibs(g,X,ys,m,7.5,0.62,C,3);bnSkull(g,X,ys,m,17.5,0.4,C,0.35);}
+  g.restore();}
+// the scuffs on a wall's face (in the room's picture, inside its face's clip): fx, Y the face's left and top (room px), cell gc, gr
+function wearFace(g,fx,Y,gc,gr,th){if(WEAR.off||lyOff('scuff'))return;const a=wearList().face.get(gr*L.cols+gc);if(!a)return;
+  for(const q of a){const ex=q.s>0?fx:fx+TW,s=q.s,yf=Y+SURF(q.r)-gr*TH,sd=q.c*53+q.r*11,K=selC(th.lo||'#2a2018',0.5);g.save();g.fillStyle=K;
+    for(let i=0;i<4;i++){const h=i<3?WR_STEPS[i][1]:WR_TOP,top=i===3;
+      for(let k=0;k<(top?2:4);k++){const hk=wearH(sd+i*13,k),hy=yf-h-(k?(hk-0.5)*6:0)-(k===0?0:1),xx=ex+s*(4.6+(k?(wearH(sd+i,k+7)-0.5)*3.4:0)),w=5.2+1.8*wearH(sd,i*5+k);
+        if(hy<Y-4||hy>Y+TH+4)continue;g.globalAlpha=(k?0.2+0.12*hk:0.58-0.05*i)*(top?0.7:1);g.beginPath();g.ellipse(xx,hy,w*0.5,k?1.3:1.75,s*(0.12+0.18*hk),0,6.284);g.fill();
+        if(k===0){g.globalAlpha=0.5*g.globalAlpha;g.fillRect(xx+s*w*0.12-1.2,hy-0.4,2.4,1.1);}} // (the sole's ball pressed darker)
+      if(!top){const hy=yf-h-2.3;g.globalAlpha=0.2;g.fillStyle='#fff3dc';g.fillRect(ex+s*1.4-(s<0?4.2:0),hy,4.2,0.6);g.fillStyle=K;}} // a pale scratch where the sole's edge bit
+    g.restore();}}
+// the grooves and bones on a floor cell (on the floor's layer, gl): X the cell's left (room px), ys its floor line
+function wearFloor(g,X,ys,gc,gr,th){if(WEAR.off)return;const a=wearList().floor.get(gr*L.cols+gc);if(!a)return;const C=wearList().col;
+  for(const q of a){if(q.k==='groove'){if(lyOff('groove'))continue;const t=q.q,end0=gc===t.cells[0],end1=gc===t.cells[t.cells.length-1];g.save();
+      for(let i=0;i<2;i++){const d=WG_D[i];for(let s=0;s<4;s++){const u0=s*8,u1=u0+8,h=wearH(gc*29+i*7+s,gr*13),y0=(h-0.5)*0.5,a0=0.42+0.2*h;
+          const p0x=X+u0+(d-0.5)*DX,py=ys+(0.5-d)*DY,p1x=X+u1+(d-0.5)*DX;
+          g.globalAlpha=a0;g.strokeStyle=C.lo;g.lineWidth=1.0;g.beginPath();g.moveTo(p0x,py+y0);g.lineTo(p1x,py+y0+0.15);g.stroke();
+          g.globalAlpha=0.18+0.1*h;g.strokeStyle='#fff0d4';g.lineWidth=0.55;g.beginPath();g.moveTo(p0x,py+y0+0.85);g.lineTo(p1x,py+y0+1.0);g.stroke();}
+        for(const e of [end0?-1:0,end1?1:0]){if(!e)continue;const ux=e<0?X+1.2:X+TW-1.2,px=ux+(d-0.5)*DX,py=ys+(0.5-d)*DY;g.globalAlpha=0.5;g.fillStyle=C.d;g.fillRect(px-1.1,py-0.9,2.2,1.3);g.globalAlpha=0.35;g.fillStyle=C.h;g.fillRect(px-0.8,py-1.1,1.4,0.5);}}
+      g.restore();}
+    else if(!lyOff('bones'))bonesDraw(g,X,ys,q,C);}}
+// the sand lift's bones, half in the sand at its pit's floor while the slab is above it (drawn after the sand, in the lift's clip)
+function wearSand(ctx,f,X,ys,sb){if(WEAR.off||lyOff('bones'))return;const q=wearList().sand.get(f);if(!q)return;const yt=ys+HY+5;if(yt>sb-3)return;
+  const C=wearList().col,sc=sandC();ctx.save();ctx.beginPath();ctx.rect(X-HX,yt,TW,sb+HY-yt+1);ctx.clip();bonesDraw(ctx,X,sb,q,C);
+  ctx.fillStyle=sc.body;ctx.globalAlpha=0.55;ctx.beginPath();ctx.moveTo(X-HX,sb+HY);ctx.lineTo(X-HX,sb+0.6);ctx.quadraticCurveTo(X+4,sb-1.6,X+11,sb+0.4);ctx.quadraticCurveTo(X+18,sb-1.2,X+TW-HX,sb-0.2);ctx.lineTo(X+TW-HX,sb+HY);ctx.closePath();ctx.fill();
+  ctx.restore();}
 function drawDynamic(ctx,x0,x1,y0,y1){
   hudStones.length=0;
   drawWindHangs(ctx,x0,x1,y0,y1); // (round 44: the hangings over a wind billow: L1, first)
@@ -9029,10 +9189,8 @@ function drawDynamic(ctx,x0,x1,y0,y1){
           else{let rb=o.r+1;while(rb<L.rows&&!solidBelow(L,o.c,rb)&&rb-o.r<4)rb++;const yb=rb<L.rows&&rb-o.r<4?SURF(rb)-0.8-sh:ft+70; // (round 16a: no sand under it, a corridor: only grit sifting from its cracks)
             for(const ex of [fx+1,fx+15,fx+TW-1])sandFlow(ctx,ex,ft+4,Math.min(yb,ft+6+30*sk),sk*0.22,ex*0.07);}} // (short: a sifting, not a pour)
         ctx.restore();if(!tip&&!ck)fpMark(ctx,X,ys);}break;
-      case'closer':{dynSlab(ctx,o.c,o.r,X,ys,th);const dn=f.jam||gameTime-f.press<0.12,lift=dn?1:2.4;
-        ctx.save();ctx.translate(0,-lift);floorQuad(ctx,X+1,X+31,0.03,0.97,ys,lift,selC('#8f2f2a',0.6));ctx.fillStyle='#8f2f2a';ctx.fill();ctx.strokeStyle=selC('#8f2f2a',0.6);ctx.lineWidth=0.7;ctx.stroke(); // (round 46c: its rim and grooves the plate's red darker, the contour rule)
-        ctx.strokeStyle=selC('#8f2f2a',0.66);ctx.lineWidth=1.1;ctx.beginPath();for(let i=0;i<3;i++){const a=onFloor(X+9+i*7,0.25,ys),b=onFloor(X+9+i*7,0.75,ys);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}ctx.stroke();ctx.restore();fpMark(ctx,X,ys,lift);if(f.jam)drawHeap(ctx,o,X,ys,th);break;}
-      case'plate':case'xplate':case'lplate':{const lf=f.t==='lplate'&&EGP.traps&&f.lf&&f.lf.t==='lift'&&!f.lf.sand?f.lf:null,inL=lf&&o.c===lf.sc-1?T_SLAB+1:0,inR=lf&&o.c===lf.sc+1?T_SLAB+1:0; // (beside a lift's mouth: clear of its slab)
+      case'plate':case'closer':case'xplate':case'lplate':{ // (round 48a, owner: "they should look the same and have no warning": a closing plate is drawn exactly as the opening plate, its press sinking the same; it was red with three grooves)
+const lf=f.t==='lplate'&&EGP.traps&&f.lf&&f.lf.t==='lift'&&!f.lf.sand?f.lf:null,inL=lf&&o.c===lf.sc-1?T_SLAB+1:0,inR=lf&&o.c===lf.sc+1?T_SLAB+1:0; // (beside a lift's mouth: clear of its slab)
         const me=lf&&(inL||inR)?(o.r===lf.rB?1:0):-1,cut=me>=0&&(me?lf.sB:lf.sT)===(inL?-1:1);if(cut){ctx.save();liftMouthCut(ctx,lf,me);} // (round 16c: the slab stands on this cell's floor, in front of it: the floor and plate are cut round it, no longer the slab's foot drawn again over them, which doubled its shading in a band and hid the ropes there)
         dynSlab(ctx,o.c,o.r,X,ys,th);const dn=f.jam||gameTime-f.press<0.12,lift=dn?1:2.4;
         ctx.save();ctx.translate(0,-lift);const pc=f.t==='xplate'?'#d8b04a':f.t==='lplate'?'#b98a4a':f.pair!==undefined?PAIRC[f.pair]:th.top;floorQuad(ctx,X+1+inR,X+31-inL,0.03,0.97,ys,lift,selC(pc,0.6));ctx.fillStyle=pc;ctx.fill();
@@ -9071,6 +9229,7 @@ function drawDynamic(ctx,x0,x1,y0,y1){
       ctx.fillStyle='rgba(255,230,150,'+(0.35+0.6*k)+')';ctx.beginPath();ctx.moveTo(px,py-R);ctx.lineTo(px+R*0.22,py-R*0.22);ctx.lineTo(px+R,py);ctx.lineTo(px+R*0.22,py+R*0.22);ctx.lineTo(px,py+R);ctx.lineTo(px-R*0.22,py+R*0.22);ctx.lineTo(px-R,py);ctx.lineTo(px-R*0.22,py-R*0.22);ctx.closePath();ctx.fill();}ctx.restore();}
   if(!lyOff('cue'))drawSecretCue(ctx,x0,x1,y0,y1);
   if(!lyOff('jet'))drawJetHints(x0,x1,y0,y1,ctx);
+  drawGrit(ctx,x0,x1,y0,y1); // (round 49b: grit sifting from a slab that can jam the plate under it, L2 air before the figures)
   for(const it of L.items)if(!it.taken&&inRoom(it.c,it.r)&&!lyOff('flask'))drawFlask(ctx,it);
   if(!lyOff('flask'))drawLooseFlasks(ctx);
   if(SHC.on&&!lyOff('well')){const n=sandSegs(x0,x1,y0,y1);if(SDS.nw&&shcBeg(-1e5,-1e5,1e5,1e5,15)){const a=SDS.a;for(let i=0;i<SDS.nw;i++){const k=i*4,ft=SDS.f[i];shcPt(a[k],a[k+2]);shcPt(a[k+1],a[k+3]);shcPt(a[k+1],ft);shcPt(a[k],ft);shcRing();}shcEnd();}} // (round 42b) the sand of wells and sand lifts stands before the room's whole depth (round 35b): carved out of the lamp shadow by its outline this frame (sandSegs)
@@ -10643,7 +10802,7 @@ function benchHz(cb){const ts=[],f=t=>{ts.push(t);if(ts.length<41){requestAnimat
 function benchBoot(){const tries=['dev/tools/bot.js','tools/bot.js'],load=i=>{if(i>=tries.length){msg('Benchmark: the test bot could not be loaded (it needs a connection).',6);return;}
   const t=document.createElement('script');t.src=tries[i]+'?v='+APP_VERSION;t.onload=()=>setTimeout(()=>benchHz(benchStart),600);t.onerror=()=>{t.remove();load(i+1);};document.head.appendChild(t);};load(0);}
 function benchStart(){if(!window.botGen)return;BENCH.save=JSON.stringify(S);BENCH.run=true;BENCH.out=[];
-  for(const id in HINTS)S.hints[id]=1;for(const id of HINT_MOVE)S.learned[id]=1;
+  for(const id of LEARN_IDS)S.learned[id]=1;
   S.set.lightMode=BENCH.arg==='classic'?'classic':'torch';window.__HKnoauto=BENCH.arg!=='auto';if(BENCH.arg==='saver'){S.set.saver=true;layout();}if(BENCH.arg==='2d')GLFX.wgl=false;hideAll();benchFloor(0);} // (?bench=saver: Battery saver on, as the owner plays it: every other frame, 1x resolution; ?bench=2d: the scene drawn in 2D and copied, as up to v60, to compare on the same phone)
 function benchFloor(i){BENCH.i=i;const n=BENCH.floors[i];GLP.rs=BENCH.arg==='75'?0.75:1;GLP.inSession=true;
   BENCH.g=window.botGen(n,9000+n,{fight:true});BENCH.iv=[];BENCH.wk=[];BENCH.tr=BENCH.TR[n]=[];BENCH.rb=roomBuilds;BENCH.ru=GLREL.ups||0;BENCH.fb=null;BENCH.done=null;BENCH.t0=0;
@@ -12802,7 +12961,7 @@ function drawOverlayText(ctx){
     const bw=low&&hud.over?Math.min(300,viewW*0.56):Math.min(380,viewW-28),bx=(viewW-bw)/2;
     ctx.font='600 8.5px Jost, system-ui, sans-serif';const lines=wrapText(ctx,banner.text,bw-24);const h=10+lines.length*11;
     const by=low?ROOM_H-h-8:hud.t+19;
-    ctx.fillStyle='rgba(10,8,20,.82)';ctx.fillRect(bx,by,bw,h);ctx.fillStyle=banner.kind==='hint'?'#e8c47f':'#e4683b';ctx.fillRect(bx,by,2,h);
+    ctx.fillStyle='rgba(10,8,20,.82)';ctx.fillRect(bx,by,bw,h);ctx.fillStyle='#e4683b';ctx.fillRect(bx,by,2,h);
     ctx.fillStyle='#f2e9d8';lines.forEach((l,i)=>ctx.fillText(l,viewW/2,by+10+i*11));ctx.globalAlpha=1;}
   if(mode==='dead'){const a=Math.min(1,deadT/0.6);ctx.globalAlpha=a;ctx.fillStyle='rgba(8,6,14,.55)';ctx.fillRect(0,0,viewW,ROOM_H);
     const cause={fall:'The fall was too far',spikes:'Impaled on the stakes',drown:'Drowned in the pool',sword:'Cut down',blade:'Caught by the blade',crush:'Crushed by a falling block',poison:'Poisoned',snake:'Bitten by a snake',fire:'Burned',pend:'Struck by the pendulum',saw:'Cut by the saw',dart:'Struck by a dart',sand:'Taken by the dark'}[P.cause]||'You fell';
@@ -12810,7 +12969,6 @@ function drawOverlayText(ctx){
     ctx.fillStyle='#f2e9d8';ctx.font='600 8.5px Jost, system-ui, sans-serif';
     if(canRewind()){if(deadT>0.7){ctx.fillStyle='#e8c47f';ctx.fillText('Rewind: turn back the hours ('+S.sands+' left)',viewW/2,ROOM_H/2+13);ctx.fillStyle='#f2e9d8';ctx.fillText(L.cpIndex>=0?'Jump: rise at the sky clock':'Jump: rise at the floor gate',viewW/2,ROOM_H/2+26);}}
     else ctx.fillText(deadT>0.9?(L.cpIndex>=0?'Tap Jump to rise at the sky clock':'Tap Jump to rise at the floor gate'):'',viewW/2,ROOM_H/2+14);
-    if(P.cause==='spikes'){ctx.fillStyle='#e8c47f';ctx.fillText('Spikes spare a careful step: hold Grab and tap toward them.',viewW/2,ROOM_H/2+(canRewind()?42:30));}
     ctx.globalAlpha=1;}
 }
 
@@ -12888,11 +13046,11 @@ function grabLabel(){
       if(bl&&!bl.mv&&P.stumble<=0&&Math.abs((P.face>0?(pCol()+P.face)*TW:(pCol()+P.face+1)*TW)-P.x)<=26){
         if(ix===-P.face)return blockCanMove(bl,-P.face,'pull')?'Pull':'Grab'; // pad held away: a pull (a refused pull still eats the press)
         if(blockCanMove(bl,P.face,'push'))return 'Push';}
-      {const f=F(L,pCol(),pRow());if(hazardEdge(64)!==null||(f&&f.t==='spikes'))return 'Step';} // spikes (under him or ahead) or an edge ahead: Grab + a tap toward it is a careful step
+      {const f=F(L,pCol(),pRow());if(hazardEdge(64,true)!==null||(f&&f.t==='spikes'))return 'Step';} // spikes (under him or ahead) or an edge ahead: Grab + a tap toward it is a careful step
       return 'Grab';}
     case'crouch':
       if(P.lowSword)return 'Thrust';
-      if(underLow())return 'Grab'; // no room to draw in a tunnel: the press only says so
+      if(underLow())return 'Grab'; // no room to draw in a tunnel: the press only bumps (round 49a: no words)
       if(snakeNear(44))return 'Strike';
       if(findFlask())return 'Drink';
       return 'Draw';
@@ -12901,6 +13059,7 @@ function grabLabel(){
     case'lowStrike':case'poke':return 'Grab';
     case'slide':return 'Slide';
     case'air':{
+      if(P.lock)return 'Grab'; // (round 48b: nothing for Grab to do in the chimney)
       if(barNear())return 'Swing';
       if(P.vy>0&&bannerAt())return 'Slide';
       // a ledge the hands will pass in the next moment: down the fall ahead (0.45 s), or after the top of a jump
@@ -12919,7 +13078,9 @@ function glFit(){bGrab.style.removeProperty('--lk');
   if(tw>lim)bGrab.style.setProperty('--lk',Math.max(0.5,Math.floor(lim/tw*100)/100));}
 function glSet(t){glShown=t;bGrab.textContent=t;bGrab.classList.toggle('dim',t==='Grab');glFit();}
 // A new word shows after ~0.15 s of agreeing predictions, the plain word after 0.3 s; Rewind, Rise and Strike switch at once
+let chDim=false;
 function updateGrabLabel(ts){
+  {const lk=mode==='play'&&!!P&&!!P.lock;if(lk!==chDim){chDim=lk;bJump.classList.toggle('dim',lk);if(lk&&glShown!=='Grab')glSet('Grab');}} // (round 48b: in the chimney Jump and Grab do nothing: both dimmed)
   const want=grabLabel();
   if(want!==glCand){glCand=want;glSince=ts;}
   if(want===glShown)return;
@@ -14654,8 +14815,8 @@ addEventListener('orientationchange',()=>setTimeout(layout,120));
 if(window.claude&&window.claude.hot&&window.claude.hot.snapshot){try{window.claude.hot.snapshot(()=>({save:S}));}catch(e){}}
 
 // test hooks
-window.__HK={die:c=>die(c),openingsIn,windLull,windReach,windJumpE,windPeak,windZoneAt,windEase,ctJambsOf,jambKind,startRewind,get windDeaths(){return S.windDeaths;},placeCourts,ctIn,ctPoolHit,CTB,ctBake,ctKindOf,get courts(){return L.courts;},windAt,windE,windCap,windGust,WIND_MS,WIND_GP,WIND_DE,WIND_JM,WIND_G0,WIND_PUSH,WIND_P,WIND_CDA,WIND_GT,plainRuns,keyLight,hillOn,hillTop,hillH,hillCanvas,hillBox,hillSil,hillSegs,hillEnd,hillMeshTop,HILL_DBG,HILL_WADE,HILL_CLIMB,get frameLights(){return frameLights;},jetPlaces,jsSwingPath,jetStream,tapCloth,THEMES,progOf,themeName,hint,learn,HINTS,HINT_MOVE,get banner(){return banner;},set banner(v){banner=v;},genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
-  load(n,seed,test){clearInput();quiet=!!test;L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;mode="play";intro=0;FX.length=0;STORMG.length=0;clearRooms();cam.snap=true;updateCamera(0);return L;},
+window.__HK={WEAR,wearList:()=>wearList(),wearFloor:(g,X,ys,c,r)=>wearFloor(g,X,ys,c,r,L.theme),wearFace:(g,fx,Y,c,r)=>wearFace(g,fx,Y,c,r,L.theme),WG_D,WB_DR,WB_HR,TELL,tellKind:()=>tellKind(),GRIT,gritList:()=>gritList(),SWB,GLN,gateCue,glanceAt,glanceEnd,GL_T,Snd,chimFoot:(c,r)=>chimFoot(c,r),chimH:n=>chimH(n),CHM:()=>({G0:CHM_G0,GS:CHM_GS,YD:CHM_YD,YP:CHM_YP,YC:CHM_YC,YX:CHM_YX,IN_T:CHM_IN_T}),die:c=>die(c),openingsIn,windLull,windReach,windJumpE,windPeak,windZoneAt,windEase,ctJambsOf,jambKind,startRewind,get windDeaths(){return S.windDeaths;},placeCourts,ctIn,ctPoolHit,CTB,ctBake,ctKindOf,get courts(){return L.courts;},windAt,windE,windCap,windGust,WIND_MS,WIND_GP,WIND_DE,WIND_JM,WIND_G0,WIND_PUSH,WIND_P,WIND_CDA,WIND_GT,plainRuns,keyLight,hillOn,hillTop,hillH,hillCanvas,hillBox,hillSil,hillSegs,hillEnd,hillMeshTop,HILL_DBG,HILL_WADE,HILL_CLIMB,get frameLights(){return frameLights;},jetPlaces,jsSwingPath,jetStream,tapCloth,THEMES,progOf,themeName,learn,LEARN_IDS,HINTS:Object.fromEntries(LEARN_IDS.map(id=>[id,1])),HINT_MOVE:new Set(LEARN_IDS),get banner(){return banner;},set banner(v){banner=v;},genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
+  load(n,seed,test){clearInput();quiet=!!test;GLN.off=true;glanceEnd();L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;mode="play";intro=0;FX.length=0;STORMG.length=0;clearRooms();cam.snap=true;updateCamera(0);return L;},
   loadMap(spec){return spec;},
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},
   get P(){return P;},get L(){return L;},lampFree,isArchTop,isOpenArch,ryOps,ryShape,ryProfile,skyBeam,RY,guardPal,drawFigureHD,drawFigure,PS,PAL_HERO,plantPose,legIK,mk,drawDynamic,get drawnCamX(){return drawnCamX;},roomWork,figReach,wallPress,get roomBuilds(){return roomBuilds;},get prefetched(){return prefetched;},get drawBuilds(){return drawBuilds;},get G(){return G;},get mode(){return mode;},set mode(v){mode=v;},
