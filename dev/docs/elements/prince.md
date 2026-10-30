@@ -228,5 +228,9 @@ Classic's beam cut and `fillCut`. The sword shows in it only while drawn at a fo
   landed with `landSeq 'sl'`. Pictures `egyptr48b.py`.
 - round 46d: the contour rule on the figure: each outline the shade of the fill beside it (`FIG_K`), both levels of detail; `contourscan.py`
   judges him (standing clear of walls, floors 1-48: v87 32 of 48 views bad, 0 now). Look only: the silhouettes identical.
+- round 49b: the tells (`tellTgt`): standing still 0.5 s he looks up and lifts his hand toward a lip he can climb (skel's two-bone
+  solve to the hang's grip, `TL_RF` 0.96 of his reach), glances down an edge, eyes stakes, looks at a flask, stoops with a hand on a low
+  tunnel's lintel, and in the locked chimney looks up the shaft; on `P.pose` before the follow, so the overlap carries arm and head and the
+  silhouette, shadow and beam cut follow; any input drops them. Pictures `egyptr49b.py` (r49b_tells_3x.png, r49b_reach.gif); `tellscan.py`.
 
 Details in CLAUDE.md and `dev/FIGURE_SPEC.md`.

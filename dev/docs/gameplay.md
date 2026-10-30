@@ -298,6 +298,24 @@ but its hours are running out..."; "A heavy door grinds open somewhere on this f
 
 
 ## The bot: the reference player
+### Tells: his body, the grit, the swing's beat (round 49b)
+
+Round 49b (owner after the round 49 research: "rely only on subtle graphic hints"; his choices: the animation tells, grit over a slab's plate, the swing's beat as sound). Look and sound only: play, layouts, the bot and every timer unchanged.
+
+- **The tells** (`tellTgt`, `tellKind`, `TELL`; Limbo's lesson, the boy turns toward what can be used). Standing still `TL_D` 0.5 s (not
+  in a fight, the chase, a wind, a stumble; nothing held) he turns to what is there, eased in over `TL_IN` 0.55 s and dropped at once by
+  any input: under a ledge he can climb, facing it, he looks up and lifts his hand toward the lip where his hands would hang (`reach`);
+  at an edge he can hang from he glances down (`edge`); stakes within a step ahead, on his floor or in the pit before him, he eyes them
+  (`stakes`); a flask on his floor up to 44 px ahead, he looks at it (`flask`); at the mouth of a low tunnel he stoops with a hand on the
+  lintel's end (`low`); locked in the chimney, planted between kicks for `TL_CD` 0.5 s, he looks up the shaft (`chim`). Order when more
+  than one holds: flask, stakes, edge, reach, low. `tellscan.py` checks them (none before 0.5 s, full by 1.2 s, gone the frame Grab is
+  held, the pose back 0.35 s later, play identical with `TELL.off`).
+- **Grit over a slab's plate** (`drawGrit`, `gritList`): where a cracked slab in a gallery can jam the plate or closer under it (the
+  slab-holds-plate puzzles P2G1 and P3G1), single grains sift from its underside onto that plate, a few at a time with pauses, and a few
+  lie on the plate; gone the moment the slab lets go. Faint and steady, unlike the roof block's thickening threads of sand.
+- **The swing's beat** (`swbeat`, `SWB`): each turn of the swing creaks on the log, louder and a little higher as the swing grows; while a
+  pump is armed (a press waiting for the bottom) the turn is brighter, with a breath of air over it. Under the ready chime.
+
 
 `dev/tools/bot.js` plays a floor through the game's own input (`H.setKey('kb', ...)`), one action of `L.path` at a time:
 `runBot(n, seed, opts)` returns `{ok, n, seed, frames, hurt, fights}`. Every trap the generator lays pushes its action onto

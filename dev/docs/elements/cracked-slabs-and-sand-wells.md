@@ -165,4 +165,5 @@ slab takes its neighbours' support, repeated until none fails. Planks are never 
   (`debrisCut`); the landing cloud by `airCut`. Look only.
 - round 46c: the cracked slab's cracks, the missing chip and the gaps at its seams are its own stone in deep shade (`selC(th.top, .4-.45)`),
   opaque; they were black at .85-.88 (the contour rule). Look only.
+- round 49b: a slab that can jam a plate under it (the slab-holds-plate puzzles) sifts grit onto that plate while it lies (`drawGrit`, plates.md).
 - Details in CLAUDE.md (Themes: 16a, Sand wells 21b/26d/30, 35b, 35c).

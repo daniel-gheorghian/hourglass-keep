@@ -2932,7 +2932,9 @@ const Snd={ctx:null,master:null,nb:null,
           lf.frequency.value=5.2;lg.gain.value=f0*0.03;lf.connect(lg);lg.connect(os.frequency);bp.type='bandpass';bp.frequency.value=f0*2;bp.Q.value=1.4;lp.type='lowpass';lp.frequency.value=1500;
           g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(v,t+0.25);g.gain.setValueAtTime(v,t+1.1);g.gain.exponentialRampToValueAtTime(0.0001,t+1.8);
           os.connect(bp);bp.connect(lp);lp.connect(g);g.connect(this.master);os.start(t);lf.start(t);os.stop(t+1.85);lf.stop(t+1.85);}}break;
-      case'swing':N(0.07,{vol:0.045,f:330,type:'bandpass',q:7});N(0.09,{vol:0.04,f:290,type:'bandpass',q:7,at:0.06});break; // (round 18b) the turn: the ropes creak on the log (two short stick-slip groans, not a chain's rattle)
+      case'swing':N(0.07,{vol:0.045,f:330,type:'bandpass',q:7});N(0.09,{vol:0.04,f:290,type:'bandpass',q:7,at:0.06});break;
+      case'swbeat':{const k=SWB.k,a=SWB.arm,f=1+0.18*k+0.22*a;N(0.07,{vol:0.022+0.012*k+0.006*a,f:330*f,type:'bandpass',q:7});N(0.09,{vol:0.018+0.012*k+0.006*a,f:290*f,type:'bandpass',q:7,at:0.06});
+        if(a)N(0.16,{vol:0.016+0.008*k,f:1500,type:'bandpass',to:800,q:1.6,at:0.02});break;} // (round 49b) the turn's creak, by the swing's size; armed, brighter, with a breath of air // (round 18b) the turn: the ropes creak on the log (two short stick-slip groans, not a chain's rattle)
       case'sandstep':N(0.08,{vol:0.03,f:480});N(0.05,{vol:0.012,f:2400,type:'bandpass',q:0.7,at:0.012});break; // (round 36a) a footfall in sand: a dull push and a faint hiss of grains
       case'sandrun':N(0.07,{vol:0.045,f:560});N(0.06,{vol:0.018,f:2800,type:'bandpass',q:0.7,at:0.01});break;
       case'firmstep':N(0.045,{vol:0.04,f:900});T(110,0.05,{to:70,vol:0.02,type:'sine'});break; // (round 36b) the oasis: a footfall on firm, damp ground
@@ -3930,6 +3932,49 @@ function siFrame(p,y){const s=skel(p),low=Math.max(s.fF[1],s.fB[1]);
 // a world point in that frame (the hip's, x forward)
 function siHip(fr,wx,wy){const dx=(wx-fr.x)*P.face,dy=wy-fr.y;return [dx*fr.c+dy*fr.s,-dx*fr.s+dy*fr.c];}
 function siGrip(p,i,h,w){if(i){p.gBx=h[0];p.gBy=h[1];p.hb=w;}else{p.gFx=h[0];p.gFy=h[1];p.hold=w;}}
+// The tells (round 49b, owner after the round 49 research, "Found, not told": "rely only on subtle graphic hints"; Limbo's lesson: the boy
+// turns toward what can be used, his arms reach before the player does). Standing still TL_D s (not in a fight, the chase, a wind, a stumble),
+// his body points at what is there to use or fear: under a ledge he can climb he looks up and lifts his hand toward its lip ('reach'); at an
+// edge he can hang from he glances down ('edge'); stakes within a step ahead, on his floor or in the pit before him, he eyes them ('stakes');
+// a flask near him on his floor, he looks at it ('flask'); at the mouth of a low tunnel he stoops with a hand on its lintel ('low'); locked
+// in the chimney (round 48b), planted between kicks, he looks up the shaft ('chim'). Look only, the prince only, on the motion-capture body:
+// the head's angle on the neck, the lean, the knees, and the hand by skel's two-bone solve to a grip (the lip where his hands would hang, the
+// lintel's end 10 px over its underside, on the end he faces), shortened to TL_RF of his reach so the elbow stays soft; eased in over TL_IN (followPose's overlap carries the arm and
+// head after the trunk) and dropped at once by any input (followPose eases it out). Shadows and silhouettes take P.pose: they follow.
+const TL_D=0.5,TL_IN=0.55,TL_RF=0.96,TL_CD=0.5;
+const TELL={k:null,w:0,x:0,y:0,ct:0,off:false}; // (TELL.off: none, for pictures and tests)
+const tlP=mk({});
+// what is there to tell of, standing where he is (sets TELL.x, TELL.y: the grip in world px, for 'reach' and 'low')
+function tellKind(){const r=pRow(),c=pCol(),fc=P.face;
+  for(const it of L.items){if(it.taken||it.hidden||it.r!==r)continue;const dx=(it.x-P.x)*fc;if(dx>-6&&dx<44)return 'flask';}
+  {const ca=c+fc,xe=fc>0?(c+1)*TW:c*TW,ne=Math.abs(P.x-xe)<26;
+    if(ne){const fa=F(L,ca,r);if(fa&&fa.t==='spikes')return 'stakes';if(B(L,ca,r)===EMPTY&&r+1<L.rows){const fb=F(L,ca,r+1);if(fb&&fb.t==='spikes')return 'stakes';}}}
+  {const e=edgeBelow();if(e&&e.s===fc)return 'edge';}
+  {const cu=canClimbUp();if(cu&&cu.s===fc){const HG=PS.hang,hx=cu.xe-fc*7,hy=SURF(r-1)+HANG;TELL.x=hx+HG.gFx*fc;TELL.y=hy-HG.hy+HG.gFy;return 'reach';}}
+  if(!underLow()){const ca=Math.floor((P.x+fc*14)/TW),fa=F(L,ca,r);if(ca!==c&&fa&&fa.t==='low'){const xe=fc>0?ca*TW:(ca+1)*TW;
+    if(Math.abs(P.x-xe)<24){TELL.x=fc>0?xe-HX+1.2:xe-0.5;TELL.y=r*TH+LOW_H-10;return 'low';}}} // (facing right: the lintel's front face's edge; left: its end face, seen, at mid depth)
+  return null;}
+function tellIdle(){const ch=L.ext.chase;return mode==='play'&&!TELL.off&&!(I.l||I.r||I.u||I.d||I.j||I.g)&&!(P.foe&&P.foe.alive)&&!(ch&&ch.on&&!ch.done)&&!(P.stumble>0)&&Math.abs(windAt(P.x,P.y))<0.03;}
+function tellTgt(tgt,dt){
+  if(P.state==='air'&&P.lock&&P.plant&&P.lock.ph!=='yfly'&&tellIdle()){TELL.ct+=dt;if(TELL.ct<TL_CD){TELL.w=0;return tgt;} // the locked chimney: between kicks, a look up the shaft
+    if(TELL.k!=='chim'){TELL.k='chim';TELL.w=0;}TELL.w=Math.min(1,TELL.w+dt/TL_IN);const w=s32(TELL.w);Object.assign(tlP,tgt);tlP.head-=0.34*w;return tlP;}
+  TELL.ct=0;
+  if(P.state!=='stand'||P.t<TL_D||(P.sword&&P.foe)||!tellIdle()){TELL.w=0;TELL.k=null;return tgt;}
+  const k=tellKind();if(k!==TELL.k){TELL.k=k;TELL.w=0;}if(!k)return tgt;
+  TELL.w=Math.min(1,TELL.w+dt/TL_IN);const w=s32(TELL.w),q=Object.assign(tlP,tgt);
+  switch(k){
+    case'edge':q.head+=0.42*w;q.lean+=0.07*w;q.aB-=0.12*w;q.aF+=0.06*w;q.kF+=0.05*w;break; // a glance over the edge, his weight kept back
+    case'stakes':q.head+=0.4*w;q.lean+=0.06*w;break; // eyeing the stakes before him (head pitched down and forward)
+    case'flask':q.head+=0.36*w;q.lean+=0.08*w;q.aF+=0.12*w;break;
+    case'reach':q.head-=0.48*w;q.lean-=0.05*w;tellGrip(q,w);break; // looking up at the lip, the hand lifted toward it
+    case'low':q.lean+=0.36*w;q.hF+=0.12*w;q.kF+=0.24*w;q.hB+=0.06*w;q.kB+=0.1*w;q.head-=0.24*w;tellGrip(q,w);break; // a stoop, a hand on the lintel, looking in
+  }
+  return q;}
+// the front hand toward the grip TELL.x,y: in the hip's frame as the figure is drawn (feet on P.y, P.rdx), shortened to TL_RF of the arm's reach
+function tellGrip(q,w){const a=Math.max(LEN.th*Math.cos(q.hF)+LEN.sh*Math.cos(q.hF-q.kF),LEN.th*Math.cos(q.hB)+LEN.sh*Math.cos(q.hB-q.kB)),fc=P.face,
+    hx=P.x+(P.rdx||0),hy=P.y+(P.rdy||0)+(P.yo||0)-a,sx=LEN.to*Math.sin(q.lean),sy=-LEN.to*Math.cos(q.lean);
+  let gx=(TELL.x-hx)*fc-sx,gy=TELL.y-hy-sy;const D=Math.hypot(gx,gy),R=(LEN.ua+LEN.fa)*TL_RF;if(D>R){gx*=R/D;gy*=R/D;}
+  q.gFx=sx+gx;q.gFy=sy+gy;q.hold=w;if(q.eF<0.3)q.eF=0.3;}
 function handsIn(){const p=P.pose,st=P.state,ps=P.dhS,f=P.dF||P.face;
   if(st==='slide'&&ps&&ps!=='slide'&&P.t<0.02){const dx=clamp((P.dhX-P.x)*f,-24,24),lg=ps==='air'?P.lgo:null,W=[[P.dhFx,P.dhFy],[P.dhBx,P.dhBy]];
     p.ox=dx;const fr=siFrame(p),r={t0:gameTime,dx,l:[0,0],W,H:[null,null],h:[0,0],d:[SI_D[0],SI_D[1]]},e=[0,0];
@@ -4017,6 +4062,13 @@ function swingCatch(b){const bp=barPos(b),fc=P.face,th=Math.asin(clamp((P.x-bp.x
   P.swIx=(I.r?1:0)-(I.l?1:0);P.swArm=0;P.swArmT=-9;P.swPT=-9;P.swPD=0;P.swKick=0;P.swKd=0;P.swKT=-9;P.swDn=0;
   P.bar=b;P.sw0=gameTime;P.vx=0;P.vy=0;setState('swing');swingPlace();}
 function swingPlace(){const bp=barPos(P.bar);P.x=bp.x+P.face*34*Math.sin(P.swTh);P.y=bp.y+34*Math.cos(P.swTh)+24.5;}
+// The swing's beat (round 49b, owner after the round 49 research: the swing's timing told by sound, no words): at each turn of the swing
+// while he hangs (swingStep: om changes sign, the amplitude over SWB.A0, from a near-still hang up) the ropes creak on the log, softly,
+// louder and a little higher as the swing grows (SWB.k: the amplitude between A0 and SW_CLEAR); while a pump is armed (P.swArm: a press
+// waiting for the bottom) the turn is brighter: the creak higher and a short breath of air over it, so the beat the press must meet is
+// heard. Mixed under the ready chime (swready 0.05): the beat 0.022 to 0.04. It replaces round 18b's turn creak ('swing', over 0.1 rad).
+// SWB.log (an array) records [time, amplitude, armed, angle] for egyptr49b.py; null in play.
+const SWB={k:0,arm:0,A0:0.05,log:null};
 function swingKick(d){P.swKick=0.12;P.swKd=d;P.swKT=gameTime;P.swArm=0;Snd.play('swpump');}
 function swingStep(dt,ix){const f=P.bar,fc=P.face,hd=ix*fc;let th=P.swTh,om=P.swOm;
   // a press arms a pump (see SW_KICK): fired now if he hangs still or has just passed the bottom going that way
@@ -4032,7 +4084,8 @@ function swingStep(dt,ix){const f=P.bar,fc=P.face,hd=ix*fc;let th=P.swTh,om=P.sw
   if(P.swArm&&Math.sign(om)===P.swArm&&th0*P.swArm<0&&th*P.swArm>=0){if(gameTime-P.swArmT<=SW_PRE)swingKick(P.swArm);else P.swArm=0;} // the bottom, going the armed way
   if(!hd&&P.swKick<=0&&Math.abs(th)<0.02&&Math.abs(om)<0.1){th*=0.9;om=0;}
   const A=swAmp(th,om);if(A>SW_MAX&&Math.abs(th)<SW_MAX){const e=1-Math.cos(SW_MAX)-(1-Math.cos(th));om=Math.sign(om)*SW_W*Math.sqrt(Math.max(0,2*e));}
-  if(Math.sign(om)!==Math.sign(P.swOm)&&P.swOm!==0&&swAmp(th,om)>0.1)Snd.play('swing'); // the creak of the turn
+  if(Math.sign(om)!==Math.sign(P.swOm)&&P.swOm!==0){const A=swAmp(th,om);if(A>SWB.A0){SWB.k=clamp((A-SWB.A0)/(SW_CLEAR-SWB.A0),0,1);SWB.arm=P.swArm?1:0;Snd.play('swbeat'); // the beat of the turn (round 49b)
+    if(SWB.log)SWB.log.push([gameTime,A,SWB.arm,th]);}}
   P.swPump=P.swKick>0||(hd&&hd*om>0)?1:0;P.swTh=th;P.swOm=om;
   // (round 16b) once ready it stays so down to 0.5, which still clears from a release at -0.2 to 0.2 rad
   const rdy=swAmp(th,om)>=(P.swRdy?SW_CLEAR-0.05:SW_CLEAR);if(rdy&&!P.swRdy){Snd.play('ropecreak');Snd.play('swready');P.swGl=gameTime;}P.swRdy=rdy;
@@ -4279,6 +4332,7 @@ const sf=F(L,pCol(),pRow());if(sf&&sf.t==='spikes')learn('spikes');setState('sta
   if(P.state==='blocked')tgt=lerpPose(PS.garde,PS.hurt,0.45,tmpP);
   if(P.stumble>0&&['stand','run','stop','turn','garde','advance','retreat'].includes(P.state)){const w=Math.min(1,P.stumble/0.8);
     tgt=lerpPose(tgt,PS.hurt,0.3*w,mk({}));tgt.lean+=0.22*w*Math.sin(P.t*7.5);tgt.head+=0.25*w*Math.sin(P.t*5.3+1);tgt.aB-=0.5*w;tgt.aF+=0.25*w*Math.sin(P.t*6);}
+  tgt=tellTgt(tgt,dt); // (round 49b: the tells, standing still where something can be used or feared)
   // (round 32) ease in as well as out: a wind-up or a take-off starts slow (the follow's rate rises over 0.08 s); the landing's impact does not
   tgt=windTgt(tgt,dt); // (round 44: into the wind he leans, the kilt blown back; in a gust the forearm over his eyes; pushed back he steps back)
   if(P.state==='jumpPrep'||(P.state==='air'&&(P.jumpKind==='run'||P.jumpKind==='stand')))rate*=0.35+0.65*s32(P.t/(0.08*rjK())); // (round 35a: a running flight's on its clock)
@@ -7885,7 +7939,7 @@ const CUT_AT_WALL=new Set(['plate','xplate','lplate','closer','loose','spikes'])
 // brackets, verdigris on the bronze in the damp themes, a chipped platform lip, streaks down the shaft; 3 a rotten bite out of the
 // beam's end bound with rope, heavier rust and soot or moss, a cracked platform. Never broken, never like a hurtdrop.
 function liftVisible(f,x0,x1,y0,y1){return (f.cb+1)*TW+80>x0&&f.ca*TW-80<x1&&(f.rD||f.rB)*TH+TH+10>y0&&f.rT*TH-40<y1;} // (round 41: a sand lift's deep shaft too)
-const LAYER_DBG={hide:null,glow:true};function lyOff(k){return LAYER_DBG.hide!==null&&LAYER_DBG.hide.has(k);} // (round 39: layerscan.py leaves one kind of thing out of a frame, a Set of kinds: 'lamp', 'door', 'clock', 'lift', a feature's type, 'block', 'dart', 'cue', 'jet', 'flask', 'well', 'dust', 'debris', 'snake', 'guard', 'prince', 'trail', 'sand', 'emissive', 'ambient', 'atmo', 'haze'; glow false: no lamp's drawn glow, which is light, GLOWK)
+const LAYER_DBG={hide:null,glow:true};function lyOff(k){return LAYER_DBG.hide!==null&&LAYER_DBG.hide.has(k);} // (round 39: layerscan.py leaves one kind of thing out of a frame, a Set of kinds: 'lamp', 'door', 'clock', 'lift', a feature's type, 'block', 'dart', 'cue', 'jet', 'flask', 'well', 'dust', 'debris', 'snake', 'guard', 'prince', 'trail', 'sand', 'emissive', 'ambient', 'atmo', 'haze', 'grit' (round 49b); glow false: no lamp's drawn glow, which is light, GLOWK)
 const LIFT_DBG={off:false,rider:false,gatesR:false,tiles:null,noback:false}; // (liftscan.py: off leaves the lifts out of a frame, rider the prince, and gatesR draws only the gratings on the shafts' right edges, to compare with frames that have them; tiles, a Set, collects the cells whose floor tile the room pictures draw)
 function drawLift(ctx,f,half){if(LIFT_DBG.off||lyOff('lift')||(LIFT_DBG.gatesR&&f.t==='chain'))return;if(f.sand)drawSandLift(ctx,f,half);else if(f.t==='chain')drawLiftChain(ctx,f,half);else drawLiftCounterweight(ctx,f,half);}
 function liftWear(f){if(f.wl===undefined||f.wn!==L.n){const x=(f.ca+f.cb+1)*TW/2,ym=(f.rT*TH+SURF(f.rB))/2;f.wn=L.n;f.wl=inBreach(x,ym,true)?3:wearLevel(x,ym);}return f.wl;}
@@ -8915,6 +8969,33 @@ function windUpdraft(ctx,X,yb,yt,seed){const S=windSprites(),t=gameTime,H=yb-yt;
   for(let i=0;i<18;i++){const h=hash2(i*577+seed,33),q1=(h&255)/255,q2=((h>>>8)&255)/255,q3=((h>>>16)&255)/255,v=60+50*q1,pp=(t*v/H+q2)%1,
       y=yb-pp*H,x=X+4+q3*(TW-HX-8)+1.6*Math.sin(t*2+i*1.3+pp*6),a=(0.08+0.1*q1)*Math.sin(Math.PI*pp);if(a<0.01)continue;ctx.globalAlpha=a;jsStamp(ctx,S.v,x,y,0,-1,10+12*q2,4);}
   ctx.restore();}
+// Grit over a slab's plate (round 49b, owner after the round 49 research: the slab-holds-plate puzzle told with no words, "rely only on
+// subtle graphic hints"): while the cracked slab that can jam a plate (or a closer) under it still lies in the gallery (f.s 0), a thin,
+// intermittent sifting of grit falls from its underside at mid depth onto that plate, and a few grains lie on the plate. Unlike the roof
+// block's warning (sandFlow's threads and beads, growing as it shifts), these are single grains, faint and sparse, a few at a time with
+// pauses, at a steady drift; the colour of the grit on a heap (sandC().heap), never lit. GRIT_N grains, each on its own period GRIT_P
+// (hashes of the slab's cell and the grain), falling over GRIT_T s from rest; a cycle skipped one time in GRIT_GAP. A pure function of the
+// clock and f.s: rewind-safe, nothing allocated a frame. L2 air at the slab's mid depth, before the figures: cut by the front plane in
+// front of it on the rows it falls through (the slab's own lip hides the grain until it drops below it; nearCut), not by the plate's row,
+// where it lands on the plate's top. Gone the moment the slab lets go. Not in the lamp shadow's carve (air: SHC holds solids).
+const GRIT_N=14,GRIT_P=[1.7,3.6],GRIT_T=[1.05,1.35],GRIT_GAP=0.35,GRIT={off:false};
+// the slabs that can jam a plate or closer under them, found once a floor: {o: the slab's dyn entry, p: the plate's, c, r0, r1}
+function gritList(){if(L._grit)return L._grit;const out=[];
+  for(const o of L.dyn){const f=o.f;if(!f.slabF||(f.t!=='plate'&&f.t!=='closer'))continue;const sl=L.dyn.find(q=>q.f===f.slabF);if(!sl||sl.c!==o.c||sl.r>=o.r)continue;
+    let ok=true;for(let r=sl.r+1;r<o.r;r++)if(B(L,o.c,r)===WALL||solidBelow(L,o.c,r))ok=false;if(ok&&!out.some(g=>g.o===sl))out.push({o:sl,p:o,c:o.c,r0:sl.r,r1:o.r});}
+  return L._grit=out;}
+const gritH=(a,b)=>hash2(a,b)/4294967296;
+function drawGrit(ctx,x0,x1,y0,y1){if(GRIT.off||lyOff('grit'))return;const t=gameTime;
+  for(const g of gritList()){const sf=g.o.f;if(sf.s!==0)continue;const X=g.c*TW,ya=SURF(g.r0),pf=g.p.f,dn=pf.jam||gameTime-pf.press<0.12,yb=SURF(g.r1)-(dn?1:2.4);
+    if(X+TW<x0||X>x1||yb<y0||ya>y1+20)continue;const sd=g.c*131+g.r0*977,xc=X+15+2*gritH(sd,1)-1,ys=ya+FHH,H=yb-ys,C=sandC();
+    ctx.save();ctx.beginPath();ctx.rect(xc-8,ya,16,yb-ya+1);ctx.clip();nearCut(ctx,g.c-1,g.c+1,g.r0,g.r1-1,true);ctx.fillStyle=C.heap;
+    for(let i=0;i<GRIT_N;i++){const P0=GRIT_P[0]+(GRIT_P[1]-GRIT_P[0])*gritH(sd,10+i),T=GRIT_T[0]+(GRIT_T[1]-GRIT_T[0])*gritH(sd,30+i),cy=(t+gritH(sd,50+i)*P0)/P0,k=Math.floor(cy),u=(cy-k)*P0/T;
+      if(u>=1)continue;const hk=gritH(sd+i*7,k);if(hk<GRIT_GAP)continue;
+      const y=ys+H*(0.22*u+0.78*u*u),x=xc+(gritH(sd+i,k*3+1)-0.5)*3.2+Math.sin(u*4+i)*0.6*u,s=1+0.6*gritH(sd+i,k*3+2);
+      ctx.globalAlpha=(0.4+0.35*hk)*Math.min(1,u/0.08)*Math.min(1,(1-u)/0.06);ctx.fillRect(x-s/2,y-s/2,s,s);}
+    ctx.restore();ctx.save();ctx.fillStyle=C.heap; // a few grains lying on the plate's top where they land (its depth: d .4 to .6)
+    for(let i=0;i<6;i++){const d=0.4+0.2*gritH(sd,80+i),qx=xc+(gritH(sd,70+i)-0.5)*7+(d-0.5)*DX,qy=yb+(0.5-d)*DY;ctx.globalAlpha=0.35+0.2*gritH(sd,90+i);ctx.fillRect(qx-0.5,qy-0.6,1+0.5*gritH(sd,95+i),0.8);}
+    ctx.restore();}}
 function drawDynamic(ctx,x0,x1,y0,y1){
   hudStones.length=0;
   drawWindHangs(ctx,x0,x1,y0,y1); // (round 44: the hangings over a wind billow: L1, first)
@@ -9024,6 +9105,7 @@ const lf=f.t==='lplate'&&EGP.traps&&f.lf&&f.lf.t==='lift'&&!f.lf.sand?f.lf:null,
       ctx.fillStyle='rgba(255,230,150,'+(0.35+0.6*k)+')';ctx.beginPath();ctx.moveTo(px,py-R);ctx.lineTo(px+R*0.22,py-R*0.22);ctx.lineTo(px+R,py);ctx.lineTo(px+R*0.22,py+R*0.22);ctx.lineTo(px,py+R);ctx.lineTo(px-R*0.22,py+R*0.22);ctx.lineTo(px-R,py);ctx.lineTo(px-R*0.22,py-R*0.22);ctx.closePath();ctx.fill();}ctx.restore();}
   if(!lyOff('cue'))drawSecretCue(ctx,x0,x1,y0,y1);
   if(!lyOff('jet'))drawJetHints(x0,x1,y0,y1,ctx);
+  drawGrit(ctx,x0,x1,y0,y1); // (round 49b: grit sifting from a slab that can jam the plate under it, L2 air before the figures)
   for(const it of L.items)if(!it.taken&&inRoom(it.c,it.r)&&!lyOff('flask'))drawFlask(ctx,it);
   if(!lyOff('flask'))drawLooseFlasks(ctx);
   if(SHC.on&&!lyOff('well')){const n=sandSegs(x0,x1,y0,y1);if(SDS.nw&&shcBeg(-1e5,-1e5,1e5,1e5,15)){const a=SDS.a;for(let i=0;i<SDS.nw;i++){const k=i*4,ft=SDS.f[i];shcPt(a[k],a[k+2]);shcPt(a[k+1],a[k+3]);shcPt(a[k+1],ft);shcPt(a[k],ft);shcRing();}shcEnd();}} // (round 42b) the sand of wells and sand lifts stands before the room's whole depth (round 35b): carved out of the lamp shadow by its outline this frame (sandSegs)
@@ -14609,7 +14691,7 @@ addEventListener('orientationchange',()=>setTimeout(layout,120));
 if(window.claude&&window.claude.hot&&window.claude.hot.snapshot){try{window.claude.hot.snapshot(()=>({save:S}));}catch(e){}}
 
 // test hooks
-window.__HK={GLN,gateCue,glanceAt,glanceEnd,GL_T,Snd,chimFoot:(c,r)=>chimFoot(c,r),chimH:n=>chimH(n),CHM:()=>({G0:CHM_G0,GS:CHM_GS,YD:CHM_YD,YP:CHM_YP,YC:CHM_YC,YX:CHM_YX,IN_T:CHM_IN_T}),die:c=>die(c),openingsIn,windLull,windReach,windJumpE,windPeak,windZoneAt,windEase,ctJambsOf,jambKind,startRewind,get windDeaths(){return S.windDeaths;},placeCourts,ctIn,ctPoolHit,CTB,ctBake,ctKindOf,get courts(){return L.courts;},windAt,windE,windCap,windGust,WIND_MS,WIND_GP,WIND_DE,WIND_JM,WIND_G0,WIND_PUSH,WIND_P,WIND_CDA,WIND_GT,plainRuns,keyLight,hillOn,hillTop,hillH,hillCanvas,hillBox,hillSil,hillSegs,hillEnd,hillMeshTop,HILL_DBG,HILL_WADE,HILL_CLIMB,get frameLights(){return frameLights;},jetPlaces,jsSwingPath,jetStream,tapCloth,THEMES,progOf,themeName,learn,LEARN_IDS,HINTS:Object.fromEntries(LEARN_IDS.map(id=>[id,1])),HINT_MOVE:new Set(LEARN_IDS),get banner(){return banner;},set banner(v){banner=v;},genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
+window.__HK={TELL,tellKind:()=>tellKind(),GRIT,gritList:()=>gritList(),SWB,GLN,gateCue,glanceAt,glanceEnd,GL_T,Snd,chimFoot:(c,r)=>chimFoot(c,r),chimH:n=>chimH(n),CHM:()=>({G0:CHM_G0,GS:CHM_GS,YD:CHM_YD,YP:CHM_YP,YC:CHM_YC,YX:CHM_YX,IN_T:CHM_IN_T}),die:c=>die(c),openingsIn,windLull,windReach,windJumpE,windPeak,windZoneAt,windEase,ctJambsOf,jambKind,startRewind,get windDeaths(){return S.windDeaths;},placeCourts,ctIn,ctPoolHit,CTB,ctBake,ctKindOf,get courts(){return L.courts;},windAt,windE,windCap,windGust,WIND_MS,WIND_GP,WIND_DE,WIND_JM,WIND_G0,WIND_PUSH,WIND_P,WIND_CDA,WIND_GT,plainRuns,keyLight,hillOn,hillTop,hillH,hillCanvas,hillBox,hillSil,hillSegs,hillEnd,hillMeshTop,HILL_DBG,HILL_WADE,HILL_CLIMB,get frameLights(){return frameLights;},jetPlaces,jsSwingPath,jetStream,tapCloth,THEMES,progOf,themeName,learn,LEARN_IDS,HINTS:Object.fromEntries(LEARN_IDS.map(id=>[id,1])),HINT_MOVE:new Set(LEARN_IDS),get banner(){return banner;},set banner(v){banner=v;},genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
   load(n,seed,test){clearInput();quiet=!!test;GLN.off=true;glanceEnd();L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;mode="play";intro=0;FX.length=0;STORMG.length=0;clearRooms();cam.snap=true;updateCamera(0);return L;},
   loadMap(spec){return spec;},
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},

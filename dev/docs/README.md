@@ -103,6 +103,16 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
 
+## What round 49b found
+
+Round 49b (owner after the round 49 research: "rely only on subtle graphic hints"; his choices: the animation tells, grit over a slab's plate, the swing's beat as sound) ([gameplay](gameplay.md#tells-his-body-the-grit-the-swings-beat-round-49b)).
+
+| Finding (round 49a) | Where | Round 49b | Seen in |
+|---|---|---|---|
+| With the hints gone, nothing in his body showed what a spot offers: he stood the same under a ledge, at an edge, before stakes, a flask or a tunnel | `PS.stand` | the tells: standing still 0.5 s he looks up and reaches for a climbable lip, glances down an edge, eyes stakes, looks at a flask, stoops with a hand on a low lintel, looks up the chimney; any input drops them (`tellTgt`, `tellscan.py`) | prince, gameplay |
+| The slab-holds-plate puzzle lost its hint (`slabplate`, `slabgate`): nothing tied the cracked slab to the plate under it | `L.dyn` slab and plate | grit sifts from the slab onto the plate while the slab lies (`drawGrit`, layerscan kind `grit`) | plates, cracked slabs |
+| The swing's timing had a creak only past 0.1 rad and nothing for an armed pump | `swingStep` | a beat at every turn from 0.05 rad, by the swing's size, brighter while a pump is armed (`swbeat`) | swing bar |
+
 ## What round 49a found
 
 The owner: "the Dark Souls thing ... the part where you discover how and what works. I would drop all hint messages, rely only on subtle

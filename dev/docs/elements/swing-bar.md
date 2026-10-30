@@ -48,6 +48,7 @@ nearly still and pumps: a press of the way he will swing next, at human timing, 
 | Ready (`P.swRdy`): amplitude at least `SW_CLEAR` 0.55 rad; once ready it stays so down to 0.5 | chime `swready` over `ropecreak`, a glint up the near rope, a warm glow at his hands | the throw from here clears the pit |
 | Jump lets go with a throw from his speed: c = `P.swOm` / (`SW_A` `SW_W`); over 0.15: vx = 40 + 165 c, vy = -(60 + 165 c); else a feeble hop | from `SW_MAX` let go at 0 to 0.3 rad going forward he lands on c+5..c+7, never beyond; from 0.4 rad he never reaches the far side (`swingtest.py`) | the throw grows with the swing; learns `swing` |
 | Down held 0.15 s with no side lets go (`P.swDn`), a plain drop | | round 16b: a thumb rocking across the pad's lower sector dropped him |
+| Each turn of the swing (round 49b): `swbeat`, the ropes' creak on the log, from 0.05 rad (`SWB.A0`), louder and a little higher with the amplitude (`SWB.k` to `SW_CLEAR`: volume 0.022-0.034); while a pump is armed (`P.swArm`) brighter (x1.22 pitch, +0.006) with a breath of air (bandpass 1500 to 800 Hz) | under the ready chime (0.05); replaces round 18b's turn creak (`swing`, over 0.1 rad) | the swing's timing heard, no words (owner, round 49 research); `egyptr49b.py` r49b_swing.png |
 | The ropes swing too: pulled toward `SW_KAP` of his angle while he swings, free and dying down after (`barStep`) | on the feature, so a rewind restores them | |
 | The run onto the bar is a running jump on `RJ_K`'s clock (round 35a); `swingCatch` multiplies the speed by `rjK()`, so the catch swings as before | `estPath` `swing` (careful 2.4, else 1.6) less 0.05 s | the flight is shorter, the catch the same |
 
@@ -147,5 +148,6 @@ swing carries him a little too.
 - round 23: his body from CMU 43_02 (`MCK.swing`).
 - round 42b: drawn in two passes by depth (the near pole, end grain and rope after him; `BAR_G`), carved out of the lamp shadow (`SHC` `bar`). Pictures `egyptr42b.py` (r42b_bar.png).
 - round 35a: the run-in is a running jump on `RJ_K`; `swingCatch` reads the arc's own speed; `estPath` 0.05 s shorter.
+- round 49b: the swing's beat (`swbeat`): a creak at every turn by the swing's size, brighter while a pump is armed.
 
 Details in CLAUDE.md.

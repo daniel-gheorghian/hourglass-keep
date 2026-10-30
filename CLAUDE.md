@@ -48,7 +48,7 @@ is a placeholder: only the built `index.html` carries the release number.
 2. Run the regression suite from `dev/tools` with `python3 suite.py release`. It runs every test below spread over the
    machine's cores. Every job belongs to one of three suites by its group (`SUITES` in suite.py; a group in none stops the run before
    it starts): `play` (the bot and play checks: run2, featbot, p4bot, forktest, hinttest, grablabel, swingtest, liftkick, chimtest, lowceil,
-   r38b_tests, sawceil, hilljump, primtest, hdtest, lifttest, respawnplates, slabresume, gratepeek), `gen` (generator and layout scans: metrics40,
+   r38b_tests, sawceil, hilljump, primtest, hdtest, lifttest, respawnplates, slabresume, gratepeek, tellscan), `gen` (generator and layout scans: metrics40,
    guardscan, forkscan, puzzlescan, vertscan, featurescan, orphanscan, mazescan, wellcorr, lampscan, slabscan, sandshaft, wellscan, hillscan, windscan, courtscan) and
    `render` (drawing checks: rendersmoke, liftscan, crossscan, cpscan, shadowscan, doorscan, openscan, tilescan, beamjag, heapscan, solidscan, contourscan, viewscan, panscan, stormfair, glauto,
    metaltest, rewindrooms, figscan). The tier chooses the jobs; `--suite play,render` runs only those suites, in that order (default
@@ -93,6 +93,7 @@ is a placeholder: only the built `index.html` carries the release number.
 | `cpscan.py lo hi [seeds]` | no pixel of the sky clock (the checkpoint) over a wall's front face, a step or a low ceiling beside it, both modes (round 37c) | `cpscan: ok` |
 | `chimtest.py [file] [lo hi] [seeds]` | round 48b's locked chimney, every kick shaft (floors 1-48 x 3: 236): climbed by a running Jump, a standing Jump or Up at the foot, then one Up a stance, every stance on its grid to the pixel, the Y landing 12 px past the lip with the standing landing; Up held gives one kick; Jump does nothing; Down at each stance lets go at once with a fall's damage; a rewind in mid-kick restores his own copies; walking in does not lock; no plant, kick or lock off a single wall elsewhere | `chimtest: ok` |
 | `r38b_tests.py` | round 38b's play faults, one check each: the roof block and `P.inv`, the damaging drop's lip, a banner's rewind, the sand lift (no banner since round 49a, `sandfall` learned on getting off) and its top, the recruit's colour, the timed gates' waits | `r38b: ok` |
+| `tellscan.py [file] [lo hi] [per=K]` | round 49b's tells: at up to K spots a floor of each kind (reach, edge, stakes, flask, low) none before 0.5 s still, full by 1.2 s, the pose changed, the weight 0 the frame Grab is held and the pose back 0.35 s later, P.x/P.y/state identical with `TELL.off`; none while he moves | `tellscan: ok` |
 | `hinttest.py lo hi` | round 49a: no banner while the bot plays a floor, the moves it uses learned (`S.learned`), and at every remote plate the glance (one when its gate is out of view, none in view or twice, he stays in view, the view goes toward the gate and back, the timer at its rate); floor 1 the old-save migration | `FAILURES 0` |
 | `sawceil.py lo hi [seeds]` | no saw under a ceiling at his height: each one turned into spikes is tiptoed, and the bot plays its floor (round 38c) | `sawceil: ok` |
 | `layerscan.py lo hi [classic]` (by hand) | nothing in the corridor drawn over the front plane: each kind drawn and left out, the faces' and lips' pixels unchanged (round 39, `dev/docs/layers.md`) | `layerscan: ok` |
@@ -1499,6 +1500,37 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   same suite jobs), `r38b_tests.py` `sandhint` checks no banner and `sandfall` learned, `vs_ui.py`'s banner scenes removed. Look and sound only:
   `layoutcmp.py` against v89 same (144 of 144), the bot's runs unchanged. New cues come in rounds 49b and 49c. Pictures
   `egyptr49a.py old.html new.html [outdir]` (r49a_how.png, r49a_death.png, r49a_glance.gif and .png: old | new at phone size, Classic).
+- Tells, grit and the swing's beat (round 49b, owner after the round 49 research, "Dark Souls"-style discovery with no words: "rely only on
+  subtle graphic hints"; his choices among the research's cues, three built here; `dev/docs/gameplay.md` "Tells"). Look and sound only:
+  layouts (`layoutcmp.py` against v89 same), play, the bot and every timer unchanged.
+  (1) The tells (Limbo's lesson: the boy's body turns toward what can be used; `tellTgt`, `tellKind`, `TELL`, `tlP`): standing still `TL_D`
+  0.5 s (`tellIdle`: nothing held, no live foe, not the chase, no wind, no stumble) his body points at what the spot offers, eased in over
+  `TL_IN` 0.55 s (s32), on the target pose before `followPose` (its overlap carries the arm and head after the trunk), dropped the frame any
+  input comes (followPose eases it out): `reach` under a ledge he can climb, facing it (`canClimbUp`): the head back 0.48, the front hand by
+  skel's two-bone solve (`hold`, `gFx/gFy`: `tellGrip`) toward the lip where his hands would hang (PS.hang's grip from the hang's x and y),
+  shortened to `TL_RF` 0.96 of his reach in the drawn hip's frame (P.rdx, the feet on P.y), so it stops short with a soft elbow; `edge` at
+  an edge he can hang from (`edgeBelow`): the head down 0.42, a little lean, the back arm out; `stakes` within a step ahead on his floor or
+  in the pit before him: the head down 0.4; `flask` a flask on his row up to 44 px ahead: the head down 0.36, the hand a little forward;
+  `low` at a low tunnel's mouth (not under it): a stoop (lean 0.36, both knees) with the front hand on the lintel's end 10 px over its
+  underside (facing right its front face's edge, facing left its end face at mid depth), looking in; `chim` locked in the chimney (round 48b,
+  `P.lock`, planted) `TL_CD` 0.5 s with nothing held: the head up 0.34 more. Order: flask, stakes, edge, reach, low. The prince only; the
+  silhouette, lamp shadow and beam cut read P.pose, so they follow. No generated keys: the angles are offsets on the clip's poses.
+  `tellscan.py` (play suite, three jobs). Checks: figscan, lowceil ok (the tells are not poses of the table).
+  (2) Grit over a slab's plate (`drawGrit`, `gritList`, `GRIT`): where a cracked slab can jam the plate or closer under it (P2G1, P3G1,
+  `f.slabF`; found once a floor, `L._grit`), while it lies (`f.s` 0) single grains sift from its underside at mid depth: `GRIT_N` 14 grains,
+  each its own period `GRIT_P` 1.7-3.6 s and fall `GRIT_T` 1.05-1.35 s from rest (y = 0.22 u + 0.78 u^2 of the drop), one cycle in `GRIT_GAP`
+  0.35 skipped (hashes of the cell, the grain and the cycle), 1-1.6 px, alpha .4-.75 at the ends faded, `sandC().heap`, and six grains lying
+  on the plate's top (at its lift, 2.4 or 1 pressed). Faint, sparse and steady: never the roof block's threads that thicken (sandFlow). A
+  pure function of the clock and `f.s` (rewind-safe; nothing allocated a frame). L2 air in `drawDynamic` before the figures: clipped to its
+  column and cut by `nearCut` on the rows from the slab's to the one above the plate (fl: the slab's own lip hides a grain until it drops
+  below it), never by the plate's row. Not recorded in `SHC` (air). `GRIT.off`; layerscan kind `grit`.
+  (3) The swing's beat (`swbeat`, `SWB`): at each turn of the swing (`swingStep`: om changes sign) over `SWB.A0` 0.05 rad the ropes creak on
+  the log (two bandpassed noise groans as round 18b's `swing`, which it replaces; that one played only over 0.1 rad), volume 0.022-0.034 and
+  pitch x1-1.18 by the amplitude to `SW_CLEAR` (`SWB.k`); while a pump is armed (`P.swArm`) brighter, pitch x1.22 more, +0.006, with a breath
+  of air (bandpass 1500 to 800 Hz, 0.16 s): the turn the press must follow is heard. Under the ready chime (0.05). `SWB.log` (an array, null in
+  play) records each beat for the pictures. Checks: swingtest. Pictures and numbers `egyptr49b.py old.html new.html [outdir]` (r49b_tells_3x.png:
+  each tell old | new, both modes, 3x; r49b_tells_phone.png; r49b_reach.gif; r49b_grit_3x.png, r49b_grit_phone.png, r49b_grit.gif;
+  r49b_swing.png and .txt: the swing's angle with each beat's loudness, armed or not, the pumps and the chime).
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized three ways (Trap density, above); only P4's race uses the careful pace.
 - Pose angles are measured from straight down; positive means forward.

@@ -121,6 +121,16 @@ A latched plate springs back up when he steps off (only the gate stays open); a 
 | Classic | same drawing and glint; no relief or footprint gate |
 
 ## No warning (round 48a)
+
+## Grit over a slab's plate (round 49b)
+With the `slabplate`/`slabgate` hints gone (round 49a), the cracked slab that can jam a plate or closer under it (P2G1, P3G1; `f.slabF`)
+tells of itself: while it lies (`f.s` 0) single grains of grit sift from its underside at mid depth onto that plate (`drawGrit`; the pairs
+found once a floor, `gritList`, `L._grit`), `GRIT_N` 14 grains each on its own period (`GRIT_P` 1.7-3.6 s) falling over `GRIT_T` 1.05-1.35 s
+from rest, one cycle in `GRIT_GAP` 0.35 skipped, a few grains lying on the plate's top; the colour of grit on a heap (`sandC().heap`), never
+lit. Unlike the roof block's warning (threads and beads that thicken as it shifts) it is sparse and steady. A pure function of the clock and
+`f.s` (rewind-safe, nothing allocated a frame); L2 air before the figures, cut by the front plane of the rows it falls through (`nearCut`:
+the slab's own lip hides each grain until it drops below it), not by the plate's row where it lands. Not in the lamp shadow's carve (air).
+`GRIT.off` and layerscan kind `grit`. Pictures `egyptr49b.py` (r49b_grit_3x.png, r49b_grit.gif).
 The owner: "The red tiles that slam shut the doors: they shouldn't be red and have a different design. They should look the same and have no
 warning"; on the pictured alternatives he chose B, the closing plate drawn exactly as the opening plate. Nothing tells them apart before he
 steps on one:
@@ -167,4 +177,5 @@ Pictures `egyptr48a.py old.html new.html [outdir]` (r48a_closer_<mode>.png, r48a
 - round 35c: live tiles rubbed out of the relief (`glRelFloors`, `GLREL_Q` 160).
 - round 48a: the closing plate looks, sounds and is hinted exactly as the opening plate until it slams (above).
 - round 49a: no hints or messages; a remote plate's gate and the exit door are heard where they stand and glanced at (`gateCue`).
+- round 49b: grit sifts from a slab that can jam the plate onto it (`drawGrit`).
 - Details in CLAUDE.md (Trap density, Forks, Fighters, 16c, 35b, 35c).

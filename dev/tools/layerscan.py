@@ -3,7 +3,7 @@
 # blocks' front faces, low ceilings' faces, floor slabs' lips, all drawn HX left of their cell); every live thing is drawn after it, so
 # a live thing stays behind a nearer face only where its drawing is cut. For each floor lo..hi (default 1-48) and seed (default 1),
 # in Classic and Torchlight: views are chosen to cover every instance of each kind (a feature's type in L.dyn, and 'lamp', 'door',
-# 'clock', 'block', 'flask', 'cue', 'jet', 'well', 'snake', 'guard', plus once per view the air passes 'ambient', 'atmo', 'emissive');
+# 'clock', 'block', 'flask', 'cue', 'jet', 'grit' (round 49b), 'well', 'snake', 'guard', plus once per view the air passes 'ambient', 'atmo', 'emissive');
 # each view is drawn whole and then with one kind left out (LAYER_DBG.hide, which leaves its light, shadow carve and relief rubbing as
 # they are), at K clock phases where a kind moves (default 4: saws, pendulums, bars, jaws, vents, lifts' parts), and the pixels of the
 # front plane (1 canvas px in from each face's edge; not the kind's own tile where it is drawn live, nor a lift's shaft) must not
@@ -26,7 +26,7 @@ MODES = ['torch', 'classic'] if 'both' in a or not ('torch' in a or 'classic' in
 KINDS = next((x[6:].split(',') for x in a if x.startswith('kinds=')), None)
 NPH = int(next((x[7:] for x in a if x.startswith('phases=')), '4'))
 BADPX = 24  # (canvas px, at about 4 a world px: 1.5 world px square; a thing's foot anti-aliased onto its own lip is under it)
-MOVING = ['saw', 'pend', 'bar', 'chomp', 'vent', 'lift', 'banner', 'emissive', 'ambient', 'atmo', 'lamp', 'jet', 'cue', 'drift', 'wind', 'court', 'pool', 'vine', 'dapple', 'lwell', 'jamb']  # (drift: round 43b's sand off its crest; wind: round 44)
+MOVING = ['saw', 'pend', 'bar', 'chomp', 'vent', 'lift', 'banner', 'emissive', 'ambient', 'atmo', 'lamp', 'jet', 'cue', 'drift', 'wind', 'court', 'pool', 'vine', 'dapple', 'lwell', 'jamb', 'grit']  # (drift: round 43b's sand off its crest; wind: round 44)
 
 # every instance of every kind on the floor (world px: x, the floor line y), then views that cover them
 LIST = r'''([n,sd,kinds])=>{const H=__HK;window.__HKfreeze=true;const L=H.load(n,sd,false),C=L.cols,TW=32,TH=64,out=[]; // (false: with the guards at their posts; the layout is the same)
@@ -38,6 +38,7 @@ LIST = r'''([n,sd,kinds])=>{const H=__HK;window.__HKfreeze=true;const L=H.load(n
   for(const b of L.ext.blocks)add('block',b.c,b.r);
   for(const it of L.items){add('flask',it.c,it.r,it.x);if(it.hidden)add('cue',it.c,it.r,it.x);}
   for(const o of L.dyn)if(o.f.t==='shaftfoot')add('jet',o.c,o.r);
+  if(H.gritList)for(const g of H.gritList())add('grit',g.c,g.r1,g.c*TW+16,(S(g.r0)+S(g.r1))/2); // (round 49b: the grit over a slab's plate)
   for(const o of L.dyn)if(o.f.t==='loose'&&!o.f.plank&&o.f.wg&&o.f.wg.os&&o.f.wg.os[0]===o)add('well',o.c,o.r);
   for(const lf of L.lifts)add('lift',lf.ca,lf.rB,(lf.ca+lf.cb+1)*TW/2,(lf.rT*TH+S(lf.rB))/2);
   for(const h of L.hills||[])add(h.d?'drift':'heap',h.c,h.r,(h.c+h.n/2)*TW); // (round 43)
