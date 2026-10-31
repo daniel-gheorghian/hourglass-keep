@@ -304,6 +304,8 @@ but its hours are running out..."; "A heavy door grinds open somewhere on this f
 
 ## Sound (round 50c)
 
+(Round 50d adds footsteps by surface, traps and guards heard off screen and each theme's ambience: [below](#footsteps-traps-heard-off-screen-each-themes-ambience-round-50d).)
+
 Owner (the "Dark Souls mood"): "no music in the floors", only the sky clock's motif; "Yes on all" to round 50b's prototypes; the silent
 switch: "Let the user play his own music". Everything is synthesised WebAudio in the page (`Snd`), no samples, no square or bare sawtooth
 voices.
@@ -341,6 +343,68 @@ voices.
   next touch or key (`unlock` resumes any state but running, iOS's 'interrupted' too).
 - `sndtest.py` (suite.py play): every cue rendered offline through the whole graph (`Snd.render`): no NaN, under 0 dBFS after the
   compressor alone and piled up, audible, the setting's levels; the live context unlocked by a key, every cue, the places, sleep and wake.
+
+## Footsteps, traps heard off screen, each theme's ambience (round 50d)
+
+Owner (the "Dark Souls mood"): "Yes on all" to round 50b's prototypes B3 (ambient beds) and B4 (footsteps by surface); "implement all of
+them". Sound only: layouts, timings and play unchanged (`layoutcmp.py` against v90 same).
+
+- **Footsteps by surface** (B4, `footSurf(x, y, me)`, `SND_SURF`, `Snd.foot`): each step, landing and crawl names what is under the
+  foot and `Snd.play('step', surf)` (also `land`, `landh` for a landing of 60 px or more and a hurt one, under its `thud`) builds it from
+  the surface's layers: a pat (lowpass noise), a click (bandpass), the body's thump (a sine falling) and one extra layer; each step a little
+  different (the step count's sines), every one through the room's reverb.
+
+| Surface | Where | Sound |
+|---|---|---|
+| `dungeon` | stone, the dungeon style (Nun, Garama, Hawara) | damp and dull, now and then a wet click |
+| `palace` | stone, the palace style (West, Kerma, Shali) | polished limestone: a brighter click |
+| `tile` | stone, the tile style (Blue Chambers, Well Corridors) | glazed faience: a short ringing tick |
+| `forge` | stone, the forge style (Meroë, Napata) | a gritty floor: a high grit layer |
+| `crypt` | stone, the crypt style (Osiris, Aksum) | hard granite: deeper, heavier |
+| `sand` | a drift (round 43's wade) | a soft push and a hiss of grains |
+| `rubble` | a heap | small stones knocking, three clicks |
+| `plank` | a plank (a `loose` with `plank`) | a hollow wooden knock, now and then a creak |
+| `grit` | a cracked slab (`loose`) | a crunch and a faint crack |
+| `grate` | the fork's grating | bronze bars' partials and a rattle |
+| `court` | a court's paving | dry, a little dust |
+| `coping` | the cell beside a court's pool | stone with water lapping by |
+| `hollow` | a counterweight lift's platform at its foot, under him or ridden, a paternoster slab | a box's boom |
+| `sandslab` | the sand lift's slab | stone over running sand: a long hiss |
+
+- **Guards** (`gstep`, `gland`, `gshift`): a guard's step as he advances or gives ground (`guardMove`), heavier, lower and quieter, a
+  sandal's scuff after the heel; his landing when he drops in; and an idle guard at his post shifts his weight now and then (a scuff, a
+  creak of leather, sometimes his hilt's tick; a 1.7 s clock of `gameTime`, 40% by a hash of his post), so he is heard before he is seen.
+- **Heard off screen** (`Snd.tell(n, x, y, inView, surf)`): saws (`saw`), darts (`dart` and the warning `tick`), vents (`fire`), the
+  slicer (`chomp`), the pendulum (`swoosh`), snakes (`hiss`, and `slither` now and then as they move) and guards are no longer silent
+  out of view. In view they play as before (same step, full level), panned by side; out of view, within `TELL_R` 620 world px (storeys
+  count 1.6 times), at 0.8 of the level and fading past `TELL_D0` 170 px and muffled by distance and by each storey of stone between (a lowpass). A step's
+  requests are queued (the nearest `TELL_Q` 8, in order) and played at its end (`Snd.flush`, in `update`), so the timing is the
+  step's own; at most `TELL_CAP` 4 out-of-view voices ring at once (`tvE`, their end times by `TELL_DUR`), the nearest first; in-view
+  ones always play.
+- **Each theme's ambience** (B3, `Snd.ambSlot`, `AMB_T`): over round 50c's air bed, on a clock of `AMB_SL` 0.25 s slots of the audio
+  context, each slot's events picked by hashes of the slot, the floor (and the run's seed) and the room he is in: nothing kept in the
+  game's state, so a rewind, a respawn or a checkpoint changes nothing. Chances a slot (about one in 1/p slots):
+
+| Event | Where | Chance a slot |
+|---|---|---|
+| a far drip (`drip`) | every hall (the bed's places) | 0.03; Nun 0.11, Well Corridors and Garama 0.08, Aksum 0.02, Shali 0.015, Meroë 0.012 |
+| a drop into standing water (`plunk`) | Nun 0.04, Well Corridors 0.02, Garama 0.01 | |
+| the forge's far roar (`forge`) and bellows (`bellows`) | Meroë | 0.018, 0.02 |
+| wind whistling in a slit (`whistle`: narrow bandpass noise gliding, no tone) | Aksum 0.022, Garama 0.02, Shali 0.018 | |
+| stone settling (`settle`), grit trickling (`trickle`) | everywhere indoors | 0.005, 0.01 |
+| the nearest lamp's crackle (`crackle`) | a burning lamp within 170 px | 0.22 |
+| a rope creaking (`ropefar`) | a lift or swing bar within 380 px | 0.035 |
+| a lit sky clock's embers (`ember`) | within 120 px | 0.3 |
+
+  Each played where it is (`Snd.amb`: panned, quieter and muffled by distance and storeys) through the ambience bus `aB`, which carries
+  the bed too and is ducked to 0.3 for about 0.5 s under the events (`SND_DUCK`: blows, clangs, hurts, deaths, gates, the clock, flasks,
+  the slicer, the vent, the rewind). Not in the Crossing or the menus; drips, settling and trickles only where the bed breathes (not in
+  courts). Quiet: 12 s of any theme's ambience over the bed peaks under 0.02 and its rms under 0.001 after the compressor, a phone speaker's
+  murmur under the steps.
+- `sndtest.py` (round 50d): every footfall cue on every surface (no NaN, under 0 dBFS, audible, no two surfaces alike within 6% in rms,
+  brightness and ring), `footSurf` on a floor's tiles, the falloff of a trap heard off screen (with distance and through two storeys), the
+  voice cap (11 requests, the nearest 4 played, none more while they ring, one in view still played, none past `TELL_R`), every theme's
+  ambience (quiet, no NaN) and the duck. `wav=DIR` also writes the round's WAVs.
 
 ## The bot: the reference player
 ### Tells: his body, the grit, the swing's beat (round 49b)

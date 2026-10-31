@@ -150,3 +150,4 @@ gate (`gateRoundel`), and the rewind's large clock running back ("The hours turn
 - round 47e: the pedestal's rubble chips rubbed too (`drawHgPedestal` records their boxes, `hgChipsOf`; `glRelClock` rubs them): solidscan's
   relief on floors 24 and 47 (0.18% and 0.44% in v88, 0.63% and 0.86% after round 47c's brighter ambient) now 0. Look only.
 - round 50c (owner: "no music in the floors", only the sky clock's motif): `cp` is the plucked motif (Karplus-Strong strings, `Snd.pluck`, with its own send into the room's reverb). Sound only.
+- round 50d (sound): a lit sky clock within 120 px gives a faint ember crackle now and then (`ember`, the theme's ambience) [gameplay](../gameplay.md#footsteps-traps-heard-off-screen-each-themes-ambience-round-50d).

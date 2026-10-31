@@ -72,7 +72,7 @@ The fight (both sides use `resolveStrike`; a blow lands at 6-40 px ahead with th
 
 | Guard state | Rule |
 |---|---|
-| `idle` | prince on his level (within 8 px, not dead, exiting or entering) and within 100 px: `garde`, sound `draw` |
+| `idle` | prince on his level (within 8 px, not dead, exiting or entering) and within 100 px: `garde`, sound `draw`; otherwise now and then (a 1.7 s clock, 40% by a hash of his post) `gshift`, his weight shifting, heard off screen (round 50d) |
 | `garde` | faces him; gives up beyond 140 px. Every think (`(0.2..0.55) x (1.25-0.45d) x tk` s): over 32 px advance, under 17 retreat, else strike with `aggr`, else 30% a random step |
 | `advance`/`retreat` | 13 px over 0.24 s, never nearer the prince than 20 px, inside `lo..hi` |
 | `strike` | the blow at the wind-up `wu` (`windup` x (1 +- `jit`)), back to `garde` 0.3 s later |
@@ -211,4 +211,5 @@ for each guard in view (not gone; out of view a live one's press g.rdx is reset 
   stone before, 0 now). Look only.
 - round 50c (sound): `clang` bronze on bronze (a struck plate's inharmonic partials over the hit's noise, each a little different); `guardDie` a last breath, the body down and his blade on the stone; `hit` and `hurt` body blows (no square or sawtooth). Sound only.
 
+- round 50d (sound): a guard's footfall (`gstep`: heavier, lower, quieter, a sandal's scuff) as he advances or gives ground, by the surface under him (`footSurf`); `gland` when he drops in; `gshift` at his post; a snake's `hiss` and now and then its `slither` as it moves; all heard off screen (`Snd.tell`) [gameplay](../gameplay.md#footsteps-traps-heard-off-screen-each-themes-ambience-round-50d).
 Details in CLAUDE.md (Fighters bullet, rounds 24, 27c).

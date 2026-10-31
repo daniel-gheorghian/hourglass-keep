@@ -249,4 +249,5 @@ and bloom all of it; a lamp under 0.01 adds nothing. Only lamps are drained; the
 - Round 39 (v84): the flame's tongues, embers, smoke and glow cut at the ceiling (`lampCeil`); moths, sparks, motes and `lampGlints` not
   drawn on a face (`onFace`); Classic's footprint cut round a free lamp's stand (`ryStand`). Look only (`layerscan.py` lamp: 6 bad views, 0 now).
 
+- round 50d (sound): the nearest burning lamp within 170 px crackles now and then (`crackle`, the theme's ambience, `Snd.ambSlot`), quiet and placed where it burns [gameplay](../gameplay.md#footsteps-traps-heard-off-screen-each-themes-ambience-round-50d).
 Details in CLAUDE.md.

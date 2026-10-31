@@ -103,6 +103,18 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
 
+## What round 50d found
+
+Round 50d (owner, the "Dark Souls mood": "Yes on all" to round 50b's prototypes; "implement all of them then release": B4 footsteps by
+surface, B3 ambient beds, the traps heard off screen) ([gameplay](gameplay.md#footsteps-traps-heard-off-screen-each-themes-ambience-round-50d)).
+
+| Finding (round 50c) | Where | Round 50d | Seen in |
+|---|---|---|---|
+| One footfall for every floor: a slab, a plank, a grating, a heap, a lift's platform and the five styles' stone all sounded the same (only a drift's wade had its own) | `runMove`, `land`, `pbTouch`, the crawl | `footSurf` names the surface, `Snd.foot` builds it from `SND_SURF` (14 surfaces), landings light and heavy | [heaps and drifts](elements/heaps-and-drifts.md), [cracked slabs](elements/cracked-slabs-and-sand-wells.md), [lifts](elements/lifts.md), [courts](elements/courts.md) |
+| Guards silent but for their blades: they landed with his landing's sound and were never heard before seen | `updateGuard`, `guardMove` | `gstep` (heavier, lower, quieter, a sandal's scuff), `gland`, an idle guard's `gshift` | [guards and snakes](elements/guards-and-snakes.md) |
+| Saws, darts, vents, the slicer, the pendulum and snakes made no sound out of view (`tileVisible`), so a trap ahead was silent until it was on screen | `updateFeatures`, `updateSnake` | `Snd.tell`: in view as before, out of view within 620 px quieter and muffled by distance and storeys, at most 4 such voices, the nearest first; a snake's `slither` | [saws](elements/saws.md), [darts](elements/darts.md), [fire vent](elements/fire-vent.md), [slicer](elements/slicer-jaws.md), [pendulum](elements/pendulum.md) |
+| One air bed and one drip in every theme | `Snd.env` | each theme's one-shots by hashes of the clock, floor and room (`AMB_T`): drips and plunks in Nun, the Well Corridors and Garama, the forge in Meroë, wind in slits in Garama, Aksum and Shali; everywhere stone settling, grit, lamps' crackle, ropes' creaks, a lit clock's embers; ducked under events | [lamps](elements/lamps-and-light.md), [checkpoint](elements/checkpoint.md), [swing bar](elements/swing-bar.md) |
+
 ## What round 50c found
 
 Round 50c (owner after round 50b's research, the "Dark Souls mood": "D2 death screen"; "no music in the floors"; "Yes on all" to the

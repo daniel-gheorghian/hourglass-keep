@@ -28,7 +28,7 @@ plates are carved out of the shadow (it falls on the wall seen between them when
 | Hit | k > 0.55 (p 0.04 to 0.22: about 0.3 s a cycle), same row, \|`P.x` - tile middle\| < 14, any state but `hang`, `climb`, `climbDown`, `exit` | crouching or jumping does not help |
 | Damage | death (`die('blade')`), no `P.inv` test; red sparks, `f.blood` 1: blood on alternate teeth from then on; card "Caught by the blade" | PoP1: the slicer kills |
 | Layout | 3 plain tiles, the slicer on the middle; a twin: 5 tiles, the second slicer two tiles on, 0.4 of a cycle later | |
-| Sound | `chomp` (round 50c: a heavy bronze bang, was a square blip) as it starts to close (k leaves 0), while its tile is in view | |
+| Sound | `chomp` (round 50c: a heavy bronze bang, was a square blip) as it starts to close (k leaves 0); since round 50d heard off screen too (`Snd.tell`) | |
 | Hint | none since round 49a (no hint banners; until v89: `HINTS.chomp` ("Blades snap shut on a rhythm. Watch one cycle, then go.")) | |
 | Rewind | a function of the clock; `blood` and `last` restored with the features | |
 | Route time | `estPath` `timed`: tiles x 0.32 + 2.6 s | gate timers over it |
@@ -133,4 +133,5 @@ plate. While k < 0.6 a faint dust shaft joins the jaws.
   `glRelJaws`, `JAWP` recorded in both modes.
 - Round 38a: the shafts' shader tests up to 8 blockers (`GLC_BK`), those in a beam's haze first.
 - Round 49c (owner: "rely only on subtle graphic hints"): by the first slicer of a floor (by the route's order) a skull and bones lie at the back of its cell on the side he comes from, clear of the jaws' plane and slots (`bonesDraw` 'slicer'), behind his walking line and low; in the room's picture, so the jaws, drawn live, close in front of them. Look only. `wearscan.py`.
+- round 50d (sound): `chomp` heard off screen (`Snd.tell`), at the same moment [gameplay](../gameplay.md#footsteps-traps-heard-off-screen-each-themes-ambience-round-50d).
 - Details in CLAUDE.md.

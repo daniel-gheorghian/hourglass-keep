@@ -92,7 +92,7 @@ is a placeholder: only the built `index.html` carries the release number.
 | `wellcorr.py lo hi [seeds]` | no sand well stands in a corridor: every well's pit is walled on both sides down to its floor (round 30) | `wellcorr: ok` |
 | `cpscan.py lo hi [seeds]` | no pixel of the sky clock (the checkpoint) over a wall's front face, a step or a low ceiling beside it, both modes (round 37c) | `cpscan: ok` |
 | `chimtest.py [file] [lo hi] [seeds]` | round 48b's locked chimney, every kick shaft (floors 1-48 x 3: 236): climbed by a running Jump, a standing Jump or Up at the foot, then one Up a stance, every stance on its grid to the pixel, the Y landing 12 px past the lip with the standing landing; Up held gives one kick; Jump does nothing; Down at each stance lets go at once with a fall's damage; a rewind in mid-kick restores his own copies; walking in does not lock; no plant, kick or lock off a single wall elsewhere | `chimtest: ok` |
-| `sndtest.py [file] [wav=DIR]` | round 50c's sound: every `Snd.play` cue rendered offline through the whole graph (`Snd.render`: room, compressor, level), no NaN, peak under 0 dBFS alone and piled up, audible but `clear`; Off silent, Quiet under Full; the live context unlocked by a key, every cue, the places, sleep and wake; `wav=` writes the key cues | `sndtest: ok` |
+| `sndtest.py [file] [wav=DIR]` | round 50c's sound: every `Snd.play` cue rendered offline through the whole graph (`Snd.render`: room, compressor, level), no NaN, peak under 0 dBFS alone and piled up, audible but `clear`; Off silent, Quiet under Full; the live context unlocked by a key, every cue, the places, sleep and wake; round 50d: every footfall on every surface told apart, `footSurf`, the off-screen falloff, the voice cap, every theme's ambience quiet, the duck; `wav=` writes the key cues | `sndtest: ok` |
 | `r38b_tests.py` | round 38b's play faults, one check each: the roof block and `P.inv`, the damaging drop's lip, a banner's rewind, the sand lift (no banner since round 49a, `sandfall` learned on getting off) and its top, the recruit's colour, the timed gates' waits | `r38b: ok` |
 | `tellscan.py [file] [lo hi] [per=K]` | round 49b's tells: at up to K spots a floor of each kind (reach, edge, stakes, flask, low) none before 0.5 s still, full by 1.2 s, the pose changed, the weight 0 the frame Grab is held and the pose back 0.35 s later, P.x/P.y/state identical with `TELL.off`; none while he moves; no spot in a wind zone (none there by design) | `tellscan: ok` |
 | `wearscan.py [file] [lo hi] [seeds]` | round 49c's wear marks and bones (floors 1-48 x 3): scuffs on every wall run up and nowhere else, drawn inside its face; grooves on every cell of each block's track and nowhere else, drawn inside the floor's top face; one set of bones a kind at the first trap of its kind by the route's order (its own list of the traps), every kind on a floor with the trap; on a route tile every pixel behind his walking line and under 6.5 px | `wearscan: ok` |
@@ -1603,6 +1603,25 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   from 2.2 s a faint "grab · turn back the hours      jump · rise" at 35%; the death's input timing unchanged. Checks: `sndtest.py` (new,
   suite.py play), layoutcmp v90 same, swingtest, hinttest, r38b, run2, rendersmoke, crossscan. WAVs `sndtest.py wav=DIR`; picture
   `egyptr50c.py old.html new.html [outdir]` (r50c_death.png: v90 | 50c at phone size, both modes, 0.6 s and 2.4 s after).
+- Footsteps by surface, traps heard off screen, each theme's ambience (round 50d, owner, the "Dark Souls mood": "Yes on all" to round 50b's
+  prototypes, "implement all of them then release"; `dev/docs/gameplay.md` "Footsteps, traps heard off screen, each theme's ambience").
+  Sound only. B4: `footSurf(x,y,me)` names what is under a foot (a drift `sand`, a heap `rubble`, a `loose` `grit` or `plank`, the fork's
+  `grate`, a lift's platform or paternoster slab `hollow`, the sand lift's slab `sandslab`, a court's `court` or a pool's `coping`, else the
+  theme's style: dungeon, palace, tile, forge, crypt); `Snd.play(n,a)` takes it (`step`, `land`, `landh` for 60 px or more and under a hurt
+  landing's `thud`, the guards' `gstep`, `gland`) and `Snd.foot` builds it from `SND_SURF` (a pat, a click, the body's thump, one extra
+  layer), each step a little different, a guard's heavier, lower, quieter with a sandal's scuff; an idle guard's `gshift` (a 1.7 s clock
+  of gameTime, 40% by a hash of his post). Off screen: saws, darts (`dart`, `tick`), vents, the slicer, the pendulum, snakes (`hiss`, a
+  `slither` now and then) and guards go through `Snd.tell(n,x,y,inView,surf)`: in view as before (full level, panned), out of view within
+  `TELL_R` 620 px (storeys 1.6 times) at 0.8, fading past `TELL_D0` 170 and muffled by distance and storeys; a step's requests queued (`TELL_Q`
+  8, nearest first) and played at its end (`Snd.flush` in `update`, and in `env`), at most `TELL_CAP` 4 out-of-view voices ringing at
+  once (`tvE`, `TELL_DUR`), in-view ones always. B3: `Snd.ambSlot` every `AMB_SL` 0.25 s of the audio clock picks events by hashes of
+  the slot, floor, seed and room (`AMB_T` per look: drips, `plunk`, `forge`, `bellows`, `whistle`; everywhere `settle`, `trickle`, the
+  nearest lamp's `crackle`, a rope's `ropefar` by a lift or bar, a lit clock's `ember`), each placed (`Snd.amb`) on the ambience bus `aB`
+  (the bed too), ducked to 0.3 under the events (`SND_DUCK`); nothing in the game's state (rewind-safe); 50c's drip timer is gone.
+  `Snd.render` takes `[name, at, surf, dx, dy, 'tell'|'at']` items and `o.bed`, `o.amb {look}`. Checks: `sndtest.py` (every footfall on
+  every surface, the surfaces told apart, `footSurf`, the tell falloff, the voice cap, every theme's ambience quiet, the duck), layoutcmp
+  v90 same, run2, swingtest, hinttest, rendersmoke, crossscan. WAVs `sndtest.py wav=DIR` (r50d_steps_surfaces.wav, r50d_guard_offscreen.wav,
+  r50d_saw_offscreen.wav, r50d_amb_<look>.wav).
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized three ways (Trap density, above); only P4's race uses the careful pace.
 - Pose angles are measured from straight down; positive means forward.

@@ -152,4 +152,5 @@ swing carries him a little too.
 - round 49b: the swing's beat (`swbeat`): a creak at every turn by the swing's size, brighter while a pump is armed.
 - round 50c: `swready` rope tension and a breath instead of the rising chime (owner: no chiptune; it stays the swing's audible cue).
 
+- round 50d (sound): a swing bar within 380 px creaks now and then out of sight (`ropefar`, the theme's ambience) [gameplay](../gameplay.md#footsteps-traps-heard-off-screen-each-themes-ambience-round-50d).
 Details in CLAUDE.md.

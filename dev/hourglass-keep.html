@@ -2870,8 +2870,32 @@ function drawFigure(ctx,x,y,face,p,pal,o){
 const SND_Z={ // a place: [the hall's send, the slap's send, the room's lowpass Hz, the air bed 0..1]
   cross:[0.03,0,4200,0],court:[0.07,0.02,5200,0],low:[0.06,0.32,2600,0.55],room:[0.2,0.09,3000,0.8],hall:[0.36,0.04,3600,1],shaft:[0.55,0.06,4400,0.9],quiet:[0.2,0.05,3200,0]};
 const SND_LV={full:0.3,quiet:0.1},SND_TC=0.35,RV_T=3.0,SND_BED=0.03;
-const SND_KEYS=['ctx','master','comp','out','rvS','conv','rvLP','slS','nb','zone','off','bedN','bedK','dripT'];
-const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rvLP:null,slS:null,zone:'',off:false,hid:false,sc:0,pk:null,bedN:null,bedK:-1,dripT:0,
+const SND_KEYS=['ctx','master','comp','out','rvS','conv','rvLP','slS','nb','zone','off','bedN','bedK','aB','ambS','tqN','amOn'];
+// (round 50d, B4) a footfall by what is under the foot: [the pat's lowpass Hz, its volume, its length s, the click's bandpass Hz, its Q, its
+// volume, the body's thump Hz, its volume, an extra layer]. Stone by the drawing's style (dungeon damp and dull, palace polished limestone,
+// tile glazed faience with a short tick, forge grit on a hot floor, crypt hard granite); then sand (a drift: a soft push and a hiss of grains),
+// rubble (a heap: small stones knocking), plank (a hollow wooden knock), grate (bronze bars), grit (a cracked slab: a crunch and a faint crack),
+// court (open paving, dry), coping (a pool's dressed edge: water lapping by), hollow (a lift's platform or slab hung in its shaft: a box's boom)
+// and sandslab (the sand lift's slab: stone over running sand). Landings are the same layers with more weight (`foot`'s w).
+const SND_SURF={
+  dungeon:[380,0.034,0.075,1900,1.4,0.008,88,0.014,'wet'],palace:[520,0.03,0.06,3000,1.6,0.013,100,0.012,''],tile:[600,0.026,0.05,4200,3,0.016,105,0.01,'ring'],
+  forge:[460,0.032,0.07,2600,1,0.01,92,0.013,'grit'],crypt:[330,0.036,0.08,2200,2,0.012,80,0.017,''],court:[600,0.03,0.05,2800,1,0.01,100,0.011,'dust'],
+  coping:[520,0.03,0.06,3000,1.6,0.012,100,0.012,'lap'],grit:[440,0.03,0.07,1500,6,0.006,90,0.013,'crunch'],sand:[480,0.032,0.1,2400,0.7,0.014,70,0.006,'hiss'],
+  rubble:[400,0.03,0.07,2400,4,0.012,85,0.015,'stones'],plank:[700,0.02,0.06,700,4,0.02,120,0.012,'knock'],grate:[500,0.02,0.05,4000,1,0.01,95,0.009,'bronze'],
+  hollow:[320,0.02,0.12,320,5,0.02,70,0.014,'boom'],sandslab:[470,0.028,0.06,3000,0.6,0.008,90,0.01,'pour']};
+// (round 50d) traps and guards heard off screen (`Snd.tell`): what is in view plays as before, panned; what is out of view and within TELL_R
+// world px (storeys count 1.6 times) plays quieter past TELL_D0 and muffled by distance and by the storeys of stone between; at most
+// TELL_CAP such voices ring at once, the nearest first (a step's requests are sorted, played at its end, `flush`; TELL_DUR their lengths)
+const TELL_R=620,TELL_D0=170,TELL_CAP=4,TELL_Q=8,TELL_DUR={saw:0.2,dart:0.12,tick:0.05,fire:0.7,chomp:0.25,swoosh:0.32,hiss:0.35,slither:0.5,gstep:0.16,gshift:0.4,gland:0.3,draw:0.2};
+// (round 50d, B3) each theme's ambience over the air bed: one-shots on a clock of AMB_SL s slots, each slot's events picked by hashes of
+// the slot, the floor and the room he is in; chances a slot: drip, a drip into standing water (plunk), the forge's roar and bellows, the
+// wind whistling in a slit; everywhere stone settling and grit trickling (rare), the nearest lamp's crackle, a far rope's creak by a lift
+// or swing, a lit sky clock's embers. All through the ambience bus (`aB`), ducked under the events (SND_DUCK).
+const AMB_SL=0.25,AMB_DEF={drip:0.03,plunk:0,forge:0,bellows:0,whistle:0},AMB_T={nun:{drip:0.11,plunk:0.04},wells:{drip:0.08,plunk:0.02},foggara:{drip:0.08,plunk:0.01,whistle:0.02},
+  meroe:{drip:0.012,forge:0.018,bellows:0.02},aksum:{drip:0.02,whistle:0.022},shali:{drip:0.015,whistle:0.018}};
+const SND_DUCK=new Set(['hit','clang','hurt','die','thud','crash','gate','grind','door','chomp','cp','life','crumble','splash','storm','rewind','guardDie','fire','sealed','landh','poison','drink','swready','howl']);
+const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rvLP:null,slS:null,zone:'',off:false,hid:false,sc:0,pk:null,bedN:null,bedK:-1,aB:null,ambS:-1,amOn:false,
+  tq:Array.from({length:TELL_Q},()=>({n:'',x:0,y:0,d:0,v:false,a:''})),tqN:0,tvE:new Float64Array(16),tlog:null,
   unlock(){if(!this.ctx){try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
       try{const as=navigator.audioSession;if(as&&'type' in as&&as.type!=='ambient')as.type='ambient';}catch(e){} // (round 50c) mix with the player's own music
       this.ctx=new AC();this.build();}catch(e){this.ctx=null;}}
@@ -2886,6 +2910,7 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
     this.master.connect(this.rvS);this.rvS.connect(this.conv);this.conv.connect(this.rvLP);this.rvLP.connect(k);
     this.slS=c.createGain();const d1=c.createDelay(0.1),d2=c.createDelay(0.1),sl=c.createBiquadFilter(),fb=c.createGain();d1.delayTime.value=0.017;d2.delayTime.value=0.029;sl.type='lowpass';sl.frequency.value=2200;fb.gain.value=0.32;
     this.master.connect(this.slS);this.slS.connect(d1);this.slS.connect(d2);d1.connect(sl);d2.connect(sl);sl.connect(fb);fb.connect(d1);sl.connect(k);
+    this.aB=c.createGain();this.aB.connect(this.master);this.ambS=-1; // (round 50d) the ambience bus: the bed and the theme's one-shots, ducked under events
     this.zone='';this.zoneNow('quiet');
     if(!this.off)setTimeout(()=>{try{for(const f of [293.7,220,174.6,146.8,73.4])this.ksBuf(f,f<100?4:3.5);}catch(e){}},0);}, // the motif's strings, made once
   lvl(){return S.set.sound?(S.set.sndQ?SND_LV.quiet:SND_LV.full):0;},
@@ -2896,14 +2921,14 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
   zoneNow(z){const p=SND_Z[z]||SND_Z.room;this.zone=z;this.rvS.gain.value=p[0];this.slS.gain.value=p[1];this.rvLP.frequency.value=p[2];},
   // where he is: eased, set only when the place changes; the bed and the drips follow it
   env(z){if(!this.ctx||this.off)return;if(z!==this.zone){const p=SND_Z[z],t=this.ctx.currentTime;this.zone=z;this.rvS.gain.setTargetAtTime(p[0],t,SND_TC);this.slS.gain.setTargetAtTime(p[1],t,SND_TC);this.rvLP.frequency.setTargetAtTime(p[2],t,SND_TC);}
-    const k=this.ok()?SND_Z[z][3]:0;this.bed(k);
-    if(k>0&&mode==='play'&&P){const now=this.ctx.currentTime;if(!this.dripT||this.dripT<now-30)this.dripT=now+2+Math.random()*4;
-      else if(now>this.dripT){this.dripT=now+3+Math.random()*7;const s=Math.random()<0.5?-1:1;this.playAt('drip',P.x+s*(90+Math.random()*260),P.y-40-Math.random()*90);}}},
+    const k=this.ok()?SND_Z[z][3]:0;this.bed(k);this.flush();
+    if(mode==='play'&&P&&L&&this.ok()&&z!=='cross'&&z!=='quiet'){const s=Math.floor(this.ctx.currentTime/AMB_SL); // (round 50d) the theme's ambience, slot by slot (no catching up after a gap)
+      if(this.ambS<0||s-this.ambS>8||s<this.ambS)this.ambS=s;else while(this.ambS<s)this.ambSlot(++this.ambS,0,k);}else this.ambS=-1;},
   bed(k){if(!this.ctx)return;const c=this.ctx,t=c.currentTime;
     if(k<=0.001){if(this.bedN&&this.bedK!==0){this.bedK=0;this.bedN.g.gain.cancelScheduledValues(t);this.bedN.g.gain.setTargetAtTime(0.0001,t,0.4);}return;}
     if(!this.bedN){const src=c.createBufferSource(),lp=c.createBiquadFilter(),g=c.createGain(),lf=c.createOscillator(),lg=c.createGain();src.buffer=this.nb;src.loop=true;lp.type='lowpass';lp.frequency.value=180;lp.Q.value=0.5;
       g.gain.value=0.0001;lf.frequency.value=0.07;lg.gain.value=0.3;const br=c.createGain();br.gain.value=1;lf.connect(lg);lg.connect(br.gain); // the air breathing slowly
-      src.connect(lp);lp.connect(br);br.connect(g);g.connect(this.master);src.start(t);lf.start(t);this.bedN={src,lf,g};}
+      src.connect(lp);lp.connect(br);br.connect(g);g.connect(this.aB||this.master);src.start(t);lf.start(t);this.bedN={src,lf,g};}
     if(Math.abs(k-this.bedK)<0.02)return;this.bedK=k;this.bedN.g.gain.cancelScheduledValues(t);this.bedN.g.gain.setTargetAtTime(SND_BED*k,t,0.8);},
   tone(f,dur,o={}){if(!this.ok())return;const c=this.ctx,t=c.currentTime+(o.at||0),os=c.createOscillator(),g=c.createGain();
     os.type=o.type||'sine';os.frequency.setValueAtTime(f,t);if(o.to)os.frequency.exponentialRampToValueAtTime(o.to,t+dur);
@@ -2922,29 +2947,116 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
     let j=0;for(let i=0;i<n;i++){const a=q[j],bq=q[(j+1)%P0];q[j]=0.4985*(a+bq);d[i]=a;j=(j+1)%P0;}this.pk.set(key,b);return b;},
   pluck(f,dur,vol,o={}){if(!this.ok())return;const c=this.ctx,t=c.currentTime+(o.at||0),s=c.createBufferSource(),lp=c.createBiquadFilter(),g=c.createGain();
     lp.type='lowpass';lp.frequency.value=o.lp||2600;g.gain.value=vol;s.buffer=this.ksBuf(f,dur);s.connect(lp);lp.connect(g);this.route(g,o);s.start(t);},
-  route(g,o){g.connect(this.dst||this.master);if(o.rv){const s=this.ctx.createGain();s.gain.value=o.rv;g.connect(s);s.connect(this.conv);}},
+  route(g,o){g.connect(this.dst||(this.amOn?this.aB:this.master));if(o.rv){const s=this.ctx.createGain();s.gain.value=o.rv;g.connect(s);s.connect(this.conv);}},
   // (round 49a) a sound from where it is in the keep, heard from the prince: panned by its side (StereoPanner), quieter with distance and
   // muffled (a lowpass) the farther it is and the more storeys of stone lie between; a pure routing of play(n)'s tones and noises
-  playAt(n,x,y){if(!this.ok()||!P)return;const c=this.ctx,dx=x-P.x,dy=y-(P.y-30),st=Math.abs(Math.round(dy/TH)),d=Math.hypot(dx,dy*1.6);
-    const lp=c.createBiquadFilter(),g=c.createGain();lp.type='lowpass';lp.frequency.value=clamp(9000/(1+d/220)/(1+0.7*st),380,12000);lp.Q.value=0.5;
-    g.gain.value=clamp(1.15-d/900,0.35,1);lp.connect(g);let out=g;
+  playAt(n,x,y,a){if(!this.ok()||!P)return;const dx=x-P.x,dy=y-(P.y-30),st=Math.abs(Math.round(dy/TH)),d=Math.hypot(dx,dy*1.6);
+    this.posPlay(n,a,dx,clamp(1.15-d/900,0.35,1),clamp(9000/(1+d/220)/(1+0.7*st),380,12000));},
+  // (round 50d) the routing under playAt and tell: a lowpass, a gain and a panner, then the dry bus (or the ambience bus)
+  posPlay(n,a,dx,gv,lpf){const c=this.ctx,lp=c.createBiquadFilter(),g=c.createGain();lp.type='lowpass';lp.frequency.value=lpf;lp.Q.value=0.5;
+    g.gain.value=gv;lp.connect(g);let out=g;
     if(c.createStereoPanner){const pn=c.createStereoPanner();pn.pan.value=clamp(dx/280,-1,1)*0.9;g.connect(pn);out=pn;}
-    out.connect(this.master);this.dst=lp;try{this.play(n);}finally{this.dst=null;}},
+    out.connect(this.amOn?this.aB:this.master);this.dst=lp;try{this.play(n,a);}finally{this.dst=null;}},
+  // (round 50d) a trap's or a guard's sound: heard where it is. In view (v) as before, panned; out of view within TELL_R, quieter past
+  // TELL_D0 and muffled by distance and storeys. Queued for the step (the nearest TELL_Q kept, in order), played by flush
+  tellD(x,y){const dx=x-P.x,dy=y-(P.y-30);return Math.hypot(dx,dy*1.6);},
+  tell(n,x,y,v,a){if(!this.ok()||!P)return;const d=v?-1:this.tellD(x,y);if(d>TELL_R)return;const q=this.tq;let i=this.tqN;
+    if(i>=TELL_Q){if(d>=q[TELL_Q-1].d)return;i=TELL_Q-1;}else this.tqN++;
+    const e=q[i];while(i>0&&q[i-1].d>d){q[i]=q[i-1];i--;}q[i]=e;e.n=n;e.x=x;e.y=y;e.d=d;e.v=!!v;e.a=a||'';},
+  tellGain(d,st){return 0.8*(d<=TELL_D0?1:Math.pow(clamp(1-(d-TELL_D0)/(TELL_R-TELL_D0),0,1),1.6)*0.95+0.05);}, // (out of view never as loud as in view)
+  tellAt(n,a,dx,dy,v){const st=Math.abs(Math.round(dy/TH)),d=Math.hypot(dx,dy*1.6);
+    if(v)this.posPlay(n,a,dx,1,16000);else this.posPlay(n,a,dx,this.tellGain(d,st),clamp(7000/(1+d/180)/(1+0.9*st),300,12000));},
+  // the step's requests: in view always; out of view while fewer than TELL_CAP voices still ring; returns how many played
+  flush(){const N=this.tqN;if(!N)return 0;this.tqN=0;if(!this.ok()||!P)return 0;const now=this.ctx.currentTime,E=this.tvE;let k=0;
+    for(let i=0;i<N;i++){const e=this.tq[i];let act=0,slot=-1;for(let j=0;j<E.length;j++){if(E[j]>now)act++;else if(slot<0)slot=j;}
+      if(!e.v&&act>=TELL_CAP)continue;
+      this.tellAt(e.n,e.a,e.x-P.x,e.y-(P.y-30),e.v);if(slot>=0)E[slot]=now+(TELL_DUR[e.n]||0.3);k++;if(this.tlog)this.tlog.push(e.n+':'+Math.round(e.d));}
+    return k;},
+  // (round 50d, B4) a footfall's layers by its surface (SND_SURF); w its weight (1 a step, 2.4 a landing, 4 a heavy one), o.g a guard's
+  // (heavier, lower, quieter, a sandal's scuff after the heel), each a little different (the step count's sines)
+  foot(s,w,o,N,T){const p=SND_SURF[s]||SND_SURF.palace,i=this.sc++,v=(1+0.15*Math.sin(i*2.7))*Math.pow(w,0.6)*(o.g?0.75:1),f=(1+0.08*Math.sin(i*5.3))*Math.pow(w,-0.15)*(o.g?0.82:1),
+      ln=1+0.25*(w-1)+(o.g?0.2:0),a=o.at||0;
+    N(p[2]*ln,{vol:p[1]*v,f:p[0]*f,at:a});
+    if(p[5])N(0.03*ln,{vol:p[5]*v,f:p[3]*f,type:'bandpass',q:p[4],at:a+0.004});
+    if(p[7])T(p[6]*f,0.06*ln,{to:p[6]*f*0.63,vol:p[7]*v,at:a});
+    switch(p[8]){
+      case'wet':if(i%4===1)T(1700*f,0.05,{to:1000*f,vol:0.004*v,at:a+0.03});break;
+      case'ring':T(2300*f,0.05,{vol:0.0035*v,att:0.002,at:a+0.003});T(2300*f*2.76,0.03,{vol:0.0015*v,att:0.002,at:a+0.003});break;
+      case'grit':case'dust':N(0.04*ln,{vol:(p[8]==='grit'?0.008:0.005)*v,f:5200*f,type:'highpass',at:a+0.01});break;
+      case'lap':N(0.25,{vol:0.006*v,f:700*f,type:'bandpass',q:1.5,att:0.08,at:a+0.05});break;
+      case'crunch':N(0.05*ln,{vol:0.012*v,f:4800*f,type:'highpass',at:a+0.006});N(0.02,{vol:0.005*v,f:2600*f,type:'bandpass',q:5,at:a+0.03});break;
+      case'hiss':N(0.09*ln,{vol:0.014*v,f:2400*f,type:'bandpass',q:0.7,at:a+0.012});break;
+      case'stones':for(let k=0;k<3;k++)N(0.02,{vol:0.012*v*(1-k*0.2),f:(1700+700*k+300*Math.sin(i*1.9+k))*f,type:'bandpass',q:4,at:a+[0,0.018,0.041][k]*ln});break;
+      case'knock':T(210*f,0.07*ln,{to:150*f,vol:0.022*v,at:a});if(i%3===0)N(0.12,{vol:0.008*v,f:380*f,type:'bandpass',q:9,at:a+0.03});break;
+      case'bronze':T(1100*f,0.12,{vol:0.007*v,att:0.002,at:a+0.002});T(1100*f*2.76,0.08,{vol:0.004*v,att:0.002,at:a+0.002});N(0.03,{vol:0.01*v,f:4000*f,type:'highpass',at:a+0.01});break;
+      case'boom':T(140*f,0.14*ln,{to:105*f,vol:0.024*v,at:a});break;
+      case'pour':N(0.2,{vol:0.01*v,f:3000*f,type:'bandpass',q:0.6,att:0.05,at:a+0.02});break;}
+    if(o.g){N(0.09,{vol:0.008*v,f:1200*f,type:'bandpass',q:0.9,at:a+0.06});N(0.06,{vol:0.004*v,f:900,type:'bandpass',q:6,at:a+0.02});}},
+  // (round 50d, B3) one slot of the theme's ambience: its events from hashes of the slot, the floor and the room (rewind-safe: no game state
+  // kept); at: its time ahead (the offline render); k the place's air (drips, settling and trickles only where the bed breathes). Positional
+  // one-shots go through the ambience bus.
+  ambSlot(q,at,k,look){if(!L||!P)return;const T=AMB_T[look||L.theme.look]||AMB_DEF,sd=hash2(L.n*7919+(S.seed|0),Math.floor(P.x/ROOM_W)*31+Math.floor(P.y/TH)),
+      h=i=>hash2(q*16+i,sd)/4294967296,sx=()=>h(10)<0.5?-1:1,R=(T.drip===undefined?AMB_DEF.drip:T.drip);
+    if(k>0){if(h(1)<R)this.amb('drip',sx()*(90+h(2)*260),-40-h(3)*90,at);
+      if(h(4)<(T.plunk||0))this.amb('plunk',sx()*(120+h(2)*300),40+h(3)*60,at);
+      if(h(5)<0.005)this.amb('settle',sx()*(140+h(2)*300),(h(3)-0.5)*130,at);
+      if(h(6)<0.01)this.amb('trickle',sx()*(60+h(2)*220),-50-h(3)*40,at);}
+    if(h(7)<(T.forge||0))this.amb('forge',sx()*(260+h(2)*260),h(3)*120,at);
+    if(h(8)<(T.bellows||0))this.amb('bellows',sx()*(240+h(2)*240),h(3)*80,at);
+    if(h(9)<(T.whistle||0))this.amb('whistle',sx()*(120+h(2)*240),-70-h(3)*40,at);
+    const nr=(xs,ys,rad)=>{const dx=xs-P.x,dy=ys-(P.y-30),d=Math.hypot(dx,dy*1.6);return d<rad?d:-1;};
+    if(h(11)<0.22){let bx=0,by=0,bd=1e9;for(const t of L.torches){if(t.broken)continue;const x=t.c*TW+16,y=SURF(t.r)-44,d=nr(x,y,170);if(d>=0&&d<bd){bd=d;bx=x;by=y;}}
+      if(bd<1e9)this.amb('crackle',bx-P.x,by-(P.y-30),at);}
+    if(h(12)<0.035){let bx=0,by=0,bd=1e9;for(const f of L.lifts||[]){const x=((f.sc!==undefined?f.sc:f.ca)|0)*TW+16,y=(f.y!==undefined?f.y:SURF(f.rT|0))-40,d=nr(x,y,380);if(d>=0&&d<bd){bd=d;bx=x;by=y;}}
+      for(const o of L.dyn)if(o.f.t==='bar'){const x=o.c*TW+16,y=SURF(o.r)-50,d=nr(x,y,380);if(d>=0&&d<bd){bd=d;bx=x;by=y;}}
+      if(bd<1e9)this.amb('ropefar',bx-P.x,by-(P.y-30),at);}
+    if(h(13)<0.3)for(const cp of L.cps){if(!cp.on)continue;const x=cpX(cp),y=SURF(cp.r)-26;if(nr(x,y,120)>=0){this.amb('ember',x-P.x,y-(P.y-30),at);break;}}},
+  amb(n,dx,dy,at){const st=Math.abs(Math.round(dy/TH)),d=Math.hypot(dx,dy*1.6),k=this.atOff;this.amOn=true;this.atOff=k+at;
+    try{this.posPlay(n,'',dx,clamp(1.1-d/800,0.3,1),clamp(8000/(1+d/220)/(1+0.8*st),360,12000));}finally{this.amOn=false;this.atOff=k;}},
+  // events duck the ambience (the bed and the one-shots) for a moment
+  duck(){const g=this.aB;if(!g)return;const t=this.ctx.currentTime+(this.atOff||0);g.gain.cancelScheduledValues(t);g.gain.setTargetAtTime(0.3,t,0.03);g.gain.setTargetAtTime(1,t+0.45,0.6);},
   // (round 50c) every cue, rendered offline (sndtest.py, the WAVs): names played at once (or [name,at] pairs), in a place, at a level
   async render(names,dur,z,o={}){const keep={};for(const k of SND_KEYS)keep[k]=this[k];const sv=S.set.sound,sq=S.set.sndQ,sr=o.sr||44100;
     const c=new OfflineAudioContext(2,Math.ceil(sr*dur),sr);
-    try{if(o.level!==undefined){S.set.sound=o.level!=='off';S.set.sndQ=o.level==='quiet';}this.ctx=c;this.off=true;this.build();this.zoneNow(z||'room');
-      for(const it of names){const [n,at]=Array.isArray(it)?it:[it,0];this.atOff=at||0;this.play(n);this.atOff=0;}
+    try{if(o.level!==undefined){S.set.sound=o.level!=='off';S.set.sndQ=o.level==='quiet';}this.ctx=c;this.off=true;this.bedN=null;this.bedK=-1;this.build();this.zoneNow(z||'room');
+      // (round 50d) an item is a name or [name, at, a (a surface), dx, dy, how]: how 'tell' routes it as a trap heard from dx, dy (in view
+      // when |dx| < o.vw, default 0: none), 'at' as playAt does; o.bed the place's air bed; o.amb {look, k} the theme's ambience over dur
+      for(const it of names){const [n,at,a,dx,dy,how]=Array.isArray(it)?it:[it,0];this.atOff=at||0;
+        if(how==='tell'){this.tellAt(n,a,dx,dy,Math.abs(dx)<(o.vw||0)&&Math.abs(dy)<40);}
+        else if(how==='at'){const st=Math.abs(Math.round(dy/TH)),d=Math.hypot(dx,dy*1.6);this.posPlay(n,a,dx,clamp(1.15-d/900,0.35,1),clamp(9000/(1+d/220)/(1+0.7*st),380,12000));}
+        else this.play(n,a);this.atOff=0;}
+      if(o.bed)this.bed(SND_Z[z||'room'][3]);
+      if(o.amb){const k=o.amb.k===undefined?SND_Z[z||'room'][3]:o.amb.k;for(let q=1;q*AMB_SL<dur-0.5;q++)this.ambSlot(q+(o.amb.q0|0),q*AMB_SL,k,o.amb.look);}
       const b=await c.startRendering(),L0=b.getChannelData(0),R0=b.getChannelData(1);let pk=0,ss=0,nan=0;
       for(let i=0;i<L0.length;i++){const a=L0[i],r=R0[i];if(a!==a||r!==r){nan++;continue;}const m=Math.max(Math.abs(a),Math.abs(r));if(m>pk)pk=m;ss+=a*a+r*r;}
       const res={peak:pk,rms:Math.sqrt(ss/(2*L0.length)),nan,len:L0.length};if(o.data){res.L=Array.from(L0);res.R=Array.from(R0);}return res;}
     finally{for(const k in keep)this[k]=keep[k];S.set.sound=sv;S.set.sndQ=sq;this.atOff=0;}},
   atOff:0,
-  play(n){if(!this.ok())return;const T=(f,d,o={})=>{if(this.atOff)o.at=(o.at||0)+this.atOff;this.tone(f,d,o);},N=(d,o={})=>{if(this.atOff)o.at=(o.at||0)+this.atOff;this.noise(d,o);},
+  play(n,a){if(!this.ok())return;if(!this.amOn&&SND_DUCK.has(n))this.duck();const T=(f,d,o={})=>{if(this.atOff)o.at=(o.at||0)+this.atOff;this.tone(f,d,o);},N=(d,o={})=>{if(this.atOff)o.at=(o.at||0)+this.atOff;this.noise(d,o);},
       K=(f,d,v,o={})=>{if(this.atOff)o.at=(o.at||0)+this.atOff;this.pluck(f,d,v,o);};
     switch(n){
       // (round 50c) footfalls on stone: a dull pat, a little grit and the body's weight, each step a little different; the room carries them
-      case'step':{const i=this.sc++,v=1+0.15*Math.sin(i*2.7),f=1+0.08*Math.sin(i*5.3);N(0.07,{vol:0.032*v,f:420*f});N(0.03,{vol:0.011*v,f:2600*f,type:'bandpass',q:1.2,at:0.004});T(95*f,0.06,{to:60,vol:0.013*v});break;}
+      // (round 50c) footfalls: a pat, a little grit and the body's weight, each step a little different; the room carries them. (round 50d, B4)
+      // by what is under the foot (a: SND_SURF; stone by the theme's style when none is given); landings light and heavy; a guard's own gait
+      case'step':this.foot(a||(L&&L.theme?L.theme.style:'palace'),1,{},N,T);break;
+      case'land':this.foot(a||(L&&L.theme?L.theme.style:'palace'),2.4,{},N,T);N(0.08,{vol:0.06,f:360});T(110,0.09,{to:60,vol:0.06});break;
+      case'landh':this.foot(a||(L&&L.theme?L.theme.style:'palace'),4,{},N,T);N(0.15,{vol:0.1,f:360});T(90,0.14,{to:50,vol:0.1});break;
+      case'gstep':this.foot(a||(L&&L.theme?L.theme.style:'palace'),1.4,{g:1},N,T);break;
+      case'gland':this.foot(a||(L&&L.theme?L.theme.style:'palace'),4,{g:1},N,T);T(80,0.15,{to:45,vol:0.08});break;
+      // (round 50d) an idle guard shifting his weight, heard before he is seen: a sandal's scuff, a creak of leather, now and then his hilt's tick
+      case'gshift':{const i=this.sc++;N(0.18,{vol:0.012,f:900+120*Math.sin(i*2.1),type:'bandpass',q:0.8,att:0.04});N(0.15,{vol:0.006,f:420,type:'bandpass',q:8,at:0.05});
+        if(i%3===0){T(1800,0.05,{vol:0.003,att:0.002,at:0.13});T(1800*2.76,0.03,{vol:0.0015,att:0.002,at:0.13});}break;}
+      case'slither':N(0.45,{vol:0.012,f:3800,type:'bandpass',q:0.7,att:0.15});N(0.3,{vol:0.005,f:6000,type:'highpass',att:0.1,at:0.1});break; // (round 50d) scales over stone
+      // (round 50d, B3) the themes' ambience: quiet, positional, ducked under events
+      case'plunk':{const f=700+300*Math.random();T(f,0.12,{to:f*0.7,vol:0.02,rv:0.4});T(f*2.1,0.08,{vol:0.005,rv:0.4});N(0.06,{vol:0.004,f:1200,type:'bandpass',q:2,at:0.01});}break; // a drop into standing water
+      case'forge':N(3.2,{vol:0.045,f:160,to:240,att:1.2,rv:0.5});N(2.4,{vol:0.01,f:900,type:'bandpass',q:0.5,att:0.8,at:0.5,rv:0.4});T(46,3,{vol:0.02,att:1.2});break; // a far furnace's roar swelling and falling
+      case'bellows':N(1.1,{vol:0.016,f:1400,to:700,type:'bandpass',q:0.8,att:0.35,rv:0.4});N(0.6,{vol:0.006,f:4500,type:'highpass',att:0.2,at:0.9});break; // a far bellows' breath and the hiss of the fire it feeds
+      case'whistle':{const f0=640+300*Math.random();N(2.6,{vol:0.035,f:f0,to:f0*1.18,type:'bandpass',q:22,att:1});N(2.2,{vol:0.008,f:f0*2.02,to:f0*2.3,type:'bandpass',q:25,att:0.9,at:0.2});N(2.8,{vol:0.008,f:500,type:'bandpass',q:0.6,att:1});}break; // the wind in a slit: a pitched breath, no tone
+      case'settle':N(0.5,{vol:0.04,f:240,to:120,rv:0.5});T(55,0.4,{to:40,vol:0.02});for(let i=0;i<8;i++)N(0.02,{vol:0.008*(1-i/10),f:2600+500*Math.sin(i*2.3),type:'bandpass',q:2,at:0.1+i*0.05});break; // stone settling somewhere, a little grit after it
+      case'trickle':for(let i=0;i<12;i++)N(0.015,{vol:0.006*(1-i/16),f:2600+1000*Math.abs(Math.sin(i*1.7)),type:'bandpass',q:3,at:i*0.045*(1+0.3*Math.sin(i*4.1))});N(0.6,{vol:0.004,f:3000,type:'bandpass',q:0.5,att:0.2});break; // grit trickling from a joint
+      case'crackle':{const n0=3+(this.sc++%3);for(let i=0;i<n0;i++)N(0.008+0.007*Math.random(),{vol:0.006+0.006*Math.random(),f:2400+2600*Math.random(),type:'bandpass',q:2,at:Math.random()*0.25});N(0.3,{vol:0.003,f:600,att:0.1});}break; // the nearest lamp's flame
+      case'ember':for(let i=0;i<3;i++)N(0.008,{vol:0.004*(1-i*0.2),f:3600+900*Math.random(),type:'bandpass',q:3,at:i*0.07+0.05*Math.random()});N(0.4,{vol:0.002,f:1200,type:'bandpass',q:0.7,att:0.1});break; // a lit sky clock's embers
+      case'ropefar':N(0.14,{vol:0.012,f:260,type:'bandpass',q:9});N(0.14,{vol:0.01,f:300,type:'bandpass',q:9,at:0.18});break; // a rope creaking on its beam, out of sight
       case'jump':N(0.12,{vol:0.05,f:2200,type:'bandpass',to:900});break;
       case'land':N(0.1,{vol:0.12,f:420});T(110,0.09,{to:60,vol:0.08});break;
       case'thud':N(0.25,{vol:0.25,f:300});T(80,0.2,{to:40,vol:0.14});break;
@@ -3068,6 +3180,16 @@ function sndZone(){if(mode==='cross')return'cross';if((mode!=='play'&&mode!=='de
   const c=Math.floor(P.x/TW),r=Math.floor((P.y-2)/TH);for(const ct of L.courts||[])if(ct.r===r&&c>=ct.c0&&c<=ct.c1)return'court';
   if(lowAt(P.x,r))return'low';if(B(L,c,r-1)!==EMPTY)return'room';
   return B(L,c-1,r-1)===WALL&&B(L,c+1,r-1)===WALL&&B(L,c,r-2)===EMPTY?'shaft':'hall';}
+// (round 50d, B4) what is under a foot at x on the floor y (SND_SURF): a hill, a cracked slab or plank, the fork's grating, a lift's platform
+// or slab (riding it, at its foot or standing on it), a court's paving or a pool's coping, else the theme's stone by its style; me: the prince
+function footSurf(x,y,me){if(!L)return'palace';const c=Math.floor(x/TW),r=rowOf(y);
+  if(me&&P.state==='lift'&&P.lift)return P.lift.sand?'sandslab':'hollow';
+  const h=hillOn(x,y);if(h)return h.d?'sand':'rubble';
+  const f=F(L,c,r);if(f){if(f.t==='loose')return f.plank?'plank':'grit';if(f.t==='grate')return'grate';}
+  if(liftPit(c,r))return'hollow';
+  if(me){const lf=liftUnder();if(lf)return lf.sand?'sandslab':'hollow';}
+  for(const ct of L.courts||[])if(ct.r===r&&c>=ct.c0&&c<=ct.c1){const m=L._ctP,C=L.cols;if(m&&m.size)for(const k of [r*C+c-1,r*C+c+1]){const p=m.get(k);if(p&&p.r===r)return'coping';}return'court';}
+  return L.theme.style;}
 function stormNear(){const c=L&&L.ext.chase;if(mode!=='play'||!c||!c.on||c.done||!P||P.state==='dead'||P.state==='dying')return 0;return 0.15+0.85*clamp(1-(P.x-c.wx)/320,0,1);}
 
 // ================= state =================
@@ -3299,7 +3421,7 @@ function pbSet(){PBH.h=L.hills[P.pbI]||null;PBH.x=P.pbX;PBH.f=P.face;PBH.r=P.pbR
 // the toe meets it: a trickle of grit or sand where it presses, and its footfall (look only)
 function pbTouch(){const h=L.hills[P.pbI];if(!h)return;const x=P.pbX+P.face*(P.pbR||PB_GAP+PB_IN),y=P.y-Math.max(1,hillTop(h,x-h.c*TW)-1);
   for(let i=0;i<(h.d?5:3);i++)FX.push({x:x+(Math.random()-0.3)*3*P.face,y,vx:-P.face*(6+Math.random()*14),vy:-Math.random()*(h.d?18:8),g:h.d?40:120,life:0.35+Math.random()*0.25,t:0,col:h.d?'rgba(214,190,140,.6)':'rgba(120,104,92,.75)',sz:h.d?1.4:1.1});
-  Snd.play(h.d?'sandstep':'step');}
+  Snd.play('step',h.d?'sand':'rubble');}
 function tryJump(){if(hillOn(P.x,P.y))return;const e=hazardEdge(30);if(e!==null&&Math.abs(e-P.x)>6){P.tx=e-P.face*4;setState('edgeWalk');return;}startJump('stand');}
 function startJump(kind){if(hillOn(P.x,P.y))return;P.pbQ=null;P.pbC=null;P.chIn=null;
   {const hc=hillCheck(kind);if(hc){if(!hc.need&&hc.c<(kind==='run'?PB_MIN:PB_MINS)){startProbe(hc.q);return;}P.pbQ={i:hc.q.i,e:hc.q.e};P.pbC=hc.c;}} // (round 47a: the checked leap)
@@ -3724,7 +3846,7 @@ function stCrouch(dt,ix){
     if(!solidBelow(L,Math.floor((want+ix*6)/TW),pRow()))return;
     let nx=clampMove(P.x,want,P.y,P,true);
     const lim=crouchLimit(ix);if(lim!==null&&(nx-lim)*ix>0)nx=(P.x-lim)*ix>0?P.x:lim;
-    if(Math.abs(nx-P.x)>0.01){P.x=nx;const ph0=P.ph;P.ph+=CRAWL*dt/26;P.crawling=true;if(!S.learned.crawl)learn('crawl');if(Math.floor(ph0*2)!==Math.floor(P.ph*2))Snd.play('step');}
+    if(Math.abs(nx-P.x)>0.01){P.x=nx;const ph0=P.ph;P.ph+=CRAWL*dt/26;P.crawling=true;if(!S.learned.crawl)learn('crawl');if(Math.floor(ph0*2)!==Math.floor(P.ph*2))Snd.play('step',footSurf(P.x,P.y,true));}
   }
 }
 // the flask a drink would reach (no side effects: the Grab button's label asks it too)
@@ -3858,20 +3980,20 @@ function land(h){
   // runjump ends in the run (SDLPoP seqtbl.c): the run's speed kept, its stride carried on from the foot that lands (the lead foot: phase 0, or
   // 0.5 when the other leg led); let go, he stops in the crouch as before
   if(jk==='run'&&dist<=40&&!I.g&&!P.pbQ&&P.stumble<=0&&((I.r?1:0)-(I.l?1:0))===P.face){const o=P.pose.ox||0;setState('run');P.vx=P.face*RUN;P.ph=P.jMir?0.5:0;P.lnT=gameTime;P.jO0=o;
-    Snd.play('land');if(GFX().fx)dust(P.x,P.y,3);standOn();return;}
+    Snd.play('land',footSurf(P.x,P.y,true));if(GFX().fx)dust(P.x,P.y,3);standOn();return;}
   P.vx=0;
-  if(dist>=100){flashScreen('#ffffff',0.45,0.24);shake(2.6);hurt(1,'fall');if(P.state==='dead')return;setState('landHurt');P.stK='land';P.stT=gameTime+0.6-0.133;P.stS=1;Snd.play('thud');dust(P.x,P.y,8);
+  if(dist>=100){flashScreen('#ffffff',0.45,0.24);shake(2.6);hurt(1,'fall');if(P.state==='dead')return;setState('landHurt');P.stK='land';P.stT=gameTime+0.6-0.133;P.stS=1;Snd.play('thud');Snd.play('landh',footSurf(P.x,P.y,true));dust(P.x,P.y,8);
     // a hard landing leaves him unsteady: longer the further he fell and the fewer lives he has left
     P.stumble=clamp(0.6+0.85*(dist-100)/70+0.28*(S.maxHp-P.hp),0.6,2.2);standOn();return;}
   setState('land');P.stK=jk==='run'?'rl':jk==='stand'?'sl':'land';P.stT=gameTime;P.stS=clamp((vi-60)/240,0.3,1);P.landDur=dist>40?0.2:0.08;
-  P.jFx=feetX(P.pose,P.stK==='sl'?0:P.jMir?2:1)+(P.pose.ox||0);Snd.play('land');if(dist>30)dust(P.x,P.y,4);if(dist>60)shake(0.7); // (round 32: the keyed landings, landSeq; the feet planted where they came down)
+  P.jFx=feetX(P.pose,P.stK==='sl'?0:P.jMir?2:1)+(P.pose.ox||0);Snd.play(dist>60?'landh':'land',footSurf(P.x,P.y,true));if(dist>30)dust(P.x,P.y,4);if(dist>60)shake(0.7); // (round 32: the keyed landings, landSeq; the feet planted where they came down)
   standOn();
 }
 function runMove(dt){
   const c0=pCol(),want=P.x+P.vx*dt,nx=clampMove(P.x,want,P.y,P);
   if(Math.abs(nx-want)>0.01){P.x=nx;P.vx=0;if(P.state==='run'){Snd.play('bump');setState('stand');}return;}
   P.x=nx;
-  const ph0=P.ph;P.ph+=Math.abs(P.vx)*dt/44;if(Math.floor(ph0*2)!==Math.floor(P.ph*2))Snd.play(P.hl&&P.hl.d&&P.state==='run'?'sandstep':'step');
+  const ph0=P.ph;P.ph+=Math.abs(P.vx)*dt/44;if(Math.floor(ph0*2)!==Math.floor(P.ph*2))Snd.play('step',footSurf(P.x,P.y,true)); // (round 50d: by the surface; a drift's wade 'sand')
   if(!supported())return startFall(P.vx*0.45);
   const c1=pCol();
   if(c1!==c0){const f=F(L,c1,pRow());if(f&&f.t==='spikes'&&Math.abs(P.vx)>35){f.ext=1;return die('spikes');}}
@@ -4438,7 +4560,8 @@ function dropSpot(side,only){const r=pRow(),pc=pCol();if(!guardOk(pc,r))return n
   for(const s of only?[side]:[side,-side])for(const k of [3,4,2]){const tc=pc+s*k;if(tc<a||tc>b)continue;const x=tc*TW+16;if(Math.abs(x-P.x)<44)continue;return {x,lo:a*TW+10,hi:b*TW+22,face:-s};}
   return null;}
 function spawnDrop(s,r,hp,tier){const ng=makeGuard({x:s.x,r,lo:s.lo,hi:s.hi,hp,cap:false,tier,reinf:0},G.length);ng.y=SURF(r)-74;ng.vy=0;ng.state='drop';ng.face=s.face;G.push(ng);return ng;}
-function guardMove(g,dir){let tx=clamp(g.x+g.face*dir*13,g.lo,g.hi);if(dir>0&&Math.abs(P.x-tx)<20)tx=P.x-g.face*20;g.sx=g.x;g.tx=tx;setE(g,dir>0?'advance':'retreat');}
+function guardMove(g,dir){let tx=clamp(g.x+g.face*dir*13,g.lo,g.hi);if(dir>0&&Math.abs(P.x-tx)<20)tx=P.x-g.face*20;g.sx=g.x;g.tx=tx;setE(g,dir>0?'advance':'retreat');
+  Snd.tell('gstep',g.x,g.y,tileVisible(Math.floor(g.x/TW),g.r),footSurf(g.x,g.y));} // (round 50d) his own footfall: heavier, quieter
 function updateGuard(g,dt){
   g.t+=dt;if(g.flash>0)g.flash-=dt;
   if(g.state==='fall'){if(g.gone)return; // landed already: without this a fallen guard burst into sparks (and crashed) every frame from then on
@@ -4446,7 +4569,7 @@ function updateGuard(g,dt){
     if(g.y>SURF(g.r)+TH*2-8||g.t>1.6||(g.y>=SURF(g.r+1)&&solidBelow(L,Math.floor(g.x/TW),g.r+1))){g.alive=false;g.gone=true;sparks(g.x,g.y-12,16,'#e9e3cf');dust(g.x,g.y,8);if(tileVisible(Math.floor(g.x/TW),g.r+2))Snd.play('crash');}
     return;}
   if(g.state==='drop'){g.vy=Math.min(g.vy+GRAV*dt,480);g.y+=g.vy*dt;lerpPose(g.pose,PS.fall,1-Math.exp(-dt*12),g.pose);
-    if(g.y>=SURF(g.r)){g.y=SURF(g.r);setE(g,'garde');g.think=0.5;Snd.play('land');dust(g.x,g.y,6);lerpPose(g.pose,PS.land,1,g.pose);}
+    if(g.y>=SURF(g.r)){g.y=SURF(g.r);setE(g,'garde');g.think=0.5;Snd.tell('gland',g.x,g.y,tileVisible(Math.floor(g.x/TW),g.r),footSurf(g.x,g.y));dust(g.x,g.y,6);lerpPose(g.pose,PS.land,1,g.pose);}
     return;}
   if(!g.alive){lerpPose(g.pose,PS.dead,1-Math.exp(-dt*9),g.pose);
     // a defeated guard lies still for a moment, then crumbles away like sand
@@ -4456,7 +4579,9 @@ function updateGuard(g,dt){
     if(g.t>1.9)g.gone=true;return;}
   const dx=P.x-g.x,adx=Math.abs(dx),same=Math.abs(P.y-g.y)<8&&P.state!=='dead'&&P.state!=='exit'&&P.state!=='enter';
   switch(g.state){
-    case'idle':if(same&&adx<100){setE(g,'garde');g.face=Math.sign(dx)||g.face;g.think=0.35;Snd.play('draw');}break;
+    case'idle':if(same&&adx<100){setE(g,'garde');g.face=Math.sign(dx)||g.face;g.think=0.35;Snd.play('draw');break;}
+      {const k=Math.floor(gameTime/1.7);if(k!==Math.floor((gameTime-dt)/1.7)&&hash2(k,(g.lo|0)*7+(g.hi|0))%100<40)Snd.tell('gshift',g.x,g.y-20,tileVisible(Math.floor(g.x/TW),g.r));} // (round 50d) an idle guard shifts his weight now and then: heard before he is seen
+      break;
     case'garde':
       g.face=Math.sign(dx)||g.face;
       if(!same||adx>140){setE(g,'idle');g.pendingParry=null;break;}
@@ -4501,9 +4626,10 @@ function updateSnake(sn,dt){
       if(same&&adx<30&&Math.sign(dx)===sn.dir&&sn.cool<=0){sn.state='coil';sn.t=0;break;}
       if(same&&adx<26)break;
       sn.x+=sn.dir*22*dt;
+      {const k=Math.floor(sn.ph/1.4);if(k!==Math.floor((sn.ph-dt)/1.4)&&hash2(k,sn.lo|0)%100<45)Snd.tell('slither',sn.x,SURF(sn.r)-4,tileVisible(Math.floor(sn.x/TW),sn.r));} // (round 50d) scales over stone, heard before seen
       if(sn.x<=sn.lo){sn.x=sn.lo;sn.dir=1;}else if(sn.x>=sn.hi){sn.x=sn.hi;sn.dir=-1;}
       break;
-    case'coil':if(sn.t>=0.42){sn.state='strike';sn.t=0;sn.hitDone=false;if(tileVisible(Math.floor(sn.x/TW),sn.r))Snd.play('hiss');}break;
+    case'coil':if(sn.t>=0.42){sn.state='strike';sn.t=0;sn.hitDone=false;Snd.tell('hiss',sn.x,SURF(sn.r)-6,tileVisible(Math.floor(sn.x/TW),sn.r));}break;
     case'strike':{const k=Math.min(1,sn.t/0.22);sn.lunge=Math.sin(Math.PI*k)*16;
       if(!sn.hitDone&&sn.t>=0.1){sn.hitDone=true;const hx=sn.x+sn.dir*18;
         if(same&&Math.abs(P.x-hx)<14&&P.inv<=0){P.inv=0.6;hurt(1,'snake');if(P.state!=='dead'&&!['crouch','poke','hang'].includes(P.state))setState('hurt');}}
@@ -4598,7 +4724,7 @@ function chainWin(f,e,T){const l=chainLanding(f,e);
 // 100 px, more than his height and a slab's).
 const CH_FOOT=14,CH_HEAD=18,CH_UNDER=10; // half-widths (px) within which a slab meets his feet or his head; a slab's depth under its surface
 function chainBoard(f,i,q){P.y=q.y;const dist=q.y-P.fallY;
-  if(dist>=100){land({ys:q.y,r:rowOf(q.y-1)});if(P.state==='dead')return;}else if(dist>8)Snd.play('land');
+  if(dist>=100){land({ys:q.y,r:rowOf(q.y-1)});if(P.state==='dead')return;}else if(dist>8)Snd.play('land',footSurf(P.x,P.y,true));
   P.lift=f;P.slab=i;P.bx=P.x;P.by=P.y;P.bt=gameTime;P.vx=0;P.vy=0;P.jumpKind=null;P.autoGrab=false;P.plant=null;P.fallY=P.y;setState('lift');}
 // in the air: true if a slab (or a counterweight lift's platform, wherever it stands in its shaft: one can drop into a shaft
 // that is open above) has caught him
@@ -4644,18 +4770,18 @@ function updateFeatures(dt){
         else if(f.s===1){f.tm+=dt;if(f.tm>=0.3){f.s=2;L.debris.push({x:o.c*TW+16,y:ceilingY(o.c,o.r)+14,y0:ceilingY(o.c,o.r)+14,vy:0,c:o.c,r:o.r,hitP:false,kind:'rock',g:DROP_G});Snd.play('crumble');}}
         break;
       case'pend':{const b=pendTip(o,f),side=Math.sign(b.th);
-        if(side!==f.last&&tileVisible(o.c,o.r))Snd.play('swoosh');f.last=side;
+        if(side!==f.last)Snd.tell('swoosh',b.x,b.y,tileVisible(o.c,o.r));f.last=side; // (round 50d: heard off screen too, Snd.tell)
         if(alive&&pr===o.r&&P.inv<=0&&!['crouch','poke','hang','climb','climbDown','exit'].includes(P.state)&&Math.abs(b.x-P.x)<11&&b.y>P.y-50&&b.y<P.y+4)trapHit('pend',Math.sign(P.x-b.x)||-P.face);
         break;}
-      case'saw':{const sx=sawX(f,gameTime);if(tileVisible(o.c,o.r)&&Math.floor(gameTime*4)!==Math.floor((gameTime-dt)*4))Snd.play('saw');
+      case'saw':{const sx=sawX(f,gameTime);if(Math.floor(gameTime*4)!==Math.floor((gameTime-dt)*4))Snd.tell('saw',sx,SURF(o.r)-6,tileVisible(o.c,o.r));
         if(tileVisible(Math.floor(sx/TW),o.r)&&Math.floor(gameTime*8)!==Math.floor((gameTime-dt)*8))sawSparks(sx,SURF(o.r)); // sparks where the blade grinds its slot
         if(alive&&pr===o.r&&P.inv<=0&&Math.abs(P.x-sx)<12&&P.y>SURF(o.r)-11&&!['hang','climb','climbDown','exit'].includes(P.state))trapHit('saw',Math.sign(P.x-sx)||-P.face);break;}
       case'darter':{const ph=cyc(f,gameTime),ts=1-0.35/f.per,vis=tileVisible(o.c,o.r);
-        if(ph<f.lastPh){const mx=spoutMouth(f);L.ext.darts.push({x:f.x,y:f.y,r:o.r,x0:f.x0,dir:f.dir||-1,mx});if(vis){Snd.play('dart');puff(mx,f.y,f.dir||-1);}}
-        else if(vis&&f.lastPh<ts&&ph>=ts)Snd.play('tick'); // a faint click as the face begins to glow
+        if(ph<f.lastPh){const mx=spoutMouth(f);L.ext.darts.push({x:f.x,y:f.y,r:o.r,x0:f.x0,dir:f.dir||-1,mx});Snd.tell('dart',mx,f.y,vis);if(vis)puff(mx,f.y,f.dir||-1);}
+        else if(f.lastPh<ts&&ph>=ts)Snd.tell('tick',f.x,f.y,vis); // a faint click as the face begins to glow
         f.lastPh=ph;break;}
       case'vent':{const ph=cyc(f,gameTime),on=ph>=0.75;
-        if(on&&!f.last&&tileVisible(o.c,o.r))Snd.play('fire');f.last=on;
+        if(on&&!f.last)Snd.tell('fire',o.c*TW+16,SURF(o.r)-10,tileVisible(o.c,o.r));f.last=on;
         if(on&&alive&&pr===o.r&&Math.abs(P.x-(o.c*TW+16))<13&&!['hang','climb','climbDown','exit'].includes(P.state))trapHit('fire',Math.sign(P.x-(o.c*TW+16))||-P.face);
         break;}
       case'spikes':if(f.fixed)break;{
@@ -4668,7 +4794,7 @@ function updateFeatures(dt){
       case'lift':updateLift(f,dt);break;
       case'chain':updateChain(f,dt);break;
       case'chomp':{const k=chompK(f);
-        if(k>0&&f.last===0&&tileVisible(o.c,o.r))Snd.play('chomp');f.last=k;
+        if(k>0&&f.last===0)Snd.tell('chomp',o.c*TW+16,SURF(o.r)-30,tileVisible(o.c,o.r));f.last=k;
         if(k>0.55&&alive&&pr===o.r&&Math.abs(P.x-(o.c*TW+16))<14&&!['hang','climb','climbDown','exit'].includes(P.state)){f.blood=1;die('blade');}}break;
     }
   }
@@ -4802,6 +4928,7 @@ function update(dt){
   updateFlasks(dt);
   for(const g of G)updateGuard(g,dt);
   for(const sn of SN)updateSnake(sn,dt);
+  Snd.flush(); // (round 50d) the step's traps and guards heard, nearest first, at most TELL_CAP out of view
   for(let i=pendingGuards.length-1;i>=0;i--){const q=pendingGuards[i];if(gameTime<q.at||mode!=='play')continue;
     if(q.spec){const sp=q.spec;
       // a passage ambush waits until he is back at its ground on the way out, then drops in ahead of him
@@ -14985,7 +15112,7 @@ addEventListener('orientationchange',()=>setTimeout(layout,120));
 if(window.claude&&window.claude.hot&&window.claude.hot.snapshot){try{window.claude.hot.snapshot(()=>({save:S}));}catch(e){}}
 
 // test hooks
-window.__HK={CUE,WEAR,wearList:()=>wearList(),wearFloor:(g,X,ys,c,r)=>wearFloor(g,X,ys,c,r,L.theme),wearFace:(g,fx,Y,c,r)=>wearFace(g,fx,Y,c,r,L.theme),WG_D,WB_DR,WB_HR,TELL,tellKind:()=>tellKind(),GRIT,gritList:()=>gritList(),SWB,GLN,gateCue,glanceAt,glanceEnd,GL_T,Snd,chimFoot:(c,r)=>chimFoot(c,r),chimH:n=>chimH(n),CHM:()=>({G0:CHM_G0,GS:CHM_GS,YD:CHM_YD,YP:CHM_YP,YC:CHM_YC,YX:CHM_YX,IN_T:CHM_IN_T}),die:c=>die(c),openingsIn,windLull,windReach,windJumpE,windPeak,windZoneAt,windEase,ctJambsOf,jambKind,startRewind,get windDeaths(){return S.windDeaths;},placeCourts,ctIn,ctPoolHit,CTB,ctBake,ctKindOf,get courts(){return L.courts;},windAt,windE,windCap,windGust,WIND_MS,WIND_GP,WIND_DE,WIND_JM,WIND_G0,WIND_PUSH,WIND_P,WIND_CDA,WIND_GT,plainRuns,keyLight,hillOn,hillTop,hillH,hillCanvas,hillBox,hillSil,hillSegs,hillEnd,hillMeshTop,HILL_DBG,HILL_WADE,HILL_CLIMB,get frameLights(){return frameLights;},jetPlaces,jsSwingPath,jetStream,tapCloth,THEMES,progOf,themeName,learn,LEARN_IDS,HINTS:Object.fromEntries(LEARN_IDS.map(id=>[id,1])),HINT_MOVE:new Set(LEARN_IDS),get banner(){return banner;},set banner(v){banner=v;},genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
+window.__HK={CUE,WEAR,wearList:()=>wearList(),wearFloor:(g,X,ys,c,r)=>wearFloor(g,X,ys,c,r,L.theme),wearFace:(g,fx,Y,c,r)=>wearFace(g,fx,Y,c,r,L.theme),WG_D,WB_DR,WB_HR,TELL,tellKind:()=>tellKind(),GRIT,gritList:()=>gritList(),SWB,GLN,gateCue,glanceAt,glanceEnd,GL_T,Snd,footSurf:(x,y,me)=>footSurf(x,y,me),SND_SURF,TELL_CAP,TELL_R,AMB_T,themeOf:n=>themeOf(n),chimFoot:(c,r)=>chimFoot(c,r),chimH:n=>chimH(n),CHM:()=>({G0:CHM_G0,GS:CHM_GS,YD:CHM_YD,YP:CHM_YP,YC:CHM_YC,YX:CHM_YX,IN_T:CHM_IN_T}),die:c=>die(c),openingsIn,windLull,windReach,windJumpE,windPeak,windZoneAt,windEase,ctJambsOf,jambKind,startRewind,get windDeaths(){return S.windDeaths;},placeCourts,ctIn,ctPoolHit,CTB,ctBake,ctKindOf,get courts(){return L.courts;},windAt,windE,windCap,windGust,WIND_MS,WIND_GP,WIND_DE,WIND_JM,WIND_G0,WIND_PUSH,WIND_P,WIND_CDA,WIND_GT,plainRuns,keyLight,hillOn,hillTop,hillH,hillCanvas,hillBox,hillSil,hillSegs,hillEnd,hillMeshTop,HILL_DBG,HILL_WADE,HILL_CLIMB,get frameLights(){return frameLights;},jetPlaces,jsSwingPath,jetStream,tapCloth,THEMES,progOf,themeName,learn,LEARN_IDS,HINTS:Object.fromEntries(LEARN_IDS.map(id=>[id,1])),HINT_MOVE:new Set(LEARN_IDS),get banner(){return banner;},set banner(v){banner=v;},genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
   load(n,seed,test){clearInput();quiet=!!test;GLN.off=true;glanceEnd();L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;mode="play";intro=0;FX.length=0;STORMG.length=0;clearRooms();cam.snap=true;updateCamera(0);return L;},
   loadMap(spec){return spec;},
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},

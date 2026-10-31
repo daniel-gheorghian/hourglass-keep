@@ -30,7 +30,7 @@ and knocks him back 12 px. Crouched, he crawls under it untouched, as the bot do
 | Where it can hit | with an 84 px arm only within about 0.49 rad of the bottom (about 40 px either side of the pivot); higher in its swing it passes over his head | |
 | Damage | `trapHit('pend')`: one life, `P.inv` 0.9 s, pushed back 12 px away from the blade and `landHurt` if on foot; card "Struck by the pendulum" | |
 | Layout | 5 plain tiles, the pendulum on the third (a side passage: a 5-tile part, on its third) | |
-| Sound | `swoosh` each time it passes the bottom, while its tile is in view | |
+| Sound | `swoosh` each time it passes the bottom; since round 50d heard off screen too (`Snd.tell`) | |
 | Hint | none since round 49a (no hint banners; until v89: `HINTS.pend` within 110 px on his row: "A swinging blade. Crawl under it, or time your run.") | |
 | Route time | `estPath` `crawl`: tiles x 0.8 + 1.3 s | |
 
@@ -107,4 +107,5 @@ only the jaws). No wear, no cut by walls (it swings inside its hall).
 - Round 18b (owner: "replace the chains with rope"): the arm lashed to its pivot with four turns of rope.
 - Round 19 (owner): lamps keep clear of it (`LAMP_NEXT`).
 - Round 38a: the blade and arm carved out of the lamp shadow (`SHC`).
+- round 50d (sound): `swoosh` heard off screen (`Snd.tell`) [gameplay](../gameplay.md#footsteps-traps-heard-off-screen-each-themes-ambience-round-50d).
 - Details in CLAUDE.md.

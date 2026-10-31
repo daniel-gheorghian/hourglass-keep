@@ -227,4 +227,5 @@ Round 46c: every rope's, timber's, wheel's and sling's edge by the contour rule 
 left out (`LIFT_DBG.noback`). Look only.
 - Round 49c (owner: "rely only on subtle graphic hints"): the first sand lift of a floor with its spike pit (by the route's order) has an earlier thief's bones half in the sand on the pit's floor (`wearSand`, drawn after `sandCut` inside the lift's clip and below the slab, the sand's `SHC` outline and relief box over them): seen while he rides down, gone under the slab at rest. A pure function of the slab's y. Look only. `wearscan.py`.
 
+- round 50d (sound): a step on a counterweight platform or paternoster slab is `hollow` (a box's boom), on the sand lift's slab `sandslab`; a lift within 380 px creaks now and then (`ropefar`) [gameplay](../gameplay.md#footsteps-traps-heard-off-screen-each-themes-ambience-round-50d).
 Details in CLAUDE.md.

@@ -36,7 +36,7 @@ from behind the step's front face with only a tick and a hiss to tell of them.
 | While invulnerable | the hit test is skipped and the dart flies on | |
 | End of run | at `f.x0`, a dart whose tile is in view becomes a spent dart (`spendDart`); otherwise it is just removed | it has no wall to hit |
 | Hint | none since round 49a (no hint banners; until v89: `darts` within 200 px on his row: "Darts fly from that wall at chest height. Crouch and crawl under them, or time your run.") | |
-| Sound | `dart` and a dust `puff` at the mouth, both only when the shooter's tile is in view | |
+| Sound | `dart` (and the dust `puff` at the mouth, in view only); since round 50d `dart` and `tick` are heard off screen too (`Snd.tell`: quieter and muffled with distance and storeys, at most 4 such voices) | |
 | Rewind | `L.ext` (darts in flight) and the feature's `lastPh` are in every snapshot (`snapAll`); `SPENT` is not saved and is emptied on a floor or clock reset (`clearSpent`) | spent darts are look only |
 
 ## The prince and the guards
@@ -119,4 +119,5 @@ So a dart passing him is drawn behind his figure.
 - round 18: "no arrows in the world" applies to hint chevrons only; darts unchanged.
 - round 39 (v84): a dart in flight cut on the mouth's side only (it vanished 80 px out); its puff, an FX particle, is not drawn on a face
   (`onFace`). Look only: the hit is unchanged.
+- round 50d (sound): `dart` and `tick` heard off screen (`Snd.tell`), in view as before; their timing is the step's own [gameplay](../gameplay.md#footsteps-traps-heard-off-screen-each-themes-ambience-round-50d).
 Details in CLAUDE.md and the comments above `drawShooter`.

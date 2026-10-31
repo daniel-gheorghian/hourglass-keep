@@ -261,4 +261,5 @@ keeps state: rewind-safe.
 - round 47b: one horizon per storey: the theme's view in the bays on the windows' anchor, the court's own art at true depths (`CT_FARF`) on the shared horizon, the floor's features live, Meroë's outdoor view through `paintBackdrop`; `viewscan.py`, `panscan.py`.
 - round 46c: a jamb's shaded edge is its own material darker, opaque (was black at .55), and on a round column it and the lit edge hug the shaft (`jambEdge`: they stood beside it on the wall); in Torchlight its body takes the scene alpha mark (`jambMark`, `HILL_A`), so the sky beams' haze is left off it (L3); the architrave's, logs' and beams' edges and rings and the vine's tendrils by the contour rule (`selC`, `selOut`).
 
+- round 50d (sound): footfalls `court` on its paving (dry), `coping` beside a pool (water lapping by) [gameplay](../gameplay.md#footsteps-traps-heard-off-screen-each-themes-ambience-round-50d).
 Details in CLAUDE.md.

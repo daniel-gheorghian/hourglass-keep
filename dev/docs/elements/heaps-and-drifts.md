@@ -105,7 +105,7 @@ Drift lengths: 3 tiles 76, 4 tiles 24, 5 tiles 12, 6 tiles 5. Every floor from 3
 | His drawing on a heap | on its surface at mid depth (up to 25 px; B3: on the column's top, 22 px), easing as `updateLook` does. Up its slope he leans up to 0.35 more |
 | Standing, crouching, careful steps | as on the floor, drawn on or in it |
 | A jump toward it | never lands on or past its foot (round 47a: the checked leap and the test foot); the low leap only, which keeps its way, lands on the floor's level as before, drawn on or in it |
-| Sound | a sand footfall (`sandstep`) each wading step |
+| Sound | each wading step a sand footfall, each clambering step on a heap stones knocking (round 50d: `step` with `sand` or `rubble`, landings too; the test foot the same) |
 | Guards | keep to their side (`hillGuard` in `clampMove`). None is posted within 2 cells of one |
 | Bot | its `walk` holds the arrow through at the capped pace; walk targets inside a hill are tiptoed to, as anywhere |
 
@@ -197,3 +197,4 @@ glints. The near half covers his shins (a drift) or his toes (a heap), so no cli
   for every pass, the contour rule). Opaque against the beams (`sandSegs`, `SDMAX` 64), the one outline (`hillSil`), the column redrawn
   (near half only, `selOut` edges, the end by the light, three ends), `selOut` on stones, blocks and crest, C4's sand banks, B1's grit in the
   Blue Chambers. Rules R5-R7 in [layers](../layers.md), the contour rule in [rendering](../rendering.md). Look only: layouts the same.
+- round 50d (sound): footfalls `sand` on a drift and `rubble` on a heap (`footSurf`) [gameplay](../gameplay.md#footsteps-traps-heard-off-screen-each-themes-ambience-round-50d).

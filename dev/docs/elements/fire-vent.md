@@ -30,7 +30,7 @@ at the start of the stretch until a run would never be within 21 px of the vent 
 | What is drawn burning | 0.70 to 0.03 (`ventState`): pilot 0.70-0.75, whoomp 0.75-0.79, roar to 0.96, die-down to 1.00, tail to 0.03 | the look warns before it hurts; "what hurts is lit through the whole window" |
 | The bot's window | `danger`: phase > 0.7 or < 0.03, margin 21 px (`safeRun`): wider than the hit on both counts | |
 | Layout | 5 or 6 plain tiles, vents on the 2nd (and 4th); in a side passage a 7-tile part, vents on its 3rd (and 5th) | |
-| Sound | `fire` at the whoomp (phase crossing 0.75), while its tile is in view | |
+| Sound | `fire` at the whoomp (phase crossing 0.75); since round 50d heard off screen too (`Snd.tell`) | |
 | Hint | none since round 49a (no hint banners; until v89: `HINTS.vent` on its tile: "Fire vents. Watch them flare, then cross between bursts.") | |
 | Rewind | a function of the clock | |
 | Route time | `estPath` `timed`: tiles x 0.32 + 2.6 s | |
@@ -128,4 +128,5 @@ sheet drawn from the whole grate (two broad jets between the rows), so what burn
 - Round 39 (v84): FX particles (its sparks among them) are not drawn on a face (`onFace` in `drawEmissive`).
 - Round 42b: the back row drawn before the figures (part 0), the rest after them; in Classic the back row now lies under the light pass, where
   the vent's own fire light (0.9, r 110) keeps it near full; the flame carved out of the lamp shadow. Pictures `egyptr42b.py` (r42b_vent.png).
+- round 50d (sound): `fire` heard off screen (`Snd.tell`), at the same moment [gameplay](../gameplay.md#footsteps-traps-heard-off-screen-each-themes-ambience-round-50d).
 - Details in CLAUDE.md.
