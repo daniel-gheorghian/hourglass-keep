@@ -2872,8 +2872,19 @@ function drawFigure(ctx,x,y,face,p,pal,o){
 // silences it.
 const SND_Z={ // a place: [the hall's send, the slap's send, the room's lowpass Hz, the air bed 0..1]
   cross:[0.03,0,4200,0],court:[0.07,0.02,5200,0],low:[0.06,0.32,2600,0.55],room:[0.2,0.09,3000,0.8],hall:[0.36,0.04,3600,1],shaft:[0.55,0.06,4400,0.9],quiet:[0.2,0.05,3200,0]};
-const SND_LV={full:0.3,quiet:0.1},SND_TC=0.35,RV_T=3.0,SND_BED=0.03;
-const SND_KEYS=['ctx','master','comp','out','rvS','conv','rvLP','slS','nb','zone','off','bedN','bedK','aB','ambS','tqN','amOn'];
+const SND_LV={full:0.3,quiet:0.1},SND_TC=0.35,RV_T=3.0,SND_BED=0.03,SND_NB=2.0; // (round 50h) SND_NB: the noise buffer's length s, looped by noise()
+const SND_KEYS=['ctx','master','comp','out','rvS','conv','rvLP','slS','nb','zone','off','bedN','bedK','aB','ambS','tqN','amOn','dB','dR','dl','tB','tR','tl','tk','rvIn'];
+// (round 50h) the captain's drum (`Snd.duel`, owner: "just a low drum"; "use just the drums"; "Carry to the last"): a large frame drum's
+// heartbeat, laid DUEL_LA s ahead on the audio clock (never the frame rate, hit stop or the catch-up), DUEL_BPM calm to +DUEL_UP tense; the
+// title's piece (`Snd.title`, owner: "B: the Nubian lyre", "Every time"): TITLE_B's rows [t, kind, ...] laid TITLE_LA s ahead, then its tail
+const DUEL_LA=0.15,DUEL_BPM=64,DUEL_UP=10,DUEL_IDLE=2.5,TITLE_LA=0.5,TITLE_END=27;
+const TN={D2:73.4,A2:110,D3:146.8,F3:174.6,G3:196,A3:220,C4:261.6,D4:293.7};
+const TITLE_B=(()=>{const E=[],air=(t,d,v)=>E.push([t,'air',d,v]);air(0,6,0.015);for(let t=0;t<24;t+=6)E.push([t,'drone',0.02]);
+  for(let i=0;i<12;i++){const t=1.5+i*1.5;E.push([t,'K',i%2?'A2':'D3',0.055+0.01*Math.sin(i*1.3),{rv:0.9,lp:1300}]);if(i%2===0)E.push([t,'dub',0.55,i]);} // the low D-A ostinato, a soft heartbeat on the D
+  for(const [t,n,v] of [[4.5,'D4',0.14],[5.1,'A3',0.12],[5.7,'F3',0.14],[9,'G3',0.11],[9.55,'A3',0.11],[10.1,'C4',0.12],[11,'A3',0.11], // the clock's motif, its answer on G-A-C-A
+    [13.5,'D4',0.13],[14.1,'A3',0.12],[14.7,'F3',0.13],[15.9,'G3',0.1],[16.5,'F3',0.1],[17.6,'D3',0.13]])E.push([t,'K',n,v,{}]); // the motif closing on G-F-D
+  E.push([17.63,'K','D2',0.09,{lp:1100}],[19.5,'fin',0.5,3],[23.5,'K','A3',0.06,{rv:1.4}],[24.4,'K','D3',0.07,{rv:1.4}]);air(15,10,0.012);
+  return E.sort((a,b)=>a[0]-b[0]);})();
 // (round 50d, B4) a footfall by what is under the foot: [the pat's lowpass Hz, its volume, its length s, the click's bandpass Hz, its Q, its
 // volume, the body's thump Hz, its volume, an extra layer]. Stone by the drawing's style (dungeon damp and dull, palace polished limestone,
 // tile glazed faience with a short tick, forge grit on a hot floor, crypt hard granite); then sand (a drift: a soft push and a hiss of grains),
@@ -2904,7 +2915,7 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
       this.ctx=new AC();this.build();}catch(e){this.ctx=null;}}
     if(this.ctx&&!this.hid&&this.ctx.state!=='running'&&this.ctx.state!=='closed')this.ctx.resume().catch(()=>{});}, // (also iOS's 'interrupted')
   build(){const c=this.ctx,sr=c.sampleRate;
-    const len=Math.floor(sr*0.8),b=c.createBuffer(1,len,sr),dd=b.getChannelData(0);for(let i=0;i<len;i++)dd[i]=Math.random()*2-1;this.nb=b;
+    const len=Math.floor(sr*SND_NB),b=c.createBuffer(1,len,sr),dd=b.getChannelData(0);for(let i=0;i<len;i++)dd[i]=Math.random()*2-1;this.nb=b;
     this.master=c.createGain();const k=this.comp=c.createDynamicsCompressor();k.threshold.value=-12;k.knee.value=10;k.ratio.value=3;k.attack.value=0.004;k.release.value=0.3;
     this.out=c.createGain();this.out.gain.value=this.lvl();this.master.connect(k);k.connect(this.out);this.out.connect(c.destination);
     const n=Math.floor(sr*RV_T),ir=c.createBuffer(2,n,sr); // the room's impulse: stereo noise decaying 60 dB over RV_T, a one-pole lowpass closing as it decays
@@ -2914,6 +2925,7 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
     this.slS=c.createGain();const d1=c.createDelay(0.1),d2=c.createDelay(0.1),sl=c.createBiquadFilter(),fb=c.createGain();d1.delayTime.value=0.017;d2.delayTime.value=0.029;sl.type='lowpass';sl.frequency.value=2200;fb.gain.value=0.32;
     this.master.connect(this.slS);this.slS.connect(d1);this.slS.connect(d2);d1.connect(sl);d2.connect(sl);sl.connect(fb);fb.connect(d1);sl.connect(k);
     this.aB=c.createGain();this.aB.connect(this.master);this.ambS=-1; // (round 50d) the ambience bus: the bed and the theme's one-shots, ducked under events
+    this.dB=c.createGain();this.dB.connect(this.master);this.dR=c.createGain();this.dR.connect(this.conv);this.dl=this.dl0();this.tl=this.tl0();this.tB=this.tR=null;this.tk=null;this.rvIn=null; // (round 50h) the drum's bus (one fade stops what is laid ahead)
     this.zone='';this.zoneNow('quiet');
     if(!this.off)setTimeout(()=>{try{for(const f of [293.7,220,174.6,146.8,73.4])this.ksBuf(f,f<100?4:3.5);}catch(e){}},0);}, // the motif's strings, made once
   lvl(){return S.set.sound?(S.set.sndQ?SND_LV.quiet:SND_LV.full):0;},
@@ -2935,22 +2947,22 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
     if(Math.abs(k-this.bedK)<0.02)return;this.bedK=k;this.bedN.g.gain.cancelScheduledValues(t);this.bedN.g.gain.setTargetAtTime(SND_BED*k,t,0.8);},
   tone(f,dur,o={}){if(!this.ok())return;const c=this.ctx,t=c.currentTime+(o.at||0),os=c.createOscillator(),g=c.createGain();
     os.type=o.type||'sine';os.frequency.setValueAtTime(f,t);if(o.to)os.frequency.exponentialRampToValueAtTime(o.to,t+dur);
-    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(o.vol||0.15,t+(o.att||0.006));g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    g.gain.value=0.0001;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(o.vol||0.15,t+(o.att||0.006));g.gain.exponentialRampToValueAtTime(0.0001,t+dur); // (round 50h: made at 0.0001, silent before its first event: no sample out at full gain)
     if(o.bp){const bp=c.createBiquadFilter();bp.type='bandpass';bp.frequency.value=o.bp;bp.Q.value=o.bq||1.2;os.connect(bp);bp.connect(g);}else os.connect(g); // (round 50c) a voice through its formant, not a bare wave
     this.route(g,o);os.start(t);os.stop(t+dur+0.03);},
   noise(dur,o={}){if(!this.ok())return;const c=this.ctx,t=c.currentTime+(o.at||0),src=c.createBufferSource(),fl=c.createBiquadFilter(),g=c.createGain();
-    src.buffer=this.nb;fl.type=o.type||'lowpass';fl.frequency.setValueAtTime(o.f||1200,t);if(o.to)fl.frequency.exponentialRampToValueAtTime(o.to,t+dur);fl.Q.value=o.q||0.8;
-    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(o.vol||0.15,t+(o.att||0.004));g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-    src.connect(fl);fl.connect(g);this.route(g,o);src.start(t,Math.random()*0.3);src.stop(t+dur+0.03);},
+    src.buffer=this.nb;src.loop=true;fl.type=o.type||'lowpass';fl.frequency.setValueAtTime(o.f||1200,t);if(o.to)fl.frequency.exponentialRampToValueAtTime(o.to,t+dur);fl.Q.value=o.q||0.8;
+    g.gain.value=0.0001;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(o.vol||0.15,t+(o.att||0.004));g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    src.connect(fl);fl.connect(g);this.route(g,o);src.start(t,Math.random()*(SND_NB-0.1));src.stop(t+dur+0.03);}, // (round 50h) the buffer loops: an N plays its whole length (it stopped at the 0.8 s buffer's end)
   // (round 50c) a plucked string (Karplus-Strong: a burst of noise round a delay line of one period, averaged each pass), lyre or harp;
   // each pitch's buffer is made once and kept
-  ksBuf(f,dur){const c=this.ctx,sr=c.sampleRate,key=sr+':'+f;if(!this.pk)this.pk=new Map();let b=this.pk.get(key);if(b)return b;
+  ksBuf(f,dur,nc){const c=this.ctx,sr=c.sampleRate,key=sr+':'+f;if(!this.pk)this.pk=new Map();let b=nc?null:this.pk.get(key);if(b)return b; // (round 50h) nc: made for the caller alone, not kept
     const n=Math.ceil(sr*dur),P0=Math.round(sr/f),q=new Float32Array(P0);b=c.createBuffer(1,n,sr);const d=b.getChannelData(0);
     let s=(f*1000)|0;const rnd=()=>{s=(s*1664525+1013904223)>>>0;return s/2147483648-1;};for(let i=0;i<P0;i++)q[i]=rnd()*(0.5+0.5*Math.sin(i/P0*Math.PI));
-    let j=0;for(let i=0;i<n;i++){const a=q[j],bq=q[(j+1)%P0];q[j]=0.4985*(a+bq);d[i]=a;j=(j+1)%P0;}this.pk.set(key,b);return b;},
+    let j=0;for(let i=0;i<n;i++){const a=q[j],bq=q[(j+1)%P0];q[j]=0.4985*(a+bq);d[i]=a;j=(j+1)%P0;}if(!nc)this.pk.set(key,b);return b;},
   pluck(f,dur,vol,o={}){if(!this.ok())return;const c=this.ctx,t=c.currentTime+(o.at||0),s=c.createBufferSource(),lp=c.createBiquadFilter(),g=c.createGain();
-    lp.type='lowpass';lp.frequency.value=o.lp||2600;g.gain.value=vol;s.buffer=this.ksBuf(f,dur);s.connect(lp);lp.connect(g);this.route(g,o);s.start(t);},
-  route(g,o){g.connect(this.dst||(this.amOn?this.aB:this.master));if(o.rv){const s=this.ctx.createGain();s.gain.value=o.rv;g.connect(s);s.connect(this.conv);}},
+    lp.type='lowpass';lp.frequency.value=o.lp||2600;g.gain.value=vol;s.buffer=o.buf||this.ksBuf(f,dur);s.connect(lp);lp.connect(g);this.route(g,o);s.start(t);},
+  route(g,o){g.connect(this.dst||(this.amOn?this.aB:this.master));if(o.rv){const s=this.ctx.createGain();s.gain.value=o.rv;g.connect(s);s.connect(this.rvIn||this.conv);}}, // (round 50h: rvIn, the title's own send, so one fade covers it)
   // (round 49a) a sound from where it is in the keep, heard from the prince: panned by its side (StereoPanner), quieter with distance and
   // muffled (a lowpass) the farther it is and the more storeys of stone lie between; a pure routing of play(n)'s tones and noises
   playAt(n,x,y,a){if(!this.ok()||!P)return;const dx=x-P.x,dy=y-(P.y-30),st=Math.abs(Math.round(dy/TH)),d=Math.hypot(dx,dy*1.6);
@@ -3031,6 +3043,8 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
         else if(how==='at'){const st=Math.abs(Math.round(dy/TH)),d=Math.hypot(dx,dy*1.6);this.posPlay(n,a,dx,clamp(1.15-d/900,0.35,1),clamp(9000/(1+d/220)/(1+0.7*st),380,12000));}
         else this.play(n,a);this.atOff=0;}
       if(o.bed)this.bed(SND_Z[z||'room'][3]);
+      if(o.duel)for(const [t,st] of o.duel)this.duel(st,t); // (round 50h) the duel's states by time (s), as duelState gave them a frame
+      if(o.title){for(let t=0;t<dur;t+=1/60)this.title(t<o.title,t);} // (round 50h) the title shown o.title s (then left: the fade)
       if(o.amb){const k=o.amb.k===undefined?SND_Z[z||'room'][3]:o.amb.k;for(let q=1;q*AMB_SL<dur-0.5;q++)this.ambSlot(q+(o.amb.q0|0),q*AMB_SL,k,o.amb.look);}
       const b=await c.startRendering(),L0=b.getChannelData(0),R0=b.getChannelData(1);let pk=0,ss=0,nan=0;
       for(let i=0;i<L0.length;i++){const a=L0[i],r=R0[i];if(a!==a||r!==r){nan++;continue;}const m=Math.max(Math.abs(a),Math.abs(r));if(m>pk)pk=m;ss+=a*a+r*r;}
@@ -3054,7 +3068,7 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
       case'slither':N(0.45,{vol:0.012,f:3800,type:'bandpass',q:0.7,att:0.15});N(0.3,{vol:0.005,f:6000,type:'highpass',att:0.1,at:0.1});break; // (round 50d) scales over stone
       // (round 50d, B3) the themes' ambience: quiet, positional, ducked under events
       case'plunk':{const f=700+300*Math.random();T(f,0.12,{to:f*0.7,vol:0.02,rv:0.4});T(f*2.1,0.08,{vol:0.005,rv:0.4});N(0.06,{vol:0.004,f:1200,type:'bandpass',q:2,at:0.01});}break; // a drop into standing water
-      case'forge':N(3.2,{vol:0.045,f:160,to:240,att:1.2,rv:0.5});N(2.4,{vol:0.01,f:900,type:'bandpass',q:0.5,att:0.8,at:0.5,rv:0.4});T(46,3,{vol:0.02,att:1.2});break; // a far furnace's roar swelling and falling
+      case'forge':N(3.2,{vol:0.036,f:160,to:240,att:1.2,rv:0.5});N(2.4,{vol:0.008,f:900,type:'bandpass',q:0.5,att:0.8,at:0.5,rv:0.4});T(46,3,{vol:0.02,att:1.2});break; // a far furnace's roar swelling and falling (round 50h: its roar x0.8, heard whole now)
       case'bellows':N(1.1,{vol:0.016,f:1400,to:700,type:'bandpass',q:0.8,att:0.35,rv:0.4});N(0.6,{vol:0.006,f:4500,type:'highpass',att:0.2,at:0.9});break; // a far bellows' breath and the hiss of the fire it feeds
       case'whistle':{const f0=640+300*Math.random();N(2.6,{vol:0.035,f:f0,to:f0*1.18,type:'bandpass',q:22,att:1});N(2.2,{vol:0.008,f:f0*2.02,to:f0*2.3,type:'bandpass',q:25,att:0.9,at:0.2});N(2.8,{vol:0.008,f:500,type:'bandpass',q:0.6,att:1});}break; // the wind in a slit: a pitched breath, no tone
       case'settle':N(0.5,{vol:0.04,f:240,to:120,rv:0.5});T(55,0.4,{to:40,vol:0.02});for(let i=0;i<8;i++)N(0.02,{vol:0.008*(1-i/10),f:2600+500*Math.sin(i*2.3),type:'bandpass',q:2,at:0.1+i*0.05});break; // stone settling somewhere, a little grit after it
@@ -3152,7 +3166,7 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
         for(const [d,f0,v] of [[0,430,0.05],[0.22,520,0.032]]){const t=t0+d,os=c.createOscillator(),lf=c.createOscillator(),lg=c.createGain(),bp=c.createBiquadFilter(),lp=c.createBiquadFilter(),g=c.createGain();
           os.type='sawtooth';os.frequency.setValueAtTime(f0,t);os.frequency.exponentialRampToValueAtTime(f0*1.75,t+0.45);os.frequency.setValueAtTime(f0*1.75,t+1.0);os.frequency.exponentialRampToValueAtTime(f0*1.2,t+1.7);
           lf.frequency.value=5.2;lg.gain.value=f0*0.03;lf.connect(lg);lg.connect(os.frequency);bp.type='bandpass';bp.frequency.value=f0*2;bp.Q.value=1.4;lp.type='lowpass';lp.frequency.value=1500;
-          g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(v,t+0.25);g.gain.setValueAtTime(v,t+1.1);g.gain.exponentialRampToValueAtTime(0.0001,t+1.8);
+          g.gain.value=0.0001;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(v,t+0.25);g.gain.setValueAtTime(v,t+1.1);g.gain.exponentialRampToValueAtTime(0.0001,t+1.8);
           os.connect(bp);bp.connect(lp);lp.connect(g);g.connect(this.master);os.start(t);lf.start(t);os.stop(t+1.85);lf.stop(t+1.85);}}break;
       case'swing':N(0.07,{vol:0.045,f:330,type:'bandpass',q:7});N(0.09,{vol:0.04,f:290,type:'bandpass',q:7,at:0.06});break;
       case'swbeat':{const k=SWB.k,a=SWB.arm,f=1+0.18*k+0.22*a;N(0.07,{vol:0.022+0.012*k+0.006*a,f:330*f,type:'bandpass',q:7});N(0.09,{vol:0.018+0.012*k+0.006*a,f:290*f,type:'bandpass',q:7,at:0.06});
@@ -3169,7 +3183,7 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
       case'earthstep':N(0.055,{vol:0.035,f:640});T(92,0.06,{to:60,vol:0.024});N(0.03,{vol:0.008,f:2200,type:'bandpass',q:0.8,at:0.01});break; // (round 36c) the garden: a footfall on a beaten earth path, a dull pat and a little grit
       case'earthrun':N(0.05,{vol:0.045,f:760});T(100,0.05,{to:64,vol:0.028});N(0.03,{vol:0.012,f:2400,type:'bandpass',q:0.8,at:0.01});break;
       case'rustle':N(0.55,{vol:0.016,f:3000,type:'bandpass',q:0.5,att:0.22});N(0.4,{vol:0.009,f:5200,type:'bandpass',q:0.7,att:0.15,at:0.12});break; // (round 36c) grain or papyrus stirring
-      case'breeze':N(2.8,{vol:0.045,f:2200,type:'bandpass',q:0.45,att:1.0});N(2.2,{vol:0.03,f:4300,type:'bandpass',q:0.6,att:0.8,at:0.5});N(1.6,{vol:0.02,f:900,type:'bandpass',q:0.5,att:0.6,at:0.3});break; // (round 36c) the beat: a breeze running through the grain or the reeds
+      case'breeze':N(2.8,{vol:0.025,f:2200,type:'bandpass',q:0.45,att:1.0});N(2.2,{vol:0.016,f:4300,type:'bandpass',q:0.6,att:0.8,at:0.5});N(1.6,{vol:0.011,f:900,type:'bandpass',q:0.5,att:0.6,at:0.3});break; // (round 50h: x0.55, heard whole now: its peak as before) // (round 36c) the beat: a breeze running through the grain or the reeds
       case'heron':T(310,0.24,{to:190,vol:0.045,type:'sawtooth',bp:800,bq:1.6});N(0.22,{vol:0.03,f:850,type:'bandpass',q:2.2});for(let i=0;i<6;i++)N(0.09,{vol:0.04*(1-i/8),f:380,type:'bandpass',q:0.9,at:0.42+i*0.31});break; // (round 36c) a grey heron lifting off: its harsh croak, slow deep wingbeats
       case'ducks':[0,0.12,0.3,0.45,0.7].forEach((a,i)=>{const f0=[600,540,620,560,580][i];T(f0,0.08,{to:f0*0.72,vol:0.045,type:'sawtooth',bp:f0*1.8,bq:3,at:a});});for(let i=0;i<20;i++)N(0.04,{vol:0.04*(1-i/24),f:1100,type:'bandpass',q:0.8,at:0.04+i*0.055});break; // (round 36c) ducks bursting out of the papyrus: quacks, a whirr of fast wings
       case'duckcall':T(560,0.08,{to:410,vol:0.03,type:'sawtooth',bp:1000,bq:3});T(540,0.08,{to:400,vol:0.026,type:'sawtooth',bp:980,bq:3,at:0.16});break;
@@ -3189,6 +3203,74 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
   // (unit ST) the storm's low rumble while it chases: filtered noise and a deep hum, rising as it nears (k 0..1); k 0, the sound
   // setting off or a suspended context let it die away
   // (round 36a) the crossing's wind: looped noise through a bandpass that rises with it, over a low roar; k 0 lets it die away fast
+  // (round 50h) the captain's drum: a large frame drum (the Egyptian and Kushite tar), struck in the centre. A stroke is a membrane's first
+  // three modes (1 : 1.59 : 2.14) as short sines gliding down as the skin relaxes, the skin's thud, the shell's boom in bands at 240 and 380
+  // Hz (what a phone's speaker carries) and the hand's slap; kind dum|dub|tek|fin|far, v its weight, b the stroke's count (each a little
+  // different). N and T add the stroke's own time (drumAt); the caller sets dst (the drum's bus dB, the title's tB).
+  drum(kind,v,b,N,T){const f=1+0.015*Math.sin(b*2.3);v*=1+0.08*Math.sin(b*3.7);
+    switch(kind){
+      case'dum':{const f0=57*f;T(f0,0.85,{to:f0*0.72,vol:0.038*v,att:0.004,rv:0.35});T(f0*1.59,0.32,{to:f0*1.27,vol:0.014*v,att:0.003,rv:0.35});T(f0*2.14,0.18,{to:f0*1.82,vol:0.008*v,att:0.003});
+        N(0.07,{vol:0.03*v,f:300,att:0.002,rv:0.3});N(0.14,{vol:0.4*v,f:240*f,type:'bandpass',q:2.2,att:0.003,rv:0.3});N(0.08,{vol:0.12*v,f:380*f,type:'bandpass',q:3,att:0.003,rv:0.25});N(0.04,{vol:0.07*v,f:520,type:'bandpass',q:1.1,att:0.002});break;}
+      case'dub':{const f0=61*f;T(f0,0.5,{to:f0*0.75,vol:0.03*v,att:0.004,rv:0.3});T(f0*1.59,0.2,{to:f0*1.3,vol:0.009*v,att:0.003,rv:0.3});
+        N(0.06,{vol:0.018*v,f:210,att:0.002,rv:0.25});N(0.1,{vol:0.25*v,f:260*f,type:'bandpass',q:2.2,att:0.003,rv:0.25});N(0.035,{vol:0.05*v,f:560,type:'bandpass',q:1.1,att:0.002});break;}
+      case'tek':N(0.035,{vol:0.07*v,f:1100*f,type:'bandpass',q:1.4,att:0.002,rv:0.4});T(196*f,0.08,{to:150*f,vol:0.008*v,att:0.002,rv:0.3});N(0.05,{vol:0.07*v,f:330,type:'bandpass',q:2,att:0.002});break; // the fingers at the rim
+      case'fin': // the last stroke: a grace stroke, then struck full in the centre, the skin let ring, the shell's rumble dying
+        T(52,2.8,{to:33,vol:0.08*v,att:0.004,at:0.06,rv:0.9});T(83,1.3,{to:60,vol:0.026*v,att:0.003,at:0.06,rv:0.9});T(111,0.7,{to:85,vol:0.012*v,att:0.003,at:0.06,rv:0.6});
+        N(0.14,{vol:0.05*v,f:200,att:0.002,at:0.06,rv:0.8});N(0.26,{vol:0.45*v,f:250,type:'bandpass',q:2.2,att:0.003,at:0.06,rv:0.8});N(0.12,{vol:0.13*v,f:420,type:'bandpass',q:3,att:0.003,at:0.06,rv:0.6});N(0.05,{vol:0.06*v,f:600,type:'bandpass',q:1,att:0.002,at:0.06});
+        N(3.2,{vol:0.012*v,f:120,to:55,att:0.08,at:0.08,rv:0.6});
+        T(57,0.4,{to:42,vol:0.016*v,att:0.004});N(0.05,{vol:0.01*v,f:190,att:0.002});N(0.06,{vol:0.14*v,f:240,type:'bandpass',q:2.2,att:0.002});break;
+      case'far': // the title's far stroke: struck once, heard mostly as the hall's answer
+        T(55,2.2,{to:38,vol:0.018*v,att:0.006,rv:1.6});T(87,0.8,{to:66,vol:0.005*v,att:0.004,rv:1.4});N(0.12,{vol:0.012*v,f:160,att:0.003,rv:1.5});N(0.16,{vol:0.1*v,f:240,type:'bandpass',q:2.2,rv:1.4});break;}},
+  // a stroke at the audio clock's time T0 (s), through dst as the caller set it
+  drumAt(kind,v,b,T0){const at=Math.max(0,T0-this.ctx.currentTime);this.drum(kind,v,b,(d,o)=>{o.at=(o.at||0)+at;this.noise(d,o);},(f,d,o)=>{o.at=(o.at||0)+at;this.tone(f,d,o);});},
+  duelAt(kind,v,b,T0){const k=this.dst,r=this.rvIn;this.dst=this.dB;this.rvIn=this.dR;try{this.drumAt(kind,v,b,T0);}finally{this.dst=k;this.rvIn=r;}}, // (dB dry, dR its sends: one fade stops both)
+  // the duel (st from duelState each frame; null: paused, the title, the card, the crossing, a rewind; now: the audio clock, or the offline
+  // render's time): the beat laid DUEL_LA ahead (Chris Wilson's "A Tale of Two Clocks"), its tempo eased toward the tension k; a new fight
+  // (st.key: a new floor, a rewind's new guards) starts afresh, the first four beats softer; st.fin the last foe down: one last stroke, 0.42 s
+  // on (with guardDie's thud), only if it was beating; anything else stops it with a 50 ms fade of dB, no last stroke
+  dl:{nt:-1,b:0,kE:0,n:0,key:null},
+  dl0(){return {nt:-1,b:0,kE:0,n:0,key:null};},
+  duel(st,now){if(!this.ctx||!this.dB)return;const D=this.dl;if(now===undefined){if(this.off)return;now=this.ctx.currentTime;} // (an offline render passes its own time; the frame loop keeps out of it)
+    if(!st||!this.ok()){if(D.nt>=0)this.duelCut(now);D.nt=-1;D.key=null;return;}
+    if(st.key!==D.key){if(D.nt>=0)this.duelCut(now);D.nt=-1;D.key=st.key;}
+    if(st.fin){if(D.nt>=0){this.duelOn(now);this.duelAt('fin',1,D.b,now+0.42);}D.nt=-1;return;}
+    if(!st.on){if(D.nt>=0)this.duelCut(now);D.nt=-1;return;}
+    if(D.nt<0){D.nt=now+0.25;D.b=0;D.n=0;D.kE=st.k;this.duelOn(now);}
+    while(D.nt<now+DUEL_LA){D.kE+=(st.k-D.kE)*0.35;const P=60/(DUEL_BPM+DUEL_UP*D.kE),ent=Math.min(1,0.45+0.2*D.n);this.duelBeat(D.nt,D.b,P,D.kE,ent);D.nt+=P;D.b++;D.n++;}},
+  duelOn(now){for(const g of [this.dB,this.dR]){g.gain.cancelScheduledValues(now);g.gain.setValueAtTime(1,now);}},
+  duelCut(now){for(const g of [this.dB,this.dR]){g.gain.cancelScheduledValues(now);g.gain.setTargetAtTime(0.0001,now,0.05);}}, // what was laid ahead dies in ~0.15 s
+  duelBeat(T,b,P,ke,ent){const v=ent*(1+0.2*ke),h=0.008*Math.sin(b*4.1);
+    if(b%16===15&&ke>0.3){this.duelAt('dum',v,b,T+h);this.duelAt('dum',v*0.8,b+1,T+0.5*P);return;} // a doubled stroke now and then when tense
+    this.duelAt('dum',v,b,T+h);
+    if(b%8===7){this.duelAt('tek',v*0.7,b,T+0.47*P);this.duelAt('tek',v*0.55,b+3,T+0.72*P);return;} // the sparse fill
+    this.duelAt('dub',v*0.5,b,T+0.27-0.04*ke); // the heartbeat's second stroke
+    if(ke>0.45&&(b&1))this.duelAt('tek',v*(0.25+0.45*ke),b+7,T+0.5*P+0.06);}, // ghost knocks as it tightens
+  // (round 50h) the title's piece, B "the Nubian lyre" (D minor pentatonic over a D-A ostinato): every time the title shows the whole piece
+  // (TITLE_B, laid TITLE_LA ahead), then its tail while it stays (the air every 8 s, a far stroke every 11-16 s); on its own pair of gains,
+  // tB (dry, into master) and tR (its sends into the room), so one fade covers both; its strings made at its start for it alone (tk) and let
+  // go when the table ends. Off stops it (the tail only when Sound comes back); a hidden page's suspended clock holds it where it was.
+  tl:{t0:-1,i:0,full:true,nA:0,nF:0,q:0},
+  tl0(){return {t0:-1,i:0,full:true,nA:0,nF:0,q:0};},
+  title(on,now){if(!this.ctx||!this.dB)return;const T=this.tl;if(now===undefined){if(this.off)return;now=this.ctx.currentTime;}
+    if(!on||!S.set.sound){if(T.t0>=0)this.titleStop(now);T.t0=-1;T.full=!on;return;}
+    if(!this.ok())return;
+    if(T.t0<0){const c=this.ctx;this.tB=c.createGain();this.tR=c.createGain();this.tB.connect(this.master);this.tR.connect(this.conv);
+      T.t0=now+0.2;T.i=T.full?0:TITLE_B.length;T.nA=T.full?TITLE_END:0;T.nF=T.full?TITLE_END+7:4;T.q=0;
+      if(T.full){this.tk=new Map();for(const n in TN){const f=TN[n];this.tk.set(f,this.ksBuf(f,f<120?5:4.5,true));}}}
+    const lim=now+TITLE_LA-T.t0,k=this.dst,r=this.rvIn;this.dst=this.tB;this.rvIn=this.tR;
+    try{while(T.i<TITLE_B.length&&TITLE_B[T.i][0]<lim){const e=TITLE_B[T.i++];this.titleEv(e,T.t0+e[0]);}
+      if(this.tk&&T.i>=TITLE_B.length)this.tk=null; // (the strings already sounding keep their buffers)
+      if(lim>=TITLE_END||!T.full){while(T.nA<lim){this.titleEv([0,'air',9,0.010],T.t0+T.nA);T.nA+=8;}
+        while(T.nF<lim){this.titleEv([0,'far',0.8,T.q],T.t0+T.nF);T.nF+=11+5*Math.abs(Math.sin(T.q*2.9+1));T.q++;}}}
+    finally{this.dst=k;this.rvIn=r;}},
+  titleEv(e,T0){const at=Math.max(0,T0-this.ctx.currentTime);
+    switch(e[1]){
+      case'air':{const d=e[2],v=e[3];this.noise(d,{vol:v,f:260,att:d*0.4,at,rv:0.6});this.noise(d*0.8,{vol:v*0.3,f:900,to:600,type:'bandpass',q:0.5,att:d*0.35,at:at+0.4,rv:0.6});break;}
+      case'drone':this.tone(73.4,9,{vol:e[2],att:3.5,at,rv:0.9});this.tone(110,8,{vol:e[2]*0.55,att:3.8,at:at+1.2,rv:0.9});break; // an open fifth swelling and sagging
+      case'K':{const f=TN[e[2]];this.pluck(f,f<120?5:4.5,e[3],Object.assign({at,rv:1.1,lp:f<160?1700:2600,buf:this.tk&&this.tk.get(f)},e[4]));break;}
+      default:this.drumAt(e[1],e[2],e[3],T0);}},
+  titleStop(now){const a=this.tB,b=this.tR;if(a){for(const g of [a,b]){g.gain.cancelScheduledValues(now);g.gain.setTargetAtTime(0.0001,now,0.25);}
+      if(!this.off)setTimeout(()=>{try{a.disconnect();b.disconnect();}catch(e){}},2000);}this.tB=this.tR=null;this.tk=null;},
   wnd:null,wndK:-1,
   wind(k){if(!this.ctx)return;const on=k>0.001&&this.ok(),c=this.ctx,t=c.currentTime;
     if(!on){if(this.wnd){const h=this.wnd;this.wnd=null;this.wndK=-1;h.g.gain.cancelScheduledValues(t);h.g.gain.setTargetAtTime(0,t,0.06);setTimeout(()=>{try{h.src.stop();h.g.disconnect();}catch(e){}},700);}return;}
@@ -5005,7 +5087,7 @@ function update(dt){
     // with no clear floor ahead of him yet they wait for some (never behind him), and give up after a while
     const sg=q.src,s=Math.abs(P.y-SURF(pRow()))<1?dropSpot(sg.side||1,true):null;
     if(!s){if(gameTime>q.at+8)pendingGuards.splice(i,1);continue;}
-    pendingGuards.splice(i,1);spawnDrop(s,pRow(),sg.maxHp,sg.tier);}
+    pendingGuards.splice(i,1);const ng=spawnDrop(s,pRow(),sg.maxHp,sg.tier);if(sg.cap||sg.capR)ng.capR=1;} // (round 50h) the captain's reinforcement: the drum carries on to him
   updateFX(dt);updateLook(dt);updateLookFx(dt);updateAmbient(dt);
   updateCamera(dt);updateCtlThin(dt);
   if(banner){banner.t+=dt;if(banner.t>=banner.dur)banner=null;}
@@ -15132,6 +15214,9 @@ $('bContinue').onclick=()=>{Snd.unlock();hideAll();startLevel(S.level,S.cp);appl
 $('bNew').onclick=()=>{Snd.unlock();if(S.started){show('confirm');return;}beginNew();};
 function beginNew(){S=newSave(S);S.started=true;writeSave();hideAll();startLevel(1,-1,true);wake(true);}
 $('bConfirmYes').onclick=beginNew;
+// (round 50h) a first touch anywhere on the title and its screens wakes the sound (iOS and Chrome start an AudioContext only from a gesture), so
+// the title's piece can begin after the first tap on a fresh load; Continue and New run leave the title in the same tap
+document.addEventListener('pointerdown',()=>{if(mode==='title')Snd.unlock();},true);
 $('bConfirmNo').onclick=()=>show('title');
 $('bHowT').onclick=()=>{howReturn='title';show('how');};
 $('bHowP').onclick=()=>{howReturn='pause';show('how');};
@@ -15211,12 +15296,33 @@ function loop(ts){
     Snd.rumble(stormNear()); // (unit ST)
     Snd.wind(windSnd()); // (round 44)
     Snd.env(sndZone()); // (round 50c) the room's sound
+    Snd.duel(duelState(dt));Snd.title(false); // (round 50h) the captain's drum
     frame++;if(S.set.saver&&(frame&1))return;{const iv=(ts-GLP.lastR)/(S.set.saver?2:1);if(GLP.lastR&&iv<250){glTime(iv);PF.iv0=iv;}GLP.lastR=ts;}const b0=roomBuilds,mz=PF.on||BENCH.run,r0=mz?performance.now():0;if(PF.on){try{renderAt(acc/STEP);}catch(e){const m=String(e&&e.message||e).slice(0,60)+' ('+PF.cur+')';if(m!==PF.err)console.log('prof step '+PF.cur+': '+(e&&e.stack||e));PF.err=m;}}else renderAt(acc/STEP);if(PF.on){PF.a.update=PF.upd;pfFrame(PF.upd+performance.now()-r0,PF.iv0||0);}if(BENCH.run)benchFrame(PF.iv0||0,PF.upd+performance.now()-r0);idleFrames=0;drawBuilds+=roomBuilds-b0;if(roomBuilds===b0)roomWork();}
   else if(mode==='cross'&&CR){acc+=dt;let n=0;const u0=performance.now();while(acc>=STEP&&n<6&&CR){acc-=STEP;n++;crossStep(STEP);}if(n>=6)acc=0; // (round 36a) the crossing: its own step and picture
-    Snd.rumble(0);Snd.env('cross');if(!CR)return;crossSound(CR);CR.us=performance.now()-u0;
+    Snd.rumble(0);Snd.env('cross');Snd.duel(null);Snd.title(false);if(!CR)return;crossSound(CR);CR.us=performance.now()-u0;
     frame++;if(S.set.saver&&(frame&1))return;const b0=roomBuilds;render();idleFrames=0;if(roomBuilds===b0&&CR&&CR.t>CROSS_FIN)roomWork();} // (the next floor's first rooms are built meanwhile)
-  else{acc=0;GLP.lastR=0;Snd.rumble(0);Snd.wind(0);Snd.env('quiet');if(++idleFrames%20===0)render();}
+  else{acc=0;GLP.lastR=0;Snd.rumble(0);Snd.wind(0);Snd.env('quiet');Snd.duel(null);Snd.title(mode==='title'&&!BENCH.run);if(++idleFrames%20===0)render();} // (round 50h) the title's piece
 }
+
+// (round 50h) the captain's duel for the drum (owner: "Carry to the last"): the fight is the captain, his reinforcement (capR) and any other
+// guard that takes the prince on while it beats (never a skeleton: it cannot fall). It starts when the captain (or, after a rewind, his
+// reinforcement) is in garde or the prince's foe, holds DUEL_IDLE s through a break and while a reinforcement is still to drop in, and its
+// last stroke comes when the last of them falls. The prince's death, the exit and the entry stop it (the death cue's own drum closes it).
+// k, its tension: 0.8 the prince at his last heart, 0.6 the foe at his, 1 both. Nothing of it is in a snapshot: rewind-safe by design.
+const DUEL_ST=new Set(['garde','advance','retreat','strike','parry','blocked','hurt']),DUEL={key:null,mem:[],was:[],dieT:-9,idle:0};
+function duelEng(g){return g.alive&&!g.skel&&(P.foe===g||DUEL_ST.has(g.state));}
+function duelK(g){const pl=P.hp<=1&&S.maxHp>1,cl=!!g&&g.hp<=1;return pl&&cl?1:Math.max(pl?0.8:0,cl?0.6:0);}
+function duelState(dt){if(mode!=='play'||!P||!L||!G.length)return null;const D=DUEL,beat=Snd.dl.nt>=0;
+  if(D.key!==G){D.key=G;D.mem.length=0;D.was.length=0;D.dieT=-9;D.idle=0;}
+  for(const g of G)if(!g.skel&&(g.cap||g.capR||(beat&&duelEng(g)))&&D.mem.indexOf(g)<0){D.mem.push(g);D.was.push(g.alive);}
+  if(!D.mem.length)return null;
+  let alive=0,foe=null;
+  for(let i=0;i<D.mem.length;i++){const g=D.mem[i];if(D.was[i]&&!g.alive)D.dieT=gameTime;D.was[i]=g.alive;if(g.alive){alive++;if(duelEng(g)&&(!foe||P.foe===g))foe=g;}}
+  const pend=pendingGuards.some(q=>q.src&&(q.src.cap||q.src.capR));
+  if(!alive&&!pend){const f=gameTime-D.dieT<0.25?1:0;D.dieT=-9;return {key:G,fin:f,on:false,k:0};} // (the last stroke asked once)
+  if(P.state==='dead'||P.state==='exit'||P.state==='enter')return {key:G,on:false,k:0};
+  D.idle=foe?0:D.idle+(dt||STEP);
+  return {key:G,on:!!foe||(beat&&(pend||D.idle<DUEL_IDLE)),k:duelK(foe)};}
 
 // ================= boot =================
 function previewTitle(){L=genLevel(S.level,levelSeed(S.level),false,S.level===S.legacyFloor);G=L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;cam.snap=true;updateCamera(0);clearRooms();}
@@ -15234,7 +15340,7 @@ addEventListener('orientationchange',()=>setTimeout(layout,120));
 if(window.claude&&window.claude.hot&&window.claude.hot.snapshot){try{window.claude.hot.snapshot(()=>({save:S}));}catch(e){}}
 
 // test hooks
-window.__HK={CUE,WEAR,wearList:()=>wearList(),wearFloor:(g,X,ys,c,r)=>wearFloor(g,X,ys,c,r,L.theme),wearFace:(g,fx,Y,c,r)=>wearFace(g,fx,Y,c,r,L.theme),WG_D,WB_DR,WB_HR,TELL,tellKind:()=>tellKind(),GRIT,gritList:()=>gritList(),SWB,GCUE,GC_D,GC_SH,GC_LT,gateCue,gcue,gcueListen,GLN:{on:false,n:0,off:false},glanceAt(){},glanceEnd(){},GL_T:0,Snd,footSurf:(x,y,me)=>footSurf(x,y,me),SND_SURF,TELL_CAP,TELL_R,AMB_T,themeOf:n=>themeOf(n),chimFoot:(c,r)=>chimFoot(c,r),chimH:n=>chimH(n),CHM:()=>({G0:CHM_G0,GS:CHM_GS,YD:CHM_YD,YP:CHM_YP,YC:CHM_YC,YX:CHM_YX,IN_T:CHM_IN_T}),die:c=>die(c),openingsIn,windLull,windReach,windJumpE,windPeak,windZoneAt,windEase,ctJambsOf,jambKind,startRewind,get windDeaths(){return S.windDeaths;},placeCourts,ctIn,ctPoolHit,CTB,ctBake,ctKindOf,get courts(){return L.courts;},windAt,windE,windCap,windGust,WIND_MS,WIND_GP,WIND_DE,WIND_JM,WIND_G0,WIND_PUSH,WIND_P,WIND_CDA,WIND_GT,plainRuns,keyLight,hillOn,hillTop,hillH,hillCanvas,hillBox,hillSil,hillSegs,hillEnd,hillMeshTop,HILL_DBG,HILL_WADE,HILL_CLIMB,get frameLights(){return frameLights;},jetPlaces,jsSwingPath,jetStream,tapCloth,THEMES,progOf,themeName,learn,LEARN_IDS,HINTS:Object.fromEntries(LEARN_IDS.map(id=>[id,1])),HINT_MOVE:new Set(LEARN_IDS),get banner(){return banner;},set banner(v){banner=v;},genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
+window.__HK={CUE,WEAR,wearList:()=>wearList(),wearFloor:(g,X,ys,c,r)=>wearFloor(g,X,ys,c,r,L.theme),wearFace:(g,fx,Y,c,r)=>wearFace(g,fx,Y,c,r,L.theme),WG_D,WB_DR,WB_HR,TELL,tellKind:()=>tellKind(),GRIT,gritList:()=>gritList(),SWB,GCUE,GC_D,GC_SH,GC_LT,gateCue,gcue,gcueListen,GLN:{on:false,n:0,off:false},glanceAt(){},glanceEnd(){},GL_T:0,Snd,duelState:dt=>duelState(dt),DUEL,TITLE_B,DUEL_BPM,DUEL_UP,goTitle:()=>goTitle(),footSurf:(x,y,me)=>footSurf(x,y,me),SND_SURF,TELL_CAP,TELL_R,AMB_T,themeOf:n=>themeOf(n),chimFoot:(c,r)=>chimFoot(c,r),chimH:n=>chimH(n),CHM:()=>({G0:CHM_G0,GS:CHM_GS,YD:CHM_YD,YP:CHM_YP,YC:CHM_YC,YX:CHM_YX,IN_T:CHM_IN_T}),die:c=>die(c),openingsIn,windLull,windReach,windJumpE,windPeak,windZoneAt,windEase,ctJambsOf,jambKind,startRewind,get windDeaths(){return S.windDeaths;},placeCourts,ctIn,ctPoolHit,CTB,ctBake,ctKindOf,get courts(){return L.courts;},windAt,windE,windCap,windGust,WIND_MS,WIND_GP,WIND_DE,WIND_JM,WIND_G0,WIND_PUSH,WIND_P,WIND_CDA,WIND_GT,plainRuns,keyLight,hillOn,hillTop,hillH,hillCanvas,hillBox,hillSil,hillSegs,hillEnd,hillMeshTop,HILL_DBG,HILL_WADE,HILL_CLIMB,get frameLights(){return frameLights;},jetPlaces,jsSwingPath,jetStream,tapCloth,THEMES,progOf,themeName,learn,LEARN_IDS,HINTS:Object.fromEntries(LEARN_IDS.map(id=>[id,1])),HINT_MOVE:new Set(LEARN_IDS),get banner(){return banner;},set banner(v){banner=v;},genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
   load(n,seed,test){clearInput();quiet=!!test;gcueClear();L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;mode="play";intro=0;FX.length=0;STORMG.length=0;clearRooms();cam.snap=true;updateCamera(0);return L;},
   loadMap(spec){return spec;},
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},

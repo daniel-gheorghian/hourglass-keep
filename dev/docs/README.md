@@ -103,6 +103,18 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
 
+## What round 50h found
+
+Round 50h (owner on round 50h's prototypes: the duel "just a low drum", "use just the drums, I didn't like the other variant", "Carry to
+the last"; the title "B: the Nubian lyre", "Every time") ([gameplay](gameplay.md#the-captains-drum-the-titles-piece-long-noises-whole-round-50h)).
+
+| Finding | Where | Round 50h | Seen in |
+|---|---|---|---|
+| Every noise longer than ~0.5-0.8 s stopped part way: its 0.8 s buffer played once from up to 0.3 s in (the slit's whistle nearly silent, the Crossing's breeze a third of its length) | `Snd.noise`, `Snd.build` | a 2 s buffer, looped, from a random point: every `N` its whole length; the breeze x0.55 and the forge's roar x0.8 so their peaks stay where they were heard | [gameplay](gameplay.md#the-captains-drum-the-titles-piece-long-noises-whole-round-50h) |
+| A cue could click at its start: a new gain is 1 until its first event, so a start a sample early sent one sample at full level (0.06-0.19) | `Snd.tone`, `Snd.noise`, `howl` | the gain made at 0.0001 | [gameplay](gameplay.md#the-captains-drum-the-titles-piece-long-noises-whole-round-50h) |
+| A captain's duel sounded as any fight | `loop`, `Snd` | the frame drum's heartbeat on the audio clock (`Snd.duel`, `duelState`), tighter as either side nears his end, carried through the captain's reinforcement to one last stroke on the last fall; nothing else added | [guards and snakes](elements/guards-and-snakes.md) |
+| The title was silent, and could not sound before a touch on a fresh load | `#title` | the Nubian lyre's piece every time the title shows, then its sparse tail; a first touch on the title wakes the sound; faded when left | [gameplay](gameplay.md#the-captains-drum-the-titles-piece-long-noises-whole-round-50h) |
+
 ## What round 50g found
 
 Round 50g (owner's choices on round 50b's "Dark Souls mood" research: A2 "Agree with the changes", A3/A4 "Yes. Keep the flag line", A6

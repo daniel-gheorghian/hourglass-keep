@@ -458,6 +458,56 @@ them". Sound only: layouts, timings and play unchanged (`layoutcmp.py` against v
   voice cap (11 requests, the nearest 4 played, none more while they ring, one in view still played, none past `TELL_R`), every theme's
   ambience (quiet, no NaN) and the duck. `wav=DIR` also writes the round's WAVs.
 
+## The captain's drum, the title's piece, long noises whole (round 50h)
+
+Owner on round 50h's prototypes: the duel "just a low drum", and after hearing both renders "For the captain duel: use just the drums, I
+didn't like the other variant"; on the reinforcement "Carry to the last"; for the title "B: the Nubian lyre", played "Every time". Sound
+only: play, layouts, timings and the bot unchanged (`layoutcmp.py` against v90 same).
+
+- **The captain's drum** (`Snd.duel`, fed `duelState()` once a frame from `loop()`): a large frame drum (the Egyptian and Kushite tar)
+  and nothing else: no drone, breath or swell over it, the fight's own clangs as they were. A stroke (`Snd.drum`) is a membrane's first
+  three modes (1 : 1.59 : 2.14) as short sines gliding down, the skin's thud, the shell's boom in bands at 240 and 380 Hz (what a phone's
+  speaker carries) and the hand's slap. The pattern is a heartbeat: `dum` on the beat, a softer `dub` 0.27 s after; every 8th beat two rim
+  knocks (`tek`) for the dub; tense, a ghost knock off the beat every other beat and a doubled stroke every 16th. `DUEL_BPM` 64 calm, up
+  to +`DUEL_UP` 10 tense (k 0.8 the prince at his last heart, 0.6 the foe at his, 1 both), up to 20% louder; the first four beats come in
+  at 0.45, 0.65, 0.85, 1. It is laid `DUEL_LA` 0.15 s ahead on the audio clock (never the frame rate, the hit stop or the catch-up), on its
+  own bus (`dB` dry, `dR` its sends), so one 50 ms fade stops what is laid ahead.
+
+| When | The drum |
+|---|---|
+| the captain draws (garde within 100 px) or is the prince's foe | starts 0.25 s on, softly |
+| he backs off (off his row, over 140 px) | beats on `DUEL_IDLE` 2.5 s, then stops (no last stroke); again softly if he comes back |
+| the captain falls with his reinforcement still to drop in (floor 6 on: a veteran 0.9 s later) | beats on through it, on to the veteran (`capR`, marked by the drop) |
+| another guard takes the prince on while it beats | he is one of the fight |
+| the last of them falls (a blade or a fall) | one last stroke 0.42 s on (a grace stroke, the skin ringing 2.8 s to 33 Hz, the shell's rumble over 3.2 s), with `guardDie`'s thud |
+| the prince dies | stops at once; the death's own frame-drum stroke closes it |
+| the exit, the entry, a pause, the card, the Crossing, a rewind, Sound Off, the page hidden | stops; after a rewind (new guard objects) it starts afresh, softly, when the fight goes on |
+
+  Captain floors are every fifth from 5 (`capFloor`); skeletons are never in the fight (they cannot fall). Nothing of it is in a
+  snapshot. A beat is ~17 short-lived nodes for a `dum`, about 1.1-1.3 beats a second; the per-frame cost is a comparison.
+- **The title's piece** (`Snd.title`, B "the Nubian lyre"): D minor pentatonic (D F G A C, as the Nubian tanbura and kissar lyres are
+  tuned) on Karplus-Strong strings over a low open fifth (D2, A2) breathing and the air: a low D3-A2 ostinato every 1.5 s with a soft `dub`
+  on the D, the sky clock's motif D4-A3-F3 at 4.5 s, the answer G3-A3-C4-A3, the motif closing G3-F3-D3 over D2, a last stroke at 19.5 s
+  and two faint echoes; about 27 s (`TITLE_B`, rows laid `TITLE_LA` 0.5 s ahead), then its tail while the title stays: the air every 8 s
+  and a far stroke every 11-16 s. Every time the title shows (the first load after the first touch, Quit to the title, the card's menu)
+  the whole piece; How to play, Graphics and the confirm leave it playing. Leaving the title fades it over ~1 s (`tB` dry and `tR` its
+  sends, both faded, freed 2 s on). Its strings are made at its start for it alone (`ksBuf(f, dur, true)`, 8 pitches, ~6 MB) and let go
+  when its rows end. A fresh page's first touch on the title wakes the sound (a capture `pointerdown`: `Snd.unlock`; iOS and Chrome start
+  audio only from a gesture), so it begins after the first tap. Quiet and Off as every cue (`out`); Off stops it and Sound back on plays
+  the tail only; a hidden page's suspended clock holds it where it was. Not under `?bench`.
+- **Long noises whole**: `Snd.noise` played its 0.8 s buffer once from up to 0.3 s in, so any noise longer than ~0.5-0.8 s went silent
+  part way. The buffer is now `SND_NB` 2 s, looped, from a random point in it. Measured before and after (5 renders each, rms x1e4): the
+  slit's `whistle` 0.27 to 1.74 (it was nearly silent), the Crossing's `breeze` 2.9 to 16.3 (its peak doubled: its volumes x0.55, peak as
+  before), `exitlight` 4.3 to 6.3 (kept), the forge's roar +25% in peak (x0.8); `die`, `gopen`, `gdoor`, `lopen`, `storm`, `cliffwind`,
+  `rockfall`, `cp`, `rewind` within the renders' spread (their long noises are low and already decayed by 0.8 s).
+- **No click at a cue's start**: a GainNode's gain is 1 until its first automation event, so when a sound's start fell a sample before
+  its `setValueAtTime(0.0001)` one sample went out at full level (spikes of 0.06-0.19 against ~0.005, found by the r50i research);
+  `tone`, `noise` and the `howl` now make their gain at 0.0001.
+- `sndtest.py` (round 50h): a 3 s noise still sounding at 2 s; the drum's tempo calm and tense, its entrance, one last stroke on the
+  fight's end and nothing after it, a stop and a rewind's fresh start; `duelState` on floor 10's captain (held through his reinforcement,
+  the last stroke on the last fall, stopped by a death and a pause); the title's piece, its tail, Quiet and Off, the fade when left; live:
+  a fresh page's first key starts it, a floor stops it and frees its strings, Quit to the title starts it again.
+
 ## The bot: the reference player
 ### Tells: his body, the grit, the swing's beat (round 49b)
 

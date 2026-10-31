@@ -14,8 +14,16 @@
 # louder than its rise, the summoned lift's rumble without a gap, gopen's falloff placed (far left quieter, two storeys up muffled), the
 # ambience ducked under a far gate; wav=DIR writes r50e_*.wav (gate near, far left, two up, closing far, a closer's slam, the door near and
 # far, a lift summoned, a lift's mouth).
+# Round 50h adds: a long noise plays its whole length (N(3 s) still sounding at 2.5 s: the looped buffer); the captain's drum (Snd.duel fed
+# a timeline as duelState gives it): the heartbeat's tempo calm and tense (64 and 74 bpm by its 'dum' strokes), the first four softer, the
+# last stroke once on the fight's end and nothing after it, a stop (null) silent within 0.4 s, a new fight (a rewind's key) softly again;
+# duelState on floor 10's captain: engaged in garde, held while his reinforcement is still to drop and through it (capR), the last stroke
+# only when the last of them falls, stopped by the prince's death and by a pause; the title's piece (Snd.title): the whole piece, then its
+# tail, Quiet under Full, Off silent, left: faded within 1.5 s; live: a fresh page's first key press starts it on the title, a floor stops
+# it and frees its strings, Quit to the title plays it again from its start. wav=DIR also writes r50h_title.wav (41 s), r50h_title_left.wav
+# (left at 12 s) and r50h_duel_drum.wav (the timeline above).
 # Must print `sndtest: ok`.
-import os, re, sys, struct
+import os, re, sys, struct, json
 from playwright.sync_api import sync_playwright
 HERE = os.path.dirname(os.path.abspath(__file__))
 a = sys.argv[1:]
@@ -27,7 +35,7 @@ SILENT = {'clear'}  # (round 50c: the floor's fanfare is gone on purpose)
 
 def names(src):
     s = open(src, encoding='utf-8').read()
-    i = s.index("play(n,a){if(!this.ok())return;"); j = s.index('  wnd:null', i)
+    i = s.index("play(n,a){if(!this.ok())return;"); j = min(k for k in (s.find('  wnd:null', i), s.find('  drum(kind,v,b,N,T)', i)) if k > 0)  # (round 50h: the drum's and the title's kinds are not cues)
     return sorted(set(re.findall(r"case'([A-Za-z]+)'", s[i:j])))
 
 
@@ -143,6 +151,59 @@ if __name__ == '__main__':
         print('gate cue lengths (s): ' + ', '.join('%s %.2f' % (k, v) for k, v in ln.items()) + '; lsummon\'s quietest 50 ms %.3f of its peak; gopen rms x1e4 near %.2f, 900 px left %.2f, two storeys up %.2f (brightness x1000 near %.1f, two up %.1f)'
               % (gap, near['rms'] * 1e4, far['rms'] * 1e4, up2['rms'] * 1e4, zc(near), zc(up2)))
         if not far['rms'] < near['rms'] * 0.7 or not zc(up2) < zc(near): bad.append('gopen falloff near %.5f far %.5f up %.5f' % (near['rms'], far['rms'], up2['rms']))
+        # (round 50h) a long noise sounds its whole length (rms x1e4 of each 0.25 s; the buffer loops)
+        nz = pg.evaluate("""async()=>{const Sn=__HK.Snd,pl=Sn.play;Sn.play=function(){this.noise(3,{vol:0.1,f:1000,att:0.05});};let r;
+          try{r=await Sn.render(['x'],3.5,'cross',{data:true,level:'full'});}finally{Sn.play=pl;}const w=11025,o=[];for(let i=0;i+w<=r.L.length;i+=w){let q=0;for(let j=i;j<i+w;j++)q+=r.L[j]*r.L[j];o.push(Math.sqrt(q/w)*1e4);}return o;}""")
+        print('N(3 s) rms x1e4 by 0.25 s: ' + ' '.join('%.1f' % v for v in nz))
+        if not (nz[4] > nz[1] * 0.08 and nz[8] > nz[1] * 0.005): bad.append('a long noise is cut: %r' % [round(v, 1) for v in nz])
+        # (round 50h) the drum: a timeline (60 Hz) calm 0-12 s, tense (k 1) 12-22 s, the last foe down at 22 s; its strokes recorded by kind
+        DUEL = """async([tl,dur,data])=>{const H=__HK,Sn=H.Snd,dr=Sn.drum,log=[];Sn.drum=function(k,v,b,N,T){log.push([k,v]);let t0=1e9;dr.call(this,k,v,b,(d,o)=>{N(d,o);t0=Math.min(t0,o.at||0);},(f,d,o)=>{T(f,d,o);t0=Math.min(t0,o.at||0);});log[log.length-1].push(t0);};
+          let r;try{r=await Sn.render([],dur,'room',{duel:tl,data,level:'full'});}finally{Sn.drum=dr;}const out={peak:r.peak,nan:r.nan,log};
+          if(data){const w=4410,o=[];for(let i=0;i+w<=r.L.length;i+=w){let q=0;for(let j=i;j<i+w;j++)q+=r.L[j]*r.L[j];o.push(Math.sqrt(q/w));}out.env=o;out.L=r.L;out.R=r.R;}return out;}"""
+        tl = [[i / 60, {'key': 1, 'on': i < 22 * 60, 'fin': 1 if 22 * 60 <= i < 22 * 60 + 3 else 0, 'k': 1 if i >= 12 * 60 else 0}] for i in range(28 * 60)]
+        d = pg.evaluate(DUEL, [tl, 28, bool(WAV)])
+        dums = [e for e in d['log'] if e[0] == 'dum']; tt = lambda e: e[2]
+        def bpm(a, b):  # the median interval between strokes (a doubled stroke's half intervals left out by the median)
+            ts = sorted(tt(e) for e in dums if a <= tt(e) < b); iv = sorted(ts[i + 1] - ts[i] for i in range(len(ts) - 1)); return 60 / iv[len(iv) // 2]
+        fins = [e for e in d['log'] if e[0] == 'fin']; late = [e for e in d['log'] if e[0] != 'fin' and tt(e) > 23.0]
+        calm, tense = bpm(3, 12), bpm(15, 22)
+        print('drum: %d strokes (%s), calm %.1f bpm, tense %.1f bpm, first four %s, last stroke %s, after it %d; peak %.3f'
+              % (len(d['log']), ','.join('%s %d' % (k, sum(1 for e in d['log'] if e[0] == k)) for k in ('dum', 'dub', 'tek', 'fin')), calm, tense,
+                 ' '.join('%.2f' % e[1] for e in dums[:5]), ' '.join('%.2f s' % tt(e) for e in fins), len(late), d['peak']))
+        if not (62 <= calm <= 66 and 71 <= tense <= 76): bad.append('drum tempo %.1f %.1f' % (calm, tense))
+        if not (dums[0][1] < dums[1][1] < dums[2][1] < dums[3][1] and dums[0][1] < 0.6): bad.append('drum entrance %r' % dums[:5])
+        if len(fins) != 1 or not 22.3 < tt(fins[0]) < 22.6 or late: bad.append('drum last stroke %r, after %d' % (fins, len(late)))
+        if d['nan'] or d['peak'] >= 1.0: bad.append('drum peak %.3f nan %d' % (d['peak'], d['nan']))
+        # stopped (null) at 6 s: silent within 0.4 s; a rewind (a new key) at 8 s: in again softly
+        tl2 = [[i / 60, None if 6 * 60 <= i < 7 * 60 else {'key': 1 if i < 6 * 60 else 2, 'on': True, 'fin': 0, 'k': 0}] for i in range(11 * 60)]
+        d2 = pg.evaluate(DUEL, [tl2, 11, True]); e2 = d2['env']
+        st = max(e2[66:70]) / max(e2[20:58]); re = [e for e in d2['log'] if e[0] == 'dum' and tt(e) > 7]
+        print('drum stopped: rms 6.6-7.0 s (the room tail of the strokes before) %.4f of the beating; after the rewind %d dums, the first %.2f' % (st, len(re), re[0][1] if re else -1))
+        if st > 0.1 or not re or re[0][1] > 0.6 or any(6.5 < tt(e) < 7 for e in d2['log']): bad.append('drum stop %.4f / restart %r' % (st, re[:2]))
+        # duelState on a captain floor: floor 10 (its captain is a veteran's match from floor 6 on, with a reinforcement)
+        ds = pg.evaluate("""()=>{const H=__HK,Sn=H.Snd,D=Sn.dl,o={};H.load(10,700970,false);const G=H.G,c=G.find(g=>g.cap),P=H.P;if(!c)return {none:1};
+          const st=()=>{const s=H.duelState(1/60);if(!s){D.nt=-1;return s;}if(s.key!==D.key){D.nt=-1;D.key=s.key;}D.nt=(s.fin||!s.on)?-1:1;return {on:!!s.on,fin:s.fin|0,k:s.k||0};};
+          o.idle=st();c.state='garde';o.garde=st();c.alive=false;H.PGQ.push({at:H.gameTime+0.9,src:c});o.pend=st();o.pend2=st();
+          H.PGQ.length=0;const v=Object.assign({},c,{cap:false,capR:1,alive:true,state:'garde',hp:1});G.push(v);o.reinf=st();o.tense=st().k;
+          H.P.hp=1;o.both=st().k;H.P.hp=H.S.maxHp;v.alive=false;o.fin=st();o.after=st();
+          D.nt=-1;D.key=null;H.load(10,700970,false);const c2=H.G.find(g=>g.cap);c2.state='garde';o.again=st();H.P.state='dead';o.dead=st();H.P.state='stand';
+          H.mode='paused';o.paused=st();H.mode='play';D.nt=-1;D.key=null;return o;}""")
+        print('duelState floor 10: %s' % json.dumps(ds))
+        okd = (not ds.get('none') and not ds['idle']['on'] and ds['garde']['on'] and ds['pend']['on'] and not ds['pend']['fin'] and ds['pend2']['on'] and ds['reinf']['on']
+               and abs(ds['tense'] - 0.6) < 1e-9 and ds['both'] == 1 and ds['fin']['fin'] == 1 and not ds['after']['fin'] and ds['again']['on'] and not ds['dead']['on'] and ds['paused'] is None)
+        if not okd: bad.append('duelState %r' % ds)
+        # the title's piece: 41 s (the piece, then its tail), Quiet and Off, and left at 12 s
+        TIT = """async([dur,shown,lv,data])=>{const H=__HK;H.S.set.sound=true;const r=await H.Snd.render([],dur,'quiet',{title:shown,data,level:lv});const out={peak:r.peak,rms:r.rms,nan:r.nan};
+          if(data){const w=11025,o=[];for(let i=0;i+w<=r.L.length;i+=w){let q=0;for(let j=i;j<i+w;j++)q+=r.L[j]*r.L[j]+r.R[j]*r.R[j];o.push(Math.sqrt(q/(2*w)));}out.env=o;out.L=r.L;out.R=r.R;}return out;}"""
+        ti = pg.evaluate(TIT, [41, 41, 'full', True]); E = ti['env']; m = lambda a, b: (sum(x * x for x in E[a * 4:b * 4]) / ((b - a) * 4)) ** 0.5
+        piece, after, tailpk = m(3, 25), m(29, 33), max(E[33 * 4:37 * 4])
+        tq = pg.evaluate(TIT, [12, 12, 'quiet', False]); tf = pg.evaluate(TIT, [12, 12, 'full', False]); to = pg.evaluate(TIT, [12, 12, 'off', False])
+        tL = pg.evaluate(TIT, [20, 12, 'full', True]); EL = tL['env']; left = max(EL[int(13.5 * 4):]) / max(EL[5 * 4:12 * 4])
+        print('title: peak %.3f, rms 3-25 s %.4f, 29-33 s %.5f, the tail stroke 33-37 s %.4f; Quiet %.4f Full %.4f Off %.5f (rms); left at 12 s: %.4f of its level after 13.5 s'
+              % (ti['peak'], piece, after, tailpk, tq['rms'], tf['rms'], to['rms'], left))
+        if ti['nan'] or ti['peak'] >= 1.0 or not after < piece * 0.15 or not tailpk > after * 2: bad.append('title piece %r' % [ti['peak'], piece, after, tailpk])
+        if to['peak'] > 0 or not 0 < tq['rms'] < tf['rms'] * 0.5: bad.append('title levels %r' % [tq['rms'], tf['rms'], to['rms']])
+        if left > 0.05: bad.append('title not faded when left: %.4f' % left)
         # the live context: a key press unlocks it (a user gesture, as on the phone), every cue played, the places and the bed, sleep and wake
         pg.keyboard.press('Shift')
         live = pg.evaluate('''async (ns)=>{const H=__HK,Sn=H.Snd;Sn.unlock();await new Promise(r=>setTimeout(r,300));const st=Sn.ctx&&Sn.ctx.state;
@@ -164,6 +225,19 @@ if __name__ == '__main__':
         if not cap['g3'] < 0.7 * cap['g2']: bad.append('no duck under a gate %r' % cap)
         print('ambience under a far gate: %.2f of %.2f' % (cap['g3'], cap['g2']))
         if live[0] != 'running' or live[1] != 'suspended' or live[2] != 'running': bad.append('live context %r' % live)
+        # (round 50h) the title, live: a fresh page shows it; the first key press wakes the sound and the piece starts; a floor stops it and lets
+        # its strings go; Quit to the title plays it again from its start
+        pg.goto('file://' + SRC); pg.wait_for_timeout(600)
+        t0 = pg.evaluate("()=>[__HK.mode,!!__HK.Snd.ctx]")
+        pg.keyboard.press('Shift'); pg.wait_for_timeout(900)
+        t1 = pg.evaluate("()=>{const Sn=__HK.Snd;return [__HK.mode,Sn.ctx&&Sn.ctx.state,Sn.tl.t0>=0,!!Sn.tB,Sn.tl.i,!!Sn.tk];}")
+        pg.evaluate("()=>{__HK.S.set.sound=true;__HK.load(10,700970,false);}"); pg.wait_for_timeout(400)
+        t2 = pg.evaluate("()=>{const Sn=__HK.Snd;return [__HK.mode,Sn.tl.t0,!!Sn.tB,!!Sn.tk];}")
+        pg.evaluate("()=>__HK.goTitle()"); pg.wait_for_timeout(700)
+        t3 = pg.evaluate("()=>{const Sn=__HK.Snd;return [__HK.mode,Sn.tl.t0>=0,!!Sn.tB,Sn.tl.i,!!Sn.tk];}")
+        print('title live: loaded %r, after a key %r, on a floor %r, back on the title %r' % (t0, t1, t2, t3))
+        if t0 != ['title', False] or t1[:4] != ['title', 'running', True, True] or not t1[4] > 0 or t2[1:] != [-1, False, False] or t3[:3] != ['title', True, True] or not 0 < t3[3] < 12:
+            bad.append('title live %r %r %r %r' % (t0, t1, t2, t3))
         if WAV:
             os.makedirs(WAV, exist_ok=True)
             for tag, ns, dur, z in [('cp', ['cp'], 6, 'room'), ('die', ['die'], 5, 'room'), ('life', ['life'], 5, 'room'), ('clang', ['clang'], 2, 'hall'), ('hurt', ['hurt'], 2, 'room'),
@@ -206,6 +280,7 @@ if __name__ == '__main__':
                                      + [['gate', 2.3 + 0.42 * i] for i in range(4)], 4.5, 'shaft'),
                                     ('lift_mouth', [['lopen', 0.3, '', 40, 0, 'at']], 2.2, 'room')]:
                 r = pg.evaluate(REND, [ns, dur, z, {'data': True, 'bed': True}]); wav(os.path.join(WAV, 'r50e_%s.wav' % tag), r['L'], r['R'])
+            wav(os.path.join(WAV, 'r50h_title.wav'), ti['L'], ti['R']); wav(os.path.join(WAV, 'r50h_title_left.wav'), tL['L'], tL['R']); wav(os.path.join(WAV, 'r50h_duel_drum.wav'), d['L'], d['R'])
             old = os.path.join(HERE, 'hk_v90_release.html')
             if os.path.exists(old):
                 pg.goto('file://' + old); pg.wait_for_timeout(600); pg.evaluate("()=>{window.__HKfreeze=true;__HK.load(7,1,false);}")

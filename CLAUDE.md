@@ -92,7 +92,7 @@ is a placeholder: only the built `index.html` carries the release number.
 | `wellcorr.py lo hi [seeds]` | no sand well stands in a corridor: every well's pit is walled on both sides down to its floor (round 30) | `wellcorr: ok` |
 | `cpscan.py lo hi [seeds]` | no pixel of the sky clock (the checkpoint) over a wall's front face, a step or a low ceiling beside it, both modes (round 37c) | `cpscan: ok` |
 | `chimtest.py [file] [lo hi] [seeds]` | round 48b's locked chimney, every kick shaft (floors 1-48 x 3: 236): climbed by a running Jump, a standing Jump or Up at the foot, then one Up a stance, every stance on its grid to the pixel, the Y landing 12 px past the lip with the standing landing; Up held gives one kick; Jump does nothing; Down at each stance lets go at once with a fall's damage; a rewind in mid-kick restores his own copies; walking in does not lock; no plant, kick or lock off a single wall elsewhere | `chimtest: ok` |
-| `sndtest.py [file] [wav=DIR]` | round 50c's sound: every `Snd.play` cue rendered offline through the whole graph (`Snd.render`: room, compressor, level), no NaN, peak under 0 dBFS alone and piled up, audible but `clear`; Off silent, Quiet under Full; the live context unlocked by a key, every cue, the places, sleep and wake; round 50d: every footfall on every surface told apart, `footSurf`, the off-screen falloff, the voice cap, every theme's ambience quiet, the duck; round 50e: the gate cue's openings and closings by length, the great door's boom, the summoned lift's rumble unbroken, the placed falloff, the duck under a far gate; `wav=` writes the key cues | `sndtest: ok` |
+| `sndtest.py [file] [wav=DIR]` | round 50c's sound: every `Snd.play` cue rendered offline through the whole graph (`Snd.render`: room, compressor, level), no NaN, peak under 0 dBFS alone and piled up, audible but `clear`; Off silent, Quiet under Full; the live context unlocked by a key, every cue, the places, sleep and wake; round 50d: every footfall on every surface told apart, `footSurf`, the off-screen falloff, the voice cap, every theme's ambience quiet, the duck; round 50e: the gate cue's openings and closings by length, the great door's boom, the summoned lift's rumble unbroken, the placed falloff, the duck under a far gate; round 50h: a long noise whole, the captain's drum (tempo, entrance, one last stroke, stop, a rewind's fresh start), `duelState` on floor 10 (through the reinforcement, the death, a pause), the title's piece (tail, levels, the fade when left; live: the first key, a floor, Quit to the title); `wav=` writes the key cues | `sndtest: ok` |
 | `r38b_tests.py` | round 38b's play faults, one check each: the roof block and `P.inv`, the damaging drop's lip, a banner's rewind, the sand lift (no banner since round 49a, `sandfall` learned on getting off) and its top, the recruit's colour, the timed gates' waits | `r38b: ok` |
 | `tellscan.py [file] [lo hi] [per=K]` | round 49b's tells: at up to K spots a floor of each kind (reach, edge, stakes, flask, low) none before 0.5 s still, full by 1.2 s, the pose changed, the weight 0 the frame Grab is held and the pose back 0.35 s later, P.x/P.y/state identical with `TELL.off`; none while he moves; no spot in a wind zone (none there by design) | `tellscan: ok` |
 | `wearscan.py [file] [lo hi] [seeds]` | round 49c's wear marks and bones (floors 1-48 x 3): scuffs on every wall run up and nowhere else, drawn inside its face; grooves on every cell of each block's track and nowhere else, drawn inside the floor's top face; one set of bones a kind at the first trap of its kind by the route's order (its own list of the traps), every kind on a floor with the trap; on a route tile every pixel behind his walking line and under 6.5 px | `wearscan: ok` |
@@ -1695,6 +1695,37 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   Classic ok; run2 3-10 x 1 8/8, 0 damage; vshots ui (its gate-countdown scene fails on HEAD too, vlib.js `H`). Pictures `.claude/research/r50g/pics.py`
   (r50g_grade_<mode>.png, r50g_hud_<mode>.png, r50g_hudfade.png, r50g_banner_<mode>.png, r50g_card.png, r50g_flask_<mode>.png; r50g_ui.png
   from vshots ui).
+- The captain's drum, the title's piece, long noises whole (round 50h, owner on `.claude/research/r50h/`'s prototypes: "The captain duel -
+  just a low drum and the title screen short piece, yes"; then "For the captain duel: use just the drums, I didn't like the other
+  variant"; "Carry to the last"; "B: the Nubian lyre"; "Every time"; `dev/docs/gameplay.md` "The captain's drum ..."). Sound only.
+  (1) `Snd.noise` played its 0.8 s buffer once from up to 0.3 s in: any `N` over ~0.5-0.8 s stopped part way. Now `SND_NB` 2 s, `loop`,
+  a random start in it. Measured (`.claude/research/r50h/longcues.py`, 5 renders, rms x1e4 before / after): `whistle` 0.27 / 1.74, `breeze`
+  2.9 / 16.3 (peak 0.009 / 0.018: its three noises x0.55: 9.4, peak 0.0105), `exitlight` 4.3 / 6.3 (kept), `forge` rms 15.3 / 16.4, peak 0.010 / 0.013 (roar and hiss x0.8: 16.0, peak 0.012, the 46 Hz sine carrying the peak);
+  die, gopen, gdoor, lopen, lsummon, cp, rewind, storm, cliffwind, rockfall, splash, fire, bellows within the renders' spread.
+  And (r50i's finding) every per-sound gain (`tone`, `noise`, `howl`) starts at 0.0001 (`g.gain.value`): a GainNode is 1 until its first
+  event, so a start a sample before `setValueAtTime` sent one sample at full level (spikes 0.06-0.19 against ~0.005 in r50i's
+  50 s render; not reproduced here in 400 steps or fractional starts, so no test of it).
+  (2) The drum (`Snd.drum(kind,v,b,N,T)`: dum, dub, tek, fin, far; the frame drum's modes 1 : 1.59 : 2.14, the skin's thud, the shell's
+  240/380 Hz bands, the slap; the recipe as `r50h_duel_drum_only.wav`, nothing else layered): `Snd.duel(st,now)` once a frame from `loop()`
+  (null outside play), laid `DUEL_LA` 0.15 s ahead on the audio clock, `DUEL_BPM` 64 + `DUEL_UP` 10 k, the first four beats 0.45-1, a doubled
+  stroke and ghost knocks when tense; its bus `dB` (dry) and `dR` (its sends): `duelCut` fades both over 50 ms. `duelState(dt)` (`DUEL`: the
+  fight's members by `G`'s identity, so a floor or a rewind starts afresh): the captain, his reinforcement (`capR`, set where
+  `pendingGuards` drops a captain's caller's man) and any guard engaged while it beats (`duelEng`: P.foe or garde/advance/retreat/strike/
+  parry/blocked/hurt; never a skeleton); on while one is engaged, held `DUEL_IDLE` 2.5 s and while a captain's reinforcement is pending;
+  `fin` once when the last falls (within 0.25 s of gameTime), the last stroke 0.42 s on; stopped by P dead/exit/enter, a non-play mode,
+  Sound Off, a suspended context. k `duelK`: 0.8 the prince at one heart, 0.6 the foe at his, 1 both. (3) The title (`Snd.title(on,now)`
+  from `loop()`'s else branch, `mode==='title'` and not `BENCH.run`; `TITLE_B` rows [t, air|drone|K|dub|fin, ...] from `audio.py`'s B, laid
+  `TITLE_LA` 0.5 s ahead, then the tail from `TITLE_END` 27 s: air(9 s, 0.010) every 8 s, `far` 0.8 every 11 + 5|sin(2.9q + 1)| s): its
+  own `tB` (into master) and `tR` (into conv, `route` reads `rvIn`), faded over 0.25 s time constant on leaving and disconnected 2 s on; the
+  strings `tk` made at its start (`ksBuf(f,dur,true)`: not cached, 4.5 s, 5 under 120 Hz) and dropped when the rows end; `pluck` takes
+  `o.buf`. Every entry to the title plays it whole (`tl.full`); Sound Off stops it, Sound on again the tail only. A capture `pointerdown`
+  on the document calls `Snd.unlock()` while `mode==='title'`. `Snd.render(..,{duel:[[t,st]],title:secs})` draws both offline (the frame
+  loop keeps out of a render: `duel`/`title` with no `now` return while `off`). Checks: sndtest ok; run2 5-15 x 1 fight 11/11, 20 and 25 x 2
+  fight 4/4, 0 damage; crossscan quick ok; rendersmoke 4-6 both ok (0.75 ms/frame mean); layoutcmp `hk_v90_release.html notimers liftrest` same (144 of 144).
+  WAVs `.claude/research/r50h/game/`: `duelgame.py` (the bot's fight on floor 10 seed 700970 recorded tick by tick and rendered:
+  r50h_duel_game.wav, _drum_only, _fx_only: the drum from his draw at 587.2 s, the captain down at 595.5, the veteran at 604.6, the last
+  stroke on that fall; the drum alone peaks -15.7 dBFS at out 1.0 as the approved drum-only prototype, the fight -8.1), sndtest `wav=` (r50h_title.wav, r50h_title_left.wav, r50h_duel_drum.wav), `longcues.py`
+  (r50h_long_<cue>_before/after.wav).
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized three ways (Trap density, above); only P4's race uses the careful pace.
 - Pose angles are measured from straight down; positive means forward.

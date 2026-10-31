@@ -212,4 +212,10 @@ for each guard in view (not gone; out of view a live one's press g.rdx is reset 
 - round 50c (sound): `clang` bronze on bronze (a struck plate's inharmonic partials over the hit's noise, each a little different); `guardDie` a last breath, the body down and his blade on the stone; `hit` and `hurt` body blows (no square or sawtooth). Sound only.
 
 - round 50d (sound): a guard's footfall (`gstep`: heavier, lower, quieter, a sandal's scuff) as he advances or gives ground, by the surface under him (`footSurf`); `gland` when he drops in; `gshift` at his post; a snake's `hiss` and now and then its `slither` as it moves; all heard off screen (`Snd.tell`) [gameplay](../gameplay.md#footsteps-traps-heard-off-screen-each-themes-ambience-round-50d).
+- round 50h (sound; owner: "just a low drum", "use just the drums", "Carry to the last"): the captain's duel has a frame drum's heartbeat
+  (`Snd.duel` from `duelState()`): from his draw, 64 bpm calm to 74 as the prince or the foe nears his last heart, carried through his
+  reinforcement (the veteran from floor 6, `capR` on the drop) and any guard that joins the fight, one last stroke when the last of them
+  falls; stopped by the prince's death, the exit, a pause or a rewind (afresh after it). Nothing else is added: the clangs as they were.
+  [gameplay](../gameplay.md#the-captains-drum-the-titles-piece-long-noises-whole-round-50h).
+
 Details in CLAUDE.md (Fighters bullet, rounds 24, 27c).
