@@ -398,6 +398,9 @@ voices.
 
 ## Footsteps, traps heard off screen, each theme's ambience (round 50d)
 
+(Round 50i replaced this round's footfalls and ambience palettes: see [round 50i](#each-themes-own-ambience-real-drops-and-crackles-footfalls-from-the-ground-round-50i).
+The surfaces, `footSurf`, the off-screen traps and the duck below stand.)
+
 Owner (the "Dark Souls mood"): "Yes on all" to round 50b's prototypes B3 (ambient beds) and B4 (footsteps by surface); "implement all of
 them". Sound only: layouts, timings and play unchanged (`layoutcmp.py` against v90 same).
 
@@ -507,6 +510,81 @@ only: play, layouts, timings and the bot unchanged (`layoutcmp.py` against v90 s
   fight's end and nothing after it, a stop and a rewind's fresh start; `duelState` on floor 10's captain (held through his reinforcement,
   the last stroke on the last fall, stopped by a death and a pause); the title's piece, its tail, Quiet and Off, the fade when left; live:
   a fresh page's first key starts it, a floor stops it and frees its strings, Quit to the title starts it again.
+
+## Each theme's own ambience, real drops and crackles, footfalls from the ground (round 50i)
+
+Owner on round 50d: "the ambient noises are too similar. The chirps are in all of them"; on round 50f: "the water dripping doesn't sound
+right ... the crackles sound off"; "For the step noises: still not right"; on the prototypes of `.claude/research/r50f/`, `r50i/` and
+`r50j/`: "Go with the new versions". Sound only: play, layouts, timings and the bot unchanged (`layoutcmp.py` against v90 same). This
+supersedes round 50d's tables of footfalls and ambience above.
+
+- **Each theme its own palette** (r50f; `AMB_T[look]` = [[name, chance a 0.25 s slot]], `AMB_POS[name]` where it sits, its own hashes per
+  entry, through `amb()` at `AMB_K` 2 so it is heard over the bed). The chirp was round 50c's drip, a sine falling 45% in 60 ms, in every
+  theme; and most themes' own sounds were silent (round 50h's long-noise fix). No element is in more than three themes; drops only in the
+  three wet ones; no birds, voices or insects indoors.
+
+| Theme | Its sounds (chance a slot) | Its room (`SND_ZT`: hall send, lowpass) |
+|---|---|---|
+| Waters of Nun | a slow wave against the coping (`lap` 0.05), drops into still water (`pooldrop` 0.045), water running in a channel out of sight (`runnel` 0.028), drops on wet stone (`drop` 0.02) | x1.1, x0.9 |
+| Well Corridors | a drop landing far down the shaft (`shaftdrop` 0.026), a pebble knocking down it (`pebble` 0.014), cold air rising (`updraft` 0.02), `drop` 0.03 | x1.15, x1.05 |
+| Foggaras of Garama | `runnel` 0.06, `drop` 0.03, wind over the shaft mouths (`shaftwind` 0.022), grit trickling (`trickle` 0.012) | |
+| Forges of Meroë | the far furnace's roar (`forge` 0.02), bellows (0.022), iron cooling (`tink` 0.05), a far smith (`hammer` 0.013) | |
+| Halls of the West | sand blown in under a door (`sandhiss` 0.03), a far door's draught (`doordraft` 0.018), `trickle` 0.016 | |
+| Blue Chambers | a faience chip ticking loose (`ftick` 0.03), the glaze crazing (`craze` 0.012), air down the galleries (`gallery` 0.02) | x1.35, x1.6 (bright, long) |
+| Green Hall of Osiris | reeds in the wind beyond the wall (`reeds` 0.025), marsh gas through mud (`mud` 0.018), incense resin on its coals (`resin` 0.03) | |
+| Deffufa of Kerma | dry mud brick crumbling (`crumbs` 0.022), wind outside the thick walls (`wallwind` 0.02), a palm mat flapping (`flap` 0.013) | x0.7, x0.8 (dry, dull) |
+| Labyrinth of Hawara | stone grinding far off (`grind` 0.012), someone else's steps far off (`farsteps` 0.013), a far slab coming to rest (`farthud` 0.011) | x1.4, x0.85 (long, dark) |
+| Salt Fortress of Shali | salt crystals bursting in the walls (`salt` 0.035), the wind in a slit (`whistle` 0.02), `crumbs` 0.015 | x0.8, x0.9 |
+| Pyramids of Napata | wind over the sand outside (`sandwind` 0.025), `sandhiss` 0.03, `trickle` 0.016 | |
+| Stelae of Aksum | a cold highland gust (`gust` 0.025), a timber beam creaking in the wall (`beam` 0.02), a shutter knocking (`rattle` 0.013) | x0.85, x1.1 |
+| every theme | stone settling (`settle` 0.005, where the bed breathes), the nearest lamp's crackle (`crackle`, `AMB_LAMP` 0.12, was 0.22), a far rope by a lift or swing (`ropefar` 0.035), a lit clock's embers (`ember`) | |
+
+  The theme's room is set on each floor (`startLevel` clears `Snd.zone`, so the next `env` applies it). The Forges' `forge` is r50f's
+  x0.7 (about a third of round 50h's): at r50f's level the roar alone peaked over a step and Meroë peaked 2-3 dB over the other themes.
+- **Water drops and crackles as they happen** (r50i): onto wet stone (`drop`) a hard tap of 2-4 ms, the splat's thicker part and the spray
+  of its droplets, one in four a tiny film bubble; into still water (`pooldrop`) a soft tap and, 12-24 ms later in seven drops of ten, the
+  trapped bubble's ring (`B`: a sine at the Minnaert frequency 0.7-2.3 kHz decaying by van den Doel's damping law and rising as the bubble
+  nears the surface), now and then the jet's drop falling back; far down a well (`shaftdrop`) a heavy plunk (a big bubble 380-680 Hz) and
+  its splash, fluttering between the walls; the lamp's `crackle` pops of vapour (power-law sizes, instant onsets, a sputter); Shali's
+  `salt` an avalanche of tiny ticks and pings with the gaps growing; Meroë's `tink` a joint slipping as metal shrinks, a tick and a plate's
+  three modes (1 : 1.71 : 2.33, never a bar's 2.76). The drip and plunk cues play the real drop. The only sines in the ambience: the
+  bubbles, the forge's 46 Hz hum and the metal's and salt's short rings.
+- **Every short sound strikes** (r50i): a sound under ~20 ms rises to its level in at most 0.5 ms (`att`) and its length sets its decay
+  (before, the default 4-6 ms rise made a tick a swell and a stop). Applied to every cue's ticks: the drops, crackles, salt, tink, craze,
+  ftick, resin, beam, rattle, hammer, ember, settle's grit, pebble, trickle, crumbs, the dart's tick, the gates' grit, the bones and the
+  footfalls' slaps, ticks and knocks.
+- **Footfalls from the ground's reaction** (r50j; `FT_S`, `FT_G`, `Snd.foot`): a footfall is a gait (when the sole strikes) times a surface
+  (what each strike excites and the texture under the contact). Gaits: `walk` heel, then ball 95 ms later (the exit's treads, a guard);
+  `run` (the game's `step`) the ball, the heel kissing down 32 ms on; `land` and `landh` both feet a few ms apart, then the heels, the
+  body's weight as low noise. Each strike the sole's slap (bandpass noise 8-15 ms, 950-1350 Hz), on hard smooth stone a tick, the weight
+  into the floor (lowpassed noise), a floor mode; over the contact a grain texture (`gbuild`: Poisson particles of power-law energy in
+  three 2 s buffers, `k` knocks, `g` gravel, `d` sand, played by `noise()` with `o.b`) and the push-off scuff; then the surface's own extra.
+  No sines (the landings' 110 and 90 Hz sines are gone); every step a little different (level +-1.6 dB, the two feet apart, every band and
+  length jittered, the textures from random places).
+
+| Surface | Sound |
+|---|---|
+| `dungeon` damp stone | a wetter slap, 40% of steps the sole peeling off wet stone |
+| `palace` polished limestone | the slap, a faint 3.2 kHz tick, a trace of grit |
+| `tile` glazed faience | a brighter slap and a 4.2 kHz tick (the glaze) |
+| `forge` a gritty hot floor | gravel grains under the contact, cinders cracking |
+| `crypt` granite | a 2.7 kHz tick, the weight lowest and longest |
+| `court` open paving | grit and fine dust |
+| `coping` a pool's edge | wet stone with a tick, 25% the pool lapping by |
+| `grit` a cracked slab | grit, crushed grains, the loose piece knocking |
+| `sand` a drift | no slap: the grains giving under him, a soft low give, sand spilled at push-off |
+| `rubble` a heap | stones knocking and settling over gravel |
+| `plank` | the slap, a wooden knock, the board's three low modes close together (a hollow thud, no note), now and then the board on its bearer |
+| `grate` bronze | a short inharmonic clank, the grate rattling in its frame |
+| `hollow` a lift's platform | the box's hollow, the platform knocking in its ropes |
+| `sandslab` the sand lift | stone, sand running under it |
+
+  A guard (`gstep`, `gland`) walks in sandals: a brighter, narrower slap, no tick, more weight, the sole slapping back on his heel; his
+  landing is 7 dB over round 50d's in the phone's band (r50j's measure; kept, `FT_GV` the knob). `gshift`'s hilt tick is noise at a
+  plate's ratio. The Crossing's steps lost their sine thumps too (low noise in their place). The crawl keeps `step` (the run's gait).
+- `sndtest.py` (round 50i): every footfall on every surface, no two surfaces alike (their mean band levels), no sine in any footfall, every
+  short N or T of every cue within 0.5 ms of its peak, the palettes (no element in more than three themes but the shared, each theme
+  playing all of its own and none of another's over 2,400 slots), the ambience's sines only the bubbles, the forge's hum, tink and salt.
 
 ## The bot: the reference player
 ### Tells: his body, the grit, the swing's beat (round 49b)

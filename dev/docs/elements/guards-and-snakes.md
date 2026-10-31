@@ -217,5 +217,6 @@ for each guard in view (not gone; out of view a live one's press g.rdx is reset 
   reinforcement (the veteran from floor 6, `capR` on the drop) and any guard that joins the fight, one last stroke when the last of them
   falls; stopped by the prince's death, the exit, a pause or a rewind (afresh after it). Nothing else is added: the clangs as they were.
   [gameplay](../gameplay.md#the-captains-drum-the-titles-piece-long-noises-whole-round-50h).
+- round 50i (sound): a guard walks heel then ball in sandals (r50j: a brighter, narrower slap, no hard tick, more weight, the sole slapping back on his heel 0.15 s on; `FT_GV` 1.15); his landing (`gland`) measures 7 dB over round 50d's in the phone's band (kept); `gshift`'s hilt tick is noise at a plate's ratio, no sine [gameplay](../gameplay.md#each-themes-own-ambience-real-drops-and-crackles-footfalls-from-the-ground-round-50i).
 
 Details in CLAUDE.md (Fighters bullet, rounds 24, 27c).

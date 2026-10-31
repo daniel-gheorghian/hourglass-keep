@@ -103,6 +103,22 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
 
+## What round 50i found
+
+Round 50i (owner: "the ambient noises are too similar. The chirps are in all of them"; "the water dripping doesn't sound right ... the
+crackles sound off"; "For the step noises: still not right"; on the prototypes of r50f, r50i and r50j: "Go with the new versions")
+([gameplay](gameplay.md#each-themes-own-ambience-real-drops-and-crackles-footfalls-from-the-ground-round-50i)).
+
+| Finding | Where | Round 50i | Seen in |
+|---|---|---|---|
+| The chirp in every theme was the drip: a sine falling 45% in 60 ms, in every theme by default; the plunk the same lower | `AMB_DEF`, `drip`, `plunk` | drops as they sound: onto wet stone a tap and its spray, into water the trapped bubble's ring rising (`B`), far down a well a big bubble fluttering up the shaft; only in the three wet themes | [gameplay](gameplay.md#each-themes-own-ambience-real-drops-and-crackles-footfalls-from-the-ground-round-50i) |
+| The themes sounded alike: one air bed, one lamp crackle (the commonest sound everywhere, 0.22 a slot) and that drip | `AMB_T`, `ambSlot` | twelve palettes of 3-4 sounds each (`AMB_T`, `AMB_POS`, `AMB_K` 2), none in more than three themes; the lamp at 0.12; each theme its room (`SND_ZT`) | [lamps](elements/lamps-and-light.md) |
+| Ticks swelled: a sound of 3-6 ms rose over the default 4-6 ms and stopped (the crackle, salt, the metal, the drops' clicks) | `tone`, `noise` callers | every sound under ~20 ms rises in at most 0.5 ms; sndtest checks every cue | [gameplay](gameplay.md#each-themes-own-ambience-real-drops-and-crackles-footfalls-from-the-ground-round-50i) |
+| The crackle a few even bandpassed bursts; salt and the cooling metal swelled ticks | `crackle`, `salt`, `tink` | vapour pops of power-law sizes with a sputter; salt an avalanche of ticks and pings; metal a slip and a plate's three modes | [lamps](elements/lamps-and-light.md) |
+| A footstep a single 60-70 ms puff with a falling sine under it (a drum machine's kick), the landings two more sines; nothing of heel and ball, friction or grit | `SND_SURF`, `Snd.foot`, `land`, `landh`, `gland` | a gait times a surface (`FT_G`, `FT_S`): heel and ball or ball and heel, the sole's slap, a tick on smooth stone, the weight as low noise, a floor mode, a grain texture (`gbuild`), the push-off scuff, each surface's own; no sines; every step jittered | [heaps](elements/heaps-and-drifts.md), [cracked slabs](elements/cracked-slabs-and-sand-wells.md), [lifts](elements/lifts.md), [courts](elements/courts.md), [guards](elements/guards-and-snakes.md), [doors](elements/doors.md) |
+| The exit's treads played the run's footfall | `updatePlayer` (state `exit`) | the walking gait (`walk`) | [doors](elements/doors.md) |
+| An idle guard's hilt ticked as two sines at a bar's 1 : 2.76; stone settling and the Crossing's steps had low sine thumps | `gshift`, `settle`, `firmstep`, `earthstep` | noise at a plate's ratio; low noise | [guards](elements/guards-and-snakes.md), [the Crossing](elements/the-crossing.md) |
+
 ## What round 50h found
 
 Round 50h (owner on round 50h's prototypes: the duel "just a low drum", "use just the drums, I didn't like the other variant", "Carry to

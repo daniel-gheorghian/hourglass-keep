@@ -167,4 +167,5 @@ slab takes its neighbours' support, repeated until none fails. Planks are never 
   opaque; they were black at .85-.88 (the contour rule). Look only.
 - round 49b: a slab that can jam a plate under it (the slab-holds-plate puzzles) sifts grit onto that plate while it lies (`drawGrit`, plates.md).
 - round 50d (sound): a step on a cracked slab is `grit` (a crunch and a faint crack), on a plank `plank` (a hollow knock) [gameplay](../gameplay.md#footsteps-traps-heard-off-screen-each-themes-ambience-round-50d).
+- round 50i (sound): `grit` (r50j) a softer slap, grit grains under the contact, crushed grains and the loose piece knocking; `plank` the slap, a 780 Hz knock and the board's three low modes close together (no pitch), now and then the board on its bearer [gameplay](../gameplay.md#each-themes-own-ambience-real-drops-and-crackles-footfalls-from-the-ground-round-50i).
 - Details in CLAUDE.md (Themes: 16a, Sand wells 21b/26d/30, 35b, 35c).

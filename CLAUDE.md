@@ -92,7 +92,7 @@ is a placeholder: only the built `index.html` carries the release number.
 | `wellcorr.py lo hi [seeds]` | no sand well stands in a corridor: every well's pit is walled on both sides down to its floor (round 30) | `wellcorr: ok` |
 | `cpscan.py lo hi [seeds]` | no pixel of the sky clock (the checkpoint) over a wall's front face, a step or a low ceiling beside it, both modes (round 37c) | `cpscan: ok` |
 | `chimtest.py [file] [lo hi] [seeds]` | round 48b's locked chimney, every kick shaft (floors 1-48 x 3: 236): climbed by a running Jump, a standing Jump or Up at the foot, then one Up a stance, every stance on its grid to the pixel, the Y landing 12 px past the lip with the standing landing; Up held gives one kick; Jump does nothing; Down at each stance lets go at once with a fall's damage; a rewind in mid-kick restores his own copies; walking in does not lock; no plant, kick or lock off a single wall elsewhere | `chimtest: ok` |
-| `sndtest.py [file] [wav=DIR]` | round 50c's sound: every `Snd.play` cue rendered offline through the whole graph (`Snd.render`: room, compressor, level), no NaN, peak under 0 dBFS alone and piled up, audible but `clear`; Off silent, Quiet under Full; the live context unlocked by a key, every cue, the places, sleep and wake; round 50d: every footfall on every surface told apart, `footSurf`, the off-screen falloff, the voice cap, every theme's ambience quiet, the duck; round 50e: the gate cue's openings and closings by length, the great door's boom, the summoned lift's rumble unbroken, the placed falloff, the duck under a far gate; round 50h: a long noise whole, the captain's drum (tempo, entrance, one last stroke, stop, a rewind's fresh start), `duelState` on floor 10 (through the reinforcement, the death, a pause), the title's piece (tail, levels, the fade when left; live: the first key, a floor, Quit to the title); `wav=` writes the key cues | `sndtest: ok` |
+| `sndtest.py [file] [wav=DIR]` | round 50c's sound: every `Snd.play` cue rendered offline through the whole graph (`Snd.render`: room, compressor, level), no NaN, peak under 0 dBFS alone and piled up, audible but `clear`; Off silent, Quiet under Full; the live context unlocked by a key, every cue, the places, sleep and wake; round 50d: every footfall on every surface told apart, `footSurf`, the off-screen falloff, the voice cap, every theme's ambience quiet, the duck; round 50e: the gate cue's openings and closings by length, the great door's boom, the summoned lift's rumble unbroken, the placed falloff, the duck under a far gate; round 50h: a long noise whole, the captain's drum (tempo, entrance, one last stroke, stop, a rewind's fresh start), `duelState` on floor 10 (through the reinforcement, the death, a pause), the title's piece (tail, levels, the fade when left; live: the first key, a floor, Quit to the title); round 50i: every footfall (`walk` too) on every surface, no two surfaces alike (third-octave band shares of 6 steps, Math.random seeded alike, within 1.5 dB = alike), no sine in a footfall (the Crossing's too), every N/T under 20 ms of every cue striking within 0.5 ms (the bubble's 0.8 ms apart), the twelve palettes (no element in over three themes but the shared, 2,400 slots a theme play all of its own, none of another's), the ambience's sines only the bubbles, the forge's 46 Hz, tink and salt; `wav=` writes the key cues | `sndtest: ok` |
 | `r38b_tests.py` | round 38b's play faults, one check each: the roof block and `P.inv`, the damaging drop's lip, a banner's rewind, the sand lift (no banner since round 49a, `sandfall` learned on getting off) and its top, the recruit's colour, the timed gates' waits | `r38b: ok` |
 | `tellscan.py [file] [lo hi] [per=K]` | round 49b's tells: at up to K spots a floor of each kind (reach, edge, stakes, flask, low) none before 0.5 s still, full by 1.2 s, the pose changed, the weight 0 the frame Grab is held and the pose back 0.35 s later, P.x/P.y/state identical with `TELL.off`; none while he moves; no spot in a wind zone (none there by design) | `tellscan: ok` |
 | `wearscan.py [file] [lo hi] [seeds]` | round 49c's wear marks and bones (floors 1-48 x 3): scuffs on every wall run up and nowhere else, drawn inside its face; grooves on every cell of each block's track and nowhere else, drawn inside the floor's top face; one set of bones a kind at the first trap of its kind by the route's order (its own list of the traps), every kind on a floor with the trap; on a route tile every pixel behind his walking line and under 6.5 px | `wearscan: ok` |
@@ -1726,6 +1726,43 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   r50h_duel_game.wav, _drum_only, _fx_only: the drum from his draw at 587.2 s, the captain down at 595.5, the veteran at 604.6, the last
   stroke on that fall; the drum alone peaks -15.7 dBFS at out 1.0 as the approved drum-only prototype, the fight -8.1), sndtest `wav=` (r50h_title.wav, r50h_title_left.wav, r50h_duel_drum.wav), `longcues.py`
   (r50h_long_<cue>_before/after.wav).
+- Each theme's own ambience, real drops and crackles, footfalls from the ground (round 50i; owner on round 50d: "the ambient noises are too
+  similar. The chirps are in all of them"; on round 50f: "the water dripping doesn't sound right ... the crackles sound off"; "For the step
+  noises: still not right"; on the three prototypes: "Go with the new versions"; `dev/docs/gameplay.md` "Each theme's own ambience ...").
+  Sound only. Ported by meaning from `.claude/research/r50f/` (palettes), `r50i/` (drops, crackles, the short-sound rule) and `r50j/`
+  (footfalls), in that order; r50f's footfall fixes are superseded by r50j's. (1) r50f: `AMB_T[look]` lists of [name, chance a slot] (no
+  `AMB_DEF`), `AMB_POS[name]` [dx min, span, dy, span, bed only], each entry its own hashes (`hash2(q*16+i, sd+977(j+1))`), through
+  `amb(n,dx,dy,at,kk)` at `AMB_K` 2 (the shared ones 1; `Snd.alog` records the names); the lamp's crackle at `AMB_LAMP` 0.12 (was 0.22);
+  settle the only shared slot draw (round 50d's trickle chance went into three themes' lists); `SND_ZT[look]` [send x, lowpass x] read by
+  `zt()` in `zoneNow` and `env`; `startLevel` clears `Snd.zone` so the next `env` sets the new theme's room; 31 new cases (lap, runnel,
+  pebble, updraft, shaftwind, hammer, sandhiss, doordraft, ftick, craze, gallery, reeds, mud, resin, crumbs, wallwind, flap, grind,
+  farsteps, farthud, sandwind, gust, beam, rattle, and r50i's six); `drip`/`plunk` play `drop`/`pooldrop`; the forge r50f's x0.7 (roar
+  0.015, hiss 0.005, hum 0.008: at r50f's level it alone peaked 0.0097-0.011 at 260 px, over a run step's 0.004-0.006 in a hall, and
+  Meroë's 15 s windows peaked 0.0081 median against Napata's 0.0058; now 0.0067 and 0.0060, `.claude/research/r50k/meroe.py`), `whistle` q 14/16 vol 0.05/0.01. No element in more than three themes
+  (drop 3, trickle 3, runnel, sandhiss, crumbs 2). (2) r50i: `drop` (a tap, the splat, spray, a film bubble one in four), `pooldrop` (the
+  bubble 12-24 ms on in 7 of 10, the jet's drop), `shaftdrop` (a big bubble and its flutter), `crackle` (vapour pops, power-law sizes, a
+  sputter), `salt` (an avalanche of ticks and pings), `tink` (a plate's 1 : 1.71 : 2.33), and `B(f,v,o)` in `play()`'s helpers (a sine at
+  the Minnaert pitch decaying at 0.043 f + 0.0014 f^1.5 /s, rising by `sg`; its 0.8 ms onset kept as r50i made it). The rule: every N/T
+  under ~20 ms rises in at most 0.5 ms (`att`); applied across `play()` (the theme sounds, ember, settle, trickle, tick, bones, gopen's,
+  gdoor's, lopen's and gthud's grit, rewind's ticks, the footfalls) and checked by sndtest over every cue. (3) r50j: `SND_SURF` is `FT_S`
+  (14 surfaces: c slap, k tick, b weight, m mode, t texture, s scuff, x extra), `FT_G` the gaits (walk heel+ball 95 ms, run ball+heel 32
+  ms, land, landh), `FT_V` 1, `FT_GV` 1.15 (the guard's landing 7 dB over round 50d's in the phone's band, r50j's measure: kept);
+  `Snd.foot` is `r50j/tools/foot.js` with the short-sound rule (slap, tick, sandal, wet peel, the board's knock, the grate's clank, the
+  platform's knocks at 0.3-0.5 ms); grain buffers `FT_GB` (k 40/s 2.2 ms, g 320/s 0.8 ms, d 2600/s 0.35 ms; `gbuild`, its own LCG so the
+  game's `Math.random` is untouched; offline at once, live in the motif's `setTimeout`; `noise()` plays `this.gb[o.b]`; `gb` in
+  `SND_KEYS`); cases `step` (run), `walk` (the exit's treads), `land`, `landh`, `gstep`, `gland`, the landings' extra N and sines gone, the
+  dead second `land` case removed. Departures: `gshift`'s hilt tick two Q 8 noise bands at 1 : 1.71 (was sines at a bar's 2.76); `settle`'s
+  55 Hz sine and the Crossing's `firmstep`, `firmrun`, `earthstep`, `earthrun` sine thumps are low noise (no sine in a footfall, none in the
+  ambience but the bubbles, the forge's hum, tink's and salt's rings); the crawl keeps `step`. Measured from the built game
+  (`.claude/research/r50k/render.py`, `drips.py`, `lands.py`): the twelve ambiences against r50f's/r50i's WAVs rms -1.9 to +0.6 dB (Meroë -1.9: the forge's
+  trim), peaks -3.8 to +2.4 dB (another draw of the game's seed: the slots' hashes take `S.seed`); r50i's seeded drips and crackles the
+  same variants, every event's peak within 0.0 dB; the steps (r50j's anal.py, 4 walking and 6 running a surface) -2.1 to +3.3 dB of
+  r50j's in 300-4000 Hz, mean +0.4; the landings, a mean of 8 against 8 of the prototype's, mean -0.2 dB, -1.9 to +1.1 (31 kinds: land,
+  landh on 14 surfaces, the guard's on 3; one landing alone swings -4 to +7 dB with its grains); the guard's step -1.7 to +0.4.
+  Checks: sndtest ok, run2 3-12 x 1 10/10 and 13-20 x 1 fight 8/8, 0 damage (0.06 and 0.10 ms/frame mean), swingtest 6-12 FAILURES 0, hinttest 3-8 FAILURES 0, crossscan quick ok, rendersmoke 4-8 both
+  ok (0.84 ms/frame mean, software WebGL), layoutcmp `hk_v90_release.html notimers liftrest` same (144 of 144). WAVs `.claude/research/r50k/` (r50k_amb_<look>.wav,
+  r50k_steps.wav, r50k_guard.wav, r50k_drips.wav, r50k_crackles.wav; `render.txt`, `drips.txt`, `lands.log`); `sndtest.py wav=DIR` writes
+  r50i_steps_surfaces.wav.
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized three ways (Trap density, above); only P4's race uses the careful pace.
 - Pose angles are measured from straight down; positive means forward.

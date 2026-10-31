@@ -22,6 +22,13 @@
 # tail, Quiet under Full, Off silent, left: faded within 1.5 s; live: a fresh page's first key press starts it on the title, a floor stops
 # it and frees its strings, Quit to the title plays it again from its start. wav=DIR also writes r50h_title.wav (41 s), r50h_title_left.wav
 # (left at 12 s) and r50h_duel_drum.wav (the timeline above).
+# Round 50i (r50f's palettes, r50i's drops and crackles, r50j's footfalls): every footfall cue (step, walk, land, landh, gstep, gland) on
+# every surface (FT_S): no NaN, audible, and no two surfaces alike (the mean band levels of 6 steps, eight octave bands, within 1.5 dB of each
+# other in every band: alike); no sine in any footfall (the Crossing's too); every N or T of a play() cue under 20 ms strikes (att <= 0.5 ms:
+# its peak within its first 0.5 ms; the bubble B's 0.8 ms onset is r50i's own), each cue played 6 times, each footfall on every surface; the twelve palettes: no element in more than
+# three themes (the shared settle, crackle, ropefar and ember apart), each theme's 2,400 slots play every one of its own sounds and none of
+# another's; the ambience's only sines the bubbles (drop, pooldrop, shaftdrop), the forge's 46 Hz hum and the metal's and salt's rings
+# (tink, salt). wav=DIR also writes r50i_steps_surfaces.wav (4 walking steps, 6 running, a landing and a heavy one on each surface).
 # Must print `sndtest: ok`.
 import os, re, sys, struct, json
 from playwright.sync_api import sync_playwright
@@ -45,8 +52,12 @@ def wav(path, L, R):
         f.write(b''.join(struct.pack('<hh', int(max(-1, min(1, x)) * 32767), int(max(-1, min(1, y)) * 32767)) for x, y in zip(L, R)))
 
 
+SEED = '''(s)=>{window.__mr=window.__mr||Math.random;let a=s>>>0;Math.random=()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}'''  # (round 50i) a seeded Math.random
 REND = '''async ([ns,dur,z,o])=>{const H=__HK;return await H.Snd.render(ns,dur,z,o);}'''
-FEET = ['step', 'land', 'landh', 'gstep', 'gland']
+FEET = ['step', 'walk', 'land', 'landh', 'gstep', 'gland']
+XFEET = ['sandstep', 'sandrun', 'firmstep', 'firmrun', 'earthstep', 'earthrun', 'gravelstep', 'gravelrun']  # (the Crossing's)
+SHARED = {'settle', 'crackle', 'ropefar', 'ember'}
+AMB_SINE = {'drop', 'pooldrop', 'shaftdrop', 'forge', 'tink', 'salt'}
 LOOKS4 = ['nun', 'meroe', 'foggara', 'west']
 
 
@@ -96,17 +107,61 @@ if __name__ == '__main__':
                 if r['nan']: bad.append('%s %s: %d NaN' % (n, sf, r['nan']))
                 if r['peak'] >= 1.0: bad.append('%s %s: peak %.3f' % (n, sf, r['peak']))
                 if r['peak'] < 1e-4: bad.append('%s %s: silent' % (n, sf))
-                if n == 'step': sig[sf] = feat(r['L'], r['R'])
         r = pg.evaluate(REND, [[[n, 0.3, sf] for n in ('landh', 'gland') for sf in surf], 2.5, 'shaft', {}])
         if r['peak'] >= 1.0 or r['nan']: bad.append('every landing at once: peak %.3f nan %d' % (r['peak'], r['nan']))
-        print('steps by surface (rms x1000, crossings a sample, ring ms): ' + ', '.join('%s %.2f/%.3f/%d' % (k, v[0] * 1000, v[1], v[2] * 1000) for k, v in sig.items()))
-        same = []
-        ks = list(sig)
+        # (round 50i) the surfaces told apart: mean band levels (dB, eight octave bands 75 Hz-19 kHz) of 6 steps each (3 walking, 3 running;
+        # every step is jittered: Math.random seeded alike for each surface, so the same draws and only the recipe differs), each surface's
+        # spectrum in third-octave bands 100 Hz-16 kHz against every other's: alike if every band is within 1.5 dB
+        import numpy as np
+        ED = [100 * 2 ** (k / 3) for k in range(23)]
+        for sf in surf:
+            pg.evaluate(SEED, 50)
+            r = pg.evaluate(REND, [[['walk', 0.3 + 0.6 * i, sf] for i in range(3)] + [['step', 2.1 + 0.3 * i, sf] for i in range(3)], 3.4, 'low', {'data': True}])
+            x = np.array(r['L']) + np.array(r['R']); S_ = np.abs(np.fft.rfft(x)) ** 2; fq = np.fft.rfftfreq(len(x), 1 / SR)
+            e = np.array([S_[(fq >= ED[k]) & (fq < ED[k + 1])].sum() for k in range(22)]) + 1e-20; sig[sf] = 10 * np.log10(e / e.sum())
+        pg.evaluate("()=>{if(window.__mr)Math.random=window.__mr;}")
+        print('steps by surface (third-octave band shares dB, 100 Hz-16 kHz, every other band shown): ' + '; '.join('%s %s' % (k, ' '.join('%.0f' % v for v in sig[k][::2])) for k in sig))
+        same = []; ks = list(sig); dmin = (99, '')
         for i in range(len(ks)):
             for j in range(i + 1, len(ks)):
-                u, w = sig[ks[i]], sig[ks[j]]
-                if all(abs(x - y) <= 0.06 * max(abs(x), abs(y), 1e-9) for x, y in zip(u, w)): same.append(ks[i] + '=' + ks[j])
+                dm = float(np.abs(sig[ks[i]] - sig[ks[j]]).max())
+                if dm < dmin[0]: dmin = (dm, ks[i] + '/' + ks[j])
+                if dm <= 1.5: same.append('%s=%s (%.1f dB)' % (ks[i], ks[j], dm))
+        print('the nearest two surfaces: %s, %.1f dB apart in their most different band' % (dmin[1], dmin[0]))
         if same: bad.append('surfaces not told apart: ' + ', '.join(same))
+        # (round 50i) no sine in a footfall; every short N/T strikes (att <= 0.5 ms); the ambience's sines only where they belong
+        IN = """async([ns,reps,surf,feet])=>{const H=__HK,Sn=H.Snd,no=Sn.noise,to=Sn.tone,log=[];let cur='';
+          Sn.noise=function(d,o={}){log.push([cur,'N',d,o.att===undefined?0.004:o.att,o.f||0]);return no.call(this,d,o);};
+          Sn.tone=function(f,d,o={}){log.push([cur,'T',d,o.att===undefined?0.006:o.att,f]);return to.call(this,f,d,o);};
+          const items=[];for(const n of ns)for(let k=0;k<reps;k++)items.push([n,0.05+k*0.01]);for(const n of feet)for(const sf of surf)for(let k=0;k<3;k++)items.push([n,0.05,sf]);
+          try{for(const it of items){cur=it[0]+(it[2]?':'+it[2]:'');await Sn.render([it],0.1,'room',{});}}finally{Sn.noise=no;Sn.tone=to;}return log;}"""
+        lg = pg.evaluate(IN, [[c for c in cues if c not in FEET], 6, surf, FEET])
+        slow = sorted(set('%s %s %.4f s att %.4f' % (c.split(':')[0], k, d, at) for c, k, d, at, f in lg if d < 0.02 and at > 0.0005 and not (k == 'T' and at == 0.0008)))  # (the bubble B's 0.8 ms onset, r50i's own)
+        sines = sorted(set(c for c, k, d, at, f in lg if k == 'T' and c.split(':')[0] in FEET + XFEET))
+        amb = set(pg.evaluate("()=>Object.values(__HK.AMB_T).flat().map(e=>e[0])")) | SHARED
+        asine = sorted(set('%s %.0f Hz' % (c, f) for c, k, d, at, f in lg if k == 'T' and c in amb and not (c in AMB_SINE and (c != 'forge' or abs(f - 46) < 1))))
+        nshort = sum(1 for c, k, d, at, f in lg if d < 0.02)
+        print('short N/T (under 20 ms) played: %d, any slower than 0.5 ms: %d; sines in footfalls: %d; sines in the ambience outside the bubbles, the forge\'s hum, tink and salt: %d'
+              % (nshort, len(slow), len(sines), len(asine)))
+        if slow: bad.append('short sounds that swell: ' + '; '.join(slow[:12]))
+        if sines: bad.append('sines in footfalls: ' + ', '.join(sines[:8]))
+        if asine: bad.append('sines in the ambience: ' + ', '.join(asine[:8]))
+        # (round 50i) the twelve palettes: no element in more than three themes but the shared; each theme plays its own and only its own
+        at = pg.evaluate("()=>__HK.AMB_T")
+        cnt = {}
+        for lk, es in at.items():
+            for e in es: cnt.setdefault(e[0], []).append(lk)
+        many = {k: v for k, v in cnt.items() if len(v) > 3}
+        print('ambience palettes: %d themes, %d elements; shared by 2-3 themes: %s' % (len(at), len(cnt), ', '.join('%s %d' % (k, len(v)) for k, v in sorted(cnt.items()) if len(v) > 1)))
+        if many or len(at) != 12: bad.append('palettes: %r' % many)
+        for lk in sorted(at):
+            n = pg.evaluate("(lk)=>{for(let n=1;n<200;n++)if(__HK.themeOf(n).look===lk)return n;return 1;}", lk)
+            lgA = pg.evaluate("""async([n,lk])=>{const H=__HK;H.load(n,1,false);const L=H.L,P=H.P,t=L.torches.find(t=>!t.broken)||L.torches[0];if(t){P.x=t.c*32+16+50;P.y=(t.r+1)*64-4;}
+              H.Snd.alog=[];await H.Snd.render([],0.5,'hall',{amb:{look:lk,n:2400}});const l=H.Snd.alog;H.Snd.alog=null;return l;}""", [n, lk])
+            own = set(e[0] for e in at[lk]); got = set(lgA)
+            if own - got or got - own - SHARED: bad.append('ambience %s: missing %s, foreign %s' % (lk, sorted(own - got), sorted(got - own - SHARED)))
+            print('ambience %-8s floor %3d, 2400 slots: %s' % (lk, n, ', '.join('%s %d' % (k, lgA.count(k)) for k in sorted(got))))
+        pg.evaluate("()=>{window.__HKfreeze=true;__HK.load(7,1,false);}")
         fs = pg.evaluate("""()=>{const H=__HK,L=H.L,out={};for(let r=0;r<L.rows;r++)for(let c=0;c<L.cols;c++){if(L.base[r*L.cols+c]!==1)continue;
           const k=H.footSurf(c*32+16,(r+1)*64-4,false);out[k]=(out[k]||0)+1;}return [out,L.theme.style];}""")
         print('footSurf on floor 7\'s floor tiles: %r (style %s)' % tuple(fs))
@@ -249,10 +304,11 @@ if __name__ == '__main__':
             # (round 50d) a strip of footfalls on each surface: four steps, a landing and a heavy one
             surf = pg.evaluate("()=>Object.keys(__HK.SND_SURF)"); ns = []; t = 0.3
             for sf in surf:
-                for i in range(4): ns.append(['step', t + 0.26 * i, sf])
-                ns.append(['land', t + 1.25, sf]); ns.append(['landh', t + 1.9, sf]); t += 2.9
-            r = pg.evaluate(REND, [ns, t + 0.5, 'room', {'data': True}]); wav(os.path.join(WAV, 'r50d_steps_surfaces.wav'), r['L'], r['R'])
-            print('r50d_steps_surfaces.wav: ' + ', '.join('%s %.1f s' % (sf, 0.3 + 2.9 * i) for i, sf in enumerate(surf)))
+                for i in range(4): ns.append(['walk', t + 0.52 * i, sf])
+                for i in range(6): ns.append(['step', t + 2.33 + 0.22 * i, sf])
+                ns.append(['land', t + 3.9, sf]); ns.append(['landh', t + 4.6, sf]); t += 5.6
+            r = pg.evaluate(REND, [ns, t + 0.5, 'room', {'data': True}]); wav(os.path.join(WAV, 'r50i_steps_surfaces.wav'), r['L'], r['R'])
+            print('r50i_steps_surfaces.wav: ' + ', '.join('%s %.1f s' % (sf, 0.3 + 5.6 * i) for i, sf in enumerate(surf)))
             # a guard heard before he is seen: he walks toward an idle guard 700 px ahead (in view under 240 px), who shifts his weight now and
             # then, draws at 100 px and advances two steps
             ns = [['step', 0.3 + 0.27 * i, 'palace'] for i in range(23)]

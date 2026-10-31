@@ -2873,7 +2873,7 @@ function drawFigure(ctx,x,y,face,p,pal,o){
 const SND_Z={ // a place: [the hall's send, the slap's send, the room's lowpass Hz, the air bed 0..1]
   cross:[0.03,0,4200,0],court:[0.07,0.02,5200,0],low:[0.06,0.32,2600,0.55],room:[0.2,0.09,3000,0.8],hall:[0.36,0.04,3600,1],shaft:[0.55,0.06,4400,0.9],quiet:[0.2,0.05,3200,0]};
 const SND_LV={full:0.3,quiet:0.1},SND_TC=0.35,RV_T=3.0,SND_BED=0.03,SND_NB=2.0; // (round 50h) SND_NB: the noise buffer's length s, looped by noise()
-const SND_KEYS=['ctx','master','comp','out','rvS','conv','rvLP','slS','nb','zone','off','bedN','bedK','aB','ambS','tqN','amOn','dB','dR','dl','tB','tR','tl','tk','rvIn'];
+const SND_KEYS=['ctx','master','comp','out','rvS','conv','rvLP','slS','nb','gb','zone','off','bedN','bedK','aB','ambS','tqN','amOn','dB','dR','dl','tB','tR','tl','tk','rvIn'];
 // (round 50h) the captain's drum (`Snd.duel`, owner: "just a low drum"; "use just the drums"; "Carry to the last"): a large frame drum's
 // heartbeat, laid DUEL_LA s ahead on the audio clock (never the frame rate, hit stop or the catch-up), DUEL_BPM calm to +DUEL_UP tense; the
 // title's piece (`Snd.title`, owner: "B: the Nubian lyre", "Every time"): TITLE_B's rows [t, kind, ...] laid TITLE_LA s ahead, then its tail
@@ -2885,28 +2885,72 @@ const TITLE_B=(()=>{const E=[],air=(t,d,v)=>E.push([t,'air',d,v]);air(0,6,0.015)
     [13.5,'D4',0.13],[14.1,'A3',0.12],[14.7,'F3',0.13],[15.9,'G3',0.1],[16.5,'F3',0.1],[17.6,'D3',0.13]])E.push([t,'K',n,v,{}]); // the motif closing on G-F-D
   E.push([17.63,'K','D2',0.09,{lp:1100}],[19.5,'fin',0.5,3],[23.5,'K','A3',0.06,{rv:1.4}],[24.4,'K','D3',0.07,{rv:1.4}]);air(15,10,0.012);
   return E.sort((a,b)=>a[0]-b[0]);})();
-// (round 50d, B4) a footfall by what is under the foot: [the pat's lowpass Hz, its volume, its length s, the click's bandpass Hz, its Q, its
-// volume, the body's thump Hz, its volume, an extra layer]. Stone by the drawing's style (dungeon damp and dull, palace polished limestone,
-// tile glazed faience with a short tick, forge grit on a hot floor, crypt hard granite); then sand (a drift: a soft push and a hiss of grains),
-// rubble (a heap: small stones knocking), plank (a hollow wooden knock), grate (bronze bars), grit (a cracked slab: a crunch and a faint crack),
-// court (open paving, dry), coping (a pool's dressed edge: water lapping by), hollow (a lift's platform or slab hung in its shaft: a box's boom)
-// and sandslab (the sand lift's slab: stone over running sand). Landings are the same layers with more weight (`foot`'s w).
-const SND_SURF={
-  dungeon:[380,0.034,0.075,1900,1.4,0.008,88,0.014,'wet'],palace:[520,0.03,0.06,3000,1.6,0.013,100,0.012,''],tile:[600,0.026,0.05,4200,3,0.016,105,0.01,'ring'],
-  forge:[460,0.032,0.07,2600,1,0.01,92,0.013,'grit'],crypt:[330,0.036,0.08,2200,2,0.012,80,0.017,''],court:[600,0.03,0.05,2800,1,0.01,100,0.011,'dust'],
-  coping:[520,0.03,0.06,3000,1.6,0.012,100,0.012,'lap'],grit:[440,0.03,0.07,1500,6,0.006,90,0.013,'crunch'],sand:[480,0.032,0.1,2400,0.7,0.014,70,0.006,'hiss'],
-  rubble:[400,0.03,0.07,2400,4,0.012,85,0.015,'stones'],plank:[700,0.02,0.06,700,4,0.02,120,0.012,'knock'],grate:[500,0.02,0.05,4000,1,0.01,95,0.009,'bronze'],
-  hollow:[320,0.02,0.12,320,5,0.02,70,0.014,'boom'],sandslab:[470,0.028,0.06,3000,0.6,0.008,90,0.01,'pour']};
+// (round 50i, after r50j) a footfall is a gait (when the sole strikes: the ground reaction force's events) times a surface (what each
+// strike excites, and the texture under the contact). Farnell (Designing Sound, practical 26: heel, roll, ball), Cook ("Modeling Bill's
+// Gait", PhISEM), Serafin, Turchet, Nordahl (exciter x resonator; seven floor modes under 1.5 kHz), Ekimov & Sabatier (heel to toe ~100 ms;
+// friction makes the highs). Per strike: c the sole's slap (bandpass [f,q,ms,vol]), k a hard tick (smooth stone only), b the weight into the
+// floor (lowpass), m a floor mode (bandpass); over the contact: t a grain texture [buf,type,f,q,vol], s the push-off scuff (friction); x the
+// surface's own. No sines: weight is low noise. Volumes are a walking heel's. Stone by the drawing's style (dungeon damp, palace polished
+// limestone, tile glazed faience, forge a gritty hot floor, crypt granite); then court (open paving), coping (a pool's edge), grit (a
+// cracked slab), sand (a drift), rubble (a heap), plank, grate (bronze), hollow (a lift's platform hung in its shaft), sandslab (the sand lift)
+const FT_S={
+  palace: {c:[1150,1.1,12,0.044],k:[3200,1.4,4,0.002],b:[230,0.9,45,0.040],m:[620,1.4,30,0.012],t:['g','highpass',4500,0.7,0.0009],s:[2600,0.9,60,0.002]},
+  dungeon:{c:[1300,1.4,15,0.044],b:[210,0.9,50,0.040],m:[540,1.3,35,0.012],s:[3000,1.0,40,0.003],x:'wet'},
+  tile:   {c:[1350,1.1,10,0.042],k:[4200,1.8,3,0.004],b:[250,0.9,40,0.034],m:[760,1.6,25,0.011],t:['g','highpass',5000,0.7,0.0008],s:[2800,0.9,50,0.002]},
+  forge:  {c:[1050,1.0,12,0.034],b:[220,0.9,45,0.040],m:[580,1.3,30,0.010],t:['g','bandpass',3600,0.8,0.005],s:[2400,0.8,70,0.004],x:'cinder'},
+  crypt:  {c:[1250,1.2,11,0.044],k:[2700,1.4,4,0.004],b:[190,0.9,55,0.044],m:[480,1.3,35,0.012],t:['g','highpass',4800,0.7,0.0008],s:[2500,0.9,55,0.002]},
+  court:  {c:[1100,1.0,12,0.042],b:[230,0.9,40,0.036],m:[650,1.3,25,0.011],t:['g','bandpass',4200,0.8,0.003],s:[2600,0.8,70,0.004],x:'dust'},
+  coping: {c:[1250,1.3,13,0.044],k:[3000,1.4,4,0.003],b:[230,0.9,45,0.038],m:[600,1.4,30,0.009],s:[2900,1.0,45,0.003],x:'lap'},
+  grit:   {c:[1100,1.0,12,0.032],b:[220,0.9,45,0.036],m:[520,1.3,30,0.010],t:['g','bandpass',3400,0.9,0.005],s:[2400,0.8,60,0.005],x:'crunch'},
+  sand:   {b:[190,0.8,90,0.030],t:['d','bandpass',1900,1.0,0.010],s:[3200,0.8,90,0.008],x:'sand'},
+  rubble: {c:[1000,1.0,10,0.020],b:[200,0.9,50,0.034],t:['g','bandpass',3000,0.9,0.006],s:[2200,0.8,60,0.004],x:'stones'},
+  plank:  {c:[950,1.0,10,0.05],b:[170,0.9,40,0.020],m:[780,2.0,25,0.04],s:[2200,0.9,50,0.0025],x:'wood'},
+  grate:  {c:[1300,1.0,8,0.045],b:[200,0.9,30,0.022],s:[2600,0.9,40,0.003],x:'bronze'},
+  hollow: {c:[1050,1.0,10,0.045],b:[150,0.9,60,0.030],m:[300,1.6,60,0.045],s:[2400,0.9,45,0.0025],x:'boom'},
+  sandslab:{c:[1100,1.1,12,0.036],b:[200,0.9,50,0.034],m:[560,1.3,30,0.009],t:['d','bandpass',2800,0.6,0.004],s:[2600,0.9,50,0.003],x:'pour'}};
+// the gaits: strikes [s, weight], the texture's span tx, the scuff's time sc, the weight's scale bw, a landing's body weight wt. Walk: heel
+// then ball; run (barefoot, Lieberman 2010): the ball, the heel kissing down; landings: the two feet a few ms apart, then the heels
+const FT_G={walk:{st:[[0,1],[0.095,0.6]],tx:0.24,sc:0.2,bw:1},run:{st:[[0,1],[0.032,0.38]],tx:0.13,sc:0.105,bw:0.8},
+  land:{st:[[0,1],[0.014,0.8],[0.055,0.6]],tx:0.2,sc:0,bw:2.2,wt:0.25},landh:{st:[[0,1],[0.009,0.9],[0.04,0.85]],tx:0.3,sc:0,bw:3,wt:0.4}};
+// the steps' trim; a guard's level before his heavier weight (r50j: his landing measures 7 dB over round 50f's in the phone's band; kept)
+const FT_V=1,FT_GV=1.15,SND_SURF=FT_S;
+// (round 50i, after r50j) grain buffers: PhISEM in a buffer (Cook 1997, 2002; Nordahl et al. 2011): Poisson-timed particles of power-law
+// energy, each a decaying noise burst; 2 s each, scaled to the white buffer's RMS, made once; noise() plays one when o.b is 'k' (knocks),
+// 'g' (gravel), 'd' (sand): [key, particles a second, decay s]
+const FT_GB=[['k',40,0.0022],['g',320,0.0008],['d',2600,0.00035]];
 // (round 50d) traps and guards heard off screen (`Snd.tell`): what is in view plays as before, panned; what is out of view and within TELL_R
 // world px (storeys count 1.6 times) plays quieter past TELL_D0 and muffled by distance and by the storeys of stone between; at most
 // TELL_CAP such voices ring at once, the nearest first (a step's requests are sorted, played at its end, `flush`; TELL_DUR their lengths)
 const TELL_R=620,TELL_D0=170,TELL_CAP=4,TELL_Q=8,TELL_DUR={saw:0.2,dart:0.12,tick:0.05,fire:0.7,chomp:0.25,swoosh:0.32,hiss:0.35,slither:0.5,gstep:0.16,gshift:0.4,gland:0.3,draw:0.2};
-// (round 50d, B3) each theme's ambience over the air bed: one-shots on a clock of AMB_SL s slots, each slot's events picked by hashes of
-// the slot, the floor and the room he is in; chances a slot: drip, a drip into standing water (plunk), the forge's roar and bellows, the
-// wind whistling in a slit; everywhere stone settling and grit trickling (rare), the nearest lamp's crackle, a far rope's creak by a lift
-// or swing, a lit sky clock's embers. All through the ambience bus (`aB`), ducked under the events (SND_DUCK).
-const AMB_SL=0.25,AMB_DEF={drip:0.03,plunk:0,forge:0,bellows:0,whistle:0},AMB_T={nun:{drip:0.11,plunk:0.04},wells:{drip:0.08,plunk:0.02},foggara:{drip:0.08,plunk:0.01,whistle:0.02},
-  meroe:{drip:0.012,forge:0.018,bellows:0.02},aksum:{drip:0.02,whistle:0.022},shali:{drip:0.015,whistle:0.018}};
+// (round 50d, B3; round 50i after r50f) each theme's ambience over the air bed: one-shots on a clock of AMB_SL s slots, each slot's events
+// picked by hashes of the slot, the floor and the room he is in. Each theme its own palette: AMB_T[look] = [[name, chance a slot]];
+// where each sound sits: AMB_POS[name] = [dx min, dx span, dy, dy span, 1 if only where the air bed breathes]; the theme's own through
+// amb() at AMB_K its gain. Shared by every theme: the air bed, stone settling (rare), the nearest lamp's crackle (AMB_LAMP a slot), a far
+// rope by a lift or swing, a lit sky clock's embers. No element in more than three themes; drops only in the wet ones. All through the
+// ambience bus (`aB`), ducked under the events (SND_DUCK).
+const AMB_SL=0.25,AMB_K=2.0,AMB_LAMP=0.12,AMB_T={
+  nun:[['lap',0.05],['pooldrop',0.045],['runnel',0.028],['drop',0.02]],
+  wells:[['shaftdrop',0.026],['pebble',0.014],['updraft',0.02],['drop',0.03]],
+  foggara:[['runnel',0.06],['drop',0.03],['shaftwind',0.022],['trickle',0.012]],
+  meroe:[['forge',0.02],['bellows',0.022],['tink',0.05],['hammer',0.013]],
+  west:[['sandhiss',0.03],['doordraft',0.018],['trickle',0.016]],
+  blue:[['ftick',0.03],['craze',0.012],['gallery',0.02]],
+  osiris:[['reeds',0.025],['mud',0.018],['resin',0.03]],
+  deffufa:[['crumbs',0.022],['wallwind',0.02],['flap',0.013]],
+  hawara:[['grind',0.012],['farsteps',0.013],['farthud',0.011]],
+  shali:[['salt',0.035],['whistle',0.02],['crumbs',0.015]],
+  napata:[['sandwind',0.025],['sandhiss',0.03],['trickle',0.016]],
+  aksum:[['gust',0.025],['beam',0.02],['rattle',0.013]]},
+  AMB_NONE=[],
+  AMB_POS={drop:[90,260,-40,-90,1],pooldrop:[120,300,40,60,1],lap:[100,220,30,40,1],runnel:[60,200,50,70,1],shaftdrop:[40,160,-20,40,1],pebble:[40,160,-20,40,1],
+  updraft:[30,120,-10,30,1],shaftwind:[100,240,-90,50,0],trickle:[60,220,-50,-40,1],forge:[260,260,0,120,0],bellows:[240,240,0,80,0],tink:[60,200,-10,40,0],
+  hammer:[280,300,0,100,0],sandhiss:[80,240,0,20,0],doordraft:[200,300,-20,40,0],ftick:[60,240,-60,60,1],craze:[60,240,-60,60,1],gallery:[200,300,-30,60,0],
+  reeds:[140,260,-30,30,0],mud:[180,260,10,40,0],resin:[60,160,-20,20,0],crumbs:[80,240,-60,40,1],wallwind:[200,200,-40,40,0],flap:[220,260,-40,30,0],
+  grind:[300,320,-60,180,0],farsteps:[320,300,-60,180,0],farthud:[350,300,-80,200,0],salt:[50,220,-40,60,0],whistle:[120,240,-70,-40,0],
+  sandwind:[150,300,-60,40,0],gust:[100,250,-60,40,0],beam:[80,240,-70,40,0],rattle:[160,240,-40,40,0]},
+  // the theme's room: the hall send and the room's lowpass times these (faience bright and long, the labyrinth long and dark, mudbrick dry
+  // and dull, the highland's cold stone a little drier)
+  SND_ZT={blue:[1.35,1.6],hawara:[1.4,0.85],wells:[1.15,1.05],nun:[1.1,0.9],deffufa:[0.7,0.8],shali:[0.8,0.9],aksum:[0.85,1.1]},ZT0=[1,1];
 const SND_DUCK=new Set(['hit','clang','hurt','die','thud','crash','gate','chomp','cp','life','crumble','splash','storm','rewind','guardDie','fire','sealed','landh','poison','drink','swready','howl','gopen','gdoor','lopen','gshut','gthud','lshut','lsummon']);
 const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rvLP:null,slS:null,zone:'',off:false,hid:false,sc:0,pk:null,bedN:null,bedK:-1,aB:null,ambS:-1,amOn:false,
   tq:Array.from({length:TELL_Q},()=>({n:'',x:0,y:0,d:0,v:false,a:''})),tqN:0,tvE:new Float64Array(16),tlog:null,
@@ -2915,7 +2959,7 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
       this.ctx=new AC();this.build();}catch(e){this.ctx=null;}}
     if(this.ctx&&!this.hid&&this.ctx.state!=='running'&&this.ctx.state!=='closed')this.ctx.resume().catch(()=>{});}, // (also iOS's 'interrupted')
   build(){const c=this.ctx,sr=c.sampleRate;
-    const len=Math.floor(sr*SND_NB),b=c.createBuffer(1,len,sr),dd=b.getChannelData(0);for(let i=0;i<len;i++)dd[i]=Math.random()*2-1;this.nb=b;
+    const len=Math.floor(sr*SND_NB),b=c.createBuffer(1,len,sr),dd=b.getChannelData(0);for(let i=0;i<len;i++)dd[i]=Math.random()*2-1;this.nb=b;this.gb=null;if(this.off)this.gbuild(); // (round 50i) the grain buffers: offline at once, live just after (until then o.b plays white noise)
     this.master=c.createGain();const k=this.comp=c.createDynamicsCompressor();k.threshold.value=-12;k.knee.value=10;k.ratio.value=3;k.attack.value=0.004;k.release.value=0.3;
     this.out=c.createGain();this.out.gain.value=this.lvl();this.master.connect(k);k.connect(this.out);this.out.connect(c.destination);
     const n=Math.floor(sr*RV_T),ir=c.createBuffer(2,n,sr); // the room's impulse: stereo noise decaying 60 dB over RV_T, a one-pole lowpass closing as it decays
@@ -2927,15 +2971,25 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
     this.aB=c.createGain();this.aB.connect(this.master);this.ambS=-1; // (round 50d) the ambience bus: the bed and the theme's one-shots, ducked under events
     this.dB=c.createGain();this.dB.connect(this.master);this.dR=c.createGain();this.dR.connect(this.conv);this.dl=this.dl0();this.tl=this.tl0();this.tB=this.tR=null;this.tk=null;this.rvIn=null; // (round 50h) the drum's bus (one fade stops what is laid ahead)
     this.zone='';this.zoneNow('quiet');
-    if(!this.off)setTimeout(()=>{try{for(const f of [293.7,220,174.6,146.8,73.4])this.ksBuf(f,f<100?4:3.5);}catch(e){}},0);}, // the motif's strings, made once
+    if(!this.off)setTimeout(()=>{try{this.gbuild();}catch(e){}try{for(const f of [293.7,220,174.6,146.8,73.4])this.ksBuf(f,f<100?4:3.5);}catch(e){}},0);}, // the motif's strings, made once
+  // (round 50i, after r50j) the grain buffers (FT_GB): Poisson-timed particles, amplitudes the root of a power-law energy (p(E) ~ E^-2.4,
+  // clipped at 4), each a burst decaying with tau; 2 s each (as the white buffer), scaled to its RMS so vol means the same as in N
+  gbuild(){const c=this.ctx,sr=c.sampleRate,n=Math.floor(sr*SND_NB),gb={};let s=20261031;const R=()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;}; // (its own stream: the game's Math.random untouched)
+    for(const [k,lam,tau] of FT_GB){const b=c.createBuffer(1,n,sr),d=b.getChannelData(0),ts=tau*sr,L=Math.ceil(ts*7);let t=0,ss=0;
+      for(;;){t+=-Math.log(1-R())/lam;const i0=Math.floor(t*sr);if(i0>=n)break;
+        const a=Math.min(4,Math.pow(1-R(),-1/1.4))*(R()<0.5?-1:1);
+        for(let j=0;j<L;j++)d[(i0+j)%n]+=a*(R()*2-1)*Math.exp(-j/ts);}
+      for(let i=0;i<n;i++)ss+=d[i]*d[i];const g=0.577/Math.sqrt(ss/n);for(let i=0;i<n;i++)d[i]*=g;gb[k]=b;}
+    this.gb=gb;},
   lvl(){return S.set.sound?(S.set.sndQ?SND_LV.quiet:SND_LV.full):0;},
   setLevel(){if(this.out)this.out.gain.setTargetAtTime(Math.max(0.0001,this.lvl()),this.ctx.currentTime,0.05);},
   ok(){return this.ctx&&S.set.sound&&(this.off||this.ctx.state==='running');},
   // the page hidden: the context sleeps; shown again it wakes (iOS may want a touch first: unlock does it)
   sleep(h){this.hid=h;const c=this.ctx;if(!c)return;if(h){if(c.state==='running')c.suspend().catch(()=>{});}else if(c.state!=='running'&&c.state!=='closed')c.resume().catch(()=>{});},
-  zoneNow(z){const p=SND_Z[z]||SND_Z.room;this.zone=z;this.rvS.gain.value=p[0];this.slS.gain.value=p[1];this.rvLP.frequency.value=p[2];},
+  zt(){return (L&&L.theme&&SND_ZT[L.theme.look])||ZT0;}, // (round 50i) the theme's room
+  zoneNow(z){const p=SND_Z[z]||SND_Z.room,m=this.zt();this.zone=z;this.rvS.gain.value=p[0]*m[0];this.slS.gain.value=p[1];this.rvLP.frequency.value=p[2]*m[1];},
   // where he is: eased, set only when the place changes; the bed and the drips follow it
-  env(z){if(!this.ctx||this.off)return;if(z!==this.zone){const p=SND_Z[z],t=this.ctx.currentTime;this.zone=z;this.rvS.gain.setTargetAtTime(p[0],t,SND_TC);this.slS.gain.setTargetAtTime(p[1],t,SND_TC);this.rvLP.frequency.setTargetAtTime(p[2],t,SND_TC);}
+  env(z){if(!this.ctx||this.off)return;if(z!==this.zone){const p=SND_Z[z],m=this.zt(),t=this.ctx.currentTime;this.zone=z;this.rvS.gain.setTargetAtTime(p[0]*m[0],t,SND_TC);this.slS.gain.setTargetAtTime(p[1],t,SND_TC);this.rvLP.frequency.setTargetAtTime(p[2]*m[1],t,SND_TC);}
     const k=this.ok()?SND_Z[z][3]:0;this.bed(k);this.flush();
     if(mode==='play'&&P&&L&&this.ok()&&z!=='cross'&&z!=='quiet'){const s=Math.floor(this.ctx.currentTime/AMB_SL); // (round 50d) the theme's ambience, slot by slot (no catching up after a gap)
       if(this.ambS<0||s-this.ambS>8||s<this.ambS)this.ambS=s;else while(this.ambS<s)this.ambSlot(++this.ambS,0,k);}else this.ambS=-1;},
@@ -2951,7 +3005,7 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
     if(o.bp){const bp=c.createBiquadFilter();bp.type='bandpass';bp.frequency.value=o.bp;bp.Q.value=o.bq||1.2;os.connect(bp);bp.connect(g);}else os.connect(g); // (round 50c) a voice through its formant, not a bare wave
     this.route(g,o);os.start(t);os.stop(t+dur+0.03);},
   noise(dur,o={}){if(!this.ok())return;const c=this.ctx,t=c.currentTime+(o.at||0),src=c.createBufferSource(),fl=c.createBiquadFilter(),g=c.createGain();
-    src.buffer=this.nb;src.loop=true;fl.type=o.type||'lowpass';fl.frequency.setValueAtTime(o.f||1200,t);if(o.to)fl.frequency.exponentialRampToValueAtTime(o.to,t+dur);fl.Q.value=o.q||0.8;
+    src.buffer=o.b&&this.gb?this.gb[o.b]:this.nb;src.loop=true;fl.type=o.type||'lowpass';fl.frequency.setValueAtTime(o.f||1200,t);if(o.to)fl.frequency.exponentialRampToValueAtTime(o.to,t+dur);fl.Q.value=o.q||0.8;
     g.gain.value=0.0001;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(o.vol||0.15,t+(o.att||0.004));g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
     src.connect(fl);fl.connect(g);this.route(g,o);src.start(t,Math.random()*(SND_NB-0.1));src.stop(t+dur+0.03);}, // (round 50h) the buffer loops: an N plays its whole length (it stopped at the 0.8 s buffer's end)
   // (round 50c) a plucked string (Karplus-Strong: a burst of noise round a delay line of one period, averaged each pass), lyre or harp;
@@ -2987,47 +3041,64 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
       if(!e.v&&act>=TELL_CAP)continue;
       this.tellAt(e.n,e.a,e.x-P.x,e.y-(P.y-30),e.v);if(slot>=0)E[slot]=now+(TELL_DUR[e.n]||0.3);k++;if(this.tlog)this.tlog.push(e.n+':'+Math.round(e.d));}
     return k;},
-  // (round 50d, B4) a footfall's layers by its surface (SND_SURF); w its weight (1 a step, 2.4 a landing, 4 a heavy one), o.g a guard's
-  // (heavier, lower, quieter, a sandal's scuff after the heel), each a little different (the step count's sines)
-  foot(s,w,o,N,T){const p=SND_SURF[s]||SND_SURF.palace,i=this.sc++,v=(1+0.15*Math.sin(i*2.7))*Math.pow(w,0.6)*(o.g?0.75:1),f=(1+0.08*Math.sin(i*5.3))*Math.pow(w,-0.15)*(o.g?0.82:1),
-      ln=1+0.25*(w-1)+(o.g?0.2:0),a=o.at||0;
-    N(p[2]*ln,{vol:p[1]*v,f:p[0]*f,at:a});
-    if(p[5])N(0.03*ln,{vol:p[5]*v,f:p[3]*f,type:'bandpass',q:p[4],at:a+0.004});
-    if(p[7])T(p[6]*f,0.06*ln,{to:p[6]*f*0.63,vol:p[7]*v,at:a});
-    switch(p[8]){
-      case'wet':if(i%4===1)T(1700*f,0.05,{to:1000*f,vol:0.004*v,at:a+0.03});break;
-      case'ring':T(2300*f,0.05,{vol:0.0035*v,att:0.002,at:a+0.003});T(2300*f*2.76,0.03,{vol:0.0015*v,att:0.002,at:a+0.003});break;
-      case'grit':case'dust':N(0.04*ln,{vol:(p[8]==='grit'?0.008:0.005)*v,f:5200*f,type:'highpass',at:a+0.01});break;
-      case'lap':N(0.25,{vol:0.006*v,f:700*f,type:'bandpass',q:1.5,att:0.08,at:a+0.05});break;
-      case'crunch':N(0.05*ln,{vol:0.012*v,f:4800*f,type:'highpass',at:a+0.006});N(0.02,{vol:0.005*v,f:2600*f,type:'bandpass',q:5,at:a+0.03});break;
-      case'hiss':N(0.09*ln,{vol:0.014*v,f:2400*f,type:'bandpass',q:0.7,at:a+0.012});break;
-      case'stones':for(let k=0;k<3;k++)N(0.02,{vol:0.012*v*(1-k*0.2),f:(1700+700*k+300*Math.sin(i*1.9+k))*f,type:'bandpass',q:4,at:a+[0,0.018,0.041][k]*ln});break;
-      case'knock':T(210*f,0.07*ln,{to:150*f,vol:0.022*v,at:a});if(i%3===0)N(0.12,{vol:0.008*v,f:380*f,type:'bandpass',q:9,at:a+0.03});break;
-      case'bronze':T(1100*f,0.12,{vol:0.007*v,att:0.002,at:a+0.002});T(1100*f*2.76,0.08,{vol:0.004*v,att:0.002,at:a+0.002});N(0.03,{vol:0.01*v,f:4000*f,type:'highpass',at:a+0.01});break;
-      case'boom':T(140*f,0.14*ln,{to:105*f,vol:0.024*v,at:a});break;
-      case'pour':N(0.2,{vol:0.01*v,f:3000*f,type:'bandpass',q:0.6,att:0.05,at:a+0.02});break;}
-    if(o.g){N(0.09,{vol:0.008*v,f:1200*f,type:'bandpass',q:0.9,at:a+0.06});N(0.06,{vol:0.004*v,f:900,type:'bandpass',q:6,at:a+0.02});}},
+  // (round 50i, after r50j) a footfall: the gait's strikes (FT_G) each exciting the surface (FT_S): the sole's slap, a hard tick, the weight
+  // into the floor, a floor mode; the grain texture under the contact, the push-off scuff, the surface's own extra. w 1 a step, 2.4 a
+  // landing, 4 a heavy one; o.g a guard (sandals: a brighter, narrower slap, no tick, more weight, the sole slapping back on his heel);
+  // o.gait overrides the gait (run by default, walk for a guard). Every step a little different (level +-1.6 dB, the feet apart, every band
+  // and length jittered, each texture from a random place in its buffer). Ticks under 20 ms strike within 0.5 ms (round 50i's rule)
+  foot(s,w,o,N,T){const p=FT_S[s]||FT_S.palace,i=this.sc++,R=Math.random,J=a=>1+a*(2*R()-1),a0=o.at||0,gd=!!o.g,
+    gt=o.gait||(w>=4?'landh':w>=2?'land':gd?'walk':'run'),G=FT_G[gt],side=(i&1)?1:-1,
+    lv=FT_V*(gd?FT_GV:1)*Math.pow(10,(2*R()-1)*1.6/20)*(1+0.05*side)*(gt==='land'?1.5:gt==='landh'?2.1:1), // +-1.6 dB a step, the two feet a little apart
+    F=J(0.05)*(1-0.025*side),cF=gd?1.75:1,cQ=gd?1.25:1, // a guard's sandal: leather on stone, a brighter, narrower slap
+    k1=J(0.15);
+  for(let n=0;n<G.st.length;n++){const st=G.st[n],at=a0+st[0]*(n?k1:1),e=st[1]*(n?J(0.2):1),v=lv*e;
+    if(p.c)N(p.c[2]/1000*J(0.2),{vol:p.c[3]*v,f:p.c[0]*cF*F*J(0.08),q:p.c[1]*cQ,type:'bandpass',att:0.0005,at});
+    if(p.k&&!gd)N(p.k[2]/1000,{vol:p.k[3]*v*J(0.3),f:p.k[0]*F*J(0.1),q:p.k[1],type:'bandpass',att:0.0003,at});
+    if(n===0||gt==='walk'||gt==='land'||gt==='landh'){const bw=(n?0.55:1)*G.bw*(gd?1.6:1);
+      N(p.b[2]/1000*(gt==='landh'?1.8:gt==='land'?1.3:1)*J(0.15),{vol:p.b[3]*v*bw,f:p.b[0]*F*(gd?0.85:1),q:p.b[1],att:0.003,at});}
+    if(p.m)N(p.m[2]/1000*J(0.2),{vol:p.m[3]*v,f:p.m[0]*F*J(0.06),q:p.m[1],type:'bandpass',att:0.002,at:at+0.001});}
+  const tx=G.tx*J(0.15);
+  if(p.t)N(tx,{b:p.t[0],vol:p.t[4]*lv*(gt==='landh'?1.4:1),f:p.t[2]*F*J(0.1),q:p.t[3],type:p.t[1],att:0.012,at:a0+0.002});
+  if(p.s&&G.sc)N(p.s[2]/1000*J(0.25),{vol:p.s[3]*lv*J(0.35)*(gd?1.6:1),f:p.s[0]*F*J(0.12),q:p.s[1],type:'bandpass',att:0.02,at:a0+G.sc*J(0.12)});
+  if(gd&&gt==='walk')N(0.012,{vol:0.007*lv*J(0.3),f:2600*F,q:1.2,type:'bandpass',att:0.0005,at:a0+0.15*J(0.1)}); // the sandal's sole slapping back on the heel
+  if(G.wt)N(gt==='landh'?0.17:0.11,{vol:G.wt*lv/(gt==='landh'?2.1:1.5),f:110*F,q:0.7,att:0.006,at:a0+0.012}); // the whole body coming down: weight as low noise, never a sine
+  const lt=a0+G.st[G.st.length-1][0];
+  switch(p.x){
+    case'wet':if(R()<0.4)N(0.02,{vol:0.006*lv,f:2600*F*J(0.15),q:1.3,type:'bandpass',att:0.0005,at:lt+0.04+0.03*R()});break; // the sole peeling off wet stone
+    case'cinder':N(tx*0.8,{b:'k',vol:0.010*lv,f:2300*F*J(0.12),q:1.6,type:'bandpass',att:0.006,at:a0+0.004});break; // cinders cracking under him
+    case'dust':N(tx*0.9,{b:'d',vol:0.004*lv,f:5500*F,q:0.8,type:'bandpass',att:0.02,at:a0+0.01});break; // dry dust on open paving
+    case'lap':if(R()<0.25)N(0.35,{vol:0.005*lv,f:650*J(0.15),to:480,q:1.3,type:'bandpass',att:0.1,at:a0+0.05});break; // the pool lapping by
+    case'crunch':N(tx*0.7,{b:'k',vol:0.014*lv,f:2600*F*J(0.12),q:1.8,type:'bandpass',att:0.004,at:a0+0.002}); // the cracked slab: grit crushed, the loose piece knocking
+      N(0.03,{vol:0.012*lv,f:420*F*J(0.1),q:1.8,type:'bandpass',att:0.002,at:a0+0.03+0.02*R()});break;
+    case'sand':{const sq=gt==='landh'?1.8:gt==='land'?1.4:1; // sand: no hard contact; the grains give under him (slow rise), then spill
+      N(0.11*sq*J(0.15),{b:'d',vol:0.010*lv,f:1300*F*J(0.1),q:0.9,type:'bandpass',att:0.03,at:a0});
+      N(0.05*sq,{b:'g',vol:0.004*lv,f:3500*F,q:1,type:'bandpass',att:0.015,at:a0+0.01});}break;
+    case'stones':{N(tx,{b:'k',vol:0.018*lv,f:2000*F*J(0.15),q:2,type:'bandpass',att:0.003,at:a0+0.003}); // stones knocking and settling
+      N(tx*0.7,{b:'k',vol:0.011*lv,f:3300*F*J(0.15),q:2.2,type:'bandpass',att:0.003,at:a0+0.02});
+      N(0.05,{vol:0.012*lv,f:700*F,q:1.5,type:'bandpass',att:0.003,at:a0+0.003});}break;
+    case'wood':{for(const [f0,q0,d0,v0] of [[118,6,70,0.09],[163,7,60,0.08],[231,6,45,0.06]])N(d0/1000*J(0.1),{vol:v0*lv,f:f0*F*J(0.04),q:q0,type:'bandpass',att:0.002,at:a0}); // the board's few low modes, close together (no pitch)
+      if(R()<0.35)N(0.012,{vol:0.01*lv,f:520*F,q:2,type:'bandpass',att:0.0005,at:a0+0.045+0.02*R()});}break; // the board knocking on its bearer
+    case'bronze':{for(const [r,q,d] of [[1,7,0.022],[1.71,8,0.018],[2.43,8,0.014]])N(d,{vol:0.014*lv,f:980*r*F*J(0.05),q,type:'bandpass',att:0.0005,at:a0+0.002}); // a short inharmonic clank, damped by the foot
+      N(0.07,{b:'k',vol:0.02*lv,f:1700*F,q:2,type:'bandpass',att:0.004,at:a0+0.01});}break; // the grate rattling in its frame
+    case'boom':N(0.02,{vol:0.008*lv,f:2000*F,q:1.5,type:'bandpass',att:0.0005,at:a0+0.07+0.02*R()});N(0.016,{vol:0.005*lv,f:1450*F,q:1.5,type:'bandpass',att:0.0005,at:a0+0.11+0.03*R()});break; // the platform knocking in its ropes
+    case'pour':N(0.22,{vol:0.009*lv,f:3000*F,q:0.6,type:'bandpass',att:0.05,at:a0+0.02});break;}},
   // (round 50d, B3) one slot of the theme's ambience: its events from hashes of the slot, the floor and the room (rewind-safe: no game state
   // kept); at: its time ahead (the offline render); k the place's air (drips, settling and trickles only where the bed breathes). Positional
   // one-shots go through the ambience bus.
-  ambSlot(q,at,k,look){if(!L||!P)return;const T=AMB_T[look||L.theme.look]||AMB_DEF,sd=hash2(L.n*7919+(S.seed|0),Math.floor(P.x/ROOM_W)*31+Math.floor(P.y/TH)),
-      h=i=>hash2(q*16+i,sd)/4294967296,sx=()=>h(10)<0.5?-1:1,R=(T.drip===undefined?AMB_DEF.drip:T.drip);
-    if(k>0){if(h(1)<R)this.amb('drip',sx()*(90+h(2)*260),-40-h(3)*90,at);
-      if(h(4)<(T.plunk||0))this.amb('plunk',sx()*(120+h(2)*300),40+h(3)*60,at);
-      if(h(5)<0.005)this.amb('settle',sx()*(140+h(2)*300),(h(3)-0.5)*130,at);
-      if(h(6)<0.01)this.amb('trickle',sx()*(60+h(2)*220),-50-h(3)*40,at);}
-    if(h(7)<(T.forge||0))this.amb('forge',sx()*(260+h(2)*260),h(3)*120,at);
-    if(h(8)<(T.bellows||0))this.amb('bellows',sx()*(240+h(2)*240),h(3)*80,at);
-    if(h(9)<(T.whistle||0))this.amb('whistle',sx()*(120+h(2)*240),-70-h(3)*40,at);
+  ambSlot(q,at,k,look){if(!L||!P)return;const T=AMB_T[look||L.theme.look]||AMB_NONE,sd=hash2(L.n*7919+(S.seed|0),Math.floor(P.x/ROOM_W)*31+Math.floor(P.y/TH)),
+      h=i=>hash2(q*16+i,sd)/4294967296,sx=()=>h(10)<0.5?-1:1;
+    if(k>0&&h(5)<0.005)this.amb('settle',sx()*(140+h(2)*300),(h(3)-0.5)*130,at); // everywhere: stone settling, rare
+    for(let j=0;j<T.length;j++){const e=T[j],p=AMB_POS[e[0]];if(p[4]&&k<=0)continue;const g=i=>hash2(q*16+i,sd+977*(j+1))/4294967296; // (round 50i) the theme's own, each its own draws
+      if(g(1)<e[1])this.amb(e[0],(g(2)<0.5?-1:1)*(p[0]+g(3)*p[1]),p[2]+g(4)*p[3],at,AMB_K);}
     const nr=(xs,ys,rad)=>{const dx=xs-P.x,dy=ys-(P.y-30),d=Math.hypot(dx,dy*1.6);return d<rad?d:-1;};
-    if(h(11)<0.22){let bx=0,by=0,bd=1e9;for(const t of L.torches){if(t.broken)continue;const x=t.c*TW+16,y=SURF(t.r)-44,d=nr(x,y,170);if(d>=0&&d<bd){bd=d;bx=x;by=y;}}
+    if(h(11)<AMB_LAMP){let bx=0,by=0,bd=1e9;for(const t of L.torches){if(t.broken)continue;const x=t.c*TW+16,y=SURF(t.r)-44,d=nr(x,y,170);if(d>=0&&d<bd){bd=d;bx=x;by=y;}}
       if(bd<1e9)this.amb('crackle',bx-P.x,by-(P.y-30),at);}
     if(h(12)<0.035){let bx=0,by=0,bd=1e9;for(const f of L.lifts||[]){const x=((f.sc!==undefined?f.sc:f.ca)|0)*TW+16,y=(f.y!==undefined?f.y:SURF(f.rT|0))-40,d=nr(x,y,380);if(d>=0&&d<bd){bd=d;bx=x;by=y;}}
       for(const o of L.dyn)if(o.f.t==='bar'){const x=o.c*TW+16,y=SURF(o.r)-50,d=nr(x,y,380);if(d>=0&&d<bd){bd=d;bx=x;by=y;}}
       if(bd<1e9)this.amb('ropefar',bx-P.x,by-(P.y-30),at);}
     for(const cp of L.cps){if(!cp.on)continue;const x=cpX(cp),y=SURF(cp.r)-26,d=nr(x,y,HAVEN_SR);if(d>=0){if(h(13)<0.6-0.4*d/HAVEN_SR)this.amb('ember',x-P.x,y-(P.y-30),at);break;}}}, // (round 50g, A6: the haven's soft fire, denser the nearer he is, out to HAVEN_SR)
-  amb(n,dx,dy,at){const st=Math.abs(Math.round(dy/TH)),d=Math.hypot(dx,dy*1.6),k=this.atOff;this.amOn=true;this.atOff=k+at;
-    try{this.posPlay(n,'',dx,clamp(1.1-d/800,0.3,1),clamp(8000/(1+d/220)/(1+0.8*st),360,12000));}finally{this.amOn=false;this.atOff=k;}},
+  amb(n,dx,dy,at,kk){if(this.alog)this.alog.push(n);const st=Math.abs(Math.round(dy/TH)),d=Math.hypot(dx,dy*1.6),k=this.atOff;this.amOn=true;this.atOff=k+at;
+    try{this.posPlay(n,'',dx,clamp(1.1-d/800,0.3,1)*(kk||1),clamp(8000/(1+d/220)/(1+0.8*st),360,12000));}finally{this.amOn=false;this.atOff=k;}},
   // events duck the ambience (the bed and the one-shots) for a moment
   // (round 50e) the exit's great door: the room's air bed lifts for a moment as the outside air rushes in (at: s ahead)
   bedLift(at,k){const b=this.bedN;if(!b||this.bedK<=0)return;const t=this.ctx.currentTime+(this.atOff||0)+at,v=SND_BED*this.bedK;b.g.gain.setTargetAtTime(v*k,t,0.25);b.g.gain.setTargetAtTime(v,t+0.9,0.7);},
@@ -3040,45 +3111,107 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
       // when |dx| < o.vw, default 0: none), 'at' as playAt does; o.bed the place's air bed; o.amb {look, k} the theme's ambience over dur
       for(const it of names){const [n,at,a,dx,dy,how]=Array.isArray(it)?it:[it,0];this.atOff=at||0;
         if(how==='tell'){this.tellAt(n,a,dx,dy,Math.abs(dx)<(o.vw||0)&&Math.abs(dy)<40);}
+        else if(how==='amb'){this.amb(n,dx,dy,0,a||1);}
         else if(how==='at'){const st=Math.abs(Math.round(dy/TH)),d=Math.hypot(dx,dy*1.6);this.posPlay(n,a,dx,clamp(1.15-d/900,0.35,1),clamp(9000/(1+d/220)/(1+0.7*st),380,12000));}
         else this.play(n,a);this.atOff=0;}
       if(o.bed)this.bed(SND_Z[z||'room'][3]);
       if(o.duel)for(const [t,st] of o.duel)this.duel(st,t); // (round 50h) the duel's states by time (s), as duelState gave them a frame
       if(o.title){for(let t=0;t<dur;t+=1/60)this.title(t<o.title,t);} // (round 50h) the title shown o.title s (then left: the fade)
-      if(o.amb){const k=o.amb.k===undefined?SND_Z[z||'room'][3]:o.amb.k;for(let q=1;q*AMB_SL<dur-0.5;q++)this.ambSlot(q+(o.amb.q0|0),q*AMB_SL,k,o.amb.look);}
+      if(o.amb){const k=o.amb.k===undefined?SND_Z[z||'room'][3]:o.amb.k;for(let q=1;o.amb.n?q<=o.amb.n:q*AMB_SL<dur-0.5;q++)this.ambSlot(q+(o.amb.q0|0),q*AMB_SL,k,o.amb.look);}
       const b=await c.startRendering(),L0=b.getChannelData(0),R0=b.getChannelData(1);let pk=0,ss=0,nan=0;
       for(let i=0;i<L0.length;i++){const a=L0[i],r=R0[i];if(a!==a||r!==r){nan++;continue;}const m=Math.max(Math.abs(a),Math.abs(r));if(m>pk)pk=m;ss+=a*a+r*r;}
       const res={peak:pk,rms:Math.sqrt(ss/(2*L0.length)),nan,len:L0.length};if(o.data){res.L=Array.from(L0);res.R=Array.from(R0);}return res;}
     finally{for(const k in keep)this[k]=keep[k];S.set.sound=sv;S.set.sndQ=sq;this.atOff=0;}},
   atOff:0,
   play(n,a){if(!this.ok())return;if(!this.amOn&&SND_DUCK.has(n))this.duck();const T=(f,d,o={})=>{if(this.atOff)o.at=(o.at||0)+this.atOff;this.tone(f,d,o);},N=(d,o={})=>{if(this.atOff)o.at=(o.at||0)+this.atOff;this.noise(d,o);},
-      K=(f,d,v,o={})=>{if(this.atOff)o.at=(o.at||0)+this.atOff;this.pluck(f,d,v,o);};
+      K=(f,d,v,o={})=>{if(this.atOff)o.at=(o.at||0)+this.atOff;this.pluck(f,d,v,o);},
+      // (round 50i) a bubble (the Minnaert resonance; van den Doel 2005): a sine at f decaying at d = 0.043 f + 0.0014 f^1.5 per second
+      // (viscous, radiative and thermal losses), so it lasts ln(v/1e-4)/d to T's floor, its pitch rising to f(1 + sg d dur) (a bubble nearing
+      // the surface; sg ~ 0.1 for drops); its onset 0.8 ms (r50i's, as heard: the one short sound let past the 0.5 ms rule, a bubble starts at full swing within a period or two)
+      B=(f,v,o={})=>{const d=0.043*f+0.0014*Math.pow(f,1.5),du=Math.log(v/1e-4)/d;T(f,du,{to:f*(1+(o.sg||0.1)*d*du),vol:v,att:0.0008,at:o.at||0,rv:o.rv});};
     switch(n){
       // (round 50c) footfalls on stone: a dull pat, a little grit and the body's weight, each step a little different; the room carries them
       // (round 50c) footfalls: a pat, a little grit and the body's weight, each step a little different; the room carries them. (round 50d, B4)
       // by what is under the foot (a: SND_SURF; stone by the theme's style when none is given); landings light and heavy; a guard's own gait
-      case'step':this.foot(a||(L&&L.theme?L.theme.style:'palace'),1,{},N,T);break;
-      case'land':this.foot(a||(L&&L.theme?L.theme.style:'palace'),2.4,{},N,T);N(0.08,{vol:0.06,f:360});T(110,0.09,{to:60,vol:0.06});break;
-      case'landh':this.foot(a||(L&&L.theme?L.theme.style:'palace'),4,{},N,T);N(0.15,{vol:0.1,f:360});T(90,0.14,{to:50,vol:0.1});break;
-      case'gstep':this.foot(a||(L&&L.theme?L.theme.style:'palace'),1.4,{g:1},N,T);break;
-      case'gland':this.foot(a||(L&&L.theme?L.theme.style:'palace'),4,{g:1},N,T);T(80,0.15,{to:45,vol:0.08});break;
+      case'step':this.foot(a||(L&&L.theme?L.theme.style:'palace'),1,{},N,T);break; // (round 50i) the run's footfall: the ball, the heel kissing down
+      case'walk':this.foot(a||(L&&L.theme?L.theme.style:'palace'),1,{gait:'walk'},N,T);break; // (round 50i) a walking step (the exit's treads): heel, then ball
+      case'land':this.foot(a||(L&&L.theme?L.theme.style:'palace'),2.4,{},N,T);break; // (round 50i: the landings' extra sines gone: weight is the body's noise)
+      case'landh':this.foot(a||(L&&L.theme?L.theme.style:'palace'),4,{},N,T);break;
+      case'gstep':this.foot(a||(L&&L.theme?L.theme.style:'palace'),1.4,{g:1},N,T);break; // a guard walks (heel, ball, the sandal's flap)
+      case'gland':this.foot(a||(L&&L.theme?L.theme.style:'palace'),4,{g:1},N,T);break;
       // (round 50d) an idle guard shifting his weight, heard before he is seen: a sandal's scuff, a creak of leather, now and then his hilt's tick
       case'gshift':{const i=this.sc++;N(0.18,{vol:0.012,f:900+120*Math.sin(i*2.1),type:'bandpass',q:0.8,att:0.04});N(0.15,{vol:0.006,f:420,type:'bandpass',q:8,at:0.05});
-        if(i%3===0){T(1800,0.05,{vol:0.003,att:0.002,at:0.13});T(1800*2.76,0.03,{vol:0.0015,att:0.002,at:0.13});}break;}
+        if(i%3===0){N(0.03,{vol:0.004,f:1800,type:'bandpass',q:8,att:0.0005,at:0.13});N(0.02,{vol:0.002,f:1800*1.71,type:'bandpass',q:8,att:0.0005,at:0.13});}break;} // (round 50i: the hilt's tick in noise at a plate's ratio, no sine)
       case'slither':N(0.45,{vol:0.012,f:3800,type:'bandpass',q:0.7,att:0.15});N(0.3,{vol:0.005,f:6000,type:'highpass',att:0.1,at:0.1});break; // (round 50d) scales over stone
       // (round 50d, B3) the themes' ambience: quiet, positional, ducked under events
-      case'plunk':{const f=700+300*Math.random();T(f,0.12,{to:f*0.7,vol:0.02,rv:0.4});T(f*2.1,0.08,{vol:0.005,rv:0.4});N(0.06,{vol:0.004,f:1200,type:'bandpass',q:2,at:0.01});}break; // a drop into standing water
-      case'forge':N(3.2,{vol:0.036,f:160,to:240,att:1.2,rv:0.5});N(2.4,{vol:0.008,f:900,type:'bandpass',q:0.5,att:0.8,at:0.5,rv:0.4});T(46,3,{vol:0.02,att:1.2});break; // a far furnace's roar swelling and falling (round 50h: its roar x0.8, heard whole now)
+      case'plunk':this.play('pooldrop');break; // (round 50i) a drop into standing water: the real one
+      case'forge':N(3.2,{vol:0.015,f:160,to:240,att:1.2,rv:0.5});N(2.4,{vol:0.005,f:900,type:'bandpass',q:0.5,att:0.8,at:0.5,rv:0.4});T(46,3,{vol:0.008,att:1.2});break; // a far furnace's roar swelling and falling (round 50h: x0.8, heard whole now; round 50i: r50f's x0.7, so Meroë, where it meets the bellows and the smith, is no louder than the other themes and the roar alone under a step)
       case'bellows':N(1.1,{vol:0.016,f:1400,to:700,type:'bandpass',q:0.8,att:0.35,rv:0.4});N(0.6,{vol:0.006,f:4500,type:'highpass',att:0.2,at:0.9});break; // a far bellows' breath and the hiss of the fire it feeds
-      case'whistle':{const f0=640+300*Math.random();N(2.6,{vol:0.035,f:f0,to:f0*1.18,type:'bandpass',q:22,att:1});N(2.2,{vol:0.008,f:f0*2.02,to:f0*2.3,type:'bandpass',q:25,att:0.9,at:0.2});N(2.8,{vol:0.008,f:500,type:'bandpass',q:0.6,att:1});}break; // the wind in a slit: a pitched breath, no tone
-      case'settle':N(0.5,{vol:0.04,f:240,to:120,rv:0.5});T(55,0.4,{to:40,vol:0.02});for(let i=0;i<8;i++)N(0.02,{vol:0.008*(1-i/10),f:2600+500*Math.sin(i*2.3),type:'bandpass',q:2,at:0.1+i*0.05});break; // stone settling somewhere, a little grit after it
-      case'trickle':for(let i=0;i<12;i++)N(0.015,{vol:0.006*(1-i/16),f:2600+1000*Math.abs(Math.sin(i*1.7)),type:'bandpass',q:3,at:i*0.045*(1+0.3*Math.sin(i*4.1))});N(0.6,{vol:0.004,f:3000,type:'bandpass',q:0.5,att:0.2});break; // grit trickling from a joint
-      case'crackle':{const n0=3+(this.sc++%3);for(let i=0;i<n0;i++)N(0.008+0.007*Math.random(),{vol:0.006+0.006*Math.random(),f:2400+2600*Math.random(),type:'bandpass',q:2,at:Math.random()*0.25});N(0.3,{vol:0.003,f:600,att:0.1});}break; // the nearest lamp's flame
-      case'ember':{const n0=2+(this.sc++%4);for(let i=0;i<n0;i++)N(0.006+0.006*Math.random(),{vol:0.0045*(0.6+0.4*Math.random()),f:2600+2200*Math.random(),type:'bandpass',q:2.5,at:Math.random()*0.24}); // a lit sky clock's fire (round 50g: the haven): soft pops,
+      case'whistle':{const f0=640+300*Math.random();N(2.6,{vol:0.05,f:f0,to:f0*1.18,type:'bandpass',q:14,att:1});N(2.2,{vol:0.01,f:f0*2.02,to:f0*2.3,type:'bandpass',q:16,att:0.9,at:0.2});N(2.8,{vol:0.008,f:500,type:'bandpass',q:0.6,att:1});}break; // the wind in a slit: a pitched breath, no tone
+      case'settle':N(0.5,{vol:0.04,f:240,to:120,rv:0.5});N(0.4,{vol:0.03,f:70,q:0.9});for(let i=0;i<8;i++)N(0.02,{vol:0.008*(1-i/10),f:2600+500*Math.sin(i*2.3),type:'bandpass',q:2,att:0.0004,at:0.1+i*0.05});break; // (round 50i: no sine) // stone settling somewhere, a little grit after it
+      case'trickle':for(let i=0;i<12;i++)N(0.015,{vol:0.006*(1-i/16),f:2600+1000*Math.abs(Math.sin(i*1.7)),type:'bandpass',q:3,att:0.0004,at:i*0.045*(1+0.3*Math.sin(i*4.1))});N(0.6,{vol:0.004,f:3000,type:'bandpass',q:0.5,att:0.2});break; // grit trickling from a joint
+      case'crackle':{let t=Math.random()*0.04;const n0=1+Math.floor(Math.random()*4),sp=Math.random()<0.15; // (round 50i) the nearest lamp's flame: pops of vapour bursting from the wick or the oil (Farnell's fire: an instant onset, a 1-30 ms decay, a wide band whose centre is random), one to four in a cluster, sizes by a power law (a big pop lower and with a body), one cluster in seven a sputter, under them the flame's soft flutter
+        for(let i=0;i<n0;i++){const s=Math.min(6,Math.pow(Math.random(),-0.6)),v=Math.min(0.02,0.0032*s);
+          N(0.0015+0.0025*Math.sqrt(s)*Math.random(),{vol:v,f:7000/Math.sqrt(s)*(0.6+0.8*Math.random()),type:'bandpass',q:0.8,att:0.0002,at:t});
+          if(s>3)N(0.012,{vol:v*0.4,f:600+300*Math.random(),q:0.7,att:0.0003,at:t});t+=0.004+0.09*Math.pow(Math.random(),2);}
+        if(sp)for(let i=0;i<10;i++)N(0.001,{vol:0.001+0.002*Math.random(),f:5000+3000*Math.random(),type:'bandpass',q:1,att:0.0002,at:t+0.05+i*0.008*(1+Math.random())});
+        N(0.35,{vol:0.0035,f:220,to:160,type:'bandpass',q:1.2,att:0.12});}break;
+      case'ember':{const n0=2+(this.sc++%4);for(let i=0;i<n0;i++)N(0.006+0.006*Math.random(),{vol:0.0045*(0.6+0.4*Math.random()),f:2600+2200*Math.random(),type:'bandpass',q:2.5,att:0.0003,at:Math.random()*0.24}); // a lit sky clock's fire (round 50g: the haven): soft pops,
         N(0.5,{vol:0.0026,f:420,type:'lowpass',att:0.14,at:0.02});N(0.35,{vol:0.0012,f:1100,type:'bandpass',q:0.7,att:0.1,at:0.08});}break; // the fire's low breath and its hiss
       case'ropefar':N(0.14,{vol:0.012,f:260,type:'bandpass',q:9});N(0.14,{vol:0.01,f:300,type:'bandpass',q:9,at:0.18});break; // a rope creaking on its beam, out of sight
+      // (round 50i, after r50f) each theme's own ambience (AMB_T). Water drops as they sound (r50i): onto wet stone a tap and its spray,
+      // into water the trapped bubble's ring rising (B); never a falling sine
+      case'drop':{const u=Math.random(),v=0.011+0.011*u,ns=2+Math.floor(Math.random()*4),fb=Math.random()<0.25; // (round 50i) a drop onto wet stone: no bubble to speak of (van den Doel: small or no bubbles are heard as impacts), so a hard tap (instant onset, 2-4 ms), the splat's thicker part, the spray of its droplets round it, one in four a film of water deep enough for a tiny high bubble
+        N(0.0025+0.002*u,{vol:v,f:2200+1500*Math.random(),type:'highpass',q:0.7,att:0.0003,rv:0.7});N(0.014,{vol:v*0.45,f:1000+500*Math.random(),type:'bandpass',q:1.3,att:0.0004,rv:0.7});
+        for(let i=0;i<ns;i++)N(0.0015,{vol:v*(0.15+0.2*Math.random()),f:4500+3500*Math.random(),type:'bandpass',q:1.5,att:0.0002,at:0.008+0.04*Math.random(),rv:0.7});
+        if(fb)B(3200+1800*Math.random(),v*0.3,{at:0.004,sg:0.08,rv:0.7});}break;
+      case'pooldrop':{const v=0.0045+0.0025*Math.random();N(0.004,{vol:v*0.3,f:1600+800*Math.random(),type:'bandpass',q:0.8,att:0.0003,rv:0.8}); // (round 50i) a drop into still water (Phillips, Agarwal & Jordan 2018: the sound is the trapped bubble's ring, not the impact): a soft tap, 12-24 ms later (the crater closing) in seven drops of ten the bubble, 0.7-2.3 kHz (Minnaert, f = 3/r, r 1.3-4.5 mm), in three of those the jet's drop falls back with a smaller one; the rest a dull pat
+        if(Math.random()<0.7){const r=1.3+3.2*Math.pow(Math.random(),1.6),f=3000/r,t0=0.012+0.012*Math.random(),sg=0.06+0.14*Math.random(),j=Math.random()<0.3;
+          B(f,v,{at:t0,sg,rv:0.8});
+          if(j){const t1=t0+0.07+0.08*Math.random();N(0.002,{vol:v*0.12,f:3000,type:'bandpass',q:0.8,att:0.0003,at:t1,rv:0.8});if(Math.random()<0.6)B(f*(1.6+0.8*Math.random()),v*0.35,{at:t1+0.006,sg:0.1,rv:0.8});}}
+        else{N(0.03,{vol:v*0.5,f:700+400*Math.random(),type:'bandpass',q:1,att:0.0006,rv:0.8});}}break;
+      case'lap':{const f=360+160*Math.random();N(0.75,{vol:0.014,f,to:f*0.7,type:'bandpass',q:1.1,att:0.28,rv:0.3});N(0.5,{vol:0.007,f:f*2.2,to:f*1.4,type:'bandpass',q:1,att:0.18,at:0.45,rv:0.3});
+        N(0.3,{vol:0.004,f:2400,type:'bandpass',q:1.1,att:0.06,at:0.55});}break; // a slow wave against the coping: the swell, its slap, the wash back
+      case'runnel':{for(let i=0;i<24;i++)N(0.03+0.04*Math.random(),{vol:0.003+0.003*Math.random(),f:450+1500*Math.random(),type:'bandpass',q:5,at:i*0.11+0.08*Math.random()});
+        N(2.8,{vol:0.007,f:850,type:'bandpass',q:0.6,att:0.8});}break; // water running in a channel out of sight: small surfaces breaking over a wash
+      case'shaftdrop':{const v=0.0055+0.002*Math.random(),f=380+300*Math.random(),e=0.008+0.005*Math.random(),n2=2+Math.floor(Math.random()*3),sg=0.12+0.1*Math.random(); // (round 50i) a drop lands in the water far down the well, near its terminal speed: a heavy plunk (a big bubble, 380-680 Hz), its splash and two to four small bubbles, heard coming up the shaft: each twice more 8-13 ms apart, softer (the flutter between its walls), into a long send; no sound at the lip
+        for(let k=0;k<3;k++){const g=Math.pow(0.45,k),a=k*e;N(0.05,{vol:v*0.4*g,f:900+300*Math.random(),type:'bandpass',q:0.9,att:0.002,at:a,rv:1.4});B(f,v*g,{at:a+0.01,sg,rv:1.4});}
+        for(let i=0;i<n2;i++)B(1100+1600*Math.random(),v*(0.15+0.15*Math.random()),{at:0.03+0.14*Math.random(),sg:0.1,rv:1.4});}break;
+      case'pebble':{let t=0;for(let i=0;i<4;i++){t+=0.08+0.05*i+0.06*Math.random();N(0.01,{vol:0.009*(1-i*0.18),f:2400-350*i,type:'bandpass',q:2.5,att:0.0003,at:t,rv:0.8});}
+        N(0.07,{vol:0.012,f:480,at:t+0.55,rv:1.3});}break; // a pebble knocking down the shaft's walls, then its far landing
+      case'updraft':N(3.4,{vol:0.012,f:260,to:420,type:'bandpass',q:1.2,att:1.4,rv:0.4});N(3,{vol:0.004,f:1800,type:'bandpass',q:0.7,att:1.2,at:0.3});break; // cold air rising out of the shaft
+      case'shaftwind':N(3.2,{vol:0.014,f:300,to:240,type:'bandpass',q:4,att:1.3,rv:0.4});N(3,{vol:0.005,f:620,to:520,type:'bandpass',q:5,att:1.2,at:0.2});N(2.6,{vol:0.003,f:2500,type:'bandpass',q:0.6,att:1});break; // wind over the shaft mouths above: a hollow breath
+      case'tink':{const f=2200+1800*Math.random(),rg=0.05+0.15*Math.random(),n0=1+Math.floor(Math.random()*3);let t=0; // (round 50i) iron or bronze cooling by the furnace: a joint held by friction slips as the metal shrinks (stick-slip): a sharp tick and the piece's short ring, three inharmonic modes (1, 1.71, 2.33: a plate's, never a bar's 2.76), 50-200 ms; one to three, slowing
+        for(let i=0;i<n0;i++){const v=0.0025*(1-0.2*i)*(0.7+0.6*Math.random());N(0.0015,{vol:v,f:3000,type:'highpass',q:0.7,att:0.0002,at:t,rv:0.6});
+          for(const [m,a,dk] of [[1,0.5,1],[1.71,0.3,0.6],[2.33,0.22,0.4]])T(f*m*(0.99+0.02*Math.random()),rg*dk,{vol:v*a,att:0.0003,at:t,rv:0.6});t+=0.25+0.5*i+0.4*Math.random();}}break;
+      case'hammer':{const n0=2+(this.sc++%3);for(let i=0;i<n0;i++){const t=i*(0.55+0.05*Math.sin(i*3.1)),v=1-0.12*i;N(0.05,{vol:0.009*v,f:420,att:0.0008,at:t,rv:0.9});
+        for(const [r,q] of [[1,14],[1.47,16],[2.09,18]])N(0.08,{vol:0.0018*v,f:1650*r,type:'bandpass',q,att:0.0005,at:t+0.002,rv:0.9});}}break; // a far smith on the bloom: the blow's thud, a short inharmonic clank
+      case'sandhiss':N(2.4,{vol:0.007,f:4200,type:'bandpass',q:0.8,att:0.9,rv:0.2});for(let i=0;i<10;i++)N(0.012,{vol:0.0025,f:5000+2500*Math.random(),type:'bandpass',q:2,att:0.0004,at:0.4+Math.random()*1.6});break; // sand blown in under a door, across the stone
+      case'doordraft':N(3,{vol:0.011,f:210,to:170,type:'bandpass',q:1.5,att:1.2,rv:0.5});N(2.4,{vol:0.003,f:1300,type:'bandpass',q:0.8,att:1,at:0.3});break; // a far door's draught
+      case'ftick':N(0.004,{vol:0.011,f:5600,type:'bandpass',q:4,att:0.0002,rv:0.9});N(0.003,{vol:0.005,f:3100,type:'bandpass',q:3,att:0.0002,at:0.0015,rv:0.9});N(0.003,{vol:0.005,f:6200,type:'bandpass',q:4,att:0.0002,at:0.21+0.08*Math.random(),rv:0.9});break; // a faience chip ticks loose and bounces once
+      case'craze':{let t=0;const n0=5+(this.sc++%5);for(let i=0;i<n0;i++){t+=0.02+0.09*Math.random();N(0.003,{vol:0.0055*(1-i/12),f:4800+2400*Math.random(),type:'bandpass',q:4,att:0.0002,at:t,rv:0.8});}}break; // the glaze crazing: a run of fine ticks
+      case'gallery':N(3.4,{vol:0.014,f:700,to:900,type:'bandpass',q:0.7,att:1.4,rv:0.8});break; // air moving down the long galleries
+      case'reeds':{for(let i=0;i<26;i++)N(0.02+0.03*Math.random(),{vol:0.003+0.003*Math.random(),f:1800+2200*Math.random(),type:'bandpass',q:1.5,at:0.3+2.2*Math.random()});N(2.8,{vol:0.009,f:1500,type:'bandpass',q:0.5,att:1.1});}break; // reeds in the wind beyond the wall
+      case'mud':N(0.09,{vol:0.018,f:180,to:120,type:'bandpass',q:3,att:0.02,rv:0.3});N(0.05,{vol:0.005,f:420,type:'bandpass',q:2,at:0.06});if(Math.random()<0.5)N(0.07,{vol:0.007,f:210,to:150,type:'bandpass',q:3,att:0.02,at:0.25});break; // marsh gas through mud beyond the wall
+      case'resin':{N(1.4,{vol:0.003,f:6000,type:'highpass',att:0.4});for(let i=0;i<6;i++)N(0.004,{vol:0.003,f:3000+2000*Math.random(),type:'bandpass',q:2,att:0.0002,at:Math.random()*1.2});}break; // incense resin sizzling on its coals
+      case'crumbs':{let t=0;for(let i=0;i<7;i++){t+=0.03+0.07*Math.random();N(0.02,{vol:0.011*(1-i/9),f:700+600*Math.random(),type:'bandpass',q:1.5,att:0.0004,at:t});}
+        N(0.6,{vol:0.0045,f:2200,type:'bandpass',q:0.6,att:0.15,at:0.05});N(0.08,{vol:0.009,f:260,at:t+0.02});}break; // dry mud brick crumbling: clods and dust
+      case'wallwind':N(4,{vol:0.018,f:150,to:220,att:1.6,rv:0.2});N(3.4,{vol:0.003,f:520,type:'bandpass',q:1.2,att:1.4,at:0.4});break; // wind outside the thick walls, heard through them
+      case'flap':{for(let i=0;i<3;i++)N(0.06,{vol:0.006*(1-i*0.2),f:900,type:'bandpass',q:0.8,att:0.01,at:i*(0.16+0.05*Math.random())});}break; // a palm mat over a doorway flapping
+      case'grind':{for(let i=0;i<18;i++)N(0.12,{vol:0.013*(0.6+0.4*Math.sin(i*0.9)),f:160+90*Math.random(),type:'bandpass',q:2,att:0.03,at:i*0.1,rv:0.9});N(2,{vol:0.012,f:300,att:0.6,rv:0.9});}break; // far off, stone grinding on stone
+      case'farsteps':{const n0=3+(this.sc++%3);for(let i=0;i<n0;i++)N(0.06,{vol:0.026*(1-i*0.12),f:450,at:i*(0.46+0.03*Math.sin(i*2.3)),rv:1.4});}break; // someone else's steps far off in the passages, then nothing
+      case'farthud':N(0.4,{vol:0.06,f:110,rv:1.5});N(0.15,{vol:0.02,f:400,rv:1.5});break; // a far slab or door coming to rest
+      case'salt':{let t=0;const n0=4+Math.floor(Math.random()*10),big=Math.random()<0.25; // (round 50i) salt crystals in the walls bursting as they dry or cool (the NPS at the Devil's Golf Course: "tiny pops and pings"; "a metallic cracking sound"): an avalanche of 4-13 ticks under 2 ms, sizes by a power law, the gaps growing (the rate dying away), about half ringing 5-17 ms high (a crystal's ping); one in four starts with a crust plate cracking
+        if(big){N(0.006,{vol:0.012,f:1500+700*Math.random(),type:'bandpass',q:1.2,att:0.0002,rv:0.3});N(0.003,{vol:0.008,f:4000,type:'highpass',q:0.7,att:0.0002,rv:0.3});
+          T(3000+1500*Math.random(),0.03,{vol:0.0025,att:0.0003,rv:0.3});t=0.02;}
+        for(let i=0;i<n0;i++){const s=Math.min(5,Math.pow(Math.random(),-0.7)),v=Math.min(0.01,0.0018*s);N(0.0008+0.0012*Math.random(),{vol:v,f:4500+3000*Math.random(),type:'bandpass',q:0.9,att:0.0002,at:t,rv:0.3});
+          if(Math.random()<0.45)T(3800+4000*Math.random(),0.005+0.012*Math.random(),{vol:v*0.35,att:0.0002,at:t+0.0003,rv:0.3});t+=0.008+0.03*Math.pow(i+1,1.1)*Math.random();}}break;
+      case'sandwind':N(3.6,{vol:0.012,f:800,to:1200,type:'bandpass',q:0.6,att:1.5,rv:0.2});N(3,{vol:0.006,f:3800,type:'bandpass',q:0.9,att:1.3,at:0.4});break; // wind over the sand outside
+      case'gust':N(2.6,{vol:0.02,f:420,to:700,type:'bandpass',q:0.7,att:0.35,rv:0.2});N(2.2,{vol:0.007,f:1800,to:2600,type:'bandpass',q:0.8,att:0.3,at:0.1});
+        for(let i=0;i<6;i++)N(0.25,{vol:0.004,f:900+400*Math.random(),type:'bandpass',q:1,att:0.08,at:0.3+i*0.28});break; // a cold highland gust: a quick rise, a long fall, buffeting
+      case'beam':{let t=0;const n0=14+(this.sc++%6);for(let i=0;i<n0;i++){const u=i/n0;t+=1/(30+40*Math.sin(u*Math.PI));N(0.006,{vol:0.006*Math.sin(u*Math.PI)+0.001,f:520+120*Math.sin(u*2.1),type:'bandpass',q:4,att:0.0003,at:t,rv:0.4});}}break; // a timber beam in the wall creaking (stick-slip)
+      case'rattle':{let t=0;for(let i=0;i<4;i++){t+=0.07+0.08*Math.random();N(0.025,{vol:0.008*(1-i*0.15),f:700,type:'bandpass',q:1.2,att:0.0005,at:t});N(0.03,{vol:0.006*(1-i*0.15),f:250,att:0.0008,at:t});}}break; // a shutter knocking in its frame
       case'jump':N(0.12,{vol:0.05,f:2200,type:'bandpass',to:900});break;
-      case'land':N(0.1,{vol:0.12,f:420});T(110,0.09,{to:60,vol:0.08});break;
       case'thud':N(0.25,{vol:0.25,f:300});T(80,0.2,{to:40,vol:0.14});break;
       case'grab':N(0.05,{vol:0.07,f:1500});break;
       case'bump':N(0.08,{vol:0.1,f:500});break;
@@ -3111,20 +3244,20 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
       case'gopen':N(2.5,{vol:0.09,f:120,to:60,att:0.08,rv:0.5});T(44,2.2,{to:36,vol:0.055,att:0.08});
         N(0.4,{vol:0.13,f:240,to:520,type:'bandpass',q:1.5,att:0.04});N(0.36,{vol:0.03,f:1900,to:2600,type:'bandpass',q:2.5,att:0.05});
         N(0.28,{vol:0.2,f:280,at:0.36});T(60,0.4,{to:36,vol:0.13,at:0.36,rv:0.5});
-        for(let i=0;i<18;i++){const u=i/18;N(0.016+0.01*((i*7)%3)/2,{vol:0.024*(1-0.6*u),f:2200+1500*Math.abs(Math.sin(i*2.3)),type:'bandpass',q:3,at:0.5+1.9*u*u+0.03*Math.sin(i*5.1)});}break;
+        for(let i=0;i<18;i++){const u=i/18;N(0.016+0.01*((i*7)%3)/2,{att:0.0004,vol:0.024*(1-0.6*u),f:2200+1500*Math.abs(Math.sin(i*2.3)),type:'bandpass',q:3,at:0.5+1.9*u*u+0.03*Math.sin(i*5.1)});}break;
       // the exit's great door: a slab twice a gate's, its rumble deep and long, judders as it rises (2.2 s), a heavy boom at the top, then
       // the outside's air rushing in through the opening (filtered noise swelling and settling) as the room's air bed lifts, and grit for long
       case'gdoor':N(2.4,{vol:0.13,f:85,to:60,att:0.35,rv:0.6});T(33,2.3,{to:29,vol:0.1,att:0.35});T(49,2.1,{to:44,vol:0.03,att:0.4});
         N(2.15,{vol:0.07,f:170,to:330,type:'bandpass',q:1.2,att:0.25});for(let i=0;i<5;i++)N(0.09,{vol:0.05,f:320,at:0.42+i*0.39+0.05*Math.sin(i*3.1)});
         N(0.7,{vol:0.3,f:210,at:2.22});T(38,1.4,{to:25,vol:0.22,at:2.22,rv:0.9});T(76,0.45,{to:48,vol:0.09,at:2.22});
         N(1.5,{vol:0.06,f:480,to:900,type:'bandpass',q:0.5,att:0.55,at:2.15,rv:0.3});N(1.3,{vol:0.02,f:3200,type:'bandpass',q:0.7,att:0.5,at:2.3});this.bedLift(2.3,2.6);
-        for(let i=0;i<26;i++){const u=i/26;N(0.016,{vol:0.013*(1-0.6*u),f:2000+1700*Math.abs(Math.sin(i*1.9)),type:'bandpass',q:3,at:0.6+3*u*u+0.04*Math.sin(i*4.3)});}break;
+        for(let i=0;i<26;i++){const u=i/26;N(0.016,{att:0.0004,vol:0.013*(1-0.6*u),f:2000+1700*Math.abs(Math.sin(i*1.9)),type:'bandpass',q:3,at:0.6+3*u*u+0.04*Math.sin(i*4.3)});}break;
       // a lift's mouth slab: a lighter grind, home at 0.3 s (it opens in 0.33), a short patter
       case'lopen':N(1.2,{vol:0.06,f:130,to:70,att:0.06,rv:0.4});N(0.3,{vol:0.1,f:300,to:600,type:'bandpass',q:1.6,att:0.03});
-        N(0.22,{vol:0.14,f:300,at:0.3});T(68,0.3,{to:42,vol:0.09,at:0.3,rv:0.4});for(let i=0;i<7;i++)N(0.012,{vol:0.01*(1-i/9),f:2400+1200*Math.abs(Math.sin(i*2.7)),type:'bandpass',q:3,at:0.42+i*0.13});break;
+        N(0.22,{vol:0.14,f:300,at:0.3});T(68,0.3,{to:42,vol:0.09,at:0.3,rv:0.4});for(let i=0;i<7;i++)N(0.012,{att:0.0004,vol:0.01*(1-i/9),f:2400+1200*Math.abs(Math.sin(i*2.7)),type:'bandpass',q:3,at:0.42+i*0.13});break;
       // a gate closing (a: 'slam' a closer's): the grind as the slab starts down, heavier and quicker slammed; gthud its deep stop at the sill
       case'gshut':{const k=a==='slam'?1.25:1;N(0.42/k,{vol:0.12*k,f:520,to:200,type:'bandpass',q:1.5,att:0.03});T(52,0.4/k,{to:40,vol:0.06*k,att:0.04});N(0.38/k,{vol:0.03,f:2300,to:1600,type:'bandpass',q:2.5,att:0.03});}break;
-      case'gthud':{const k=a==='slam'?1.3:1;N(0.34,{vol:0.22*k,f:230});T(46,0.6,{to:28,vol:0.17*k,rv:0.7});T(92,0.18,{to:60,vol:0.05*k});for(let i=0;i<6;i++)N(0.012,{vol:0.01*(1-i/8),f:2300+1100*Math.abs(Math.sin(i*3.3)),type:'bandpass',q:3,at:0.14+i*0.11});}break;
+      case'gthud':{const k=a==='slam'?1.3:1;N(0.34,{vol:0.22*k,f:230});T(46,0.6,{to:28,vol:0.17*k,rv:0.7});T(92,0.18,{to:60,vol:0.05*k});for(let i=0;i<6;i++)N(0.012,{att:0.0004,vol:0.01*(1-i/8),f:2300+1100*Math.abs(Math.sin(i*3.3)),type:'bandpass',q:3,at:0.14+i*0.11});}break;
       // a lift's mouth slab closing: grind and thud in one (it shuts in 0.33 s)
       case'lshut':N(0.3,{vol:0.1,f:560,to:240,type:'bandpass',q:1.6,att:0.03});N(0.26,{vol:0.17,f:240,at:0.3});T(50,0.45,{to:32,vol:0.12,at:0.3,rv:0.5});break;
       // (round 50e) a counterweight lift summoned: its counterweight rumbling down the wall and the rope running over the sheave, a chunk
@@ -3145,12 +3278,12 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
         T(146.8,3,{to:138,vol:0.022,att:0.8,at:0.4,rv:R});T(155.6,3,{to:146,vol:0.016,att:0.9,at:0.42,rv:R});break;}
       case'clear':break; // (round 50c) the floor done: silence (the fanfare is gone); the exit's stairs and light are heard as he goes
       case'hiss':N(0.32,{vol:0.07,f:5200,type:'highpass'});break;
-      case'bones':[0,0.035,0.09,0.13,0.21].forEach((a,i)=>N(0.018,{vol:0.06*(1-i*0.13),f:[1900,2500,1600,2900,2100][i],type:'bandpass',q:5,at:a}));N(0.06,{vol:0.03,f:700,type:'bandpass',q:2});break; // (round 50c) dry bones knocking together (was square blips)
+      case'bones':[0,0.035,0.09,0.13,0.21].forEach((a,i)=>N(0.018,{att:0.0004,vol:0.06*(1-i*0.13),f:[1900,2500,1600,2900,2100][i],type:'bandpass',q:5,at:a}));N(0.06,{vol:0.03,f:700,type:'bandpass',q:2});break; // (round 50c) dry bones knocking together (was square blips)
       case'swoosh':N(0.3,{vol:0.06,f:900,type:'bandpass',to:2400,q:1.4});break;
       case'fire':N(0.6,{vol:0.14,f:420,to:1600,att:0.03});T(90,0.4,{to:60,vol:0.05});break;
       case'guardDie':N(0.45,{vol:0.05,f:700,to:240,type:'bandpass',q:1.1,att:0.03});N(0.22,{vol:0.16,f:300,at:0.38});T(72,0.25,{to:42,vol:0.12,at:0.38});[1,2.76,5.4].forEach((r,i)=>T(880*r,0.4/(i+1),{vol:0.02/(i+1),at:0.52,att:0.002}));N(0.03,{vol:0.04,f:5000,type:'highpass',at:0.52}); break; // (round 50c) a last breath, the body down, his bronze blade on the stone (was a sawtooth sweep)
       // (round 50c) the hours turn back: sand drawn in (a hiss swelling toward its end, as a sound played backward), grains ticking faster, a low swell (was a falling arpeggio)
-      case'rewind':N(0.9,{vol:0.1,f:600,to:3800,type:'bandpass',q:1.6,att:0.7});N(0.9,{vol:0.05,f:300,to:900,att:0.8});T(55,0.95,{to:73.4,vol:0.05,att:0.8});for(let i=0;i<14;i++)N(0.02,{vol:0.02+0.002*i,f:2600+120*i,type:'bandpass',q:4,at:0.06*i*(1-i/40)});break;
+      case'rewind':N(0.9,{vol:0.1,f:600,to:3800,type:'bandpass',q:1.6,att:0.7});N(0.9,{vol:0.05,f:300,to:900,att:0.8});T(55,0.95,{to:73.4,vol:0.05,att:0.8});for(let i=0;i<14;i++)N(0.02,{att:0.0004,vol:0.02+0.002*i,f:2600+120*i,type:'bandpass',q:4,at:0.06*i*(1-i/40)});break;
       case'kick':N(0.07,{vol:0.1,f:700});T(140,0.06,{to:80,vol:0.06});break;
       case'plant':N(0.045,{vol:0.07,f:420,type:'lowpass'});break;
       case'slide':N(0.5,{vol:0.07,f:1800,type:'bandpass',q:0.7});break;
@@ -3158,8 +3291,8 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
       case'push':N(0.45,{vol:0.1,f:240,type:'bandpass',q:2,att:0.05});break;
       case'saw':N(0.16,{vol:0.05,f:3400,type:'bandpass',q:6});break;
       case'plate':N(0.03,{vol:0.06,f:900,type:'bandpass',q:3});T(190,0.05,{vol:0.025});break; // (round 48a: stone settling on stone)
-      case'tick':N(0.014,{vol:0.05,f:3200,type:'bandpass',q:5});N(0.02,{vol:0.02,f:900,type:'bandpass',q:4,at:0.003});break; // (round 50c) a stone click as the shooter's face glows (was a square blip)
-      case'drip':{const f=1300+500*Math.random();T(f,0.06,{to:f*0.55,vol:0.022});}break; // (round 50c) a far drip in the halls (played where it falls)
+      case'tick':N(0.014,{att:0.0004,vol:0.05,f:3200,type:'bandpass',q:5});N(0.02,{att:0.0004,vol:0.02,f:900,type:'bandpass',q:4,at:0.003});break; // (round 50c) a stone click as the shooter's face glows (was a square blip)
+      case'drip':this.play('drop');break; // (round 50i) a far drip in the halls: the real drop (no falling sine)
       case'dart':N(0.09,{vol:0.07,f:2800,type:'bandpass',to:1400,q:3});break;
       case'storm':N(2.2,{vol:0.16,f:260,att:0.4,to:120});T(48,1.8,{vol:0.07,att:0.4});break;
       case'howl':{const c=this.ctx,t0=c.currentTime+0.35+this.atOff; // (round 29) a jackal far off as the dark wakes: two voices gliding up, wavering, falling away, muffled by distance
@@ -3173,15 +3306,15 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
         if(a)N(0.16,{vol:0.016+0.008*k,f:1500,type:'bandpass',to:800,q:1.6,at:0.02});break;} // (round 49b) the turn's creak, by the swing's size; armed, brighter, with a breath of air // (round 18b) the turn: the ropes creak on the log (two short stick-slip groans, not a chain's rattle)
       case'sandstep':N(0.08,{vol:0.03,f:480});N(0.05,{vol:0.012,f:2400,type:'bandpass',q:0.7,at:0.012});break; // (round 36a) a footfall in sand: a dull push and a faint hiss of grains
       case'sandrun':N(0.07,{vol:0.045,f:560});N(0.06,{vol:0.018,f:2800,type:'bandpass',q:0.7,at:0.01});break;
-      case'firmstep':N(0.045,{vol:0.04,f:900});T(110,0.05,{to:70,vol:0.02});break; // (round 36b) the oasis: a footfall on firm, damp ground
-      case'firmrun':N(0.05,{vol:0.05,f:1100});T(120,0.05,{to:75,vol:0.025});break;
+      case'firmstep':N(0.045,{vol:0.04,f:900});N(0.05,{vol:0.03,f:150,q:0.9});break; // (round 50i: the weight as low noise, no sine) (round 36b) the oasis: a footfall on firm, damp ground
+      case'firmrun':N(0.05,{vol:0.05,f:1100});N(0.05,{vol:0.037,f:160,q:0.9});break;
       case'frond':N(0.42,{vol:0.022,f:4200,type:'bandpass',q:0.6,att:0.15});N(0.26,{vol:0.012,f:2600,type:'bandpass',q:0.8,att:0.08,at:0.12});break; // (round 36b) the fronds' rustle
       case'blip':{const f0=520+Math.random()*420;T(f0,0.08,{to:f0*1.7,vol:0.02});}break; // (round 36b) a drop, a fish: the water
       // (round 50c) the birds' voices go through a formant (a bandpass) instead of a bare square or sawtooth
       case'geese':[0,0.22,0.5,0.78,1.15,1.5,1.9].forEach((a,i)=>{const f0=[420,380,460,400,350,440,390][i];T(f0,0.14,{to:f0*0.74,vol:0.05,type:'sawtooth',bp:f0*2.2,bq:2.5,at:a});T(f0*1.5,0.12,{to:f0*1.1,vol:0.012,at:a+0.01});});
         for(let i=0;i<14;i++)N(0.05,{vol:0.045*(1-i/16),f:700,type:'bandpass',q:0.7,at:0.15+i*0.1});break; // (round 36b) the geese lift off: honks and wingbeats
-      case'earthstep':N(0.055,{vol:0.035,f:640});T(92,0.06,{to:60,vol:0.024});N(0.03,{vol:0.008,f:2200,type:'bandpass',q:0.8,at:0.01});break; // (round 36c) the garden: a footfall on a beaten earth path, a dull pat and a little grit
-      case'earthrun':N(0.05,{vol:0.045,f:760});T(100,0.05,{to:64,vol:0.028});N(0.03,{vol:0.012,f:2400,type:'bandpass',q:0.8,at:0.01});break;
+      case'earthstep':N(0.055,{vol:0.035,f:640});N(0.06,{vol:0.036,f:130,q:0.9});N(0.03,{vol:0.008,f:2200,type:'bandpass',q:0.8,at:0.01});break; // (round 36c) the garden: a footfall on a beaten earth path, a dull pat and a little grit
+      case'earthrun':N(0.05,{vol:0.045,f:760});N(0.05,{vol:0.042,f:140,q:0.9});N(0.03,{vol:0.012,f:2400,type:'bandpass',q:0.8,at:0.01});break;
       case'rustle':N(0.55,{vol:0.016,f:3000,type:'bandpass',q:0.5,att:0.22});N(0.4,{vol:0.009,f:5200,type:'bandpass',q:0.7,att:0.15,at:0.12});break; // (round 36c) grain or papyrus stirring
       case'breeze':N(2.8,{vol:0.025,f:2200,type:'bandpass',q:0.45,att:1.0});N(2.2,{vol:0.016,f:4300,type:'bandpass',q:0.6,att:0.8,at:0.5});N(1.6,{vol:0.011,f:900,type:'bandpass',q:0.5,att:0.6,at:0.3});break; // (round 50h: x0.55, heard whole now: its peak as before) // (round 36c) the beat: a breeze running through the grain or the reeds
       case'heron':T(310,0.24,{to:190,vol:0.045,type:'sawtooth',bp:800,bq:1.6});N(0.22,{vol:0.03,f:850,type:'bandpass',q:2.2});for(let i=0;i<6;i++)N(0.09,{vol:0.04*(1-i/8),f:380,type:'bandpass',q:0.9,at:0.42+i*0.31});break; // (round 36c) a grey heron lifting off: its harsh croak, slow deep wingbeats
@@ -3345,7 +3478,8 @@ function makeGuard(gd,i){const d=L.d,cap=gd.cap,sk=!!gd.skel,tr=cap?CAPT:TIERS[g
     pendingParry:null,pose:mk({}),cap,skel:sk,pit:gd.pit||1,reinf:gd.reinf||0,vy:0,fx:0,sx:0,tx:0,hitDone:false,flash:0,id:i};}
 function makeSnake(sp){return {x:sp.x,r:sp.r,y:SURF(sp.r),lo:sp.lo,hi:sp.hi,dir:sp.dir||-1,state:'slither',t:0,ph:Math.random()*6,alive:true,gone:false,cool:0,lunge:0,hitDone:false};}
 
-function startLevel(n,cpIdx,entry){GLP.pend=null;GLP.now=true;GLP.quiet=performance.now()+3000;GLP.upNeed=UP_N;GLP.fastN=0; // (a new floor: the step up's back-off starts again)
+function startLevel(n,cpIdx,entry){Snd.zone='';GLP.pend=null; // (round 50i: the next env() sets the new theme's room)
+  GLP.now=true;GLP.quiet=performance.now()+3000;GLP.upNeed=UP_N;GLP.fastN=0; // (a new floor: the step up's back-off starts again)
   if(S.set.torchRetry){delete S.set.torchRetry;if(S.set.lightMode==='classic'&&!GLP.dead){S.set.lightMode='torch';GLP.inSession=false;syncLightMode();writeSave();}} // (v63: a save left in Classic by the old automatic switch (it set torchRetry) gets Torchlight back; a Classic chosen in Graphics stays) // (each floor starts with the scene at full resolution: glTime scales it down if frames run slow)
   quiet=false;gcueClear();L=genLevel(n,levelSeed(n),false,n===S.legacyFloor);REW.length=0;rw=null;if(cpIdx<0){S.sands=SANDS;S.cpPlates=[];}
   G=L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];
@@ -4597,7 +4731,7 @@ const sf=F(L,pCol(),pRow());if(sf&&sf.t==='spikes')learn('spikes');setState('sta
       const k=P.exS||0,i=Math.floor(k),f=k-i,e=f<0.55?0:sstep((f-0.55)/0.45),q=i+e,k0=P.exK||0;P.exQ=q;P.exY=-q*(EX_RS+EX_SY)-Math.min(1,q)*EX_UP;P.exX=q*EX_SX;
       // (round 16c, stairscan.py: his feet were EX_UP below the tread in every theme: he stands at the floor's middle depth, the treads start
       // inside the doorway, behind the back wall's plane; the first step now takes him up onto the middle of the tread's top)
-      if(Math.floor(k0)<Math.floor(k)&&k<EX_GONE)Snd.play('step'); // (a footfall as each foot lands on its tread)
+      if(Math.floor(k0)<Math.floor(k)&&k<EX_GONE)Snd.play('walk'); // (a footfall as each foot lands on its tread; round 50i: the walking gait)
       if(k0<EX_GONE&&k>=EX_GONE)Snd.play('stairsaway');if(k0<EX_SW0&&k>=EX_SW0)Snd.play('exitlight');P.exK=k;
       if(k>=EX_N||P.t>3.6)levelComplete();break;}
     // (round 26f, owner: "maybe enter the level"; PoP's start door, SDLPoP start_level_door/animate_leveldoor) he comes out of the

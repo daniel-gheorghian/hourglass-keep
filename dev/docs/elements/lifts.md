@@ -235,4 +235,5 @@ left out (`LIFT_DBG.noback`). Look only.
   300 px, grit at the mouth in view; `liftMouthCue`; the sand lift's foot mouths too) and closing `lshut` ([gameplay](../gameplay.md#the-summoned-lift-round-50e)).
   `lifttest.py` (b) rewritten, (d) at the far end; `layoutcmp.py ... liftrest`.
 - round 50d (sound): a step on a counterweight platform or paternoster slab is `hollow` (a box's boom), on the sand lift's slab `sandslab`; a lift within 380 px creaks now and then (`ropefar`) [gameplay](../gameplay.md#footsteps-traps-heard-off-screen-each-themes-ambience-round-50d).
+- round 50i (sound): `hollow` (r50j) a slap, the box's hollow (300 Hz Q 1.6) and the platform knocking in its ropes 70 and 110 ms on, no sine; `sandslab` stone over sand running under it [gameplay](../gameplay.md#each-themes-own-ambience-real-drops-and-crackles-footfalls-from-the-ground-round-50i).
 Details in CLAUDE.md.

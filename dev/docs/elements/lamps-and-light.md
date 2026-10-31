@@ -256,3 +256,4 @@ Details in CLAUDE.md.
   the light map's warmth over the ambient, the bloom's (the flames) and the floor's embers; Classic cuts each warm light's sprite out of its
   drain mask and draws the flames, glows and embers after it. A lit sky clock's light is steady and lays a warm pool on the floor (the
   haven, [checkpoint](checkpoint.md)).
+- round 50i (sound): the lamp's crackle is pops of vapour (r50i: 1-4 in a cluster, power-law sizes, an instant onset, a big pop lower with a body, one in seven a sputter, the flame's soft flutter under them), picked a slot at `AMB_LAMP` 0.12 (was 0.22: it was the commonest sound in every theme) [gameplay](../gameplay.md#each-themes-own-ambience-real-drops-and-crackles-footfalls-from-the-ground-round-50i).

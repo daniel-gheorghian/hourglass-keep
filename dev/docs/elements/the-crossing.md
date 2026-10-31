@@ -212,3 +212,4 @@ z 70     foreground (fore, ofore, gfore; f 1.9-2.45, faster than him, never over
 - round 36e: the wadi's rockfall nearer and bigger, solid geese in flight, the tilted path's corners; second pass on the wadi's shapes.
   Details in CLAUDE.md.
 - round 50c: nearly dry in the room's reverb; the birds' calls through a formant. Sound only.
+- round 50i: the firm and earth footfalls' low sine thumps (`firmstep`, `firmrun`, `earthstep`, `earthrun`) are low noise of the same length: no sine in a footfall. Sound only [gameplay](../gameplay.md#each-themes-own-ambience-real-drops-and-crackles-footfalls-from-the-ground-round-50i).

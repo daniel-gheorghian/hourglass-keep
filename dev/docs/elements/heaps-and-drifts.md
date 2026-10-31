@@ -198,3 +198,4 @@ glints. The near half covers his shins (a drift) or his toes (a heap), so no cli
   (near half only, `selOut` edges, the end by the light, three ends), `selOut` on stones, blocks and crest, C4's sand banks, B1's grit in the
   Blue Chambers. Rules R5-R7 in [layers](../layers.md), the contour rule in [rendering](../rendering.md). Look only: layouts the same.
 - round 50d (sound): footfalls `sand` on a drift and `rubble` on a heap (`footSurf`) [gameplay](../gameplay.md#footsteps-traps-heard-off-screen-each-themes-ambience-round-50d).
+- round 50i (sound): `sand` (r50j) no slap, the grains giving under him (a sand grain texture rising over 30 ms), a soft low give, sand spilled at push-off; `rubble` stones knocking and settling over gravel [gameplay](../gameplay.md#each-themes-own-ambience-real-drops-and-crackles-footfalls-from-the-ground-round-50i).

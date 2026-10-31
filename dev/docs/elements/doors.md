@@ -162,5 +162,6 @@ a glow, haze or bloom. `EXF.look` false draws him plain (`stairscan.py` measures
 - round 50c: `exitlight` air, not a chime; `clear` silent (owner: "no music in the floors"). Sound only.
 - round 50e: the exit is the great door (owner: "no camera glance. Need another way to differentiate"): `gdoor`, the stronger shudder, more
   and longer grit, his head, `doorFlare`; play and the leaf's timing unchanged.
+- round 50i (sound): each tread of the exit's stairs a walking footfall (`walk`: heel, then ball) [gameplay](../gameplay.md#each-themes-own-ambience-real-drops-and-crackles-footfalls-from-the-ground-round-50i).
 
 Details in CLAUDE.md.

@@ -262,4 +262,5 @@ keeps state: rewind-safe.
 - round 46c: a jamb's shaded edge is its own material darker, opaque (was black at .55), and on a round column it and the lit edge hug the shaft (`jambEdge`: they stood beside it on the wall); in Torchlight its body takes the scene alpha mark (`jambMark`, `HILL_A`), so the sky beams' haze is left off it (L3); the architrave's, logs' and beams' edges and rings and the vine's tendrils by the contour rule (`selC`, `selOut`).
 
 - round 50d (sound): footfalls `court` on its paving (dry), `coping` beside a pool (water lapping by) [gameplay](../gameplay.md#footsteps-traps-heard-off-screen-each-themes-ambience-round-50d).
+- round 50i (sound): the footfalls from the ground's reaction (r50j): `court` a slap with grit and fine dust under the contact, `coping` wet stone with a hard tick and now and then the pool's lap [gameplay](../gameplay.md#each-themes-own-ambience-real-drops-and-crackles-footfalls-from-the-ground-round-50i).
 Details in CLAUDE.md.
