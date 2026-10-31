@@ -92,11 +92,11 @@ is a placeholder: only the built `index.html` carries the release number.
 | `wellcorr.py lo hi [seeds]` | no sand well stands in a corridor: every well's pit is walled on both sides down to its floor (round 30) | `wellcorr: ok` |
 | `cpscan.py lo hi [seeds]` | no pixel of the sky clock (the checkpoint) over a wall's front face, a step or a low ceiling beside it, both modes (round 37c) | `cpscan: ok` |
 | `chimtest.py [file] [lo hi] [seeds]` | round 48b's locked chimney, every kick shaft (floors 1-48 x 3: 236): climbed by a running Jump, a standing Jump or Up at the foot, then one Up a stance, every stance on its grid to the pixel, the Y landing 12 px past the lip with the standing landing; Up held gives one kick; Jump does nothing; Down at each stance lets go at once with a fall's damage; a rewind in mid-kick restores his own copies; walking in does not lock; no plant, kick or lock off a single wall elsewhere | `chimtest: ok` |
-| `sndtest.py [file] [wav=DIR]` | round 50c's sound: every `Snd.play` cue rendered offline through the whole graph (`Snd.render`: room, compressor, level), no NaN, peak under 0 dBFS alone and piled up, audible but `clear`; Off silent, Quiet under Full; the live context unlocked by a key, every cue, the places, sleep and wake; round 50d: every footfall on every surface told apart, `footSurf`, the off-screen falloff, the voice cap, every theme's ambience quiet, the duck; `wav=` writes the key cues | `sndtest: ok` |
+| `sndtest.py [file] [wav=DIR]` | round 50c's sound: every `Snd.play` cue rendered offline through the whole graph (`Snd.render`: room, compressor, level), no NaN, peak under 0 dBFS alone and piled up, audible but `clear`; Off silent, Quiet under Full; the live context unlocked by a key, every cue, the places, sleep and wake; round 50d: every footfall on every surface told apart, `footSurf`, the off-screen falloff, the voice cap, every theme's ambience quiet, the duck; round 50e: the gate cue's openings and closings by length, the great door's boom, the summoned lift's rumble unbroken, the placed falloff, the duck under a far gate; `wav=` writes the key cues | `sndtest: ok` |
 | `r38b_tests.py` | round 38b's play faults, one check each: the roof block and `P.inv`, the damaging drop's lip, a banner's rewind, the sand lift (no banner since round 49a, `sandfall` learned on getting off) and its top, the recruit's colour, the timed gates' waits | `r38b: ok` |
 | `tellscan.py [file] [lo hi] [per=K]` | round 49b's tells: at up to K spots a floor of each kind (reach, edge, stakes, flask, low) none before 0.5 s still, full by 1.2 s, the pose changed, the weight 0 the frame Grab is held and the pose back 0.35 s later, P.x/P.y/state identical with `TELL.off`; none while he moves; no spot in a wind zone (none there by design) | `tellscan: ok` |
 | `wearscan.py [file] [lo hi] [seeds]` | round 49c's wear marks and bones (floors 1-48 x 3): scuffs on every wall run up and nowhere else, drawn inside its face; grooves on every cell of each block's track and nowhere else, drawn inside the floor's top face; one set of bones a kind at the first trap of its kind by the route's order (its own list of the traps), every kind on a floor with the trap; on a route tile every pixel behind his walking line and under 6.5 px | `wearscan: ok` |
-| `hinttest.py lo hi` | round 49a: no banner while the bot plays a floor, the moves it uses learned (`S.learned`), and at every remote plate the glance (one when its gate is out of view, none in view or twice, he stays in view, the view goes toward the gate and back, the timer at its rate); floor 1 the old-save migration | `FAILURES 0` |
+| `hinttest.py lo hi` | round 49a: no banner while the bot plays a floor, the moves it uses learned (`S.learned`); round 50e: at every remote plate one gate cue (none for the same plate again while its gate is open), its sound played at the gate, the grit over it or at the view's edge toward it, the view never pulled (within 6 px of its rest), his head lifted with P.x/P.y/state unchanged, the timer at its rate; floor 1 the old-save migration | `FAILURES 0` |
 | `sawceil.py lo hi [seeds]` | no saw under a ceiling at his height: each one turned into spikes is tiptoed, and the bot plays its floor (round 38c) | `sawceil: ok` |
 | `layerscan.py lo hi [classic]` (by hand) | nothing in the corridor drawn over the front plane: each kind drawn and left out, the faces' and lips' pixels unchanged (round 39, `dev/docs/layers.md`) | `layerscan: ok` |
 | `lampscan.py`, `slabscan.py`, `sandshaft.py`, `wellscan.py`, `figscan.py` | lamps keep clear (round 19); a slab slides up into stone (25d); every sand lift in a shaft (26e); the wells' sand (21b); the body's poses against v69 (round 23; only where `hk_v69_release.html` is) | `ok`, `slabscan: ok`, `sandshaft: ok`, `ok`, `figscan: ok` |
@@ -1489,13 +1489,10 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   `S.learned` stay (`LEARN_IDS`) for the looks that read them (jgrab's jet stream until learned, the swing's 0.75 and the kick shaft's 0.65
   after; `shaft` is learned at the Y, `chimY`, since nothing learned it after round 48b); `S.hints` stays in the save unused;
   `__HK.HINTS` is an object of `LEARN_IDS` (`__HK.HINT_MOVE` their Set), so the tools' `for(const id in H.HINTS)` loops still set every
-  learned flag. In place of `gateMsg` and the door's line (`gateCue(g, big)`, from `pressPlate`, `jamAt` and the `xplate`): the gate's sound
-  from where it stands (`Snd.playAt(n,x,y)`: `grind` for a timed gate, `door` for one that stays open and the exit; a lowpass, gain and
-  `StereoPanner` between the sound and the master: pan dx/280 to 0.9, gain 1.15 - d/900 to 0.35, cutoff 9000/(1+d/220)/(1+0.7 storeys)) and,
-  if it is out of view, a glance (`glanceAt`, `GLN`, `GL_T` 1.6 s: the camera's target eased toward it over `GL_IN` 0.35 s and back over
-  `GL_OUT` 0.5 s; input stays live and he is kept `GL_M` 44 px inside the view's sides and wholly in it, so it costs no time and no timer is
-  held; once a plate; never in a chase, a fight, dead, a test load (`__HK.load` sets `GLN.off`) or `?bench`; a rewind or new floor ends
-  it). PoP 1989 has neither (SDLPoP: a plate's door opens off screen in silence); Zelda and Metroid Prime cut or pan to a door a switch opened,
+  learned flag. In place of `gateMsg` and the door's line (`gateCue(g)`, from `pressPlate`, `jamAt` and the `xplate`): the gate's sound
+  from where it stands (`Snd.playAt(n,x,y)`: a lowpass, gain and `StereoPanner` between the sound and the master: pan dx/280 to 0.9, gain
+  1.15 - d/900 to 0.35, cutoff 9000/(1+d/220)/(1+0.7 storeys)); round 49a's camera glance toward a gate out of view (`glanceAt`, `GLN`) is
+  gone since round 50e (owner: "the current animation is distracting pulling the screen like that"): the gate cue below. PoP 1989 has neither (SDLPoP: a plate's door opens off screen in silence); Zelda and Metroid Prime cut or pan to a door a switch opened,
   Dark Souls plays its far sound. How to play (`#how`) keeps the buttons and the short rules: Run; Jump; Up, Down (with 48b's chimney: Up
   kicks higher, Down lets go, Up at the top leaps out); Grab (its word, catching a ledge or tapestry, the careful step, push, pull, drink,
   strike, Up blocks and Down sheathes); after a fall; the three hours; the flasks' colours; keys. Tests: `hinttest.py` reworked (above, the
@@ -1622,6 +1619,54 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   every surface, the surfaces told apart, `footSurf`, the tell falloff, the voice cap, every theme's ambience quiet, the duck), layoutcmp
   v90 same, run2, swingtest, hinttest, rendersmoke, crossscan. WAVs `sndtest.py wav=DIR` (r50d_steps_surfaces.wav, r50d_guard_offscreen.wav,
   r50d_saw_offscreen.wav, r50d_amb_<look>.wav).
+- The gate cue and the summoned lift (round 50e; owner after the r50r research, which he answered "Go with your recommendations ... 1. Both:
+  and apply to onscreen gates 2. Keep and apply to onscreen gates 3. Go with the same - no camera glance. Need another way to differentiate
+  [the exit] 4. Yes [the head] 5. No [no sand draft] 6. Keep [the closing grind] for all, especially since we are going with the dark souls
+  theme 7. Harmonize these decisions with the dark souls theme"; "the current animation is distracting pulling the screen like that"; lifts:
+  "The lift doors: same sound and shake treatment"; "the lift should not be waiting for the prince. It must be always on the other level and
+  the prince must summon it", then "Faster empty" and "Sound and shudder, no glance"; `dev/docs/gameplay.md` "The gate cue (round 50e)").
+  Round 49a's camera glance is gone (`glanceAt`, `GLN`, `GL_*`; `__HK` keeps harmless stubs for old tools). Every gate opening from shut (a
+  plate's `pressPlate`: an in-line gate too, on screen or off; a latched gate's first press, `jamAt`), the exit door (`xplate`) and a lift's
+  mouth slab is one cue (`gateCue(g)` -> `gcue(k,x,r)`, k gate, door, lift): (1) its sound where it stands through `Snd.playAt` and the room's
+  reverb, physical, no melody, ducking the ambience (`SND_DUCK`; playAt never goes through 50d's voice cap): `gopen` (2.5 s: the counterweight's
+  low rumble in the wall, the slab grinding up, a stop thud at 0.36 s as it is home (it opens in 0.33), the rumble dying and grit pattering
+  for two seconds), `gdoor` the exit's great door (3.8 s: a deeper, longer rumble with judders while the leaf rises over its 2.2 s, a heavy
+  boom at the top, then the outside air rushing in, filtered noise swelling and settling, while the room's air bed lifts, `Snd.bedLift`, and
+  longer grit), `lopen` a lift's mouth (1.5 s); (2) a shudder through `shake` (gate 1.3 px then 0.8 at the stop, door 2.3 then 2.5 at the
+  boom, a lift's 1.0 and 0.6 only in view or within `GC_LN` 300 px; Calm halves it, Effects off none: `shake`'s own rules; none on a test
+  load, `quiet`, as the pixel tests compare frames (liftscan failed 7 sand-lift cases on the shaken view before); `gcueTick`);
+  (3) grit shaken from the ceilings (`drawCueGrit`, L2 air before the figures after `drawGrit`): over the gate on its row when it is in
+  view (`GC_SP` 58 px either side), else at the view's edge toward it as the view stood at the cue (fixed in the world) on his storey and
+  the two beside it, thinning inward; `GC_G` 110 / 190 / 24 single sand-coloured grains (`sandC`), each letting go once (early ones more),
+  falling from the first slab or stone above (an open hall's two storeys) to the floor's top at its depth, streaked, lying a moment and
+  fading; none where there is no ceiling or in a wall, none on the front plane (`onFace`); distinct from the roof block's threads and 49b's
+  steady sift; a lift's mouth out of view has none; (4) standing with nothing held he lifts his head toward it at once (`tellTgt` 'listen',
+  `gcueListen`: the newest gate or door cue within `GC_LT` 1.6 s, eased in 0.28 s, out over its last 0.42; craning up and back when it is
+  behind him, higher for one above; on the tells' target before `followPose`; look only: P.x, P.y, state and timing unchanged). `GCUE` keeps
+  the last `GC_N` 6 cues; all they draw is a pure function of gameTime - t and hashes (nothing allocated a frame); a rewind drops cues later
+  than its clock (`gcuePrune`), a new floor clears them; `GCUE.log` (tests) and `GCUE.off`. Closing, every gate near or far through
+  `playAt`: `gshut` (the grind as the slab starts down; `slam` heavier and quicker for a closer) and `gthud` (the deep stop at the sill);
+  a lift's mouth closing `lshut`. The exit's light (`doorFlare`): a little brighter while its leaf rises (Torchlight's door light, Classic's
+  sprite). Lifts: a counterweight lift rests at the end the route leaves it by (`liftSeg`: `f.y = down ? yB : yT`, `gT`/`gB` to match;
+  `L.base` of its top cell FLOOR only for an up lift's), so the plate he arrives at summons it: empty it comes at `LIFT_VC` 128 px/s (two
+  storeys a second), eased in and out at `LIFT_VA` 480 px/s^2 (`f.cv`); ridden it stays `LIFT_V` 64; while summoned its counterweight rumbles
+  and its rope runs over the sheave (`lsummon` every `LIFT_SS` 0.45 s, overlapping, at the platform wherever he is), `larrive` as it docks,
+  then its mouth slab's cue (`liftMouthCue`); the plate's own click (`plateClick`) replaces the 0.42 s rattle; the ropes' lay runs with the
+  rope (`liftChainLine`'s phase is its length). The exit-side plate still sends it back. Sand lift mouths (`f.ms`, `sandOpen`) take `lopen`
+  as they start up (`f.so`, `f.sf`). Paternoster and sand lift otherwise unchanged. `estPath` (owner's variant A): careful `lift` adds the
+  summon's wait, k TH / `LIFT_VC` + 0.3, so only P4 races' timers change: 3 of 1,438 gates on floors 1-48 x 3 seeds (floor 9 seed 3 13.4
+  -> 14.7 s; floor 45 seed 3 13.4 -> 14.7 and 11.9 -> 13.2); the plain pace unchanged. Layouts otherwise identical: `layoutcmp.py
+  hk_v90_release.html notimers liftrest` same (144 of 144; `liftrest`, new, leaves out where a counterweight lift rests: y, gT, gB, cv, sm
+  and its top cell). A rewind restores `f.tgt`, `f.cv` and the slabs (L.dyn features are copied); a respawn rebuilds the floor, so the lift
+  is back at its far end. Checks: `lifttest.py` ((b) rewritten: every counterweight lift on floors 3-27 x 3 seeds at its far end, the
+  arrival plate summons it at 128 px/s, the wait k/2 s and the ease; (d) at the far end after a rebuild), `hinttest.py` (rewritten),
+  `sndtest.py` (the new cues), liftscan, liftkick, primtest, run2, p4bot, featbot lifts and tower, tellscan, swingtest, rendersmoke,
+  openscan, doorscan. Results: lifttest FAILURES 0 (324 lifts at the far end; summoned two storeys in 1.18 s, three in 1.68); hinttest 1-12
+  FAILURES 0 (37 remote plates, 37 cues, the view at most 1 px off its rest, the head lifted 94-95 frames; 171 cues while the bot played);
+  liftscan 4-12 both ALL OK (92 cases); run2 floors 8, 11, 12, 14, 18, 21, 25 x 2 (lifts featured) and 3-14 x 1: 26/26, 0 damage; p4bot 6-16
+  x 2 22/22 (265 P4 gates), the bot on the three changed races' floors ok; featbot lifts 14/14, tower 14/14; primtest, liftkick, tellscan
+  3-16, swingtest 6-12 ok; rendersmoke 4-8 both ok; openscan, doorscan 3-12 0. WAVs `sndtest.py wav=DIR` (r50e_*.wav); pictures `.claude/research/r50e/pics.py` (r50e_gate_strip.png,
+  r50e_door_strip.png, r50e_gate_offscreen.gif).
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized three ways (Trap density, above); only P4's race uses the careful pace.
 - Pose angles are measured from straight down; positive means forward.

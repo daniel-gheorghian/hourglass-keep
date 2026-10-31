@@ -10,6 +10,10 @@
 # ambience over the air bed rendered 12 s (no NaN, quiet: a peak under 0.3 and an rms under 0.02); the ambience ducked under an event.
 # wav=DIR also writes r50d_steps_surfaces.wav, r50d_guard_offscreen.wav, r50d_saw_offscreen.wav and r50d_amb_<look>.wav (nun, meroe,
 # foggara, west: 15 s standing in a hall by a lamp).
+# Round 50e adds: the gate cue's openings and closings (gopen, gdoor, lopen, gshut, gthud, lshut) by their length, the great door's boom
+# louder than its rise, the summoned lift's rumble without a gap, gopen's falloff placed (far left quieter, two storeys up muffled), the
+# ambience ducked under a far gate; wav=DIR writes r50e_*.wav (gate near, far left, two up, closing far, a closer's slam, the door near and
+# far, a lift summoned, a lift's mouth).
 # Must print `sndtest: ok`.
 import os, re, sys, struct
 from playwright.sync_api import sync_playwright
@@ -112,6 +116,33 @@ if __name__ == '__main__':
             r = pg.evaluate(REND, [[], 12, 'hall', {'bed': True, 'amb': {'look': lk}}])
             if r['nan'] or r['peak'] >= 0.3 or r['rms'] >= 0.02 or r['peak'] < 1e-4: bad.append('ambience %s: peak %.3f rms %.4f nan %d' % (lk, r['peak'], r['rms'], r['nan']))
             print('ambience %-8s peak %.3f rms %.4f' % (lk, r['peak'], r['rms']))
+        # (round 50e) the gate cue: each opening's length (to 40 dB under its peak), the great door's boom at its top (2.22 s) louder than its
+        # rise, a lift summoned (lsummon every LIFT_SS 0.45 s, overlapping: no gap over 40 dB down between them), and the falloff placed (far
+        # off screen left quieter, two storeys up more muffled: less of the first difference)
+        def env(r, t0):
+            m = [abs(x) + abs(y) for x, y in zip(r['L'], r['R'])]; pk = max(m) or 1e-9; last = 0
+            for i, v in enumerate(m):
+                if v > pk * 0.01: last = i
+            return m, pk, last / SR - t0
+        ln = {}
+        for n, lo_, hi_ in (('gopen', 1.9, 3.2), ('gdoor', 3.0, 4.8), ('lopen', 1.0, 2.1), ('gshut', 0.25, 1.4), ('gthud', 0.4, 2.1), ('lshut', 0.4, 2.2)):  # (the reverb's tail and the noise's random start move these by +-0.15 s)
+            r = pg.evaluate(REND, [[[n, 0.3]], 5.5, 'room', {'data': True}]); m, pk, L_ = env(r, 0.3); ln[n] = L_
+            if not lo_ <= L_ <= hi_: bad.append('%s lasts %.2f s, wanted %.1f-%.1f' % (n, L_, lo_, hi_))
+            if n == 'gdoor':
+                w = lambda a0, a1: max(m[int((0.3 + a0) * SR):int((0.3 + a1) * SR)])
+                boom, rise = w(2.18, 2.6), w(0.8, 2.0)
+                if not boom > rise * 1.5: bad.append('gdoor boom %.3f over its rise %.3f' % (boom, rise))
+        r = pg.evaluate(REND, [[['lsummon', 0.3 + 0.45 * i] for i in range(6)], 3.5, 'shaft', {'data': True}]); m = [abs(x) + abs(y) for x, y in zip(r['L'], r['R'])]
+        pk = max(m); gap = min(max(m[int(t * SR):int((t + 0.05) * SR)]) for t in [0.45 + 0.05 * i for i in range(46)]) / pk
+        if gap < 0.01: bad.append('lsummon has a gap: %.4f of its peak' % gap)
+        def zc(r):  # brightness: the rms of the first difference over the rms (more high frequencies, higher)
+            L0 = r['L']; a = sum(x * x for x in L0) or 1e-12
+            return 1000 * (sum((L0[i] - L0[i - 1]) ** 2 for i in range(1, len(L0))) / a) ** 0.5
+        near = pg.evaluate(REND, [[['gopen', 0.3, '', 40, 0, 'at']], 3.2, 'room', {'data': True}]); far = pg.evaluate(REND, [[['gopen', 0.3, '', -900, 0, 'at']], 3.2, 'room', {'data': True}])
+        up2 = pg.evaluate(REND, [[['gopen', 0.3, '', 0, -128, 'at']], 3.2, 'room', {'data': True}])
+        print('gate cue lengths (s): ' + ', '.join('%s %.2f' % (k, v) for k, v in ln.items()) + '; lsummon\'s quietest 50 ms %.3f of its peak; gopen rms x1e4 near %.2f, 900 px left %.2f, two storeys up %.2f (brightness x1000 near %.1f, two up %.1f)'
+              % (gap, near['rms'] * 1e4, far['rms'] * 1e4, up2['rms'] * 1e4, zc(near), zc(up2)))
+        if not far['rms'] < near['rms'] * 0.7 or not zc(up2) < zc(near): bad.append('gopen falloff near %.5f far %.5f up %.5f' % (near['rms'], far['rms'], up2['rms']))
         # the live context: a key press unlocks it (a user gesture, as on the phone), every cue played, the places and the bed, sleep and wake
         pg.keyboard.press('Shift')
         live = pg.evaluate('''async (ns)=>{const H=__HK,Sn=H.Snd;Sn.unlock();await new Promise(r=>setTimeout(r,300));const st=Sn.ctx&&Sn.ctx.state;
@@ -123,12 +154,15 @@ if __name__ == '__main__':
           for(const d of ds)Sn.tell('saw',P.x+d,P.y-30,false);const q=Sn.tqN,a=Sn.flush(),l1=Sn.tlog.slice();Sn.tlog=[];
           Sn.tell('saw',P.x+300,P.y-30,false);const b=Sn.flush();Sn.tell('saw',P.x+30,P.y-30,true);const c=Sn.flush();Sn.tell('saw',P.x+5000,P.y-30,false);const far=Sn.tqN;Sn.flush();
           Sn.tlog=null;await new Promise(r=>setTimeout(r,3000));const g0=Sn.aB.gain.value;Sn.play('clang');await new Promise(r=>setTimeout(r,120));const g1=Sn.aB.gain.value;
-          return {q,a,l1,b,c,far,cap:H.TELL_CAP,g0,g1};}""")
+          await new Promise(r=>setTimeout(r,3000));const g2=Sn.aB.gain.value;Sn.playAt('gopen',P.x-600,P.y-30);await new Promise(r=>setTimeout(r,120));const g3=Sn.aB.gain.value; // (round 50e: a gate heard far off ducks it too)
+          return {q,a,l1,b,c,far,cap:H.TELL_CAP,g0,g1,g2,g3};}""")
         print('voice cap: %d queued of 11, %d played out of view %s, then %d more while they ring, %d in view, %d queued past TELL_R; ambience %.2f, under a clang %.2f'
               % (cap['q'], cap['a'], cap['l1'], cap['b'], cap['c'], cap['far'], cap['g0'], cap['g1']))
         want = ['saw:%d' % d for d in (160, 220, 280, 340)][:cap['cap']]
         if cap['a'] != cap['cap'] or cap['l1'] != want or cap['b'] != 0 or cap['c'] != 1 or cap['far'] != 0: bad.append('voice cap %r' % cap)
         if not cap['g1'] < 0.7 * cap['g0']: bad.append('no duck %r' % cap)
+        if not cap['g3'] < 0.7 * cap['g2']: bad.append('no duck under a gate %r' % cap)
+        print('ambience under a far gate: %.2f of %.2f' % (cap['g3'], cap['g2']))
         if live[0] != 'running' or live[1] != 'suspended' or live[2] != 'running': bad.append('live context %r' % live)
         if WAV:
             os.makedirs(WAV, exist_ok=True)
@@ -160,6 +194,18 @@ if __name__ == '__main__':
                 pg.evaluate("""(n)=>{const H=__HK;H.load(n,1,false);const L=H.L,P=H.P,t=L.torches.find(t=>!t.broken)||L.torches[0];if(t){P.x=t.c*32+16+50;P.y=(t.r+1)*64-4;}}""", n)
                 r = pg.evaluate(REND, [[], 15.3, 'hall', {'data': True, 'bed': True, 'amb': {'look': lk}}]); wav(os.path.join(WAV, 'r50d_amb_%s.wav' % lk), r['L'], r['R'])
                 print('r50d_amb_%s.wav: floor %d, peak %.3f, rms %.4f' % (lk, n, r['peak'], r['rms']))
+            # (round 50e) the gate cue for the owner: a gate opening near, far off screen left, two storeys up; a closing grind far; the exit's great
+            # door near and far; a lift summoned from the plate to boarding (k 2: 1.18 s coming, the arrival, its slab opening, the ride's
+            # rattle) and a lift's mouth opening; each over the hall's air bed
+            for tag, ns, dur, z in [('gate_near', [['gopen', 0.3, '', 50, 0, 'at']], 3.4, 'room'), ('gate_far_left', [['gopen', 0.3, '', -700, 0, 'at']], 3.4, 'room'),
+                                    ('gate_two_up', [['gopen', 0.3, '', 60, -128, 'at']], 3.4, 'room'),
+                                    ('closing_far', [['gshut', 0.3, '', 520, 0, 'at'], ['gthud', 0.68, '', 520, 0, 'at']], 2.4, 'room'),
+                                    ('closer_slam', [['gshut', 0.3, 'slam', 40, 0, 'at'], ['gthud', 0.55, 'slam', 40, 0, 'at']], 2.0, 'room'),
+                                    ('door_near', [['gdoor', 0.3, '', 60, 0, 'at']], 4.8, 'hall'), ('door_far', [['gdoor', 0.3, '', 900, 0, 'at']], 4.8, 'hall'),
+                                    ('lift_summoned', [['plate', 0.3]] + [['lsummon', 0.32 + 0.45 * i, '', 30, -60 + 23 * i, 'at'] for i in range(3)] + [['larrive', 1.5, '', 30, 0, 'at'], ['lopen', 1.5, '', 20, 0, 'at']]
+                                     + [['gate', 2.3 + 0.42 * i] for i in range(4)], 4.5, 'shaft'),
+                                    ('lift_mouth', [['lopen', 0.3, '', 40, 0, 'at']], 2.2, 'room')]:
+                r = pg.evaluate(REND, [ns, dur, z, {'data': True, 'bed': True}]); wav(os.path.join(WAV, 'r50e_%s.wav' % tag), r['L'], r['R'])
             old = os.path.join(HERE, 'hk_v90_release.html')
             if os.path.exists(old):
                 pg.goto('file://' + old); pg.wait_for_timeout(600); pg.evaluate("()=>{window.__HKfreeze=true;__HK.load(7,1,false);}")

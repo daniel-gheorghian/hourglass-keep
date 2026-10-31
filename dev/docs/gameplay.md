@@ -263,43 +263,83 @@ he runs at 100) and surges when he gets more than 190 - 30 `L.d` px ahead, so an
   'hint' banner kind. So are the messages that told what to do or what happened: the flask names ("Red flask. One life restored.", the
   large red, gold and poison lines), the rewind's "The hours turn back. N hours left", the sky clock's "...your hours are restored. If you
   fall, you rise here.", "No room to draw a sword in here..." (now the `bump` alone), "Sealed. A floor plate somewhere opens this door."
-  (now a rattle, `sealed`), the gate lines (`gateMsg`) and "A heavy door grinds open somewhere on this floor." (the glance, below), "The
+  (now a rattle, `sealed`), the gate lines (`gateMsg`) and "A heavy door grinds open somewhere on this floor." (the gate cue, below), "The
   slab lands on the plate and holds it down.", "The cracked floor behind you is starting to give way. Run!", "The dark wakes behind you.
   Run!", "Dawn breaks at the arch...", "Ambush! A guard drops in...", and the death card's "Spikes spare a careful step...".
 - Kept: the Grab button's word (`grabLabel`), the floor's banner and the card's rare flag (`FLAG_TEXT`), the Crossing's pad cue, the death
   card's cause and its two lines (Rewind, rise), How to play (the buttons and the short rules, below), the tools' messages (`?bench`).
 - What tells instead: the looks (the jet streams, the gold flask's stars, a gate's sky clock and the HUD's countdown, the cracks, the sand
-  running from a roof block), the sounds, and for a gate or door opening out of sight the glance (below).
+  running from a roof block), the sounds, and for a gate or door opening the gate cue (round 50e, below; round 49a's glance is gone).
 - `learn(id)` still sets `S.learned` where a move succeeds (`LRN_ST`, `learnGrab`, `land`, ...; the ids in `LEARN_IDS`), and the looks read
   it: the jgrab jump's jet stream is drawn until `jgrab` is learned, the swing's throw at 0.75 once `swing` is, the kick shaft's at 0.65
   once `shaft` is (learned at the Y out of the top since round 49a). `S.hints` stays in the save, unused; `newSave(prev)` keeps `learned`
   and `set`. `__HK.HINTS` is an object of `LEARN_IDS` (and `__HK.HINT_MOVE` their Set), so the tools' `for(const id in H.HINTS)` loops still
   set every learned flag.
 
-### Out of sight: heard where it is, and a glance (round 49a)
+### Out of sight: heard where it is, and a glance (round 49a; the glance gone in round 50e)
 
 A gate whose plate is far from it (a remote plate, `f.where`: P1 detours, P4 races, the loop's violet plate; a latched gate's first press;
 a slab that lands on a plate) and the exit door (`xplate`) used to name themselves in a banner (`gateMsg`: "A gate grinds open far below,
 but its hours are running out..."; "A heavy door grinds open somewhere on this floor."). Now (`gateCue`):
 
-- **Its sound from where it stands** (`Snd.playAt(n, x, y)`): the gate's grind (`grind`, a timed gate) or the long rumble (`door`, a gate
-  that stays open, the exit) routed through a lowpass, a gain and a `StereoPanner`: panned by its side of him (dx / 280 px, at most 0.9),
+- **Its sound from where it stands** (`Snd.playAt(n, x, y)`): round 49a's `grind` and `door` (since round 50e `gopen` for every gate and
+  `gdoor` for the exit, the gate cue below) routed through a lowpass, a gain and a `StereoPanner`: panned by its side of him (dx / 280 px, at most 0.9),
   quieter with distance (1.15 - d/900, at least 0.35, d with storeys weighted 1.6) and muffled the farther it is and the more storeys of
   stone lie between (9000 / (1 + d/220) / (1 + 0.7 storeys) Hz, 380 to 12000).
-- **A glance** (`glanceAt`, `GLN`, `updateCamera`) when the gate is out of view: the view's target eases toward it over `GL_IN` 0.35 s,
-  holds, and eases back over `GL_OUT` 0.5 s (`GL_T` 1.6 s in all; the camera follows at 4.5/s while it looks). Play goes on: input stays
-  live and the prince is kept inside the view (`GL_M` 44 px from its sides, wholly inside it up and down), so the glance costs no time and
-  hides nothing; no timer is held (a held timer would have needed play paused, which breaks a P4 race's run over its plate). If the gate
-  is farther than the view allows he stays at its edge and the view shows the way to it. Once a plate (`f.told`; a latched gate once).
-  None while the dark chases, in a fight, dead, on a test load (`__HK.load` sets `GLN.off`) or under `?bench`; a rewind or a new floor ends
-  one.
+- **A glance** (round 49a to round 50e; gone): the view's target eased toward a gate out of view over 0.35 s, held and eased back (1.6 s in
+  all), the prince kept inside it. The owner after round 50's research: "the current animation is distracting pulling the screen like
+  that". The gate cue below replaced it.
 - Why: PoP 1989 has neither (SDLPoP: a plate's event opens its door wherever it is, silently off screen; the player learns the level).
   Zelda (Ocarina of Time onward) and Metroid Prime cut or pan to a door a switch opened, with a chime; Dark Souls plays the far door's
-  sound and, for the great ones, a short camera cut. Here the owner chose the sound plus a short glance (round 49 research); the glance
-  keeps the prince in view because play never stops in this game but for death and the menus.
-- `hinttest.py` checks it at every remote plate (the suite's floors 1-35; floors 1-16: 26 remote plates, 26 glances): one glance when the gate is out of view, none when in
-  view or for the same plate again, the prince inside the view every frame, the view 100-240 px nearer the gate and back at rest, the
-  timer at the game's rate.
+  sound and, for the great ones, a short camera cut.
+
+### The gate cue (round 50e)
+
+Owner, on the r50r research's alternatives: "Go with your recommendations ... 1. Both: and apply to onscreen gates 2. Keep and apply to
+onscreen gates 3. Go with the same - no camera glance. Need another way to differentiate [the exit] 4. Yes [the head] 5. No [no sand
+draft] 6. Keep [the closing grind] for all, especially since we are going with the dark souls theme 7. Harmonize these decisions with
+the dark souls theme"; for the lifts: "The lift doors: same sound and shake treatment". No camera move, nothing said: the keep itself
+answers a plate, as Dark Souls' far doors do.
+
+Every gate that opens from shut (a plate's `pressPlate`, an in-line gate too, on screen or off; a latched gate's first press; a slab
+landing on a plate, `jamAt`), the exit door (`xplate`) and every lift's mouth slab is one cue (`gateCue(g)` -> `gcue(k, x, r)`, k `gate`,
+`door`, `lift`):
+
+| Part | Gate | Exit door (the great door) | Lift mouth |
+|---|---|---|---|
+| Sound, from where it stands (`Snd.playAt`, the room's reverb, ducking the ambience; never cut by 50d's voice cap) | `gopen` 2.5 s: the counterweight's low rumble in the wall, the slab grinding up, a stop thud at 0.36 s (it opens in 0.33), the rumble dying, grit pattering for two seconds | `gdoor` 3.8 s: a deeper, longer rumble with judders while the leaf rises (2.2 s), a heavy boom at the top, the outside air rushing in (filtered noise swelling and settling) while the room's air bed lifts (`Snd.bedLift`), longer grit | `lopen` 1.5 s: a lighter grind, home at 0.3 s, a short patter |
+| Shudder (`shake`: Calm halves it, Effects off none; none on a test load) | 1.3 px, 0.8 at the stop | 2.3 px, 2.5 at the boom | 1.0, 0.6 at the stop, only in view or within `GC_LN` 300 px |
+| Grit from the ceilings (`drawCueGrit`) | `GC_G` 110 grains: over it on its row in view (58 px either side), else at the view's edge toward it on his storey and the two beside it | 190, wider (84 px; 0.55 of the view at the edge) | 24, at the mouth (16 px), only in view |
+| His head (`tellTgt` 'listen') | standing, nothing held: lifted toward it at once for about 1.2 s (`GC_LT` 1.6 s with the eases) | the same | none |
+| Light | | `doorFlare`: the doorway's light a little brighter while the leaf rises | |
+
+The grit is single sand-coloured grains (`sandC`), each letting go once (early ones more), at a depth of the corridor, falling from the
+first slab or stone above (an open hall's two storeys) to the floor's top, streaked, lying a moment and fading; none where there is no
+ceiling or inside a wall, none on the front plane (`onFace`). Not the roof block's threads (`sandFlow`) nor round 49b's steady sift over a
+slab's plate. The head: on the tells' target before `followPose` (its overlap eases it in and out), craning up and back when the gate is
+behind him, higher for one above, lower for one below; look only (P.x, P.y, state and every timer unchanged). `GCUE` keeps the last six
+cues and everything drawn is a pure function of gameTime - t and hashes (rewind-safe, nothing allocated a frame; a rewind drops cues later
+than its clock, `gcuePrune`; a new floor clears them).
+
+Closing (owner: "Keep [the closing grind] for all"): every gate's closing is heard where it stands, near or far, through `playAt`'s falloff:
+`gshut` as the slab starts down (`slam` heavier and quicker for a closer's slam, which keeps its own shake) and `gthud`, a deep stop at the
+sill; a lift's mouth closing `lshut` (grind and thud in one).
+
+`hinttest.py` checks it at every remote plate: one cue, its sound at the gate, the grit's side, the view never pulled (within 6 px of its
+rest), the head lifted with P.x/P.y/state unchanged, no second cue while the gate is open, the timer at its rate (floors 1-12: 37
+remote plates, 37 cues, the view at most 1 px off its rest; 171 cues while the bot played). `sndtest.py` checks the cues' lengths, the door's boom, the falloff and the duck.
+
+### The summoned lift (round 50e)
+
+Owner: "the lift should not be waiting for the prince. It must be always on the other level and the prince must summon it"; then "Faster
+empty" and "Sound and shudder, no glance". A counterweight lift now rests at the end the route leaves it by (`liftSeg`), its far mouth
+open and his shut; the call plate on his landing (`lplate`) summons it. Empty it comes at `LIFT_VC` 128 px/s (two storeys a second),
+eased in and out at `LIFT_VA` 480 px/s^2; ridden it keeps `LIFT_V` 64. While it comes he hears its counterweight rumble and its rope run
+over the sheave from the shaft (`lsummon`, `Snd.playAt` at the platform), sees the rope's lay run, hears it dock (`larrive`) and its mouth
+slab open (the lift's gate cue). Waiting: k storeys x 0.5 s + about 0.2 s of ease (lifttest: 1.18 s for two storeys, 1.68 s for three).
+`estPath`'s careful pace (P4 races) adds k TH / `LIFT_VC` + 0.3 s (3 of 1,438 gate timers on floors 1-48 x 3 seeds, all P4 races, 1.3 s
+longer); the plain pace is unchanged. The exit-side plate still sends it back; the paternoster and the sand lift are unchanged (the sand
+lift's foot mouths take the lift's opening cue).
 
 
 ## Sound (round 50c)

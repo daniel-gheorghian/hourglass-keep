@@ -1,8 +1,8 @@
 # lifttest.py: lifts. (a) the bot plays whole floors holding each lift kind (counterweight lift lift2d.. and chain-loop lift
-# chn2d.., down and up, two and three storeys) with no damage, and must really have ridden it; (b) a counterweight lift called
-# by the plate on the far landing; (c) a step into a chain-loop lift's shaft with no slab passing is an ordinary fall (2
+# chn2d.., down and up, two and three storeys) with no damage, and must really have ridden it; (b) round 50e: every counterweight lift
+# rests at the far end and is summoned by the plate on his landing, coming empty at LIFT_VC; (c) a step into a chain-loop lift's shaft with no slab passing is an ordinary fall (2
 # storeys hurt, 3 kill), and holding toward the shaft with no slab passing does not board; (d) a floor rebuilt for a checkpoint
-# has every counterweight lift at its first end with its grating and mouth floor in step; (e) a ride ends standing, with the
+# has every counterweight lift back at its far end (round 50e: the end the route leaves it by) with its grating and mouth floor in step; (e) a ride ends standing, with the
 # Down (or Up) held for it still held (no crouch at the bottom); (f) a paternoster's slab is solid wherever he is in its shaft:
 # falling onto a rising slab he lands on it and rides, jumping up into one stops his rise, one coming down on him at the
 # shaft's foot shoves him aside, and in none of it is he ever drawn inside a slab; (h) the sand lift (round 41b: a spike pit under its foot): missed, stepped
@@ -31,20 +31,33 @@ with sync_playwright() as p:
             res.append((n,seed,'ok' if good else (r.get('why') or r.get('h'),r.get('rode'))))
         if not fl: bad+=1
         print('%-7s %d floors %s'%(k,len(fl),res))
-    # (b) call from the far end
+    # (b) round 50e (owner: "the lift should not be waiting for the prince. It must be always on the other level and the prince must summon
+    # it"): (b1) on floors 3-27 x 3 seeds every counterweight lift rests at the end the route leaves it by (the bot's lift action: up -> top),
+    # its mouth slabs in step (the far one open, his one shut) and the top cell FLOOR only when it rests there; (b2) for each kind the bot from
+    # its arrival landing: the plate under his feet calls it, it comes empty at LIFT_VC (128 px/s, eased in and out: the fastest frame's step
+    # LIFT_VC/60, the first frames slower), he waits about k TH / LIFT_VC + the ease, rides it to the far end
+    r=pg.evaluate('''()=>{const H=__HK,bad=[];let n0=0;for(let n=3;n<=27;n++)for(let s=0;s<3;s++){const L=H.genLevel(n,700000+n*97+s*13,true);const seen=new Set();
+        for(const a of L.path){if(a.a!=='lift'||a.chn)continue;const pl=L.dyn.filter(o=>o.f.t==='lplate'&&o.c===a.from&&o.f.e===(a.up?1:0)&&o.f.lf.k===a.k&&!seen.has(o.f.lf));if(!pl.length){bad.push(['no plate',n,s,a.from]);continue;}
+          const f=pl[0].f.lf;seen.add(f);n0++;/* (two lifts in one column on two storeys: either order serves, both are checked) */const top=a.up,okY=Math.abs(f.y-(top?f.yT:f.yB))<0.01,okG=f.gT===(top?1:0)&&f.gB===(top?0:1),okB=(L.base[f.rT*L.cols+f.sc]===1)===top;
+          if(!okY||!okG||!okB)bad.push([n,s,f.sc,f.rT,top,f.y,f.gT,f.gB]);}}return {n0,bad};}''')
+    good=r['n0']>20 and not r['bad']
+    if not good: bad+=1
+    print(' far end: %d counterweight lifts on floors 3-27 x 3 seeds %s'%(r['n0'],'ok, every one at the end the route leaves by' if good else r['bad'][:6]))
     fl=pg.evaluate('''()=>{const H=__HK,out=[];for(const kind of ['lift2d','lift3d','lift2u','lift3u'])for(let n=3;n<=20;n++){let hit=false;for(let s=0;s<80&&!hit;s++){const seed=61000+s*139+n*23,L=H.genLevel(n,seed,true);if(L.segs.some(q=>q.k==='turn-'+kind)){out.push([kind,n,seed]);hit=true;}}if(hit)break;}return out;}''')
     for kind,n,seed in fl:
         r=pg.evaluate('''([n,seed,kind])=>{const H=__HK,L=H.load(n,seed,true);const sg=L.segs.find(q=>q.k==='turn-'+kind);
           const f=L.lifts.find(q=>q.t==='lift'&&!q.sand&&q.sc>=Math.min(sg.c0,sg.c1)&&q.sc<=Math.max(sg.c0,sg.c1)&&q.rT>=Math.min(sg.r0,sg.r1)&&q.rB<=Math.max(sg.r0,sg.r1));
-          // the platform rests at the entry end: go the other way, from the exit landing (its plate is under his feet), so the plate must call it
-          const up=f.y===f.yT, rr=up?f.rB:f.rT, s=up?f.sB:f.sT, from=f.sc+s, to=f.sc+(up?f.sT:f.sB);
-          const ins={a:'lift',from,to,k:f.k,up:up,dir:-s};let rode=0,called=false,y0=f.y;
-          const r=runBot(n,seed,{path:[ins],at:{c:from,r:rr,face:-s},stop:H=>{const g=H.L.lifts.find(q=>q.t==='lift'&&q.sc===f.sc&&q.rT===f.rT);if(H.P.state==='lift')rode++;else if(g.y!==y0&&rode===0)called=true;return false;}});
+          const up=kind.endsWith('u'),rr=up?f.rB:f.rT,s=up?f.sB:f.sT,from=f.sc+s,to=f.sc+(up?f.sT:f.sB),far=up?f.yT:f.yB,here=up?f.yB:f.yT;
+          const atFar=Math.abs(f.y-far)<0.01,ins={a:'lift',from,to,k:f.k,up,dir:-s};let rode=0,called=-1,arrived=-1,fr=0,vmax=0,v3=[],py=f.y,board=-1,sum=0;
+          const r=runBot(n,seed,{path:[ins],at:{c:from,r:rr,face:-s},stop:H=>{fr++;const g=H.L.lifts.find(q=>q.t==='lift'&&q.sc===f.sc&&q.rT===f.rT),dy=Math.abs(g.y-py);py=g.y;
+            if(H.P.state==='lift'){rode++;if(board<0)board=fr;}else if(rode===0){if(dy>0){if(called<0)called=fr;vmax=Math.max(vmax,dy*60);if(v3.length<3)v3.push(+(dy*60).toFixed(1));sum+=dy;}
+              if(called>=0&&arrived<0&&Math.abs(g.y-here)<0.01)arrived=fr;}return false;}});
           const g=__HK.L.lifts.find(q=>q.t==='lift'&&q.sc===f.sc&&q.rT===f.rT);
-          r.called=called;r.rode=rode;r.end=Math.abs(g.y-(up?g.yT:g.yB))<0.01;return r;}''',[n,seed,kind])
-        good=r.get('ok')=='path done' and r['called'] and r['rode']>30 and r['end'] and not r.get('hurt')
+          return {ok:r.ok,hurt:r.hurt,atFar,called,arrived,board,rode,vmax:+vmax.toFixed(1),v3,wait:+((arrived-called)/60).toFixed(2),want:+(f.k*64/128).toFixed(2),dist:Math.round(sum),end:Math.abs(g.y-far)<0.01};}''',[n,seed,kind])
+        good=(r.get('ok')=='path done' and r['atFar'] and r['called']>=0 and r['arrived']>r['called'] and abs(r['vmax']-128)<1 and r['v3'][0]<100
+              and r['want']<=r['wait']<=r['want']+0.45 and r['rode']>30 and r['end'] and not r.get('hurt'))
         if not good: bad+=1
-        print(' call %-6s n=%d seed=%d: %s'%(kind,n,seed,'ok' if good else r))
+        print(' summon %-6s n=%d seed=%d: %s'%(kind,n,seed,('ok, at the far end; called, came %d px at up to %.0f px/s (first frames %s) in %.2f s (k TH/LIFT_VC %.2f), rode it to the far end'%(r['dist'],r['vmax'],r['v3'],r['wait'],r['want'])) if good else r))
     # (h) round 16a, the sand lift; round 41 (41b), the trap: stepping onto its slab starts it with no key held. Then, for each of sand3 and
     # sand4: (h1) nothing pressed: the slab sinks past the foot to the spike pit's floor a storey under it and he is impaled there (dead, cause
     # spikes, 64 px under the floor), the slab at rest (f.s 2), the foot a hole and the top an open hole; (h2) the arrow toward the foot's open
@@ -103,9 +116,10 @@ with sync_playwright() as p:
         good=not r['boarded'] and r['inside']==0 and (r['caught'] or (r['dead'] if kind=='chn3d' else (not r['dead'] and r['hp']==r['max']-1)))
         if not good: bad+=1
         print(' shaft step %s n=%d: %s %s'%(kind,n,'ok' if good else 'BAD',r))
-    # (d) rebuilt for a checkpoint: every lift back at its first end, grating and mouth floor in step
+    # (d) rebuilt for a checkpoint: every lift back at its far end (the one the route leaves by), grating and mouth floor in step
     r=pg.evaluate('''()=>{const H=__HK,bad=[];let cnt=0;for(let n=3;n<=14;n++){H.startLevel(n,-1);let L=H.L;const k=L.cps.length?L.cps.length-1:-1;if(k<0)continue;H.startLevel(n,k);L=H.L;
-        for(const f of L.lifts){if(f.t!=='lift')continue;cnt++;const top=f.y===f.yT,okb=L.base[f.rT*L.cols+f.sc]===(top?1:0),okg=f.cyc||(f.gT===(top?1:0)&&f.gB===(top?0:1));if(!okb||!okg||f.tgt!==null)bad.push([n,f.rT,f.rB]);}}return {cnt,bad};}''')
+        const ups=new Map();for(const a of L.path)if(a.a==='lift'&&!a.chn)for(const o of L.dyn)if(o.f.t==='lplate'&&o.c===a.from&&o.f.e===(a.up?1:0))ups.set(o.f.lf,a.up);
+        for(const f of L.lifts){if(f.t!=='lift')continue;cnt++;const top=f.y===f.yT,u=ups.get(f);if(!f.sand&&u!==undefined&&u!==top)bad.push(['not at the far end',n,f.rT,f.rB]);const okb=L.base[f.rT*L.cols+f.sc]===(top?1:0),okg=f.cyc||(f.gT===(top?1:0)&&f.gB===(top?0:1));if(!okb||!okg||f.tgt!==null)bad.push([n,f.rT,f.rB]);}}return {cnt,bad};}''')
     good=not r['bad'] and r['cnt']>0
     if not good: bad+=1
     print(' checkpoint rebuild: %d lifts checked %s'%(r['cnt'],'ok' if good else r))

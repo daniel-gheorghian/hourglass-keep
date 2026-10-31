@@ -19,7 +19,10 @@ on every floor; the generator places them, everything else is look and the two s
 
 He reaches a sealed exit and presses Up: the leaf rattles in its slot (`sealed`; until v89 "Sealed. A floor plate somewhere opens this
 door."). He finds the `xplate`: the door's rumble comes from where it stands, panned and muffled by the distance, and if it is out of view
-the view glances toward it (round 49a, `gateCue`; until v89 "A heavy door grinds open somewhere on this floor."); the leaf rises at 0.45 a second. Back at the door he presses Up 14 px right of its middle, facing left.
+(round 49a, `gateCue`; until v89 "A heavy door grinds open somewhere on this floor."). Since round 50e no glance: it is the great door ([gameplay](../gameplay.md#the-gate-cue-round-50e)):
+`gdoor` (3.8 s: a deep rumble with judders as the leaf rises, a heavy boom at the top, the outside air rushing in while the room's air bed
+lifts), a shudder of 2.3 px and 2.5 at the boom, grit at the view's edge toward it (or over it in view), his head lifted toward it, and
+the doorway's light a little brighter while the leaf rises (`doorFlare`); the leaf rises at 0.45 a second, as before. Back at the door he presses Up 14 px right of its middle, facing left.
 He walks left to the middle at 40 px/s, turns to face the stairs (they recede to the right; `EX_TURN` 0.16 s) and climbs: 3.2 treads a
 second, one footfall each. From the first rise (`EX_CUT`) he is cut at the doorway's lintel and jambs, as SDLPoP's `clip_char` cuts the kid
 at the level door; his own pixels warm and whiten toward the stair light and fade; he is gone at tread 3.5 (`EX_GONE`), his steps go on
@@ -157,5 +160,7 @@ a glow, haze or bloom. `EXF.look` false draws him plain (`stairscan.py` measures
 - round 39 (v84): the start door drawn clear of a wall's or low ceiling's face in the next cell (`startDoorX`, `DOOR_HW`): the door, the
   cut-out, the entry and `doorClip`; `doorscan.py` frames it there (0 of 48). Look only: entries and the bot from the entry unchanged.
 - round 50c: `exitlight` air, not a chime; `clear` silent (owner: "no music in the floors"). Sound only.
+- round 50e: the exit is the great door (owner: "no camera glance. Need another way to differentiate"): `gdoor`, the stronger shudder, more
+  and longer grit, his head, `doorFlare`; play and the leaf's timing unchanged.
 
 Details in CLAUDE.md.

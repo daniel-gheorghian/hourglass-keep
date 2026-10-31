@@ -23,13 +23,15 @@ row 11. `liftSeg(2,true)` (c 228, r 9) empties column 229 for rows 9 and 10, lay
 landing), keeps the walls at 228 (row 10) and 230 (rows 9, 10), and writes:
 
 ```
- row 9     [lplate e0] |MS| [top mouth]  [wall 230]        platform rests here (f.y = f.yT); L.base[top mouth] = FLOOR while it does
+ row 9     [lplate e0] |MS| [top mouth]  [wall 230]        L.base[top mouth] = FLOOR while the platform rests here
  row 10    [wall 228]       [shaft]      [wall 230]
- row 11    [wall 228]       [foot]  |MS| [lplate e1] [floor 231]
+ row 11    [wall 228]       [foot]  |MS| [lplate e1] [floor 231]   platform rests here (f.y = f.yB, round 50e: the end he leaves by)
              228             229           230         231
 ```
 
-He stands on the plate at 228: the platform is already at the top (it rests at the end he arrives by). He steps onto it, holds Down:
+He stands on the plate at 228: the platform is at the foot (since round 50e it rests at the end he leaves by; until then at the top,
+waiting for him), so the plate summons it: it comes up empty at `LIFT_VC` 128 px/s, eased in and out, in 1.18 s, heard rumbling up the
+shaft (`lsummon`), docks (`larrive`) and its top mouth slab opens (`lopen`, the lift's gate cue). He steps onto it, holds Down:
 it sinks at 64 px/s, the top mouth slab drops shut behind him, the platform docks two seconds later and the bottom slab rises; he is handed
 back to `stand` with Down still held doing nothing (`P.liftHold`) until he lets go. The bot's action is `{a:'lift',from:228,to:231,k:2,up:false}`.
 The far side of the foot (column 228, row 11, `sc - sB`) is wall, so the foot cell draws as a 5 px pit, not a tile (`liftPit`). Floor 37
@@ -44,7 +46,8 @@ is dug; floor 6 seed 91266 and floor 6 seed 91297 (column 105) hold trapped ones
 | Rule | Example or number | Why |
 |---|---|---|
 | Counterweight: on the platform, Up or Down held rides it at `LIFT_V`; let go, it stops where it is | a storey takes 1 s | he controls the ride; he is on it within 17 px of the shaft's middle and 2.5 px of `f.y` (`liftUnder`) |
-| A call plate on each landing (`lplate`, `f.e` 0 top, 1 bottom) sends the platform to its landing | not while he rides it or it is already there | so the platform can be fetched from either side |
+| It rests at the end the route leaves it by (round 50e, `liftSeg`: `f.y = down ? yB : yT`); the call plate on his landing summons it; empty it comes at `LIFT_VC` 128 px/s eased at `LIFT_VA` 480 px/s^2 (`f.cv`), ridden it keeps `LIFT_V` | two storeys 1.18 s, three 1.68 s (lifttest) | owner: "the lift should not be waiting for the prince. It must be always on the other level and the prince must summon it"; "Faster empty" |
+| A call plate on each landing (`lplate`, `f.e` 0 top, 1 bottom) sends the platform to its landing | not while he rides it or it is already there; the exit-side plate sends it back | so the platform can be fetched from either side |
 | Each mouth is shut while the platform is away from it (`f.gT`, `f.gB`: 1 open, eased at 3/s) | `clampMove` stops him (and guards) at the plane `liftGx` | nobody walks into an empty shaft |
 | A platform resting at the top is floor (`L.base` of the top mouth cell = `FLOOR`; `L.base0` keeps the open shaft) | he can walk over it to the far side | the top landing reads as a floor |
 | The ride ends standing; the key held for it does nothing until released (`P.liftHold`) | Down held at the bottom is not a crouch | owner (liftgfx): he used to arrive crouching |
@@ -56,7 +59,7 @@ is dug; floor 6 seed 91266 and floor 6 seed 91297 (column 105) hold trapped ones
 | Getting off (`sandRide`): the arrow toward the open foot mouth (`f.mo`), or Up, or Jump (kept `SAND_BUF` 0.3 s), from the mouth `SAND_OPS` 0.45 open (the slab 22 px over the floor; it starts up `SAND_MD` 40 px over it) until the slab is `SAND_WE` 60 px under the floor. Within `SAND_STEP` 20 px of the floor a step through the mouth onto the landing (`step`, the drawn figure eased up, `P.syo`); deeper a jump up to the lip (`jumpUp` to the hang; the arrow or Up still held climbs at once, `P.sandUp`) | a window of 82 px, 0.59 s at 140 px/s (the mouth's first 0.13 s before it, its cue); the arrow held from the start steps off at its first frame (the bot does) | owner: "he has to jump, because the slab keeps going"; like the paternoster's step-off (`chainWin`); a held key or a buffered Jump, so a phone pad needs no frame-exact press |
 | Only the mouth on his way opens (`f.mo`; `sandOpen(f,s)` is 0 for the other; plays `f.gB` exit side, `f.gF` far side); the top mouth's plane (`f.gT` 0; no slab is drawn there) stands only while the slab is within the top storey, then the top is an open hole like any pit (round 38b) | on a two-mouth lift the other side would be a dead end behind the hole after the ride: it stays shut (round 41b) | one use |
 | Where the route runs on past the foot's far side (the next run starts at the foot and heads back: every two-mouth lift), he gets off on that side (`f.mo`, the bot's `off`, `to`); that cell must be plain floor and no move on the foot storey after the ride (to the next vertical move) may walk to the foot, take a run-up from it (rjump, rjumpg, jgrab, swing: `SL_RUNUP`) or press Down within 27 px of the hole (darts, crawl: `edgeBelow` climbs down within 26 px), else the banner slide (round 41c) | floors 1-48 x 3 seeds: 20 fall back so (x 23 seeds: 183 of 2,577 built, 6 more than 41b) | the foot is a hole |
-| `estPath` | `lift`: careful 1.5 + 1.1 k (else 1.2 + k); paternoster 3.8 (3.5) + (64k+32)/`CHAIN_V`; `sandlift` (round 41) careful 2.83 (else 1.23) + (64k - 22)/`SAND_LV`: k 3 4.04 (2.44), k 4 4.50 (2.90); was 4.0 (2.2) | gate timers; the bot measured 1.77 s / 2.23 s from boarding to standing off (133 rides) |
+| `estPath` | `lift`: careful 1.5 + 1.1 k + k TH/`LIFT_VC` + 0.3 (round 50e: the summon's wait; P4 races only, 3 of 1,438 timers) (else 1.2 + k); paternoster 3.8 (3.5) + (64k+32)/`CHAIN_V`; `sandlift` (round 41) careful 2.83 (else 1.23) + (64k - 22)/`SAND_LV`: k 3 4.04 (2.44), k 4 4.50 (2.90); was 4.0 (2.2) | gate timers; the bot measured 1.77 s / 2.23 s from boarding to standing off (133 rides) |
 | A turn that holds a plate's gate never holds a paternoster (`CYC` in `buildTurn`'s `fit`) | | its wait cannot be sized |
 | A switchback's last move is never a lift (`randKits`) | | the way back runs through its foot |
 | No lift in a fork's short way: its moves are `down`, `drop2`, banners, `collapse`, `jumpdown` (`forkKits`), and `sandOr` is false while `forkBuild` | | the long way may pass the foot, where sand stands until it is ridden |
@@ -227,5 +230,9 @@ Round 46c: every rope's, timber's, wheel's and sling's edge by the contour rule 
 left out (`LIFT_DBG.noback`). Look only.
 - Round 49c (owner: "rely only on subtle graphic hints"): the first sand lift of a floor with its spike pit (by the route's order) has an earlier thief's bones half in the sand on the pit's floor (`wearSand`, drawn after `sandCut` inside the lift's clip and below the slab, the sand's `SHC` outline and relief box over them): seen while he rides down, gone under the slab at rest. A pure function of the slab's y. Look only. `wearscan.py`.
 
+- round 50e: the summoned lift (above) and its sound: `lsummon` (the counterweight's rumble and the rope over the sheave, every 0.45 s at
+  the platform, wherever he is), `larrive`; every mouth slab opening is the lift's gate cue (`lopen`, a shudder of 1.0 px in view or within
+  300 px, grit at the mouth in view; `liftMouthCue`; the sand lift's foot mouths too) and closing `lshut` ([gameplay](../gameplay.md#the-summoned-lift-round-50e)).
+  `lifttest.py` (b) rewritten, (d) at the far end; `layoutcmp.py ... liftrest`.
 - round 50d (sound): a step on a counterweight platform or paternoster slab is `hollow` (a box's boom), on the sand lift's slab `sandslab`; a lift within 380 px creaks now and then (`ropefar`) [gameplay](../gameplay.md#footsteps-traps-heard-off-screen-each-themes-ambience-round-50d).
 Details in CLAUDE.md.

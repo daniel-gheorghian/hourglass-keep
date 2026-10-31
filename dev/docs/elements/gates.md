@@ -29,7 +29,7 @@ the gate empties. Stepping on the closer slams the gate in 0.25 s.
 | A gate is a barrier only while `open < 0.5` | `clampMove` stops a body's front (`BW` 6 px) at the cell's middle | a thin plane across the corridor, not a wall cell: walls, kicks (`wallTouch`) and grabs ignore it |
 | Opening | `open += 3/s` while `tm > 0` (full in 0.33 s) | |
 | Closing | slammed by a closer (`slam`) 4/s; a timed gate (`dur > 0`) 2.6/s once `tm` runs out, so it blocks again 0.19 s later | a closer is beaten only by jumping it; since round 48a it looks like any plate (no warning, see [plates](plates.md)); a closer can also shut a latched gate, and pressing the latched plate again reopens it |
-| Latched | `tm = Infinity` from the first press; sound `door` from where the gate stands and a glance if it is out of view (`gateCue`, round 49a; until v89 a message, `gateMsg`) | most in-line gates and most side-passage gates |
+| Latched | `tm = Infinity` from the first press; the gate cue (`gateCue`, round 50e; round 49a's glance gone; until v89 a message, `gateMsg`) | most in-line gates and most side-passage gates |
 | Timed | `tm = dur`, reset on every frame he stands on the plate, counts down once he leaves it | race: the clock starts at the plate's edge |
 | Held | `dur` 0.2 (`blockGate`: slab gate P2, block gate): shut 0.2 s + 0.19 s after the plate is released | only a slab or a block can hold it |
 | In-line timer | `(m*TW+16+BW)/RUN` + 0.2 closer / -0.1 pit / +0.05 plain, times `lerp(1.15,1.03,...)` | the fastest honest run plus a thin margin; `gateopt.py` measures it |
@@ -43,8 +43,12 @@ the gate empties. Stepping on the closer slams the gate in 0.25 s.
 | Respawn at a checkpoint | latched plates pressed before it (`S.cpPlates` = `pressedPlates()`) reopen their gates (`tm` Infinity, `open` 1); timed ones start shut | `respawnplates.py` |
 | Continue (`S.resume`) | latched-open gates (`lg`) reopened by `applyResume` | |
 
-Sounds: `plate` (a stone click, round 48a) as a foot first comes down on a plate or closer; `gate` (five ticks) when a plate starts a shut gate, when a closer slams (with `shake(0.9)`) and when a closing gate in view
-passes half shut; `door` (a long rumble) when a latched plate first latches.
+Sounds: `plate` (a stone click, round 48a) as a foot first comes down on a plate or closer; when a closer slams `gate` (five ticks) with `shake(0.9)`.
+Since round 50e every opening from shut, on screen or off, is the gate cue ([gameplay](../gameplay.md#the-gate-cue-round-50e)): `gopen` from where the gate stands
+(2.5 s: the counterweight's rumble, the grind, a stop thud at 0.36 s, grit pattering), a shudder of 1.3 px (0.8 at the stop; Calm halves it,
+Effects off none), grit shaken from the ceilings over it or at the view's edge toward it, and standing he lifts his head toward it; a timed
+gate pressed again while open gives none. Every closing, near or far (`playAt`): `gshut` as the slab starts down (`slam` heavier for a
+closer) and `gthud` at the sill (round 49a's `gate` at half shut in view, `grind` and `door` are gone).
 
 ## The prince and the guards
 | Situation | What happens |
@@ -144,6 +148,8 @@ is: the top piece over the lintel's side face (round 14's look; the owner's call
 - round 39 (v84): the far half and slots cut at a floor's lip beside the lintel; `glRelSlab` from the ceiling's edge. Look only.
 - round 48a: the closer no longer warns (drawn as the opening plate, no approach hint or 'Step' label); its slam unchanged.
 - round 49a: no hints or messages; a gate opened from out of its sight is heard where it stands (`Snd.playAt`: `grind` for a timed gate,
-  `door` for one that stays open) and glanced at when out of view (`gateCue`, `glanceAt`; [gameplay](../gameplay.md#out-of-sight-heard-where-it-is-and-a-glance-round-49a)).
+  `door` for one that stays open) and glanced at when out of view (`gateCue`, `glanceAt`; [gameplay](../gameplay.md#out-of-sight-heard-where-it-is-and-a-glance-round-49a-the-glance-gone-in-round-50e)).
+- round 50e: no glance; every gate opening is the gate cue (sound, shudder, grit, his head), every closing heard (`gshut`, `gthud`); lift
+  mouth slabs take the same (`lopen`, `lshut`) ([gameplay](../gameplay.md#the-gate-cue-round-50e)). Look and sound only.
 - round 46c: the slab's outline is its stone in shade (`selC`), the groove up the back wall opaque (the wall's art showed in it at .82); a slab that is down takes no sky beam in Torchlight (`solidMark`, the scene alpha `HILL_A`, layers.md R7; `solidscan.py`). Look only.
 - Details in CLAUDE.md (Themes, 16c, 20a, 20b, 25d, 26a, Forks, Trap density).

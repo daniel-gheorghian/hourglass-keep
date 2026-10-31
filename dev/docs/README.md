@@ -103,6 +103,20 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
 
+## What round 50e found
+
+Round 50e (owner after the r50r research on the gate cue: "Go with your recommendations"; "the current animation is distracting pulling
+the screen like that"; the lifts: "same sound and shake treatment", "the lift should not be waiting for the prince ... the prince must
+summon it", "Faster empty", "Sound and shudder, no glance") ([gameplay](gameplay.md#the-gate-cue-round-50e)).
+
+| Finding | Where | Round 50e | Seen in |
+|---|---|---|---|
+| A gate out of view pulled the camera toward it for 1.6 s (round 49a's glance): distracting, and nothing at all for a gate in view | `glanceAt`, `GLN`, `updateCamera` | gone; every gate opening from shut, on screen or off, is the gate cue: `gopen` where it stands, a shudder (1-1.5 px; Calm halves, Effects off none), grit from the ceilings on its side of the view, his head lifted toward it | [gates](elements/gates.md), [plates](elements/plates.md) |
+| The exit door sounded as a latched gate and was told apart only by the glance | `gateCue(null)` | the great door: `gdoor` (deeper, 3.8 s, a boom at the top, the outside air rushing in, the air bed lifting), a 2.3-2.5 px shudder, more and longer grit, his head, its light brightening as the leaf rises (`doorFlare`) | [doors](elements/doors.md) |
+| A gate's closing was heard only in view (`gate` at half shut) | `updateFeatures` | every gate near or far: `gshut` as it starts down, `gthud` at the sill | [gates](elements/gates.md) |
+| Lift mouth slabs opened and shut in silence | `updateLift` | `liftMouthCue`: the lift's gate cue (`lopen`, a shudder near, grit at the mouth) and `lshut`; sand lift mouths too | [lifts](elements/lifts.md) |
+| A counterweight lift waited for him at his landing (no lift to call; the far plate idle) | `liftSeg` | it rests at the end the route leaves by; his plate summons it at `LIFT_VC` 128 px/s, eased, heard rumbling (`lsummon`, `larrive`); careful `estPath` adds the wait (3 P4 timers of 1,438 +1.3 s) | [lifts](elements/lifts.md) |
+
 ## What round 50d found
 
 Round 50d (owner, the "Dark Souls mood": "Yes on all" to round 50b's prototypes; "implement all of them then release": B4 footsteps by

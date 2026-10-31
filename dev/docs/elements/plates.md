@@ -25,12 +25,12 @@ teal timer is `estPath` of the gallery's way back plus the drop, times `timerK()
 ## In play
 | Kind | What it does | Notes |
 |---|---|---|
-| `plate`, latched (`latch`) | `pressPlate`: `g.tm = Infinity` (stays open); the gate's `door` sound from where it stands and a glance if out of view (`gateCue`, round 49a; until v89 `gateMsg` unless `near`) | in-line gates, P1/P5 branch plates (62% of timed ones made latched after the build), P3's plate, the amber double plate, the violet plate |
-| `plate`, timed | `g.tm = g.dur` every frame he stands on it, `slam` cleared; the clock runs once he steps off; with `where` the gate's `grind` from where it stands and a glance if out of view, once (`told`; round 49a, until v89 `gateMsg`) | in-line timed gates, the teal double plate, P4 (`fwd`: the gate is "ahead", in the next turn) |
+| `plate`, latched (`latch`) | `pressPlate`: `g.tm = Infinity` (stays open); the gate cue (`gateCue`, round 50e: `gopen` from where it stands, a shudder, grit, his head; round 49a's glance gone; until v89 `gateMsg` unless `near`) | in-line gates, P1/P5 branch plates (62% of timed ones made latched after the build), P3's plate, the amber double plate, the violet plate |
+| `plate`, timed | `g.tm = g.dur` every frame he stands on it, `slam` cleared; the clock runs once he steps off; the gate cue whenever it opens its gate from shut, on screen or off (round 50e; round 49a's `grind` and glance, once with `where`, `told`; until v89 `gateMsg`) | in-line timed gates, the teal double plate, P4 (`fwd`: the gate is "ahead", in the next turn) |
 | `plate`, held | a 0.2 s gate: open only while something stays on it | P2 (`slabF`: a gallery slab above it) and `blockSeg` (a block) |
 | `closer` | `g.tm = 0`, `slam`: the gate drops at 4/s; `gate` sound, `shake(0.9)` (no hint since round 49a; round 48a's `closer` and `slabcloser` came after the slam); nothing once `jam` | right before an in-line gate (floor 4 on: 45% of in-line gates with `m` >= 3 and no pit); four in a row before P3's gate |
-| `xplate` | `L.door.opening`: the exit door opens at 0.45/s (2.2 s); the door's rumble from where it stands and a glance if out of view (`gateCue(null)`, round 49a; until v89 the message "A heavy door grinds open somewhere on this floor.") | one a floor, past 82% of the route, before the exit's guard |
-| `lplate` | sends its lift (`lf`) to its end (`e`: 0 top, 1 bottom) unless docked there or ridden; `gate` sound | one on each landing of a counterweight lift (see [lifts](lifts.md)) |
+| `xplate` | `L.door.opening`: the exit door opens at 0.45/s (2.2 s); the great door's cue (`gateCue(null)`, round 50e: `gdoor`, a stronger shudder, grit, his head; round 49a's glance gone; until v89 the message "A heavy door grinds open somewhere on this floor.") | one a floor, past 82% of the route, before the exit's guard |
+| `lplate` | sends its lift (`lf`) to its end (`e`: 0 top, 1 bottom) unless docked there or ridden; since round 50e the lift rests at the far end, so the plate he arrives at summons it (`LIFT_VC`, heard coming, `lsummon`); the plate's click (`plateClick`) | one on each landing of a counterweight lift (see [lifts](lifts.md)) |
 | `trigger` | the flask tile of a gateless secret passage: arms its crumbling chain and ambush (`armPassage`) | no gate; drawn as plain floor under the flask (see [flasks and secrets](flasks-and-secrets.md)) |
 | Passage plates | a branch plate with a `chain` (P1, double) also arms it: the five sturdy cracked slabs beside the plate start to fall (`tm` from -(1.8 + 0.36 k) s) | "The cracked floor behind you is starting to give way. Run!"; the ambush (`amb`) belongs to a gateless passage's flask `trigger`, not to a plate |
 
@@ -40,7 +40,7 @@ What presses a plate:
 |---|---|---|
 | The prince | all kinds | `standOn`, called each frame while standing, running or crouching, and on landing and at the end of a step, push, pull, climb or lift ride; never in the air or hanging, so a jump clears a closer |
 | A movable block | `plate` only | `updateBlocks`: a block at rest on a plate presses it every frame and sets `g.heldAt`, so the HUD shows no clock for it (see [movable blocks](movable-blocks.md)) |
-| A falling slab | `plate`, `closer` | `jamAt` when a slab lands on the cell: a plate becomes latched for good (`latch`, `near`, its gate `tm` Infinity, heard and glanced at as a press); a closer is jammed (`jam`) and never slams again. Rubble lies on it (`drawHeap`) |
+| A falling slab | `plate`, `closer` | `jamAt` when a slab lands on the cell: a plate becomes latched for good (`latch`, `near`, its gate `tm` Infinity, the gate cue as a press); a closer is jammed (`jam`) and never slams again. Rubble lies on it (`drawHeap`) |
 | Guards, snakes, darts, debris other than slabs | none | no code path |
 
 Persistence:
@@ -182,6 +182,7 @@ Pictures `egyptr48a.py old.html new.html [outdir]` (r48a_closer_<mode>.png, r48a
 - round 35c: live tiles rubbed out of the relief (`glRelFloors`, `GLREL_Q` 160).
 - round 48a: the closing plate looks, sounds and is hinted exactly as the opening plate until it slams (above).
 - round 49a: no hints or messages; a remote plate's gate and the exit door are heard where they stand and glanced at (`gateCue`).
+- round 50e: no glance; every gate opening from shut and the exit door are the gate cue (sound, shudder, grit, his head); a lift plate summons its lift.
 - round 49b: grit sifts from a slab that can jam the plate onto it (`drawGrit`).
 - round 50a: the grit stronger: more grains, a trickle at moments, a small pile on the plate (`drawGritL`).
 - Details in CLAUDE.md (Trap density, Forks, Fighters, 16c, 35b, 35c).
