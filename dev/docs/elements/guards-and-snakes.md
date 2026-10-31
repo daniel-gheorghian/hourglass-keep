@@ -209,5 +209,6 @@ for each guard in view (not gone; out of view a live one's press g.rdx is reset 
 - round 39 (v84): the layering rule. Faces on the left press and cut guards too; a dying or dead guard keeps his press and is cut by the
   faces near him (`deadCut`, the heap and grains too); a drop-in comes out from under the ceiling (`dropCeil`; 7,952 / 6,525 px over
   stone before, 0 now). Look only.
+- round 50c (sound): `clang` bronze on bronze (a struck plate's inharmonic partials over the hit's noise, each a little different); `guardDie` a last breath, the body down and his blade on the stone; `hit` and `hurt` body blows (no square or sawtooth). Sound only.
 
 Details in CLAUDE.md (Fighters bullet, rounds 24, 27c).

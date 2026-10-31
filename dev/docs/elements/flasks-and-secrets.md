@@ -142,3 +142,4 @@ drawLooseFlasks (L.flk: the empty one falling, fading)
 - Fork kind 4's grating with its flask behind a violet gate (forks unit).
 - round 38a: flasks in place carved out of the lamp shadow (`SHC`).
 - round 39 (v84): the hidden flask's stars cut at a wall's face beside it. Look only. Details in CLAUDE.md.
+- round 50c (sound): a flask of life (`life`, also the large flask) a deep struck bowl over a low string, no fanfare; `drink` three gulps with a faint ring of the bowl; `poison` three choked gasps and a groan with the bowl's note gone sour. Sound only.

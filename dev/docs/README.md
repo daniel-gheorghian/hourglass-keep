@@ -103,6 +103,21 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
 
+## What round 50c found
+
+Round 50c (owner after round 50b's research, the "Dark Souls mood": "D2 death screen"; "no music in the floors"; "Yes on all" to the
+prototype sounds; the silent switch: "Let the user play his own music") ([gameplay](gameplay.md#sound-round-50c)).
+
+| Finding (v90) | Where | Round 50c | Seen in |
+|---|---|---|---|
+| Chiptune jingles: the clock a sine bell pair, the death a falling arpeggio, the floor's end and a flask of life fanfares | `Snd.play` `cp`, `die`, `clear`, `life` | the clock's plucked motif (the only melody), a drum and a breath, silence, a deep bowl over a low string | checkpoint, doors, flasks |
+| Square and sawtooth blips and sweeps for physical things | `clang`, `hit`, `hurt`, `poison`, `guardDie`, `chomp`, `bones`, `tick`, `kick`, `rewind` (an arpeggio), `swready` (a chime), the birds | bronze partials, body blows and breaths, a bronze bang, dry knocks, a stone click, sand drawn back, rope tension and a breath; formant voices | guards, slicer, darts, swing bar, the Crossing |
+| Every sound dry, the same in a tunnel as in a hall | `Snd` | one convolver and a slap, sent by where he is (`sndZone`, `SND_Z`), eased | all |
+| No limiter: piled-up cues could clip | the master gain | a DynamicsCompressor; `sndtest.py` checks the peak | all |
+| Sound on or off only; turning it on played the clock's chime | `tSound` | Off / Quiet / Full; a stone click | settings |
+| The context kept running while hidden | `visibilitychange` | suspended hidden, resumed on return or the next touch (iOS 'interrupted' too); audioSession 'ambient' | settings |
+| The death card: a red line and white instructions over a dim | `drawOverlayText` | D2 "ash": drained to near black, the cause in bone italics, a faint control line after 2.2 s | death |
+
 ## What round 50a found
 
 Round 50a (owner after v90: "Yes, strengthen the grit, grooves and scuffs"; from pictured levels A, B, C he chose grit B, grooves C, scuffs B) ([gameplay](gameplay.md#stronger-grit-grooves-and-scuffs-round-50a)).

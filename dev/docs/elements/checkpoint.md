@@ -41,7 +41,7 @@ before, 0 after (floors 1-48, seeds 1-3).
 | A respawn refills the rewinds | `respawn()` sets `S.sands = SANDS` | the death screen offers Rewind (Grab, while `S.sands` > 0) or Rise (Jump) |
 | Hint | none since round 49a (no hint banners; until v89: `hint('cp')` within 70 px of an unlit clock on his row: "Touch the sky clock. If you fall after it, you start again from here.") | |
 | The clock's own time | lit: the sun runs back to Nut's mouth over 0.7 s (`cpClockF`), then her night runs out over 8 s and round again | look only |
-| Sound and sparks | `Snd.play('cp')`; `sparks(cpX(cp), SURF(r)-26, 10, theme glow)` | |
+| Sound and sparks | `Snd.play('cp')` (round 50c: the sky clock's motif, the game's only melody: a lyre's plucked D, A, F with a low D under the last, over a low open fifth breathing in and a breath of fire, in a long room; was two sine bells); `sparks(cpX(cp), SURF(r)-26, 10, theme glow)` | |
 
 ## The prince and the guards
 
@@ -149,3 +149,4 @@ gate (`gateRoundel`), and the rewind's large clock running back ("The hours turn
   in eight quads; the wall inside the arch keeps it), which embossed the wall's art on it (`solidscan.py`: 5-10% of its pixels). Look only.
 - round 47e: the pedestal's rubble chips rubbed too (`drawHgPedestal` records their boxes, `hgChipsOf`; `glRelClock` rubs them): solidscan's
   relief on floors 24 and 47 (0.18% and 0.44% in v88, 0.63% and 0.86% after round 47c's brighter ambient) now 0. Look only.
+- round 50c (owner: "no music in the floors", only the sky clock's motif): `cp` is the plucked motif (Karplus-Strong strings, `Snd.pluck`, with its own send into the room's reverb). Sound only.

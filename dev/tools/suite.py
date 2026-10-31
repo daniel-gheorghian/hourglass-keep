@@ -79,6 +79,7 @@ if mode == 'release':
 unit = ['forkscan.py', 'respawnplates.py', 'puzzlescan.py', 'slabresume.py', 'primtest.py',
         'hdtest.py', 'vertscan.py', 'lifttest.py', 'featurescan.py', 'orphanscan.py', 'mazescan.py', 'glauto.py', 'metaltest.py', 'rewindrooms.py']
 J += [('hinttest', ['hinttest.py', str(n), str(n)], tail_check()) for n in [1, 3, 6, 9, 10, 12, 16, 20, 24, 27, 32, 35]] # (round 49a) no banner while the bot plays, the moves it uses learned, the glance at each remote plate's gate (floor 1 also checks the old-save migration)
+J += [('sndtest', ['sndtest.py'], tail_check(r'sndtest: ok'))] # (round 50c) every sound cue: no NaN, under 0 dBFS after the compressor, the setting's levels, the live context
 J += [('grablabel', ['grablabel.py', str(n), str(n)], tail_check()) for n in [1, 3, 6, 9, 12, 16, 20, 24, 27, 32]] # the Grab button's label: scenes, fit and screenshots on floor 1; on the others the bot's Grab presses must have been announced
 J += [(u[:-3], [u], tail_check()) for u in unit if os.path.exists(os.path.join(HERE, u))]
 J += [('swingtest', ['swingtest.py', str(n), str(n + 2)], tail_check()) for n in [6, 12, 20]] # the swing bar is a trapeze: rest, one-way hold, pumping, the run-in catch, releases, rewind
@@ -138,7 +139,7 @@ if mode == 'release': # (the art-over-openings scans of rounds 15, 16c and 35c, 
     J += [('panscan', ['panscan.py', str(lo), str(hi)], tail_check(r'panscan: ok')) for lo, hi in ((3, 60), (61, 120), (121, 180))]
 # Suites: every group belongs to exactly one (a group with none stops the run here, before anything starts: add it below)
 SUITES = {
-    'play': ('run2', 'run2 fight', 'featbot', 'featbot fight', 'p4bot', 'forktest', 'hinttest', 'grablabel', 'swingtest', 'liftkick', 'chimtest', 'tellscan',
+    'play': ('run2', 'run2 fight', 'featbot', 'featbot fight', 'p4bot', 'forktest', 'hinttest', 'grablabel', 'sndtest', 'swingtest', 'liftkick', 'chimtest', 'tellscan',
              'lowceil', 'r38b_tests', 'sawceil', 'hilljump', 'primtest', 'hdtest', 'lifttest', 'respawnplates', 'slabresume', 'gratepeek'), # the bot and play checks
     'gen': ('metrics40', 'guardscan', 'forkscan', 'puzzlescan', 'vertscan', 'featurescan', 'orphanscan', 'mazescan', 'wellcorr', 'lampscan',
             'slabscan', 'sandshaft', 'wellscan', 'hillscan', 'windscan', 'courtscan', 'wearscan'), # generator and layout scans (the tiles, no picture)

@@ -54,7 +54,7 @@ Pause shows the floor's name, this floor's time, the run's time and the falls, t
 
 | Button | Setting | Effect |
 |---|---|---|
-| Sound | `S.set.sound` | |
+| Sound | `S.set.sound`, `S.set.sndQ` | round 50c: Full, Quiet, Off in turn (the button reads "Sound: Full"); an old save's on is Full, off is Off; a stone click at the new level (`plate`), no longer the clock's chime ([Sound](#sound-round-50c)) |
 | Battery saver | `S.set.saver` | canvas at 1x device pixels and every other frame drawn (`loop`: `frame&1`) |
 | Pad on right | `S.set.lefty` | mirrors the controls |
 | Softer flashes | `S.set.calm` | screen flashes at 0.3 of their strength (`flashScreen`) |
@@ -201,6 +201,11 @@ On death (`die`) the mode is `dead` and the save's resume point is dropped. Then
 - **Checkpoints**: the sky clock (Nut's, `nutClock`). Passing within 14 px lights it (`standOn`): it becomes the
   respawn point and refills the sands. [checkpoint](elements/checkpoint.md).
 - Falls are counted per floor (`S.floorDeaths`, the card's "Falls") and per run (`S.deaths`); a rewind counts as a fall.
+- **The death card** (round 50c, owner: "D2 death screen", ash): over `DTH_F` 1.2 s the picture drains of colour (Torchlight: the
+  composite's `u_dr`; Classic: a `saturation` blend with grey) and darkens to near black (`DTH_DK` 0.64, the HUD with it); the cause is one
+  quiet italic line in bone (`DTH_BONE`, lower case, e.g. "the fall was too far.") at 0.6 of the view; from `DTH_CT` 2.2 s a faint line at
+  `DTH_CA` 0.35: "grab · turn back the hours      jump · rise" (no sands left: "jump · rise"). The timings above are unchanged; the sound
+  is a drum and a breath (`die`).
 
 ## Timed gates
 
@@ -296,6 +301,46 @@ but its hours are running out..."; "A heavy door grinds open somewhere on this f
   view or for the same plate again, the prince inside the view every frame, the view 100-240 px nearer the gate and back at rest, the
   timer at the game's rate.
 
+
+## Sound (round 50c)
+
+Owner (the "Dark Souls mood"): "no music in the floors", only the sky clock's motif; "Yes on all" to round 50b's prototypes; the silent
+switch: "Let the user play his own music". Everything is synthesised WebAudio in the page (`Snd`), no samples, no square or bare sawtooth
+voices.
+
+- **The graph** (`Snd.build`, once at unlock): each cue -> `master` (the dry bus) -> `comp` (DynamicsCompressor, threshold -12 dB,
+  ratio 3) -> `out` (the setting's level, `SND_LV` Full 0.3, Quiet 0.1) -> the speakers. The room: `master` -> `rvS` (the place's send) ->
+  one ConvolverNode (`conv`, a stereo impulse made once: noise decaying 60 dB over `RV_T` 3 s, a lowpass closing as it decays) -> `rvLP`
+  -> `comp`; and for low ceilings a slap (`slS`: delays of 17 and 29 ms, one fed back through a 2.2 kHz lowpass). The sends stand before
+  the room, so a hall's tail rings on as he steps into a tunnel. A cue may add its own send into the room (`o.rv`: the motif, the
+  death, the flasks).
+- **The places** (`sndZone`, every frame; `Snd.env` eases the room over `SND_TC` 0.35 s, only when the place changes):
+
+| Place | Test | Hall send | Slap | Room lowpass | Air bed |
+|---|---|---|---|---|---|
+| low ceiling | `lowAt(P.x, r)` | 0.06 | 0.32 | 2.6 kHz | 0.55 |
+| room (a corridor a storey high) | the cell above him not empty | 0.2 | 0.09 | 3 kHz | 0.8 |
+| hall | headroom above | 0.36 | 0.04 | 3.6 kHz | 1 |
+| shaft | headroom, walls both sides above, open two storeys | 0.55 | 0.06 | 4.4 kHz | 0.9 |
+| court | in `L.courts` on his row | 0.07 | 0.02 | 5.2 kHz | 0 |
+| the Crossing | `mode` 'cross' | 0.03 | 0 | 4.2 kHz | 0 |
+| menus, pause | otherwise | 0.2 | 0.05 | 3.2 kHz | 0 |
+
+- **The air bed** (`Snd.bed`): a looped low noise (lowpass 180 Hz) breathing on a 0.07 Hz swell at `SND_BED` 0.03 times the place's
+  share, and a far drip now and then (`drip`, every 3-10 s, played where it falls by `playAt`), only in play.
+- **The cues** (names and call sites as before): `cp` the motif (a lyre's plucked D, A, F, Karplus-Strong strings made once, `Snd.pluck`,
+  with a low D under the last, over a low open fifth breathing in and a breath of fire); `die` a low frame drum and a breath falling away;
+  `clear` silent; `life` a deep bowl over a low string; `drink` gulps with a faint ring; `poison` choked gasps; `clang` bronze
+  (inharmonic partials 1 : 2.76 : 5.4 : 8.93 : 13.3 over noise); `hit`, `hurt`, `guardDie` body sounds; `rewind` sand drawn back (a swell
+  like a sound played backward, grains ticking faster); `swready` the ropes drawing taut and a breath (still the swing's cue); `chomp` a
+  bronze bang; `bones` dry knocks; `tick` a stone click; `draw` a bronze scrape; `exitlight` air; `step` two layers and the weight,
+  each step a little different, carried by the room; the birds of the Crossing through a formant. The rest were already physical.
+- **The setting**: Full, Quiet (about -10 dB), Off (`S.set.sound`, `S.set.sndQ`; `Snd.setLevel`).
+- **iOS**: `navigator.audioSession.type` is 'ambient' where it exists (it mixes with the player's own music; the silent switch silences
+  it); the context is suspended while the page is hidden (`Snd.sleep`, `visibilitychange`) and resumed when shown, on `pageshow` or by the
+  next touch or key (`unlock` resumes any state but running, iOS's 'interrupted' too).
+- `sndtest.py` (suite.py play): every cue rendered offline through the whole graph (`Snd.render`): no NaN, under 0 dBFS after the
+  compressor alone and piled up, audible, the setting's levels; the live context unlocked by a key, every cue, the places, sleep and wake.
 
 ## The bot: the reference player
 ### Tells: his body, the grit, the swing's beat (round 49b)

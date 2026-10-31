@@ -165,6 +165,7 @@ z 70     foreground (fore, ofore, gfore; f 1.9-2.45, faster than him, never over
 | the beat | `geese`, `heron`, `ducks`, `breeze`, `rockfall` with `raven`, `flock` |
 | now and then (hashes of the clock in 0.2 s slots) | `frond`, `blip` (a fish rising, while water is in view), `rustle`, `birdcall` (a hoopoe), `duckcall`, `ibis`, `dove`, `cliffwind`, `ravenfar` |
 | the doorway | `crossdoor` |
+| the room (round 50c) | the Crossing is nearly dry: the room's reverb send `SND_Z.cross` 0.03, no air bed; the birds' calls (`geese`, `ducks`, `duckcall`, `heron`, `ibis`, `raven`, `ravenfar`) are sawtooth voices through a formant bandpass, not bare square or sawtooth waves |
 
 ## Relations to other elements
 
@@ -210,3 +211,4 @@ z 70     foreground (fore, ofore, gfore; f 1.9-2.45, faster than him, never over
   green, the light's side corrected).
 - round 36e: the wadi's rockfall nearer and bigger, solid geese in flight, the tilted path's corners; second pass on the wadi's shapes.
   Details in CLAUDE.md.
+- round 50c: nearly dry in the room's reverb; the birds' calls through a formant. Sound only.

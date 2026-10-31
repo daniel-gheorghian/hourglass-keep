@@ -97,7 +97,7 @@ The exit on the stairs, by tread count `k = P.exS` (`EXF.look` true):
 | 0.5 | his pixels start to take the stair light's tint, up to 0.86 by about 2.9 (`exitTint`: amber `EXT0` to pale gold `EXT1`, by `(k-1.2)/1.8`) |
 | `EX_CUT` 0.55 | cut at the opening's head and jambs (`doorClip`, open below the floor) |
 | 1.8 | he starts to fade, gone by `EX_GONE` 3.5 |
-| `EX_SW0` 2.6 | the doorway's light swells (`exitSwell`), peaks as he is gone, eases before the card; `exitlight` sounds |
+| `EX_SW0` 2.6 | the doorway's light swells (`exitSwell`), peaks as he is gone, eases before the card; `exitlight` sounds (round 50c: air swelling from outside, no chime); the floor's fanfare (`clear`) is gone: silence, then the stairs |
 | `EX_GONE` 3.5 | gone; `stairsaway` (four fading steps over 0.5 s) |
 | `EX_N` 4.6 | the card |
 
@@ -156,5 +156,6 @@ a glow, haze or bloom. `EXF.look` false draws him plain (`stairscan.py` measures
 - round 36a: the Crossing between the card and the entry at each theme change.
 - round 39 (v84): the start door drawn clear of a wall's or low ceiling's face in the next cell (`startDoorX`, `DOOR_HW`): the door, the
   cut-out, the entry and `doorClip`; `doorscan.py` frames it there (0 of 48). Look only: entries and the bot from the entry unchanged.
+- round 50c: `exitlight` air, not a chime; `clear` silent (owner: "no music in the floors"). Sound only.
 
 Details in CLAUDE.md.

@@ -28,7 +28,7 @@ plates are carved out of the shadow (it falls on the wall seen between them when
 | Hit | k > 0.55 (p 0.04 to 0.22: about 0.3 s a cycle), same row, \|`P.x` - tile middle\| < 14, any state but `hang`, `climb`, `climbDown`, `exit` | crouching or jumping does not help |
 | Damage | death (`die('blade')`), no `P.inv` test; red sparks, `f.blood` 1: blood on alternate teeth from then on; card "Caught by the blade" | PoP1: the slicer kills |
 | Layout | 3 plain tiles, the slicer on the middle; a twin: 5 tiles, the second slicer two tiles on, 0.4 of a cycle later | |
-| Sound | `chomp` as it starts to close (k leaves 0), while its tile is in view | |
+| Sound | `chomp` (round 50c: a heavy bronze bang, was a square blip) as it starts to close (k leaves 0), while its tile is in view | |
 | Hint | none since round 49a (no hint banners; until v89: `HINTS.chomp` ("Blades snap shut on a rhythm. Watch one cycle, then go.")) | |
 | Rewind | a function of the clock; `blood` and `last` restored with the features | |
 | Route time | `estPath` `timed`: tiles x 0.32 + 2.6 s | gate timers over it |

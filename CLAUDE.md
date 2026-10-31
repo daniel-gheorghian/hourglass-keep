@@ -47,7 +47,7 @@ is a placeholder: only the built `index.html` carries the release number.
 1. Change the source, then build with the next N.
 2. Run the regression suite from `dev/tools` with `python3 suite.py release`. It runs every test below spread over the
    machine's cores. Every job belongs to one of three suites by its group (`SUITES` in suite.py; a group in none stops the run before
-   it starts): `play` (the bot and play checks: run2, featbot, p4bot, forktest, hinttest, grablabel, swingtest, liftkick, chimtest, lowceil,
+   it starts): `play` (the bot and play checks: run2, featbot, p4bot, forktest, hinttest, grablabel, sndtest, swingtest, liftkick, chimtest, lowceil,
    r38b_tests, sawceil, hilljump, primtest, hdtest, lifttest, respawnplates, slabresume, gratepeek, tellscan), `gen` (generator and layout scans: metrics40,
    guardscan, forkscan, puzzlescan, vertscan, featurescan, orphanscan, mazescan, wellcorr, lampscan, slabscan, sandshaft, wellscan, hillscan, windscan, courtscan, wearscan) and
    `render` (drawing checks: rendersmoke, liftscan, crossscan, cpscan, shadowscan, doorscan, openscan, tilescan, beamjag, heapscan, solidscan, contourscan, viewscan, panscan, stormfair, glauto,
@@ -92,6 +92,7 @@ is a placeholder: only the built `index.html` carries the release number.
 | `wellcorr.py lo hi [seeds]` | no sand well stands in a corridor: every well's pit is walled on both sides down to its floor (round 30) | `wellcorr: ok` |
 | `cpscan.py lo hi [seeds]` | no pixel of the sky clock (the checkpoint) over a wall's front face, a step or a low ceiling beside it, both modes (round 37c) | `cpscan: ok` |
 | `chimtest.py [file] [lo hi] [seeds]` | round 48b's locked chimney, every kick shaft (floors 1-48 x 3: 236): climbed by a running Jump, a standing Jump or Up at the foot, then one Up a stance, every stance on its grid to the pixel, the Y landing 12 px past the lip with the standing landing; Up held gives one kick; Jump does nothing; Down at each stance lets go at once with a fall's damage; a rewind in mid-kick restores his own copies; walking in does not lock; no plant, kick or lock off a single wall elsewhere | `chimtest: ok` |
+| `sndtest.py [file] [wav=DIR]` | round 50c's sound: every `Snd.play` cue rendered offline through the whole graph (`Snd.render`: room, compressor, level), no NaN, peak under 0 dBFS alone and piled up, audible but `clear`; Off silent, Quiet under Full; the live context unlocked by a key, every cue, the places, sleep and wake; `wav=` writes the key cues | `sndtest: ok` |
 | `r38b_tests.py` | round 38b's play faults, one check each: the roof block and `P.inv`, the damaging drop's lip, a banner's rewind, the sand lift (no banner since round 49a, `sandfall` learned on getting off) and its top, the recruit's colour, the timed gates' waits | `r38b: ok` |
 | `tellscan.py [file] [lo hi] [per=K]` | round 49b's tells: at up to K spots a floor of each kind (reach, edge, stakes, flask, low) none before 0.5 s still, full by 1.2 s, the pose changed, the weight 0 the frame Grab is held and the pose back 0.35 s later, P.x/P.y/state identical with `TELL.off`; none while he moves; no spot in a wind zone (none there by design) | `tellscan: ok` |
 | `wearscan.py [file] [lo hi] [seeds]` | round 49c's wear marks and bones (floors 1-48 x 3): scuffs on every wall run up and nowhere else, drawn inside its face; grooves on every cell of each block's track and nowhere else, drawn inside the floor's top face; one set of bones a kind at the first trap of its kind by the route's order (its own list of the traps), every kind on a floor with the trap; on a route tile every pixel behind his walking line and under 6.5 px | `wearscan: ok` |
@@ -1581,6 +1582,27 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   All translucent tints (the contour rule's marks); both modes; nothing allocated a frame; placement unchanged. Look only: `layoutcmp.py`
   against v90 same (144 of 144). Checks: wearscan, layerscan kinds=grit,scuff,groove, rendersmoke, run2. Pictures `egyptr50a.py new.html
   [outdir]` (r50a_<cue>_phone.png, r50a_<cue>_3x.png: v90 | A | B | C, both modes; r50a_grit_B.gif).
+- The sound of the keep (round 50c, owner, the "Dark Souls mood": "no music in the floors" but the sky clock's motif; "Yes on all" to round
+  50b's prototypes, `.claude/research/r50b/audio.py`; the silent switch: "I think that is too much. Let the user play his own music"; "D2
+  death screen"; `dev/docs/gameplay.md` "Sound"). All synthesised in the page, no samples, no chiptune: no bare square or sawtooth voice
+  (a bird's call goes through a formant bandpass, `tone`'s `bp`). The graph (`Snd.build`, once at unlock): cues -> `master` (dry bus) ->
+  `comp` (DynamicsCompressor -12 dB, 3:1) -> `out` (`SND_LV`: Full 0.3, Quiet 0.1) -> speakers; the room: `master` -> `rvS` -> one
+  ConvolverNode (`conv`, a stereo impulse made once, `RV_T` 3 s of noise decaying and darkening) -> `rvLP` -> `comp`, and a slap for low
+  ceilings (`slS`, 17/29 ms delays, one fed back through a lowpass). Where he is (`sndZone`: low, room, hall, shaft, court, cross,
+  quiet; `SND_Z`) sets the sends and the room's lowpass, eased over `SND_TC` (`Snd.env`, only when the place changes; sends before the
+  room, so a tail rings on); a cue may add its own send (`o.rv`). The hall air bed (`Snd.bed`, `SND_BED`) and far drips (`drip`, by
+  `playAt`) in play only, none in courts or the Crossing. Cues (names and call sites kept): `cp` the motif (a lyre's plucked D, A, F and a
+  low D, Karplus-Strong buffers made once, `Snd.pluck`/`ksBuf`, over a low open fifth and a breath of fire); `die` a frame drum and a
+  breath; `clear` silent; `life` a deep bowl over a low string, `drink` and `poison` its quiet family; `clang` bronze partials; `hit`,
+  `hurt`, `guardDie` body sounds; `rewind` sand drawn back; `swready` rope tension and a breath (still the swing's cue); `chomp`, `bones`,
+  `tick`, `draw`, `kick`, `exitlight` physical; `step` reverberant, each a little different. The Sound button is Off / Quiet / Full
+  (`S.set.sound`, `S.set.sndQ`; an old save's on is Full; turning it on clicks, `plate`). `navigator.audioSession.type` 'ambient' where it
+  exists (never 'playback'); the context sleeps while the page is hidden (`Snd.sleep`) and wakes on return, `pageshow` or the next touch
+  (`unlock` resumes 'interrupted' too). The death card D2 "ash" (`deathDrain`, `DTH_*`): over 1.2 s the picture (and HUD) drains
+  (Torchlight `u_dr` in the composite, Classic a `saturation` blend) and darkens to near black, the cause in bone italics, lower case, and
+  from 2.2 s a faint "grab · turn back the hours      jump · rise" at 35%; the death's input timing unchanged. Checks: `sndtest.py` (new,
+  suite.py play), layoutcmp v90 same, swingtest, hinttest, r38b, run2, rendersmoke, crossscan. WAVs `sndtest.py wav=DIR`; picture
+  `egyptr50c.py old.html new.html [outdir]` (r50c_death.png: v90 | 50c at phone size, both modes, 0.6 s and 2.4 s after).
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized three ways (Trap density, above); only P4's race uses the careful pace.
 - Pose angles are measured from straight down; positive means forward.

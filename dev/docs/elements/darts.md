@@ -29,7 +29,7 @@ from behind the step's front face with only a tick and a hiss to tell of them.
 | Layout | `dartSeg`: `k=5` floor tiles, the riser at `c+k+1` (row `r`), the step's top at row `r-1`; the run goes on one storey up | a run toward a step: the climb at the end holds him in the lane |
 | Period | `per = 1.9 - 0.5 d + U(0,0.4)` s, `d = min(1,(n-1)/24)`: 1.8-2.2 s on floor 6, 1.4-1.8 s from floor 25 | harder deeper down |
 | Fire | when `cyc(f,gameTime)` wraps (`ph < f.lastPh`); random phase `f.off` | steady rhythm, read by ear |
-| Tell | the last 0.35 s (`ws = 1-0.35/per`): sound `tick`; the visible head glows and shivers | warning without moving the shot |
+| Tell | the last 0.35 s (`ws = 1-0.35/per`): sound `tick` (round 50c: a stone click, was a square blip); the visible head glows and shivers | warning without moving the shot |
 | Flight | `d.x += dir*190*dt` at `y = SURF(r)-34`, from `f.x` to `f.x0` (131 px, 0.69 s) | |
 | Hit | same row, `P.inv<=0`, `abs(P.x-d.x)<7`, `P.y-50 < d.y < P.y-6`, state not in `crouch, poke, hang, climb, climbDown, jumpUp, exit` | crouching and crawling (both `crouch`) pass under; a jump does not clear it |
 | Damage | `trapHit`: 1 life (`hurt(1,'dart')`), `P.inv=0.9` s, push 12 px along the dart, `landHurt` from standing states; the dart is removed | death card "Struck by a dart" |
