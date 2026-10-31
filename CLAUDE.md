@@ -1667,6 +1667,34 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   x 2 22/22 (265 P4 gates), the bot on the three changed races' floors ok; featbot lifts 14/14, tower 14/14; primtest, liftkick, tellscan
   3-16, swingtest 6-12 ok; rendersmoke 4-8 both ok; openscan, doorscan 3-12 0. WAVs `sndtest.py wav=DIR` (r50e_*.wav); pictures `.claude/research/r50e/pics.py` (r50e_gate_strip.png,
   r50e_door_strip.png, r50e_gate_offscreen.gif).
+- The quiet HUD, the name cards, softer flasks, the drained grade and the haven (round 50g, owner's choices on round 50b's "Dark Souls
+  mood" research, `.claude/research/r50b/`: A2 "Agree with the changes"; A3/A4 "Yes. Keep the flag line"; A7; the grade "Yes, but keeping
+  the forges' and lamps' warmth"; A6 "Implement it like that"; `dev/docs/README.md` "What round 50g found"). Look and sound only.
+  A2 (`drawHUD`): the hearts (red ochre `HUD_HEART`, 9 px apart) and the sky clocks (`drawGlass(..,q)`: `nutClock`'s quiet palette `NUTQ`,
+  no glow; the rewinding clock keeps its look) only, no dark band (the falling stone's holes in it went with it); FLOOR n and the floor's
+  time are only in the pause menu (which already showed them). `HUDF`/`hudFadeTick` (once a frame in `render`, on gameTime): full
+  `HUD_HI` 0.9, down to `HUD_LO` 0.36 over `HUD_FADE` 1.4 s once nothing has changed for `HUD_HOLD` 3.5 s (hp, maxHp, sands, the floor),
+  back up within `HUD_RISE` 0.22 s on a change, held up while `hudForce()` (not 'play', the last heart, a living foe); `hudAlpha()` is
+  quantised to `HUD_Q` 24 steps so `hudKey` redraws Torchlight's HUD canvas only at each step (`HUDF.pin` and `HUDF.off` for tests). The
+  gate timer, a foe's hearts and rank and Show FPS stay at full strength. A3: the floor's banner (`intro`) is the theme's name without its
+  hour in 13 px Rokkitt capitals, letter-spaced, with a thin rule, at 0.3 of the view (0.8 when he stands high), no band, no "Floor n"
+  (`L._title`). A4: the card (`levelComplete`) shows the NEXT floor's `themeName` (with its hour) and, if it has one, its flag's
+  `FLAG_TEXT` (`#cNext`); the eyebrow and the stats (`#cStats`) are hidden (`#card [hidden]`). A7: `FLASK_FL` (heal/big `#b0705a` 0.2/0.26
+  over 0.2/0.28 s, life `#bfa477` 0.26/0.28, poison `#5f8a68` 0.22/0.22; still `edge`). The grade (`DRAIN` {k 0.3, sky 0.5, warm 0.8}):
+  Torchlight's composite, after the theme grade, mixes toward the luminance by k (1 - wk) (the sky by `sky` of it), wk = warm x the light
+  map's r - b over the ambient (`u_am`) + the bloom's + the floor embers' (`u_dn`); Classic `drain2D` (after `lightPass`/`ctGrade2D`, before
+  `bloomPass` and the emissive layer): a quarter-size grey mask at alpha k with each warm light's sprite cut out, laid on with
+  `saturation`; not in the Crossing; luminance kept, so round 47c's lift stands. A6 the haven: a lit clock's light is kind `haven` (steady;
+  `glRelief` treats it as `item`), plus a warm pool on the floor (kind `pool`, `HAVEN` r 118, '255,176,100', 0.6), both modes; its fire
+  `ember` (2-5 soft pops, a low breath, a hiss) picked each ambience slot at 0.6 near it to 0.2 at `HAVEN_SR` 200 px (round 50d's 0.3
+  within 120). `__HK`: HUDF, DRAIN, HAVEN, FLASK_FL, hudAlpha, hudFadeTick, flashScreen, flashAt, levelComplete, drinkFx. Checks:
+  layoutcmp `hk_v90_release.html notimers liftrest` same (144 of 144); rendersmoke 1-8 both ok (0.77-0.79 ms/frame mean
+  against HEAD's 0.68-0.69 in the same runs, interleaved; a direct render bench on the Radeon: Classic 1.99 against 1.96 ms, Torchlight no
+  change; Classic in software 2D, SwiftShader, 33.8 against 21.1 ms: the full-size `saturation` blend, so check `?bench=classic` on the
+  phone); glauto FAILURES 0; beamjag 13-16, 21-24, 41-44 ok; crossscan quick ok; cpscan 1-12 x 3 both ok (0 of 42); contourscan 13-16
+  Classic ok; run2 3-10 x 1 8/8, 0 damage; vshots ui (its gate-countdown scene fails on HEAD too, vlib.js `H`). Pictures `.claude/research/r50g/pics.py`
+  (r50g_grade_<mode>.png, r50g_hud_<mode>.png, r50g_hudfade.png, r50g_banner_<mode>.png, r50g_card.png, r50g_flask_<mode>.png; r50g_ui.png
+  from vshots ui).
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized three ways (Trap density, above); only P4's race uses the careful pace.
 - Pose angles are measured from straight down; positive means forward.

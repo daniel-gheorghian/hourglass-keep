@@ -76,6 +76,7 @@ h2{font:400 34px/1 var(--f-display);color:var(--sand);margin:0;text-wrap:balance
 .stats div{display:grid;gap:2px}
 .stats dt{font:600 11px/1 var(--f-body);letter-spacing:.16em;text-transform:uppercase;color:var(--haze)}
 .stats dd{margin:0;font:400 26px/1 var(--f-display);color:var(--bone);font-variant-numeric:tabular-nums}
+#card [hidden]{display:none!important} /* (round 50g: the card is the place's name and the flag line) */
 /* long panels (how to play, graphics): the list scrolls, the button stays in view at the bottom */
 #how .panel,#gfx .panel{max-height:calc(100dvh - 32px);gap:10px}
 #how .panel{grid-template-rows:auto minmax(0,1fr) auto}
@@ -233,7 +234,7 @@ body.crossing #bGrab,body.crossing #bPause{visibility:hidden}
       <div class="panel">
         <p class="eyebrow" id="cEyebrow">Floor cleared</p>
         <h2 id="cTitle">Floor 1</h2>
-        <dl class="stats">
+        <dl class="stats" id="cStats">
           <div><dt>Time</dt><dd id="cTime">0:00</dd></div>
           <div><dt>Falls</dt><dd id="cDeaths">0</dd></div>
           <div><dt>Lives</dt><dd id="cLives">3</dd></div>
@@ -3012,7 +3013,7 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
     if(h(12)<0.035){let bx=0,by=0,bd=1e9;for(const f of L.lifts||[]){const x=((f.sc!==undefined?f.sc:f.ca)|0)*TW+16,y=(f.y!==undefined?f.y:SURF(f.rT|0))-40,d=nr(x,y,380);if(d>=0&&d<bd){bd=d;bx=x;by=y;}}
       for(const o of L.dyn)if(o.f.t==='bar'){const x=o.c*TW+16,y=SURF(o.r)-50,d=nr(x,y,380);if(d>=0&&d<bd){bd=d;bx=x;by=y;}}
       if(bd<1e9)this.amb('ropefar',bx-P.x,by-(P.y-30),at);}
-    if(h(13)<0.3)for(const cp of L.cps){if(!cp.on)continue;const x=cpX(cp),y=SURF(cp.r)-26;if(nr(x,y,120)>=0){this.amb('ember',x-P.x,y-(P.y-30),at);break;}}},
+    for(const cp of L.cps){if(!cp.on)continue;const x=cpX(cp),y=SURF(cp.r)-26,d=nr(x,y,HAVEN_SR);if(d>=0){if(h(13)<0.6-0.4*d/HAVEN_SR)this.amb('ember',x-P.x,y-(P.y-30),at);break;}}}, // (round 50g, A6: the haven's soft fire, denser the nearer he is, out to HAVEN_SR)
   amb(n,dx,dy,at){const st=Math.abs(Math.round(dy/TH)),d=Math.hypot(dx,dy*1.6),k=this.atOff;this.amOn=true;this.atOff=k+at;
     try{this.posPlay(n,'',dx,clamp(1.1-d/800,0.3,1),clamp(8000/(1+d/220)/(1+0.8*st),360,12000));}finally{this.amOn=false;this.atOff=k;}},
   // events duck the ambience (the bed and the one-shots) for a moment
@@ -3059,7 +3060,8 @@ const Snd={ctx:null,master:null,nb:null,comp:null,out:null,rvS:null,conv:null,rv
       case'settle':N(0.5,{vol:0.04,f:240,to:120,rv:0.5});T(55,0.4,{to:40,vol:0.02});for(let i=0;i<8;i++)N(0.02,{vol:0.008*(1-i/10),f:2600+500*Math.sin(i*2.3),type:'bandpass',q:2,at:0.1+i*0.05});break; // stone settling somewhere, a little grit after it
       case'trickle':for(let i=0;i<12;i++)N(0.015,{vol:0.006*(1-i/16),f:2600+1000*Math.abs(Math.sin(i*1.7)),type:'bandpass',q:3,at:i*0.045*(1+0.3*Math.sin(i*4.1))});N(0.6,{vol:0.004,f:3000,type:'bandpass',q:0.5,att:0.2});break; // grit trickling from a joint
       case'crackle':{const n0=3+(this.sc++%3);for(let i=0;i<n0;i++)N(0.008+0.007*Math.random(),{vol:0.006+0.006*Math.random(),f:2400+2600*Math.random(),type:'bandpass',q:2,at:Math.random()*0.25});N(0.3,{vol:0.003,f:600,att:0.1});}break; // the nearest lamp's flame
-      case'ember':for(let i=0;i<3;i++)N(0.008,{vol:0.004*(1-i*0.2),f:3600+900*Math.random(),type:'bandpass',q:3,at:i*0.07+0.05*Math.random()});N(0.4,{vol:0.002,f:1200,type:'bandpass',q:0.7,att:0.1});break; // a lit sky clock's embers
+      case'ember':{const n0=2+(this.sc++%4);for(let i=0;i<n0;i++)N(0.006+0.006*Math.random(),{vol:0.0045*(0.6+0.4*Math.random()),f:2600+2200*Math.random(),type:'bandpass',q:2.5,at:Math.random()*0.24}); // a lit sky clock's fire (round 50g: the haven): soft pops,
+        N(0.5,{vol:0.0026,f:420,type:'lowpass',att:0.14,at:0.02});N(0.35,{vol:0.0012,f:1100,type:'bandpass',q:0.7,att:0.1,at:0.08});}break; // the fire's low breath and its hiss
       case'ropefar':N(0.14,{vol:0.012,f:260,type:'bandpass',q:9});N(0.14,{vol:0.01,f:300,type:'bandpass',q:9,at:0.18});break; // a rope creaking on its beam, out of sight
       case'jump':N(0.12,{vol:0.05,f:2200,type:'bandpass',to:900});break;
       case'land':N(0.1,{vol:0.12,f:420});T(110,0.09,{to:60,vol:0.08});break;
@@ -3899,10 +3901,12 @@ const flaskR=type=>type==='big'?5.4:type==='life'?4.2:3.2;
 function dropFlask(){if(P.dkRel||!P.dkG||!P.drinkIt)return;P.dkRel=true;const it=P.drinkIt,h=handFlask(),d=flaskR(it.type)+2,tl=drinkFrame(P.t).tilt;
   (L.flk||(L.flk=[])).push({type:it.type,x:h.x+P.face*(-d*Math.sin(tl)),y:h.y+d*Math.cos(tl),r:flaskR(it.type),gy:SURF(pRow())-3,face:P.face,vy:0,rot0:tl,rot:tl,ft:0,lt:0,fill:it.type==='poison'?0:0});}
 function drinkFx(){const it=P.drinkIt;P.dkFx=true;if(!it)return;
-  if(it.type==='heal'){P.hp=Math.min(S.maxHp,P.hp+1);flashScreen('#ff6a3d',0.38,0.3,true);}
-  else if(it.type==='big'){P.hp=S.maxHp;Snd.play('life');flashScreen('#ff6a3d',0.5,0.45,true);}
-  else if(it.type==='life'){S.maxHp=Math.min(10,S.maxHp+1);P.hp=S.maxHp;flashScreen('#ffd76b',0.5,0.45,true);if(!S.lifeTaken.includes(L.n))S.lifeTaken.push(L.n);writeSave();Snd.play('life');}
-  else{Snd.play('poison');flashScreen('#3fae66',0.4,0.32,true);hurt(1,'poison');}}
+  // (round 50g, A7) a drink's flash is softer, shorter and drained: a dull warm tint at the screen's edges (was #ff6a3d .38-.5 over .3-.45 s)
+  if(it.type==='heal'){P.hp=Math.min(S.maxHp,P.hp+1);flashScreen(FLASK_FL.heal,0.2,0.2,true);}
+  else if(it.type==='big'){P.hp=S.maxHp;Snd.play('life');flashScreen(FLASK_FL.heal,0.26,0.28,true);}
+  else if(it.type==='life'){S.maxHp=Math.min(10,S.maxHp+1);P.hp=S.maxHp;flashScreen(FLASK_FL.life,0.26,0.28,true);if(!S.lifeTaken.includes(L.n))S.lifeTaken.push(L.n);writeSave();Snd.play('life');}
+  else{Snd.play('poison');flashScreen(FLASK_FL.poison,0.22,0.22,true);hurt(1,'poison');}}
+const FLASK_FL={heal:'#b0705a',life:'#bfa477',poison:'#5f8a68'}; // (round 50g) the drinks' flash colours, about half v90's saturation
 function updateFlasks(dt){if(!L.flk)return;
   for(let i=L.flk.length-1;i>=0;i--){const f=L.flk[i];
     if(f.lt>0||f.y>=f.gy-f.r){f.y=f.gy-f.r;f.lt+=dt;f.rot=1.4;if(f.lt>0.35)L.flk.splice(i,1);continue;}
@@ -5038,11 +5042,13 @@ function levelComplete(){
   const n=L.n,ft=levelTime,fd=S.floorDeaths||0;
   S.time+=ft;S.level=n+1;S.cp=-1;S.floorTime=0;S.floorDeaths=0;S.windDeaths={};S.resume=null;S.legacyFloor=0;S.cpPlates=[];writeSave();
   Snd.play('clear');
-  $('cEyebrow').textContent='Floor '+n+' cleared';
-  $('cTitle').textContent=themeName(n);
+  // (round 50g, A4, owner: "Yes. Keep the flag line") the card is the name of the place ahead and nothing else: no floor number, no
+  // times or counts (the pause menu keeps them); the flag line when the next floor has a rare flag
+  $('cEyebrow').textContent='';$('cEyebrow').hidden=true;$('cStats').hidden=true;
+  $('cTitle').textContent=themeName(n+1);
   $('cTime').textContent=fmt(ft);$('cDeaths').textContent=String(fd);$('cLives').textContent=String(S.maxHp);
   {const fl=featFor(n+1,levelSeed(n+1)).flag; // (only a rare flag is named; the ordinary featured families are left for the player to find)
-  $('cNext').textContent='Next: Floor '+(n+1)+', '+themeName(n+1)+'.'+(fl?' '+FLAG_TEXT[fl]:'');}
+  $('cNext').textContent=fl?FLAG_TEXT[fl]:'';$('cNext').hidden=!fl;}
   show('card');
 }
 
@@ -7540,24 +7546,25 @@ function drawStone(ctx,o,f,again){
 // sun runs back, cool white), t}. About 15 by 12 px at s=1: the HUD's measures, the gates' timers, the checkpoint, the rewind.
 const NUT={R:6.2,cy:4.2,a0:Math.PI*0.97,a1:Math.PI*0.03};
 function nutPt(u,dr){const a=NUT.a0+(NUT.a1-NUT.a0)*u,R=NUT.R+(dr||0);return [Math.cos(a)*R,NUT.cy-Math.sin(a)*R];}
-function nutClock(ctx,f,o){const s=o.s||1,dim=o.dim,lit=o.lit!==false&&!dim,t=o.t||0,gold=dim?'#7a6234':(o.cap||'#e8b84a');f=clamp(f,0,1);
+const NUTQ={gold:'#b08a4e',cE:'#5a4630',cA:'#3c4862',cB:'#2c3448',star:'#d6c294',sun:'#c4843e',sunHi:'#e2b67a'}; // (round 50g) the quiet HUD's muted ochre
+function nutClock(ctx,f,o){const s=o.s||1,dim=o.dim,lit=o.lit!==false&&!dim,t=o.t||0,Q=o.q&&!o.rev?NUTQ:null,gold=dim?'#7a6234':(o.cap||(Q?Q.gold:'#e8b84a'));f=clamp(f,0,1);
   ctx.save();ctx.scale(s,s);const u=1-f,arc=(u0,u1,dr)=>{ctx.beginPath();const n=Math.max(2,Math.ceil((u1-u0)*16));for(let i=0;i<=n;i++){const q=nutPt(u0+(u1-u0)*i/n,dr);i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);}};
   // the earth (Geb) under her
-  const cE=dim?'#4a4038':'#6a4a26',cA=dim?'#3a4458':'#2a4a8e',cB=dim?'#2a3040':'#1f3470'; // (round 46c, the contour rule: each part's edge its own colour darker)
+  const cE=dim?'#4a4038':Q?Q.cE:'#6a4a26',cA=dim?'#3a4458':Q?Q.cA:'#2a4a8e',cB=dim?'#2a3040':Q?Q.cB:'#1f3470'; // (round 46c, the contour rule: each part's edge its own colour darker)
   ctx.fillStyle=selC(cE,0.55);ctx.fillRect(-7.6,NUT.cy+1.2,15.2,1.8);ctx.fillStyle=cE;ctx.fillRect(-7.2,NUT.cy+1.5,14.4,1.1);
   // her arms and legs down to the earth
   ctx.lineCap='round';ctx.strokeStyle=selC(cA,0.58);ctx.lineWidth=2.4;for(const q of [nutPt(0),nutPt(1)]){ctx.beginPath();ctx.moveTo(q[0],q[1]);ctx.lineTo(q[0]*1.02,NUT.cy+1.4);ctx.stroke();}
-  ctx.strokeStyle=dim?'#3a4458':'#2a4a8e';ctx.lineWidth=1.2;for(const q of [nutPt(0),nutPt(1)]){ctx.beginPath();ctx.moveTo(q[0],q[1]);ctx.lineTo(q[0]*1.02,NUT.cy+1.4);ctx.stroke();}
+  ctx.strokeStyle=cA;ctx.lineWidth=1.2;for(const q of [nutPt(0),nutPt(1)]){ctx.beginPath();ctx.moveTo(q[0],q[1]);ctx.lineTo(q[0]*1.02,NUT.cy+1.4);ctx.stroke();}
   // her body: the dark arch, and its gold ahead of the sun (the time left)
-  arc(0,1);ctx.strokeStyle=selC(cB,0.6);ctx.lineWidth=3.4;ctx.stroke();arc(0,1);ctx.strokeStyle=dim?'#2a3040':'#1f3470';ctx.lineWidth=2.2;ctx.stroke();
+  arc(0,1);ctx.strokeStyle=selC(cB,0.6);ctx.lineWidth=3.4;ctx.stroke();arc(0,1);ctx.strokeStyle=cB;ctx.lineWidth=2.2;ctx.stroke();
   if(f>0.005&&!dim){arc(u,1);ctx.strokeStyle=gold;ctx.lineWidth=1.5;ctx.stroke();}
   // her head at the west end, where she swallows the sun
-  {const q=nutPt(0,0);ctx.fillStyle=selC(cA,0.58);ctx.beginPath();ctx.arc(q[0]-0.6,q[1]+0.4,1.7,0,6.2832);ctx.fill();ctx.fillStyle=dim?'#3a4458':'#2a4a8e';ctx.beginPath();ctx.arc(q[0]-0.6,q[1]+0.4,1.05,0,6.2832);ctx.fill();}
+  {const q=nutPt(0,0);ctx.fillStyle=selC(cA,0.58);ctx.beginPath();ctx.arc(q[0]-0.6,q[1]+0.4,1.7,0,6.2832);ctx.fill();ctx.fillStyle=cA;ctx.beginPath();ctx.arc(q[0]-0.6,q[1]+0.4,1.05,0,6.2832);ctx.fill();}
   // the twelve hour stars inside the arch: lit ahead of the sun, out behind it
-  for(let i=0;i<12;i++){const ui=(i+0.5)/12,q=nutPt(ui,-2.3),on=!dim&&ui>u;ctx.fillStyle=on?'#fff0b0':(dim?'#3a3440':'#4a4458');ctx.fillRect(q[0]-0.45,q[1]-0.45,0.9,0.9);}
+  for(let i=0;i<12;i++){const ui=(i+0.5)/12,q=nutPt(ui,-2.3),on=!dim&&ui>u;ctx.fillStyle=on?(Q?Q.star:'#fff0b0'):(dim?'#3a3440':'#4a4458');ctx.fillRect(q[0]-0.45,q[1]-0.45,0.9,0.9);}
   // the sun disc on her body: large enough to read at HUD size, red-gold, a dark ring round it
-  if(!dim||o.rev){const q=nutPt(u,0);ctx.fillStyle=selC(o.rev?'#9ab8d0':'#ffb43a',0.5);ctx.beginPath();ctx.arc(q[0],q[1],2.6,0,6.2832);ctx.fill();ctx.fillStyle=o.rev?'#dff2ff':'#ffb43a';ctx.beginPath();ctx.arc(q[0],q[1],1.9,0,6.2832);ctx.fill();
-    ctx.fillStyle=o.rev?'#ffffff':'#ffe08a';ctx.beginPath();ctx.arc(q[0]-0.5,q[1]-0.5,0.8,0,6.2832);ctx.fill();
+  if(!dim||o.rev){const q=nutPt(u,0);const sc=o.rev?'#9ab8d0':Q?Q.sun:'#ffb43a';ctx.fillStyle=selC(sc,0.5);ctx.beginPath();ctx.arc(q[0],q[1],2.6,0,6.2832);ctx.fill();ctx.fillStyle=o.rev?'#dff2ff':Q?Q.sun:'#ffb43a';ctx.beginPath();ctx.arc(q[0],q[1],1.9,0,6.2832);ctx.fill();
+    ctx.fillStyle=o.rev?'#ffffff':Q?Q.sunHi:'#ffe08a';ctx.beginPath();ctx.arc(q[0]-0.5,q[1]-0.5,0.8,0,6.2832);ctx.fill();
     // its light (o.glow): a halo round the disc, the gold ahead of it shining, the lit stars twinkling; added light, both modes
     if(o.glow&&(lit||o.rev)){ctx.save();ctx.globalCompositeOperation='lighter';const pu=0.85+0.15*Math.sin(t*2.3);
       ctx.globalAlpha=0.75*pu;ctx.drawImage(lightSprite(o.rev?'180,220,255':'255,190,90'),q[0]-5.5,q[1]-5.5,11,11);
@@ -7636,7 +7643,7 @@ function conceptClock(ctx,kind,f,s){const K='#0b0812';ctx.save();ctx.scale(s,s);
     const y=-7.6+15.2*(1-f);ctx.fillStyle=K;ctx.beginPath();ctx.arc(3.2,y,2.2,0,6.2832);ctx.fill();ctx.fillStyle='#ffcf4a';ctx.beginPath();ctx.arc(3.2,y,1.6,0,6.2832);ctx.fill();
     ctx.globalCompositeOperation='lighter';ctx.globalAlpha=0.6;ctx.drawImage(lightSprite('255,210,110'),0,y-3.6,6.4,7.2);}
   ctx.restore();}
-function drawGlass(ctx,x,y,frac,cap,dim,rev){ctx.save();ctx.translate(x,y+0.5);ctx.scale(0.86,0.86);nutClock(ctx,frac,{s:1,dim,cap,rev,t:rev||(frac>0.02&&frac<0.98)?gameTime:0,glow:!dim});ctx.restore();} // (a still clock is still: the HUD is redrawn only when its picture changes)
+function drawGlass(ctx,x,y,frac,cap,dim,rev,q){ctx.save();ctx.translate(x,y+0.5);ctx.scale(0.86,0.86);nutClock(ctx,frac,{s:1,dim,cap,rev,q,t:rev||(frac>0.02&&frac<0.98)?gameTime:0,glow:!dim&&(!q||rev)});ctx.restore();} // (q: round 50g's quiet HUD, muted ochre, no glow) // (a still clock is still: the HUD is redrawn only when its picture changes)
 // ---- the dark (round 29): the chase is a storm of darkness ----
 // (owner: "instead of a sandstorm I want a storm of darkness, I think it makes for a better fit ... I think we should think of Anubis";
 // after a first look at the sandstorm only turned black, which read grey: "100% black opaque, like rips in the scene, and on that
@@ -9737,7 +9744,8 @@ function gatherLights(x0,x1,y0,y1){
   for(const sn of SN)if(sn.alive&&!sn.gone)add(sn.x,sn.y-4,34,'200,230,170',0.25,'fill');
   for(const it of L.items)if(!it.taken){const col=it.type==='heal'||it.type==='big'?'255,90,70':it.type==='life'?'255,210,110':'110,130,255';add(it.x,SURF(it.r)-8,it.type==='big'?42:32,col,it.type==='big'?0.75:0.6,'item',{r:9,a:0.35});}
   for(const cp of L.cps){const gc=th.glow||'255,214,130',y=SURF(cp.r)-26,cx=cpX(cp); // lit, it lights the room like a lamp (torch strength); unlit it keeps a faint glint
-    if(cp.on){const k=cp.onAt!==undefined?clamp((gameTime-cp.onAt)/0.7,0,1):1;add(cx,y,150*k,gc,0.95*k,'item',{r:26,a:0.42*k});
+    if(cp.on){const k=cp.onAt!==undefined?clamp((gameTime-cp.onAt)/0.7,0,1):1;add(cx,y,150*k,gc,0.95*k,'haven',{r:26,a:0.42*k});
+      add(cx,SURF(cp.r)-10,HAVEN.r*k,HAVEN.col,HAVEN.a*k,'pool'); // (round 50g, A6) the haven: a warm, steady pool of light on the floor round a lit clock (no flicker: GLFLICK has neither 'haven' nor 'pool')
       const q=nutPt(1-cpClockF(cp),0);add(cx+q[0]*1.9,SURF(cp.r)-26+Math.sin(gameTime*1.7+cp.x*0.05)*1.6+q[1]*1.9,46,'255,190,100',0.55*k,'trap');} // (the sun's own light, travelling along Nut's arch)
     else add(cx,y,38,gc,0.42,'item');}
   if(L.door.open>0){const sw=shaderOn()?exitSwell()+doorFlare():0;add(L.door.x+HX,SURF(L.door.r)-26,120*Math.min(1,L.door.open)*(1+0.3*sw),'255,196,120',0.9*Math.min(1,L.door.open)*(1+0.75*sw),'door',{r:28,a:0.3*L.door.open});} // (round 26f: Torchlight's light swells as he goes; its bloom stays as it was; Classic swells drawDoor's sprite)
@@ -12228,7 +12236,7 @@ const GLSH={
     #else
     precision mediump float;
     #endif
-    varying vec2 v_u;uniform sampler2D u_sc,u_map,u_bl,u_mk;uniform vec2 u_d,u_vg,u_px,u_mp;uniform float u_t,u_sat,u_dr;uniform vec4 u_fx;uniform vec3 u_sh,u_hi;uniform vec4 u_cgb[4];uniform float u_cgn,u_cgt;uniform vec3 u_cgs,u_cgh,u_cgw;
+    varying vec2 v_u;uniform sampler2D u_sc,u_map,u_bl,u_mk;uniform vec2 u_d,u_vg,u_px,u_mp;uniform float u_t,u_sat,u_dr;uniform vec3 u_dn,u_am;uniform vec4 u_fx;uniform vec3 u_sh,u_hi;uniform vec4 u_cgb[4];uniform float u_cgn,u_cgt;uniform vec3 u_cgs,u_cgh,u_cgw;
     uniform vec4 u_mkT,u_mkC;vec2 mkUV(vec2 u){return clamp(u,u_mkC.xy,u_mkC.zw)*u_mkT.xy+u_mkT.zw;} // (the effect mask's part of the mask atlas)
     ${GLSL_A}${FILL_GL}
     uniform sampler2D u_rl;uniform float u_rk; // relief lighting (unit B): the factor from glRelief, and its strength (0 = off)
@@ -12255,13 +12263,16 @@ const GLSH={
       float hg=hlGate(cov); // (round 46b) not on a heap or drift
       if(u_cfx.x>.5){vec4 q=texture2D(u_cs,v_u);vec3 a=q.rgb*2.;c+=(s*a*(1.-q.a)*1.5*fpGate(uv,cov)+a*q.a*clamp(1.15-1.8*dot(c,vec3(.3,.5,.2)),.2,1.))*hg;} // shafts and caustics: light on what they touch (a floor, a figure), and the haze in the air (its share in a), seen against the dark, hardly against what is lit
       if(u_cfx.y>.5){vec4 m=texture2D(u_cm,v_u)*hg;c=c*(1.-m.a)+m.rgb;} // floor mist (and the themes' looks)
-      if(u_fl.x+u_fl.y>0.)c+=floorFx(uv,cov)*hg; // (round 31) the floor's own looks: wet sheen, embers (round 46b: 253 is inside floorFx's 252-254, so not on a hill's mark)
+      vec3 ff=vec3(0.);if(u_fl.x+u_fl.y>0.){ff=floorFx(uv,cov)*hg;c+=ff;} // (round 31) the floor's own looks: wet sheen, embers (round 46b: 253 is inside floorFx's 252-254, so not on a hill's mark)
       vec3 b=texture2D(u_bl,v_u).rgb*.4+(texture2D(u_bl,v_u+u_d).rgb+texture2D(u_bl,v_u-u_d).rgb)*.24+(texture2D(u_bl,v_u+u_d*2.2).rgb+texture2D(u_bl,v_u-u_d*2.2).rgb)*.06;
       c+=b*.6; // bloom
       if(st>.01)c=mix(c,u_sd*dot(c,vec3(.3,.5,.2)),st*.5); // (round 29) the air before the dark greys and darkens
       c=hkGrade(c,v_u); // S3-A: rewind sepia and edges, last-life pulse
       float cw=0.;for(int i=0;i<4;i++){if(float(i)>=u_cgn)break;vec4 bb=u_cgb[i];vec2 dd=max(bb.xy-v_u,v_u-bb.zw);cw=max(cw,1.-smoothstep(-.01,.01,max(dd.x,dd.y)));} // (round 45c) inside a court with its own grade
-      float lm=dot(c,vec3(.299,.587,.114));c=mix(vec3(lm),c,mix(u_sat,u_cgt,cw))*mix(mix(u_sh,u_cgs,cw),mix(u_hi,u_cgh,cw),smoothstep(.08,.75,lm))*mix(vec3(1.),u_cgw,cw);c=mix(c,vec3(dot(c,vec3(.299,.587,.114))),u_dr); // (round 50c: drained at a death) the theme's grade: cooler or warmer shadows and lights (a court's own where it has one)
+      float lm=dot(c,vec3(.299,.587,.114));c=mix(vec3(lm),c,mix(u_sat,u_cgt,cw))*mix(mix(u_sh,u_cgs,cw),mix(u_hi,u_cgh,cw),smoothstep(.08,.75,lm))*mix(vec3(1.),u_cgw,cw);
+      if(u_dn.x>0.){vec3 lw=texture2D(u_map,v_u).rgb*1.5-u_am; // (round 50g) the drained grade: saturation down by u_dn.x at the same luminance, spared where warm light lights it:
+        float wk=clamp(u_dn.z*smoothstep(.04,.38,lw.r-lw.b)+smoothstep(.03,.22,b.r-b.b)+smoothstep(.02,.14,ff.r-ff.b),0.,1.); // the lamps' (and the forge's, the vents', a lit clock's) light over the ambient, their glow (bloom) and the embers
+        c=mix(c,vec3(dot(c,vec3(.299,.587,.114))),u_dn.x*(1.-wk)*mix(u_dn.y,1.,cov));} // (the sky, L0, by u_dn.y of it)c=mix(c,vec3(dot(c,vec3(.299,.587,.114))),u_dr); // (round 50c: drained at a death) the theme's grade: cooler or warmer shadows and lights (a court's own where it has one)
       c=c/(1.+max(c-.85,0.)*.6); // roll the bright end off instead of clipping it
       vec2 q=(v_u-vec2(.5,.45))*vec2(u_vg.x,1.);float v=smoothstep(.4,u_vg.y,length(q))*.66; // vignette (u_vg = aspect, outer radius)
       gl_FragColor=vec4(mix(c,vec3(.02,.012,.04),v),1.);}`]};
@@ -12281,7 +12292,7 @@ function glInit(){
     const c=document.createElement('canvas');c.id='glc';c.width=cv.width;c.height=cv.height;
     const gl=c.getContext('webgl2',{alpha:false,antialias:false,depth:false,stencil:false,powerPreference:'high-performance'})||c.getContext('webgl',{alpha:false,antialias:false,depth:false,stencil:false});
     if(!gl)throw new Error('no webgl');
-    const P={light:glLink(gl,glMake(gl,GLSH.light),['u_s','u_t']),bright:glLink(gl,glMake(gl,msPlain(GLSH.bright)),['u_sc','u_map','u_px','u_cs','u_csk','u_mk','u_ocT','u_ocC','u_fc','u_fg','u_fsz','u_ft']),blur:glLink(gl,glMake(gl,GLSH.blur),['u_t0','u_d']),final:glLink(gl,glMake(gl,msPlain(GLSH.final)),['u_sc','u_map','u_bl','u_mk','u_d','u_vg','u_px','u_mp','u_t','u_sat','u_dr','u_fx','u_sh','u_hi','u_mkT','u_mkC','u_cgb','u_cgn','u_cgt','u_cgs','u_cgh','u_cgw','u_ad'])};
+    const P={light:glLink(gl,glMake(gl,GLSH.light),['u_s','u_t']),bright:glLink(gl,glMake(gl,msPlain(GLSH.bright)),['u_sc','u_map','u_px','u_cs','u_csk','u_mk','u_ocT','u_ocC','u_fc','u_fg','u_fsz','u_ft']),blur:glLink(gl,glMake(gl,GLSH.blur),['u_t0','u_d']),final:glLink(gl,glMake(gl,msPlain(GLSH.final)),['u_sc','u_map','u_bl','u_mk','u_d','u_vg','u_px','u_mp','u_t','u_sat','u_dr','u_dn','u_am','u_fx','u_sh','u_hi','u_mkT','u_mkC','u_cgb','u_cgn','u_cgt','u_cgs','u_cgh','u_cgw','u_ad'])};
     // (attribute slots are fixed so one buffer layout serves every program)
     for(const k of ['bright','blur','final'])gl.bindAttribLocation(P[k].p,0,'a_p');
     const lp=P.light.p;gl.bindAttribLocation(lp,0,'a_k');gl.bindAttribLocation(lp,1,'a_c');gl.bindAttribLocation(lp,2,'a_o');gl.bindAttribLocation(lp,3,'a_col');
@@ -12608,7 +12619,7 @@ function glRelief(lights,VZ,camD,camDY){
   const nr=n;
   if(P)n=glRelEx(n,P.x,P.y-30,22,40,VZ,camD,camDY);
   for(const e of G)if(!e.gone)n=glRelEx(n,e.x,e.y+(e.yo||0)-30,24,40,VZ,camD,camDY);
-  for(const q of lights){const k=q.kind;if(k==='torch'&&q.r>=100)n=glRelEx(n,q.x,q.y-4,12,20,VZ,camD,camDY);else if(k==='trap'||k==='item'||k==='fire')n=glRelEx(n,q.x,q.y,Math.min(26,q.r*0.6),Math.min(30,q.r*0.7),VZ,camD,camDY);
+  for(const q of lights){const k=q.kind;if(k==='torch'&&q.r>=100)n=glRelEx(n,q.x,q.y-4,12,20,VZ,camD,camDY);else if(k==='trap'||k==='item'||k==='haven'||k==='fire')n=glRelEx(n,q.x,q.y,Math.min(26,q.r*0.6),Math.min(30,q.r*0.7),VZ,camD,camDY);
     else if(k==='fill'&&q.r<50)n=glRelEx(n,q.x,q.y,14,12,VZ,camD,camDY);}
   for(const d of L.debris)n=glRelEx(n,d.x,d.y-8,20,16,VZ,camD,camDY);
   for(const o of L.dyn)if(o.f.t==='gate'&&o.f.open<1){if(EGP.traps)n=glRelSlab(n,o.c*TW,o.r*TH,SURF(o.r),o.f.open,VZ,camD,camDY);else if(o.f.open>0)n=glRelEx(n,o.c*TW+16-HX,o.r*TH+30,14,38,VZ,camD,camDY);} // (a gate on the move; round 16c: a stone slab whenever it is down)
@@ -12654,9 +12665,31 @@ const AMB_MIN=0.45;
 // ambLift), Classic fills its light map with it and takes it back where the sky shows (lightPass, skyMask). The light map itself keeps
 // v88's ambient, so the shafts' and the embers' tests against the ambient (u_bq.y, u_fl.w) and the bloom are unchanged.
 const AMB_LIFT=[0.10,0.075,0.10];
+// (round 50g, owner: "Yes, but keeping the forges' and lamps' warmth") the drained grade: the picture's saturation down by DRAIN.k at the
+// same luminance (Rec. 601), so nothing darkens (round 47c's lift kept), in both modes; spared where warm light falls: Torchlight weighs
+// it down by the light map's warm share over the ambient (lamps, the forge's windows, vents, a lit sky clock: DRAIN.warm of it), the
+// bloom's warmth (flames) and the floor's embers, and the sky (L0) takes DRAIN.sky of it; Classic drains through a quarter-size mask
+// (drain2D) with each warm light's sprite taken out of it, before its flames, glows and embers are drawn (they keep theirs whole).
+// Not in the Crossing (the open land under the sky). DRAIN.k 0 draws v90's colours (tests, pictures).
+const DRAIN={k:0.3,sky:0.5,warm:0.8,c:null,g:null};
+function drain2D(ctx,lights,sc,camD,camDY){const k=DRAIN.k;if(!(k>0)||mode==='cross')return;
+  const W=cv.width,Hh=cv.height,lw=Math.ceil(W/4),lh=Math.ceil(Hh/4);
+  if(!DRAIN.c){DRAIN.c=document.createElement('canvas');DRAIN.g=DRAIN.c.getContext('2d');}
+  const c=DRAIN.c,m=DRAIN.g;if(c.width!==lw||c.height!==lh){c.width=lw;c.height=lh;DRAIN.fs=null;}
+  if(DRAIN.fk!==k){DRAIN.fk=k;DRAIN.fs='rgba(128,128,128,'+k+')';}
+  m.setTransform(1,0,0,1,0,0);m.globalCompositeOperation='copy';m.globalAlpha=1;m.fillStyle=DRAIN.fs;m.fillRect(0,0,lw,lh);
+  m.globalCompositeOperation='destination-out';m.setTransform(sc/4,0,0,sc/4,-camD/4,-camDY/4);const sp=lightSprite('255,255,255');
+  for(const q of lights){if(q.kind==='fill')continue;let col=GLCOL.get(q.col);if(!col){col=q.col.split(',').map(Number);GLCOL.set(q.col,col);}
+    const wm=(col[0]-col[2])/255;if(wm<0.2)continue;m.globalAlpha=Math.min(1,Math.min(1,q.a)*DRAIN.warm*1.4*Math.min(1,(wm-0.2)/0.3));m.drawImage(sp,q.x-q.r*0.8,q.y-q.r*0.8,1.6*q.r,1.6*q.r);}
+  m.globalAlpha=1;m.globalCompositeOperation='source-over';
+  ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='saturation';ctx.imageSmoothingEnabled=true;ctx.drawImage(c,0,0,lw*4,lh*4);ctx.restore();}
 function ambLift(){return mode==='cross'||!L||!L.prog?0:AMB_LIFT[L.prog.tod]||0;}
 function glAmbK(st,lk){const am=lk.amb.split(',');return Math.max(GLAMBT[st]||0.55,AMB_MIN*255/Math.max(+am[0],+am[1],+am[2]));}
 const GLFLICK={torch:0.6,fire:1,door:0.5,item:0.35};
+// (round 50g, A6, owner: "Implement it like that") a lit sky clock is a haven: its light steady (kind 'haven', no flicker in Torchlight's
+// map) and a warm pool on the floor round it, HAVEN.r wide, in both modes (room light: the lights, not the clock's drawing, so cpscan's
+// faces are untouched); its warmth spared by the drained grade; heard as a soft fire (Snd 'ember' by the ambience, round 50d's, fuller)
+const HAVEN={r:118,col:'255,176,100',a:0.6},HAVEN_SR=200;
 // ---- what reaches WebGL each frame (owner, v51: Torchlight fell back to Classic on the phone at 40 fps) ----
 // ?prof on an iPhone showed where the time goes: copying a 2D canvas into WebGL costs about 2 ms per copy plus about 10 ms per
 // million pixels (the scene's copy 12 ms, the small effect mask's 2.5), while the shader passes and the effects cost little.
@@ -12780,7 +12813,7 @@ function glFrame(lights,VZ,camD,camDY,th){
   PF.p('bloom');gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);glClr(gl);bind(0,GLP.stex);bind(1,GLP.fb.map.t);bind(2,GLP.fb.bl.t);bind(3,GLP.mt);
   msPasses(m=>{gl.useProgram(P.final.p);
   {const U=P.final.u,gr=gradeOf(th.style),on=GLFX.grade&&GFX().grade;gl.uniform1i(U.u_mk,3);gl.uniform4fv(U.u_mkT,GLA.kT);gl.uniform4fv(U.u_mkC,GLA.kC);gl.uniform2f(U.u_px,1/w,1/h);gl.uniform2f(U.u_mp,1/lw,1/lh);gl.uniform1f(U.u_t,t%1000);
-    gl.uniform4f(U.u_fx,GLFX.shadow?1:0,GLFX.heat?1:0,GLFX.storm?1:0,S.set.calm?0.3:1);gl.uniform1f(U.u_sat,on?gr.sat:1);gl.uniform1f(U.u_dr,deathK());gl.uniform3fv(U.u_sh,on?gr.sh:GLNEUT);gl.uniform3fv(U.u_hi,on?gr.hi:GLNEUT);ctGradeU(gl,U,VZ,camD,camDY,w,h,on);glAtmoU(U,cfx);glStormU(U);
+    gl.uniform4f(U.u_fx,GLFX.shadow?1:0,GLFX.heat?1:0,GLFX.storm?1:0,S.set.calm?0.3:1);gl.uniform1f(U.u_sat,on?gr.sat:1);gl.uniform1f(U.u_dr,deathK());gl.uniform3f(U.u_dn,on&&mode!=='cross'?DRAIN.k:0,DRAIN.sky,DRAIN.warm);gl.uniform3f(U.u_am,am[0]*GLAMB/255,am[1]*GLAMB/255,am[2]*GLAMB/255);gl.uniform3fv(U.u_sh,on?gr.sh:GLNEUT);gl.uniform3fv(U.u_hi,on?gr.hi:GLNEUT);ctGradeU(gl,U,VZ,camD,camDY,w,h,on);glAtmoU(U,cfx);glStormU(U);
     {const ak=ambLift(),am=glcRGB(lk.amb),mx=Math.max(am[0],am[1],am[2])||1;gl.uniform3f(U.u_ad,am[0]/mx*ak,am[1]/mx*ak,am[2]/mx*ak);}} // (round 47c)
   hkUniforms(P.final.u,VZ,camD,camDY,w,h); // S3-A
   glReliefUse(); // (unit B)
@@ -13219,6 +13252,7 @@ function render(){PF.s();
   ctx.setTransform(1,0,0,1,0,0);
   ctx.fillStyle='#07060c';ctx.fillRect(0,0,cv.width,cv.height);
   if(!L)return;
+  hudFadeTick(); // (round 50g) the quiet HUD's fade, once a frame
   if(mode==='cross'&&CR){crossRender(ctx,sh,gls);return;} // (round 36a) the crossing draws its own land
   const gf=GFX(),z=zoom,VZ=VS*z,vw=viewW/z,vh=ROOM_H/z;
   let sx=0,sy=0;if(shakeA>0){const t=performance.now()/1000;sx=shakeA*(Math.sin(t*61)*0.6+Math.sin(t*37+1)*0.4);sy=shakeA*(Math.sin(t*53+2)*0.6+Math.sin(t*29+4)*0.4);}
@@ -13239,7 +13273,7 @@ function render(){PF.s();
   if(gf.atmo&&!lyOff('ambient'))ambientLit(ctx,cx,cx+vw,cy,cy+vh);
   if(sh){if(gf.grade)lightPass(ctx,frameLights,VZ,camD,camDY,true); // (the shader adds the lights and the bloom)
     if(gf.light&&!GLFX.shafts)ryBeams2D(ctx,RY_2D*1.9);} // the beams as in Classic (unless the shader casts them)
-  else{if(gf.light||gf.grade)lightPass(ctx,frameLights,VZ,camD,camDY);if(gf.grade)ctGrade2D(ctx);
+  else{if(gf.light||gf.grade)lightPass(ctx,frameLights,VZ,camD,camDY);if(gf.grade){ctGrade2D(ctx);drain2D(ctx,frameLights,VZ,camD,camDY);} // (round 50g) drained before the flames and glows
   if(gf.light)bloomPass(ctx,frameLights);}
   PF.p('light2d');if(gf.atmo&&!lyOff('atmo')){atmoPass(ctx,frameLights,cx,cx+vw,cy,cy+vh);ambientGlow(ctx,cx,cx+vw,cy,cy+vh);}
   if(gf.light&&!lyOff('emissive'))drawEmissive(ctx,cx,cx+vw,cy,cy+vh);
@@ -13289,26 +13323,31 @@ function hudKey(sh){if(PF.on)return null;const H=HUDREC;let c=H.c;
 function fmt(s){s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),sec=s%60;return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(sec).padStart(2,'0');}
 // a life: the ib heart amulet (round 7, owner), a vessel-shaped heart with a rim and two lugs at the shoulders; blue-green faience,
 // a pale glaze highlight; a lost life is its dark empty outline (the guards' health uses the same shape in their tier's colour)
-function heart(ctx,x,y,full,fill,line){const p=new Path2D();p.moveTo(x+2.2,y);p.lineTo(x+4.8,y);p.lineTo(x+4.9,y+1.3);p.quadraticCurveTo(x+7.6,y+1,x+7.2,y+2.8);
+function heart(ctx,x,y,full,fill,line,hl=0.55){const p=new Path2D();p.moveTo(x+2.2,y);p.lineTo(x+4.8,y);p.lineTo(x+4.9,y+1.3);p.quadraticCurveTo(x+7.6,y+1,x+7.2,y+2.8);
   p.quadraticCurveTo(x+7.2,y+7.4,x+3.5,y+9.2);p.quadraticCurveTo(x-0.2,y+7.4,x-0.2,y+2.8);p.quadraticCurveTo(x-0.6,y+1,x+2.1,y+1.3);p.closePath();
   ctx.fillStyle=full?fill:'rgba(10,8,20,.45)';ctx.fill(p);ctx.strokeStyle=line;ctx.lineWidth=0.8;ctx.stroke(p);
-  if(full){ctx.fillStyle='rgba(255,255,255,.55)';ctx.fillRect(x+1.4,y+3,1,2.6);ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(x+2.1,y+1.2,2.8,0.6);}}
+  if(full){ctx.fillStyle=hl===0.55?'rgba(255,255,255,.55)':'rgba(255,236,214,'+hl+')';ctx.fillRect(x+1.4,y+3,1,2.6);ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(x+2.1,y+1.2,2.8,0.6);}}
+// (round 50g, A2, owner: "Agree with the changes") the quiet HUD: the hearts and the sky clocks only, in muted ochre, no band behind them;
+// the floor's number and its time are in the pause menu. It fades down to HUD_LO when nothing has changed for HUD_HOLD s (a heart lost or
+// gained, a clock spent or regained, a new floor) and comes back at once on any change, at the last heart, in a fight, a rewind, while
+// dead or paused. Eased on gameTime in render() (hudFadeTick, once a frame) and drawn at a quantised alpha (HUD_Q steps), so the HUD
+// canvas (hudKey) is drawn again only at each step of a fade. The gate timer, a foe's hearts and Show FPS stay at full strength.
+const HUD_HOLD=3.5,HUD_FADE=1.4,HUD_RISE=0.22,HUD_HI=0.9,HUD_LO=0.36,HUD_Q=24,HUD_HEART='#8a3a2c',HUD_HEARTL='#c9806c',HUD_HEARTE='rgba(140,90,70,.45)';
+const HUDF={sig:-1,at:-1e9,lt:0,a:HUD_HI,pin:null,off:false};
+function hudForce(){return mode!=='play'||!P||(P.hp<=1&&S.maxHp>1)||!!(P.foe&&P.foe.alive);}
+function hudFadeTick(){if(!L||!P)return;const t=gameTime,sig=(P.hp|0)+(S.maxHp|0)*16+(S.sands|0)*256+(L.n|0)*4096;
+  if(sig!==HUDF.sig){HUDF.sig=sig;HUDF.at=t;}if(hudForce())HUDF.at=t;
+  const dt=clamp(t-HUDF.lt,0,0.1);HUDF.lt=t;const tg=t-HUDF.at<HUD_HOLD?HUD_HI:HUD_LO;
+  HUDF.a=tg>HUDF.a?Math.min(tg,HUDF.a+dt*(HUD_HI-HUD_LO)/HUD_RISE):Math.max(tg,HUDF.a-dt*(HUD_HI-HUD_LO)/HUD_FADE);}
+function hudAlpha(){if(HUDF.off)return 1;const a=HUDF.pin!==null?HUDF.pin:HUDF.a;return Math.round(a*HUD_Q)/HUD_Q;}
 function drawHUD(ctx){
-  const top=hud.t,gh=top+26,gr=ctx.createLinearGradient(0,0,0,gh);gr.addColorStop(0,'rgba(8,6,14,.72)');gr.addColorStop(1,'rgba(8,6,14,0)');
-  ctx.fillStyle=gr;
-  { // the gradient leaves a hole over a falling stone that hangs in the band, so the stone shows as the scene lights it (not as a bright patch on top)
-    const {VZ,camD,camDY}=renderXf;let holes=0;ctx.beginPath();ctx.rect(0,0,viewW,gh);
-    for(const q of hudStones){if(q[1].s>=2)continue;const wx=q[0].c*TW+16,wy=ceilingY(q[0].c,q[0].r),x0=((wx-17)*VZ-camD)/VS,x1=((wx+17)*VZ-camD)/VS,y0=((wy-2)*VZ-camDY)/VS,y1=((wy+19)*VZ-camDY)/VS;
-      if(y0<gh&&y1>0){ctx.rect(x0,Math.max(0,y0),x1-x0,Math.min(gh,y1)-Math.max(0,y0));holes++;}}
-    if(holes)ctx.fill('evenodd');else ctx.fillRect(0,0,viewW,gh);}
+  const top=hud.t;ctx.globalAlpha=hudAlpha();
   let x=hud.l;
-  for(let i=0;i<S.maxHp;i++)heart(ctx,x+i*10,top+2,P&&i<P.hp,'#2fae9e',P&&i<P.hp?'#b8f5e8':'rgba(70,190,170,.55)');
-  x+=S.maxHp*10+5;
+  for(let i=0;i<S.maxHp;i++)heart(ctx,x+i*9,top+2,P&&i<P.hp,HUD_HEART,P&&i<P.hp?HUD_HEARTL:HUD_HEARTE,0.28);
+  x+=S.maxHp*9+6;
   ctx.textBaseline='middle';ctx.textAlign='left';
-  ctx.fillStyle='#e8c47f';ctx.font='11px Rokkitt, Georgia, serif';const label='FLOOR '+L.n;ctx.fillText(label,x,top+7.5);
-  x+=ctx.measureText(label).width+6;
-  ctx.fillStyle='#cfc7e6';ctx.font='600 7.5px Jost, system-ui, sans-serif';ctx.fillText(fmt(levelTime),x,top+7);
-  x+=ctx.measureText(fmt(levelTime)).width+9;x+=2;for(let i=0;i<SANDS;i++){const on=i<(S.sands|0),rw=mode==='rewind'&&i===(S.sands|0);drawGlass(ctx,x+i*13,top+7.5,rw?((gameTime*0.7)%1):on?1:0,on||rw?null:'#7a6234',!on&&!rw,rw);}const leftEnd=x+SANDS*13;
+  for(let i=0;i<SANDS;i++){const on=i<(S.sands|0),rw=mode==='rewind'&&i===(S.sands|0);drawGlass(ctx,x+i*12,top+7.5,rw?((gameTime*0.7)%1):on?1:0,on||rw?null:'#5a4a30',!on&&!rw,rw,true);}const leftEnd=x+SANDS*12;
+  ctx.globalAlpha=1;
   if(P){let tg=null,bd=1e9;for(const o of L.dyn){const f=o.f;if(f.t!=='gate'||!(f.tm>0)||f.tm===Infinity||!(f.dur>0)||gameTime-(f.heldAt||-9)<0.2)continue;const dd=Math.abs(o.c*TW+16-P.x)+Math.abs(o.r*TH-P.y)*2;if(dd<bd){bd=dd;tg=f;}}
     if(tg){const fr=tg.tm/tg.dur,cx=viewW/2,col=fr>0.5?'#e8c47f':fr>0.25?'#f0a040':'#ff5a4a',ty=leftEnd>cx-24?top+21:top+7;
       if(!(fr<0.25&&Math.floor(tg.tm*4)%2)){drawGlass(ctx,cx-15,ty,fr);ctx.textAlign='left';ctx.fillStyle=col;ctx.font='12px Rokkitt, Georgia, serif';ctx.fillText(tg.tm.toFixed(1),cx-6,ty+1);}}}
@@ -13328,12 +13367,12 @@ function deathDrain(ctx,sh){const k=deathK();if(k<=0)return;ctx.save();
   ctx.globalAlpha=k*DTH_DK;ctx.fillStyle='#060508';ctx.fillRect(0,0,viewW,ROOM_H);ctx.restore();}
 function drawOverlayText(ctx){
   ctx.textAlign='center';ctx.textBaseline='middle';
-  if(intro>0&&mode==='play'){const a=Math.min(1,intro/0.6,(2.6-intro)/0.3);ctx.globalAlpha=Math.max(0,a);
-    // out of the prince's way: under the HUD, or at the bottom when he stands high in the view
-    const iy=P&&(P.y-cam.y)-46<hud.t+19+54?ROOM_H-60:hud.t+19;
-    ctx.fillStyle='rgba(8,6,14,.55)';ctx.fillRect(0,iy,viewW,48);
-    ctx.fillStyle='#e8c47f';ctx.font='26px Rokkitt, Georgia, serif';ctx.fillText('Floor '+L.n,viewW/2,iy+17);
-    ctx.fillStyle='#f2e9d8';ctx.font='600 9px Jost, system-ui, sans-serif';ctx.fillText(themeName(L.n).toUpperCase(),viewW/2,iy+37);ctx.globalAlpha=1;}
+  if(intro>0&&mode==='play'){const a=Math.min(1,intro/0.9,(2.6-intro)/0.6);ctx.globalAlpha=Math.max(0,a);
+    // (round 50g, A3, owner: "Yes. Keep the flag line") the theme's name alone, quiet, no band and no floor number (that is in the pause
+    // menu); out of the prince's way: high in the view, or low when he stands high
+    const iy=P&&(P.y-cam.y)-56<ROOM_H*0.3+14?ROOM_H*0.8:ROOM_H*0.3,nm=L._title||(L._title=themeName(L.n).replace(/ (by Moonlight|at Dawn|at Dusk)$/,'').toUpperCase());
+    ctx.font='13px Rokkitt, Georgia, serif';ctx.letterSpacing='1.2px';ctx.fillStyle='#e6dcc6';ctx.shadowColor='rgba(0,0,0,.8)';ctx.shadowBlur=6;ctx.fillText(nm,viewW/2+0.6,iy);
+    ctx.shadowBlur=0;ctx.shadowColor='rgba(0,0,0,0)';ctx.letterSpacing='0px';ctx.fillStyle='rgba(200,160,90,.55)';ctx.fillRect(viewW/2-22,iy+11,44,0.7);ctx.globalAlpha=1;}
   if(banner&&mode==='play'){const a=Math.min(1,banner.t/0.25,(banner.dur-banner.t)/0.4);ctx.globalAlpha=Math.max(0,a);
     const low=P&&(P.y-cam.y)<ROOM_H*0.55;
     const bw=low&&hud.over?Math.min(300,viewW*0.56):Math.min(380,viewW-28),bx=(viewW-bw)/2;
@@ -15208,7 +15247,8 @@ Object.assign(window.__HK,{respawn,startRewind,die,startEntry,entryOpen,entryX,s
 Object.defineProperty(window.__HK,'intro',{get(){return intro;},set(v){intro=v;}}); // (the floor's title banner, for egyptprop.py)
 Object.assign(window.__HK,{GATE_G,liftCell,windowPath,gateGeom,stoneTex,STONES,THEME_STONE,SLAB_STONE,stoneLying,BLK_W,BLK_H,looseWell,WELL_V,blockStep,wellGroup,wellSolve,wellTip,sandTex});
 Object.assign(window.__HK,{EGP,nutClock,conceptClock2,barqueClock,conceptClock,flaskBody,flaskR,heart,setHero,HERO_VAR,PAL_HERO,SCHED,floorsOf,BGART,bgArt,LFX,themeOf,get PF(){return PF;}}); // (the themes' backdrops and effects, for egyptshot.py and egyptfx.py)
-Object.assign(window.__HK,{hurt,HK,DISS,sandP,SAND_HP,GLFX,AMB_LIFT,SPK_C,setClock:f=>{performance.now=f;}}); // S3-A (tests)
+Object.assign(window.__HK,{HUDF,DRAIN,HAVEN,FLASK_FL,hudAlpha,hudFadeTick,flashScreen:(c,a,d,e)=>flashScreen(c,a,d,e),flashAt:t=>{if(flashFx)flashFx.t=t;},levelComplete:()=>levelComplete(),setModeR50:m=>{mode=m;},drinkFx:it=>{P.drinkIt=it;drinkFx();},
+  hurt,HK,DISS,sandP,SAND_HP,GLFX,AMB_LIFT,SPK_C,setClock:f=>{performance.now=f;}}); // S3-A (tests)
 Object.assign(window.__HK,{ryLow,beamBlockers,BLK,ryBlkLit,sandSegs,SDS,RY_BLUR,glPrecStr,renderXf,tileB:(c,r)=>B(L,c,r),get WALL(){return WALL;}}); // (round 46: the beams' cases and the device's precision, for beamjag.py)
 Object.assign(window.__HK,{FLM,FLV,ventState,cyc}); // FL (flames: the sheets and the vent's look, for tests)
 Object.assign(window.__HK,{GLFX,GLREL,clearRooms,bgCache,bgLayers,solidBelow:(c,r)=>solidBelow(L,c,r),roomCanvas}); // (unit B's switches and caches, for its tests)

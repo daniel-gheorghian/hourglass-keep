@@ -91,7 +91,7 @@ gate (`gateRoundel`), and the rewind's large clock running back ("The hours turn
 
 | Pass / effect | This element |
 |---|---|
-| Light map (`gatherLights`) | lit: kind `item` at `cpX`, 26 px up, radius 150 x k, strength 0.95 k, bloom core r 26 (k ramps over 0.7 s), plus the sun disc's own small light (kind `trap`, 46 px) that travels along Nut's arch; unlit: a faint glint (38 px, 0.42). Room light: not cut by the faces |
+| Light map (`gatherLights`) | lit: kind `haven` (round 50g; `item` before) at `cpX`, 26 px up, radius 150 x k, strength 0.95 k, bloom core r 26 (k ramps over 0.7 s), steady (no `GLFLICK` entry: `item` flickered 0.35); the haven's pool (round 50g, kind `pool`): a warm light `HAVEN.col` 255,176,100 on the floor 10 px over its surface, radius `HAVEN.r` 118 x k, strength `HAVEN.a` 0.6 k, steady, both modes; plus the sun disc's own small light (kind `trap`, 46 px) that travels along Nut's arch; unlit: a faint glint (38 px, 0.42). Room light: not cut by the faces |
 | Key light (`keyLight` sx) | a lit clock weighs in like a torch for nearby figures (kind `item` counts; its `trap` sun light does not) |
 | Lamp shadow mask (`glShadow`) | casts none; carved (round 38a): `shcClock` records the pedestal's boxes, Nut's arch, arms and legs, the earth, her head and (lit) the sun in `SHC` (kind `clock`) at the drawn x, so a figure's shadow falls on the wall behind it; the wall seen inside the arch keeps the shadow; the wall between the earth and the pedestal's top (0 to 1.3 px as the clock bobs) is carved with them when under `SHC_TEX` (round 40) |
 | Relief | partly rubbed: `glRelEx`'s soft ellipses round its lights (the lit `item` light and the sun's `trap` light, half sizes 26 by 30 px; unlit, 23 by 27) flatten the relief over most of the clock; the rest of the pedestal and the arch keep the room picture's relief (left as it is, round 39). Since round 46c rubbed off by its own shapes (`glRelClock`), since round 47e its pedestal's rubble chips too |
@@ -100,7 +100,7 @@ gate (`gateRoundel`), and the rewind's large clock running back ("The hours turn
 | Mist / wall looks | as any live drawing over the wall |
 | Floor looks (`floorFx`) | none of its own; its pixels are 255, so embers and sheen stay off it |
 | Heat, the dark | the dark (`glStorm`, `stormLayer2D`) covers it like everything else; `dkDrain` dims lamps, not the clock |
-| Bloom, grade, vignette | the light's bloom core blooms; grade and vignette as the scene |
+| Bloom, grade, vignette | the light's bloom core blooms; grade and vignette as the scene; the drained grade (round 50g) spares its warm light and pool (`wk`, Classic `drain2D`'s cut-outs) |
 | Classic | the same lights through `lightPass` and `bloomPass`; the 70 px wide glow in `drawHourglass` is drawn only when Graphics > Lighting is off (`!GFX().light`) |
 
 ## Relations to other elements
@@ -151,3 +151,8 @@ gate (`gateRoundel`), and the rewind's large clock running back ("The hours turn
   relief on floors 24 and 47 (0.18% and 0.44% in v88, 0.63% and 0.86% after round 47c's brighter ambient) now 0. Look only.
 - round 50c (owner: "no music in the floors", only the sky clock's motif): `cp` is the plucked motif (Karplus-Strong strings, `Snd.pluck`, with its own send into the room's reverb). Sound only.
 - round 50d (sound): a lit sky clock within 120 px gives a faint ember crackle now and then (`ember`, the theme's ambience) [gameplay](../gameplay.md#footsteps-traps-heard-off-screen-each-themes-ambience-round-50d).
+- round 50g (A6, owner: "Implement it like that"): the lit clock is a haven: its light steady (kind `haven`), a warm pool of light on the
+  floor round it (kind `pool`, `HAVEN`), in both modes, spared by the drained grade; its fire heard softly (`ember` fuller: 2-5 soft pops,
+  a low breath and a hiss, chosen in each 0.25 s ambience slot with a chance of 0.6 near it falling to 0.2 at `HAVEN_SR` 200 px; round
+  50d's was 0.3 within 120 px). Look and sound only: the trigger, respawn spot and timings keep `cp.x`; `cpscan.py` 1-12 both ok (the
+  pool is room light, as the light before it).

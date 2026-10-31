@@ -143,3 +143,6 @@ drawLooseFlasks (L.flk: the empty one falling, fading)
 - round 38a: flasks in place carved out of the lamp shadow (`SHC`).
 - round 39 (v84): the hidden flask's stars cut at a wall's face beside it. Look only. Details in CLAUDE.md.
 - round 50c (sound): a flask of life (`life`, also the large flask) a deep struck bowl over a low string, no fanfare; `drink` three gulps with a faint ring of the bowl; `poison` three choked gasps and a groan with the bowl's note gone sour. Sound only.
+- round 50g (A7, the "Dark Souls mood"): a drink's flash is softer, shorter and drained (`FLASK_FL`: heal and big `#b0705a` 0.2 / 0.26
+  over 0.2 / 0.28 s, life `#bfa477` 0.26 over 0.28 s, poison `#5f8a68` 0.22 over 0.22 s; v90's `#ff6a3d`, `#ffd76b`, `#3fae66` at
+  0.38-0.5 over 0.3-0.45 s), still a tint at the screen's edges that leaves him clear. Look only [gameplay](../gameplay.md#health-lives-and-flasks).

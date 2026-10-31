@@ -50,7 +50,8 @@ plain "Grab" after 0.3 s, and Rewind, Rise and Strike at once (`updateGrabLabel`
 
 ## The pause menu and settings
 
-Pause shows the floor's name, this floor's time, the run's time and the falls, then:
+Pause shows the floor's number and name, this floor's time, the run's time and the falls (since round 50g the only place the
+floor's number and time are shown), then:
 
 | Button | Setting | Effect |
 |---|---|---|
@@ -153,8 +154,14 @@ cost exactly one life; a cracked slab gives way under him ([cracked slabs and sa
 
 - Lives are hearts: `P.hp` of `S.maxHp`. A run starts with 3 (`newSave`); a gold flask adds one, up to 10, for the rest of the run.
 - Every respawn starts with full hearts (`makePlayer`).
-- The HUD (`drawHUD`): hearts, FLOOR n, the floor's time, three sky clocks for the sands, the nearest running gate timer in the
-  middle (it flashes under a quarter), and a foe's hearts and rank on the right (a skull for a skeleton).
+- The HUD (`drawHUD`; round 50g, A2, owner: "Agree with the changes"): the hearts and three sky clocks for the sands only, in muted
+  ochre (red-ochre hearts `HUD_HEART`, the clocks' quiet palette `NUTQ`, no glow), with no dark band behind them; the floor's number and
+  its time are in the pause menu. It fades to `HUD_LO` 0.36 when nothing has changed for `HUD_HOLD` 3.5 s (over `HUD_FADE` 1.4 s) and
+  is back at `HUD_HI` 0.9 within `HUD_RISE` 0.22 s on any change (a heart lost or gained, a sky clock spent or regained, a new floor),
+  and held there at the last heart, in a fight, a rewind, while dead or paused (`hudFadeTick` once a frame on gameTime, `hudAlpha`
+  quantised to `HUD_Q` 24 steps, so Torchlight's HUD canvas, `hudKey`, is redrawn only at each step). Unchanged and always at full
+  strength: the nearest running gate timer in the middle (it flashes under a quarter), a foe's hearts and rank on the right (a skull for
+  a skeleton), Show FPS.
 
 | Flask (`it.type`) | Effect |
 |---|---|
@@ -162,6 +169,10 @@ cost exactly one life; a cracked slab gives way under him ([cracked slabs and sa
 | large red (`big`) | all hearts; rare, at the far ends of gated side passages |
 | gold (`life`) | +1 to `S.maxHp`; in side passages without a gate; once taken on a floor it stays taken (`S.lifeTaken`) |
 | dark blue (`poison`) | -1 heart |
+
+A drink's flash (round 50g, A7) is a soft tint at the screen's edges, the middle (the prince) left clear: shorter and less saturated than
+v90's (`FLASK_FL`: heal and big `#b0705a` at 0.2 / 0.26 over 0.2 / 0.28 s, life `#bfa477` 0.26 over 0.28 s, poison `#5f8a68` 0.22 over
+0.22 s; v90 `#ff6a3d`, `#ffd76b`, `#3fae66` at 0.38-0.5 over 0.3-0.45 s, capped at 0.3 at the edges). Softer flashes still takes 0.3 of it.
 
 Details: [flasks and secrets](elements/flasks-and-secrets.md).
 
@@ -200,7 +211,8 @@ On death (`die`) the mode is `dead` and the save's resume point is dropped. Then
   (`S.cpPlates`); guards and snakes before it are gone; everything else is as generated.
 - **Checkpoints**: the sky clock (Nut's, `nutClock`). Passing within 14 px lights it (`standOn`): it becomes the
   respawn point and refills the sands. [checkpoint](elements/checkpoint.md).
-- Falls are counted per floor (`S.floorDeaths`, the card's "Falls") and per run (`S.deaths`); a rewind counts as a fall.
+- Falls are counted per floor (`S.floorDeaths`) and per run (`S.deaths`, the pause menu's); a rewind counts as a fall. (The card no
+  longer shows them, round 50g.)
 - **The death card** (round 50c, owner: "D2 death screen", ash): over `DTH_F` 1.2 s the picture drains of colour (Torchlight: the
   composite's `u_dr`; Classic: a `saturation` blend with grey) and darkens to near black (`DTH_DK` 0.64, the HUD with it); the cause is one
   quiet italic line in bone (`DTH_BONE`, lower case, e.g. "the fall was too far.") at 0.6 of the view; from `DTH_CT` 2.2 s a faint line at
@@ -266,7 +278,7 @@ he runs at 100) and surges when he gets more than 190 - 30 `L.d` px ahead, so an
   (now a rattle, `sealed`), the gate lines (`gateMsg`) and "A heavy door grinds open somewhere on this floor." (the gate cue, below), "The
   slab lands on the plate and holds it down.", "The cracked floor behind you is starting to give way. Run!", "The dark wakes behind you.
   Run!", "Dawn breaks at the arch...", "Ambush! A guard drops in...", and the death card's "Spikes spare a careful step...".
-- Kept: the Grab button's word (`grabLabel`), the floor's banner and the card's rare flag (`FLAG_TEXT`), the Crossing's pad cue, the death
+- Kept: the Grab button's word (`grabLabel`), the floor's banner (the theme's name, round 50g) and the card's rare flag (`FLAG_TEXT`), the Crossing's pad cue, the death
   card's cause and its two lines (Rewind, rise), How to play (the buttons and the short rules, below), the tools' messages (`?bench`).
 - What tells instead: the looks (the jet streams, the gold flask's stars, a gate's sky clock and the HUD's countdown, the cracks, the sand
   running from a roof block), the sounds, and for a gate or door opening the gate cue (round 50e, below; round 49a's glance is gone).

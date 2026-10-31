@@ -98,10 +98,25 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [swing bar](elements/swing-bar.md) | trap glint, ready glow | not carved | no | no (wood and rope) | no | no | no | no (spikes under it do) | no |
 | [banners and slides](elements/banners-and-slides.md) | none | not carved | `glRelBanners` | no | no | no | no | no (the slide is safe) | no |
 | [kick shafts and jet streams](elements/kick-shafts-and-jet-streams.md) | trap glint at the foot; the jet none | walls carved as stone | no | no | no | no | no | falls only | no |
-| [checkpoint](elements/checkpoint.md) | lit: an item light (r 150) | clock and pedestal carved (`SHC`) | partly: its lights' ellipses (`glRelEx`) | no | no footprint (255) | no | no | no | no |
+| [checkpoint](elements/checkpoint.md) | lit: a steady light (r 150) and the haven's warm floor pool (r 118, round 50g) | clock and pedestal carved (`SHC`) | partly: its lights' ellipses (`glRelEx`) | no | no footprint (255) | no | no | no | no |
 | [flasks and secrets](elements/flasks-and-secrets.md) | a coloured item light | flasks carved (`SHC`) | its light's ellipse (`glRelEx`) | no | no footprint (255) | no | no | poison: 1 life | an ambush guard at the gold flask |
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
+
+## What round 50g found
+
+Round 50g (owner's choices on round 50b's "Dark Souls mood" research: A2 "Agree with the changes", A3/A4 "Yes. Keep the flag line", A6
+"Implement it like that", A7, and the grade "Yes, but keeping the forges' and lamps' warmth") ([gameplay](gameplay.md#health-lives-and-flasks),
+[rendering](rendering.md#bloom-grade-vignette)).
+
+| Finding (round 50e) | Where | Round 50g | Seen in |
+|---|---|---|---|
+| A bright HUD: teal hearts, gold FLOOR n, the floor's clock ticking, glowing gold clocks, on a dark band, always at full strength | `drawHUD` | the hearts (red ochre) and the sky clocks (muted, no glow) only, no band; fades to 0.36 after 3.5 s with nothing changed, full on any change, at the last heart, in a fight, a rewind, dead or paused (`HUDF`, quantised for `hudKey`); the floor and its time in the pause menu; the gate timer, a foe's hearts and Show FPS unchanged | [gameplay](gameplay.md#health-lives-and-flasks) |
+| The floor's banner a band with "Floor n" in large type | `drawOverlayText` | the theme's name alone in quiet capitals with a thin rule, no band, no hour | [concept](concept.md) |
+| The card between floors a score sheet: "Floor n cleared", time, falls, lives, "Next: Floor n+1, ..." | `levelComplete` | the next floor's theme name, and its rare flag's line when it has one | [concept](concept.md) |
+| A drink flashed the screen's edges in saturated orange, gold or green for up to 0.45 s | `drinkFx` | softer, shorter, drained (`FLASK_FL`) | [flasks and secrets](elements/flasks-and-secrets.md) |
+| Full saturation everywhere | the composite, Classic's grade | the drained grade: -30% saturation at the same luminance, spared under warm lamp, forge, vent and clock light, their flames and the embers, the sky half (`DRAIN`, `u_dn`, `drain2D`) | [rendering](rendering.md#bloom-grade-vignette), [lamps](elements/lamps-and-light.md) |
+| A lit sky clock flickered like a flask's light and was heard only now and then | `gatherLights`, `Snd.ambSlot` | the haven: a steady light and a warm pool on the floor round it (`HAVEN`), its fire heard softly and more often near it | [checkpoint](elements/checkpoint.md) |
 
 ## What round 50e found
 

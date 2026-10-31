@@ -494,13 +494,24 @@ heat ripple (mask g) -> lens at the dark's edge (mask b) -> hkWarp (rewind rippl
 -> scene (hkScene: hit smear) x light x 1.5, less the fill over the sky, x relief, x (1 - 0.85 shadow), colour x (1 - 0.4 shadow)
 -> msApply (metal) -> shafts and caustics (light x fpGate, plus haze against the dark) -> mist and looks -> floorFx
 -> + bloom x 0.6 -> the dark's grey air -> hkGrade (rewind, last life) -> theme grade (saturation, shadow and light tints)
--> roll-off over 0.85 -> vignette
+-> the drained grade (round 50g, u_dn) -> the death's drain (u_dr) -> roll-off over 0.85 -> vignette
 ```
 
 - Bloom: the bright pass keeps `(scene x light x 1.5 - 0.7) x 1.6`, metal highlights and glints, and the beams' footprint and rim;
   blurred at ¼ (horizontal taps in the blur pass, vertical in the composite). Classic: `bloomPass` adds each light's `bloom` sprite.
 - Grade: the style's or theme's `GLGRADE`/`th.gr` times the hour's `TODG` (`gradeOf`, memoised); switch `GLFX.grade` and Graphics'
   Colour grade. Both modes also multiply the grade strip (top tint, 0.55 neutral, bottom tint: `lk.top`, `lk.bot`).
+- The drained grade (round 50g, owner after the r50b research: "Yes, but keeping the forges' and lamps' warmth"): after the theme
+  grade the colour moves `DRAIN.k` 0.3 toward its own luminance (Rec. 601, the grade's weights), so the picture is about 30% less
+  saturated and no darker (round 47c's `AMB_LIFT` floor kept). Spared where warm light falls: the weight `wk` is `DRAIN.warm` 0.8 times
+  the light map's warmth over the ambient (`u_am`, the map's clear colour: lamps, the forge's windows, vents, a lit sky clock, the door;
+  r - b ramped .04-.38), plus the bloom's warmth (flames, glowing clocks and vents) and the floor's embers (`floorFx`'s r - b), clamped
+  to 1; the drain is `k (1 - wk)`, and on the sky (L0, where the scene's alpha says the backdrop shows) `DRAIN.sky` 0.5 of that. Not in
+  the Crossing. Classic (`drain2D`, after `lightPass` and `ctGrade2D`, before `bloomPass`, the emissive layer, embers and glows, which
+  keep their colour): a quarter-size canvas filled with grey at alpha k, each warm light's sprite (r - b over 0.2 of full; 1.6 r wide)
+  taken out of it with `destination-out`, laid over the scene with `saturation` (the backdrop's luminance kept). Graphics > Colour grade
+  off, or `DRAIN.k` 0, draws v90's colours. Cost: one more texture read in the composite; Classic one quarter-size fill, a sprite a warm
+  light and one full-size `saturation` blend.
 - Vignette: in the composite; Classic draws `vignette` (or `vignette2` with the grade on) after the scene.
 
 ### AO

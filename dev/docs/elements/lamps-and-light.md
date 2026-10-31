@@ -251,3 +251,8 @@ and bloom all of it; a lamp under 0.01 adds nothing. Only lamps are drained; the
 
 - round 50d (sound): the nearest burning lamp within 170 px crackles now and then (`crackle`, the theme's ambience, `Snd.ambSlot`), quiet and placed where it burns [gameplay](../gameplay.md#footsteps-traps-heard-off-screen-each-themes-ambience-round-50d).
 Details in CLAUDE.md.
+- round 50g (owner: "Yes, but keeping the forges' and lamps' warmth"): the drained grade (rendering.md "Bloom, grade, vignette") takes
+  about 30% of the picture's saturation at the same luminance, but not where a warm lamp's light falls: Torchlight weighs the drain down by
+  the light map's warmth over the ambient, the bloom's (the flames) and the floor's embers; Classic cuts each warm light's sprite out of its
+  drain mask and draws the flames, glows and embers after it. A lit sky clock's light is steady and lays a warm pool on the floor (the
+  haven, [checkpoint](checkpoint.md)).

@@ -11,7 +11,7 @@ Floor 5 as `__HK.genLevel(5, 1)` builds it (a player's floor 5 comes from the ru
 
 | Step | What happens | Code |
 |---|---|---|
-| 1. The card | Floor 4 is cleared: its time, falls and lives, "Next: Floor 5, The Halls of the West." Climb on. | `levelComplete`, `nextFloor` |
+| 1. The card | Floor 4 is cleared: the card names the place ahead, "The Halls of the West", and a rare flag's line if it has one (round 50g). Climb on. | `levelComplete`, `nextFloor` |
 | 2. The Crossing | Floor 5 changes theme, so the interlude plays: Nebamun's pool garden, a heron lifting off the coping, a whitewashed pylon at the end of the path. Right held walks him there; Jump skips. | `crossDue`, `crossBegin` |
 | 3. The entry | He walks out of the start door's dark opening (column 190, row 9); its leaf drops behind him with a thud. Control at 0.62 s. The banner names the floor. | `startEntry`, `EN_CTL`, `intro` |
 | 4. The floor | 157 segments over 360 columns and 61 rows, 305 bot actions. It features lifts (18 of them), the alcove puzzle and tunnels (`L.feature`). It opens with a climb, a slicer to time, a one-tile pit, cracked floor to run over and stakes to tiptoe across. Then a lift up three storeys, tunnels to crawl, a hanging to slide down four storeys and lifts going down; eight sky clocks stand along the floor (`L.cps`). | `L.segs`, `L.path` |
@@ -104,10 +104,12 @@ title -> floor n: entry -> play (deaths: rewind or rise) -> exit stairs -> card 
                                      theme changes at n+1? -> the Crossing -> floor n+1: entry
 ```
 
-- **The floor's banner**: "Floor n" and the theme's name for 2.6 s as play starts (`intro`). No hint banners follow (round 49a).
-- **The card** (`levelComplete`, mode `card`): "Floor n cleared", the theme's name, the floor's time, falls and lives, and "Next:
-  Floor n+1, <name>." A rare flag on the next floor is named (`FLAG_TEXT`: tower, rotten, barracks, longway, maze). The ordinary
-  featured families are left for the player to find. Climb on, or Title screen.
+- **The floor's banner**: the theme's name alone (no hour, no floor number: round 50g, A3), quiet capitals with a thin rule under them,
+  for 2.6 s as play starts (`intro`), high in the view or low when he stands high. No hint banners follow (round 49a).
+- **The card** (`levelComplete`, mode `card`; round 50g, A4, owner: "Yes. Keep the flag line"): the name of the next floor's theme (with
+  its hour) and nothing else, no floor number, times or counts (the pause menu has the floor, its time, the run's time and the falls); a
+  rare flag on the next floor is named under it (`FLAG_TEXT`: tower, rotten, barracks, longway, maze). The ordinary featured families
+  are left for the player to find. Climb on, or Title screen.
 - **The Crossing** (round 36): at each change of theme (`crossDue(n)`: floors 5, 9, 13, ...), between Climb on and the next floor's
   entry. He crosses the open land of the new theme's setting at the hour of `progOf`, moving only while the pad is held, and goes in
   at a doorway; Jump skips. Never on Continue, Restart, a checkpoint, a respawn or the title, under `?bench`, the bot or a test, with
@@ -147,7 +149,7 @@ Numbers and rules: [gameplay.md](gameplay.md#death-the-sands-and-checkpoints).
 - The title screen: eyebrow "Twelve hours of night" (or the floor and theme of the run in progress), **Dawnward**, a line on the
   game, and Continue on Floor N, New run (or "Into the night" for a first run), How to play, Graphics; the version (`APP_VERSION`,
   stamped by the build). A preview of the current floor is drawn behind it (`previewTitle`).
-- Fonts (Google Fonts): **Rokkitt** for display (titles, the floor's banner, the HUD's FLOOR label and gate timer), **Jost** for text.
+- Fonts (Google Fonts): **Rokkitt** for display (titles, the floor's banner, the gate timer), **Jost** for text.
 - Not renamed from Hourglass Keep: the cache key `hourglass-keep-vN`, the save key, the repo and its URLs.
 
 ## How changes are made
