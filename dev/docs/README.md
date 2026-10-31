@@ -103,6 +103,16 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
 
+## What round 50a found
+
+Round 50a (owner after v90: "Yes, strengthen the grit, grooves and scuffs"; from pictured levels A, B, C he chose grit B, grooves C, scuffs B) ([gameplay](gameplay.md#stronger-grit-grooves-and-scuffs-round-50a)).
+
+| Finding (v90 at phone size, 852 x 393) | Where | Round 50a | Seen in |
+|---|---|---|---|
+| The grit read like the ambient motes: single 1-1.6 px grains, sparse | `drawGrit` | more grains streaked along their fall, larger ones lit on top, a trickle at moments, a small pile on the plate (`drawGritL`, `CUE.grit` 2) | plates |
+| The grooves were lost among the floor's seams: two thin lines along x at fixed depths, like the slabs' joints | `wearFloor` | a deeper trough with a lit lip wandering in depth, the track polished, scrape marks, grit ridges at the ends (`grooveL`, `CUE.groove` 3) | movable blocks |
+| The scuffs were faint smudges | `wearFace` | a lighter worn patch, sole prints with skid smears, scratches and dust (`wearFaceL`, `CUE.scuff` 2) | stonework |
+
 ## What round 49c found
 
 Round 49c (owner after the round 49 research: "rely only on subtle graphic hints"; "All five you suggested": the wear marks and the bones of earlier thieves) ([gameplay](gameplay.md#wear-and-bones-round-49c)).

@@ -334,6 +334,18 @@ play, the bot and the timers unchanged). `wearscan.py` checks the rules.
   signpost at each one (about 3.5 sets a floor). Lying, partial, bleached and dusty, never upright, no sword, no blood, so never a
   skeleton guard; on a route tile they lie behind his walking line, low, never in his way.
 
+### Stronger grit, grooves and scuffs (round 50a)
+
+Round 50a (owner after v90: "Yes, strengthen the grit, grooves and scuffs"; from pictured levels A, B, C he chose grit B, grooves C,
+scuffs B; `CUE`, level 0 is v90's look). At phone size the three had barely read. Still hints, not signposts; look only.
+
+- **Grit**: more grains (26), each streaked along its fall, a few larger with a lit top; now and then a thin trickle that breaks into grains
+  as it falls (never the roof block's continuous threads); a small cone of grit on the plate, growing over the floor's first two minutes.
+- **Grooves**: the track polished lighter, scrape marks along it, the grooves a dark trough with a lit near lip that wander a little in
+  depth (never along a tile's seam), ridges of grit pushed up at the ends.
+- **Scuffs**: a lighter worn patch up the face where his soles rub, each strike a sole print with a skid smear down from it, pale scratches
+  and dust specks.
+
 
 `dev/tools/bot.js` plays a floor through the game's own input (`H.setKey('kb', ...)`), one action of `L.path` at a time:
 `runBot(n, seed, opts)` returns `{ok, n, seed, frames, hurt, fights}`. Every trap the generator lays pushes its action onto

@@ -1566,6 +1566,21 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   (the room's picture: the rooms are cleared around their frames); contourscan kind `bones`. `wearscan.py` (gen suite) checks the rules.
   Pictures `egyptr49c.py old.html new.html [outdir]` (r49c_<case>_3x.png and _phone.png, old | new, Torchlight over Classic: scuff, groove
   (and the block pushed a cell), pit, banner, slicer, sand; r49c_all_3x.png).
+- Stronger grit, grooves and scuffs (round 50a, owner after v90: "Yes, strengthen the grit, grooves and scuffs"; at phone size the grit was
+  near the ambient motes, the grooves lost among the floor's seams, the scuffs faint smudges; from pictured levels A, B, C he chose grit B,
+  grooves C, scuffs B). `CUE` {grit 2, groove 3, scuff 2} (0 is v90's look, kept for comparisons; `window.__CUE` before load, `__HK.CUE` at
+  runtime, the grooves and scuffs in the room's picture: clear the rooms after a change); tables `GRIT_L`, `GRV_L`, `SCF_L`. Grit
+  (`drawGritL`): 26 grains, each streaked along its fall (its speed over half a frame), a fifth larger and roundish with a shaded foot and a
+  lit top; a thin trickle every 4.5-7 s (a cycle in four skipped) for 0.8 s, grains let go every 0.025 s that thin as they fall (breaking up,
+  never the roof block's continuous threads); a small cone of grit on the plate's top (lit flank by `keyLight`, a contact shadow at its foot),
+  growing with `levelTime` from 60% to full over 2 min, 12 grains scattered round it. Grooves (`grooveL`): the track polished lighter (d
+  .12-.88, soft edges), 9 scrape marks a cell, the two grooves a dark trough (2.2 px, alpha .92 of `lo`) with a darker core on the far wall
+  and a lit near lip, wandering in depth by world x (`grvD`, sines: continuous over cells, never on a seam line), a ridge of grit across each
+  at the track's ends with loose grains. Scuffs (`wearFaceL`): a lighter worn patch up the strike column and round each strike, each strike
+  a sole print (ball and heel) with a skid smear down from it, older prints about it, brighter scratches and 7 pale dust specks under each.
+  All translucent tints (the contour rule's marks); both modes; nothing allocated a frame; placement unchanged. Look only: `layoutcmp.py`
+  against v90 same (144 of 144). Checks: wearscan, layerscan kinds=grit,scuff,groove, rendersmoke, run2. Pictures `egyptr50a.py new.html
+  [outdir]` (r50a_<cue>_phone.png, r50a_<cue>_3x.png: v90 | A | B | C, both modes; r50a_grit_B.gif).
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized three ways (Trap density, above); only P4's race uses the careful pace.
 - Pose angles are measured from straight down; positive means forward.

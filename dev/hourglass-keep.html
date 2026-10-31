@@ -8988,9 +8988,48 @@ function gritList(){if(L._grit)return L._grit;const out=[];
     let ok=true;for(let r=sl.r+1;r<o.r;r++)if(B(L,o.c,r)===WALL||solidBelow(L,o.c,r))ok=false;if(ok&&!out.some(g=>g.o===sl))out.push({o:sl,p:o,c:o.c,r0:sl.r,r1:o.r});}
   return L._grit=out;}
 const gritH=(a,b)=>hash2(a,b)/4294967296;
+// Round 50a (owner after v90: "Yes, strengthen the grit, grooves and scuffs"; from pictured levels he chose grit B, grooves C, scuffs B):
+// CUE holds a level per cue, 0 v90's look, 1 A mild, 2 B clear, 3 C strong; the game draws {grit:2,groove:3,scuff:2} (window.__CUE before
+// load: a number for all three or {grit,groove,scuff}; __HK.CUE at runtime; level 0 kept for comparisons).
+// The grooves and scuffs are in the room's picture: clear the rooms after a change.
+const CUE=(()=>{const o={grit:2,groove:3,scuff:2},w=typeof window!=='undefined'?window.__CUE:null;if(w!=null){if(typeof w==='object')Object.assign(o,w);else o.grit=o.groove=o.scuff=+w;}return o;})();
+// the grit at a level: n grains (big: the share drawn larger with a lit top and a shaded foot), streaked along their fall; a thin trickle
+// now and then (every trP s, a cycle in four skipped, running trD s: a run of grains close together, thinning as it falls); a small pile on
+// the plate's top that grows with the floor's clock (levelTime: a rewind or respawn keeps it with the clock) and sc grains scattered round it
+const GRIT_L=[null,
+  {n:20,gap:0.3,big:0.12,a:0.55,sz:1.05,trP:[6,9],trD:0.55,trW:0.9,trA:0.5,pile:0.55,sc:8},
+  {n:26,gap:0.25,big:0.2,a:0.7,sz:1.12,trP:[4.5,7],trD:0.8,trW:1.15,trA:0.68,pile:0.85,sc:12},
+  {n:34,gap:0.2,big:0.26,a:0.85,sz:1.2,trP:[3.5,5.5],trD:1.1,trW:1.4,trA:0.82,pile:1.15,sc:16}];
+function drawGritL(ctx,g,Q,X,ya,yb,xc,ys,H,sd,C){const t=gameTime,lo=selC(C.heap,0.62),hi=selC(C.heap,1.12);
+  ctx.save();ctx.beginPath();ctx.rect(xc-8,ya,16,yb-ya+1);ctx.clip();nearCut(ctx,g.c-1,g.c+1,g.r0,g.r1-1,true);
+  for(let i=0;i<Q.n;i++){const P0=GRIT_P[0]+(GRIT_P[1]-GRIT_P[0])*gritH(sd,10+i),T=GRIT_T[0]+(GRIT_T[1]-GRIT_T[0])*gritH(sd,30+i),cy=(t+gritH(sd,50+i)*P0)/P0,k=Math.floor(cy),u=(cy-k)*P0/T;
+    if(u>=1)continue;const hk=gritH(sd+i*7,k);if(hk<Q.gap)continue;
+    const y=ys+H*(0.22*u+0.78*u*u),x=xc+(gritH(sd+i,k*3+1)-0.5)*3.6+Math.sin(u*4+i)*0.6*u,big=gritH(sd+i,k*3+5)<Q.big,s=Q.sz*(1+0.5*gritH(sd+i,k*3+2))*(big?1.4:1),
+      v=H*(0.22+1.56*u)/T,sl=Math.min(4,v*0.009); // (the streak: how far it moves in about half a frame)
+    ctx.globalAlpha=Math.min(1,(Q.a+0.3*hk)*(big?1.1:1))*Math.min(1,u/0.08)*Math.min(1,(1-u)/0.06);
+    if(big){ctx.fillStyle=lo;ctx.beginPath();ctx.ellipse(x,y+0.35+sl/2,s*0.55,(s+sl)*0.55,0,0,6.284);ctx.fill();
+      ctx.fillStyle=C.heap;ctx.beginPath();ctx.ellipse(x,y+sl/2,s*0.5,(s+sl)*0.5,0,0,6.284);ctx.fill();ctx.fillStyle=hi;ctx.fillRect(x-s*0.35,y-s*0.4,s*0.45,s*0.35);}
+    else{ctx.fillStyle=C.heap;ctx.fillRect(x-s/2,y-s/2,s,s+sl);}}
+  { // the trickle: grains let go every 0.025 s for trD s, each falling as a grain does; drawn as joined bits, thinning as they fall
+    const P0=Q.trP[0]+(Q.trP[1]-Q.trP[0])*gritH(sd,600),cy=(t+gritH(sd,601)*P0)/P0,k=Math.floor(cy),tt=(cy-k)*P0,T=1.2,D=Q.trD,de=0.025;
+    if(gritH(sd+3,k*7+600)>=0.25&&tt<D+T){const xo=xc+(gritH(sd+5,k)-0.5)*2.4;ctx.fillStyle=C.heap;
+      for(let j=0;j*de<=D;j++){const te=j*de,u=(tt-te)/T;if(u<0||u>=1)continue;const y=ys+H*(0.22*u+0.78*u*u),v=H*(0.22+1.56*u)/T,env=Math.pow(Math.sin(Math.PI*Math.min(1,te/D)),0.5),
+          w=Q.trW*(1-0.45*u)*(0.55+0.45*env),x=xo+Math.sin(u*5+te*9)*0.45*u;
+        ctx.globalAlpha=Q.trA*Math.min(1,u/0.05)*Math.min(1,(1-u)/0.05)*(1-0.4*u)*(0.5+0.5*env);ctx.fillRect(x-w/2,y,w,v*de+0.5);}}}
+  ctx.restore();
+  // the pile on the plate's top (d .5 under the fall) and the grains scattered round it
+  const k=Q.pile*(0.6+0.4*Math.min(1,levelTime/120)),rx=2+2.4*k,h=1.2+2.2*k,qx=xc,qy=yb,sl=keyLight(qx,qy).sx<0?1:-1,fy=qy+0.9; // (sl: the lit side)
+  ctx.save();ctx.fillStyle=lo;ctx.globalAlpha=0.32;ctx.beginPath();ctx.ellipse(qx-sl*0.6,fy,rx+0.8,1.1,0,0,6.284);ctx.fill(); // the contact shadow at its foot
+  ctx.globalAlpha=0.95;ctx.fillStyle=selC(C.heap,0.8);ctx.beginPath();ctx.moveTo(qx-rx,fy);ctx.quadraticCurveTo(qx-rx*0.35,qy-h*1.1,qx,qy-h);ctx.quadraticCurveTo(qx+rx*0.35,qy-h*1.1,qx+rx,fy);ctx.quadraticCurveTo(qx,fy+0.8,qx-rx,fy);ctx.fill();
+  ctx.fillStyle=C.heap;ctx.beginPath();ctx.moveTo(qx,qy-h);ctx.quadraticCurveTo(qx+sl*rx*0.35,qy-h*1.1,qx+sl*rx,fy);ctx.quadraticCurveTo(qx+sl*rx*0.4,fy+0.5,qx+sl*0.3,fy+0.3);ctx.fill(); // its lit flank
+  ctx.globalAlpha=0.6;ctx.fillStyle=hi;ctx.fillRect(qx+sl*0.4-(sl<0?1.2:0),qy-h-0.1,1.2,0.6);
+  ctx.fillStyle=C.heap;for(let i=0;i<Q.sc;i++){const a=gritH(sd,700+i)-0.5,d=0.25+0.5*gritH(sd,720+i),r=(5+6*k)*Math.sign(a)*Math.pow(Math.abs(a)*2,1.6),
+      px=qx+r+(d-0.5)*DX,py=yb+(0.5-d)*DY,s=0.8+0.6*gritH(sd,740+i);ctx.globalAlpha=0.5+0.35*gritH(sd,760+i);ctx.fillRect(px-s/2,py-s*0.4,s,s*0.8);}
+  ctx.restore();}
 function drawGrit(ctx,x0,x1,y0,y1){if(GRIT.off||lyOff('grit'))return;const t=gameTime;
   for(const g of gritList()){const sf=g.o.f;if(sf.s!==0)continue;const X=g.c*TW,ya=SURF(g.r0),pf=g.p.f,dn=pf.jam||gameTime-pf.press<0.12,yb=SURF(g.r1)-(dn?1:2.4);
     if(X+TW<x0||X>x1||yb<y0||ya>y1+20)continue;const sd=g.c*131+g.r0*977,xc=X+15+2*gritH(sd,1)-1,ys=ya+FHH,H=yb-ys,C=sandC();
+    if(CUE.grit>0){drawGritL(ctx,g,GRIT_L[Math.min(3,CUE.grit)],X,ya,yb,xc,ys,H,sd,C);continue;}
     ctx.save();ctx.beginPath();ctx.rect(xc-8,ya,16,yb-ya+1);ctx.clip();nearCut(ctx,g.c-1,g.c+1,g.r0,g.r1-1,true);ctx.fillStyle=C.heap;
     for(let i=0;i<GRIT_N;i++){const P0=GRIT_P[0]+(GRIT_P[1]-GRIT_P[0])*gritH(sd,10+i),T=GRIT_T[0]+(GRIT_T[1]-GRIT_T[0])*gritH(sd,30+i),cy=(t+gritH(sd,50+i)*P0)/P0,k=Math.floor(cy),u=(cy-k)*P0/T;
       if(u>=1)continue;const hk=gritH(sd+i*7,k);if(hk<GRIT_GAP)continue;
@@ -9086,7 +9125,28 @@ function bonesDraw(g,X,ys,q,C){g.save();const sd=hash2(q.c*31+7,q.r*17+3),m=q.k=
     bnBone(g,X,ys,m,2.5,0.32,10,0.5,1.35,C);bnRibs(g,X,ys,m,7.5,0.62,C,3);bnSkull(g,X,ys,m,17.5,0.4,C,0.35);}
   g.restore();}
 // the scuffs on a wall's face (in the room's picture, inside its face's clip): fx, Y the face's left and top (room px), cell gc, gr
+// Round 50a's levels for the scuffs (CUE.scuff 1-3): a lighter worn patch where his soles rub the face (the dust and grime rubbed off), each
+// strike a sole print (ball and heel, pressed darker at the ball) with a short skid smear down from it where the sole slipped as it pushed,
+// older prints about it, the pale scratches where the sole's edge bit, pale dust specks knocked loose under them. Translucent marks.
+const SCF_L=[null,{a:1.15,patch:0.07,sk:0.7,dust:4,scr:0.3},{a:1.35,patch:0.12,sk:1,dust:7,scr:0.42},{a:1.55,patch:0.18,sk:1.3,dust:10,scr:0.55}];
+function wearFaceL(g,fx,Y,gc,gr,th,a,Q){
+  for(const q of a){const ex=q.s>0?fx:fx+TW,s=q.s,yf=Y+SURF(q.r)-gr*TH,sd=q.c*53+q.r*11,K=selC(th.lo||'#2a2018',0.5);g.save();
+    g.fillStyle='#fff0d4'; // the worn patch: rubbed lighter round each strike and up the run between them
+    g.globalAlpha=Q.patch*0.5;g.beginPath();g.ellipse(ex+s*6.5,yf-37,6,38,0,0,6.284);g.fill();
+    for(let i=0;i<4;i++){const h=i<3?WR_STEPS[i][1]:WR_TOP;g.globalAlpha=Q.patch*(i<3?1:0.6);g.beginPath();g.ellipse(ex+s*(6+wearH(sd,i+40)),yf-h-0.5,5.5,4.2,0,0,6.284);g.fill();}
+    for(let i=0;i<4;i++){const h=i<3?WR_STEPS[i][1]:WR_TOP,top=i===3;
+      for(let k=0;k<(top?2:4);k++){const hk=wearH(sd+i*13,k),hy=yf-h-(k?(hk-0.5)*6:0)-(k===0?0:1),xx=ex+s*(4.6+(k?(wearH(sd+i,k+7)-0.5)*3.4:0)),w=5.6+1.8*wearH(sd,i*5+k),tl=s*(0.12+0.18*hk);
+        if(hy<Y-6||hy>Y+TH+6)continue;g.fillStyle=K;const A=Math.min(0.9,(k?0.2+0.12*hk:0.58-0.05*i)*(top?0.7:1)*Q.a);
+        if(k===0){ // the print: the ball and the heel, the ball pressed darker, a skid smear down from it
+          g.globalAlpha=A;g.beginPath();g.ellipse(xx+s*w*0.18,hy,w*0.34,1.9,tl,0,6.284);g.fill();g.globalAlpha=A*0.8;g.beginPath();g.ellipse(xx-s*w*0.3,hy+0.5,w*0.2,1.45,tl,0,6.284);g.fill();
+          g.globalAlpha=A*0.55;g.fillRect(xx+s*w*0.12-1.3,hy-0.5,2.6,1.2);
+          g.globalAlpha=0.3*Q.sk*A;g.beginPath();g.moveTo(xx-w*0.38,hy+0.8);g.lineTo(xx+w*0.38,hy+0.8);g.lineTo(xx+s*w*0.1,hy+3.5+3*Q.sk);g.closePath();g.fill();}
+        else{g.globalAlpha=A;g.beginPath();g.ellipse(xx,hy,w*0.5,1.3,tl,0,6.284);g.fill();}}
+      if(!top){const hy=yf-h-2.3;g.globalAlpha=Q.scr;g.fillStyle='#fff3dc';g.fillRect(ex+s*1.4-(s<0?4.6:0),hy,4.6,0.6);g.globalAlpha=Q.scr*0.6;g.fillRect(ex+s*2.2-(s<0?3:0),hy+3.4,3,0.5);
+        for(let j=0;j<Q.dust;j++){const dx=ex+s*(2+8*wearH(sd+i,200+j)),dy=yf-h+2+7*wearH(sd+i,230+j),z=0.6+0.5*wearH(sd+i,260+j);g.globalAlpha=0.2+0.2*wearH(sd+i,290+j);g.fillRect(dx-z/2,dy,z,z);}}}
+    g.restore();}}
 function wearFace(g,fx,Y,gc,gr,th){if(WEAR.off||lyOff('scuff'))return;const a=wearList().face.get(gr*L.cols+gc);if(!a)return;
+  if(CUE.scuff>0)return wearFaceL(g,fx,Y,gc,gr,th,a,SCF_L[Math.min(3,CUE.scuff)]);
   for(const q of a){const ex=q.s>0?fx:fx+TW,s=q.s,yf=Y+SURF(q.r)-gr*TH,sd=q.c*53+q.r*11,K=selC(th.lo||'#2a2018',0.5);g.save();g.fillStyle=K;
     for(let i=0;i<4;i++){const h=i<3?WR_STEPS[i][1]:WR_TOP,top=i===3;
       for(let k=0;k<(top?2:4);k++){const hk=wearH(sd+i*13,k),hy=yf-h-(k?(hk-0.5)*6:0)-(k===0?0:1),xx=ex+s*(4.6+(k?(wearH(sd+i,k+7)-0.5)*3.4:0)),w=5.2+1.8*wearH(sd,i*5+k);
@@ -9096,7 +9156,8 @@ function wearFace(g,fx,Y,gc,gr,th){if(WEAR.off||lyOff('scuff'))return;const a=we
     g.restore();}}
 // the grooves and bones on a floor cell (on the floor's layer, gl): X the cell's left (room px), ys its floor line
 function wearFloor(g,X,ys,gc,gr,th){if(WEAR.off)return;const a=wearList().floor.get(gr*L.cols+gc);if(!a)return;const C=wearList().col;
-  for(const q of a){if(q.k==='groove'){if(lyOff('groove'))continue;const t=q.q,end0=gc===t.cells[0],end1=gc===t.cells[t.cells.length-1];g.save();
+  for(const q of a){if(q.k==='groove'){if(lyOff('groove'))continue;const t=q.q,end0=gc===t.cells[0],end1=gc===t.cells[t.cells.length-1];
+      if(CUE.groove>0){grooveL(g,X,ys,gc,gr,end0,end1,C,GRV_L[Math.min(3,CUE.groove)]);continue;}g.save();
       for(let i=0;i<2;i++){const d=WG_D[i];for(let s=0;s<4;s++){const u0=s*8,u1=u0+8,h=wearH(gc*29+i*7+s,gr*13),y0=(h-0.5)*0.5,a0=0.42+0.2*h;
           const p0x=X+u0+(d-0.5)*DX,py=ys+(0.5-d)*DY,p1x=X+u1+(d-0.5)*DX;
           g.globalAlpha=a0;g.strokeStyle=C.lo;g.lineWidth=1.0;g.beginPath();g.moveTo(p0x,py+y0);g.lineTo(p1x,py+y0+0.15);g.stroke();
@@ -9104,6 +9165,30 @@ function wearFloor(g,X,ys,gc,gr,th){if(WEAR.off)return;const a=wearList().floor.
         for(const e of [end0?-1:0,end1?1:0]){if(!e)continue;const ux=e<0?X+1.2:X+TW-1.2,px=ux+(d-0.5)*DX,py=ys+(0.5-d)*DY;g.globalAlpha=0.5;g.fillStyle=C.d;g.fillRect(px-1.1,py-0.9,2.2,1.3);g.globalAlpha=0.35;g.fillStyle=C.h;g.fillRect(px-0.8,py-1.1,1.4,0.5);}}
       g.restore();}
     else if(!lyOff('bones'))bonesDraw(g,X,ys,q,C);}}
+// Round 50a's levels for the drag grooves (CUE.groove 1-3): the track polished lighter where the block's bottom slid (soft-edged, d .12-.88),
+// scrape marks along it, the two grooves cut deeper (a dark trough, its far wall's darker core, a lit near lip) and wandering a little in
+// depth by world x (sines: continuous from cell to cell, never on a tile's seam line), unevenly worn; at each end of the track a ridge of grit
+// pushed up across each groove, a dark foot, a lit crest, loose grains by it. Translucent marks, in the room's floor layer as before.
+const GRV_L=[null,{w:1.4,a:0.66,lip:0.36,pol:0.08,scr:4,rid:0.8},{w:1.8,a:0.8,lip:0.46,pol:0.12,scr:6,rid:1.1},{w:2.2,a:0.92,lip:0.56,pol:0.16,scr:9,rid:1.4}];
+const grvD=(i,x,gr)=>WG_D[i]+0.045*Math.sin(x*0.07+i*2.1+gr)+0.025*Math.sin(x*0.19+i*1.3);
+function grooveL(g,X,ys,gc,gr,end0,end1,C,Q){g.save();const P=(u,d)=>[X+u+(d-0.5)*DX,ys+(0.5-d)*DY],lt='#fff0d4';
+  {let p=P(0,-0.1);g.beginPath();g.moveTo(p[0],p[1]);p=P(TW,-0.1);g.lineTo(p[0],p[1]);p=P(TW,1.1);g.lineTo(p[0],p[1]);p=P(0,1.1);g.lineTo(p[0],p[1]);g.closePath();g.clip();} // (inside its cell's top face)
+  const band=(d0,d1,al)=>{g.globalAlpha=al;g.beginPath();let p=P(0,d0);g.moveTo(p[0],p[1]);p=P(TW,d0);g.lineTo(p[0],p[1]);p=P(TW,d1);g.lineTo(p[0],p[1]);p=P(0,d1);g.lineTo(p[0],p[1]);g.closePath();g.fill();};
+  g.fillStyle=lt;const hp=wearH(gc*31,gr*7);band(0.12,0.88,Q.pol*(0.45+0.25*hp));band(0.22,0.78,Q.pol*(0.35+0.2*hp)); // (polished: soft at its edges)
+  g.lineCap='round';for(let j=0;j<Q.scr;j++){const h=wearH(gc*41+j,gr*19+5),ln=3+6*wearH(gc*47+j,gr),u=1+(30-ln)*wearH(gc*43+j,gr*3),d=0.14+0.72*wearH(gc*53+j,gr*11);
+    const p=P(u,d),lit=j%3===2;g.globalAlpha=lit?0.12+0.08*h:0.1+0.12*h;g.strokeStyle=lit?lt:C.lo;g.lineWidth=0.5;g.beginPath();g.moveTo(p[0],p[1]);g.lineTo(p[0]+ln,p[1]+(h-0.5)*0.6);g.stroke();}
+  g.lineCap='butt';
+  for(let i=0;i<2;i++){for(let sg=0;sg<4;sg++){const h=wearH(gc*29+i*7+sg,gr*13),w=Q.w*(0.75+0.5*h),pts=[];
+      for(let u=sg*8;u<=sg*8+8;u+=4){const d=grvD(i,X+u,gr);pts.push(P(u,d));}
+      const line=(oy,col,lw,al)=>{g.globalAlpha=al;g.strokeStyle=col;g.lineWidth=lw;g.beginPath();g.moveTo(pts[0][0],pts[0][1]+oy);for(let k=1;k<pts.length;k++)g.lineTo(pts[k][0],pts[k][1]+oy);g.stroke();};
+      line(0,C.lo,w,Q.a*(0.75+0.35*h));line(-w*0.2,C.lo,w*0.45,Q.a*0.55); // the trough and its far wall's shade
+      line(w*0.5+0.35,lt,0.65,Q.lip*(0.8+0.4*h));} // the near lip, lit
+    for(const e of [end0?-1:0,end1?1:0]){if(!e)continue;const r=1.3+1.3*Q.rid,u=e<0?1.2+r:TW-1.2-r,d=grvD(i,X+u,gr),p=P(u,d),sc=sandC(); // a ridge of grit pushed up at the track's end
+      g.globalAlpha=0.35;g.fillStyle=C.lo;g.beginPath();g.ellipse(p[0]+e*0.6,p[1]+0.5,r+0.5,0.9+0.35*Q.rid,0,0,6.284);g.fill();
+      g.globalAlpha=0.85;g.fillStyle=sc.heap;g.beginPath();g.ellipse(p[0]+e*0.6,p[1],r,0.75+0.35*Q.rid,0,0,6.284);g.fill();
+      g.globalAlpha=0.4;g.fillStyle=lt;g.fillRect(p[0]+e*0.6-r*0.5,p[1]-0.8-0.3*Q.rid,r,0.5);
+      g.fillStyle=sc.heap;for(let j=0;j<4;j++){const qx=p[0]-e*(r+0.5+3*wearH(gc+j,gr*5+i)),qy=p[1]+(wearH(gc*3+j,gr+i)-0.5)*2.4;g.globalAlpha=0.6;g.fillRect(qx,qy,0.9,0.7);}}}
+  g.restore();}
 // the sand lift's bones, half in the sand at its pit's floor while the slab is above it (drawn after the sand, in the lift's clip)
 function wearSand(ctx,f,X,ys,sb){if(WEAR.off||lyOff('bones'))return;const q=wearList().sand.get(f);if(!q)return;const yt=ys+HY+5;if(yt>sb-3)return;
   const C=wearList().col,sc=sandC();ctx.save();ctx.beginPath();ctx.rect(X-HX,yt,TW,sb+HY-yt+1);ctx.clip();bonesDraw(ctx,X,sb,q,C);
@@ -14804,7 +14889,7 @@ addEventListener('orientationchange',()=>setTimeout(layout,120));
 if(window.claude&&window.claude.hot&&window.claude.hot.snapshot){try{window.claude.hot.snapshot(()=>({save:S}));}catch(e){}}
 
 // test hooks
-window.__HK={WEAR,wearList:()=>wearList(),wearFloor:(g,X,ys,c,r)=>wearFloor(g,X,ys,c,r,L.theme),wearFace:(g,fx,Y,c,r)=>wearFace(g,fx,Y,c,r,L.theme),WG_D,WB_DR,WB_HR,TELL,tellKind:()=>tellKind(),GRIT,gritList:()=>gritList(),SWB,GLN,gateCue,glanceAt,glanceEnd,GL_T,Snd,chimFoot:(c,r)=>chimFoot(c,r),chimH:n=>chimH(n),CHM:()=>({G0:CHM_G0,GS:CHM_GS,YD:CHM_YD,YP:CHM_YP,YC:CHM_YC,YX:CHM_YX,IN_T:CHM_IN_T}),die:c=>die(c),openingsIn,windLull,windReach,windJumpE,windPeak,windZoneAt,windEase,ctJambsOf,jambKind,startRewind,get windDeaths(){return S.windDeaths;},placeCourts,ctIn,ctPoolHit,CTB,ctBake,ctKindOf,get courts(){return L.courts;},windAt,windE,windCap,windGust,WIND_MS,WIND_GP,WIND_DE,WIND_JM,WIND_G0,WIND_PUSH,WIND_P,WIND_CDA,WIND_GT,plainRuns,keyLight,hillOn,hillTop,hillH,hillCanvas,hillBox,hillSil,hillSegs,hillEnd,hillMeshTop,HILL_DBG,HILL_WADE,HILL_CLIMB,get frameLights(){return frameLights;},jetPlaces,jsSwingPath,jetStream,tapCloth,THEMES,progOf,themeName,learn,LEARN_IDS,HINTS:Object.fromEntries(LEARN_IDS.map(id=>[id,1])),HINT_MOVE:new Set(LEARN_IDS),get banner(){return banner;},set banner(v){banner=v;},genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
+window.__HK={CUE,WEAR,wearList:()=>wearList(),wearFloor:(g,X,ys,c,r)=>wearFloor(g,X,ys,c,r,L.theme),wearFace:(g,fx,Y,c,r)=>wearFace(g,fx,Y,c,r,L.theme),WG_D,WB_DR,WB_HR,TELL,tellKind:()=>tellKind(),GRIT,gritList:()=>gritList(),SWB,GLN,gateCue,glanceAt,glanceEnd,GL_T,Snd,chimFoot:(c,r)=>chimFoot(c,r),chimH:n=>chimH(n),CHM:()=>({G0:CHM_G0,GS:CHM_GS,YD:CHM_YD,YP:CHM_YP,YC:CHM_YC,YX:CHM_YX,IN_T:CHM_IN_T}),die:c=>die(c),openingsIn,windLull,windReach,windJumpE,windPeak,windZoneAt,windEase,ctJambsOf,jambKind,startRewind,get windDeaths(){return S.windDeaths;},placeCourts,ctIn,ctPoolHit,CTB,ctBake,ctKindOf,get courts(){return L.courts;},windAt,windE,windCap,windGust,WIND_MS,WIND_GP,WIND_DE,WIND_JM,WIND_G0,WIND_PUSH,WIND_P,WIND_CDA,WIND_GT,plainRuns,keyLight,hillOn,hillTop,hillH,hillCanvas,hillBox,hillSil,hillSegs,hillEnd,hillMeshTop,HILL_DBG,HILL_WADE,HILL_CLIMB,get frameLights(){return frameLights;},jetPlaces,jsSwingPath,jetStream,tapCloth,THEMES,progOf,themeName,learn,LEARN_IDS,HINTS:Object.fromEntries(LEARN_IDS.map(id=>[id,1])),HINT_MOVE:new Set(LEARN_IDS),get banner(){return banner;},set banner(v){banner=v;},genLevel,featFor,levelSeed,setGameSeed:v=>{S.seed=v;},setKey,took,
   load(n,seed,test){clearInput();quiet=!!test;GLN.off=true;glanceEnd();L=genLevel(n,seed,test);REW.length=0;rw=null;S.sands=SANDS;G=test?[]:L.guards.map(makeGuard);SN=L.snakeSpecs.map(makeSnake);pendingGuards=[];P=makePlayer(L.start.x,L.start.r);P.face=L.start.face||1;mode="play";intro=0;FX.length=0;STORMG.length=0;clearRooms();cam.snap=true;updateCamera(0);return L;},
   loadMap(spec){return spec;},
   tick(n=1){for(let i=0;i<n;i++){if(hitStop>0){hitStop-=STEP;continue;}update(STEP);}},

@@ -131,6 +131,11 @@ lit. Unlike the roof block's warning (threads and beads that thicken as it shift
 `f.s` (rewind-safe, nothing allocated a frame); L2 air before the figures, cut by the front plane of the rows it falls through (`nearCut`:
 the slab's own lip hides each grain until it drops below it), not by the plate's row where it lands. Not in the lamp shadow's carve (air).
 `GRIT.off` and layerscan kind `grit`. Pictures `egyptr49b.py` (r49b_grit_3x.png, r49b_grit.gif).
+Round 50a (owner after v90: "Yes, strengthen the grit, grooves and scuffs"; chose level B, `CUE.grit` 2, `GRIT_L`, `drawGritL`): 26 grains,
+streaked along their fall, a fifth larger and roundish with a shaded foot and a lit top; a thin trickle every 4.5-7 s for 0.8 s (grains let go
+every 0.025 s, thinning and breaking up as they fall); a small cone of grit on the plate's top (lit flank by `keyLight`, contact shadow)
+growing with `levelTime` from 60% to full over 2 min, 12 grains round it. Still a pure function of the clock (and the floor's clock), nothing
+allocated a frame. `CUE.grit` 0 draws round 49b's. Pictures `egyptr50a.py` (r50a_grit_phone.png, r50a_grit_3x.png, r50a_grit_B.gif).
 The owner: "The red tiles that slam shut the doors: they shouldn't be red and have a different design. They should look the same and have no
 warning"; on the pictured alternatives he chose B, the closing plate drawn exactly as the opening plate. Nothing tells them apart before he
 steps on one:
@@ -178,4 +183,5 @@ Pictures `egyptr48a.py old.html new.html [outdir]` (r48a_closer_<mode>.png, r48a
 - round 48a: the closing plate looks, sounds and is hinted exactly as the opening plate until it slams (above).
 - round 49a: no hints or messages; a remote plate's gate and the exit door are heard where they stand and glanced at (`gateCue`).
 - round 49b: grit sifts from a slab that can jam the plate onto it (`drawGrit`).
+- round 50a: the grit stronger: more grains, a trickle at moments, a small pile on the plate (`drawGritL`).
 - Details in CLAUDE.md (Trap density, Forks, Fighters, 16c, 35b, 35c).
