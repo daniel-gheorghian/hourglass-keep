@@ -31,6 +31,11 @@ FIGS = 'nofigures' not in a
 DUMP = next((x[5:] for x in a if x.startswith('dump=')), None)
 PER = int(next((x[4:] for x in a if x.startswith('per=')), '3'))  # (up to K instances of each kind a floor, spread along it)
 DARK, NEAR, SHARE, MINPX = 60, 40, 0.02, 80
+# (round 50j) a kind's own share where a real hole's dark meets its edge: a lift's platform carries its sling legs' rope holes (ropeHole, the
+# rule's near-black for a real hole) 1-1.5 px in from its back edge, and the open mouth slab's slot (a real slot) runs beside its far end;
+# since round 50e the platform rests at the landing he leaves by, so the view of floor 5 seed 1's lift at x9264 frames it at the foot with
+# its holes and the slot: 2.2% (108 px; v90 rested it at the top). Known up to its cap ('strict' fails it too).
+KNOWN = {} if 'strict' in a else {'lift': 0.03}
 FIGURES = {'guard', 'snake', 'prince'}  # (round 46d: judged with the same thresholds as the props)
 SKIP = {'low', 'hurtdrop', 'trigger', 'jgrab', 'shaftfoot', 'sanctum', 'well', 'chain'}  # (no outline of their own: a low ceiling is the room picture's; a kick shaft's grips are holes in the wall; sand; a well's slabs are 'loose')
 
@@ -135,7 +140,7 @@ if __name__ == '__main__':
                         s = stats.setdefault(k, {'views': 0, 'bad': 0, 'e': 0, 'f': 0, 'worst': 0.0, 'where': []})
                         s['views'] += 1; s['e'] += o['e']; s['f'] += o['f']
                         sh = o['f'] / o['e'] if o['e'] else 0
-                        if sh > SHARE and o['f'] >= MINPX:
+                        if sh > max(SHARE, KNOWN.get(k, 0)) and o['f'] >= MINPX:
                             s['bad'] += 1
                             if len(s['where']) < 4: s['where'].append('%d/%d x%d %.1f%% (%d px)' % (n, sd, cx, 100 * sh, o['f']))
                         if sh > s['worst']:

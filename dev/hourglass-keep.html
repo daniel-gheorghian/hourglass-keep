@@ -8651,7 +8651,7 @@ function drawLiftCounterweight(ctx,f,half){
   liftTimber(ctx,ws>0?X+TW+4:X-4,R.by+21,ws>0?X+TW-15:X+15,R.by+5,3.2,Math.min(W,2),false);
   if(EGP.traps)liftTimber(ctx,R.cx,R.by+4,R.cx,R.hy,3,Math.min(W,2),false);else{ctx.fillStyle='#0b0812';ctx.fillRect(R.cx-1.6,R.by+5,3.2,R.hy-R.by-5);} // the sheave's hanger (a timber in the Egyptian themes)
   if(shcBeg(-1e5,-1e5,1e5,1e5,12)){shcLine(xw,R.by+3,xo,R.by+3,7.4);shcLine(ws>0?X+TW+4:X-4,R.by+21,ws>0?X+TW-15:X+15,R.by+5,4.6);shcLine(R.cx,R.by+4,R.cx,R.hy,4.4);shcEll(R.cx,R.hy,8.4,8.4,14);shcEnd();} // (round 42b: the rig stands in the shaft at mid depth, carved out of the lamp shadow, SHC, 1.2 px wider than drawn)
-  const ye=EGP.traps?ys-LS_J:ys-1;liftChainLine(ctx,R.ca,R.hy,R.ca,ye,W);liftChainLine(ctx,R.cb,R.hy,R.cb,ye,W);if(shcBeg(-1e5,-1e5,1e5,1e5,10)){shcLine(R.ca,R.hy,R.ca,ye,4.6);shcLine(R.cb,R.hy,R.cb,ye,4.6);shcEnd();} // (round 38a: the platform's ropes, at mid depth, carved out of the lamp shadow, SHC; the counterweight's runs in the back wall and keeps it) // (round 21a: to the bridle's eye)
+  const ye=EGP.traps?ys-LS_J:ys-1;liftChainLine(ctx,R.ca,R.hy,R.ca,ye,W);liftChainLine(ctx,R.cb,R.hy,R.cb,ye,W);if(GLS.F&&ctx===GLS.F){solidMark(ctx,[R.ca-1.1,R.hy,R.ca+1.1,R.hy,R.ca+1.1,ye,R.ca-1.1,ye]);solidMark(ctx,[R.cb-1.1,R.hy,R.cb+1.1,R.hy,R.cb+1.1,ye,R.cb-1.1,ye]);} // (round 50j: the ropes are the lift's parts too, no beam haze on them, R5/R7; they end above the platform's mark)if(shcBeg(-1e5,-1e5,1e5,1e5,10)){shcLine(R.ca,R.hy,R.ca,ye,4.6);shcLine(R.cb,R.hy,R.cb,ye,4.6);shcEnd();} // (round 38a: the platform's ropes, at mid depth, carved out of the lamp shadow, SHC; the counterweight's runs in the back wall and keeps it) // (round 21a: to the bridle's eye)
   liftWheel(ctx,R.cx,R.hy,7,0,-(ys*0.05),W);
   // the platform: the same floor slab as the ledges, held at mid depth by an iron eye under each chain
   liftSlab(ctx,X,ys,th,W,hash2(f.sc,f.rB));liftEye(ctx,R.ca,ys,W);liftEye(ctx,R.cb,ys,W);
@@ -10286,7 +10286,16 @@ function rySolids(x0,x1,y0,y1){RYSO.length=0;const q=(x,y,w,h,ax,ay,bx,by,cx,cy,
     q(bx-1,by-DY-1,TW+DX+2,TH+DY+2,bx-0.5,by,bx+DX-0.5,by-DY-1,bx+TW+DX+1,by-DY-1,bx+TW,by);q(bx-1,by-DY-1,TW+DX+2,TH+DY+2,bx+TW,by,bx+TW+DX+1,by-DY-1,bx+TW+DX+1,by+TH-DY+0.5,bx+TW,by+TH+0.5);} // (1 px past its outline: the haze's anti-aliased edge left a lit line)
   if(EGP.traps)for(const o of L.dyn){if(o.f.t!=='stone'||o.f.s<2||!L.rubble.has(o.r*L.cols+o.c))continue;const R=roofStone(o),x=R.xc-BLK_W/2,yt=R.ys+HY-BLK_H;
     const b=[x-1,yt-DY-1,BLK_W+DX+2,BLK_H+DY+2];q(...b,x-1,yt,x+BLK_W,yt,x+BLK_W,yt+BLK_H+1,x-1,yt+BLK_H+1);q(...b,x-1,yt,x+DX-1,yt-DY-1,x+BLK_W+DX+1,yt-DY-1,x+BLK_W,yt);
-    q(...b,x+BLK_W,yt,x+BLK_W+DX+1,yt-DY-1,x+BLK_W+DX+1,yt+BLK_H-DY,x+BLK_W,yt+BLK_H+1);}}
+    q(...b,x+BLK_W,yt,x+BLK_W+DX+1,yt-DY-1,x+BLK_W+DX+1,yt+BLK_H-DY,x+BLK_W,yt+BLK_H+1);}
+  // (round 50j) a counterweight lift's platform and its two ropes: solids across the depth (R5, R7), as Torchlight's solidMark (its mouth
+  // slabs that are down are beamBlockers, ryHull). Round 50e rests the platform at the end he leaves by, so a lift at its foot under a
+  // beam (floor 9 seed 46873) showed the haze on its ropes and the footprint on its top
+  const qp=(ax,ay,bx,by,cx,cy,dx,dy)=>{const mx=Math.min(ax,bx,cx,dx),my=Math.min(ay,by,cy,dy);q(mx,my,Math.max(ax,bx,cx,dx)-mx,Math.max(ay,by,cy,dy)-my,ax,ay,bx,by,cx,cy,dx,dy);};
+  for(const f of L.lifts){if(f.sand||f.t==='chain')continue;const X=f.sc*TW;if(X+TW+HX+T_SLAB+2<x0||X-HX-T_SLAB-2>x1)continue;const ys=f.y,R=liftRig(f),ye=EGP.traps?ys-LS_J:ys-1;
+    if(ys-HY-2<=y1&&ys+HY+7>=y0){const r=Math.floor(ys/TH),wl=B(L,f.sc-1,r)===WALL,wr=B(L,f.sc+1,r)===WALL,xl=X-HX-(wl?0:0.5),xr=X+TW-HX+(wr?0:0.5),yf=B(L,f.sc,r+1)===WALL?Math.min(ys+HY+6,(r+1)*TH):ys+HY+6; // (a wall's face beside or under it is cut already: the clip is even-odd, so no overlap)
+      qp(xl,yf,xl,ys+HY-1,xr,ys+HY-1,xr,yf);if(wr)qp(xl,ys+HY-1,X+HX-0.5,ys-HY-1.5,xr,ys-HY-1.5,xr,ys+HY-1);
+      else{qp(xl,ys+HY-1,X+HX-0.5,ys-HY-1.5,X+TW+HX+0.5,ys-HY-1.5,xr,ys+HY-1);qp(xr,ys+HY-1,X+TW+HX+0.5,ys-HY-1.5,X+TW+HX+0.5,ys-HY+5,xr,yf);}}
+    for(const cx of [R.ca,R.cb])qp(cx-1.3,R.hy,cx+1.3,R.hy,cx+1.3,ye,cx-1.3,ye);}}
 function rySolidCut(g,x,y,w,h){let any=false;for(let i=0;i<RYSO.length;i+=13){const q=RYSO;if(q[i+1]>x+w||q[i+1]+q[i+3]<x||q[i+2]>y+h||q[i+2]+q[i+4]<y)continue; // (and out of the footprint: a pushed block's top is the floor of the cell above it)
     if(!any){g.beginPath();g.rect(x-1,y-1,w+2,h+2);any=true;}g.moveTo(q[i+5],q[i+6]);for(let j=1;j<4;j++)g.lineTo(q[i+5+2*j],q[i+6+2*j]);g.closePath();}
   if(any)g.clip('evenodd');}

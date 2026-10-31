@@ -1763,6 +1763,17 @@ Pictures: `forkshot.py out.png n seed [index]` draws a fork for a look; `chamber
   ok (0.84 ms/frame mean, software WebGL), layoutcmp `hk_v90_release.html notimers liftrest` same (144 of 144). WAVs `.claude/research/r50k/` (r50k_amb_<look>.wav,
   r50k_steps.wav, r50k_guard.wav, r50k_drips.wav, r50k_crackles.wav; `render.txt`, `drips.txt`, `lands.log`); `sndtest.py wav=DIR` writes
   r50i_steps_surfaces.wav.
+- The release suite on round 50i (round 50j; `dev/docs/README.md` "What round 50j found"). The game: round 50e rests a counterweight
+  lift's platform at the end he leaves by, so solidscan framed floor 9 seed 46873's lift (x 6384) at its foot in a sky beam. The haze lay on
+  its ropes (Torchlight 7.3%, Classic) and Classic's footprint on its top (22%), against R5/R7. Torchlight now marks the ropes with
+  `solidMark` like the platform. Classic's `rySolids` cuts the platform's faces and ropes out of the haze and footprint; its quads stop at
+  a wall's face beside or under the platform, because the cut is even-odd. Three tests were stale. `r38b_tests.py` recruit read the prince's
+  heart from the call round 50g replaced; it now reads `HUD_HEART`. The foe hearts are unchanged (`TIERS`, `tr.heart`). `solidscan.py` draws
+  its frames with `DRAIN.k` 0. Round 50g's drained grade made the test read the thing's own greyed colour as shade, which halved the
+  pixels on floor 24's roof block and floor 44's lift and pushed v90's known specks (the same 11 and 228 px) over their caps. Those cases
+  are now 3.57% and 1.02%, known as in v90. `contourscan.py` gets `KNOWN` lift 3%: floor 5's platform at the foot frames its rope holes'
+  near-black (real holes) by its back edge and the open mouth's slot (2.2%, 108 px). The solidscan clock-shadow lines were within their 3%
+  cap, as in v90.
 - Every trap pushes a bot action onto `L.path`; the bot replays that list, so a new trap needs its action in `bot.js`.
 - Gate timers are sized three ways (Trap density, above); only P4's race uses the careful pace.
 - Pose angles are measured from straight down; positive means forward.

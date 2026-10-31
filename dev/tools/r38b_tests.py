@@ -195,7 +195,7 @@ with sync_playwright() as p:
     if want('recruit'):
         m = re.search(r"\{name:'RECRUIT'[^}]*heart:'(#[0-9a-fA-F]{6})'", src)
         others = dict(re.findall(r"name:'(SOLDIER|VETERAN|CAPTAIN)'[^}]*heart:'(#[0-9a-fA-F]{6})'", src))
-        pm = re.search(r"heart\(ctx,x\+i\*10,top\+2,P&&i<P\.hp,'(#[0-9a-fA-F]{6})'", src)
+        pm = re.search(r"heart\(ctx,x\+i\*10,top\+2,P&&i<P\.hp,'(#[0-9a-fA-F]{6})'", src) or re.search(r"\bHUD_HEART='(#[0-9a-fA-F]{6})'", src)  # (round 50g's quiet HUD: the prince's hearts in HUD_HEART)
         if not m or len(others) != 3 or not pm: report('recruit', False, 'TIERS or the prince\'s heart not found')
         else:
             h = m.group(1); r_, g_, b_ = [int(h[i:i + 2], 16) / 255 for i in (1, 3, 5)]; H_, S_, V_ = colorsys.rgb_to_hsv(r_, g_, b_)

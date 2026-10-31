@@ -59,7 +59,7 @@ SETUP = r'''([n,seed,q])=>{const H=__HK;window.__HKfreeze=true;for(const id in H
   const TW=32,c0=Math.floor(q[1]/TW),r=Math.round((q[2]+4)/64)-1,B=(c,rr)=>L.base[rr*L.cols+c];let px=q[1]+44;for(const dx of [44,-44,72,-72]){const c=Math.floor((q[1]+dx)/TW);if(B(c,r)!==2&&B(c,r+1)!==0){px=q[1]+dx;break;}}
   P.x=px;P.y=(r+1)*64-4;P.fallY=P.y;P.vx=P.vy=0;P.face=px>q[1]?-1:1;P.state='stand';H.mode='play';
   if(H.HILL_DBG)H.HILL_DBG.stream=false;L.winds.length=0;return [H.themeName(n)];}'''
-SHOW = r'''([fx,fy,o])=>{const H=__HK;H.banner=null;H.setClock(()=>1e6);H.setGT(10);H.LAYER_DBG.glow=false;if(H.LIFT_DBG)H.LIFT_DBG.noback=true;
+SHOW = r'''([fx,fy,o])=>{const H=__HK;H.banner=null;H.setClock(()=>1e6);H.setGT(10);H.LAYER_DBG.glow=false;if(H.LIFT_DBG)H.LIFT_DBG.noback=true;if(H.DRAIN)H.DRAIN.k=0;
   const G=H.GLFX;H.LAYER_DBG.hide=o.hide?new Set(o.hide):null;H.EGP.noart=o.noart?'atop':false;G.shadow=!o.noshadow&&!o.clean;G.relief=!o.norelief&&!o.clean;window.__RYOFF=!!(o.nobeam||o.clean);G.ryClean=true;
   G.mist=G.lookfx=G.caustics=!o.clean;G.bloom=false;H.clearRooms();
   H.cam.x=fx-H.viewW/2;H.cam.y=fy-192*0.62;H.cam.gy=H.cam.y;if(H.GLP){H.GLP.pipe=false;H.GLP.rs=1;window.__HKnoauto=true;}for(let i=0;i<4;i++)H.render();

@@ -103,6 +103,21 @@ Short answers; the element's own file has the detail. "Lamp shadow" is whether a
 | [the dark](elements/the-dark.md) | drains lamps (`dkDrain`) | its own 2D shadow pull (`drawShut`) | covered | covered | covered | covered | no | kills | no |
 | [the Crossing](elements/the-crossing.md) | its own (sun or moon, his fill) | off | off | off | off | off | no | no | no |
 
+## What round 50j found
+
+Round 50j: the release suite on round 50i failed four jobs. One was a fault in the game. Round 50e's summoned lift exposed it: the lift now
+rests at the end he leaves by. The other three were tests that no longer matched the game.
+
+| Finding | Where | Round 50j | Kind |
+|---|---|---|---|
+| A lift's platform resting at its foot in a sky beam (floor 9 seed 46873, x 6384) had the beam's haze on its two ropes (Torchlight 7%, Classic too) and Classic's footprint on its top (Classic 22%). Before round 50e that lift's platform rested at the top, so the fault was never framed (layers.md R5, R7) | `drawLiftCounterweight`, `rySolids` | Torchlight marks the ropes like the platform (`solidMark`). Classic cuts the platform's faces and the ropes out of the haze and footprint (`RYSO`), stopping at the wall faces beside and under it because the cut is even-odd | game |
+| `r38b_tests.py` recruit: looked for the prince's heart colour in the old `heart(ctx,x+i*10,...,'#2fae9e')` call. Round 50g moved it to `HUD_HEART` | `r38b_tests.py` | reads `HUD_HEART` too. The recruit's foe hearts (`TIERS` `#e894a4`/`#f6c6cf`, drawn from `tr.heart`) are unchanged: CIEDE2000 36.6 to the prince's | test |
+| `solidscan.py` torch roof beam on floor 24 (x 11664, 6.9%), Classic lift beam on floor 44 (x 13328, 3.5%): the same specks as v90's (11 and 228 px, listed as known) over fewer pixels. Round 50g's drained grade desaturates the picture, and the test counts an even darkening as shade, not as the thing's own colour, so the block's and slab's pixels dropped from 336 to 160 and from 22,866 to 6,494 | `solidscan.py` | its frames draw with `DRAIN.k` 0 (the grade is a colour pass over the whole picture, not a pass drawn over anything): 336 px 3.57% and 22,851 px 1.02%, known as in v90 | test |
+| `contourscan.py` Classic lift on floor 5 (x 9264, 2.2%, 108 px): the near-black of the platform's rope holes 1-1.5 px in from its back edge, and the open mouth's slot beside it. Both are real holes, which the contour rule keeps near-black. Since round 50e the view frames the platform at the foot (v90: at the top) | `contourscan.py` | `KNOWN` lift up to 3% (`strict` fails it) | test |
+
+The torch clock-shadow lines in the failing solidscan logs (up to 2.9% on floor 10) were inside their known cap of 3%, as in v90 (2.4%). They
+did not cause a failure.
+
 ## What round 50i found
 
 Round 50i (owner: "the ambient noises are too similar. The chirps are in all of them"; "the water dripping doesn't sound right ... the
